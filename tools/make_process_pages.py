@@ -74,10 +74,10 @@ TEMPLATE = r"""<!DOCTYPE html>
 <h2>درخت کد</h2>
 <p class="small">درخت واقعی کد است؛ روی هر گره کلیک کن تا شاخه‌هایش باز یا بسته شوند.</p>
 <div class="card"><div id="tree"></div></div>
-<h2>شرط‌ها و حفاظت‌ها</h2>
-<table id="conds"><tr><th style="width:26%">اگر این اتفاق افتاد</th><th style="width:37%">برنامه چه کار می‌کند</th><th>عددش</th></tr></table>
-<h2>فرمان‌ها و خروجی‌ها</h2>
-<table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
+<h2 id="condsh">شرط‌ها و حفاظت‌ها</h2>
+<table id="conds"><tr><th style="width:26%" id="condh1">اگر این اتفاق افتاد</th><th style="width:37%" id="condh2">برنامه چه کار می‌کند</th><th id="condh3">عددش</th></tr></table>
+<h2 id="outsh">فرمان‌ها و خروجی‌ها</h2>
+<table id="outs"><tr><th style="width:26%" id="outh1">به کجا</th><th style="width:37%" id="outh2">چه فرمانی / چه خروجی‌ای</th><th id="outh3">کی و با چه شرطی</th></tr></table>
 <div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد بررسی می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
 <script>const DATA = /*__DATA__*/;</script>
@@ -312,7 +312,7 @@ function renderFlow(){
     var tgt = null, tTitle = '', tIdx = -1;
     if (n.side.ret === 'END'){
       tgt = termPos; tIdx = DATA.flow.length;
-      tTitle = 'برگشت به اول (pass بعد)' +
+      tTitle = 'برگشت به اولِ دور بعد' +
         ((firstIdx >= 0) ? ' — ' + (DATA.flow[firstIdx].t || '') : '');
       if (!tgt && firstIdx >= 0){ tIdx = firstIdx; tgt = pos[firstIdx]; }
     }
@@ -378,7 +378,7 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
-  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی خودِ خط کلیک کن تا آن خط و دو کادرِ دو سرش روشن شوند. روی هر کادر هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. کادرهایی که علامت ↗ دارند، لینک صفحهٔ همان ماژول‌اند. خط‌چین سبزِ «دور بعد» یعنی این کار در این دور تمام شده و دور بعد از همان کادرِ بالا از نو شروع می‌شود. برای برداشتن روشنایی، روی جای خالی شکل کلیک کن.<svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی خودِ خط کلیک کن تا آن خط و دو کادرِ دو سرش روشن شوند. روی هر کادر هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. کادرهایی که علامت ↗ دارند، لینک صفحهٔ همان ماژول‌اند. خط‌چین سبزِ «دور بعد» یعنی این کار در این دور تمام شده و دور بعد از همان کادرِ بالا از نو شروع می‌شود. برای برداشتن روشنایی، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
       var n = DATA.flow[+g.getAttribute('data-i')];
@@ -464,6 +464,7 @@ function wireFlow(){
     if (ev.target.closest && ev.target.closest('a')) return;
     var tw = ev.target.closest ? ev.target.closest('.termwrap') : null;
     if (tw){
+      clear();
       svg.classList.add('sel'); tw.classList.add('hl');
       var fn0 = firstNodeOf(svg), fIdx = fn0 ? fn0.getAttribute('data-i') : '';
       var rs = svg.querySelectorAll('.edge'), rc = 0, dest = '';
@@ -524,6 +525,9 @@ function render(){
   if (DATA.nav){ document.getElementById('nav').innerHTML = 'صفحه‌های دیگر: ' + DATA.nav.map(function(x){ return '<a href="' + x.href + '">' + x.t + '</a>'; }).join(' | '); }
   fill('steps', DATA.steps || []);
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
+  if (DATA.condHead){ DATA.condHead.forEach(function(v, i){ var th = document.getElementById('condh' + (i + 1)); if (th) th.textContent = v; }); }
+  if (DATA.outHead){ DATA.outHead.forEach(function(v, i){ var th = document.getElementById('outh' + (i + 1)); if (th) th.textContent = v; }); }
+  if (DATA.hideOuts){ var oh = document.getElementById('outsh'), ot = document.getElementById('outs'); if (oh) oh.style.display = 'none'; if (ot) ot.style.display = 'none'; }
   if (DATA.gloss){ fillTable('gloss', DATA.gloss); }
   else { document.getElementById('glosswrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);
@@ -624,6 +628,9 @@ PLAIN_RULES = [
     (r'کالیبراسیون', 'جدول تصحیح'),
     (r'\bESP\b', 'ماژول پنل'),
     (r'\bRAM\b', 'حافظهٔ موقت'),
+    (r'\bCRC\b', 'کد کنترل خطا'),
+    (r'\bPWM\b', 'پالس روشن/خاموش'),
+    (r'\bDMA\b', 'انتقال مستقیم داده'),
     (r'\bTCB\b', 'بلوک کنترل کار'),
     (r'\brecordهای\b', 'بسته‌های ذخیره'),
     (r'\bpassهای\b', 'دورهای'),
@@ -725,6 +732,18 @@ GLOSSARY = [
     ['فهرست خطاهای فعال', 'یک عدد بیتی که می‌گوید کدام خطاها همین حالا فعال‌اند؛ هر بیت یعنی یک خطای مشخص.'],
     ['استک (stack)', 'حافظهٔ ثابتی که هر کار برای متغیرهای موقت خودش دارد؛ اندازه‌اش از پیش تعیین شده و وسط کار بزرگ نمی‌شود.'],
     ['تیک (tick)', 'ضربان زمان‌بند سیستم؛ اینجا هر تیک ۱ میلی‌ثانیه است و نوبت‌دهی کارها با آن شمرده می‌شود.'],
+    ['کنترل‌کنندهٔ PID',
+     'یک تنظیم‌کنندهٔ خودکار: خروجی را کم و زیاد می‌کند تا مقدار اندازه‌گیری‌شده به عدد هدف برسد. اینجا جریان شارژ را با آن ثابت نگه می‌دارند.'],
+    ['RTOS (سیستم‌عامل کوچک)',
+     'برنامه‌ای که چند کار را نوبتی و با اولویت روی همان یک میکرو اجرا می‌کند؛ هر کار دورهٔ خودش را دارد.'],
+    ['نگهبان سخت‌افزاری (IWDG)',
+     'شمارنده‌ای در خود میکرو که اگر برنامه سر وقت تازه‌اش نکند، برد را ریست می‌کند؛ تقریباً هر ۱ ثانیه یک بار باید تازه شود.'],
+    ['مبدل آنالوگ (ADC)',
+     'قطعه‌ای که ولتاژ واقعی را به عدد تبدیل می‌کند تا برنامه بتواند بخواند.'],
+    ['کد کنترل خطا (CRC)',
+     'یک عدد کوچک که همراه هر بسته فرستاده می‌شود تا گیرنده بفهمد بسته سالم رسیده یا خراب شده است.'],
+    ['جیتر (Jitter)',
+     'مقایسه‌گر سخت‌افزاری که جریان زیاد یا قطع‌شدن باتری را همان لحظه می‌بیند و پرچم می‌دهد، بدون اینکه منتظر دور بعدی برنامه بماند.'],
     ['وقفه (interrupt)',
      'یک رویداد سخت‌افزاری که کار جاری را لحظه‌ای کنار می‌زند تا فوراً رسیدگی شود؛ مثلاً آمدن یک بایت از پنل یا لبهٔ سیگنال جیتر.'],
 ]
@@ -828,7 +847,7 @@ MODULES['charging'] = {
  ],
  'tree': T('ارزیابی شارژر — هر pass کنترل',
    T('بررسی‌های کلی (به همین ترتیب)',
-     T('ذخیرهٔ NVM؟ → خروجی صفر، پایان pass'),
+     T('ذخیره در حافظهٔ ماندگار؟ → خروجی صفر، پایان دور'),
      T('قفل فنی؟ → قطع نهایی'),
      T('mode دستی: درخواست پنل؛ ۳ ثانیه سکوت یعنی خروج از این mode'),
      T('خطای ۶: توقف channelی که باتری‌اش قطع است'),
@@ -1095,11 +1114,12 @@ MODULES['ui'] = {
  'sub': 'این ماژول از روی وضعیت بقیهٔ ماژول‌ها یک «چهره» برای سه چراغ (سبز، زرد، قرمز) و بوق انتخاب می‌کند؛ همیشه بالاترین اولویت برنده است.',
  'steps': [
    '<b>اولویت خطاها:</b> اول خطای فنی (هر سه چراغ با هم چشمک)، بعد اضافه‌ولتاژ ورودی، بعد قطع باتری (خطای ۶)، بعد باتری خراب، بعد عدم‌توازن قفل‌شده.',
-   '<b>خطای ۶:</b> چراغ قرمز ۱ ثانیه‌ای با ۵۰٪ روشن و ۳ بوق پشت سر هم.',
+   '<b>خطای ۶:</b> سبز ثابت + قرمز چشمک ۱ ثانیه‌ای با ۵۰٪ روشن و ۳ بوق پشت سر هم؛ همین ترکیب آن را از بقیهٔ خطاها جدا می‌کند.',
    '<b>باتری خراب:</b> قرمز ثابت؛ <b>عدم‌توازن:</b> قرمز چشمک‌زن با بوق دوره‌ای جدا تا دو حکم قاطی نشوند.',
    '<b>حالت عادی با ورودی:</b> شارژ کامل = سبز ثابت و زرد خاموش؛ در حال شارژ = زرد چشمک‌زن؛ استراحت حرارتی = زرد چشمک ۱ ثانیه‌ای با سبز ثابت؛ ورودی سالم بدون شارژ = سبز ثابت.',
    '<b>روی باتری (بدون ورودی):</b> درصد باتری از روی ولتاژ خوانده می‌شود؛ سبز با ریتم درصد چشمک می‌زند و در درصدهای پایین بوق هشدار می‌آید (۴۰٪، ۲۰٪، ۱۰٪ و بحرانی).',
    '<b>دو جدول درصد:</b> جدول درصد هنگام شارژ و هنگام کار روی باتری جدا هستند تا حد «کامل» با حد مصرف قاطی نشود.',
+   '<b>صفحهٔ هر آلارم:</b> هر خطا و هر حالت یک صفحهٔ جدا دارد (فلوچارت، چراغ، بوق، عددها و راه رفع). از «فهرست خطاها و آلارم‌ها» در بالای همین صفحه باز کن.',
  ],
  'example': [
    'برق ورودی وصل است و شارژر در حال شارژ است: زرد چشمک می‌زند و سبز ثابت است.',
@@ -1286,7 +1306,7 @@ MODULES['mcupowerpath'] = {
    '<b>رفتن روی ورودی:</b> اگر ولتاژ ورودی دست‌کم <b class="num">۲۲ ولت</b> شد و <b class="num">۵ ثانیه</b> پیوسته ماند، مسیر باتری میکرو قطع و میکرو از ورودی تغذیه می‌شود.',
    '<b>نوار مرده:</b> بین <b class="num">۲۱٫۵ تا ۲۲ ولت</b> هیچ تغییری نمی‌شود و timer هم لغو می‌شود تا مسیر چپ و راست نپرد.',
    '<b>برگشت به باتری:</b> اگر ورودی زیر <b class="num">۲۱٫۵ ولت</b> افتاد، برگشت به باتری فوری است.',
-   '<b>قطع ناگهانی ورودی:</b> لبهٔ افتادن signal حضور ورودی همان لحظه در وقفه مسیر باتری را برمی‌گرداند؛ منتظر pass بعدی نمی‌ماند.',
+   '<b>قطع ناگهانی ورودی:</b> لبهٔ افتادن signal حضور ورودی همان لحظه در وقفه مسیر باتری را برمی‌گرداند؛ منتظر دور بعدی نمی‌ماند.',
    'اگر اندازه‌گیری نامعتبر باشد، مسیر فعلی حفظ و timer لغو می‌شود.',
  ],
  'example': [
@@ -1297,7 +1317,7 @@ MODULES['mcupowerpath'] = {
  'flow': [
    N('sec','navy','بخش ۱: تشخیص و رفتن روی ورودی'),
    N('pill','navy','شروع: میکرو از باتری تغذیه می‌شود', ref='func__McuPowerPath_Run'),
-   N('dia','yellow','لبهٔ افتادن حضور ورودی آمد؟ (وقفه)', ref='func__McuPowerPath_OnInputIrq', side=SIDE('red',['برگشت فوری به باتری، همان لحظه در وقفه','منتظر pass بعدی نمی‌ماند'], 'r', 'بله'), elab='نه', note=SIDE('red',['برگشت با وقفه، فوری انجام می‌شود','حتی وسط pass کنترل هم صبر نمی‌کند'],'l')),
+   N('dia','yellow','لبهٔ افتادن حضور ورودی آمد؟ (وقفه)', ref='func__McuPowerPath_OnInputIrq', side=SIDE('red',['برگشت فوری به باتری، همان لحظه در وقفه','منتظر دور بعدی نمی‌ماند'], 'r', 'بله'), elab='نه', note=SIDE('red',['برگشت با وقفه، فوری انجام می‌شود','حتی وسط pass کنترل هم صبر نمی‌کند'],'l')),
    N('dia','yellow','Snapshot معتبر است؟', side=SIDE('gray',['مسیر فعلی حفظ و timer لغو می‌شود'], 'r', 'نه'), elab='بله'),
    N('dia','yellow','ولتاژ ورودی دست‌کم ۲۲ ولت است؟', side=SIDE('gray',['ورودی کافی نیست: روی ورودی نمی‌رویم','در نوار مردهٔ ۲۱٫۵ تا ۲۲ ولت، وضعیت فعلی می‌ماند و timer لغو می‌شود'], 'r', 'نه'), elab='بله'),
    N('dia','yellow','۵ ثانیه پیوسته بالای ۲۲ ماند؟', ref='func__McuPowerPath_Run: timer احراز', side=SIDE('gray',['هنوز روی باتری می‌مانیم','افتادن زیر ۲۲ timer را از اول می‌کند'], 'r', 'نه'), elab='بله'),
@@ -1315,7 +1335,7 @@ MODULES['mcupowerpath'] = {
  'conds': [
    ['ورودی ۲۲ ولت شد ولی قبل از ۵ ثانیه افتاد','timer لغو می‌شود و میکرو روی باتری می‌ماند.','۵ ثانیه پایداری'],
    ['ورودی بین ۲۱٫۵ و ۲۲ ولت ماند','مسیر عوض نمی‌شود؛ وضعیت قبلی می‌ماند تا تغذیه چپ و راست نپرد.','نوار مرده ۵۰۰ میلی‌ولت'],
-   ['برق ورودی ناگهان قطع شد','برگشت به باتری در همان وقفه انجام می‌شود.','بدون انتظار pass بعدی'],
+   ['برق ورودی ناگهان قطع شد','برگشت به باتری در همان وقفه انجام می‌شود.','بدون انتظار دور بعدی'],
  ],
  'outs': [
    ['pin مسیر تغذیه (BSP)','قطع مسیر باتری وقتی روی ورودی هستیم؛ وصل باتری در برگشت','تنها فرمان سخت‌افزاری این ماژول'],
@@ -1335,7 +1355,7 @@ MODULES['jitter'] = {
  ],
  'example': [
    'جریان channel ۱ ناگهان از حد comparator رد می‌شود؛ وقفه می‌آید و پرچم trip channel ۱ قفل می‌شود.',
-   'شارژر در pass بعدی پرچم را می‌بیند، channel ۱ را متوقف می‌کند و channel ۲ به کارش ادامه می‌دهد.',
+   'شارژر در دور بعدی پرچم را می‌بیند، channel ۱ را متوقف می‌کند و channel ۲ به کارش ادامه می‌دهد.',
    'بعد از ۳ ثانیه نوبت احیای channel ۱ می‌رسد؛ شارژر پرچم را پاک و با درصد توان کمتر شروع می‌کند.',
  ],
  'flow': [
@@ -1596,10 +1616,10 @@ MODULES['rtosmap'] = {
  'flow': [
    N('sec', 'navy', 'بخش ۱: از ریست تا زمان‌بند (منبع: rtos_app.c و app.c)'),
    N('pill', 'navy', 'روشن‌شدن برد', ref='func__App_Start'),
-   N('box', 'blue', 'main: سخت‌افزار و watchdog', ['کلاک، مبدل، تایمرها، DMA و UART', 'watchdog حدود ۱ ثانیه، پیش از زمان‌بند'], ref='func__BspIwdg_Init'),
-   N('box', 'blue', 'App_Init: خواندن حافظهٔ ماندگار و جدول تصحیح', ['بازپخش تنظیم‌های پنل از فلش', 'جدول تصحیح جریان و سابقهٔ ثبت وضعیت', 'قفل خواندن: خاموش'], ref='func__App_Init'),
-   N('box', 'blue', 'Rtos_Start: ساخت پنج task', ['حافظهٔ ثابت: TCB و استک هر task', 'هر task پشت فلگ MODULE_* خودش', 'شکست ساخت = توقف بی‌پایان؛ watchdog ریست می‌کند'], ref='func__Rtos_Start'),
-   N('box', 'blue', 'osKernelStart: زمان‌بند روشن', ['تیک ۱۰۰۰ هرتز', 'این فراخوانی هرگز برنمی‌گردد'], ref='func__Rtos_Start: osKernelStart'),
+   N('box', 'blue', 'آماده‌سازی سخت‌افزار و نگهبان', ['کلاک، مبدل، تایمرها، DMA و UART', 'watchdog حدود ۱ ثانیه، پیش از زمان‌بند'], ref='func__BspIwdg_Init'),
+   N('box', 'blue', 'خواندن حافظهٔ ماندگار و جدول تصحیح', ['بازپخش تنظیم‌های پنل از فلش', 'جدول تصحیح جریان و سابقهٔ ثبت وضعیت', 'قفل خواندن: خاموش'], ref='func__App_Init'),
+   N('box', 'blue', 'ساخت پنج کار (task)', ['حافظهٔ ثابت: TCB و استک هر task', 'هر task پشت فلگ MODULE_* خودش', 'شکست ساخت = توقف بی‌پایان؛ watchdog ریست می‌کند'], ref='func__Rtos_Start'),
+   N('box', 'blue', 'روشن‌کردن زمان‌بند', ['تیک ۱۰۰۰ هرتز', 'این فراخوانی هرگز برنمی‌گردد'], ref='func__Rtos_Start: osKernelStart'),
    N('sec', 'navy', 'بخش ۲: پنج task - اولویت، دوره، استک (منبع: rtos_config.h)'),
    N('box', 'gray', 'task حفاظت — اولویت ۱۱', ['دوره ۵ میلی‌ثانیه، استک ۱۹۲ کلمه', 'بالاترین اولویت سیستم: Protection_Run', 'این task فعلاً ساخته نمی‌شود'], ref='func__TaskProtection', go='protection'),
    N('box', 'blue', 'task کنترل — اولویت ۱۰', ['دوره ۱۰ میلی‌ثانیه، استک ۲۵۶ کلمه', 'ترتیب ثابت تصمیم؛ در پایان kick watchdog', 'شکاف watchdog ندارد: خودِ صدا زدن سند زنده‌بودن است'], ref='func__TaskControl', go='system'),
@@ -1625,7 +1645,7 @@ MODULES['rtosmap'] = {
    N('box', 'blue', 'TIM2 و TIM3 + ADC + DMA', ['ترکیب دو گیت PWM و تریگر مبدل', 'دو frame حلقوی برای task اندازه‌گیری'], ref='func__BspAdc_Init'),
  ],
  'tree': {'t': 'معماری taskها', 'c': [
-   {'t': 'راه‌اندازی', 'c': [{'t': 'main: سخت‌افزار + watchdog'}, {'t': 'App_Init: حافظهٔ ماندگار و جدول تصحیح'}, {'t': 'Rtos_Start: پنج task'}, {'t': 'osKernelStart'}]},
+   {'t': 'راه‌اندازی', 'c': [{'t': 'آماده‌سازی سخت‌افزار و نگهبان'}, {'t': 'خواندن حافظهٔ ماندگار و جدول تصحیح'}, {'t': 'ساخت پنج کار (task)'}, {'t': 'روشن‌کردن زمان‌بند'}]},
    {'t': 'حفاظت: اولویت ۱۱، ۵ میلی‌ثانیه (خاموش)'},
    {'t': 'کنترل: اولویت ۱۰، ۱۰ میلی‌ثانیه', 'c': [{'t': 'ترتیب ثابت نُه مرحله‌ای'}, {'t': 'تازه‌سازی watchdog در پایان'}]},
    {'t': 'اندازه‌گیری: اولویت ۱۰، ۱ میلی‌ثانیه'},
@@ -1821,6 +1841,9 @@ def main():
         sim_path = os.path.join(ROOT, 'Firmware', 'Modules', 'Ui', 'alarm_simulator.html')
         nav.append({'t': 'شبیه‌ساز خطاها و چراغ‌ها',
                     'href': os.path.relpath(sim_path, os.path.dirname(path)).replace(os.sep, '/')})
+        alarms_path = os.path.join(ROOT, 'Documentation', 'alarms', 'index.html')
+        nav.append({'t': 'فهرست خطاها و آلارم‌ها (هر کدام یک صفحه)',
+                    'href': os.path.relpath(alarms_path, os.path.dirname(path)).replace(os.sep, '/')})
         if sys_idx is None:
             sys_idx = build_index(os.path.join(ROOT, 'Firmware'))
         if key == 'system':
@@ -1842,39 +1865,51 @@ def main():
                     'خطای فنی': 'charging', '۳) مسیر تغذیه': 'mcupowerpath',
                     '۵) تعویض خروجی': 'changeover', '۶) Charger': 'charging', '۴) عدم‌توازن': 'imbalance',
                     '۷) ثبت سابقه': 'diag', 'هم‌زمان: link پنل': 'esplink', 'هم‌زمان: نمایش': 'ui'},
-         'charging': {'اطلاع به چراغ و بوق': 'ui', 'پرچم trip': 'jitter'},
-         'measurement': {'تبدیل شمارش به مقدار واقعی': 'callut', 'انتشار Snapshot': 'system'},
-         'fault': {'خروجی: bit خطای ۶': 'charging'},
+         'charging': {'قفل خطای فنی (خطای ۷) از قبل set شده؟': 'alarm:fault_7_technical',
+                      'خطای نهایی (FINAL_FAULT)': 'alarm:fault_7_technical',
+                      'اطلاع به چراغ و بوق': 'ui', 'پرچم trip': 'jitter'},
+         'measurement': {'یک بستهٔ کامل و تازه از مبدل رسید؟': 'alarm:fault_0_adc',
+                         'تبدیل شمارش به مقدار واقعی': 'callut', 'انتشار Snapshot': 'system'},
+         'fault': {'خروجی: پرچم خطای ۶': 'alarm:fault_6_battery_lost'},
          'changeover': {'باتری برای خروجی ممنوع است': 'imbalance'},
-         'ui': {'خطای فنی (۷) set است؟': 'sim', 'اضافه‌ولتاژ ورودی هست؟': 'sim', 'خطای ۶ (قطع باتری) set است؟': 'sim',
-                'باتری «خراب» قفل شده؟': 'sim', 'عدم‌توازن قفل شده؟': 'sim', 'چهرهٔ کار روی باتری': 'sim'},
+         'ui': {'خطای فنی (۷) set است؟': 'alarm:fault_7_technical',
+                'اضافه‌ولتاژ ورودی هست؟': 'alarm:input_overvoltage',
+                'خطای ۶ (قطع باتری) set است؟': 'alarm:fault_6_battery_lost',
+                'باتری «خراب» قفل شده؟': 'alarm:dead_battery',
+                'عدم‌توازن قفل شده؟': 'alarm:imbalance_latched',
+                'شارژ کامل است؟': 'alarm:charge_full',
+                'استراحت حرارتی فعال است؟': 'alarm:thermal_rest',
+                'کانالی در حال شارژ است؟': 'alarm:charging',
+                'ورودی سالم: سبز ثابت': 'alarm:input_ok',
+                'چهرهٔ کار روی باتری': 'alarm:battery_run'},
          'esplink': {'نوشتن: فرستادن به ماژول صاحب شناسه': 'system'},
          'diag': {'record آمادهٔ خواندن از پنل است': 'esplink'},
          'jitter': {'شارژر پرچم را می‌خواند': 'charging'},
-         'protection': {'set کردن FAULT_ADC': 'fault'},
+         'protection': {'set کردن FAULT_ADC': 'alarm:fault_0_adc'},
          'rtos': {'task اندازه‌گیری': 'measurement', 'task کنترل': 'system', 'task ارتباط': 'esplink',
                   'task نمایش': 'ui', 'task حفاظت': 'protection'},
          'callut': {'نشستن جدول تازه': 'esplink'},
          'rtosmap': {'task اندازه‌گیری': 'measurement', 'task کنترل': 'system',
                      'task ارتباط': 'esplink', 'task نمایش': 'ui', 'task حفاظت': 'protection'},
-         'imbalance': {'پاک‌شدن‌ها': 'ui'},
+         'imbalance': {'رویدادها به حد قفل رسیدند؟': 'alarm:imbalance_latched',
+                       'پاک‌شدن‌ها': 'ui'},
         }
         AFTER = {
          ('callut', 'شمارش داخل بازهٔ جدول است؟', 'side'): 'همان مقدارِ لبه برمی‌گردد و تبدیل تمام است',
          ('callut', 'درون‌یابی خطی بین دو نقطه', 'note'): 'خط اصلی، پایین همین box',
          ('callut', 'جدول تازه کامل و درست است؟', 'side'): 'جدول قبلی کار می‌کند؛ این درخواست تمام است',
-         ('changeover', 'Snapshot معتبر است؟', 'side'): 'همین pass تمام؛ pass بعد دوباره از اول',
+         ('changeover', 'Snapshot معتبر است؟', 'side'): 'همین دور تمام؛ دور بعد دوباره از اول',
          ('changeover', 'bit خطایی set است؟', 'side'): 'فقط قفل باتری کم به‌روز می‌شود؛ قطع‌وصل نداریم',
          ('changeover', 'باتری برای خروجی ممنوع است؟', 'side'): 'فقط قفل باتری کم به‌روز می‌شود؛ قطع‌وصل نداریم',
          ('changeover', 'شرط قطع ۳ ثانیه پیوسته ماند؟ (قفل باتری کم یا زیر ۲۰٫۸ ولت)', 'side'): 'وصل دوباره فقط با برگشت ورودی و پایداری آن',
          ('changeover', 'ورودی برگشت؟', 'side'): 'حالت عادی، پایین همین جریان',
-         ('changeover', 'حالت عادی از روی حضور ورودی', 'note'): 'pass بعد از اول همین فلوچارت',
+         ('changeover', 'حالت عادی از روی حضور ورودی', 'note'): 'دور بعد از اول همین فلوچارت',
          ('charging', 'ذخیره در حافظهٔ ماندگار در حال انجام است؟', 'side'): 'پایان این دور؛ دور بعد از اول',
          ('charging', 'قفل خطای فنی (خطای ۷) از قبل set شده؟', 'side'): 'پایان این pass؛ قفل تا خاموش و روشن‌شدن می‌ماند',
          ('charging', 'mode test دستی پنل فعال است؟', 'side'): 'با ۳ ثانیه سکوت link خارج می‌شود و شارژ عادی برمی‌گردد',
          ('charging', 'سیم باتری قطع است؟ (خطای ۶)', 'side'): 'channelهای دیگر ادامه دارند؛ این channel متوقف است',
-         ('charging', 'اندازه‌گیری سالم و شارژ مجاز است؟', 'side'): 'پایان این pass؛ pass بعد از اول',
-         ('charging', 'ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', 'side'): 'پایان این pass؛ pass بعد دوباره از اول',
+         ('charging', 'اندازه‌گیری سالم و شارژ مجاز است؟', 'side'): 'پایان این دور؛ دور بعد از اول',
+         ('charging', 'ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', 'side'): 'پایان این دور؛ دور بعد دوباره از اول',
          ('charging', 'ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', 'note'): 'خط اصلی؛ این بررسی جدا از شارژ انجام می‌شود',
          ('charging', 'channel از پنل خاموش شده؟', 'side'): 'channel بعدی، پایین همین بخش',
          ('charging', 'قفل باتری خراب یا بودجهٔ عدم‌توازن تمام شده؟', 'side'): 'channel بعدی، پایین همین بخش',
@@ -1898,7 +1933,7 @@ def main():
          ('fault', 'قانون ۲: ورودی سالم است و یک باتری زیر ۶ ولت افتاد و ۱ ثانیه ماند؟', 'side'): 'خروجی خطای ۶، پایین همین جریان',
          ('fault', 'بازیابی: هر دو باتری بالای ۷ ولت‌اند و باتری در حال شارژ بالای ۱۴٫۸ نیست، ۱ ثانیه ماند؟', 'side'): 'خروجی خطای ۶، پایین همین جریان',
          ('fault', 'خروجی: پرچم خطای ۶', 'note'): 'شارژر همین پرچم را در دور خودش می‌خواند',
-         ('imbalance', 'ورودی‌ها معتبرند؟', 'side'): 'پایان این pass؛ pass بعد از اول',
+         ('imbalance', 'ورودی‌ها معتبرند؟', 'side'): 'پایان این دور؛ دور بعد از اول',
          ('imbalance', 'هر دو باتری در یک وضعیت‌اند؟', 'side'): 'نامزد این دور خالی است؛ دور بعد دوباره',
          ('imbalance', 'اختلاف بالای حد پنجره ماند و زمان پایداری پر شد؟', 'side'): 'سؤال پایان چرخهٔ شارژ، پایین همین جریان',
          ('imbalance', 'چرخهٔ شارژ با شارژ کامل تمام شد؟', 'side'): 'سؤال قفل، پایین؛ بدون رویداد تازه',
@@ -1909,7 +1944,7 @@ def main():
          ('mcupowerpath', 'لبهٔ افتادن حضور ورودی آمد؟ (وقفه)', 'note'): 'خط اصلی؛ وقفه هر لحظه می‌تواند بیاید',
          ('mcupowerpath', 'Snapshot معتبر است؟', 'side'): 'سؤال‌های پایین این pass رد می‌شوند',
          ('mcupowerpath', '۵ ثانیه پیوسته بالای ۲۲ ماند؟', 'side'): 'سؤال برگشت، پایین؛ هنوز از باتری هستیم',
-         ('mcupowerpath', 'ورودی زیر ۲۱٫۵ ولت افتاد؟', 'side'): 'پایان این pass؛ pass بعد از اول',
+         ('mcupowerpath', 'ورودی زیر ۲۱٫۵ ولت افتاد؟', 'side'): 'پایان این دور؛ دور بعد از اول',
          ('measurement', 'یک بستهٔ کامل و تازه از مبدل رسید؟', 'side'): 'بقیهٔ این دور رد می‌شود؛ دور بعد (۱ میلی‌ثانیه) از اول',
          ('measurement', 'یک بستهٔ کامل و تازه از مبدل رسید؟', 'note'): 'خط اصلی؛ DMA همیشه در پس‌زمینه کار می‌کند',
          ('measurement', 'تنظیم صافیِ جریان از پنل عوض شده؟', 'side'): 'خط اصلی، تمیزکردن جریان و ولتاژ',
@@ -1938,6 +1973,7 @@ def main():
                     raise SystemExit('loop target not unique: %s %r -> %s' % (key, lp['to'], hit))
                 lp['to'] = hit[0]
         after_hit = set()
+        ret_hit = set()
         for n in m['flow']:
             if n.get('ref'):
                 n['rurl'] = resolve_ref(n['ref'], idx, fallback)
@@ -1946,15 +1982,15 @@ def main():
              ('charging', 'mode test دستی پنل فعال است؟'), ('charging', 'اندازه‌گیری سالم و شارژ مجاز است؟'),
              ('charging', 'ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟'),
              ('charging', 'خطای نهایی (FINAL_FAULT) روی یکی از channelها هست؟'),
-             ('fault', 'mode test دستی پنل فعال است؟'), ('fault', 'Snapshot معتبر است؟'),
-             ('imbalance', 'ورودی‌ها معتبرند؟'), ('imbalance', 'هر دو نیم هم‌حالت‌اند؟'),
+             ('fault', 'حالت تست دستی از پنل روشن است؟'), ('fault', 'عکس اندازه‌گیری معتبر است؟'),
+             ('imbalance', 'ورودی‌ها معتبرند؟'), ('imbalance', 'هر دو باتری در یک وضعیت‌اند؟'),
              ('changeover', 'Snapshot معتبر است؟'),
              ('esplink', 'frame کامل و CRC درست است؟'), ('esplink', 'نسخه و نوع frame شناخته‌شده است؟'),
              ('esplink', 'مقدار داخل بازهٔ مجاز بود؟'),
-             ('measurement', 'frame کامل و پایدار از مبدل رسید؟'),
+             ('measurement', 'یک بستهٔ کامل و تازه از مبدل رسید؟'),
              ('callut', 'شمارش داخل بازهٔ جدول است؟'), ('callut', 'جدول تازه کامل و درست است؟'),
              ('mcupowerpath', 'لبهٔ افتادن حضور ورودی آمد؟ (وقفه)'), ('mcupowerpath', 'Snapshot معتبر است؟'),
-             ('system', 'نگهبان‌ها سالم‌اند؟ (Jitter و watchdog)'),
+             ('system', 'همهٔ taskها سر وقت اعلام زنده‌بودن کردند؟'),
              ('charging', 'channel از پنل خاموش شده؟'), ('charging', 'قفل باتری خراب یا بودجهٔ عدم‌توازن تمام شده؟'),
              ('charging', 'ولتاژ باتری بین ۲ و ۱۵ ولت است؟'), ('charging', 'جریان از ۹۵۰ میلی‌آمپر بالاتر رفته؟'),
              ('charging', 'اتصال باتری ۱۵ ثانیه پایدار بوده؟'),
@@ -2020,13 +2056,19 @@ def main():
                             n[kind]['ret'] = 'NODE'
                             n[kind]['retTo'] = next_channel_idx
                         else:
-                            is_end = any(k2 == key and (n.get('t') or '').startswith(t2) for (k2, t2) in RET_END)
+                            hit = [k2t2 for k2t2 in RET_END
+                                   if k2t2[0] == key and (n.get('t') or '').startswith(k2t2[1])]
+                            ret_hit.update(hit)
+                            is_end = bool(hit)
                             n[kind]['ret'] = 'END' if is_end else 'NEXT'
                         n[kind].pop('after', None)
             for sub, tgt in GO.get(key, {}).items():
                 if sub in (n.get('t') or ''):
                     if tgt == 'sim':
                         tp = os.path.join(ROOT, 'Firmware', 'Modules', 'Ui', 'alarm_simulator.html')
+                    elif tgt.startswith('alarm:'):
+                        tp = os.path.join(ROOT, 'Documentation', 'alarms',
+                                          tgt.split(':', 1)[1] + '.html')
                     else:
                         tp = target_path(tgt)
                     n['go'] = os.path.relpath(tp, os.path.dirname(path)).replace(os.sep, '/')
@@ -2034,11 +2076,20 @@ def main():
         orphan = [k3 for k3 in AFTER if k3[0] == key and k3 not in after_hit]
         if orphan:
             raise SystemExit('AFTER title no longer exists on page %r: %r' % (key, orphan))
-        fpath = os.path.relpath(target_path('fault'), os.path.dirname(path)).replace(os.sep, '/')
-        cpath = os.path.relpath(target_path('charging'), os.path.dirname(path)).replace(os.sep, '/')
-        errmap = {}
-        if key != 'fault': errmap['۶'] = fpath
-        if key != 'charging': errmap['۷'] = cpath
+        titles = [(x.get('t') or '') for x in m['flow']]
+        orphan2 = [k3 for k3 in RET_END if k3[0] == key
+                   and not any(x.startswith(k3[1]) for x in titles)]
+        if orphan2:
+            raise SystemExit('RET_END title no longer exists on page %r: %r' % (key, orphan2))
+        alarm_dir = os.path.join(ROOT, 'Documentation', 'alarms')
+
+        def alarm_href(slug):
+            return os.path.relpath(os.path.join(alarm_dir, slug + '.html'),
+                                   os.path.dirname(path)).replace(os.sep, '/')
+
+        errmap = {'۰': alarm_href('fault_0_adc'),
+                  '۶': alarm_href('fault_6_battery_lost'),
+                  '۷': alarm_href('fault_7_technical')}
         mm = dict(m); mm['nav'] = nav; mm['errmap'] = errmap
         mm['gloss'] = [list(row) for row in GLOSSARY]
         mm = plain_module(mm)

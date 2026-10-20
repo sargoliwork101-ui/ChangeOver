@@ -23,48 +23,55 @@ SCEN = [
     # id, title, group, when, led text, beep text, fix, func token, kind, params
     ('selftest', 'خودآزمایی روشن‌شدن', 'عادی', 'هر بار که دستگاه روشن می‌شود، نیم ثانیه.',
      'هر سه چراغ (سبز، زرد، قرمز) ۵۰۰ میلی‌ثانیه روشن و بعد خاموش می‌شوند (در شبیه‌ساز هر ۶ ثانیه تکرار می‌شود تا دیده شود).',
-     'بدون بوق.', 'خودکار تمام می‌شود.', 'func__Ui_Init', 'selftest', {}),
+     'بدون بوق.', 'خودکار تمام می‌شود.', 'func__Ui_Init', 'selftest', {'page': 'selftest'}),
     ('tech7', 'خطای فنی شارژر (خطای ۷)', 'خطاها', 'شارژر خرابی فنی را قفل کرده است (مثل duty بدون جریان، یا رلهٔ باز با تریپ JIT).',
      'چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.',
      'هر ۳ ثانیه، ۳ بوق کوتاه (۲۰۰ میلی‌ثانیه، فاصلهٔ ۱۰۰).',
      'فقط با خاموش و روشن‌کردن برد و رفع عیب سخت‌افزاری پاک می‌شود.',
-     'func__Ui_ScenarioTechnicalFault_Tick', 'blink', {'r': [1000, 50], 'beep': [3000, [[0, 200], [300, 200], [600, 200]]]}),
+     'func__Ui_ScenarioTechnicalFault_Tick', 'blink', {'g': [1000, 50], 'y': [1000, 50], 'r': [1000, 50],
+                                                       'beep': [3000, [[0, 200], [300, 200], [600, 200]]],
+                                                       'page': 'fault_7_technical'}),
     ('ov', 'اضافه‌ولتاژ ورودی', 'خطاها', 'ولتاژ ورودی از ۲۸ ولت بالاتر رفته است.',
      'چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.',
      'هر ۱۰ ثانیه، یک بوق ۱ ثانیه‌ای.',
      'با پایین‌آمدن ورودی زیر ۲۷ ولت خودش پاک می‌شود.',
-     'func__Ui_ScenarioInputOverVoltage_Tick', 'blink', {'r': [1000, 50], 'beep': [10000, [[0, 1000]]]}),
+     'func__Ui_ScenarioInputOverVoltage_Tick', 'blink', {'g': 'on', 'r': [1000, 50],
+                                                        'beep': [10000, [[0, 1000]]],
+                                                        'page': 'input_overvoltage'}),
     ('fault6', 'خطای ۶: قطع باتری', 'خطاها', 'سیم یک نیم باتری قطع شده یا باتری برداشته شده است.',
      'چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.',
      'هر ۳ ثانیه، ۳ بوق کوتاه.',
      'با وصل‌کردن باتری و پایداری ولتاژ، خودش پاک می‌شود.',
-     'func__Ui_ScenarioBatLost_Tick', 'blink', {'r': [1000, 50], 'beep': [3000, [[0, 230], [330, 230], [660, 230]]]}),
+     'func__Ui_ScenarioBatLost_Tick', 'blink', {'g': 'on', 'r': [1000, 50],
+                                               'beep': [3000, [[0, 233], [333, 233], [666, 233]]],
+                                               'page': 'fault_6_battery_lost'}),
     ('dead', 'باتری خراب (قفل)', 'خطاها', 'باتری ۲۴ ساعت شارژ نشده و خراب حساب شده است (سناریوی ۶ شارژر).',
      'چراغ قرمز ثابت روشن می‌ماند.',
      'یک بوق هنگام قفل‌شدن؛ بوق دوره‌ای از پنل قابل تنظیم است.',
      'فقط با تعویض باتری (نبود باتری ۳ ثانیه) پاک می‌شود.',
-     'func__Ui_ScenarioDeadBattery_Tick', 'blink', {'r': 'on', 'beep': None}),
+     'func__Ui_ScenarioDeadBattery_Tick', 'blink', {'r': 'on', 'beep': None, 'page': 'dead_battery'}),
     ('imbal', 'عدم‌توازن قفل‌شده', 'خطاها', 'اختلاف دو نیم باتری در ۱۰ سیکل از حد گذشت و قفل شد.',
      'چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن. سبز و زرد خاموش.',
      'پیش‌فرض: هر ۱ ساعت یک بوق ۲۰۰ میلی‌ثانیه (در شبیه‌ساز سریع‌تر پخش می‌شود).',
      'طبق قانون عدم‌توازن پاک می‌شود (نبود باتری یا پایان بودجه/چرخهٔ پاک).',
-     'func__Ui_ScenarioImbalance_Tick', 'blink', {'r': [1000, 50], 'beep': [10000, [[0, 200]]]}),
+     'func__Ui_ScenarioImbalance_Tick', 'blink', {'r': [1000, 50], 'beep': [10000, [[0, 200]]],
+                                                 'page': 'imbalance_latched'}),
     ('full', 'شارژ کامل', 'عادی', 'همهٔ کانال‌های فعال به نگه‌داری (FLOAT) رسیده‌اند.',
      'چراغ سبز ثابت، زرد خاموش.', 'بدون بوق.', '—',
-     'func__Ui_ScenarioInputOk', 'blink', {'g': 'on'}),
+     'func__Ui_ScenarioInputOk', 'blink', {'g': 'on', 'page': 'charge_full'}),
     ('charging', 'در حال شارژ', 'عادی', 'ورودی حاضر است و شارژ ادامه دارد. درصد را با لغزنده عوض کن.',
      'چراغ زرد چشمک می‌زند: هرچه شارژ کمتر، زرد بیشتر روشن می‌ماند (زمان روشن = درصد باقی‌مانده از دورهٔ ۱ ثانیه).',
      'بدون بوق.', '—',
-     'func__Ui_ScenarioCharging_Tick', 'charge', {}),
+     'func__Ui_ScenarioCharging_Tick', 'charge', {'page': 'charging'}),
     ('thermal', 'استراحت حرارتی شارژر', 'عادی', 'شارژر بعد از ۱ ساعت شارژ سنگین، ۱۰ دقیقه استراحت می‌کند.',
      'چراغ زرد چشمک ۱ ثانیه ۵۰٪ + چراغ سبز ثابت.',
      'بدون بوق.', 'بعد از ۱۰ دقیقه خودش به شارژ برمی‌گردد.',
-     'func__Ui_ScenarioThermalRest_Tick', 'blink', {'g': 'on', 'y': [1000, 50]}),
+     'func__Ui_ScenarioThermalRest_Tick', 'blink', {'g': 'on', 'y': [1000, 50], 'page': 'thermal_rest'}),
     ('batrun', 'کار روی باتری (بدون ورودی)', 'عادی', 'ورودی نیست و دستگاه از باتری کار می‌کند. درصد باتری را با لغزنده عوض کن.',
      'چراغ سبز چشمک می‌زند: زمان روشن = درصد باتری از دورهٔ ۱ ثانیه.',
      'زیر ۴۰٪ بوق هشدار شروع می‌شود: ۴۰٪ تک‌بوق، ۲۰٪ دوبوق، ۱۰٪ سه‌بوق، ۱٪ بحرانی (در شبیه‌ساز سریع‌تر پخش می‌شود).',
      'با برگشت ورودی تمام می‌شود.',
-     'func__Ui_ScenarioBatteryRun_Tick', 'batrun', {}),
+     'func__Ui_ScenarioBatteryRun_Tick', 'batrun', {'page': 'battery_run'}),
 ]
 
 HTML = """<!DOCTYPE html>
@@ -105,7 +112,7 @@ input[type=range]{width:100%}
 <body>
 <div class="wrap">
 <h1>شبیه‌ساز آلارم‌ها و چراغ‌ها</h1>
-<p class="small">صفحه‌های دیگر: <a href="ui_process.html">فلوچارت چراغ و بوق</a> | <a href="../../../Documentation/system_process.html">فرآیند کل دستگاه</a></p>
+<p class="small">صفحه‌های دیگر: <a href="../../../Documentation/alarms/index.html">فهرست خطاها و آلارم‌ها</a> | <a href="ui_process.html">فلوچارت چراغ و بوق</a> | <a href="../../../Documentation/system_process.html">فرآیند کل دستگاه</a></p>
 <p>روی هر آلارم یا حالت بزن تا چراغ‌ها و بوق، دقیقاً با همان الگوی واقعی دستگاه (مقادیر پیش‌فرض کد) پخش شوند. برای شنیدن بوق، صدای دستگاهت را باز کن.</p>
 <div class="grid">
 <div class="card" id="list"></div>
@@ -129,6 +136,7 @@ input[type=range]{width:100%}
 <div class="kv"><b>بوق:</b> <span id="dBeep">—</span></div>
 <div class="kv"><b>رفع:</b> <span id="dFix">—</span></div>
 <div class="kv"><b>کد:</b> <a id="dCode" href="#" target="_blank">—</a></div>
+<div class="kv"><b>توضیح کامل:</b> <a id="dPage" href="#" style="display:none">—</a></div>
 <p class="small">الگوها از مقادیر پیش‌فرض کد خوانده شده‌اند (ui_led.h و سربرگ ماژول‌ها)؛ از پنل می‌شود بیشترشان را تنظیم کرد. دوره‌های خیلی بلند بوق در این شبیه‌ساز سریع‌تر پخش می‌شوند تا شنیده شوند.</p>
 <p><label><input type="checkbox" id="snd" checked> صدای بوق روشن باشد</label></p>
 </div>
@@ -168,18 +176,22 @@ function frame(){
   var now = Date.now(), pct = +document.getElementById('pct').value;
   var g = false, y = false, r = false, beeps = null;
   if (cur.kind === 'selftest'){
-    g = y = r = (now % 6000) < 500;
+    /* [FA] همان ترتیب واقعی: قرمز، زرد، سبز — هر کدام ۵۰۰ میلی‌ثانیه */
+    var ph6 = now % 6000;
+    r = ph6 < 500; y = ph6 >= 500 && ph6 < 1000; g = ph6 >= 1000 && ph6 < 1500;
   } else if (cur.kind === 'charge'){
+    /* [FA] روشن‌بودن زرد = مانده تا پر شدن، با کف ۲٪ و حداقل ۱۵۰ میلی‌ثانیه */
     var rem = Math.max(100 - pct, 2);
-    y = (now % 1000) < rem * 10;
-    if (pct >= 100){ y = false; g = true; }
+    var on = Math.max(rem * 10, 150);
+    y = (now % 1000) < on;
+    g = true;
   } else if (cur.kind === 'batrun'){
-    g = pct > 0 && (now % 1000) < pct * 10;
-    if (pct > 40) beeps = null;
-    else if (pct > 20) beeps = [10000, [[0, 1000]]];
-    else if (pct > 10) beeps = [10000, [[0, 300], [500, 300]]];
-    else if (pct > 1) beeps = [8000, [[0, 250], [450, 250], [900, 250]]];
-    else beeps = [10000, [[0, 1000]]];
+    g = pct >= 1 && (now % 1000) < pct * 10;
+    if (pct >= 40) beeps = null;
+    else if (pct >= 20) beeps = [6000, [[0, 1000]]];
+    else if (pct >= 10) beeps = [6000, [[0, 1000], [1100, 1000]]];
+    else if (pct >= 1) beeps = [6000, [[0, 2000], [2100, 2000], [4200, 2000]]];
+    else beeps = [10000, [[0, 5000]]];
   } else {
     g = ledState(cur.p.g, now); y = ledState(cur.p.y, now); r = ledState(cur.p.r, now);
     beeps = cur.p.beep || null;
@@ -206,6 +218,16 @@ function pick(id){
   document.getElementById('dFix').textContent = cur.fix;
   var dc = document.getElementById('dCode');
   dc.textContent = cur.func; dc.href = cur.url;
+  var dp = document.getElementById('dPage');
+  if (dp){
+    if (cur.p && cur.p.page){
+      dp.href = '../../../Documentation/alarms/' + cur.p.page + '.html';
+      dp.textContent = 'فلوچارت کامل این مورد';
+      dp.style.display = 'inline';
+    } else {
+      dp.style.display = 'none';
+    }
+  }
   var sr = document.getElementById('sliderRow');
   if (cur.kind === 'charge'){ sr.style.display = 'block'; document.getElementById('sliderLab').textContent = 'درصد شارژ باتری:'; }
   else if (cur.kind === 'batrun'){ sr.style.display = 'block'; document.getElementById('sliderLab').textContent = 'درصد باقی‌ماندهٔ باتری:'; }
