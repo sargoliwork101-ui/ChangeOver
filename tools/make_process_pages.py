@@ -1284,21 +1284,107 @@ MODULES['flashlock'] = {
  ],
 }
 
+# ================= RTOS architecture map (2026-10-20) =================
+# [EN] The RTOS page answers "what does each thread do"; this one answers
+#      "how are they built, how do they share data, who supervises them".
+#      Priorities, periods, stacks and watchdog numbers stay in the firmware
+#      headers; the note under each section names the header it came from so
+#      a stale number is visible at a glance.
+# [FA] صفحهٔ taskها می‌گوید هر task چه می‌کند؛ این صفحه می‌گوید آن‌ها چطور
+#      ساخته می‌شوند، داده را چطور تقسیم می‌کنند و چه کسی نگهبانی‌شان می‌کند.
+#      عددها در هدرهای فرم‌ور می‌مانند و زیر هر بخش نام هدر آمده است.
+MODULES['rtosmap'] = {
+ 'file': 'rtos_architecture.html',
+ 'title': 'معماری تسک‌های RTOS — اولویت، دوره و ارتباط',
+ 'sub': 'این صفحه نمای معماری است، نه یک pass از منطق: پنج task چطور ساخته می‌شوند، با چه اولویتی می‌چرخند، چه دادهٔ مشترکی دارند و watchdog چطور نگهبانی‌شان می‌کند.',
+ 'steps': [
+   '<b>راه‌اندازی:</b> اول سخت‌افزار بالا می‌آید و watchdog روشن می‌شود؛ بعد تنظیمات ماندگار و جدول calibration خوانده می‌شوند؛ آخر پنج task با حافظهٔ ثابت ساخته می‌شوند و زمان‌بند شروع می‌شود.',
+   '<b>اولویت:</b> عدد بزرگ‌تر زودتر اجرا می‌شود. حفاظت <b class="num">۱۱</b> (فعلاً خاموش)، کنترل و اندازه‌گیری هر دو <b class="num">۱۰</b>، ارتباط <b class="num">۹</b> و نمایش <b class="num">۸</b>.',
+   '<b>دوره:</b> اندازه‌گیری هر <b class="num">۱</b>، کنترل هر <b class="num">۱۰</b>، نمایش هر <b class="num">۱۰</b>، حفاظت هر <b class="num">۵</b> و ارتباط هر <b class="num">۱۰۰</b> میلی‌ثانیه. دو task هم‌اولویت با time-slicing نوبتی می‌چرخند.',
+   '<b>دادهٔ مشترک:</b> همه از یک عکس اندازه‌گیری می‌خوانند، ماسک خطا را task کنترل می‌سازد و بقیه می‌خوانند، و پارامترهای پنل را task ارتباط می‌نویسد.',
+   '<b>watchdog:</b> هر task در هر چرخه اعلام زنده‌بودن می‌کند؛ فقط task کنترل تازه‌سازی می‌زند و آن هم تنها وقتی همهٔ شکاف‌ها تازه باشند.',
+   '<b>قاعده:</b> هیچ taskی با حلقهٔ مشغول یا HAL_Delay نمی‌خوابد و هیچ حافظهٔ پویایی گرفته نمی‌شود.',
+ ],
+ 'example': [
+   'میکرو روشن می‌شود؛ watchdog با پنجرهٔ حدود ۱ ثانیه شروع می‌شود و اولین تازه‌سازی در همان میلی‌ثانیه‌های اول از پاس کنترل می‌آید.',
+   'اگر task نمایش گیر کند و ۱۵۰۰ میلی‌ثانیه اعلام حضور نکند، پاس کنترل تازه‌سازی نمی‌کند و watchdog سخت‌افزاری برد را reset می‌کند - حتی اگر بقیهٔ taskها سالم باشند.',
+   'اگر مبدل خراب باشد ولی task اندازه‌گیری زنده بماند، اعلام حضور می‌رسد و برد reset نمی‌شود؛ شارژر با عکس نامعتبر در حالت امن می‌ماند.',
+ ],
+ 'flow': [
+   N('sec', 'navy', 'بخش ۱: از ریست تا زمان‌بند (منبع: rtos_app.c و app.c)'),
+   N('pill', 'navy', 'روشن‌شدن برد', ref='func__App_Start'),
+   N('box', 'blue', 'main: سخت‌افزار و watchdog', ['کلاک، مبدل، تایمرها، DMA و UART', 'watchdog حدود ۱ ثانیه، پیش از زمان‌بند'], ref='func__BspIwdg_Init'),
+   N('box', 'blue', 'App_Init: حافظه و calibration', ['بازپخش پارامترهای پنل از فلش', 'جدول calibration و سابقهٔ دیاگ', 'قفل خواندن: خاموش'], ref='func__App_Init'),
+   N('box', 'blue', 'Rtos_Start: ساخت پنج task', ['حافظهٔ ثابت: TCB و استک هر task', 'هر task پشت فلگ MODULE_* خودش', 'شکست ساخت = توقف امن'], ref='func__Rtos_Start'),
+   N('box', 'blue', 'osKernelStart: زمان‌بند روشن', ['تیک ۱۰۰۰ هرتز', 'این فراخوانی هرگز برنمی‌گردد'], ref='func__Rtos_Start: osKernelStart'),
+   N('sec', 'navy', 'بخش ۲: پنج task - اولویت، دوره، استک (منبع: rtos_config.h)'),
+   N('box', 'gray', 'task حفاظت — اولویت ۱۱', ['دوره ۵ میلی‌ثانیه، استک ۱۹۲', 'بالاترین اولویت سیستم: Protection_Run', 'این task فعلاً ساخته نمی‌شود'], ref='func__TaskProtection', go='protection'),
+   N('box', 'blue', 'task کنترل — اولویت ۱۰', ['دوره ۱۰ میلی‌ثانیه، استک ۲۵۶', 'ترتیب ثابت تصمیم؛ در پایان kick watchdog', 'شکاف watchdog ندارد: خودِ صدا زدن سند زنده‌بودن است'], ref='func__TaskControl', go='system'),
+   N('box', 'blue', 'task اندازه‌گیری — اولویت ۱۰', ['دوره ۱ میلی‌ثانیه، استک ۱۹۲', 'هر پاس یک frame کامل DMA را تبدیل می‌کند', 'عکس مشترک را منتشر می‌کند'], ref='func__TaskMeasurement', go='measurement'),
+   N('box', 'yellow', 'task ارتباط — اولویت ۹', ['دوره ۱۰۰ میلی‌ثانیه، استک ۲۵۶', 'پارسر frame پنل، اعمال پارامتر و تله‌متری'], ref='func__TaskComm', go='esplink'),
+   N('box', 'green', 'task نمایش — اولویت ۸', ['دوره ۱۰ میلی‌ثانیه، استک ۱۲۸', 'چراغ و بوق از روی عکس و وضعیت‌ها', 'تست برد در شروع حدود ۱٫۷ ثانیه طول می‌کشد'], ref='func__TaskUi', go='ui'),
+   N('sec', 'navy', 'بخش ۳: ترتیب ثابت یک پاس کنترل (منبع: task_control.c)'),
+   N('box', 'blue', '۱) خطاها → ۲) Jitter → ۳) خطای فنی شارژر', ['ماسک خطا اول تازه می‌شود تا همین پاس دیده شود'], ref='func__TaskControl: Fault_Evaluate'),
+   N('box', 'blue', '۴) مسیر تغذیهٔ میکرو → ۵) عدم‌توازن', ['عدم‌توازن قبل از تعویض خروجی تا وتوی همان پاس اثر کند'], ref='func__TaskControl: Imbalance_Evaluate'),
+   N('box', 'blue', '۶) تعویض خروجی → ۷) شارژر → ۸) ثبت سابقه', ['حالت کلی دستگاه ساخته می‌شود و به شارژر داده می‌شود'], ref='func__TaskControl: Charger_Evaluate'),
+   N('box', 'green', '۹) تازه‌سازی watchdog و خواب تا پاس بعد', ['فقط اگر همهٔ شکاف‌ها تازه باشند'], ref='func__BspIwdg_PollKick'),
+   N('sec', 'navy', 'بخش ۴: دادهٔ مشترک و مالک هر کدام'),
+   N('box', 'blue', 'عکس اندازه‌گیری: نویسنده task اندازه‌گیری', ['خواننده: کنترل، نمایش، ارتباط', 'کپی اتمیک با osKernelLock()'], ref='func__Measurement_GetSnapshot'),
+   N('box', 'blue', 'ماسک خطا: نویسنده task کنترل', ['خواننده: ارتباط و Diag', 'volatile + osKernelLock()'], ref='func__Fault_Get'),
+   N('box', 'blue', 'پارامترهای پنل: نویسنده task ارتباط', ['اثر روی اندازه‌گیری، شارژر، نمایش، عدم‌توازن', 'در فلش ماندگار می‌شوند'], ref='func__EspLink_Run'),
+   N('box', 'blue', 'سابقهٔ دیاگ: نویسنده task کنترل', ['خواننده: ارتباط برای فرستادن به پنل'], ref='func__Diag_GetRecord'),
+   N('sec', 'navy', 'بخش ۵: watchdog (منبع: bsp_iwdg.h)'),
+   N('dia', 'yellow', 'همهٔ شکاف‌های watchdog زیر ۱۵۰۰ میلی‌ثانیه تازه‌اند؟', ref='func__BspIwdg_PollKick', side=SIDE('red', ['یک task مرده یا گیر کرده است', 'هیچ تازه‌سازی‌ای انجام نمی‌شود', 'watchdog سخت‌افزاری برد را reset می‌کند'], 'r', 'نه'), elab='بله'),
+   N('pill', 'navy', 'تازه‌سازی انجام شد؛ چرخه ادامه دارد'),
+   N('sec', 'navy', 'بخش ۶: وقفه‌ها و DMA که مسیر داده را می‌سازند'),
+   N('box', 'blue', 'EXTI: تریپ Jitter و ورود ۲۴ ولت', ['PB2 و PB6 فقط لبهٔ پایین‌رونده', 'PB4 ورودی: وصل فوری باتری همان‌جا'], ref='func__BspExti_OnIrq'),
+   N('box', 'blue', 'USART1 + DMA: حلقهٔ RX و TX', ['RX حلقهٔ ۲۵۶ بایتی، TX حلقهٔ ۱۰۲۴ بایتی', 'صفر بار CPU؛ فریم‌ها به task ارتباط می‌رسند'], ref='func__EspLink_Run: UART'),
+   N('box', 'blue', 'TIM2 و TIM3 + ADC + DMA', ['ترکیب دو گیت PWM و تریگر مبدل', 'دو frame حلقوی برای task اندازه‌گیری'], ref='func__BspAdc_Init'),
+ ],
+ 'tree': {'t': 'معماری taskها', 'c': [
+   {'t': 'راه‌اندازی', 'c': [{'t': 'main: سخت‌افزار + watchdog'}, {'t': 'App_Init: NVM و calibration'}, {'t': 'Rtos_Start: پنج task'}, {'t': 'osKernelStart'}]},
+   {'t': 'حفاظت: اولویت ۱۱، ۵ میلی‌ثانیه (خاموش)'},
+   {'t': 'کنترل: اولویت ۱۰، ۱۰ میلی‌ثانیه', 'c': [{'t': 'ترتیب ثابت نُه مرحله‌ای'}, {'t': 'تازه‌سازی watchdog در پایان'}]},
+   {'t': 'اندازه‌گیری: اولویت ۱۰، ۱ میلی‌ثانیه'},
+   {'t': 'ارتباط: اولویت ۹، ۱۰۰ میلی‌ثانیه'},
+   {'t': 'نمایش: اولویت ۸، ۱۰ میلی‌ثانیه'},
+   {'t': 'دادهٔ مشترک', 'c': [{'t': 'عکس اندازه‌گیری'}, {'t': 'ماسک خطا'}, {'t': 'پارامترهای پنل'}, {'t': 'سابقهٔ دیاگ'}]},
+   {'t': 'watchdog: فقط کنترل تازه‌سازی می‌زند'},
+ ]},
+ 'conds': [
+   ['یک task اعلام زنده‌بودن نکرد', 'تازه‌سازی watchdog انجام نمی‌شود و برد reset می‌شود تا از حالت گیرکرده بیرون بیاید.', '۱۵۰۰ میلی‌ثانیه'],
+   ['مبدل پاسخ نداد', 'task اندازه‌گیری زنده می‌ماند و اعلام حضور می‌کند؛ شارژر با عکس نامعتبر در حالت امن می‌ماند و برد reset نمی‌شود.', 'عکس نامعتبر'],
+   ['task نمایش در شروع مشغول تست برد است', 'حدود ۱٫۷ ثانیه طول می‌کشد ولی داخل مهلت شروع watchdog است، پس reset نمی‌شود.', 'مهلت بوت ۱۵۰۰ میلی‌ثانیه'],
+   ['ترکیب ماژول‌ها task کنترل نداشت', 'watchdog عمداً روشن نمی‌شود چون هیچ‌کس نمی‌تواند تازه‌سازی بزند.', 'BSP_IWDG_PUMPER_EXISTS'],
+ ],
+ 'outs': [
+   ['به سخت‌افزار', 'PWM، relay، خط محافظ باتری، مسیر تغذیهٔ میکرو، چراغ‌ها و بوق', 'فقط از راه BSP؛ منطق ماژول‌ها پایه نمی‌شناسد'],
+   ['به پنل ESP', 'عکس اندازه‌گیری، ماسک خطا، سابقهٔ دیاگ و وضعیت شارژ', 'task ارتباط، هر ۱۰۰ میلی‌ثانیه'],
+   ['به حافظهٔ ماندگار', 'پارامترهای پنل، جدول calibration، سابقهٔ دیاگ و شمارنده‌ها', 'recordهای نسخه‌دار؛ با خاموشی نمی‌پرد'],
+ ],
+}
+
+
 DIRS = {'charging': 'Charger', 'measurement': 'Measurement', 'fault': 'Fault',
         'imbalance': 'Imbalance', 'changeover': 'Changeover', 'ui': 'Ui',
         'protection': 'Protection', 'callut': 'CalLut', 'esplink': 'EspLink',
         'mcupowerpath': 'McuPowerPath', 'jitter': 'Jitter', 'diag': 'Diag',
-        'rtos': 'Rtos', 'flashlock': 'FlashLock'}
+        'rtos': 'Rtos', 'flashlock': 'FlashLock', 'rtosmap': 'Rtos'}
 NAVLABELS = [('system', 'کل سیستم'), ('charging', 'شارژر'), ('measurement', 'اندازه‌گیری'),
              ('fault', 'خطاها'), ('imbalance', 'عدم‌توازن'), ('changeover', 'تعویض خروجی'),
              ('ui', 'چراغ و بوق'), ('protection', 'ناظر حفاظت'), ('callut', 'calibration'),
              ('esplink', 'link پنل'), ('mcupowerpath', 'تغذیهٔ میکرو'), ('jitter', 'Jitter'),
-             ('diag', 'ثبت سابقه'), ('flashlock', 'قفل خواندن'), ('rtos', 'taskها')]
+             ('diag', 'ثبت سابقه'), ('flashlock', 'قفل خواندن'), ('rtos', 'taskها'),
+             ('rtosmap', 'معماری taskها')]
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 def target_path(key):
     if key == 'system':
         return os.path.join(ROOT, 'Documentation', 'system_process.html')
+    if key == 'rtosmap':
+        # [EN] architecture view lives next to the other Documentation pages
+        # [FA] نمای معماری کنار بقیهٔ صفحه‌های Documentation می‌نشیند
+        return os.path.join(ROOT, 'Documentation', 'rtos_architecture.html')
     return os.path.join(ROOT, 'Firmware', 'Modules', DIRS[key], MODULES[key]['file'])
 
 GH_BLOB = 'https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/'
@@ -1486,6 +1572,8 @@ def main():
          'rtos': {'task اندازه‌گیری': 'measurement', 'task کنترل': 'system', 'task ارتباط': 'esplink',
                   'task نمایش': 'ui', 'task حفاظت': 'protection'},
          'callut': {'نشستن جدول تازه': 'esplink'},
+         'rtosmap': {'task اندازه‌گیری': 'measurement', 'task کنترل': 'system',
+                     'task ارتباط': 'esplink', 'task نمایش': 'ui', 'task حفاظت': 'protection'},
          'imbalance': {'پاک‌شدن‌ها': 'ui'},
         }
         AFTER = {
@@ -1598,6 +1686,7 @@ def main():
              ('mcupowerpath', 'ورودی زیر ۲۱٫۵ ولت افتاد؟'),
              ('protection', 'Snapshot معتبر است؟'),
              ('rtos', 'taskی سر وقت اعلام زنده‌بودن نکرد؟'),
+             ('rtosmap', 'همهٔ شکاف‌های watchdog زیر'),
              ('jitter', 'وقفهٔ trip channelی آمد؟'),
              ('esplink', 'درخواست نوشتن است؟'),
             }

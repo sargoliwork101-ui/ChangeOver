@@ -17,6 +17,11 @@
      «python3 tools/make_rtos_flowchart.py» بازتولید می‌شود.
 -->
 
+## نسخهٔ HTML / HTML version
+
+همین معماری به شکل صفحهٔ تعاملی (فلوچارت کلیک‌شدنی، درخت کد و جدول‌ها) هم هست:
+`Documentation/rtos_architecture.html` — با `python3 tools/make_process_pages.py` ساخته می‌شود.
+
 ## ۱) پنج تسک و اولویت‌ها / The five threads
 
 اولویت در CMSIS-RTOS2 عددِ بزرگ‌تر = زودتر اجرا. منبع: `rtos_config.h`.

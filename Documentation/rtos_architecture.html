@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>معماری تسک‌های RTOS — اولویت، دوره و ارتباط</title>
+<style>
+  body { font-family: Vazirmatn, Tahoma, sans-serif; background:#12151B; color:#E6EAF2; margin:0; padding:24px 14px 48px; line-height:1.9; }
+  .wrap { max-width: none; margin: 0; }
+  h1 { font-size: 26px; margin: 6px 0 2px; }
+  h2 { font-size: 20px; margin: 30px 0 8px; border-bottom: 3px solid #35507A; padding-bottom: 4px; }
+  a { color:#7FB0E6; }
+  .card { background:#1B2029; border:1.5px solid #35507A; border-radius:12px; padding:14px 20px; margin:12px 0; }
+  .ok { background:#20301F; border-color:#548235; }
+  ol, ul { margin: 6px 0; padding-right: 22px; }
+  li { margin: 4px 0; }
+  b.num { color:#FF8080; }
+  table { border-collapse: collapse; width:100%; background:#1B2029; margin:10px 0; }
+  th { background:#24466B; color:#fff; padding:8px 10px; font-size:15px; }
+  td { border:1px solid #33415C; padding:7px 10px; font-size:15px; }
+  tr:nth-child(even) td { background:#171C26; }
+  .small { font-size: 13.5px; color:#9AA7BC; }
+  svg text { font-family: Vazirmatn, Tahoma, sans-serif; }
+  .tnode { cursor: pointer; }
+  .edge { cursor: pointer; }
+  .edge .hit { stroke: rgba(0,0,0,0); stroke-width: 12; fill: none; }
+.edge .rhit { stroke-width: 10; }
+  .fnode { cursor: pointer; }
+  svg.sel .edge, svg.sel .fnode { opacity: .12; }
+  svg.sel .edge.hl, svg.sel .fnode.hl { opacity: 1; }
+  .snode { cursor: pointer; }
+  svg.sel .snode { opacity: .12; }
+  svg.sel .snode.hl { opacity: 1; }
+  .snode.hl rect { stroke-width: 4; }
+  .edge.hl .vis { stroke-width: 4.5; }
+  .fnode.hl rect, .fnode.hl polygon { stroke-width: 4; }
+  .fnode a text { text-decoration: underline; }
+  .fnode a:hover text { fill: #B45309; }
+  .errl tspan { fill: #8AB8FF; text-decoration: underline; }
+  .errl:hover tspan { fill: #FFB86B; }
+  a.errl { color: #8AB8FF; text-decoration: underline; }
+  #einfo { background:#16283F; border:1px solid #35507A; border-radius:8px; padding:6px 12px; margin:4px 4px 8px; font-size:14.5px; }
+  .subhead { cursor: pointer; }
+  .subhead:hover rect { stroke-width: 3; }
+  .tnode:hover rect { stroke-width: 3; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1 id="ttl"></h1>
+<p class="small" id="sub"></p>
+<p class="small" id="nav"></p>
+<h2>توضیح ساده</h2>
+<div class="card"><ol id="steps"></ol></div>
+<div id="exwrap"><h2>یک مثال عددی</h2><div class="card ok"><ol id="example"></ol></div></div>
+<h2>فلوچارت</h2>
+<div class="card"><div id="flow"></div><p class="small" id="legend"></p></div>
+<h2>درخت کد</h2>
+<p class="small">درخت واقعی کد است؛ روی هر گره click کن تا شاخه‌اش باز یا بسته شود.</p>
+<div class="card"><div id="tree"></div></div>
+<h2>شرط‌ها و حفاظت‌ها</h2>
+<table id="conds"><tr><th style="width:26%">اگر این اتفاق افتاد</th><th style="width:37%">برنامه چه کار می‌کند</th><th>عددش</th></tr></table>
+<h2>فرمان‌ها و خروجی‌ها</h2>
+<table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
+<div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد check می‌کنیم، بعد اصلاح می‌کنیم.</div>
+</div>
+<script>const DATA = {"file": "rtos_architecture.html", "title": "معماری تسک‌های RTOS — اولویت، دوره و ارتباط", "sub": "این صفحه نمای معماری است، نه یک pass از منطق: پنج task چطور ساخته می‌شوند، با چه اولویتی می‌چرخند، چه دادهٔ مشترکی دارند و watchdog چطور نگهبانی‌شان می‌کند.", "steps": ["<b>راه‌اندازی:</b> اول سخت‌افزار بالا می‌آید و watchdog روشن می‌شود؛ بعد تنظیمات ماندگار و جدول calibration خوانده می‌شوند؛ آخر پنج task با حافظهٔ ثابت ساخته می‌شوند و زمان‌بند شروع می‌شود.", "<b>اولویت:</b> عدد بزرگ‌تر زودتر اجرا می‌شود. حفاظت <b class=\"num\">۱۱</b> (فعلاً خاموش)، کنترل و اندازه‌گیری هر دو <b class=\"num\">۱۰</b>، ارتباط <b class=\"num\">۹</b> و نمایش <b class=\"num\">۸</b>.", "<b>دوره:</b> اندازه‌گیری هر <b class=\"num\">۱</b>، کنترل هر <b class=\"num\">۱۰</b>، نمایش هر <b class=\"num\">۱۰</b>، حفاظت هر <b class=\"num\">۵</b> و ارتباط هر <b class=\"num\">۱۰۰</b> میلی‌ثانیه. دو task هم‌اولویت با time-slicing نوبتی می‌چرخند.", "<b>دادهٔ مشترک:</b> همه از یک عکس اندازه‌گیری می‌خوانند، ماسک خطا را task کنترل می‌سازد و بقیه می‌خوانند، و پارامترهای پنل را task ارتباط می‌نویسد.", "<b>watchdog:</b> هر task در هر چرخه اعلام زنده‌بودن می‌کند؛ فقط task کنترل تازه‌سازی می‌زند و آن هم تنها وقتی همهٔ شکاف‌ها تازه باشند.", "<b>قاعده:</b> هیچ taskی با حلقهٔ مشغول یا HAL_Delay نمی‌خوابد و هیچ حافظهٔ پویایی گرفته نمی‌شود."], "example": ["میکرو روشن می‌شود؛ watchdog با پنجرهٔ حدود ۱ ثانیه شروع می‌شود و اولین تازه‌سازی در همان میلی‌ثانیه‌های اول از پاس کنترل می‌آید.", "اگر task نمایش گیر کند و ۱۵۰۰ میلی‌ثانیه اعلام حضور نکند، پاس کنترل تازه‌سازی نمی‌کند و watchdog سخت‌افزاری برد را reset می‌کند - حتی اگر بقیهٔ taskها سالم باشند.", "اگر مبدل خراب باشد ولی task اندازه‌گیری زنده بماند، اعلام حضور می‌رسد و برد reset نمی‌شود؛ شارژر با عکس نامعتبر در حالت امن می‌ماند."], "flow": [{"k": "sec", "c": "navy", "t": "بخش ۱: از ریست تا زمان‌بند (منبع: rtos_app.c و app.c)"}, {"k": "pill", "c": "navy", "t": "روشن‌شدن برد", "ref": "func__App_Start", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/App/Src/app.c#L76"}, {"k": "box", "c": "blue", "t": "main: سخت‌افزار و watchdog", "l": ["کلاک، مبدل، تایمرها، DMA و UART", "watchdog حدود ۱ ثانیه، پیش از زمان‌بند"], "ref": "func__BspIwdg_Init", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Bsp/Src/bsp_iwdg.c#L94"}, {"k": "box", "c": "blue", "t": "App_Init: حافظه و calibration", "l": ["بازپخش پارامترهای پنل از فلش", "جدول calibration و سابقهٔ دیاگ", "قفل خواندن: خاموش"], "ref": "func__App_Init", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/App/Src/app.c#L25"}, {"k": "box", "c": "blue", "t": "Rtos_Start: ساخت پنج task", "l": ["حافظهٔ ثابت: TCB و استک هر task", "هر task پشت فلگ MODULE_* خودش", "شکست ساخت = توقف امن"], "ref": "func__Rtos_Start", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/rtos_app.c#L135"}, {"k": "box", "c": "blue", "t": "osKernelStart: زمان‌بند روشن", "l": ["تیک ۱۰۰۰ هرتز", "این فراخوانی هرگز برنمی‌گردد"], "ref": "func__Rtos_Start: osKernelStart", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/rtos_app.c#L135"}, {"k": "sec", "c": "navy", "t": "بخش ۲: پنج task - اولویت، دوره، استک (منبع: rtos_config.h)"}, {"k": "box", "c": "gray", "t": "task حفاظت — اولویت ۱۱", "l": ["دوره ۵ میلی‌ثانیه، استک ۱۹۲", "بالاترین اولویت سیستم: Protection_Run", "این task فعلاً ساخته نمی‌شود"], "ref": "func__TaskProtection", "go": "../Firmware/Modules/Protection/protection_process.html", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_protection.c#L46"}, {"k": "box", "c": "blue", "t": "task کنترل — اولویت ۱۰", "l": ["دوره ۱۰ میلی‌ثانیه، استک ۲۵۶", "ترتیب ثابت تصمیم؛ در پایان kick watchdog", "شکاف watchdog ندارد: خودِ صدا زدن سند زنده‌بودن است"], "ref": "func__TaskControl", "go": "system_process.html", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_control.c#L105"}, {"k": "box", "c": "blue", "t": "task اندازه‌گیری — اولویت ۱۰", "l": ["دوره ۱ میلی‌ثانیه، استک ۱۹۲", "هر پاس یک frame کامل DMA را تبدیل می‌کند", "عکس مشترک را منتشر می‌کند"], "ref": "func__TaskMeasurement", "go": "../Firmware/Modules/Measurement/measurement_process.html", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_measurement.c#L44"}, {"k": "box", "c": "yellow", "t": "task ارتباط — اولویت ۹", "l": ["دوره ۱۰۰ میلی‌ثانیه، استک ۲۵۶", "پارسر frame پنل، اعمال پارامتر و تله‌متری"], "ref": "func__TaskComm", "go": "../Firmware/Modules/EspLink/esplink_process.html", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_comm.c#L51"}, {"k": "box", "c": "green", "t": "task نمایش — اولویت ۸", "l": ["دوره ۱۰ میلی‌ثانیه، استک ۱۲۸", "چراغ و بوق از روی عکس و وضعیت‌ها", "تست برد در شروع حدود ۱٫۷ ثانیه طول می‌کشد"], "ref": "func__TaskUi", "go": "../Firmware/Modules/Ui/ui_process.html", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_ui.c#L39"}, {"k": "sec", "c": "navy", "t": "بخش ۳: ترتیب ثابت یک پاس کنترل (منبع: task_control.c)"}, {"k": "box", "c": "blue", "t": "۱) خطاها → ۲) Jitter → ۳) خطای فنی شارژر", "l": ["ماسک خطا اول تازه می‌شود تا همین پاس دیده شود"], "ref": "func__TaskControl: Fault_Evaluate", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_control.c#L105"}, {"k": "box", "c": "blue", "t": "۴) مسیر تغذیهٔ میکرو → ۵) عدم‌توازن", "l": ["عدم‌توازن قبل از تعویض خروجی تا وتوی همان پاس اثر کند"], "ref": "func__TaskControl: Imbalance_Evaluate", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_control.c#L105"}, {"k": "box", "c": "blue", "t": "۶) تعویض خروجی → ۷) شارژر → ۸) ثبت سابقه", "l": ["حالت کلی دستگاه ساخته می‌شود و به شارژر داده می‌شود"], "ref": "func__TaskControl: Charger_Evaluate", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Rtos/Src/task_control.c#L105"}, {"k": "box", "c": "green", "t": "۹) تازه‌سازی watchdog و خواب تا پاس بعد", "l": ["فقط اگر همهٔ شکاف‌ها تازه باشند"], "ref": "func__BspIwdg_PollKick", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Bsp/Src/bsp_iwdg.c#L198"}, {"k": "sec", "c": "navy", "t": "بخش ۴: دادهٔ مشترک و مالک هر کدام"}, {"k": "box", "c": "blue", "t": "عکس اندازه‌گیری: نویسنده task اندازه‌گیری", "l": ["خواننده: کنترل، نمایش، ارتباط", "کپی اتمیک با osKernelLock()"], "ref": "func__Measurement_GetSnapshot", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Measurement/measurement.c#L1208", "go": "../Firmware/Modules/Measurement/measurement_process.html"}, {"k": "box", "c": "blue", "t": "ماسک خطا: نویسنده task کنترل", "l": ["خواننده: ارتباط و Diag", "volatile + osKernelLock()"], "ref": "func__Fault_Get", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Fault/fault.c#L456", "go": "system_process.html"}, {"k": "box", "c": "blue", "t": "پارامترهای پنل: نویسنده task ارتباط", "l": ["اثر روی اندازه‌گیری، شارژر، نمایش، عدم‌توازن", "در فلش ماندگار می‌شوند"], "ref": "func__EspLink_Run", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/EspLink/esp_link.c#L2040", "go": "../Firmware/Modules/EspLink/esplink_process.html"}, {"k": "box", "c": "blue", "t": "سابقهٔ دیاگ: نویسنده task کنترل", "l": ["خواننده: ارتباط برای فرستادن به پنل"], "ref": "func__Diag_GetRecord", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Diag/diag.c#L500", "go": "system_process.html"}, {"k": "sec", "c": "navy", "t": "بخش ۵: watchdog (منبع: bsp_iwdg.h)"}, {"k": "dia", "c": "yellow", "t": "همهٔ شکاف‌های watchdog زیر ۱۵۰۰ میلی‌ثانیه تازه‌اند؟", "ref": "func__BspIwdg_PollKick", "side": {"c": "red", "l": ["یک task مرده یا گیر کرده است", "هیچ تازه‌سازی‌ای انجام نمی‌شود", "watchdog سخت‌افزاری برد را reset می‌کند"], "d": "r", "lab": "نه", "ret": "END"}, "elab": "بله", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Bsp/Src/bsp_iwdg.c#L198"}, {"k": "pill", "c": "navy", "t": "تازه‌سازی انجام شد؛ چرخه ادامه دارد"}, {"k": "sec", "c": "navy", "t": "بخش ۶: وقفه‌ها و DMA که مسیر داده را می‌سازند"}, {"k": "box", "c": "blue", "t": "EXTI: تریپ Jitter و ورود ۲۴ ولت", "l": ["PB2 و PB6 فقط لبهٔ پایین‌رونده", "PB4 ورودی: وصل فوری باتری همان‌جا"], "ref": "func__BspExti_OnIrq", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Bsp/Src/bsp_exti.c#L46"}, {"k": "box", "c": "blue", "t": "USART1 + DMA: حلقهٔ RX و TX", "l": ["RX حلقهٔ ۲۵۶ بایتی، TX حلقهٔ ۱۰۲۴ بایتی", "صفر بار CPU؛ فریم‌ها به task ارتباط می‌رسند"], "ref": "func__EspLink_Run: UART", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/EspLink/esp_link.c#L2040"}, {"k": "box", "c": "blue", "t": "TIM2 و TIM3 + ADC + DMA", "l": ["ترکیب دو گیت PWM و تریگر مبدل", "دو frame حلقوی برای task اندازه‌گیری"], "ref": "func__BspAdc_Init", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Bsp/Src/bsp_adc.c#L260"}], "tree": {"t": "معماری taskها", "c": [{"t": "راه‌اندازی", "c": [{"t": "main: سخت‌افزار + watchdog"}, {"t": "App_Init: NVM و calibration"}, {"t": "Rtos_Start: پنج task"}, {"t": "osKernelStart"}]}, {"t": "حفاظت: اولویت ۱۱، ۵ میلی‌ثانیه (خاموش)"}, {"t": "کنترل: اولویت ۱۰، ۱۰ میلی‌ثانیه", "c": [{"t": "ترتیب ثابت نُه مرحله‌ای"}, {"t": "تازه‌سازی watchdog در پایان"}]}, {"t": "اندازه‌گیری: اولویت ۱۰، ۱ میلی‌ثانیه"}, {"t": "ارتباط: اولویت ۹، ۱۰۰ میلی‌ثانیه"}, {"t": "نمایش: اولویت ۸، ۱۰ میلی‌ثانیه"}, {"t": "دادهٔ مشترک", "c": [{"t": "عکس اندازه‌گیری"}, {"t": "ماسک خطا"}, {"t": "پارامترهای پنل"}, {"t": "سابقهٔ دیاگ"}]}, {"t": "watchdog: فقط کنترل تازه‌سازی می‌زند"}]}, "conds": [["یک task اعلام زنده‌بودن نکرد", "تازه‌سازی watchdog انجام نمی‌شود و برد reset می‌شود تا از حالت گیرکرده بیرون بیاید.", "۱۵۰۰ میلی‌ثانیه"], ["مبدل پاسخ نداد", "task اندازه‌گیری زنده می‌ماند و اعلام حضور می‌کند؛ شارژر با عکس نامعتبر در حالت امن می‌ماند و برد reset نمی‌شود.", "عکس نامعتبر"], ["task نمایش در شروع مشغول تست برد است", "حدود ۱٫۷ ثانیه طول می‌کشد ولی داخل مهلت شروع watchdog است، پس reset نمی‌شود.", "مهلت بوت ۱۵۰۰ میلی‌ثانیه"], ["ترکیب ماژول‌ها task کنترل نداشت", "watchdog عمداً روشن نمی‌شود چون هیچ‌کس نمی‌تواند تازه‌سازی بزند.", "BSP_IWDG_PUMPER_EXISTS"]], "outs": [["به سخت‌افزار", "PWM، relay، خط محافظ باتری، مسیر تغذیهٔ میکرو، چراغ‌ها و بوق", "فقط از راه BSP؛ منطق ماژول‌ها پایه نمی‌شناسد"], ["به پنل ESP", "عکس اندازه‌گیری، ماسک خطا، سابقهٔ دیاگ و وضعیت شارژ", "task ارتباط، هر ۱۰۰ میلی‌ثانیه"], ["به حافظهٔ ماندگار", "پارامترهای پنل، جدول calibration، سابقهٔ دیاگ و شمارنده‌ها", "recordهای نسخه‌دار؛ با خاموشی نمی‌پرد"]], "nav": [{"t": "کل سیستم", "href": "system_process.html"}, {"t": "شارژر", "href": "../Firmware/Modules/Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Firmware/Modules/Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Firmware/Modules/Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Firmware/Modules/Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Firmware/Modules/Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Firmware/Modules/Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Firmware/Modules/Protection/protection_process.html"}, {"t": "calibration", "href": "../Firmware/Modules/CalLut/callut_process.html"}, {"t": "link پنل", "href": "../Firmware/Modules/EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../Firmware/Modules/McuPowerPath/mcupowerpath_process.html"}, {"t": "Jitter", "href": "../Firmware/Modules/Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Firmware/Modules/Diag/diag_process.html"}, {"t": "قفل خواندن", "href": "../Firmware/Modules/FlashLock/flashlock_process.html"}, {"t": "taskها", "href": "../Firmware/Modules/Rtos/rtos_process.html"}, {"t": "شبیه‌ساز alarmها", "href": "../Firmware/Modules/Ui/alarm_simulator.html"}], "errmap": {"۶": "../Firmware/Modules/Fault/fault_process.html", "۷": "../Firmware/Modules/Charger/charging_process.html"}};</script>
+<script>
+var COLORS = {
+  blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#12263F'},
+  green: {f:'#C6EFCE', o:'#548235', t:'#12263F'},
+  yellow:{f:'#FFE699', o:'#BF8F00', t:'#1F3864'},
+  red:   {f:'#FFC7CE', o:'#C00000', t:'#6E0000'},
+  gray:  {f:'#EDEDED', o:'#808080', t:'#2B2B2B'},
+  navy:  {f:'#1F3864', o:'#1F3864', t:'#FFFFFF'}
+};
+var LINES = { blue:'#6FA8DC', green:'#7BC47F', yellow:'#E3B341', red:'#FF8080', gray:'#9AA7BC', navy:'#6FA8DC' };
+var LEGEND = [['blue','در حال کار'],['green','کامل / سالم'],['yellow','سؤال و تصمیم'],['red','خطا و توقف'],['gray','صبر و مکث'],['navy','شروع و پایان']];
+var cv = document.createElement('canvas').getContext('2d');
+function tw(t, bold, sz){ cv.font = (bold ? '700 ' : '') + sz + 'px Vazirmatn, Tahoma'; return cv.measureText(t).width; }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function etxt(s){ var e = esc(s), m = (typeof DATA !== 'undefined' && DATA.errmap) || {}; if (!m['۶'] && !m['۷']) return e; return e.replace(/خطای ([۰-۹]+)/g, function(w, dg){ var h = m[dg]; return h ? '</tspan><a class="errl" href="' + h + '"><tspan>' + w + '</tspan></a><tspan>' : w; }); }
+function linkErrs(el){ var m = (typeof DATA !== 'undefined' && DATA.errmap) || {}; if (!el || (!m['۶'] && !m['۷'])) return; var wk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), ns = [], cur; while ((cur = wk.nextNode())){ var pv = cur.parentNode; if (pv && !pv.closest('a') && /خطای [۰-۹]/.test(cur.nodeValue)) ns.push(cur); } ns.forEach(function(tn){ var fg = document.createDocumentFragment(); tn.nodeValue.split(/(خطای [۰-۹]+)/).forEach(function(pt){ if (!pt) return; var mm2 = /^خطای ([۰-۹]+)$/.exec(pt); if (mm2 && m[mm2[1]]){ var a = document.createElement('a'); a.className = 'errl'; a.href = m[mm2[1]]; a.textContent = pt; fg.appendChild(a); } else fg.appendChild(document.createTextNode(pt)); }); tn.parentNode.replaceChild(fg, tn); }); }
+function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); if (n.ref) a.push({s:n.ref, b:false, r:true}); return a; }
+function wrapLine(t, bold, sz, maxW){
+  if (tw(t, bold, sz) <= maxW) return [t];
+  var words = t.split(' '), lines = [], cur = '';
+  words.forEach(function(w){
+    var test = cur ? cur + ' ' + w : w;
+    if (tw(test, bold, sz) <= maxW || !cur){ cur = test; } else { lines.push(cur); cur = w; }
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function wrappedLines(n){
+  if (n._wl) return n._wl;
+  var out = [];
+  linesOf(n).forEach(function(x){ wrapLine(x.s, x.b, 15, (n.k === 'dia' ? 215 : 330)).forEach(function(part){ out.push({s: part, b: x.b, r: x.r}); }); });
+  n._wl = out; return out;
+}
+function sideLines(sd){
+  if (sd._wl) return sd._wl;
+  var maxW = (sd.d === 'l') ? 200 : 240, out = [];
+  sd.l.forEach(function(x){ wrapLine(x, false, 13.5, maxW).forEach(function(part){ out.push(part); }); });
+  sd._wl = out; return out;
+}
+function nodeSize(n){
+  if (n.k === 'sub') return { w: Math.min(Math.max(tw(n.t || '', true, 15) + 96, 280), 470), h: 46 };
+  var ls = wrappedLines(n), mx = 0;
+  ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx / 0.60 + 44, 235), 540), h: Math.max(88, ls.length * 27 + 54) };
+  return { w: Math.min(Math.max(mx + 48, 150), 400), h: ls.length * 25 + 30 };
+}
+function afterLines(s){
+  if (!s.after) return [];
+  if (s._al) return s._al;
+  var maxW = (s.d === 'l') ? 200 : 240, out = [];
+  wrapLine('در ادامه: ' + s.after, false, 11.5, maxW).forEach(function(part){ out.push(part); });
+  s._al = out; return out;
+}
+function sideSize(s){
+  var ls = sideLines(s), mx = 0; ls.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
+  var al = afterLines(s);
+  al.forEach(function(x){ mx = Math.max(mx, tw(x, false, 11.5)); });
+  return { w: mx + 38, h: ls.length * 23 + 26 + (al.length ? al.length * 17 + 6 : 0) };
+}
+function drawSub(n, cx, y, idx){
+  var sz = nodeSize(n), x = cx - sz.w / 2, out = '';
+  out += '<g class="subhead" data-i="' + idx + '"><rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="46" rx="10" fill="#EDEDED" stroke="#808080" stroke-width="2"/>' +
+    '<text x="' + cx + '" y="' + (y + 29) + '" text-anchor="middle" font-size="15" font-weight="700" fill="#1F3864">' + esc(n.t) + (n._open ? '  ‹ بستن' : '  › بازکردن جزئیات') + '</text></g>';
+
+  if (!n._open) return out;
+  var kids = n.flow || [], ky = y + 78, maxW = 200, sizes = [];
+  kids.forEach(function(kd){ var ks = nodeSize(kd); sizes.push(ks); maxW = Math.max(maxW, ks.w); });
+  var frameW = Math.min(maxW + 44, 560), frameY1 = ky;
+  sizes.forEach(function(ks){ frameY1 += ks.h + 30; });
+  frameY1 -= 18;
+  out += '<rect x="' + (cx - frameW / 2) + '" y="' + (y + 56) + '" width="' + frameW + '" height="' + (frameY1 - y - 56) + '" rx="12" fill="#F8FBFF" stroke="#9DB8D9" stroke-width="1.8" stroke-dasharray="7 5"/>';
+  kids.forEach(function(kd, ki){
+    if (ki > 0) out += '<path d="M' + cx + ' ' + (ky - 30) + ' V' + (ky - 4) + '" stroke="#1F4E79" stroke-width="2" fill="none" marker-end="url(#arw)"/>';
+    out += drawNode(kd, cx, ky);
+    ky += sizes[ki].h + 30;
+  });
+  return out;
+}
+function drawNode(n, cx, y, idx){
+  var sz = nodeSize(n); DRAWN[idx] = sz; c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '<g class="fnode' + (n.go ? ' go' : '') + '" data-i="' + idx + '" data-t="' + esc(n.t || '') + '" data-go="' + esc(n.go || '') + '">';
+  if (n.k === 'pill'){
+    out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="' + (sz.h/2) + '" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
+  } else if (n.k === 'dia'){
+    var cy = y + sz.h / 2;
+    out += '<polygon points="' + cx + ',' + y + ' ' + (x + sz.w) + ',' + cy + ' ' + cx + ',' + (y + sz.h) + ' ' + x + ',' + cy + '" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
+  } else {
+    out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="10" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
+  }
+  var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5, tt = '';
+  ls.forEach(function(ln, i){
+    if (ln.r){
+      var rt = '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="12" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#33506F') + '">' + esc(ln.s) + '</text>';
+      tt += n.rurl ? '<a href="' + n.rurl + '" target="_blank">' + rt + '</a>' : rt;
+    } else {
+      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + '<tspan>' + etxt(ln.s) + '</tspan>' + '</text>';
+    }
+  });
+  var aw = (n.k === 'dia') ? sz.w * 0.60 : sz.w - 14;
+  out += '<g class="fx" data-w="' + aw + '" data-cx="' + cx + '" data-cy="' + (y + sz.h / 2) + '">' + tt + '</g>';
+  if (n.go) out += '<text x="' + (x + sz.w - 11) + '" y="' + (y + 18) + '" font-size="14" fill="#B45309">↗</text>';
+  return out + '</g>';
+}
+var SIDEGEO = {};
+var SIDECOLX = 0;
+var DRAWN = {};
+function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
+  var pre = SIDEGEO[oIdx + ':' + kind];
+  var sz = sideSize(s), c = COLORS[s.c || 'gray'];
+  var x = pre ? pre.x : ((dir === 'r') ? (SIDECOLX || (1390 - sz.w)) : 10);
+  var y = pre ? pre.y : cy - sz.h / 2, out = '';
+  SIDEGEO[oIdx + ':' + kind] = { x: x, y: y, w: sz.w, h: sz.h, cy: cy, dir: dir };
+  var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
+  var x2 = (dir === 'r') ? x : x + sz.w;
+  out += '<g class="edge" data-sk="' + kind + '" data-fi="' + oIdx + '" data-ti="" data-f="' + esc(oTitle || '') + '" data-t="' + esc(s.l[0] || '') + '" data-l="' + esc(s.lab || (s.d === 'l' ? 'بررسی جدا' : '')) + '">';
+  out += '<path class="hit" d="M' + x1 + ' ' + cy + ' H' + x2 + '"/>';
+  out += '<path class="vis" d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + (LINES[s.c || 'gray']) + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
+  var slab = s.lab || (s.d === 'l' ? 'بررسی جدا' : null);
+  if (slab){
+    var mxp = (x1 + x2) / 2, lw = tw(slab, true, 13.5);
+    out += '<rect x="' + (mxp - lw / 2 - 5) + '" y="' + (cy - 9.5) + '" width="' + (lw + 10) + '" height="19" fill="#1B2029"/>';
+    out += '<text x="' + mxp + '" y="' + (cy + 4.5) + '" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (LINES[s.c || 'gray']) + '">' + esc(slab) + '</text>';
+  }
+  out += '</g><g class="snode" data-i="' + oIdx + '" data-k="' + kind + '">';
+  out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="9" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="1.6"/>';
+  var sl = sideLines(s), st = '';
+  sl.forEach(function(ln, i){
+    st += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h / 2 - (sl.length - 1) * 11.5 + i * 23 + 5) + '" text-anchor="middle" font-size="13.5" fill="' + c.t + '">' + '<tspan>' + etxt(ln) + '</tspan>' + '</text>';
+  });
+  var al = afterLines(s);
+  al.forEach(function(ln, i){
+    st += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h - al.length * 17 - 2 + i * 17 + 4) + '" text-anchor="middle" font-size="11.5" fill="#33506F">' + '<tspan>' + etxt(ln) + '</tspan>' + '</text>';
+  });
+  out += '<g class="fx" data-w="' + (sz.w - 12) + '" data-cx="' + (x + sz.w / 2) + '" data-cy="' + (y + sz.h / 2) + '">' + st + '</g>';
+  return out + '</g>';
+}
+function vlabel(x, y, s, col){
+  var w = tw(s, true, 13.5) + 16;
+  return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#1B2029"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#D7E3F5') + '">' + esc(s) + '</text></g>';
+}
+function renderFlow(){
+  DRAWN = {};
+  var W = 1400, cx = 640, GAP = 62, y = 26, pos = [], out = '';
+  out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6FA8DC"/></marker></defs>';
+  var loops = [];
+  DATA.flow.forEach(function(n, i){
+    if (n.k === 'sec'){
+      y += 18;
+      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" direction="rtl" text-anchor="start" font-size="16" font-weight="700" fill="#E6EAF2">' + esc(n.t) + '</text>';
+      out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#33415C" stroke-width="2"/>';
+      y += 34; pos.push(null); return;
+    }
+    var sz = nodeSize(n);
+    if (n.k === 'sub' && n._open){
+      var kh = 78 - 46;
+      (n.flow || []).forEach(function(kd){ kh += nodeSize(kd).h + 30; });
+      sz = { w: sz.w, h: kh + 14 };
+    }
+    pos.push({ y: y, h: sz.h, w: sz.w, cy: y + (n.k === 'sub' ? 23 : sz.h / 2) });
+    y += sz.h + GAP;
+    if (n.loop) loops.push({ from: i, to: n.loop.to, lab: n.loop.lab, col: n.loop.col });
+  });
+  var lastReal = -1; pos.forEach(function(p2, i2){ if (p2) lastReal = i2; });
+  var needTerm = !(DATA.flow[lastReal] && DATA.flow[lastReal].k === 'pill');
+  var termPos = null;
+  if (needTerm){ termPos = { y: y, h: 44, w: 320, cy: y + 22, _term: true }; pos.push(termPos); y += 44 + GAP; }
+  var maxHalf0 = 0; pos.forEach(function(p2){ if (p2) maxHalf0 = Math.max(maxHalf0, p2.w / 2); });
+  var nRet = 0; DATA.flow.forEach(function(n2){ if (n2.side && n2.side.ret) nRet++; });
+  SIDECOLX = Math.round(cx + maxHalf0 + 26 + nRet * 15 + 16);
+  SIDEGEO = {};
+  DATA.flow.forEach(function(n, i){
+    if (!pos[i] || n.k === 'sub') return;
+    [['side', n.side, 'r'], ['note', n.note, 'l']].forEach(function(kv){
+      var fld = kv[1]; if (!fld) return;
+      var dir = fld.d || kv[2];
+      var sz3 = sideSize(fld);
+      SIDEGEO[i + ':' + kv[0]] = { x: (dir === 'r') ? SIDECOLX : 10, y: pos[i].cy - sz3.h / 2, w: sz3.w, h: sz3.h, cy: pos[i].cy, dir: dir };
+    });
+  });
+  var H = y - GAP + 30;
+  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — pass بعد' }, cx, termPos.y, DATA.flow.length);
+  function edgeX(n2, p2, dy, side){
+    if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
+    return cx + side * p2.w / 2;
+  }
+  function stubY(g, lane){
+    var lim = 1e9;
+    Object.keys(SIDEGEO).forEach(function(k){ var q = SIDEGEO[k];
+      if (q && q.dir === 'r' && q.y > g.y + g.h + 1 && q.x <= g.x + 20 && q.x >= lane - 1) lim = Math.min(lim, q.y); });
+    var dy = Math.min(10, lim - (g.y + g.h) - 2);
+    return g.y + g.h + Math.max(4, dy);
+  }
+  var laneBase = 1e9, nEnd = 0;
+  DATA.flow.forEach(function(n, i){ var g0 = SIDEGEO[i + ':side']; if (n.side && n.side.ret && g0) laneBase = Math.min(laneBase, g0.x); if (n.side && n.side.ret === 'END') nEnd++; });
+  var retK = 0, endK = 0;
+  DATA.flow.forEach(function(n, i){
+    if (!n.side || !n.side.ret) return;
+    var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
+    var tgt = null, tTitle = '', tIdx = -1;
+    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (pass بعد)'; tIdx = DATA.flow.length; }
+    else if (n.side.ret === 'NODE'){ tIdx = n.side.retTo; tgt = pos[tIdx]; tTitle = (DATA.flow[tIdx] && DATA.flow[tIdx].t) || ''; }
+    else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
+    if (!tgt) return;
+    var lane = laneBase - 16 - (retK++) * 15;
+    var dd;
+    if (n.side.ret === 'END'){
+      var dz = DRAWN[tIdx] || { w: 216, h: 44 };
+      var exStep = nEnd > 1 ? Math.min(22, (dz.w - 48) / (nEnd - 1)) : 0;
+      var exX = cx - dz.w / 2 + 24 + endK * exStep;
+      var gapTop = 0;
+      pos.forEach(function(p3){ if (p3 && p3 !== tgt && p3.y + p3.h < tgt.y) gapTop = Math.max(gapTop, p3.y + p3.h); });
+      var apTop = (gapTop ? gapTop + 6 : tgt.y - 16);
+      var apStep = nEnd > 1 ? Math.max(5, Math.min(13, (tgt.y - 12 - apTop) / (nEnd - 1))) : 0;
+      var apY = Math.max(apTop, tgt.y - 12 - endK * apStep); endK++;
+      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + stubY(g, lane) + ' H' + lane + ' V' + apY + ' H' + exX + ' V' + (tgt.y - 2);
+    } else {
+      var ty = tgt.cy - Math.min(18, tgt.h / 4);
+      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + stubY(g, lane) + ' H' + lane + ' V' + ty + ' H' + (edgeX(DATA.flow[tIdx], tgt, ty - tgt.cy, 1) - 2);
+    }
+    out += '<g class="edge" data-rf="side" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc((n.side && n.side.l && n.side.l[0]) || n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
+    out += '<path class="hit rhit" d="' + dd + '"/>';
+    out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
+    out += '</g>';
+  });
+  var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
+  var loopEntrySeen = {};
+  loops.forEach(function(L, li){
+    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 24 - li * 30;
+    var LOOPCOLS = ['#6FA8DC', '#7BC47F', '#B18CFF', '#E3B341', '#FF9E64'];
+    var col = L.col === 'red' ? '#FF8080' : LOOPCOLS[li % LOOPCOLS.length];
+    var nth = loopEntrySeen[L.to] || 0; loopEntrySeen[L.to] = nth + 1;
+    var ldy = (nth - 1) * Math.min(18, b.h / 4);
+    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + (b.cy + ldy) + ' H' + (edgeX(DATA.flow[L.to], b, ldy, -1) + 2);
+    out += '<g class="edge" data-fi="' + L.from + '" data-ti="' + L.to + '" data-f="' + esc(DATA.flow[L.from].t || '') + '" data-t="' + esc(DATA.flow[L.to].t || '') + '" data-l="' + esc(L.lab || '') + '">';
+    out += '<path class="hit" d="' + dstr + '"/>';
+    out += '<path class="vis" d="' + dstr + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
+    if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
+    out += '</g>';
+  });
+  DATA.flow.forEach(function(n, i){
+    if (!pos[i]) return;
+    var p = pos[i];
+    var pj = i - 1; while (pj > 0 && !pos[pj]) pj--;
+    var secBreak = false;
+    for (var qb = i - 1; qb > pj; qb--){ if (DATA.flow[qb].k === 'sec' && DATA.flow[qb].brk) secBreak = true; }
+    if (i > 0 && pos[pj] && !secBreak && !DATA.flow[pj].brk){
+      var prevBottom = pos[pj].y + pos[pj].h;
+      var pn = DATA.flow[pj];
+      out += '<g class="edge" data-fi="' + pj + '" data-ti="' + i + '" data-f="' + esc(pn.t || '') + '" data-t="' + esc(n.t || '') + '" data-l="' + esc(pn.elab || '') + '">';
+      out += '<path class="hit" d="M' + cx + ' ' + prevBottom + ' V' + p.y + '"/>';
+      out += '<path class="vis" d="M' + cx + ' ' + prevBottom + ' V' + (p.y - 4) + '" stroke="#6FA8DC" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
+      if (pn.elab) out += vlabel(cx, (prevBottom + p.y) / 2, pn.elab, '#D7E3F5');
+      out += '</g>';
+    }
+    if (n.k === 'sub'){ out += drawSub(n, cx, p.y, i); return; }
+    out += drawNode(n, cx, p.y, i);
+    if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
+    if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
+  });
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
+  document.querySelectorAll('.subhead').forEach(function(g){
+    g.addEventListener('click', function(){
+      var n = DATA.flow[+g.getAttribute('data-i')];
+      n._open = !n._open; renderFlow();
+    });
+  });
+  document.getElementById('legend').innerHTML = 'معنای رنگ‌ها: ' + LEGEND.map(function(x){
+    return '<span style="display:inline-block;width:13px;height:13px;background:' + COLORS[x[0]].f + ';border:2px solid ' + COLORS[x[0]].o + ';vertical-align:-2px;margin:0 4px 0 2px"></span>' + x[1];
+  }).join(' &nbsp; ');
+}
+/* ---- real tree (root at right, grows left, click to collapse) ---- */
+function treeMeasure(n, d){
+  n._w = Math.min(tw(n.t, false, 13.5) + 26, 600); n._d = d;
+  (n.c || []).forEach(function(ch){ treeMeasure(ch, d + 1); });
+}
+function treeLayout(n, cursor){
+  var kids = (n._open && n.c) ? n.c : [];
+  if (!kids.length){ n._y = cursor.v; cursor.v += 42; return; }
+  kids.forEach(function(ch){ treeLayout(ch, cursor); });
+  n._y = (kids[0]._y + kids[kids.length - 1]._y) / 2;
+}
+function treeDraw(n, levelX, out){
+  var x = levelX[n._d] - n._w, y = n._y;
+  (n._open ? (n.c || []) : []).forEach(function(ch){ treeDraw(ch, levelX, out); });
+  (n._open ? (n.c || []) : []).forEach(function(ch){
+    var cx2 = levelX[ch._d], cy2 = ch._y + 15, px = x, py = y + 15, mx = (px + cx2) / 2;
+    out.push('<path d="M' + px + ' ' + py + ' H' + mx + ' V' + cy2 + ' H' + cx2 + '" stroke="#46608C" stroke-width="2" fill="none"/>');
+  });
+  var has = (n.c || []).length > 0;
+  out.push('<g class="tnode" data-tid="' + n._id + '"><rect x="' + x + '" y="' + y + '" width="' + n._w + '" height="30" rx="8" fill="' + (n._d === 0 ? '#1F3864' : '#DDEBF7') + '" stroke="#6FA8DC" stroke-width="1.6"/>' +
+    '<g class="fx" data-w="' + (n._w - 12) + '" data-cx="' + (x + n._w / 2) + '" data-cy="' + (y + 15) + '"><text x="' + (x + n._w / 2) + '" y="' + (y + 20) + '" text-anchor="middle" font-size="13.5" fill="' + (n._d === 0 ? '#FFFFFF' : '#12263F') + '">' + esc(n.t) + (has ? (n._open ? ' ‹' : ' ›') : '') + '</text></g></g>');
+}
+function fitText(){
+  var gs = document.querySelectorAll('.fx');
+  for (var i = 0; i < gs.length; i++){
+    var g = gs[i]; if (!g.getBBox) continue;
+    var bb = g.getBBox(), aw = parseFloat(g.getAttribute('data-w'));
+    if (bb.width > aw && bb.width > 0){
+      var sc = (aw / bb.width).toFixed(3), gx = g.getAttribute('data-cx'), gy = g.getAttribute('data-cy');
+      g.setAttribute('transform', 'translate(' + gx + ' ' + gy + ') scale(' + sc + ') translate(' + (-gx) + ' ' + (-gy) + ')');
+    }
+  }
+}
+function renderTree(){
+  var idc = { v: 0 };
+  (function walk(n, d){ n._id = idc.v++; if (n._open === undefined) n._open = d < 2; (n.c || []).forEach(function(ch){ walk(ch, d + 1); }); })(DATA.tree, 0);
+  treeMeasure(DATA.tree, 0);
+  var maxD = 0, levelW = {};
+  (function scan(n){ maxD = Math.max(maxD, n._d); levelW[n._d] = Math.max(levelW[n._d] || 0, n._w); (n.c || []).forEach(scan); })(DATA.tree);
+  var levelX = {}, xr = 992;
+  for (var d = 0; d <= maxD; d++){ levelX[d] = xr; xr -= (levelW[d] || 120) + 52; }
+  var cursor = { v: 26 };
+  treeLayout(DATA.tree, cursor);
+  var out = [];
+  treeDraw(DATA.tree, levelX, out);
+  document.getElementById('tree').innerHTML = '<svg viewBox="0 0 1000 ' + (cursor.v + 16) + '" width="66%" style="display:block;margin:0 auto">' + out.join('') + '</svg>'; fitText();
+  var nodes = document.querySelectorAll('.tnode');
+  nodes.forEach(function(g){
+    g.addEventListener('click', function(){
+      var id = +g.getAttribute('data-tid'), found = null;
+      (function find(n){ if (n._id === id) found = n; (n.c || []).forEach(find); })(DATA.tree);
+      if (found && found.c && found.c.length){ found._open = !found._open; renderTree(); }
+    });
+  });
+}
+function wireFlow(){
+  var fc = document.getElementById('flow');
+  if (!fc || !fc.addEventListener || fc._ew) return;
+  fc._ew = true;
+  fc.addEventListener('click', function(ev){
+    var svg = fc.querySelector('svg'); if (!svg) return;
+    var info = document.getElementById('einfo');
+    function clear(){
+      svg.classList.remove('sel');
+      var hs = svg.querySelectorAll('.hl');
+      for (var q = 0; q < hs.length; q++) hs[q].classList.remove('hl');
+    }
+    if (ev.target.closest && ev.target.closest('a')) return;
+    var sg = ev.target.closest ? ev.target.closest('.snode') : null;
+    var eg = ev.target.closest ? ev.target.closest('.edge') : null;
+    var ng = ev.target.closest ? ev.target.closest('.fnode') : null;
+    clear();
+    if (sg){
+      svg.classList.add('sel'); sg.classList.add('hl');
+      var si = sg.getAttribute('data-i'), sk = sg.getAttribute('data-k'), ces = svg.querySelectorAll('.edge'), cc = 0;
+      for (var q5 = 0; q5 < ces.length; q5++){ var ce = ces[q5]; if (ce.getAttribute('data-fi') === si && ((ce.getAttribute('data-ti') === '' && ce.getAttribute('data-sk') === sk) || ce.getAttribute('data-rf') === sk)){ ce.classList.add('hl'); cc++; } }
+      if (info) info.textContent = 'box \u06a9\u0646\u0627\u0631\u06cc \u00ab' + ((sg.textContent || '').replace(/\s+/g, ' ').trim()) + '\u00bb \u2014 ' + cc + ' \u062e\u0637\u0650 \u062e\u0648\u062f\u0634 \u0631\u0648\u0634\u0646 \u0634\u062f. \u0628\u0631\u0627\u06cc \u0628\u0631\u06af\u0634\u062a\u060c \u0631\u0648\u06cc \u062c\u0627\u06cc \u062e\u0627\u0644\u06cc \u0634\u06a9\u0644 click \u06a9\u0646.';
+    } else if (eg){
+      svg.classList.add('sel'); eg.classList.add('hl');
+      var fi3 = eg.getAttribute('data-fi'), ti3 = eg.getAttribute('data-ti'), rf3 = eg.getAttribute('data-rf'), ns3 = svg.querySelectorAll('.fnode');
+      for (var q4 = 0; q4 < ns3.length; q4++){ var di3 = ns3[q4].getAttribute('data-i'); if ((ti3 && di3 === ti3) || (!rf3 && di3 === fi3)) ns3[q4].classList.add('hl'); }
+      var sk3 = eg.getAttribute('data-sk'), want3 = rf3 || sk3;
+      if (want3){ var sn3 = svg.querySelectorAll('.snode'); for (var q6 = 0; q6 < sn3.length; q6++){ if (sn3[q6].getAttribute('data-i') === fi3 && sn3[q6].getAttribute('data-k') === want3) sn3[q6].classList.add('hl'); } }
+      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '');
+    } else if (ng){
+      var go = ng.getAttribute('data-go');
+      if (go){ location.href = go; return; }
+      svg.classList.add('sel'); ng.classList.add('hl');
+      var i2 = ng.getAttribute('data-i'), cnt = 0, es = svg.querySelectorAll('.edge');
+      for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; } }
+      var sn4 = svg.querySelectorAll('.snode'); for (var q7 = 0; q7 < sn4.length; q7++){ if (sn4[q7].getAttribute('data-i') === i2) sn4[q7].classList.add('hl'); }
+      if (info) info.textContent = 'box «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل click کن.';
+    } else {
+      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.';
+    }
+  });
+}
+function fill(id, rows){ var el = document.getElementById(id); rows.forEach(function(r){ var li = document.createElement('li'); li.innerHTML = r; el.appendChild(li); }); }
+function fillTable(id, rows){
+  var tb = document.getElementById(id);
+  rows.forEach(function(r){
+    var tr = document.createElement('tr');
+    r.forEach(function(c){ var td = document.createElement('td'); td.innerHTML = c; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
+function render(){
+  document.getElementById('ttl').textContent = DATA.title;
+  document.getElementById('sub').textContent = DATA.sub || '';
+  if (DATA.nav){ document.getElementById('nav').innerHTML = 'صفحه‌های دیگر: ' + DATA.nav.map(function(x){ return '<a href="' + x.href + '">' + x.t + '</a>'; }).join(' | '); }
+  fill('steps', DATA.steps || []);
+  if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
+  fillTable('conds', DATA.conds || []);
+  fillTable('outs', DATA.outs || []);
+  linkErrs(document.getElementById('steps')); linkErrs(document.getElementById('example')); linkErrs(document.getElementById('conds')); linkErrs(document.getElementById('outs'));
+  renderFlow(); renderTree(); fitText(); wireFlow();
+}
+if (document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ render(); }); } else { render(); }
+</script>
+</body>
+</html>
