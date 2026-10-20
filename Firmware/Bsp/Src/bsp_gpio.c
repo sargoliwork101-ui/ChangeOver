@@ -129,11 +129,19 @@ static bool func__BspGpio_IsActiveHigh(bsp_gpio_id_t bsp_gpio_id_t__id)
             bool__activeHigh = (PIN_PROTECT_BATT_ACTIVE_HIGH != 0u);
             break;
         case BSP_GPIO_INPUT_24V_PRESENT:
+            /* [EN] Presence is HIGH when the DC input is there. / حضور = High. */
+            bool__activeHigh = (PIN_INT_24_IN_ACTIVE_HIGH != 0u);
+            break;
         case BSP_GPIO_JITTER1:
+            /* [EN] LM393 open-collector trip: asserted = physical LOW
+               (audit 2026-10-20 - this used to be hard-coded active-high).
+               [FA] تریپ ‎open-collector‎ ی ‎LM393‎ یعنی سطح فیزیکی پایین. */
+            bool__activeHigh = (PIN_JITTER1_ACTIVE_HIGH != 0u);
+            break;
         case BSP_GPIO_JITTER2:
-            /* [EN] Comparator/presence inputs are logically high when physical high.
-               [FA] ورودی‌های comparator و حضور، در سطح فیزیکی High منطقی فعال‌اند. */
-            bool__activeHigh = true;
+            /* [EN] Same active-low comparator contract as JITTER1.
+               [FA] همان قرارداد فعال-پایین JITTER1. */
+            bool__activeHigh = (PIN_JITTER2_ACTIVE_HIGH != 0u);
             break;
         default:
             bool__activeHigh = true;

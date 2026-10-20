@@ -79,8 +79,10 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 | `BSP_GPIO_RELAY` | PB7 | خروجی | active-high، Low |
 | `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-low، High |
 | `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | ورودی + EXTI | تشخیص منطقی سطح High |
-| `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
-| `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
+| `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | خروجی LM393 active-low (‎`PIN_JITTER1_ACTIVE_HIGH 0u`‎)، فقط falling معتبر است |
+| `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | خروجی LM393 active-low (‎`PIN_JITTER2_ACTIVE_HIGH 0u`‎)، فقط falling معتبر است |
+
+قطبیت هر سه ورودی دیجیتال از ممیزی ۲۰۲۶-۱۰-۲۰ در `board_pins.h` تعریف می‌شود (‎`PIN_INT_24_IN_ACTIVE_HIGH 1u`‎ و دو جیتر ‎`0u`‎) و `bsp_gpio.c` دیگر هیچ قطبیتی را داخل خودش ثابت فرض نمی‌کند؛ قبلاً هر سه فعال-بالا فرض شده بودند و خواندن منطقی پایه‌های جیتر برعکس می‌شد. دریافت تریپ همیشه از EXTI است و این تغییر مسیر حفاظت را عوض نمی‌کند.
 
 `bsp_exti.c` callback HAL را به eventهای `BSP_EXTI_JITTER1`، `BSP_EXTI_JITTER2` و `BSP_EXTI_INPUT_DETECT` تبدیل می‌کند. PB2/PB6 روی falling و PB4 روی هر دو لبه فعال هستند؛ callback برای JIT پایین‌بودن پایه را نیز چک می‌کند. IRQهای واقعی در `stm32f1xx_it.c` پاک‌سازی و به callback تحویل می‌شوند. `func__BspExti_TakeEvent` جفت خواندن-پاک‌کردن را داخل بخش بحرانی کوتاه PRIMASK اجرا می‌کند تا رویدادی که دقیقاً وسط TakeEvent برسد (و چون LM393 بدون لبهٔ جدید دوباره فایر نمی‌شود، برای همیشه) گم نشود (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲)؛ هوک اضطراری `McuPowerPath_OnInputIrq` در callback PB4 فقط یک‌بار و قبل از ثبت رویداد صدا زده می‌شود (فراخوانی تکراری قبلی حذف شد).
 

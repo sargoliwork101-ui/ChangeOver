@@ -63,6 +63,24 @@
 #define PIN_INT_24_IN_PORT      GPIOB
 #define PIN_INT_24_IN_PIN       GPIO_PIN_4      /* PB4 MCU_INT_24_IN */
 
+/* [EN] Logical INPUT polarity, same convention as the outputs above. The two
+ *      LM393 comparator outputs are open-collector and ACTIVE LOW, so the
+ *      logical "trip" of JITTER1/JITTER2 is a physical Low. PB4 presence is
+ *      the opposite: the comparator/divider drives it High when the DC input
+ *      is present, so it is ACTIVE HIGH (see McuPowerPath/README.md).
+ *      Before the 2026-10-20 audit all three were hard-coded active-high in
+ *      bsp_gpio.c, which made a logical Read() of the JIT pins report the
+ *      inverse of the trip state.
+ * [FA] قطبیت منطقی «ورودی‌ها» با همان قاعدهٔ خروجی‌های بالاست. دو خروجی
+ *      مقایسه‌گر LM393 از نوع ‎open-collector‎ و فعال-پایین‌اند، پس «تریپ»
+ *      منطقیِ ‎JITTER1/JITTER2‎ یعنی سطح فیزیکی پایین. حضور روی PB4 برعکس
+ *      است: با حاضر بودن ورودی DC بالا می‌رود، پس فعال-بالا است. پیش از
+ *      ممیزی ۲۰۲۶-۱۰-۲۰ هر سه در bsp_gpio.c فعال-بالا فرض شده بودند و
+ *      خواندن منطقی پایه‌های JIT دقیقاً برعکس وضعیت تریپ را می‌داد. */
+#define PIN_JITTER1_ACTIVE_HIGH    0u
+#define PIN_JITTER2_ACTIVE_HIGH    0u
+#define PIN_INT_24_IN_ACTIVE_HIGH  1u
+
 /* ==================== ESP-Link UART / UART ارتباط ESP ==================== */
 
 /* ==================== Safe startup levels / سطوح امن شروع ==================== */
