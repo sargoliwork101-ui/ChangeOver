@@ -11,6 +11,164 @@ Never edit the generated HTML by hand.
 """
 import json, os, re
 
+
+# ==================== Top menu — shared by every page ====================
+# [EN] One sticky, categorised menu on every generated page: the reader does not
+#      have to hunt through a flat list of seventeen links. Groups are fixed here
+#      so both generators (process pages, alarm pages, simulator) stay in sync.
+# [FA] یک منوی چسبیده و دسته‌بندی‌شده در بالای همهٔ صفحه‌ها: خواننده لازم نیست
+#      دنبال یک ردیف هفده‌تایی از لینک بگردد. دسته‌ها اینجا یک‌جا تعریف شده‌اند
+#      تا هر سه سازنده (صفحه‌های ماژول، صفحه‌های خطا، شبیه‌ساز) یکی بمانند.
+ALARM_MENU = [
+    ('fault_7_technical', 'خطای ۷ — خطای فنی شارژر'),
+    ('fault_6_battery_lost', 'خطای ۶ — قطع باتری'),
+    ('fault_0_adc', 'خطای ۰ — مبدل اندازه‌گیری'),
+    ('input_overvoltage', 'اضافه‌ولتاژ ورودی'),
+    ('dead_battery', 'باتری خراب'),
+    ('imbalance_latched', 'عدم‌توازن قفل‌شده'),
+    ('selftest', 'خودآزمایی روشن‌شدن'),
+    ('charge_full', 'شارژ کامل'),
+    ('charging', 'در حال شارژ'),
+    ('thermal_rest', 'استراحت حرارتی'),
+    ('input_ok', 'ورودی سالم بدون شارژ'),
+    ('battery_run', 'کار روی باتری'),
+    ('reserved_bits', 'بیت‌های رزرو خطا'),
+]
+
+MENU_GROUPS = [
+    ('شروع و نمای کلی', [
+        ('کل سیستم — از روشن‌شدن تا آخر', 'system'),
+        ('معماری کارها (چه کسی چه کاری می‌کند)', 'rtosmap'),
+        ('کارها (تسک‌ها) — اولویت و دوره', 'rtos'),
+    ]),
+    ('زنجیرهٔ کنترل', [
+        ('اندازه‌گیری', 'measurement'),
+        ('خطاها (قطع باتری)', 'fault'),
+        ('جیتر — قطع ایمنی سخت‌افزاری', 'jitter'),
+        ('شارژر', 'charging'),
+        ('عدم‌توازن باتری', 'imbalance'),
+        ('تعویض خروجی', 'changeover'),
+        ('تغذیهٔ میکرو', 'mcupowerpath'),
+        ('ثبت سابقه', 'diag'),
+    ]),
+    ('خطاها و آلارم‌ها', 'alarms'),
+    ('چراغ و بوق', [
+        ('فلوچارت چراغ و بوق', 'ui'),
+        ('شبیه‌ساز چراغ‌ها و بوق', 'sim'),
+    ]),
+    ('ارتباط و تنظیم', [
+        ('ارتباط با پنل', 'esplink'),
+        ('جدول تصحیح جریان', 'callut'),
+        ('ناظر حفاظت', 'protection'),
+        ('قفل خواندن برنامه', 'flashlock'),
+    ]),
+]
+
+
+def menu_target_path(target):
+    if target == 'alarms':
+        return os.path.join(ROOT, 'Documentation', 'alarms', 'index.html')
+    if target == 'sim':
+        return os.path.join(ROOT, 'Firmware', 'Modules', 'Ui', 'alarm_simulator.html')
+    if target.startswith('alarm:'):
+        return os.path.join(ROOT, 'Documentation', 'alarms', target.split(':', 1)[1] + '.html')
+    return target_path(target)
+
+
+def build_menu(from_dir, current=None, alarms=None):
+    """Return the menu groups with hrefs resolved from one page folder.
+
+    [FA] دسته‌ها را برای یک پوشهٔ مشخص آماده می‌کند: مسیر هر لینک نسبت به همان
+    صفحه حساب می‌شود و خانهٔ همین صفحه نشان‌دار می‌شود.
+    """
+    groups = []
+    for label, items in MENU_GROUPS:
+        if items == 'alarms':
+            items = [('فهرست کامل خطاها و آلارم‌ها', 'alarms')]
+            for slug, title in (alarms or ALARM_MENU):
+                items.append((title, 'alarm:' + slug))
+            wide = True
+        else:
+            wide = False
+        out = []
+        group_on = False
+        for text, target in items:
+            path = menu_target_path(target)
+            on = (current is not None and target == current)
+            if on:
+                group_on = True
+            out.append({'t': text,
+                        'href': os.path.relpath(path, from_dir).replace(os.sep, '/'),
+                        'on': on})
+        groups.append({'t': label, 'items': out, 'wide': wide, 'on': group_on})
+    return groups
+
+
+MENU_CSS = r"""
+  .topnav { position:sticky; top:0; z-index:60; background:#0E1218; border:1.5px solid #35507A;
+            border-radius:12px; margin:0 0 16px; padding:7px 10px; box-shadow:0 4px 14px rgba(0,0,0,.35); }
+  .tnwrap { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tbrand { font-size:13px; color:#9AA7BC; padding:0 6px 0 12px; margin-left:4px; border-left:1px solid #33415C; }
+  .tgrp { position:relative; }
+  .tbtn { font-family:inherit; font-size:14.5px; color:#E6EAF2; background:#1B2029;
+          border:1.5px solid #35507A; border-radius:9px; padding:5px 12px; cursor:pointer; }
+  .tbtn:hover { border-color:#7FB0E6; }
+  .tgrp.active > .tbtn { background:#24466B; border-color:#7FB0E6; }
+  .tgrp.open > .tbtn { background:#24466B; border-color:#9CC6F5; }
+  .tdrop { display:none; position:absolute; top:calc(100% + 6px); right:0; min-width:260px;
+           background:#151A22; border:1.5px solid #35507A; border-radius:10px; padding:6px;
+           box-shadow:0 10px 26px rgba(0,0,0,.55); max-height:70vh; overflow:auto; }
+  .tgrp.open > .tdrop { display:block; }
+  .tdrop.wide { min-width:540px; column-count:2; column-gap:6px; }
+  .tdrop a { display:block; padding:6px 10px; border-radius:7px; color:#D8E1EE;
+             text-decoration:none; font-size:14.5px; break-inside:avoid; }
+  .tdrop a:hover { background:#24466B; color:#fff; }
+  .tdrop a.on { background:#2E4E77; color:#fff; font-weight:700; }
+  @media (max-width:760px){ .tdrop.wide { min-width:min(92vw,420px); column-count:1; } }
+"""
+
+MENU_JS = r"""
+function renderMenu(groups, mountId){
+  var host = document.getElementById(mountId);
+  if (!host || !groups) return;
+  var wrap = document.createElement('div'); wrap.className = 'tnwrap';
+  var brand = document.createElement('span'); brand.className = 'tbrand';
+  brand.textContent = 'صفحه‌های دستگاه'; wrap.appendChild(brand);
+  function closeAll(){
+    var open = host.querySelectorAll('.tgrp.open');
+    for (var i = 0; i < open.length; i++){
+      open[i].classList.remove('open');
+      var bb = open[i].querySelector('.tbtn'); if (bb) bb.setAttribute('aria-expanded', 'false');
+    }
+  }
+  groups.forEach(function(g){
+    var box = document.createElement('div');
+    box.className = 'tgrp' + (g.on ? ' active' : '');
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'tbtn';
+    btn.textContent = g.t + ' ▾'; btn.setAttribute('aria-expanded', 'false');
+    var drop = document.createElement('div');
+    drop.className = 'tdrop' + (g.wide ? ' wide' : '');
+    g.items.forEach(function(it){
+      var a = document.createElement('a');
+      a.href = it.href; a.textContent = it.t;
+      if (it.on){ a.className = 'on'; a.setAttribute('aria-current', 'page'); }
+      drop.appendChild(a);
+    });
+    btn.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      var wasOpen = box.classList.contains('open');
+      closeAll();
+      if (!wasOpen){ box.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+    });
+    box.appendChild(btn); box.appendChild(drop); wrap.appendChild(box);
+  });
+  host.appendChild(wrap);
+  document.addEventListener('click', closeAll);
+  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') closeAll(); });
+}
+"""
+
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -56,13 +214,14 @@ TEMPLATE = r"""<!DOCTYPE html>
   .subhead { cursor: pointer; }
   .subhead:hover rect { stroke-width: 3; }
   .tnode:hover rect { stroke-width: 3; }
+/*__MENUCSS__*/
 </style>
 </head>
 <body>
 <div class="wrap">
+<nav class="topnav" id="menu" aria-label="منوی صفحه‌های دستگاه"></nav>
 <h1 id="ttl"></h1>
 <p class="small" id="sub"></p>
-<p class="small" id="nav"></p>
 <h2>توضیح ساده</h2>
 <div class="card"><ol id="steps"></ol></div>
 <div id="exwrap"><h2>یک مثال عددی</h2><div class="card ok"><ol id="example"></ol></div></div>
@@ -80,6 +239,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <table id="outs"><tr><th style="width:26%" id="outh1">به کجا</th><th style="width:37%" id="outh2">چه فرمانی / چه خروجی‌ای</th><th id="outh3">کی و با چه شرطی</th></tr></table>
 <div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد بررسی می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
+<script>/*__MENUJS__*/</script>
 <script>const DATA = /*__DATA__*/;</script>
 <script>
 var COLORS = {
@@ -522,7 +682,7 @@ function fillTable(id, rows){
 function render(){
   document.getElementById('ttl').textContent = DATA.title;
   document.getElementById('sub').textContent = DATA.sub || '';
-  if (DATA.nav){ document.getElementById('nav').innerHTML = 'صفحه‌های دیگر: ' + DATA.nav.map(function(x){ return '<a href="' + x.href + '">' + x.t + '</a>'; }).join(' | '); }
+  if (DATA.menu){ renderMenu(DATA.menu, 'menu'); }
   fill('steps', DATA.steps || []);
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   if (DATA.condHead){ DATA.condHead.forEach(function(v, i){ var th = document.getElementById('condh' + (i + 1)); if (th) th.textContent = v; }); }
@@ -1833,17 +1993,6 @@ def main():
     sys_idx = None
     for key, m in MODULES.items():
         path = target_path(key)
-        nav = []
-        for k2, label in NAVLABELS:
-            if k2 != key:
-                nav.append({'t': label,
-                            'href': os.path.relpath(target_path(k2), os.path.dirname(path)).replace(os.sep, '/')})
-        sim_path = os.path.join(ROOT, 'Firmware', 'Modules', 'Ui', 'alarm_simulator.html')
-        nav.append({'t': 'شبیه‌ساز خطاها و چراغ‌ها',
-                    'href': os.path.relpath(sim_path, os.path.dirname(path)).replace(os.sep, '/')})
-        alarms_path = os.path.join(ROOT, 'Documentation', 'alarms', 'index.html')
-        nav.append({'t': 'فهرست خطاها و آلارم‌ها (هر کدام یک صفحه)',
-                    'href': os.path.relpath(alarms_path, os.path.dirname(path)).replace(os.sep, '/')})
         if sys_idx is None:
             sys_idx = build_index(os.path.join(ROOT, 'Firmware'))
         if key == 'system':
@@ -2110,10 +2259,11 @@ def main():
                       not os.path.exists(os.path.normpath(os.path.join(os.path.dirname(path), x['go'])))]
         if missing_go:
             raise SystemExit('page %r links to a missing file: %r' % (key, missing_go))
-        mm = dict(m); mm['nav'] = nav; mm['errmap'] = errmap
+        mm = dict(m); mm['menu'] = build_menu(os.path.dirname(path), key); mm['errmap'] = errmap
         mm['gloss'] = [list(row) for row in GLOSSARY]
         mm = plain_module(mm)
         html = TEMPLATE.replace('__TITLE__', m['title'])
+        html = html.replace('/*__MENUCSS__*/', MENU_CSS).replace('/*__MENUJS__*/', MENU_JS)
         html = html.replace('/*__DATA__*/', json.dumps(mm, ensure_ascii=False))
         with open(path, 'w', encoding='utf-8') as f:
             f.write(html)

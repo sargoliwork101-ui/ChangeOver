@@ -107,12 +107,13 @@ button.alarm.on{background:#24466B;border-color:#7FB0E6}
 .kv b{color:#7FB0E6}
 input[type=range]{width:100%}
 .small{font-size:13.5px;color:#9AA7BC}
+/*__MENUCSS__*/
 </style>
 </head>
 <body>
 <div class="wrap">
+<nav class="topnav" id="menu" aria-label="منوی صفحه‌های دستگاه"></nav>
 <h1>شبیه‌ساز آلارم‌ها و چراغ‌ها</h1>
-<p class="small">صفحه‌های دیگر: <a href="../../../Documentation/alarms/index.html">فهرست خطاها و آلارم‌ها</a> | <a href="ui_process.html">فلوچارت چراغ و بوق</a> | <a href="../../../Documentation/system_process.html">فرآیند کل دستگاه</a></p>
 <p>روی هر آلارم یا حالت بزن تا چراغ‌ها و بوق، دقیقاً با همان الگوی واقعی دستگاه (مقادیر پیش‌فرض کد) پخش شوند. برای شنیدن بوق، صدای دستگاهت را باز کن.</p>
 <div class="grid">
 <div class="card" id="list"></div>
@@ -145,6 +146,8 @@ input[type=range]{width:100%}
 </div>
 <script>
 var SCEN = __SCEN__;
+/*__MENUJS__*/
+var MENU = /*__MENU__*/;
 var cur = null, actx = null, prevNow = 0;
 var ledG = document.getElementById('ledG'), ledY = document.getElementById('ledY'),
     ledR = document.getElementById('ledR'), buzz = document.getElementById('buzz');
@@ -242,6 +245,7 @@ SCEN.forEach(function(x){
   b.addEventListener('click', function(){ pick(x.id); });
   list.appendChild(b);
 });
+renderMenu(MENU, 'menu');
 requestAnimationFrame(frame);
 </script>
 </body>
@@ -256,7 +260,12 @@ def main():
                      'beep': beep, 'fix': fix, 'func': func, 'kind': kind, 'p': params,
                      'url': GH + '#L' + str(line_of(func))})
     import json
+    import make_process_pages as mpp
+    out_dir = os.path.dirname(os.path.join(ROOT, 'Firmware', 'Modules', 'Ui', 'alarm_simulator.html'))
+    menu = mpp.build_menu(out_dir, 'sim')
     html = HTML.replace('__SCEN__', json.dumps(scen, ensure_ascii=False))
+    html = html.replace('/*__MENUCSS__*/', mpp.MENU_CSS).replace('/*__MENUJS__*/', mpp.MENU_JS)
+    html = html.replace('/*__MENU__*/', json.dumps(menu, ensure_ascii=False))
     out = os.path.join(ROOT, 'Firmware', 'Modules', 'Ui', 'alarm_simulator.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)

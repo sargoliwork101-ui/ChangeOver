@@ -988,7 +988,7 @@ def build_page(spec, idx):
         'tree': spec['tree'],
         'conds': spec['conds'],
         'outs': spec['outs'],
-        'nav': build_nav(from_dir, spec),
+        'menu': mpp.build_menu(from_dir, 'alarm:' + spec['slug']),
         'errmap': err_map(from_dir, spec),
         'gloss': [list(row) for row in mpp.GLOSSARY],
     }
@@ -998,6 +998,7 @@ def build_page(spec, idx):
             node['rurl'] = mpp.resolve_ref(node['ref'], idx, fallback)
     data = mpp.plain_module(data)
     html = TEMPLATE.replace('__TITLE__', spec['title'])
+    html = html.replace('/*__MENUCSS__*/', mpp.MENU_CSS).replace('/*__MENUJS__*/', mpp.MENU_JS)
     html = html.replace('/*__DATA__*/', json.dumps(data, ensure_ascii=False))
     with open(path, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -1069,7 +1070,7 @@ def build_index(idx):
         'hideOuts': True,
         'conds': conds,
         'outs': outs,
-        'nav': nav,
+        'menu': mpp.build_menu(from_dir, 'alarms'),
         'errmap': {},
         'gloss': [list(row) for row in mpp.GLOSSARY],
     }
@@ -1078,6 +1079,7 @@ def build_index(idx):
             node['rurl'] = mpp.resolve_ref(node['ref'], idx, GH)
     data = mpp.plain_module(data)
     html = TEMPLATE.replace('__TITLE__', data['title'])
+    html = html.replace('/*__MENUCSS__*/', mpp.MENU_CSS).replace('/*__MENUJS__*/', mpp.MENU_JS)
     html = html.replace('/*__DATA__*/', json.dumps(data, ensure_ascii=False))
     with open(path, 'w', encoding='utf-8') as f:
         f.write(html)

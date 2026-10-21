@@ -31,12 +31,34 @@ button.alarm.on{background:#24466B;border-color:#7FB0E6}
 .kv b{color:#7FB0E6}
 input[type=range]{width:100%}
 .small{font-size:13.5px;color:#9AA7BC}
+
+  .topnav { position:sticky; top:0; z-index:60; background:#0E1218; border:1.5px solid #35507A;
+            border-radius:12px; margin:0 0 16px; padding:7px 10px; box-shadow:0 4px 14px rgba(0,0,0,.35); }
+  .tnwrap { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tbrand { font-size:13px; color:#9AA7BC; padding:0 6px 0 12px; margin-left:4px; border-left:1px solid #33415C; }
+  .tgrp { position:relative; }
+  .tbtn { font-family:inherit; font-size:14.5px; color:#E6EAF2; background:#1B2029;
+          border:1.5px solid #35507A; border-radius:9px; padding:5px 12px; cursor:pointer; }
+  .tbtn:hover { border-color:#7FB0E6; }
+  .tgrp.active > .tbtn { background:#24466B; border-color:#7FB0E6; }
+  .tgrp.open > .tbtn { background:#24466B; border-color:#9CC6F5; }
+  .tdrop { display:none; position:absolute; top:calc(100% + 6px); right:0; min-width:260px;
+           background:#151A22; border:1.5px solid #35507A; border-radius:10px; padding:6px;
+           box-shadow:0 10px 26px rgba(0,0,0,.55); max-height:70vh; overflow:auto; }
+  .tgrp.open > .tdrop { display:block; }
+  .tdrop.wide { min-width:540px; column-count:2; column-gap:6px; }
+  .tdrop a { display:block; padding:6px 10px; border-radius:7px; color:#D8E1EE;
+             text-decoration:none; font-size:14.5px; break-inside:avoid; }
+  .tdrop a:hover { background:#24466B; color:#fff; }
+  .tdrop a.on { background:#2E4E77; color:#fff; font-weight:700; }
+  @media (max-width:760px){ .tdrop.wide { min-width:min(92vw,420px); column-count:1; } }
+
 </style>
 </head>
 <body>
 <div class="wrap">
+<nav class="topnav" id="menu" aria-label="منوی صفحه‌های دستگاه"></nav>
 <h1>شبیه‌ساز آلارم‌ها و چراغ‌ها</h1>
-<p class="small">صفحه‌های دیگر: <a href="../../../Documentation/alarms/index.html">فهرست خطاها و آلارم‌ها</a> | <a href="ui_process.html">فلوچارت چراغ و بوق</a> | <a href="../../../Documentation/system_process.html">فرآیند کل دستگاه</a></p>
 <p>روی هر آلارم یا حالت بزن تا چراغ‌ها و بوق، دقیقاً با همان الگوی واقعی دستگاه (مقادیر پیش‌فرض کد) پخش شوند. برای شنیدن بوق، صدای دستگاهت را باز کن.</p>
 <div class="grid">
 <div class="card" id="list"></div>
@@ -69,6 +91,48 @@ input[type=range]{width:100%}
 </div>
 <script>
 var SCEN = [{"id": "selftest", "title": "خودآزمایی روشن‌شدن", "grp": "عادی", "when": "هر بار که دستگاه روشن می‌شود، نیم ثانیه.", "led": "هر سه چراغ (سبز، زرد، قرمز) ۵۰۰ میلی‌ثانیه روشن و بعد خاموش می‌شوند (در شبیه‌ساز هر ۶ ثانیه تکرار می‌شود تا دیده شود).", "beep": "بدون بوق.", "fix": "خودکار تمام می‌شود.", "func": "func__Ui_Init", "kind": "selftest", "p": {"page": "selftest"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L2158"}, {"id": "tech7", "title": "خطای فنی شارژر (خطای ۷)", "grp": "خطاها", "when": "شارژر خرابی فنی را قفل کرده است (مثل duty بدون جریان، یا رلهٔ باز با تریپ JIT).", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۳ ثانیه، ۳ بوق کوتاه (۲۰۰ میلی‌ثانیه، فاصلهٔ ۱۰۰).", "fix": "فقط با خاموش و روشن‌کردن برد و رفع عیب سخت‌افزاری پاک می‌شود.", "func": "func__Ui_ScenarioTechnicalFault_Tick", "kind": "blink", "p": {"g": [1000, 50], "y": [1000, 50], "r": [1000, 50], "beep": [3000, [[0, 200], [300, 200], [600, 200]]], "page": "fault_7_technical"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1410"}, {"id": "ov", "title": "اضافه‌ولتاژ ورودی", "grp": "خطاها", "when": "ولتاژ ورودی از ۲۸ ولت بالاتر رفته است.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۱۰ ثانیه، یک بوق ۱ ثانیه‌ای.", "fix": "با پایین‌آمدن ورودی زیر ۲۷ ولت خودش پاک می‌شود.", "func": "func__Ui_ScenarioInputOverVoltage_Tick", "kind": "blink", "p": {"g": "on", "r": [1000, 50], "beep": [10000, [[0, 1000]]], "page": "input_overvoltage"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1300"}, {"id": "fault6", "title": "خطای ۶: قطع باتری", "grp": "خطاها", "when": "سیم یک نیم باتری قطع شده یا باتری برداشته شده است.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۳ ثانیه، ۳ بوق کوتاه.", "fix": "با وصل‌کردن باتری و پایداری ولتاژ، خودش پاک می‌شود.", "func": "func__Ui_ScenarioBatLost_Tick", "kind": "blink", "p": {"g": "on", "r": [1000, 50], "beep": [3000, [[0, 233], [333, 233], [666, 233]]], "page": "fault_6_battery_lost"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1356"}, {"id": "dead", "title": "باتری خراب (قفل)", "grp": "خطاها", "when": "باتری ۲۴ ساعت شارژ نشده و خراب حساب شده است (سناریوی ۶ شارژر).", "led": "چراغ قرمز ثابت روشن می‌ماند.", "beep": "یک بوق هنگام قفل‌شدن؛ بوق دوره‌ای از پنل قابل تنظیم است.", "fix": "فقط با تعویض باتری (نبود باتری ۳ ثانیه) پاک می‌شود.", "func": "func__Ui_ScenarioDeadBattery_Tick", "kind": "blink", "p": {"r": "on", "beep": null, "page": "dead_battery"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1554"}, {"id": "imbal", "title": "عدم‌توازن قفل‌شده", "grp": "خطاها", "when": "اختلاف دو نیم باتری در ۱۰ سیکل از حد گذشت و قفل شد.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن. سبز و زرد خاموش.", "beep": "پیش‌فرض: هر ۱ ساعت یک بوق ۲۰۰ میلی‌ثانیه (در شبیه‌ساز سریع‌تر پخش می‌شود).", "fix": "طبق قانون عدم‌توازن پاک می‌شود (نبود باتری یا پایان بودجه/چرخهٔ پاک).", "func": "func__Ui_ScenarioImbalance_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [10000, [[0, 200]]], "page": "imbalance_latched"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1473"}, {"id": "full", "title": "شارژ کامل", "grp": "عادی", "when": "همهٔ کانال‌های فعال به نگه‌داری (FLOAT) رسیده‌اند.", "led": "چراغ سبز ثابت، زرد خاموش.", "beep": "بدون بوق.", "fix": "—", "func": "func__Ui_ScenarioInputOk", "kind": "blink", "p": {"g": "on", "page": "charge_full"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1618"}, {"id": "charging", "title": "در حال شارژ", "grp": "عادی", "when": "ورودی حاضر است و شارژ ادامه دارد. درصد را با لغزنده عوض کن.", "led": "چراغ زرد چشمک می‌زند: هرچه شارژ کمتر، زرد بیشتر روشن می‌ماند (زمان روشن = درصد باقی‌مانده از دورهٔ ۱ ثانیه).", "beep": "بدون بوق.", "fix": "—", "func": "func__Ui_ScenarioCharging_Tick", "kind": "charge", "p": {"page": "charging"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1651"}, {"id": "thermal", "title": "استراحت حرارتی شارژر", "grp": "عادی", "when": "شارژر بعد از ۱ ساعت شارژ سنگین، ۱۰ دقیقه استراحت می‌کند.", "led": "چراغ زرد چشمک ۱ ثانیه ۵۰٪ + چراغ سبز ثابت.", "beep": "بدون بوق.", "fix": "بعد از ۱۰ دقیقه خودش به شارژ برمی‌گردد.", "func": "func__Ui_ScenarioThermalRest_Tick", "kind": "blink", "p": {"g": "on", "y": [1000, 50], "page": "thermal_rest"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1729"}, {"id": "batrun", "title": "کار روی باتری (بدون ورودی)", "grp": "عادی", "when": "ورودی نیست و دستگاه از باتری کار می‌کند. درصد باتری را با لغزنده عوض کن.", "led": "چراغ سبز چشمک می‌زند: زمان روشن = درصد باتری از دورهٔ ۱ ثانیه.", "beep": "زیر ۴۰٪ بوق هشدار شروع می‌شود: ۴۰٪ تک‌بوق، ۲۰٪ دوبوق، ۱۰٪ سه‌بوق، ۱٪ بحرانی (در شبیه‌ساز سریع‌تر پخش می‌شود).", "fix": "با برگشت ورودی تمام می‌شود.", "func": "func__Ui_ScenarioBatteryRun_Tick", "kind": "batrun", "p": {"page": "battery_run"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c#L1767"}];
+
+function renderMenu(groups, mountId){
+  var host = document.getElementById(mountId);
+  if (!host || !groups) return;
+  var wrap = document.createElement('div'); wrap.className = 'tnwrap';
+  var brand = document.createElement('span'); brand.className = 'tbrand';
+  brand.textContent = 'صفحه‌های دستگاه'; wrap.appendChild(brand);
+  function closeAll(){
+    var open = host.querySelectorAll('.tgrp.open');
+    for (var i = 0; i < open.length; i++){
+      open[i].classList.remove('open');
+      var bb = open[i].querySelector('.tbtn'); if (bb) bb.setAttribute('aria-expanded', 'false');
+    }
+  }
+  groups.forEach(function(g){
+    var box = document.createElement('div');
+    box.className = 'tgrp' + (g.on ? ' active' : '');
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'tbtn';
+    btn.textContent = g.t + ' ▾'; btn.setAttribute('aria-expanded', 'false');
+    var drop = document.createElement('div');
+    drop.className = 'tdrop' + (g.wide ? ' wide' : '');
+    g.items.forEach(function(it){
+      var a = document.createElement('a');
+      a.href = it.href; a.textContent = it.t;
+      if (it.on){ a.className = 'on'; a.setAttribute('aria-current', 'page'); }
+      drop.appendChild(a);
+    });
+    btn.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      var wasOpen = box.classList.contains('open');
+      closeAll();
+      if (!wasOpen){ box.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+    });
+    box.appendChild(btn); box.appendChild(drop); wrap.appendChild(box);
+  });
+  host.appendChild(wrap);
+  document.addEventListener('click', closeAll);
+  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') closeAll(); });
+}
+
+var MENU = [{"t": "شروع و نمای کلی", "items": [{"t": "کل سیستم — از روشن‌شدن تا آخر", "href": "../../../Documentation/system_process.html", "on": false}, {"t": "معماری کارها (چه کسی چه کاری می‌کند)", "href": "../../../Documentation/rtos_architecture.html", "on": false}, {"t": "کارها (تسک‌ها) — اولویت و دوره", "href": "../Rtos/rtos_process.html", "on": false}], "wide": false, "on": false}, {"t": "زنجیرهٔ کنترل", "items": [{"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html", "on": false}, {"t": "خطاها (قطع باتری)", "href": "../Fault/fault_process.html", "on": false}, {"t": "جیتر — قطع ایمنی سخت‌افزاری", "href": "../Jitter/jitter_process.html", "on": false}, {"t": "شارژر", "href": "../Charger/charging_process.html", "on": false}, {"t": "عدم‌توازن باتری", "href": "../Imbalance/imbalance_process.html", "on": false}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html", "on": false}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html", "on": false}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html", "on": false}], "wide": false, "on": false}, {"t": "خطاها و آلارم‌ها", "items": [{"t": "فهرست کامل خطاها و آلارم‌ها", "href": "../../../Documentation/alarms/index.html", "on": false}, {"t": "خطای ۷ — خطای فنی شارژر", "href": "../../../Documentation/alarms/fault_7_technical.html", "on": false}, {"t": "خطای ۶ — قطع باتری", "href": "../../../Documentation/alarms/fault_6_battery_lost.html", "on": false}, {"t": "خطای ۰ — مبدل اندازه‌گیری", "href": "../../../Documentation/alarms/fault_0_adc.html", "on": false}, {"t": "اضافه‌ولتاژ ورودی", "href": "../../../Documentation/alarms/input_overvoltage.html", "on": false}, {"t": "باتری خراب", "href": "../../../Documentation/alarms/dead_battery.html", "on": false}, {"t": "عدم‌توازن قفل‌شده", "href": "../../../Documentation/alarms/imbalance_latched.html", "on": false}, {"t": "خودآزمایی روشن‌شدن", "href": "../../../Documentation/alarms/selftest.html", "on": false}, {"t": "شارژ کامل", "href": "../../../Documentation/alarms/charge_full.html", "on": false}, {"t": "در حال شارژ", "href": "../../../Documentation/alarms/charging.html", "on": false}, {"t": "استراحت حرارتی", "href": "../../../Documentation/alarms/thermal_rest.html", "on": false}, {"t": "ورودی سالم بدون شارژ", "href": "../../../Documentation/alarms/input_ok.html", "on": false}, {"t": "کار روی باتری", "href": "../../../Documentation/alarms/battery_run.html", "on": false}, {"t": "بیت‌های رزرو خطا", "href": "../../../Documentation/alarms/reserved_bits.html", "on": false}], "wide": true, "on": false}, {"t": "چراغ و بوق", "items": [{"t": "فلوچارت چراغ و بوق", "href": "ui_process.html", "on": false}, {"t": "شبیه‌ساز چراغ‌ها و بوق", "href": "alarm_simulator.html", "on": true}], "wide": false, "on": true}, {"t": "ارتباط و تنظیم", "items": [{"t": "ارتباط با پنل", "href": "../EspLink/esplink_process.html", "on": false}, {"t": "جدول تصحیح جریان", "href": "../CalLut/callut_process.html", "on": false}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html", "on": false}, {"t": "قفل خواندن برنامه", "href": "../FlashLock/flashlock_process.html", "on": false}], "wide": false, "on": false}];
 var cur = null, actx = null, prevNow = 0;
 var ledG = document.getElementById('ledG'), ledY = document.getElementById('ledY'),
     ledR = document.getElementById('ledR'), buzz = document.getElementById('buzz');
@@ -166,6 +230,7 @@ SCEN.forEach(function(x){
   b.addEventListener('click', function(){ pick(x.id); });
   list.appendChild(b);
 });
+renderMenu(MENU, 'menu');
 requestAnimationFrame(frame);
 </script>
 </body>
