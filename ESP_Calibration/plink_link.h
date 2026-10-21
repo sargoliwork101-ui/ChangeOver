@@ -1111,3 +1111,159 @@ static void func__Esp_DrainSerial(void)
         }
     }
 }
+
+/* ==================== Hybrid Wi-Fi Power-Saving ==================== */
+
+/**
+ * @brief  [EN] Send the 1-byte ESPLINK_MSG_WIFI_CLIENT_STATE (0x33) frame to
+ *              the STM32 without disturbing the SET_PARAM TX rate limiter.
+ *         [FA] ارسال فریم یک‌بایتی وضعیت اتصال کاربر وای‌فای (۰x۳۳) به STM32
+ *              بدون تغییر تایمر فاصلهٔ ارسال SET_PARAM.
+ * @param  bool__connected [EN] true when a Wi-Fi client is active /
+ *                         [FA] در صورت حضور کاربر true و در غیر این صورت false
+ */
+static void func__Esp_SendWifiClientState(bool bool__connected)
+{
+    uint8_t UINT8_T__A__Frame[9];
+    uint8_t uint8_t__stateByte = bool__connected ? 1u : 0u;
+    uint16_t uint16_t__crc = (uint16_t)ESP_LINK_CRC16_INIT;
+
+    UINT8_T__A__Frame[0] = ESP_LINK_SOF_BYTE0;
+    UINT8_T__A__Frame[1] = ESP_LINK_SOF_BYTE1;
+    UINT8_T__A__Frame[2] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = ESP_MSG_WIFI_CLIENT_STATE;
+    UINT8_T__A__Frame[4] = 1u;
+    UINT8_T__A__Frame[5] = 0u;
+    UINT8_T__A__Frame[6] = uint8_t__stateByte;
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, (uint8_t)ESP_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, ESP_MSG_WIFI_CLIENT_STATE);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, 1u);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, 0u);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__stateByte);
+    UINT8_T__A__Frame[7] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[8] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+    (void)Serial.write(UINT8_T__A__Frame, 9u);
+}
+
+/**
+ * @brief  [EN] Check whether a user is connected to the Wi-Fi AP or actively
+ *              polling the HTTP panel.
+ *         [FA] بررسی متصل بودن کاربر به اکسس‌پوینت وای‌فای یا باز بودن پنل در
+ *              مرورگر.
+ * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
+ *                         [FA] زمان فعلی بر حسب میلی‌ثانیه
+ * @return [EN] true if a client is connected, false otherwise /
+ *         [FA] در صورت حضور کاربر true و در غیر این صورت false
+ */
+static bool func__Esp_IsWifiClientConnected(uint32_t uint32_t__nowMs)
+{
+    bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
+    bool bool__browserActive = BOOL__G__BrowserSeen &&
+        ((uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) < ESP_LINK_BROWSER_LOST_MS);
+    return bool__stationConnected || bool__browserActive;
+}
+
+/**
+ * @brief  [EN] Hybrid Wi-Fi TX power and battery duty-cycling tick:
+ *              - Mains input present OR user connected: AP stays ON at maximum
+ *                TX power (20.5 dBm).
+ *              - On battery with no user connected:
+ *                * First 30 minutes (1800000 ms): AP stays ON at low TX power
+ *                  (0 dBm).
+ *                * After 30 minutes: AP cycles 2 minutes OFF (120000 ms) and
+ *                  1 minute ON (60000 ms) at low TX power until a user connects.
+ *         [FA] گام مدیریت ترکیبی قدرت آنتن و چرخهٔ خاموش/روشن وای‌فای روی باتری:
+ *              - در حضور برق ورودی یا اتصال کاربر: روشنِ دائم با بیشترین قدرت
+ *                آنتن (۲۰٫۵ dBm).
+ *              - روی باتری و بدون کاربر: ۳۰ دقیقهٔ اول روشن با قدرت آنتن پایین
+ *                (۰ dBm) و پس از آن چرخهٔ ۲ دقیقه خاموش و ۱ دقیقه روشن با قدرت
+ *                آنتن پایین تا زمان اتصال کاربر.
+ * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
+ *                         [FA] زمان فعلی بر حسب میلی‌ثانیه
+ */
+static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
+{
+    bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
+        ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_INPUT_PRESENT) != 0u);
+    bool bool__clientConnected = func__Esp_IsWifiClientConnected(uint32_t__nowMs);
+
+    BOOL__G__WifiClientConnected = bool__clientConnected;
+
+    if ((UINT8_T__G__LutTxStage == 0u) &&
+        (((!bool__inputPresent) &&
+          ((bool__clientConnected != BOOL__G__WifiLastReportedConnected) ||
+           (bool__clientConnected &&
+            ((uint32_t__nowMs - UINT32_T__G__WifiLastReportMs) >= ESP_WIFI_CLIENT_REPORT_MS)))) ||
+         ((!bool__clientConnected) && BOOL__G__WifiLastReportedConnected)))
+    {
+        func__Esp_SendWifiClientState(bool__clientConnected);
+        BOOL__G__WifiLastReportedConnected = bool__clientConnected;
+        UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
+    }
+
+    if (bool__inputPresent || bool__clientConnected)
+    {
+        BOOL__G__WifiBatteryIdleTracking = false;
+        UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
+        if (!BOOL__G__WifiApActive)
+        {
+            WiFi.mode(WIFI_AP);
+            (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
+            BOOL__G__WifiApActive = true;
+            BOOL__G__WifiHighPower = false;
+        }
+        if (!BOOL__G__WifiHighPower)
+        {
+#if defined(ESP8266)
+            WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
+#endif
+            BOOL__G__WifiHighPower = true;
+        }
+        return;
+    }
+
+    if (!BOOL__G__WifiBatteryIdleTracking)
+    {
+        BOOL__G__WifiBatteryIdleTracking = true;
+        UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
+    }
+
+    uint32_t uint32_t__idleElapsedMs = uint32_t__nowMs - UINT32_T__G__WifiBatteryIdleStartMs;
+    bool bool__shouldApBeOn = true;
+
+    if (uint32_t__idleElapsedMs >= ESP_WIFI_IDLE_LOW_POWER_MS)
+    {
+        uint32_t uint32_t__afterIdleMs =
+            uint32_t__idleElapsedMs - ESP_WIFI_IDLE_LOW_POWER_MS;
+        uint32_t uint32_t__cycleOffsetMs =
+            uint32_t__afterIdleMs % ESP_WIFI_CYCLE_PERIOD_MS;
+        bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= ESP_WIFI_CYCLE_OFF_MS);
+    }
+
+    if (bool__shouldApBeOn)
+    {
+        if (!BOOL__G__WifiApActive)
+        {
+            WiFi.mode(WIFI_AP);
+            (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
+            BOOL__G__WifiApActive = true;
+            BOOL__G__WifiHighPower = true;
+        }
+        if (BOOL__G__WifiHighPower)
+        {
+#if defined(ESP8266)
+            WiFi.setOutputPower(ESP_WIFI_TX_LOW_DBM);
+#endif
+            BOOL__G__WifiHighPower = false;
+        }
+    }
+    else
+    {
+        if (BOOL__G__WifiApActive)
+        {
+            (void)WiFi.softAPdisconnect(true);
+            WiFi.mode(WIFI_OFF);
+            BOOL__G__WifiApActive = false;
+        }
+    }
+}

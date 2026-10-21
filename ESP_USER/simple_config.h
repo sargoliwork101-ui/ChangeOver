@@ -25,6 +25,23 @@
 #define SIMPLE_MSG_TIME_SYNC            0x30u
 #define SIMPLE_MSG_DIAG_REQ             0x31u
 #define SIMPLE_MSG_DIAG_DATA            0x32u
+#define SIMPLE_MSG_WIFI_CLIENT_STATE    0x33u
+
+/* ==================== سناریوی کاهش مصرف وای‌فای روی باتری ====================
+   - در زمان وجود برق ورودی یا اتصال کاربر: وای‌فای روشنِ دائم با بیشترین قدرت آنتن.
+   - روی باتری و بدون اتصال کاربر:
+     * ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): روشن با قدرت آنتن پایین.
+     * پس از ۳۰ دقیقه: چرخهٔ ۲ دقیقه خاموش (۱۲۰۰۰۰ میلی‌ثانیه) و ۱ دقیقه روشن
+       (۶۰۰۰۰ میلی‌ثانیه) با قدرت آنتن پایین تا زمان اتصال کاربر. */
+#define SIMPLE_TLM_FLAG_INPUT_PRESENT   0x02u
+#define SIMPLE_WIFI_IDLE_LOW_POWER_MS   1800000u
+#define SIMPLE_WIFI_CYCLE_ON_MS         60000u
+#define SIMPLE_WIFI_CYCLE_OFF_MS        120000u
+#define SIMPLE_WIFI_CYCLE_PERIOD_MS     180000u
+#define SIMPLE_WIFI_CLIENT_HOLD_MS      10000u
+#define SIMPLE_WIFI_CLIENT_REPORT_MS    1000u
+#define SIMPLE_WIFI_TX_MAX_DBM          20.5f
+#define SIMPLE_WIFI_TX_LOW_DBM          0.0f
 
 /* ==================== ریست دستی قفل‌ها ====================
    اسلات‌های زمان‌اجرای STM32 (شمارندهٔ رویداد و سیکل عدم‌توازن، پرچم قفل،

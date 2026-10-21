@@ -101,6 +101,10 @@ static uint8_t UINT8_T__G__LutStageN2 = 0u;
 static uint32_t UINT32_T__G__HostAcceptedFrames = 0u;
 #endif
 static uint16_t UINT16_T__G__TelemetrySeq = 0u;
+static bool     BOOL__G__EspPowerOn = true;
+static bool     BOOL__G__WifiClientConnected = false;
+static uint32_t UINT32_T__G__ClientActiveHoldMs = 0u;
+static uint32_t UINT32_T__G__BatteryIdleElapsedMs = 0u;
 
 /* [EN] TLM_LIVE flag bits (payload offset 2). / [FA] بیت‌های پرچم TLM_LIVE. */
 #define ESPLINK_TLM_FLAG_SNAP_VALID     0x01u
@@ -1696,6 +1700,7 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
             }
             else
             {
+                func__EspLink_NotifyWifiClientState(true);
                 func__EspLink_SendParamReport(uint8_t__payload[0],
                                               uint32_t__appliedValue);
                 /* [EN] v1.14 (user order 2026-09-25: values must survive
@@ -1745,16 +1750,32 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     }
     else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_DIAG_REQ)
     {
-#if MODULE_DIAG
         if ((uint16_t__payloadLength == 1u) && (uint8_t__payload[0] == 1u))
         {
+            func__EspLink_NotifyWifiClientState(true);
+#if MODULE_DIAG
             func__Diag_ClearHistory();
+#endif
         }
+#if MODULE_DIAG
         func__EspLink_SendDiagData();
 #endif
 #if MODULE_CHARGER
         func__Charger_NotifyEspLinkActivity();
 #endif
+    }
+    else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_WIFI_CLIENT_STATE)
+    {
+        if (uint16_t__payloadLength == 1u)
+        {
+            func__EspLink_NotifyWifiClientState(uint8_t__payload[0] != 0u);
+#if MODULE_CHARGER
+            if (uint8_t__payload[0] != 0u)
+            {
+                func__Charger_NotifyEspLinkActivity();
+            }
+#endif
+        }
     }
     else if (func__EspLink_HandleLutFrame(uint8_t__messageType,
                                           uint16_t__payloadLength,
@@ -1762,6 +1783,7 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     {
         /* [EN] v1.66 LUT push handled (and acknowledged) above.
            [FA] ارسال جدول v1.66 بالا رسیدگی و پاسخ داده شد. */
+        func__EspLink_NotifyWifiClientState(true);
 #if MODULE_CHARGER
         func__Charger_NotifyEspLinkActivity();
 #endif /* MODULE_CHARGER */
@@ -1914,8 +1936,15 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             {
 #ifdef ESPLINK_HOST_TEST
                 /* [EN] Host parser tests deliberately avoid the product
-                   dispatch graph; acceptance itself is the observable. */
+                   dispatch graph; acceptance itself is the observable.
+                   WIFI_CLIENT_STATE (0x33) is also forwarded so host tests
+                   can verify byte-level client state frames end to end. */
                 UINT32_T__G__HostAcceptedFrames++;
+                if ((UINT8_T__G__FrameType == (uint8_t)ESPLINK_MSG_WIFI_CLIENT_STATE) &&
+                    (UINT16_T__G__FrameLen == 1u))
+                {
+                    func__EspLink_NotifyWifiClientState(UINT8_T__G__PayloadBuffer[0] != 0u);
+                }
 #else
                 func__EspLink_HandleFrame(UINT8_T__G__FrameType,
                                           UINT16_T__G__FrameLen,
@@ -1956,6 +1985,10 @@ void func__EspLink_HostTest_Reset(void)
     BOOL__G__LutResetAuthorized = false;
     UINT8_T__G__LutStageN1 = 0u;
     UINT8_T__G__LutStageN2 = 0u;
+    BOOL__G__EspPowerOn = true;
+    BOOL__G__WifiClientConnected = false;
+    UINT32_T__G__ClientActiveHoldMs = 0u;
+    UINT32_T__G__BatteryIdleElapsedMs = 0u;
 }
 
 /* ==================== EspLink_HostTest_FeedByte ==================== */
@@ -2033,30 +2066,204 @@ void func__EspLink_Init(void)
     UINT8_T__G__LutStageN1 = 0u;
     UINT8_T__G__LutStageN2 = 0u;
     UINT16_T__G__TelemetrySeq = 0u;
+    BOOL__G__EspPowerOn = false;
+    BOOL__G__WifiClientConnected = false;
+    UINT32_T__G__ClientActiveHoldMs = 0u;
+    UINT32_T__G__BatteryIdleElapsedMs = 0u;
     func__EspLink_Power(true);
 }
 
 /* ==================== EspLink_Power ==================== */
 
 /**
- * @brief  [EN] Drive CH_PD pin.
- *         [FA] پایه CH_PD را می‌زند.
+ * @brief  [EN] Drive CH_PD pin and reset the UART byte parser when waking
+ *              from power-down.
+ *         [FA] پایه CH_PD را می‌زند و هنگام روشن شدن مجدد، پارسر UART را
+ *              به حالت اولیه برمی‌گرداند.
  * @param  bool__on [EN] true=ESP on (HIGH), false=off‎ / روشن/خاموش
  */
 void func__EspLink_Power(bool bool__on)
 {
+    if ((bool__on != false) && (BOOL__G__EspPowerOn == false))
+    {
+        ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+    }
+    BOOL__G__EspPowerOn = bool__on;
+#ifndef ESPLINK_HOST_TEST
     func__BspGpio_Write(BSP_GPIO_ESP_CHPD, bool__on);
+#endif
+}
+
+/* ==================== EspLink_IsPowerOn ==================== */
+
+/**
+ * @brief  [EN] Query whether the ESP power rail (CH_PD) is currently enabled.
+ *         [FA] بررسی روشن بودن تغذیهٔ ESP (پایهٔ CH_PD).
+ * @return [EN] true if CH_PD is high, false if powered down /
+ *         [FA] در صورت روشن بودن true و در غیر این صورت false
+ */
+bool func__EspLink_IsPowerOn(void)
+{
+    return BOOL__G__EspPowerOn;
+}
+
+/* ==================== EspLink_IsWifiClientConnected ==================== */
+
+/**
+ * @brief  [EN] Query whether a Wi-Fi client is currently considered connected.
+ *         [FA] بررسی متصل بودن کاربر به وای‌فای در وضعیت فعلی.
+ * @return [EN] true if a Wi-Fi client is active, false otherwise /
+ *         [FA] در صورت اتصال کاربر true و در غیر این صورت false
+ */
+bool func__EspLink_IsWifiClientConnected(void)
+{
+    bool bool__active = (BOOL__G__WifiClientConnected != false) ||
+                        (UINT32_T__G__ClientActiveHoldMs > 0u);
+    return bool__active;
+}
+
+/* ==================== EspLink_GetBatteryIdleElapsedMs ==================== */
+
+/**
+ * @brief  [EN] Return the elapsed battery idle time (ms) without a connected
+ *              Wi-Fi user.
+ *         [FA] زمان سپری‌شدهٔ بی‌کاری روی باتری بدون اتصال کاربر (میلی‌ثانیه)
+ *              را برمی‌گرداند.
+ * @return [EN] Elapsed idle milliseconds on battery /
+ *         [FA] زمان سپری‌شده بر حسب میلی‌ثانیه
+ */
+uint32_t func__EspLink_GetBatteryIdleElapsedMs(void)
+{
+    return UINT32_T__G__BatteryIdleElapsedMs;
+}
+
+/* ==================== EspLink_NotifyWifiClientState ==================== */
+
+/**
+ * @brief  [EN] Record the latest Wi-Fi client connection state reported by
+ *              the ESP or inferred from an interactive user command.
+ *         [FA] ثبت آخرین وضعیت اتصال کاربر به وای‌فای (گزارش‌شده از ESP یا
+ *              ناشی از فرمان مستقیم کاربر).
+ * @param  bool__connected [EN] true when a user is connected, false when idle /
+ *                         [FA] در صورت حضور کاربر true و در صورت قطع کامل false
+ */
+void func__EspLink_NotifyWifiClientState(bool bool__connected)
+{
+    if (bool__connected != false)
+    {
+        BOOL__G__WifiClientConnected = true;
+        UINT32_T__G__ClientActiveHoldMs = (uint32_t)ESPLINK_WIFI_CLIENT_HOLD_MS;
+        UINT32_T__G__BatteryIdleElapsedMs = 0u;
+        if (BOOL__G__EspPowerOn == false)
+        {
+            func__EspLink_Power(true);
+        }
+    }
+    else
+    {
+        BOOL__G__WifiClientConnected = false;
+        UINT32_T__G__ClientActiveHoldMs = 0u;
+    }
+}
+
+/* ==================== EspLink_PowerSaveTick ==================== */
+
+/**
+ * @brief  [EN] Advance the hybrid ESP Wi-Fi power-saving state machine by
+ *              uint32_t__stepMs and drive CH_PD accordingly:
+ *              - Mains input present OR user connected: CH_PD stays ON and
+ *                the battery idle timer resets to 0.
+ *              - On battery with no user connected: CH_PD stays ON for the
+ *                first 30 minutes (1800000 ms), then cycles 2 minutes OFF
+ *                (120000 ms) and 1 minute ON (60000 ms).
+ *         [FA] پیشبرد ماشین حالت کاهش مصرف وای‌فای به اندازهٔ uint32_t__stepMs
+ *              و کنترل پایهٔ CH_PD:
+ *              - حضور برق ورودی یا اتصال کاربر: روشن ماندن دائم و صفر شدن
+ *                تایمر بی‌کاری باتری.
+ *              - روی باتری و بدون کاربر: ۳۰ دقیقهٔ اول روشن، سپس چرخهٔ ۲ دقیقه
+ *                خاموش و ۱ دقیقه روشن.
+ * @param  bool__inputPresent [EN] true if mains input is present /
+ *                            [FA] وضعیت حضور برق ورودی
+ * @param  uint32_t__stepMs   [EN] Elapsed step in milliseconds /
+ *                            [FA] گام زمانی سپری‌شده بر حسب میلی‌ثانیه
+ */
+void func__EspLink_PowerSaveTick(bool bool__inputPresent,
+                                 uint32_t uint32_t__stepMs)
+{
+    bool bool__manualActive = false;
+    bool bool__clientActive;
+
+#if MODULE_CHARGER && !defined(ESPLINK_HOST_TEST)
+    bool__manualActive = func__Charger_IsManualTestModeActive();
+#endif
+
+    if (UINT32_T__G__ClientActiveHoldMs > uint32_t__stepMs)
+    {
+        UINT32_T__G__ClientActiveHoldMs -= uint32_t__stepMs;
+    }
+    else
+    {
+        UINT32_T__G__ClientActiveHoldMs = 0u;
+        BOOL__G__WifiClientConnected = false;
+    }
+
+    bool__clientActive = (BOOL__G__WifiClientConnected != false) ||
+                         (UINT32_T__G__ClientActiveHoldMs > 0u);
+
+    if ((bool__inputPresent != false) ||
+        (bool__manualActive != false) ||
+        (bool__clientActive != false))
+    {
+        UINT32_T__G__BatteryIdleElapsedMs = 0u;
+        if (BOOL__G__EspPowerOn == false)
+        {
+            func__EspLink_Power(true);
+        }
+        return;
+    }
+
+    if ((UINT32_MAX - UINT32_T__G__BatteryIdleElapsedMs) > uint32_t__stepMs)
+    {
+        UINT32_T__G__BatteryIdleElapsedMs += uint32_t__stepMs;
+    }
+    else
+    {
+        UINT32_T__G__BatteryIdleElapsedMs = UINT32_MAX;
+    }
+
+    if (UINT32_T__G__BatteryIdleElapsedMs < (uint32_t)ESPLINK_WIFI_IDLE_LOW_POWER_MS)
+    {
+        if (BOOL__G__EspPowerOn == false)
+        {
+            func__EspLink_Power(true);
+        }
+    }
+    else
+    {
+        uint32_t uint32_t__afterIdleMs =
+            UINT32_T__G__BatteryIdleElapsedMs - (uint32_t)ESPLINK_WIFI_IDLE_LOW_POWER_MS;
+        uint32_t uint32_t__cycleOffsetMs =
+            uint32_t__afterIdleMs % (uint32_t)ESPLINK_WIFI_CYCLE_PERIOD_MS;
+        bool bool__shouldBeOn =
+            (uint32_t__cycleOffsetMs >= (uint32_t)ESPLINK_WIFI_CYCLE_OFF_MS);
+        if (BOOL__G__EspPowerOn != bool__shouldBeOn)
+        {
+            func__EspLink_Power(bool__shouldBeOn);
+        }
+    }
 }
 
 /* ==================== EspLink_Run ==================== */
 
 /**
  * @brief  [EN] Consume every received byte (each complete command frame is
- *              applied immediately) and then send one TLM_LIVE telemetry
- *              frame. Called once per communication task period.
+ *              applied immediately), update the hybrid Wi-Fi power-saving
+ *              state machine, and send one TLM_LIVE telemetry frame while
+ *              the ESP is powered. Called once per communication task period.
  *         [FA] همهٔ بایت‌های دریافتی را مصرف می‌کند (هر فریم فرمان کامل
- *              بلافاصله اعمال می‌شود) و بعد یک فریم تله‌متری TLM_LIVE
- *              می‌فرستد. یک‌بار در هر دورهٔ تسک ارتباط صدا زده می‌شود.
+ *              بلافاصله اعمال می‌شود)، ماشین حالت کاهش مصرف وای‌فای را
+ *              به‌روزرسانی می‌کند و در صورت روشن بودن ESP یک فریم تله‌متری
+ *              TLM_LIVE می‌فرستد. یک‌بار در هر دورهٔ تسک ارتباط صدا زده می‌شود.
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
  * @param  fault_mask_t__faults [EN] Fault bits / بیت‌های خطا
  */
@@ -2064,16 +2271,26 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
                        fault_mask_t fault_mask_t__faults)
 {
     uint8_t uint8_t__byte;
-
-    (void)APP_CONFIG;
+    bool bool__inputPresent = true;
 
     while (func__BspUart_ReadByte(&uint8_t__byte) != false)
     {
         func__EspLink_ParseByte(uint8_t__byte);
     }
 
-    func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
-                                fault_mask_t__faults);
+    if ((measurement_snapshot_t__snap != NULL) &&
+        (measurement_snapshot_t__snap->valid != false))
+    {
+        bool__inputPresent = (measurement_snapshot_t__snap->input_present != false);
+    }
+
+    func__EspLink_PowerSaveTick(bool__inputPresent, APP_CONFIG.comm_period_ms);
+
+    if (BOOL__G__EspPowerOn != false)
+    {
+        func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
+                                    fault_mask_t__faults);
+    }
 
     /* [EN] Debounced flash save of the persisted parameters. A save
        stalls the WHOLE CPU ~30..50 ms (F1 single bank: SysTick jumps,

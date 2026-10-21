@@ -316,6 +316,82 @@ static void func__T_TestEchoAndNak(void)
     func__T_Check(UINT32_T__G__SlotNakCount == (uint32_t__nakBefore + 1u), "NAK پارامتر عادی شمرده نمی‌شود");
 }
 
+static void func__T_TestWifiPowerSave(void)
+{
+    uint8_t uint8_t__byte = 0u;
+    uint8_t uint8_t__frame[16];
+    uint8_t uint8_t__size = 0u;
+
+    (void)printf("\n== سناریوی ترکیبی کاهش مصرف و قدرت آنتن وای‌فای ==\n");
+
+    /* ۱. حضور برق ورودی: روشنِ دائم با بیشترین قدرت آنتن (۲۰٫۵ dBm) */
+    BOOL__G__TlmSeen = true;
+    UINT8_T__G__TlmFlags = SIMPLE_TLM_FLAG_INPUT_PRESENT;
+    BOOL__G__BrowserSeen = false;
+    WiFi.setStationNum(0);
+    (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
+    WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
+    BOOL__G__WifiApActive = true;
+    BOOL__G__WifiHighPower = true;
+    BOOL__G__WifiBatteryIdleTracking = false;
+    BOOL__G__WifiLastReportedConnected = false;
+
+    func__Simple_WifiPowerSaveTick(1000u);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() > 20.0f),
+                  "در زمان وجود برق ورودی: وای‌فای روشن و قدرت آنتن روی بیشترین مقدار است");
+
+    /* ۲. قطع برق (روی باتری) و بدون کاربر: ۳۰ دقیقهٔ اول روشن با قدرت آنتن پایین (۰ dBm) */
+    UINT8_T__G__TlmFlags = 0u;
+    func__Simple_WifiPowerSaveTick(2000u);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() < 0.1f),
+                  "شروع کار روی باتری بدون کاربر: وای‌فای روشن با قدرت آنتن پایین");
+
+    func__Simple_WifiPowerSaveTick(2000u + 1799000u);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() < 0.1f),
+                  "انتهای ۳۰ دقیقهٔ اول روی باتری: همچنان روشن با قدرت آنتن پایین");
+
+    /* ۳. پس از ۳۰ دقیقه (۱۸۰۰۰۰۰ms): ۲ دقیقه خاموش و ۱ دقیقه روشن با قدرت آنتن پایین */
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u);
+    func__T_Check(!WiFi.isApActive(),
+                  "پس از ۳۰ دقیقه بدون کاربر: ورود به بازهٔ ۲ دقیقه خاموشی وای‌فای");
+
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u + 119000u);
+    func__T_Check(!WiFi.isApActive(),
+                  "در ثانیهٔ ۱۱۹ از بازهٔ خاموشی: همچنان خاموش");
+
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u + 120000u);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() < 0.1f),
+                  "پس از ۲ دقیقه خاموشی: روشن شدن ۱ دقیقه‌ای با قدرت آنتن پایین");
+
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u + 180000u);
+    func__T_Check(!WiFi.isApActive(),
+                  "پایان ۱ دقیقه روشنایی: شروع چرخهٔ بعدی ۲ دقیقه خاموشی");
+
+    /* ۴. اتصال کاربر در حین کار روی باتری: روشنِ دائم + بیشترین قدرت آنتن + ارسال فریم ۰x۳۳ به برد */
+    while (Serial.takeEspByte(&uint8_t__byte)) {}
+    WiFi.setStationNum(1);
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u + 190000u);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() > 20.0f),
+                  "به‌محض اتصال کاربر: وای‌فای روشن و قدرت آنتن روی بیشترین مقدار (۲۰٫۵ dBm)");
+
+    uint8_t__size = 0u;
+    while (Serial.takeEspByte(&uint8_t__byte))
+    {
+        if (uint8_t__size < (uint8_t)sizeof(uint8_t__frame)) { uint8_t__frame[uint8_t__size] = uint8_t__byte; }
+        uint8_t__size++;
+    }
+    func__T_Check((uint8_t__size == 9u) &&
+                  (uint8_t__frame[3] == SIMPLE_MSG_WIFI_CLIENT_STATE) &&
+                  (uint8_t__frame[6] == 1u),
+                  "فریم گزارش اتصال کاربر (۰x۳۳ با مقدار ۱) برای برد ارسال شد");
+
+    /* ۵. قطع اتصال کاربر: تایمر ۳۰ دقیقه‌ای از اول شروع می‌شود و قدرت آنتن پایین می‌آید */
+    WiFi.setStationNum(0);
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u + 200000u);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() < 0.1f),
+                  "پس از قطع اتصال کاربر روی باتری: شروع مجدد ۳۰ دقیقهٔ اول با قدرت آنتن پایین");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -324,6 +400,7 @@ int main(void)
     func__T_TestQueue();
     func__T_TestSender();
     func__T_TestEchoAndNak();
+    func__T_TestWifiPowerSave();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

@@ -81,6 +81,8 @@ static bool func__Simple_GetArg(const char *char__ptr_name, String &string__out)
 /* ==================== صفحه اصلی ==================== */
 static void func__Simple_HttpRoot(void)
 {
+    BOOL__G__BrowserSeen = true;
+    UINT32_T__G__LastBrowserPollMs = (uint32_t)millis();
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/html", "");
@@ -105,6 +107,7 @@ static void func__Simple_HttpTelemetry(void)
     uint8_t uint8_t__index;
     size_t size_t__used;
 
+    BOOL__G__BrowserSeen = true;
     UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
     func__Simple_ChartTick();
 

@@ -67,6 +67,11 @@ void setup(void)
     UINT32_T__G__ChargeCountCh2 = UINT32_T__G__PrevChargeCountCh2;
 
     (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
+#if defined(ESP8266)
+    WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
+#endif
+    BOOL__G__WifiApActive = true;
+    BOOL__G__WifiHighPower = true;
 
     SIMPLE_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Simple_HttpRoot);
     SIMPLE_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Simple_HttpTelemetry);
@@ -97,6 +102,7 @@ void loop(void)
 {
     func__Simple_DrainSerial();
     SIMPLE_WEB_SERVER_T__G__Server.handleClient();
+    func__Simple_WifiPowerSaveTick((uint32_t)millis());
     func__Simple_ChartTick();
 
     /* صف ریست قفل‌ها: هر ۱۲۰ms حداکثر یک فریم SET_PARAM */

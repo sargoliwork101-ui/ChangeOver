@@ -171,6 +171,32 @@
 #define ESPLINK_MSG_TIME_SYNC         0x30u
 #define ESPLINK_MSG_DIAG_REQ          0x31u
 #define ESPLINK_MSG_DIAG_DATA         0x32u
+/* [EN] Hybrid Wi-Fi power-saving client state report (ESP -> STM, 1-byte
+ *      payload: 1 = client connected, 0 = no client connected) and timing
+ *      windows on battery when no user is connected:
+ *        - First 30 minutes (1800000 ms): ESP stays ON (CH_PD high) at low
+ *          antenna TX power.
+ *        - After 30 minutes: STM32 cycles CH_PD 2 minutes OFF (120000 ms) and
+ *          1 minute ON (60000 ms), while ESP keeps low antenna TX power until
+ *          a user connects.
+ *        - Whenever mains input is present OR a user is connected: ESP stays
+ *          continuously ON at maximum antenna TX power, and the 30-minute
+ *          battery idle timer resets.
+ * [FA] گزارش وضعیت اتصال کاربر برای سناریوی ترکیبی کاهش مصرف وای‌فای
+ *      (از ESP به STM، یک بایت: ۱ = کاربر متصل، ۰ = بدون کاربر) و بازه‌های
+ *      زمانی روی باتری هنگام نبود کاربر:
+ *        - ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): ESP روشن (CH_PD بالا) با قدرت
+ *          آنتن پایین.
+ *        - پس از ۳۰ دقیقه: چرخهٔ ۲ دقیقه خاموش (۱۲۰۰۰۰ میلی‌ثانیه) و ۱ دقیقه
+ *          روشن (۶۰۰۰۰ میلی‌ثانیه) با قدرت آنتن پایین تا زمان اتصال کاربر.
+ *        - در حضور برق ورودی یا اتصال کاربر: روشنِ دائم با بیشترین قدرت آنتن
+ *          و ریست تایمر ۳۰ دقیقه‌ای. */
+#define ESPLINK_MSG_WIFI_CLIENT_STATE       0x33u
+#define ESPLINK_WIFI_IDLE_LOW_POWER_MS      1800000u
+#define ESPLINK_WIFI_CYCLE_ON_MS              60000u
+#define ESPLINK_WIFI_CYCLE_OFF_MS            120000u
+#define ESPLINK_WIFI_CYCLE_PERIOD_MS        180000u
+#define ESPLINK_WIFI_CLIENT_HOLD_MS           15000u
 
 /* ==================== Parameter IDs / شناسهٔ پارامترها ==================== */
 
@@ -580,6 +606,64 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
  * @param  bool__on [EN] true=on, false=off‎ / روشن/خاموش
  */
 void func__EspLink_Power(bool bool__on);
+
+/**
+ * @brief  [EN] Query whether the ESP power rail (CH_PD) is currently enabled.
+ *         [FA] بررسی روشن بودن تغذیهٔ ESP (پایهٔ CH_PD).
+ * @return [EN] true if CH_PD is high, false if powered down /
+ *         [FA] در صورت روشن بودن true و در غیر این صورت false
+ */
+bool func__EspLink_IsPowerOn(void);
+
+/**
+ * @brief  [EN] Query whether a Wi-Fi client is currently considered connected.
+ *         [FA] بررسی متصل بودن کاربر به وای‌فای در وضعیت فعلی.
+ * @return [EN] true if a Wi-Fi client is active, false otherwise /
+ *         [FA] در صورت اتصال کاربر true و در غیر این صورت false
+ */
+bool func__EspLink_IsWifiClientConnected(void);
+
+/**
+ * @brief  [EN] Return the elapsed battery idle time (ms) without a connected
+ *              Wi-Fi user.
+ *         [FA] زمان سپری‌شدهٔ بی‌کاری روی باتری بدون اتصال کاربر (میلی‌ثانیه)
+ *              را برمی‌گرداند.
+ * @return [EN] Elapsed idle milliseconds on battery /
+ *         [FA] زمان سپری‌شده بر حسب میلی‌ثانیه
+ */
+uint32_t func__EspLink_GetBatteryIdleElapsedMs(void);
+
+/**
+ * @brief  [EN] Record the latest Wi-Fi client connection state reported by
+ *              the ESP or inferred from an interactive user command.
+ *         [FA] ثبت آخرین وضعیت اتصال کاربر به وای‌فای (گزارش‌شده از ESP یا
+ *              ناشی از فرمان مستقیم کاربر).
+ * @param  bool__connected [EN] true when a user is connected, false when idle /
+ *                         [FA] در صورت حضور کاربر true و در صورت قطع کامل false
+ */
+void func__EspLink_NotifyWifiClientState(bool bool__connected);
+
+/**
+ * @brief  [EN] Advance the hybrid ESP Wi-Fi power-saving state machine by
+ *              uint32_t__stepMs and drive CH_PD accordingly:
+ *              - Mains input present OR user connected: CH_PD stays ON and
+ *                the battery idle timer resets to 0.
+ *              - On battery with no user connected: CH_PD stays ON for the
+ *                first 30 minutes (1800000 ms), then cycles 2 minutes OFF
+ *                (120000 ms) and 1 minute ON (60000 ms).
+ *         [FA] پیشبرد ماشین حالت کاهش مصرف وای‌فای به اندازهٔ uint32_t__stepMs
+ *              و کنترل پایهٔ CH_PD:
+ *              - حضور برق ورودی یا اتصال کاربر: روشن ماندن دائم و صفر شدن
+ *                تایمر بی‌کاری باتری.
+ *              - روی باتری و بدون کاربر: ۳۰ دقیقهٔ اول روشن، سپس چرخهٔ ۲ دقیقه
+ *                خاموش و ۱ دقیقه روشن.
+ * @param  bool__inputPresent [EN] true if mains input is present /
+ *                            [FA] وضعیت حضور برق ورودی
+ * @param  uint32_t__stepMs   [EN] Elapsed step in milliseconds /
+ *                            [FA] گام زمانی سپری‌شده بر حسب میلی‌ثانیه
+ */
+void func__EspLink_PowerSaveTick(bool bool__inputPresent,
+                                 uint32_t uint32_t__stepMs);
 
 #ifdef ESPLINK_HOST_TEST
 /* [EN] Host-only probes for the production parser and LUT-reset handshake. */

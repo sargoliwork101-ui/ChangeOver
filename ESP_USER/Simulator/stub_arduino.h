@@ -46,6 +46,7 @@
 #define SERIAL_8N1 0
 #define CONTENT_LENGTH_UNKNOWN ((size_t)-1)
 
+#define WIFI_OFF 0
 #define WIFI_AP 2
 #define WIFI_NONE_SLEEP 0
 
@@ -366,21 +367,44 @@ class SimWiFi
 {
 public:
     void persistent(bool bool__enabled) { (void)bool__enabled; }
-    void mode(int int__value) { modeValue = int__value; }
+    void mode(int int__value)
+    {
+        modeValue = int__value;
+        if (int__value == WIFI_OFF)
+        {
+            apActive = false;
+        }
+    }
     void setSleep(bool bool__enabled) { (void)bool__enabled; }
     void setSleepMode(int int__value) { (void)int__value; }
+    void setOutputPower(float float__dbm) { outputPowerDbmValue = float__dbm; }
     bool softAP(const char *char__ptr_ssid, const char *char__ptr_password)
     {
         ssidText = (char__ptr_ssid != NULL) ? char__ptr_ssid : "";
         passwordText = (char__ptr_password != NULL) ? char__ptr_password : "";
+        apActive = true;
         printf("[sim] اکسس‌پوینت شبیه‌سازی‌شده: %s / %s (هیچ رادیویی روشن نمی‌شود)\n",
                ssidText.c_str(), passwordText.c_str());
         return true;
     }
+    bool softAPdisconnect(bool bool__wifioff = false)
+    {
+        (void)bool__wifioff;
+        apActive = false;
+        return true;
+    }
+    int softAPgetStationNum(void) const { return stationCount; }
+    void setStationNum(int int__count) { stationCount = int__count; }
+    float outputPowerDbm(void) const { return outputPowerDbmValue; }
+    bool isApActive(void) const { return apActive; }
+    int currentMode(void) const { return modeValue; }
     const char *ssid(void) const { return ssidText.c_str(); }
 
 private:
     int modeValue = 0;
+    int stationCount = 0;
+    float outputPowerDbmValue = 20.5f;
+    bool apActive = false;
     std::string ssidText;
     std::string passwordText;
 };

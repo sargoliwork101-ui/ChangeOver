@@ -131,6 +131,11 @@ void setup(void)
     WiFi.setSleep(false);
 #endif
     (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
+#if defined(ESP8266)
+    WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
+#endif
+    BOOL__G__WifiApActive = true;
+    BOOL__G__WifiHighPower = true;
 
     /* [EN] Mount the file system for the bench log; format once if it has never been used.
        [FA] سوار کردن فایل‌سیستم برای فایل ثبت بنچ؛ اگر هرگز استفاده نشده یک‌بار فرمت می‌شود. */
@@ -178,4 +183,5 @@ void loop(void)
 
     func__Esp_PumpTx();
     ESP_WEB_SERVER_T__G__Server.handleClient();
+    func__Esp_WifiPowerSaveTick((uint32_t)millis());
 }

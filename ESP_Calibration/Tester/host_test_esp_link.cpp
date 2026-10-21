@@ -787,6 +787,72 @@ int main(void)
         check(Serial.rx.empty(), "and the ring is empty when the stream ends");
     }
 
+    /* ---- 17. hybrid Wi-Fi TX power and battery duty-cycling ------------- */
+    {
+        /* 1) Mains input present -> AP stays ON at maximum TX power (20.5 dBm) */
+        BOOL__G__TlmSeen = true;
+        UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT;
+        BOOL__G__BrowserSeen = false;
+        WiFi.stationNum = 0;
+        WiFi.apActive = true;
+        WiFi.outputPowerDbm = ESP_WIFI_TX_MAX_DBM;
+        BOOL__G__WifiApActive = true;
+        BOOL__G__WifiHighPower = true;
+        BOOL__G__WifiBatteryIdleTracking = false;
+        BOOL__G__WifiLastReportedConnected = false;
+        Serial.tx.clear();
+
+        func__Esp_WifiPowerSaveTick(1000u);
+        check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
+              "with mains input present, Wi-Fi stays ON at maximum TX power (20.5 dBm)");
+
+        /* 2) On battery with no client -> first 30 min ON at low TX power (0 dBm) */
+        UINT8_T__G__TlmFlags = 0u;
+        func__Esp_WifiPowerSaveTick(2000u);
+        check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
+              "on battery with no client, Wi-Fi stays ON at low TX power during first 30 min");
+
+        func__Esp_WifiPowerSaveTick(2000u + 1799000u);
+        check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
+              "at 29m59s on battery with no client, Wi-Fi is still ON at low TX power");
+
+        /* 3) After 30 minutes (1800000 ms) -> 2 min OFF / 1 min ON at low TX power */
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u);
+        check(!WiFi.apActive,
+              "after 30 minutes idle on battery, Wi-Fi enters the 2-minute OFF phase");
+
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 120000u);
+        check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
+              "after 2 minutes OFF, Wi-Fi turns ON for 1 minute at low TX power");
+
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 180000u);
+        check(!WiFi.apActive,
+              "after the 1-minute ON window, Wi-Fi turns OFF for the next 2-minute phase");
+
+        /* 4) Client connects -> immediate ON at max TX power + 0x33 frame sent */
+        Serial.tx.clear();
+        WiFi.stationNum = 1;
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 190000u);
+        check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
+              "when a client connects, Wi-Fi immediately stays ON at maximum TX power");
+        check(Serial.tx.size() == 9u &&
+              Serial.tx[3] == ESP_MSG_WIFI_CLIENT_STATE &&
+              Serial.tx[6] == 1u,
+              "connecting on battery sends ESPLINK_MSG_WIFI_CLIENT_STATE (0x33, payload=1) to STM32");
+
+        /* 5) Client disconnects -> 30-min timer restarts at low TX power */
+        Serial.tx.clear();
+        WiFi.stationNum = 0;
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 200000u);
+        check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
+              "when client disconnects on battery, 30-minute low-power window starts fresh");
+        check(Serial.tx.size() == 9u &&
+              Serial.tx[3] == ESP_MSG_WIFI_CLIENT_STATE &&
+              Serial.tx[6] == 0u,
+              "disconnecting sends ESPLINK_MSG_WIFI_CLIENT_STATE (0x33, payload=0) to STM32");
+        WiFi.stationNum = 1;
+    }
+
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
         std::cout << "ALL " << checks << " ESP HOST TESTS PASSED\n";

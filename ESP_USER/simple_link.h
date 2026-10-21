@@ -552,3 +552,121 @@ static void func__Simple_DrainSerial(void)
         }
     }
 }
+
+/* ==================== ارسال وضعیت اتصال کاربر وای‌فای به برد ==================== */
+static void func__Simple_SendWifiClientState(bool bool__connected)
+{
+    uint8_t UINT8_T__A__Frame[9];
+    uint8_t uint8_t__stateByte = bool__connected ? 1u : 0u;
+    uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
+
+    UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
+    UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
+    UINT8_T__A__Frame[2] = SIMPLE_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = SIMPLE_MSG_WIFI_CLIENT_STATE;
+    UINT8_T__A__Frame[4] = 1u;
+    UINT8_T__A__Frame[5] = 0u;
+    UINT8_T__A__Frame[6] = uint8_t__stateByte;
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_MSG_WIFI_CLIENT_STATE);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 1u);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, uint8_t__stateByte);
+    UINT8_T__A__Frame[7] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[8] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+    (void)Serial.write(UINT8_T__A__Frame, 9u);
+}
+
+/* ==================== بررسی اتصال فعال کاربر به وای‌فای یا پنل ==================== */
+static bool func__Simple_IsWifiClientConnected(uint32_t uint32_t__nowMs)
+{
+    bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
+    bool bool__browserActive = BOOL__G__BrowserSeen &&
+        ((uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) < SIMPLE_WIFI_CLIENT_HOLD_MS);
+    return bool__stationConnected || bool__browserActive;
+}
+
+/* ==================== مدیریت ترکیبی قدرت آنتن و چرخهٔ خاموش/روشن وای‌فای روی باتری ==================== */
+static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
+{
+    bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
+        ((UINT8_T__G__TlmFlags & SIMPLE_TLM_FLAG_INPUT_PRESENT) != 0u);
+    bool bool__clientConnected = func__Simple_IsWifiClientConnected(uint32_t__nowMs);
+
+    BOOL__G__WifiClientConnected = bool__clientConnected;
+
+    if ((bool__clientConnected != BOOL__G__WifiLastReportedConnected) ||
+        (bool__clientConnected && (!bool__inputPresent) &&
+         ((uint32_t__nowMs - UINT32_T__G__WifiLastReportMs) >= SIMPLE_WIFI_CLIENT_REPORT_MS)))
+    {
+        func__Simple_SendWifiClientState(bool__clientConnected);
+        BOOL__G__WifiLastReportedConnected = bool__clientConnected;
+        UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
+    }
+
+    if (bool__inputPresent || bool__clientConnected)
+    {
+        BOOL__G__WifiBatteryIdleTracking = false;
+        UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
+        if (!BOOL__G__WifiApActive)
+        {
+            WiFi.mode(WIFI_AP);
+            (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
+            BOOL__G__WifiApActive = true;
+            BOOL__G__WifiHighPower = false;
+        }
+        if (!BOOL__G__WifiHighPower)
+        {
+#if defined(ESP8266)
+            WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
+#endif
+            BOOL__G__WifiHighPower = true;
+        }
+        return;
+    }
+
+    if (!BOOL__G__WifiBatteryIdleTracking)
+    {
+        BOOL__G__WifiBatteryIdleTracking = true;
+        UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
+    }
+
+    uint32_t uint32_t__idleElapsedMs = uint32_t__nowMs - UINT32_T__G__WifiBatteryIdleStartMs;
+    bool bool__shouldApBeOn = true;
+
+    if (uint32_t__idleElapsedMs >= SIMPLE_WIFI_IDLE_LOW_POWER_MS)
+    {
+        uint32_t uint32_t__afterIdleMs =
+            uint32_t__idleElapsedMs - SIMPLE_WIFI_IDLE_LOW_POWER_MS;
+        uint32_t uint32_t__cycleOffsetMs =
+            uint32_t__afterIdleMs % SIMPLE_WIFI_CYCLE_PERIOD_MS;
+        bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= SIMPLE_WIFI_CYCLE_OFF_MS);
+    }
+
+    if (bool__shouldApBeOn)
+    {
+        if (!BOOL__G__WifiApActive)
+        {
+            WiFi.mode(WIFI_AP);
+            (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
+            BOOL__G__WifiApActive = true;
+            BOOL__G__WifiHighPower = true;
+        }
+        if (BOOL__G__WifiHighPower)
+        {
+#if defined(ESP8266)
+            WiFi.setOutputPower(SIMPLE_WIFI_TX_LOW_DBM);
+#endif
+            BOOL__G__WifiHighPower = false;
+        }
+    }
+    else
+    {
+        if (BOOL__G__WifiApActive)
+        {
+            (void)WiFi.softAPdisconnect(true);
+            WiFi.mode(WIFI_OFF);
+            BOOL__G__WifiApActive = false;
+        }
+    }
+}

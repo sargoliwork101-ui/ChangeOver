@@ -65,9 +65,33 @@
 #define ESP_MSG_LUT_READ            0x08u
 #define ESP_MSG_LUT_ACK             0x13u
 #define ESP_MSG_LUT_DATA            0x14u
+#define ESP_MSG_WIFI_CLIENT_STATE   0x33u
 /* [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
    [FA] سقف نقاط هر کانال، برابر CAL_LUT_POINTS_MAX روی برد. */
 #define ESP_LUT_POINTS_MAX          24u
+
+/* [EN] Hybrid Wi-Fi power-saving and antenna TX power constants:
+ *      - Mains input present OR user connected: AP stays ON at maximum TX
+ *        power (20.5 dBm).
+ *      - On battery with no user connected:
+ *        * First 30 minutes (1800000 ms): AP stays ON at low TX power (0 dBm).
+ *        * After 30 minutes: AP cycles 2 minutes OFF (120000 ms) and 1 minute
+ *          ON (60000 ms) at low TX power until a user connects.
+ * [FA] ثوابت سناریوی ترکیبی کاهش مصرف و قدرت آنتن وای‌فای:
+ *      - در زمان وجود برق ورودی یا اتصال کاربر: روشنِ دائم با بیشترین قدرت
+ *        آنتن (۲۰٫۵ دسی‌بل‌میلی‌وات).
+ *      - روی باتری و بدون اتصال کاربر:
+ *        * ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): روشن با قدرت آنتن پایین (۰ dBm).
+ *        * پس از ۳۰ دقیقه: چرخهٔ ۲ دقیقه خاموش (۱۲۰۰۰۰ میلی‌ثانیه) و ۱ دقیقه
+ *          روشن (۶۰۰۰۰ میلی‌ثانیه) با قدرت آنتن پایین تا زمان اتصال کاربر. */
+#define ESP_TLM_FLAG_INPUT_PRESENT  0x02u
+#define ESP_WIFI_IDLE_LOW_POWER_MS  1800000u
+#define ESP_WIFI_CYCLE_ON_MS        60000u
+#define ESP_WIFI_CYCLE_OFF_MS       120000u
+#define ESP_WIFI_CYCLE_PERIOD_MS    180000u
+#define ESP_WIFI_CLIENT_REPORT_MS   1000u
+#define ESP_WIFI_TX_MAX_DBM         20.5f
+#define ESP_WIFI_TX_LOW_DBM         0.0f
 
 /* ==================== Parameter Constants ==================== */
 /* [EN] Current parameter map: ids 20..26 = shared charge profile; 27..37 =

@@ -42,7 +42,7 @@ CubeIDE/Core/Src/main.c
       TaskControl                     Firmware/Rtos/Src/task_control.c
         حلقهٔ شارژر دوکاناله (BULK/ABSORB/FLOAT + مود تست دستی + JIT retry)
       TaskComm                        Firmware/Rtos/Src/task_comm.c
-        ESP-Link: پارامترها + تله‌متری ۱۰۰ms + ماندگاری فلش (NVM)
+        ESP-Link: پارامترها + تله‌متری ۱۰۰ms + ماندگاری فلش (NVM) + مدیریت ترکیبی کاهش مصرف وای‌فای روی باتری
 ```
 
 ## قرارداد تثبیت‌شدهٔ BSP

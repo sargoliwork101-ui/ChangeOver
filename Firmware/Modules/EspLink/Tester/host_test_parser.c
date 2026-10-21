@@ -174,6 +174,73 @@ int main(void)
     func__EspLink_HostTest_RecordCommitAck(true);
     CHECK(func__EspLink_HostTest_TryReset(true, true) == true);
 
+    /* Hybrid Wi-Fi power-saving scenario on STM32:
+       1) Mains input present: CH_PD stays ON, battery idle timer stays 0.
+       2) Battery (input_present == false), no client:
+          - First 30 minutes (1800000 ms): CH_PD stays ON.
+          - After 30 minutes: cycles 2 minutes OFF (120000 ms) then 1 minute ON (60000 ms).
+       3) Client connects (via ESPLINK_MSG_WIFI_CLIENT_STATE 0x33 frame or notify):
+          - CH_PD immediately turns ON and stays ON, battery idle timer resets to 0.
+          - When client disconnects, the 30-minute timer starts fresh from 0. */
+    func__EspLink_HostTest_Reset();
+    CHECK(func__EspLink_IsPowerOn() == true);
+    CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
+
+    /* Mains input present -> stays ON, idle timer 0 */
+    func__EspLink_PowerSaveTick(true, 600000u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+    CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
+
+    /* On battery, no client: 29 minutes 59.9 seconds -> still in first 30 min (ON) */
+    func__EspLink_PowerSaveTick(false, 1799900u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+    CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 1799900u);
+
+    /* Reach exactly 30 minutes (1800000 ms) -> enters 2-minute OFF window */
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 1800000u);
+    CHECK(func__EspLink_IsPowerOn() == false);
+
+    /* After 119.9 seconds in OFF window -> still OFF */
+    func__EspLink_PowerSaveTick(false, 119900u);
+    CHECK(func__EspLink_IsPowerOn() == false);
+
+    /* At 120 seconds after 30-min mark -> enters 1-minute ON window */
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+
+    /* After 59.9 seconds in ON window -> still ON */
+    func__EspLink_PowerSaveTick(false, 59900u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+
+    /* At 180 seconds after 30-min mark (end of 1-min ON window) -> next 2-min OFF window */
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_IsPowerOn() == false);
+
+    /* Client connects via 0x33 frame [1] -> wakes immediately, resets 30-min timer */
+    {
+        uint8_t connectedPayload = 1u;
+        feed_frame((uint8_t)ESPLINK_MSG_WIFI_CLIENT_STATE, &connectedPayload, 1u, false);
+    }
+    CHECK(func__EspLink_IsWifiClientConnected() == true);
+    CHECK(func__EspLink_IsPowerOn() == true);
+    CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
+
+    /* Client disconnects via 0x33 frame [0] -> 30-minute timer starts over from 0 */
+    {
+        uint8_t disconnectedPayload = 0u;
+        feed_frame((uint8_t)ESPLINK_MSG_WIFI_CLIENT_STATE, &disconnectedPayload, 1u, false);
+    }
+    CHECK(func__EspLink_IsWifiClientConnected() == false);
+    func__EspLink_PowerSaveTick(false, 600000u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+    CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 600000u);
+
+    /* Mains input returns -> timer resets to 0 and stays ON */
+    func__EspLink_PowerSaveTick(true, 100u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+    CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
+
     printf("checks: %u, failures: %u\n", g_checks, g_failures);
     return (g_failures == 0u) ? 0 : 1;
 }

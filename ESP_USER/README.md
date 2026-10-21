@@ -258,13 +258,17 @@ bash ESP_USER/Simulator/run_sim.sh     # سپس http://localhost:3000
 5. به وای‌فای `changeover_userpannel` وصل شوید
 6. مرورگر `192.168.4.1`
 
-## پروتکل دیاگ
+## پروتکل دیاگ و کاهش مصرف وای‌فای
 - `0x30 TIME_SYNC` ESP->STM: ۴ بایت LE unix
-- `0x31 DIAG_REQ` ESP->STM: بدون payload -> برد ۵ چانک می‌فرستد
+- `0x31 DIAG_REQ` ESP->STM: بدون payload -> برد ۵ چانک می‌فرستد (یا ۱ بایت `1` برای پاک کردن تاریخچهٔ دیاگ)
 - `0x32 DIAG_DATA` STM->ESP:
   - chunk0: 5×u32 totalChargeSec/chargeCount/uptime/resetCount/boardTime + 2×u8 errCount/powerCount
   - chunk1/2: errors ۵تایی هر کدام 8×u32 timestamp/faultMask/vIn/vPack/vLow/vHigh/state1/state2
   - chunk3/4: powerEvents ۱۰تایی هر کدام 3×u32 off/on/duration
+- `0x33 WIFI_CLIENT_STATE` ESP->STM: ۱ بایت (`1` = کاربر متصل، `0` = بدون کاربر)
+  - **در زمان وجود برق ورودی:** وای‌فای همیشه روشن و قدرت آنتن روی بیشترین مقدار (`20.5 dBm`) است.
+  - **روی باتری و بدون اتصال کاربر:** ۳۰ دقیقهٔ اول روشن با قدرت آنتن پایین (`0.0 dBm`)؛ پس از ۳۰ دقیقه چرخهٔ ۱ دقیقه روشن و ۲ دقیقه خاموش با قدرت آنتن پایین.
+  - **در زمان اتصال کاربر:** وای‌فای روشن می‌ماند، قدرت آنتن بلافاصله به بیشترین مقدار (`20.5 dBm`) می‌رود و با قطع اتصال کاربر تایمر ۳۰ دقیقه‌ای از نو شروع می‌شود.
 
 ## قوانین
 - کامنت‌ها فقط فارسی - استثنای پنل ESP

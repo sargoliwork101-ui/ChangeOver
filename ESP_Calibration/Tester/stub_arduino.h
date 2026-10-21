@@ -106,15 +106,25 @@ struct StubSerial {
 extern StubSerial Serial;
 
 /* ---------------- WiFi ---------------------------------------------------*/
+#define WIFI_OFF 0
 #define WIFI_AP 1
 #define WIFI_NONE_SLEEP 0
 struct StubWiFi {
+    int modeValue = WIFI_AP;
+    int stationNum = 1;
+    float outputPowerDbm = 20.5f;
+    bool apActive = true;
     void persistent(bool) {}
-    void mode(int) {}
+    void mode(int m) {
+        modeValue = m;
+        if (m == WIFI_OFF) apActive = false;
+    }
     void setSleepMode(int) {}
     void setSleep(bool) {}
-    bool softAP(const char *, const char *) { return true; }
-    int softAPgetStationNum(void) { return 1; }
+    void setOutputPower(float dbm) { outputPowerDbm = dbm; }
+    bool softAP(const char *, const char *) { apActive = true; return true; }
+    bool softAPdisconnect(bool = false) { apActive = false; return true; }
+    int softAPgetStationNum(void) { return stationNum; }
 };
 extern StubWiFi WiFi;
 
