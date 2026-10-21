@@ -59,6 +59,7 @@ void setup(void)
     func__Simple_TimeLoad();          /* ساعت ذخیره‌شده - دیگر پرسیده نمی‌شود */
     func__Simple_ParamsLoad();        /* پارامترهای خود برد از آخرین بار */
     func__Simple_ChargeHistoryLoad();
+    func__Simple_ChartsLoad();        /* هر چهار بازه از آخرین ذخیرهٔ روزانه */
     func__Simple_DiagLoad();
 
     // بازیابی prev counts برای تشخیص شارژ بعد از ریستارت
@@ -120,9 +121,9 @@ void loop(void)
     }
 
     /* ساعت: RTC خود برد منبع دقیق‌تری است (پنل بین دو روشن‌شدن خواب است و
-       ساعتش عقب می‌ماند). اگر پنل ساعت نداشت یا با ساعت برد بیشتر از
-       SIMPLE_TIME_ADOPT_DIFF_SEC اختلاف داشت، ساعت برد را برمی‌داریم و ذخیره
-       می‌کنیم؛ این‌طور دیگر هیچ‌وقت از کاربر پرسیده نمی‌شود. */
+       ساعتش عقب می‌ماند). اگر پنل ساعت نداشت یا با ساعت برد至少 ۵ دقیقه
+       (SIMPLE_TIME_ADOPT_DIFF_SEC = 300s) اختلاف داشت، ساعت برد را برمی‌داریم
+       و ذخیره می‌کنیم. */
     if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
     {
         bool bool__adopt = !BOOL__G__TimeValid;
@@ -132,15 +133,12 @@ void loop(void)
             uint32_t uint32_t__gap = (UINT32_T__G__BoardTimeSec > uint32_t__panelSec)
                 ? (UINT32_T__G__BoardTimeSec - uint32_t__panelSec)
                 : (uint32_t__panelSec - UINT32_T__G__BoardTimeSec);
-            if (uint32_t__gap > SIMPLE_TIME_ADOPT_DIFF_SEC) bool__adopt = true;
+            if (uint32_t__gap >= SIMPLE_TIME_ADOPT_DIFF_SEC) bool__adopt = true;
         }
         if (bool__adopt)
         {
             func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
-            if (BOOL__G__FsOk && !LittleFS.exists(SIMPLE_TIME_FILE))
-            {
-                func__Simple_TimeSave();
-            }
+            func__Simple_TimeSave();
             BOOL__G__TimePushed = true;   /* ساعت از خود برد گرفته شد - نیازی به فرستادن نیست */
         }
     }
@@ -193,8 +191,7 @@ void loop(void)
         func__Simple_RecoveryArm();
     }
 
-    // ذخیره دوره‌ای تاریخچه شارژ و دیاگ و پارامترها هر ۳۰ ثانیه
-    // هر کدام فقط اگر عوض شده باشد نوشته می‌شود (نمودارها فقط در RAM هستند)
+    // ذخیره دوره‌ای تاریخچه شارژ و دیاگ و پارامترها هر ۳۰ ثانیه (فقط در صورت تغییر)
     static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)
     {
@@ -204,12 +201,22 @@ void loop(void)
         uint32_t__lastSaveMs = uint32_t__now;
     }
 
+    // ذخیرهٔ نمودارها روی فلش فقط روزی ۱ بار (هر ۲۴ ساعت) و فقط در صورت تغییر
+    static uint32_t uint32_t__lastChartSaveMs = 0u;
+    if ((uint32_t__now - uint32_t__lastChartSaveMs) >= 86400000u)
+    {
+        if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
+        if (BOOL__G__TimeValid) func__Simple_TimeSave();
+        uint32_t__lastChartSaveMs = uint32_t__now;
+    }
+
     // ریبوت خودکار بعد از تغییر وای‌فای - ۲ ثانیه تاخیر
     if (BOOL__G__WifiRebootPending)
     {
         if ((uint32_t__now - UINT32_T__G__WifiRebootMs) > 2000u)
         {
             if (BOOL__G__ChargeHistDirty) func__Simple_ChargeHistorySave();
+            if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
             if (BOOL__G__DiagDirty) func__Simple_DiagSave();
             if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
 #if defined(ESP8266)

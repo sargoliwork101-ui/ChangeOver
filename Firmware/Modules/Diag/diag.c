@@ -246,8 +246,8 @@ void func__Diag_Init(void)
 
     DIAG_RECORD_T__G__Active.uint32_t__uptimeSec = 0u;
     DIAG_RECORD_T__G__Active.uint32_t__resetCount++;
-    BOOL__G__Dirty = true;
-    UINT32_T__G__SaveDelaySec = 600u; /* save after 10 min of stable run or with next event */
+    BOOL__G__Dirty = false;
+    UINT32_T__G__SaveDelaySec = 0u;
     UINT32_T__G__LastChargeUptimeSec = 0xFFFFFFFFu;
 
     (void)memcpy(&DIAG_RECORD_T__G__Stage, &DIAG_RECORD_T__G__Active, sizeof(diag_record_t));
@@ -523,6 +523,9 @@ void func__Diag_RecordPowerOn(void)
 void func__Diag_ClearHistory(void)
 {
     int32_t int32_t__lock = osKernelLock();
+    bool bool__hadHistory =
+        ((DIAG_RECORD_T__G__Active.uint8_t__errorCount != 0u) ||
+         (DIAG_RECORD_T__G__Active.uint8_t__powerEventCount != 0u));
 
     DIAG_RECORD_T__G__Active.uint8_t__errorCount = 0u;
     DIAG_RECORD_T__G__Active.uint8_t__powerEventCount = 0u;
@@ -531,8 +534,11 @@ void func__Diag_ClearHistory(void)
     (void)memset(DIAG_RECORD_T__G__Active.diag_power_event_t__A__PowerEvents, 0,
                  sizeof(DIAG_RECORD_T__G__Active.diag_power_event_t__A__PowerEvents));
     BOOL__G__PowerOffActive = false;
-    BOOL__G__Dirty = true;
-    UINT32_T__G__SaveDelaySec = 2u;
+    if (bool__hadHistory)
+    {
+        BOOL__G__Dirty = true;
+        UINT32_T__G__SaveDelaySec = 2u;
+    }
     if (int32_t__lock >= 0)
     {
         (void)osKernelRestoreLock(int32_t__lock);

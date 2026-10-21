@@ -267,15 +267,19 @@ static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToB
 
 static uint32_t UINT32_T__G__LastSavedTimeSec = 0u; /* آخرین ساعت ذخیره‌شده روی فلش */
 
-/* ==================== ذخیره ساعت روی فایل ==================== */
+/* ==================== ذخیره ساعت روی فایل (فقط در صورت اختلاف >= ۵ دقیقه) ==================== */
 static void func__Simple_TimeSave(void)
 {
     uint32_t uint32_t__nowSec;
+    uint32_t uint32_t__diff;
 
     if (!BOOL__G__FsOk || !BOOL__G__TimeValid) return;
     uint32_t__nowSec = func__Simple_NowSec();
     if (uint32_t__nowSec < SIMPLE_TIME_VALID_MIN) return;
-    if (uint32_t__nowSec == UINT32_T__G__LastSavedTimeSec) return;
+    uint32_t__diff = (uint32_t__nowSec >= UINT32_T__G__LastSavedTimeSec)
+        ? (uint32_t__nowSec - UINT32_T__G__LastSavedTimeSec)
+        : (UINT32_T__G__LastSavedTimeSec - uint32_t__nowSec);
+    if ((UINT32_T__G__LastSavedTimeSec != 0u) && (uint32_t__diff < SIMPLE_TIME_ADOPT_DIFF_SEC)) return;
     File file__f = LittleFS.open(SIMPLE_TIME_FILE, "w");
     if (!file__f) return;
     file__f.print("{\"ts\":");
