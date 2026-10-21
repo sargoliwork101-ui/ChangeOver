@@ -790,6 +790,13 @@ int main(void)
     /* ---- 17. hybrid Wi-Fi TX power and battery duty-cycling ------------- */
     {
         /* 1) Mains input present -> AP stays ON at maximum TX power (20.5 dBm) */
+        BOOL__G__ParamKnown[74] = false;
+        BOOL__G__ParamKnown[75] = false;
+        BOOL__G__ParamKnown[ESP_PARAM_WIFI_IDLE_LOW_POWER_MS] = false;
+        BOOL__G__ParamKnown[ESP_PARAM_WIFI_CYCLE_ON_MS] = false;
+        BOOL__G__ParamKnown[ESP_PARAM_WIFI_CYCLE_OFF_MS] = false;
+        BOOL__G__ParamKnown[ESP_PARAM_WIFI_BAT_CUTOFF_PCT] = false;
+        UINT32_T__G__TlmField[15] = 25000u; /* 50% battery (>= 20% cutoff) */
         BOOL__G__TlmSeen = true;
         UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT;
         BOOL__G__BrowserSeen = false;
@@ -850,7 +857,19 @@ int main(void)
               Serial.tx[3] == ESP_MSG_WIFI_CLIENT_STATE &&
               Serial.tx[6] == 0u,
               "disconnecting sends ESPLINK_MSG_WIFI_CLIENT_STATE (0x33, payload=0) to STM32");
+
+        /* 6) Battery < 20% on battery power -> AP turns completely OFF even if a client is present */
         WiFi.stationNum = 1;
+        UINT32_T__G__TlmField[15] = 22000u; /* 12% (< 20% default cutoff) */
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 210000u);
+        check(!WiFi.apActive,
+              "when battery drops below 20% on battery power, Wi-Fi AP turns completely OFF");
+
+        /* 7) Mains input returns -> AP turns back ON at max TX power even if battery < 20% */
+        UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT;
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 220000u);
+        check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
+              "when mains input returns, Wi-Fi AP turns back ON at max TX power");
     }
 
     std::cout << std::string(70, '=') << "\n";

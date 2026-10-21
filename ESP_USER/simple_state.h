@@ -143,6 +143,10 @@ static uint32_t func__Simple_BoardParamDefault(uint8_t uint8_t__id)
         case SIMPLE_PARAM_RUN_ONE_EXIT:     return 3u;
         case SIMPLE_PARAM_CHG_PCT_VMIN_MV:  return 21000u;
         case SIMPLE_PARAM_CHG_PCT_VMAX_MV:  return 29000u;
+        case SIMPLE_PARAM_WIFI_IDLE_LOW_POWER_MS: return SIMPLE_WIFI_IDLE_LOW_POWER_MS;
+        case SIMPLE_PARAM_WIFI_CYCLE_ON_MS:       return SIMPLE_WIFI_CYCLE_ON_MS;
+        case SIMPLE_PARAM_WIFI_CYCLE_OFF_MS:      return SIMPLE_WIFI_CYCLE_OFF_MS;
+        case SIMPLE_PARAM_WIFI_BAT_CUTOFF_PCT:    return SIMPLE_WIFI_BAT_CUTOFF_PCT;
         default:                            return 0u;
     }
 }

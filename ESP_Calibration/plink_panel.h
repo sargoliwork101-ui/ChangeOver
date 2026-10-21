@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2ef4c54</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fbcd353</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -451,7 +451,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
-<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و PID</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">کالیبراسیون و فیلتر جریان</button><button data-s="4">پشتیبان‌گیری</button></div>
+<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و PID</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">کالیبراسیون و فیلتر جریان</button><button data-s="4">پشتیبان‌گیری</button><button data-s="5">وای‌فای و مصرف باتری</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>نمودار مراحل شارژ</b></div>
@@ -983,6 +983,19 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 </div>
 </div>
+<div class="sgx" id="s5">
+<div class="cd">
+<div class="hd"><b>مدیریت هوشمند وای‌فای و کاهش مصرف باتری</b></div>
+<div class="sx">رفتار تغذیه و قدرت آنتن ماژول وای‌فای (ESP) در چهار وضعیت:<br><br><b>۱) حضور برق ورودی یا اتصال کاربر</b> = وای‌فای یکسره روشن با <b>بیشترین قدرت آنتن</b>.<br><b>۲) روی باتری و بدون کاربر (بازهٔ اول)</b> = تا پایان زمان اول (پیش‌فرض ۳۰ دقیقه = ۱۸۰۰۰۰۰ میلی‌ثانیه) یکسره روشن با <b>قدرت آنتن پایین</b>.<br><b>۳) روی باتری و بدون کاربر (چرخهٔ متناوب)</b> = پس از بازهٔ اول، چرخهٔ متناوب خاموش/روشن (پیش‌فرض ۲ دقیقه خاموش و ۱ دقیقه روشن با قدرت آنتن پایین) تا زمان اتصال کاربر.<br><b>۴) باتری زیر حد قطع (پیش‌فرض ۲۰٪)</b> = وقتی برق ورودی قطع است و درصد باتری زیر این حد بیاید، ماژول ESP <b>کاملاً خاموش</b> می‌شود و دیگر در هیچ حالتی روشن نمی‌شود تا باتری تخلیهٔ عمیق نشود.</div>
+<div class="bqr">
+<label>زمان روشن ماندن اولیه روی باتری (ms)<input type="number" id="q143" step="60000" min="0" max="86400000"><span class="lb" id="a143"></span></label>
+<label>زمان روشن بودن در چرخهٔ متناوب (ms)<input type="number" id="q144" step="5000" min="5000" max="3600000"><span class="lb" id="a144"></span></label>
+<label>زمان خاموش بودن در چرخهٔ متناوب (ms)<input type="number" id="q145" step="5000" min="0" max="3600000"><span class="lb" id="a145"></span></label>
+<label>حد قطع کامل وای‌فای در باتری ضعیف (٪)<input type="number" id="q146" step="1" min="0" max="100"><span class="lb" id="a146"></span></label>
+</div>
+<div class="bqr"><button class="sb sb2 fwb" onclick="wdef()">بازگردانی پیش‌فرض کارخانهٔ وای‌فای و مصرف باتری</button></div>
+</div>
+</div>
 
 </div>
 </main>
@@ -1037,7 +1050,7 @@ function pendRestore(){
   if(!saved||typeof saved!=='object'||Array.isArray(saved))return;
   for(const id of Object.keys(saved)){
    if(!/^\\d+$/.test(id)||!Number.isFinite(+saved[id]))continue;
-   const n=+id;if(n<0||n>142)continue;PEND[n]=saved[id];
+   const n=+id;if(n<0||n>146)continue;PEND[n]=saved[id];
    const e=pctrl(n);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!saved[id];else e.value=saved[id];}
    const a=$('a'+n);if(a)a.textContent='در صف';
   }
@@ -1380,7 +1393,7 @@ const PANEL_VIEW_KEY='changeover-panel-view-v1';let panelViewTimer=0;
 function panelViewSave(){try{localStorage.setItem(PANEL_VIEW_KEY,JSON.stringify({tab:TAB,stab:STAB,ucard:UCARD,y:window.scrollY||0}));}catch(e){}}
 function panelViewRestore(){let s={};try{s=JSON.parse(localStorage.getItem(PANEL_VIEW_KEY)||'{}');}catch(e){}
  if(Number.isInteger(s.tab)&&s.tab>=0&&s.tab<3)TAB=s.tab;
- if(Number.isInteger(s.stab)&&s.stab>=0&&s.stab<5)STAB=s.stab;
+ if(Number.isInteger(s.stab)&&s.stab>=0&&s.stab<6)STAB=s.stab;
  if(Number.isInteger(s.ucard)&&s.ucard>=1&&s.ucard<=7)UCARD=s.ucard;
  document.querySelectorAll('nav button').forEach((x,i)=>x.classList.toggle('a',i===TAB));
  document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i===TAB));
@@ -1599,7 +1612,11 @@ const PX={
  139:['تعداد بوق خطای فنی برد','تعداد بوق در هر الگوی سناریوی ۷؛ از q132 و q134 مستقل است.'],
  140:['گپ بوق خطای فنی برد','فاصلهٔ بین بوق‌های الگوی سناریوی ۷؛ از q133 و q135 مستقل است.'],
  141:['دورهٔ چشمک سه LED خطای فنی','طول چرخهٔ روشن/خاموش هر سه LED سناریوی ۷.'],
- 142:['سهم روشنی سه LED خطای فنی','درصد روشن‌بودن هر سه LED در چرخهٔ مشترک.']};
+ 142:['سهم روشنی سه LED خطای فنی','درصد روشن‌بودن هر سه LED در چرخهٔ مشترک.'],
+ 143:['زمان روشن ماندن اولیه روی باتری','مدت زمانی که پس از قطع برق ورودی و نبود کاربر، وای‌فای با قدرت آنتن پایین یکسره روشن می‌ماند (ms)؛ پیش‌فرض ۳۰ دقیقه (۱۸۰۰۰۰۰).'],
+ 144:['زمان روشن بودن در چرخهٔ متناوب','مدت روشن ماندن وای‌فای در هر سیکل متناوب پس از پایان ۳۰ دقیقهٔ اول (ms)؛ پیش‌فرض ۱ دقیقه (۶۰۰۰۰).'],
+ 145:['زمان خاموش بودن در چرخهٔ متناوب','مدت خاموش ماندن کامل ESP در هر سیکل متناوب روی باتری (ms)؛ ۰ = بدون خاموشی متناوب؛ پیش‌فرض ۲ دقیقه (۱۲۰۰۰۰).'],
+ 146:['حد قطع کامل وای‌فای در باتری ضعیف','وقتی برق ورودی قطع است و درصد شارژ باتری زیر این عدد بیاید، ESP کاملاً خاموش می‌شود و دیگر اصلاً روشن نمی‌شود (٪)؛ پیش‌فرض ۲۰٪.']};
 
 // [EN] v1.36 (user order: the chip tooltips must be EXPLICIT - plain
 //   language, real units, and what bigger vs smaller actually does. The
@@ -1924,7 +1941,7 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
 /* v1.49: ۱۱۹/۱۲۰ (نردبان سمت شارژ) هم مثل بقیه خوانده و نوشته می‌شود */
-const AIDS=[];for(let _i=27;_i<=142;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=146;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 
@@ -1937,8 +1954,8 @@ const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 /* v1.72: ۱۲۵..۱۲۷ هم به همین آرایه اضافه شد (۲۴ ساعت، ۱۰ دقیقه، قطع خروجی خاموش) */
 /* v1.82: ۱۲۸..۱۳۱ چراغ/بوق و ۱۳۴..۱۳۵ تعداد/گپ بوقِ خودِ سناریو ۶ */
 /* v1.81: ۱۳۲..۱۳۳ شکل بوق قفل عدم‌توازن، v1.82: ۱۳۴..۱۳۵ شکل بوق باتری خراب،
-   v1.83: ۱۳۶ تعداد سیکل کامل پاک برای شمارندهٔ عدم‌توازن. */
-const CDEF=[21000,29000,1000,60000,1000,50,86400000,600000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50];
+   v1.83: ۱۳۶ تعداد سیکل کامل پاک برای شمارندهٔ عدم‌توازن، v1.85: ۱۴۳..۱۴۶ وای‌فای و مصرف باتری. */
+const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20];
 /* v1.71: شناسهٔ ۵۷ دیگر درصد نیست؛ مدت هر بوق بحرانی بر حسب ms است (۱۰۰۰۰ = همان صدای قبلی) */
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,10000,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
@@ -2032,6 +2049,10 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(a.u137!==0&&!fit(a.u138,a.u137,a.u139,a.u140))w.push({ids:[137,138,139,140],msg:'الگوی بوق خطای فنی در دوره جا نمی‌شود'});
  if(bad(a.u141,100,10000))w.push({ids:[141],msg:'دوره چشمک سه LED باید ۱۰۰..۱۰۰۰۰ باشد'});
  if(bad(a.u142,0,100))w.push({ids:[142],msg:'سهم روشنی سه LED باید ۰..۱۰۰ باشد'});
+ if(bad(a.u143,0,86400000))w.push({ids:[143],msg:'زمان روشن ماندن اولیه باید ۰..۸۶۴۰۰۰۰۰ باشد'});
+ if(bad(a.u144,5000,3600000))w.push({ids:[144],msg:'زمان روشن در چرخه باید ۵۰۰۰..۳۶۰۰۰۰۰ باشد'});
+ if(bad(a.u145,0,3600000))w.push({ids:[145],msg:'زمان خاموش در چرخه باید ۰..۳۶۰۰۰۰۰ باشد'});
+ if(bad(a.u146,0,100))w.push({ids:[146],msg:'حد قطع وای‌فای در باتری ضعیف باید ۰..۱۰۰ باشد'});
  return w.map(x=>Object.assign({advisory:x.ids.length>1},x));}
 function afresh(){const w=achk();
  /* v1.77: گپ‌ها بلافاصله پس از هر تغییر/پرشدن مقدار، نه فقط در فریم شبیه‌ساز */
@@ -2104,6 +2125,7 @@ function ibdef(){odef(UDEF[5]);}
    [FA] پیش‌فرض کارخانهٔ سناریو ۶. */
 function dbdef(){odef(UDEF[6]);}
 function tdef(){odef(UDEF[7]);}
+function wdef(){odef([143,144,145,146]);}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
  ['خطای ADC','نمونه‌برداری ADC نامعتبر است و اندازه‌گیری‌ها قابل‌اعتماد نیست؛ برد محافظه‌کار می‌شود. سیم‌کشی آنالوگ و تغذیه را بررسی کنید.'],
@@ -2674,7 +2696,7 @@ function pdflt(id){
  id=+id;
  /* v1.75 audit: CDEF grew to 119..127 with scenario 6 (ids 125..127) but this
     window still said 124, so the dead-battery fields printed no factory default. */
- if(id>=119&&id<=142)return CDEF[id-119];
+ if(id>=119&&id<=146)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -3155,7 +3177,7 @@ function wmeas(m,act){
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=143;
+const PN=147;
 /* [EN] Bench CSV column contract. [FA] قرارداد ستون‌های CSV بنچ. */
 function wset(){const P=[];for(let k=0;k<PN;k++)P.push(D.p[k]==null?'-':D.p[k]);return P.join(',');}
 let WSIG=null;

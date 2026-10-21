@@ -241,6 +241,50 @@ int main(void)
     CHECK(func__EspLink_IsPowerOn() == true);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
 
+    /* Battery < 20% cutoff on battery power:
+       - At 20%, ESP still operates normally on battery.
+       - Below 20% (e.g. 19%) on battery, ESP turns completely OFF and refuses
+         to turn on even if a client notification arrives.
+       - When mains input is present, ESP turns back ON even if battery < 20%. */
+    func__EspLink_HostTest_Reset();
+    func__EspLink_SetBatteryPercent(20u);
+    CHECK(func__EspLink_GetBatteryPercent() == 20u);
+    func__EspLink_PowerSaveTick(false, 1000u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+
+    func__EspLink_SetBatteryPercent(19u);
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_IsPowerOn() == false);
+
+    func__EspLink_NotifyWifiClientState(true);
+    CHECK(func__EspLink_IsPowerOn() == false);
+    CHECK(func__EspLink_IsWifiClientConnected() == false);
+
+    func__EspLink_PowerSaveTick(true, 100u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+
+    /* Configurable Wi-Fi parameters 143..146 via ApplyParam / GetParam */
+    {
+        uint32_t applied = 0u;
+        uint32_t readBack = 0u;
+
+        func__EspLink_HostTest_Reset();
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS, &readBack) == true);
+        CHECK(readBack == 1800000u);
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_CYCLE_ON_MS, &readBack) == true);
+        CHECK(readBack == 60000u);
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_CYCLE_OFF_MS, &readBack) == true);
+        CHECK(readBack == 120000u);
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, &readBack) == true);
+        CHECK(readBack == 20u);
+
+        CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, 35u, &applied) == true);
+        CHECK(applied == 35u);
+        func__EspLink_SetBatteryPercent(30u);
+        func__EspLink_PowerSaveTick(false, 100u);
+        CHECK(func__EspLink_IsPowerOn() == false);
+    }
+
     printf("checks: %u, failures: %u\n", g_checks, g_failures);
     return (g_failures == 0u) ? 0 : 1;
 }

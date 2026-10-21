@@ -390,6 +390,19 @@ static void func__T_TestWifiPowerSave(void)
     func__Simple_WifiPowerSaveTick(2000u + 1800000u + 200000u);
     func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() < 0.1f),
                   "پس از قطع اتصال کاربر روی باتری: شروع مجدد ۳۰ دقیقهٔ اول با قدرت آنتن پایین");
+
+    /* ۶. باتری زیر ۲۰ درصد روی باتری: خاموش شدن کامل وای‌فای حتی در صورت حضور کاربر */
+    WiFi.setStationNum(1);
+    UINT32_T__G__TlmField[15] = 22000u; /* ۱۲ درصد (< ۲۰٪) */
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u + 210000u);
+    func__T_Check(!WiFi.isApActive(),
+                  "وقتی باتری زیر ۲۰ درصد بیاید، وای‌فای کاملاً خاموش می‌شود و روشن نمی‌شود");
+
+    /* ۷. بازگشت برق ورودی: روشن شدن مجدد با بیشترین قدرت آنتن */
+    UINT8_T__G__TlmFlags = SIMPLE_TLM_FLAG_INPUT_PRESENT;
+    func__Simple_WifiPowerSaveTick(2000u + 1800000u + 220000u);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() > 20.0f),
+                  "با وصل شدن مجدد برق ورودی، وای‌فای با بیشترین قدرت آنتن روشن می‌شود");
 }
 
 int main(void)

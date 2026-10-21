@@ -86,7 +86,7 @@ static_assert(SIM_TLM_DEAD_MASK == 28, "T_DEAD پنل = ۲۸");
 #define SIM_MSG_TIME_SYNC           0x30u
 #define SIM_MSG_DIAG_REQ            0x31u
 #define SIM_MSG_DIAG_DATA           0x32u
-#define SIM_PARAM_COUNT             143u
+#define SIM_PARAM_COUNT             147u
 #define SIM_PARAM_ITEM_SIZE         5u
 #define SIM_PARAMS_PER_FRAME        102u  /* سقف ۵۱۲ بایتی سند: (512-1)/5 */
 #define SIM_TLM_SIZE                128u
@@ -201,7 +201,8 @@ static const SimParamDefault SIM_PARAM_DEFAULT_TABLE[] =
     { 70u, 28000u }, { 71u, 1000u },
     { 74u, 21000u }, { 75u, 29000u }, { 76u, 0u },
     { 77u, 100u }, { 78u, 95u }, { 79u, 5u }, { 80u, 2u }, { 81u, 2u }, { 82u, 3u },
-    { 119u, 21000u }, { 120u, 29000u }
+    { 119u, 21000u }, { 120u, 29000u },
+    { 143u, 1800000u }, { 144u, 60000u }, { 145u, 120000u }, { 146u, 20u }
 };
 
 static bool BOOL__G__SimParamsReady = false;

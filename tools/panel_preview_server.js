@@ -221,7 +221,10 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            3,
            /* v1.84 ids 137..142 = scenario 7's independent buzzer and
               synchronized three-LED cadence. */
-           3000, 200, 3, 100, 1000, 50];
+           3000, 200, 3, 100, 1000, 50,
+           /* v1.85 ids 143..146 = Wi-Fi battery power-saving settings:
+              initial low-power ON ms, cycle ON ms, cycle OFF ms, battery cutoff %. */
+           1800000, 60000, 120000, 20];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -326,6 +329,11 @@ function clampParam(id, v) {
         case 140: return clampW(v, 0, 5000);
         case 141: return clampW(v, 100, 10000);
         case 142: return clampW(v, 0, 100);
+        /* v1.85: Wi-Fi battery power-saving settings (ids 143..146). */
+        case 143: return clampW(v, 0, 86400000);
+        case 144: return clampW(v, 5000, 3600000);
+        case 145: return clampW(v, 0, 3600000);
+        case 146: return clampW(v, 0, 100);
         /* v1.15 alarms: q27 has the Fault module's independent hard window;
            q36 remains the Charger module's profile-relative OV clamp. */
         case 27: return clampW(v, 14000, 15000);

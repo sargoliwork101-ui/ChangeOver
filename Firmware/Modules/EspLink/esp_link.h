@@ -172,30 +172,43 @@
 #define ESPLINK_MSG_DIAG_REQ          0x31u
 #define ESPLINK_MSG_DIAG_DATA         0x32u
 /* [EN] Hybrid Wi-Fi power-saving client state report (ESP -> STM, 1-byte
- *      payload: 1 = client connected, 0 = no client connected) and timing
- *      windows on battery when no user is connected:
- *        - First 30 minutes (1800000 ms): ESP stays ON (CH_PD high) at low
- *          antenna TX power.
+ *      payload: 1 = client connected, 0 = no client connected) and default
+ *      timing/battery-cutoff windows on battery:
+ *        - Battery cutoff (< 20 % by default): when running on battery and
+ *          battery percentage drops below the threshold, ESP is powered down
+ *          completely (CH_PD low) and does not turn on at all.
+ *        - First 30 minutes (1800000 ms) on battery with no user connected:
+ *          ESP stays ON (CH_PD high) at low antenna TX power.
  *        - After 30 minutes: STM32 cycles CH_PD 2 minutes OFF (120000 ms) and
  *          1 minute ON (60000 ms), while ESP keeps low antenna TX power until
  *          a user connects.
- *        - Whenever mains input is present OR a user is connected: ESP stays
- *          continuously ON at maximum antenna TX power, and the 30-minute
- *          battery idle timer resets.
+ *        - Whenever mains input is present OR a user is connected (with
+ *          battery >= cutoff): ESP stays continuously ON at maximum antenna
+ *          TX power, and the 30-minute battery idle timer resets.
  * [FA] گزارش وضعیت اتصال کاربر برای سناریوی ترکیبی کاهش مصرف وای‌فای
- *      (از ESP به STM، یک بایت: ۱ = کاربر متصل، ۰ = بدون کاربر) و بازه‌های
- *      زمانی روی باتری هنگام نبود کاربر:
- *        - ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): ESP روشن (CH_PD بالا) با قدرت
- *          آنتن پایین.
+ *      (از ESP به STM، یک بایت: ۱ = کاربر متصل، ۰ = بدون کاربر) و مقادیر
+ *      پیش‌فرض زمانی و حد قطع باتری:
+ *        - حد قطع باتری (پیش‌فرض زیر ۲۰٪): روی باتری اگر درصد باتری زیر این
+ *          حد بیاید، ESP کاملاً خاموش می‌شود و دیگر اصلاً روشن نمی‌شود.
+ *        - ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): ESP روشن با قدرت آنتن پایین.
  *        - پس از ۳۰ دقیقه: چرخهٔ ۲ دقیقه خاموش (۱۲۰۰۰۰ میلی‌ثانیه) و ۱ دقیقه
  *          روشن (۶۰۰۰۰ میلی‌ثانیه) با قدرت آنتن پایین تا زمان اتصال کاربر.
- *        - در حضور برق ورودی یا اتصال کاربر: روشنِ دائم با بیشترین قدرت آنتن
- *          و ریست تایمر ۳۰ دقیقه‌ای. */
+ *        - در حضور برق ورودی یا اتصال کاربر (با باتری بالای حد قطع): روشنِ
+ *          دائم با بیشترین قدرت آنتن و ریست تایمر ۳۰ دقیقه‌ای. */
 #define ESPLINK_MSG_WIFI_CLIENT_STATE       0x33u
 #define ESPLINK_WIFI_IDLE_LOW_POWER_MS      1800000u
+#define ESPLINK_WIFI_IDLE_LOW_POWER_MIN_MS        0u
+#define ESPLINK_WIFI_IDLE_LOW_POWER_MAX_MS 86400000u
 #define ESPLINK_WIFI_CYCLE_ON_MS              60000u
+#define ESPLINK_WIFI_CYCLE_ON_MIN_MS           5000u
+#define ESPLINK_WIFI_CYCLE_ON_MAX_MS        3600000u
 #define ESPLINK_WIFI_CYCLE_OFF_MS            120000u
+#define ESPLINK_WIFI_CYCLE_OFF_MIN_MS             0u
+#define ESPLINK_WIFI_CYCLE_OFF_MAX_MS       3600000u
 #define ESPLINK_WIFI_CYCLE_PERIOD_MS        180000u
+#define ESPLINK_WIFI_BAT_CUTOFF_PCT              20u
+#define ESPLINK_WIFI_BAT_CUTOFF_MIN_PCT           0u
+#define ESPLINK_WIFI_BAT_CUTOFF_MAX_PCT         100u
 #define ESPLINK_WIFI_CLIENT_HOLD_MS           15000u
 
 /* ==================== Parameter IDs / شناسهٔ پارامترها ==================== */
@@ -493,14 +506,32 @@
 #define ESPLINK_PARAM_TECH_LED_PERIOD_MS   141u  /* u32, ms, def 1000, 100..10000 */
 #define ESPLINK_PARAM_TECH_LED_DUTY_PCT    142u  /* u8, %, def 50, 0..100 */
 
-/* [EN] ids 0..142 are ordinary parameters; 132/133 shape the imbalance
-   beep, 134/135 shape the dead-battery beep and 136 controls the number of
-   clean FLOAT-qualified cycles before the imbalance event counter is cleared.
+/* [EN] Configurable Wi-Fi battery power-saving parameters (ids 143..146):
+ *        143: initial low-TX-power ON duration on battery (ms, def 1800000)
+ *        144: cycle ON duration after initial window (ms, def 60000)
+ *        145: cycle OFF duration after initial window (ms, def 120000)
+ *        146: battery percentage cutoff below which ESP stays completely OFF
+ *             on battery power (%, def 20).
+ * [FA] پارامترهای قابل تنظیم کاهش مصرف وای‌فای روی باتری (شناسه‌های ۱۴۳..۱۴۶):
+ *        ۱۴۳: زمان روشن ماندن اولیه با قدرت آنتن پایین (پیش‌فرض ۱۸۰۰۰۰۰)
+ *        ۱۴۴: زمان روشن بودن در چرخهٔ متناوب (پیش‌فرض ۶۰۰۰۰)
+ *        ۱۴۵: زمان خاموش بودن در چرخهٔ متناوب (پیش‌فرض ۱۲۰۰۰۰)
+ *        ۱۴۶: حد درصد باتری که زیر آن وای‌فای کاملاً خاموش می‌ماند (پیش‌فرض ۲۰٪). */
+#define ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS  143u  /* u32, ms, def 1800000, 0..86400000 */
+#define ESPLINK_PARAM_WIFI_CYCLE_ON_MS        144u  /* u32, ms, def 60000, 5000..3600000 */
+#define ESPLINK_PARAM_WIFI_CYCLE_OFF_MS       145u  /* u32, ms, def 120000, 0..3600000 */
+#define ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT     146u  /* u8, %, def 20, 0..100 */
+
+/* [EN] ids 0..146 are ordinary parameters; 132/133 shape the imbalance
+   beep, 134/135 shape the dead-battery beep, 136 controls the number of
+   clean FLOAT-qualified cycles before the imbalance event counter is cleared,
+   137..142 configure scenario 7, and 143..146 configure Wi-Fi power saving.
    Runtime slots stay outside.
-   [FA] شناسه‌های ۰..۱۳۶ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن،
-   ۱۳۴/۱۳۵ شکل بوق باتری خراب و ۱۳۶ تعداد سیکل‌های کامل پاک برای صفرکردن
-   شمارندهٔ عدم‌توازن را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
-#define ESPLINK_PARAM_COUNT               143u
+   [FA] شناسه‌های ۰..۱۴۶ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن،
+   ۱۳۴/۱۳۵ شکل بوق باتری خراب، ۱۳۶ تعداد سیکل‌های کامل پاک، ۱۳۷..۱۴۲
+   سناریوی ۷ و ۱۴۳..۱۴۶ تنظیمات کاهش مصرف وای‌فای را می‌سازند؛ اسلات‌های
+   زمان‌اجرا بیرون‌اند. */
+#define ESPLINK_PARAM_COUNT               147u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 
@@ -644,19 +675,45 @@ uint32_t func__EspLink_GetBatteryIdleElapsedMs(void);
 void func__EspLink_NotifyWifiClientState(bool bool__connected);
 
 /**
+ * @brief  [EN] Update the latest battery state-of-charge percentage (0..100)
+ *              used by the Wi-Fi battery cutoff policy.
+ *         [FA] به‌روزرسانی آخرین درصد شارژ باتری (۰ تا ۱۰۰) برای اعمال حد قطع
+ *              وای‌فای در باتری ضعیف.
+ * @param  uint8_t__batteryPct [EN] Battery percentage (0..100) /
+ *                             [FA] درصد شارژ باتری (۰ تا ۱۰۰)
+ */
+void func__EspLink_SetBatteryPercent(uint8_t uint8_t__batteryPct);
+
+/**
+ * @brief  [EN] Read the battery state-of-charge percentage (0..100) currently
+ *              seen by the Wi-Fi power-saving policy.
+ *         [FA] خواندن درصد شارژ باتری (۰ تا ۱۰۰) در سیاست کاهش مصرف وای‌فای.
+ * @‎return [EN] Battery percentage (0..100) / [FA]‎ درصد شارژ باتری
+ */
+uint8_t func__EspLink_GetBatteryPercent(void);
+
+/**
  * @brief  [EN] Advance the hybrid ESP Wi-Fi power-saving state machine by
  *              uint32_t__stepMs and drive CH_PD accordingly:
- *              - Mains input present OR user connected: CH_PD stays ON and
- *                the battery idle timer resets to 0.
- *              - On battery with no user connected: CH_PD stays ON for the
- *                first 30 minutes (1800000 ms), then cycles 2 minutes OFF
- *                (120000 ms) and 1 minute ON (60000 ms).
+ *              - Mains input present: CH_PD stays ON and the battery idle
+ *                timer resets to 0.
+ *              - On battery with battery percentage below the configured
+ *                cutoff (default 20 %): CH_PD is driven OFF completely and
+ *                does not turn on at all.
+ *              - On battery at/above cutoff with user connected: CH_PD stays
+ *                ON and the battery idle timer resets to 0.
+ *              - On battery at/above cutoff with no user connected: CH_PD
+ *                stays ON for the configured initial low-power window
+ *                (default 30 minutes = 1800000 ms), then cycles OFF/ON
+ *                (default 2 minutes OFF / 1 minute ON).
  *         [FA] پیشبرد ماشین حالت کاهش مصرف وای‌فای به اندازهٔ uint32_t__stepMs
  *              و کنترل پایهٔ CH_PD:
- *              - حضور برق ورودی یا اتصال کاربر: روشن ماندن دائم و صفر شدن
- *                تایمر بی‌کاری باتری.
- *              - روی باتری و بدون کاربر: ۳۰ دقیقهٔ اول روشن، سپس چرخهٔ ۲ دقیقه
- *                خاموش و ۱ دقیقه روشن.
+ *              - حضور برق ورودی: روشن ماندن دائم و صفر شدن تایمر بی‌کاری باتری.
+ *              - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪): خاموش شدن کامل
+ *                ESP و روشن نشدن در هیچ حالتی.
+ *              - روی باتری بالای حد قطع با حضور کاربر: روشن ماندن دائم.
+ *              - روی باتری بالای حد قطع و بدون کاربر: روشن ماندن در بازهٔ
+ *                اولیه (پیش‌فرض ۳۰ دقیقه) و سپس چرخهٔ خاموش/روشن متناوب.
  * @param  bool__inputPresent [EN] true if mains input is present /
  *                            [FA] وضعیت حضور برق ورودی
  * @param  uint32_t__stepMs   [EN] Elapsed step in milliseconds /

@@ -89,9 +89,15 @@
 #define ESP_WIFI_CYCLE_ON_MS        60000u
 #define ESP_WIFI_CYCLE_OFF_MS       120000u
 #define ESP_WIFI_CYCLE_PERIOD_MS    180000u
+#define ESP_WIFI_BAT_CUTOFF_PCT     20u
 #define ESP_WIFI_CLIENT_REPORT_MS   1000u
 #define ESP_WIFI_TX_MAX_DBM         20.5f
 #define ESP_WIFI_TX_LOW_DBM         0.0f
+
+#define ESP_PARAM_WIFI_IDLE_LOW_POWER_MS  143u
+#define ESP_PARAM_WIFI_CYCLE_ON_MS        144u
+#define ESP_PARAM_WIFI_CYCLE_OFF_MS       145u
+#define ESP_PARAM_WIFI_BAT_CUTOFF_PCT     146u
 
 /* ==================== Parameter Constants ==================== */
 /* [EN] Current parameter map: ids 20..26 = shared charge profile; 27..37 =
@@ -100,13 +106,15 @@
          imbalance scenario 5; 119..120 = charge-side percent map;
          121..122 = band-2 beep shape; 123..124 = imbalance LED cadence;
          125..131 and 134..135 = dead-battery scenario 6; 132..133 and 136
-         = imbalance extensions; and 137..142 = technical board fault scenario 7.
+         = imbalance extensions; 137..142 = technical board fault scenario 7;
+         and 143..146 = Wi-Fi battery power-saving settings.
          / [FA] نقشهٔ فعلی پارامترها: ۲۰..۲۶ پروفایل شارژ، ۲۷..۳۷ نظارت ‎Fault/Charger‎،
          ۳۸..۸۲ cadence و hysteresis رابط، ۸۳..۹۲ PID دوحلقه‌ای، ۹۳..۱۰۷ حدهای
          شارژر، ۱۰۸..۱۱۸ سناریوی ۵، ۱۱۹..۱۲۰ نگاشت درصد سمت شارژ، ۱۲۱..۱۲۲
          شکل بوق باند ۲، ۱۲۳..۱۲۴ cadence چراغ عدم‌توازن، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵
-         سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵ و ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد. */
-#define ESP_PARAM_COUNT            143u /* [EN] v1.84 ends at technical-fault id 142; ids 137..142 own scenario 7. / [FA] نسخه ۱٫۸۴ با شناسهٔ ۱۴۲ سناریوی خطای فنی تمام می‌شود؛ ۱۳۷..۱۴۲ متعلق به سناریوی ۷ است. */
+         سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵، ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد
+         و ۱۴۳..۱۴۶ تنظیمات وای‌فای و مصرف باتری. */
+#define ESP_PARAM_COUNT            147u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; ids 143..146 own Wi-Fi power saving. / [FA] نسخه ۱٫۸۵ با شناسهٔ ۱۴۶ حد قطع باتری تمام می‌شود؛ ۱۴۳..۱۴۶ متعلق به کاهش مصرف وای‌فای است. */
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
 
@@ -207,7 +215,8 @@
     "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty,\n" \
     "#            imb_beep_count,imb_beep_gap_ms,dead_beep_count,dead_beep_gap_ms,\n" \
     "#            imb_clean_full_cycles,tech_beep_per_ms,tech_beep_len_ms,\n" \
-    "#            tech_beep_count,tech_beep_gap_ms,tech_led_per_ms,tech_led_duty\n" \
+    "#            tech_beep_count,tech_beep_gap_ms,tech_led_per_ms,tech_led_duty,\n" \
+    "#            wifi_idle_low_pwr_ms,wifi_cycle_on_ms,wifi_cycle_off_ms,wifi_bat_cutoff_pct\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -338,8 +347,11 @@
  *      تمام‌عرض شد تا زیر کلیدش بنشیند. اندازهٔ صفحه به ۴۲۱۶۷۴ بایت رسید و
  *      سقف عمداً با حاشیه به ۴۲۵۹۸۴ بایت (۴۱۶ کیلوبایت) پله خورد تا مارک‌آپ
  *      افزودنی بعدی بی‌دلیل دروازه را نشکند.
+ *      در نسخهٔ ۱٫۸۵ تب تنظیمات «وای‌فای و مصرف باتری» (شناسه‌های ۱۴۳..۱۴۶) به
+ *      دستور کاربر اضافه شد و سقف با حاشیه به ۴۳۴۱۷۶ بایت (۴۲۴ کیلوبایت)
+ *      پله خورد.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    425984u
+#define ESP_PANEL_HTML_MAX_BYTES    434176u
 
 /* ==================== Parser States ==================== */
 typedef enum

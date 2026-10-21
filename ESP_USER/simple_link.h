@@ -586,12 +586,57 @@ static bool func__Simple_IsWifiClientConnected(uint32_t uint32_t__nowMs)
     return bool__stationConnected || bool__browserActive;
 }
 
+/* ==================== محاسبهٔ درصد شارژ باتری برای حد قطع وای‌فای ==================== */
+static uint32_t func__Simple_ComputeBatteryPercent(void)
+{
+    uint32_t uint32_t__vBat24Mv = UINT32_T__G__TlmField[15];
+    uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
+    uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
+
+    if ((!BOOL__G__TlmSeen) || (uint32_t__vBat24Mv == 0u) || (uint32_t__vMaxMv <= uint32_t__vMinMv))
+    {
+        return 100u;
+    }
+    if (uint32_t__vBat24Mv <= uint32_t__vMinMv)
+    {
+        return 0u;
+    }
+    if (uint32_t__vBat24Mv >= uint32_t__vMaxMv)
+    {
+        return 100u;
+    }
+    return ((uint32_t__vBat24Mv - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
+}
+
 /* ==================== مدیریت ترکیبی قدرت آنتن و چرخهٔ خاموش/روشن وای‌فای روی باتری ==================== */
 static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 {
     bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
         ((UINT8_T__G__TlmFlags & SIMPLE_TLM_FLAG_INPUT_PRESENT) != 0u);
     bool bool__clientConnected = func__Simple_IsWifiClientConnected(uint32_t__nowMs);
+    uint32_t uint32_t__idleLowPowerMs = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_IDLE_LOW_POWER_MS);
+    uint32_t uint32_t__cycleOnMs = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_CYCLE_ON_MS);
+    uint32_t uint32_t__cycleOffMs = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_CYCLE_OFF_MS);
+    uint32_t uint32_t__batCutoffPct = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_BAT_CUTOFF_PCT);
+    uint32_t uint32_t__batteryPct = func__Simple_ComputeBatteryPercent();
+
+    if ((!bool__inputPresent) && (uint32_t__batteryPct < uint32_t__batCutoffPct))
+    {
+        BOOL__G__WifiClientConnected = false;
+        if (BOOL__G__WifiLastReportedConnected)
+        {
+            func__Simple_SendWifiClientState(false);
+            BOOL__G__WifiLastReportedConnected = false;
+            UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
+        }
+        if (BOOL__G__WifiApActive)
+        {
+            (void)WiFi.softAPdisconnect(true);
+            WiFi.mode(WIFI_OFF);
+            BOOL__G__WifiApActive = false;
+        }
+        return;
+    }
 
     BOOL__G__WifiClientConnected = bool__clientConnected;
 
@@ -634,13 +679,15 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     uint32_t uint32_t__idleElapsedMs = uint32_t__nowMs - UINT32_T__G__WifiBatteryIdleStartMs;
     bool bool__shouldApBeOn = true;
 
-    if (uint32_t__idleElapsedMs >= SIMPLE_WIFI_IDLE_LOW_POWER_MS)
+    if ((uint32_t__idleElapsedMs >= uint32_t__idleLowPowerMs) &&
+        (uint32_t__cycleOffMs > 0u))
     {
         uint32_t uint32_t__afterIdleMs =
-            uint32_t__idleElapsedMs - SIMPLE_WIFI_IDLE_LOW_POWER_MS;
+            uint32_t__idleElapsedMs - uint32_t__idleLowPowerMs;
+        uint32_t uint32_t__cyclePeriodMs = uint32_t__cycleOffMs + uint32_t__cycleOnMs;
         uint32_t uint32_t__cycleOffsetMs =
-            uint32_t__afterIdleMs % SIMPLE_WIFI_CYCLE_PERIOD_MS;
-        bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= SIMPLE_WIFI_CYCLE_OFF_MS);
+            uint32_t__afterIdleMs % uint32_t__cyclePeriodMs;
+        bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= uint32_t__cycleOffMs);
     }
 
     if (bool__shouldApBeOn)

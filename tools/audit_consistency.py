@@ -854,9 +854,9 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 24,
-           "CDEF must cover the charge map through scenario 7 ids 137..142 "
-           "(independent buzzer and synchronized three-LED cadence)",
+        ok(len(cdef) == 28,
+           "CDEF must cover the charge map through Wi-Fi power-save ids 143..146 "
+           "(initial low-power ON ms, cycle ON ms, cycle OFF ms, battery cutoff %)",
            f"CDEF has {len(cdef)} entries")
         top = chg_base + len(cdef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",

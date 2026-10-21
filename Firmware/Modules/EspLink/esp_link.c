@@ -105,6 +105,12 @@ static bool     BOOL__G__EspPowerOn = true;
 static bool     BOOL__G__WifiClientConnected = false;
 static uint32_t UINT32_T__G__ClientActiveHoldMs = 0u;
 static uint32_t UINT32_T__G__BatteryIdleElapsedMs = 0u;
+static uint32_t UINT32_T__G__WifiIdleLowPowerMs = ESPLINK_WIFI_IDLE_LOW_POWER_MS;
+static uint32_t UINT32_T__G__WifiCycleOnMs = ESPLINK_WIFI_CYCLE_ON_MS;
+static uint32_t UINT32_T__G__WifiCycleOffMs = ESPLINK_WIFI_CYCLE_OFF_MS;
+static uint32_t UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
+static uint8_t  UINT8_T__G__BatteryPercent = 100u;
+static bool     BOOL__G__LastInputPresent = true;
 
 /* [EN] TLM_LIVE flag bits (payload offset 2). / [FA] بیت‌های پرچم TLM_LIVE. */
 #define ESPLINK_TLM_FLAG_SNAP_VALID     0x01u
@@ -213,6 +219,7 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 
     switch (uint8_t__paramId)
     {
+#ifndef ESPLINK_HOST_TEST
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:
             *uint32_t__appliedValue =
                 func__BspMeasurement_SetCurrentOffsetCounts(0u, uint32_t__value);
@@ -363,8 +370,10 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                              uint32_t__value,
                                              uint32_t__appliedValue);
 #endif
+#endif /* ESPLINK_HOST_TEST */
 
         default:
+#ifndef ESPLINK_HOST_TEST
 #if MODULE_CHARGER
             /* [EN] Two-loop CC/CV PID, ids 83..92 (v1.24): range-dispatched
                     for the same reason as the UI block - fifteen case
@@ -437,6 +446,55 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                                   uint32_t__appliedValue);
             }
 #endif
+#endif /* ESPLINK_HOST_TEST */
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS)
+            {
+                uint32_t uint32_t__clamped = uint32_t__value;
+                if (uint32_t__clamped > (uint32_t)ESPLINK_WIFI_IDLE_LOW_POWER_MAX_MS)
+                {
+                    uint32_t__clamped = (uint32_t)ESPLINK_WIFI_IDLE_LOW_POWER_MAX_MS;
+                }
+                UINT32_T__G__WifiIdleLowPowerMs = uint32_t__clamped;
+                *uint32_t__appliedValue = uint32_t__clamped;
+                return true;
+            }
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_CYCLE_ON_MS)
+            {
+                uint32_t uint32_t__clamped = uint32_t__value;
+                if (uint32_t__clamped < (uint32_t)ESPLINK_WIFI_CYCLE_ON_MIN_MS)
+                {
+                    uint32_t__clamped = (uint32_t)ESPLINK_WIFI_CYCLE_ON_MIN_MS;
+                }
+                else if (uint32_t__clamped > (uint32_t)ESPLINK_WIFI_CYCLE_ON_MAX_MS)
+                {
+                    uint32_t__clamped = (uint32_t)ESPLINK_WIFI_CYCLE_ON_MAX_MS;
+                }
+                UINT32_T__G__WifiCycleOnMs = uint32_t__clamped;
+                *uint32_t__appliedValue = uint32_t__clamped;
+                return true;
+            }
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_CYCLE_OFF_MS)
+            {
+                uint32_t uint32_t__clamped = uint32_t__value;
+                if (uint32_t__clamped > (uint32_t)ESPLINK_WIFI_CYCLE_OFF_MAX_MS)
+                {
+                    uint32_t__clamped = (uint32_t)ESPLINK_WIFI_CYCLE_OFF_MAX_MS;
+                }
+                UINT32_T__G__WifiCycleOffMs = uint32_t__clamped;
+                *uint32_t__appliedValue = uint32_t__clamped;
+                return true;
+            }
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT)
+            {
+                uint32_t uint32_t__clamped = uint32_t__value;
+                if (uint32_t__clamped > (uint32_t)ESPLINK_WIFI_BAT_CUTOFF_MAX_PCT)
+                {
+                    uint32_t__clamped = (uint32_t)ESPLINK_WIFI_BAT_CUTOFF_MAX_PCT;
+                }
+                UINT32_T__G__WifiBatCutoffPct = uint32_t__clamped;
+                *uint32_t__appliedValue = uint32_t__clamped;
+                return true;
+            }
             return false;
     }
 }
@@ -458,6 +516,7 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 
     switch (uint8_t__paramId)
     {
+#ifndef ESPLINK_HOST_TEST
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:
             *uint32_t__value = func__BspMeasurement_GetCurrentOffsetCounts(0u);
             return true;
@@ -571,8 +630,10 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             return func__Fault_GetAlarmParam(uint8_t__paramId,
                                              uint32_t__value);
 #endif
+#endif /* ESPLINK_HOST_TEST */
 
         default:
+#ifndef ESPLINK_HOST_TEST
 #if MODULE_CHARGER
             /* [EN] Two-loop CC/CV PID live read, ids 83..92 (v1.23).
                [FA] خواندن زندهٔ PID دوحلقه‌ای، شناسه‌های ۸۳..۹۲. */
@@ -627,6 +688,27 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                                                   uint32_t__value);
             }
 #endif
+#endif /* ESPLINK_HOST_TEST */
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS)
+            {
+                *uint32_t__value = UINT32_T__G__WifiIdleLowPowerMs;
+                return true;
+            }
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_CYCLE_ON_MS)
+            {
+                *uint32_t__value = UINT32_T__G__WifiCycleOnMs;
+                return true;
+            }
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_CYCLE_OFF_MS)
+            {
+                *uint32_t__value = UINT32_T__G__WifiCycleOffMs;
+                return true;
+            }
+            if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT)
+            {
+                *uint32_t__value = UINT32_T__G__WifiBatCutoffPct;
+                return true;
+            }
             return false;
     }
 }
@@ -1989,6 +2071,12 @@ void func__EspLink_HostTest_Reset(void)
     BOOL__G__WifiClientConnected = false;
     UINT32_T__G__ClientActiveHoldMs = 0u;
     UINT32_T__G__BatteryIdleElapsedMs = 0u;
+    UINT32_T__G__WifiIdleLowPowerMs = ESPLINK_WIFI_IDLE_LOW_POWER_MS;
+    UINT32_T__G__WifiCycleOnMs = ESPLINK_WIFI_CYCLE_ON_MS;
+    UINT32_T__G__WifiCycleOffMs = ESPLINK_WIFI_CYCLE_OFF_MS;
+    UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
+    UINT8_T__G__BatteryPercent = 100u;
+    BOOL__G__LastInputPresent = true;
 }
 
 /* ==================== EspLink_HostTest_FeedByte ==================== */
@@ -2070,6 +2158,12 @@ void func__EspLink_Init(void)
     BOOL__G__WifiClientConnected = false;
     UINT32_T__G__ClientActiveHoldMs = 0u;
     UINT32_T__G__BatteryIdleElapsedMs = 0u;
+    UINT32_T__G__WifiIdleLowPowerMs = ESPLINK_WIFI_IDLE_LOW_POWER_MS;
+    UINT32_T__G__WifiCycleOnMs = ESPLINK_WIFI_CYCLE_ON_MS;
+    UINT32_T__G__WifiCycleOffMs = ESPLINK_WIFI_CYCLE_OFF_MS;
+    UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
+    UINT8_T__G__BatteryPercent = 100u;
+    BOOL__G__LastInputPresent = true;
     func__EspLink_Power(true);
 }
 
@@ -2151,6 +2245,13 @@ void func__EspLink_NotifyWifiClientState(bool bool__connected)
 {
     if (bool__connected != false)
     {
+        if ((BOOL__G__LastInputPresent == false) &&
+            ((uint32_t)UINT8_T__G__BatteryPercent < UINT32_T__G__WifiBatCutoffPct))
+        {
+            BOOL__G__WifiClientConnected = false;
+            UINT32_T__G__ClientActiveHoldMs = 0u;
+            return;
+        }
         BOOL__G__WifiClientConnected = true;
         UINT32_T__G__ClientActiveHoldMs = (uint32_t)ESPLINK_WIFI_CLIENT_HOLD_MS;
         UINT32_T__G__BatteryIdleElapsedMs = 0u;
@@ -2166,22 +2267,65 @@ void func__EspLink_NotifyWifiClientState(bool bool__connected)
     }
 }
 
+/* ==================== EspLink_SetBatteryPercent ==================== */
+
+/**
+ * @brief  [EN] Update the latest battery state-of-charge percentage (0..100)
+ *              used by the Wi-Fi battery cutoff policy.
+ *         [FA] به‌روزرسانی آخرین درصد شارژ باتری (۰ تا ۱۰۰) برای اعمال حد قطع
+ *              وای‌فای در باتری ضعیف.
+ * @param  uint8_t__batteryPct [EN] Battery percentage (0..100) /
+ *                             [FA] درصد شارژ باتری (۰ تا ۱۰۰)
+ */
+void func__EspLink_SetBatteryPercent(uint8_t uint8_t__batteryPct)
+{
+    if (uint8_t__batteryPct > 100u)
+    {
+        UINT8_T__G__BatteryPercent = 100u;
+    }
+    else
+    {
+        UINT8_T__G__BatteryPercent = uint8_t__batteryPct;
+    }
+}
+
+/* ==================== EspLink_GetBatteryPercent ==================== */
+
+/**
+ * @brief  [EN] Read the battery state-of-charge percentage (0..100) currently
+ *              seen by the Wi-Fi power-saving policy.
+ *         [FA] خواندن درصد شارژ باتری (۰ تا ۱۰۰) در سیاست کاهش مصرف وای‌فای.
+ * @‎return [EN] Battery percentage (0..100) / [FA]‎ درصد شارژ باتری
+ */
+uint8_t func__EspLink_GetBatteryPercent(void)
+{
+    return UINT8_T__G__BatteryPercent;
+}
+
 /* ==================== EspLink_PowerSaveTick ==================== */
 
 /**
  * @brief  [EN] Advance the hybrid ESP Wi-Fi power-saving state machine by
  *              uint32_t__stepMs and drive CH_PD accordingly:
- *              - Mains input present OR user connected: CH_PD stays ON and
- *                the battery idle timer resets to 0.
- *              - On battery with no user connected: CH_PD stays ON for the
- *                first 30 minutes (1800000 ms), then cycles 2 minutes OFF
- *                (120000 ms) and 1 minute ON (60000 ms).
+ *              - Mains input present: CH_PD stays ON and the battery idle
+ *                timer resets to 0.
+ *              - On battery with battery percentage below the configured
+ *                cutoff (default 20 %): CH_PD is driven OFF completely and
+ *                does not turn on at all.
+ *              - On battery at/above cutoff with user connected: CH_PD stays
+ *                ON and the battery idle timer resets to 0.
+ *              - On battery at/above cutoff with no user connected: CH_PD
+ *                stays ON for the configured initial low-power window
+ *                (default 30 minutes = 1800000 ms), then cycles OFF/ON
+ *                (default 2 minutes OFF / 1 minute ON).
  *         [FA] پیشبرد ماشین حالت کاهش مصرف وای‌فای به اندازهٔ uint32_t__stepMs
  *              و کنترل پایهٔ CH_PD:
- *              - حضور برق ورودی یا اتصال کاربر: روشن ماندن دائم و صفر شدن
- *                تایمر بی‌کاری باتری.
- *              - روی باتری و بدون کاربر: ۳۰ دقیقهٔ اول روشن، سپس چرخهٔ ۲ دقیقه
- *                خاموش و ۱ دقیقه روشن.
+ *              - حضور برق ورودی: روشن ماندن دائم و صفر شدن تایمر بی‌کاری باتری.
+ *              - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪): خاموش شدن کامل
+ *                ESP و روشن نشدن در هیچ حالتی.
+ *              - روی باتری بالای حد قطع با حضور کاربر: روشن ماندن دائم.
+ *              - روی باتری بالای حد قطع و بدون کاربر: روشن ماندن در بازهٔ
+ *                اولیه (پیش‌فرض ۳۰ دقیقه) و سپس چرخهٔ خاموش/روشن متناوب.
  * @param  bool__inputPresent [EN] true if mains input is present /
  *                            [FA] وضعیت حضور برق ورودی
  * @param  uint32_t__stepMs   [EN] Elapsed step in milliseconds /
@@ -2193,9 +2337,24 @@ void func__EspLink_PowerSaveTick(bool bool__inputPresent,
     bool bool__manualActive = false;
     bool bool__clientActive;
 
+    BOOL__G__LastInputPresent = bool__inputPresent;
+
 #if MODULE_CHARGER && !defined(ESPLINK_HOST_TEST)
     bool__manualActive = func__Charger_IsManualTestModeActive();
 #endif
+
+    if ((bool__inputPresent == false) &&
+        (bool__manualActive == false) &&
+        ((uint32_t)UINT8_T__G__BatteryPercent < UINT32_T__G__WifiBatCutoffPct))
+    {
+        BOOL__G__WifiClientConnected = false;
+        UINT32_T__G__ClientActiveHoldMs = 0u;
+        if (BOOL__G__EspPowerOn != false)
+        {
+            func__EspLink_Power(false);
+        }
+        return;
+    }
 
     if (UINT32_T__G__ClientActiveHoldMs > uint32_t__stepMs)
     {
@@ -2231,7 +2390,8 @@ void func__EspLink_PowerSaveTick(bool bool__inputPresent,
         UINT32_T__G__BatteryIdleElapsedMs = UINT32_MAX;
     }
 
-    if (UINT32_T__G__BatteryIdleElapsedMs < (uint32_t)ESPLINK_WIFI_IDLE_LOW_POWER_MS)
+    if ((UINT32_T__G__BatteryIdleElapsedMs < UINT32_T__G__WifiIdleLowPowerMs) ||
+        (UINT32_T__G__WifiCycleOffMs == 0u))
     {
         if (BOOL__G__EspPowerOn == false)
         {
@@ -2241,11 +2401,13 @@ void func__EspLink_PowerSaveTick(bool bool__inputPresent,
     else
     {
         uint32_t uint32_t__afterIdleMs =
-            UINT32_T__G__BatteryIdleElapsedMs - (uint32_t)ESPLINK_WIFI_IDLE_LOW_POWER_MS;
+            UINT32_T__G__BatteryIdleElapsedMs - UINT32_T__G__WifiIdleLowPowerMs;
+        uint32_t uint32_t__cyclePeriodMs =
+            UINT32_T__G__WifiCycleOffMs + UINT32_T__G__WifiCycleOnMs;
         uint32_t uint32_t__cycleOffsetMs =
-            uint32_t__afterIdleMs % (uint32_t)ESPLINK_WIFI_CYCLE_PERIOD_MS;
+            uint32_t__afterIdleMs % uint32_t__cyclePeriodMs;
         bool bool__shouldBeOn =
-            (uint32_t__cycleOffsetMs >= (uint32_t)ESPLINK_WIFI_CYCLE_OFF_MS);
+            (uint32_t__cycleOffsetMs >= UINT32_T__G__WifiCycleOffMs);
         if (BOOL__G__EspPowerOn != bool__shouldBeOn)
         {
             func__EspLink_Power(bool__shouldBeOn);
@@ -2282,6 +2444,26 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
         (measurement_snapshot_t__snap->valid != false))
     {
         bool__inputPresent = (measurement_snapshot_t__snap->input_present != false);
+#if MODULE_UI && !defined(ESPLINK_HOST_TEST)
+        func__EspLink_SetBatteryPercent(
+            func__Ui_BatteryVoltageToPercent(measurement_snapshot_t__snap->v_bat24_mv));
+#else
+        if (measurement_snapshot_t__snap->v_bat24_mv <= 21000u)
+        {
+            func__EspLink_SetBatteryPercent(0u);
+        }
+        else if (measurement_snapshot_t__snap->v_bat24_mv >= 29000u)
+        {
+            func__EspLink_SetBatteryPercent(100u);
+        }
+        else
+        {
+            uint32_t uint32_t__deltaMv = measurement_snapshot_t__snap->v_bat24_mv - 21000u;
+            uint32_t uint32_t__scaled = uint32_t__deltaMv * 100u;
+            uint32_t uint32_t__pct = uint32_t__scaled / 8000u;
+            func__EspLink_SetBatteryPercent((uint8_t)uint32_t__pct);
+        }
+#endif
     }
 
     func__EspLink_PowerSaveTick(bool__inputPresent, APP_CONFIG.comm_period_ms);

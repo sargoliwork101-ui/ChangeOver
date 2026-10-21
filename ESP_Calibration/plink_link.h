@@ -1163,21 +1163,58 @@ static bool func__Esp_IsWifiClientConnected(uint32_t uint32_t__nowMs)
     return bool__stationConnected || bool__browserActive;
 }
 
+static uint32_t func__Esp_GetWifiParam(uint8_t uint8_t__id, uint32_t uint32_t__defaultValue)
+{
+    if ((uint8_t__id < ESP_PARAM_COUNT) && BOOL__G__ParamKnown[uint8_t__id])
+    {
+        return UINT32_T__G__ParamApplied[uint8_t__id];
+    }
+    return uint32_t__defaultValue;
+}
+
+static uint32_t func__Esp_ComputeBatteryPercent(void)
+{
+    uint32_t uint32_t__vBat24Mv = UINT32_T__G__TlmField[15];
+    uint32_t uint32_t__vMinMv = func__Esp_GetWifiParam(74u, 21000u);
+    uint32_t uint32_t__vMaxMv = func__Esp_GetWifiParam(75u, 29000u);
+
+    if ((!BOOL__G__TlmSeen) || (uint32_t__vBat24Mv == 0u) || (uint32_t__vMaxMv <= uint32_t__vMinMv))
+    {
+        return 100u;
+    }
+    if (uint32_t__vBat24Mv <= uint32_t__vMinMv)
+    {
+        return 0u;
+    }
+    if (uint32_t__vBat24Mv >= uint32_t__vMaxMv)
+    {
+        return 100u;
+    }
+    return ((uint32_t__vBat24Mv - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
+}
+
 /**
  * @brief  [EN] Hybrid Wi-Fi TX power and battery duty-cycling tick:
- *              - Mains input present OR user connected: AP stays ON at maximum
- *                TX power (20.5 dBm).
- *              - On battery with no user connected:
- *                * First 30 minutes (1800000 ms): AP stays ON at low TX power
- *                  (0 dBm).
- *                * After 30 minutes: AP cycles 2 minutes OFF (120000 ms) and
- *                  1 minute ON (60000 ms) at low TX power until a user connects.
+ *              - Mains input present: AP stays ON at maximum TX power (20.5 dBm).
+ *              - On battery with battery percentage below the configured
+ *                cutoff (default 20 %): AP is turned completely OFF and does
+ *                not turn on at all.
+ *              - On battery at/above cutoff with user connected: AP stays ON
+ *                at maximum TX power.
+ *              - On battery at/above cutoff with no user connected:
+ *                * First window (default 30 minutes = 1800000 ms): AP stays ON
+ *                  at low TX power (0 dBm).
+ *                * After initial window: AP cycles OFF/ON (default 2 minutes
+ *                  OFF / 1 minute ON) at low TX power until a user connects.
  *         [FA] گام مدیریت ترکیبی قدرت آنتن و چرخهٔ خاموش/روشن وای‌فای روی باتری:
- *              - در حضور برق ورودی یا اتصال کاربر: روشنِ دائم با بیشترین قدرت
- *                آنتن (۲۰٫۵ dBm).
- *              - روی باتری و بدون کاربر: ۳۰ دقیقهٔ اول روشن با قدرت آنتن پایین
- *                (۰ dBm) و پس از آن چرخهٔ ۲ دقیقه خاموش و ۱ دقیقه روشن با قدرت
- *                آنتن پایین تا زمان اتصال کاربر.
+ *              - در حضور برق ورودی: روشنِ دائم با بیشترین قدرت آنتن (۲۰٫۵ dBm).
+ *              - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪): خاموش شدن کامل
+ *                اکسس‌پوینت و روشن نشدن در هیچ حالتی.
+ *              - روی باتری بالای حد قطع با حضور کاربر: روشنِ دائم با بیشترین
+ *                قدرت آنتن.
+ *              - روی باتری بالای حد قطع و بدون کاربر: در بازهٔ اولیه (پیش‌فرض
+ *                ۳۰ دقیقه) روشن با قدرت آنتن پایین (۰ dBm) و پس از آن چرخهٔ
+ *                خاموش/روشن با قدرت آنتن پایین تا زمان اتصال کاربر.
  * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
  *                         [FA] زمان فعلی بر حسب میلی‌ثانیه
  */
@@ -1186,6 +1223,33 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
         ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_INPUT_PRESENT) != 0u);
     bool bool__clientConnected = func__Esp_IsWifiClientConnected(uint32_t__nowMs);
+    uint32_t uint32_t__idleLowPowerMs = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_IDLE_LOW_POWER_MS, ESP_WIFI_IDLE_LOW_POWER_MS);
+    uint32_t uint32_t__cycleOnMs = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_CYCLE_ON_MS, ESP_WIFI_CYCLE_ON_MS);
+    uint32_t uint32_t__cycleOffMs = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_CYCLE_OFF_MS, ESP_WIFI_CYCLE_OFF_MS);
+    uint32_t uint32_t__batCutoffPct = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_BAT_CUTOFF_PCT, ESP_WIFI_BAT_CUTOFF_PCT);
+    uint32_t uint32_t__batteryPct = func__Esp_ComputeBatteryPercent();
+
+    if ((!bool__inputPresent) && (uint32_t__batteryPct < uint32_t__batCutoffPct))
+    {
+        BOOL__G__WifiClientConnected = false;
+        if (BOOL__G__WifiLastReportedConnected && (UINT8_T__G__LutTxStage == 0u))
+        {
+            func__Esp_SendWifiClientState(false);
+            BOOL__G__WifiLastReportedConnected = false;
+            UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
+        }
+        if (BOOL__G__WifiApActive)
+        {
+            (void)WiFi.softAPdisconnect(true);
+            WiFi.mode(WIFI_OFF);
+            BOOL__G__WifiApActive = false;
+        }
+        return;
+    }
 
     BOOL__G__WifiClientConnected = bool__clientConnected;
 
@@ -1231,13 +1295,15 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     uint32_t uint32_t__idleElapsedMs = uint32_t__nowMs - UINT32_T__G__WifiBatteryIdleStartMs;
     bool bool__shouldApBeOn = true;
 
-    if (uint32_t__idleElapsedMs >= ESP_WIFI_IDLE_LOW_POWER_MS)
+    if ((uint32_t__idleElapsedMs >= uint32_t__idleLowPowerMs) &&
+        (uint32_t__cycleOffMs > 0u))
     {
         uint32_t uint32_t__afterIdleMs =
-            uint32_t__idleElapsedMs - ESP_WIFI_IDLE_LOW_POWER_MS;
+            uint32_t__idleElapsedMs - uint32_t__idleLowPowerMs;
+        uint32_t uint32_t__cyclePeriodMs = uint32_t__cycleOffMs + uint32_t__cycleOnMs;
         uint32_t uint32_t__cycleOffsetMs =
-            uint32_t__afterIdleMs % ESP_WIFI_CYCLE_PERIOD_MS;
-        bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= ESP_WIFI_CYCLE_OFF_MS);
+            uint32_t__afterIdleMs % uint32_t__cyclePeriodMs;
+        bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= uint32_t__cycleOffMs);
     }
 
     if (bool__shouldApBeOn)

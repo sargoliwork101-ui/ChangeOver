@@ -18,14 +18,14 @@ must be corrected. Older version history was removed; it lives in `git log`.
 
 Authoritative endpoint contract for the current firmware/panel pair:
 
-- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 143`; ordinary wire ids are `0..142`.
+- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 147`; ordinary wire ids are `0..146`.
 - `PARAMS_BULK` is chunked at the 512-byte payload ceiling: at most 102
   `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
-- NVM format is version `12`, with capacity `144` entries. Persisted settings are
-  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..142` except retired `72/73` and transient session mute `76`,
+- NVM format is version `12`, with capacity `148` entries. Persisted settings are
+  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..146` except retired `72/73` and transient session mute `76`,
   plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
   and is not an NVM setting.
-- Scenario 7 is the technical board/power-stage fault face. Its controls are:
+- Scenario 7 is the technical board/power-stage fault face, and ids `143..146` configure Wi-Fi battery power saving:
 
 | ID | Name | Type | Unit | Default | Range | Meaning |
 |---:|---|---|---|---:|---|---|
@@ -35,6 +35,10 @@ Authoritative endpoint contract for the current firmware/panel pair:
 | 140 | `TECH_BEEP_GAP_MS` | u32 | ms | 100 | 0..5000 | Gap between beeps |
 | 141 | `TECH_LED_PERIOD_MS` | u32 | ms | 1000 | 100..10000 | Shared period for all three LEDs |
 | 142 | `TECH_LED_DUTY_PCT` | u32 | % | 50 | 0..100 | Shared ON share for all three LEDs |
+| 143 | `WIFI_IDLE_LOW_POWER_MS` | u32 | ms | 1800000 | 0..86400000 | Initial low-TX-power ON window on battery |
+| 144 | `WIFI_CYCLE_ON_MS` | u32 | ms | 60000 | 5000..3600000 | ON window per cycle after initial window |
+| 145 | `WIFI_CYCLE_OFF_MS` | u32 | ms | 120000 | 0..3600000 | OFF window per cycle after initial window |
+| 146 | `WIFI_BAT_CUTOFF_PCT` | u32 | % | 20 | 0..100 | Battery % cutoff below which ESP stays completely OFF on battery |
 
 Scenario-7 detection is not performed by the ESP. The STM32 detects either
 `relay open + applied PWM 0 + recorded JIT`, or `applied PWM > 200 permille +

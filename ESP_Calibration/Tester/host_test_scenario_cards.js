@@ -2264,6 +2264,29 @@ async function testLutPush(win, doc) {
           'calibration and LUT messages live in a themed RTL status box before the readback card');
 }
 
+function testWifiPowerSaveTab(win, doc) {
+    const s5Btn = doc.querySelector('#sbt button[data-s="5"]');
+    const s5Box = doc.getElementById('s5');
+    check(!!s5Btn && s5Btn.textContent.indexOf('وای‌فای و مصرف باتری') >= 0 && !!s5Box,
+          'settings sub-tab s5 exposes the Wi-Fi & battery power-saving configuration tab');
+    s5Btn.click();
+    check(s5Box.classList.contains('a'),
+          'clicking the Wi-Fi & battery power-save sub-tab activates #s5');
+    const q143 = doc.getElementById('q143');
+    const q144 = doc.getElementById('q144');
+    const q145 = doc.getElementById('q145');
+    const q146 = doc.getElementById('q146');
+    check(!!q143 && !!q144 && !!q145 && !!q146,
+          '#s5 exposes q143 (initial ON ms), q144 (cycle ON ms), q145 (cycle OFF ms), and q146 (battery cutoff %)');
+    win.wdef();
+    check(Number(q143.value) === 1800000 &&
+          Number(q144.value) === 60000 &&
+          Number(q145.value) === 120000 &&
+          Number(q146.value) === 20,
+          'wdef() restores factory defaults 1800000 ms, 60000 ms, 120000 ms, and 20%');
+    win.pundo();
+}
+
 
 setTimeout(async () => {
     const doc = win.document;
@@ -2285,6 +2308,7 @@ setTimeout(async () => {
         await testLutPush(win, doc);
         testNakWarning(win, doc);
         await testManualDutyKeys(win, doc);
+        testWifiPowerSaveTab(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);

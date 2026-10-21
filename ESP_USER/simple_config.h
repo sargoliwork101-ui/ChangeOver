@@ -28,8 +28,10 @@
 #define SIMPLE_MSG_WIFI_CLIENT_STATE    0x33u
 
 /* ==================== سناریوی کاهش مصرف وای‌فای روی باتری ====================
-   - در زمان وجود برق ورودی یا اتصال کاربر: وای‌فای روشنِ دائم با بیشترین قدرت آنتن.
-   - روی باتری و بدون اتصال کاربر:
+   - در زمان وجود برق ورودی: وای‌فای روشنِ دائم با بیشترین قدرت آنتن.
+   - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪): خاموش شدن کامل و روشن نشدن.
+   - روی باتری بالای حد قطع با حضور کاربر: روشنِ دائم با بیشترین قدرت آنتن.
+   - روی باتری بالای حد قطع و بدون اتصال کاربر:
      * ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): روشن با قدرت آنتن پایین.
      * پس از ۳۰ دقیقه: چرخهٔ ۲ دقیقه خاموش (۱۲۰۰۰۰ میلی‌ثانیه) و ۱ دقیقه روشن
        (۶۰۰۰۰ میلی‌ثانیه) با قدرت آنتن پایین تا زمان اتصال کاربر. */
@@ -38,6 +40,7 @@
 #define SIMPLE_WIFI_CYCLE_ON_MS         60000u
 #define SIMPLE_WIFI_CYCLE_OFF_MS        120000u
 #define SIMPLE_WIFI_CYCLE_PERIOD_MS     180000u
+#define SIMPLE_WIFI_BAT_CUTOFF_PCT      20u
 #define SIMPLE_WIFI_CLIENT_HOLD_MS      10000u
 #define SIMPLE_WIFI_CLIENT_REPORT_MS    1000u
 #define SIMPLE_WIFI_TX_MAX_DBM          20.5f
@@ -67,7 +70,7 @@
 #define SIMPLE_MSG_GET_PARAMS           0x02u
 #define SIMPLE_MSG_PARAM_REPORT         0x11u
 #define SIMPLE_MSG_PARAMS_BULK          0x12u
-#define SIMPLE_PARAM_COUNT              143u
+#define SIMPLE_PARAM_COUNT              147u
 #define SIMPLE_PARAM_ITEM_SIZE          5u     /* شناسه ۱ بایت + مقدار ۴ بایت */
 #define SIMPLE_PARAMS_REQ_MS            30000u /* فاصله درخواست پارامترها */
 
@@ -86,6 +89,10 @@
 #define SIMPLE_PARAM_RUN_ONE_EXIT       82u
 #define SIMPLE_PARAM_CHG_PCT_VMIN_MV    119u
 #define SIMPLE_PARAM_CHG_PCT_VMAX_MV    120u
+#define SIMPLE_PARAM_WIFI_IDLE_LOW_POWER_MS 143u
+#define SIMPLE_PARAM_WIFI_CYCLE_ON_MS       144u
+#define SIMPLE_PARAM_WIFI_CYCLE_OFF_MS      145u
+#define SIMPLE_PARAM_WIFI_BAT_CUTOFF_PCT    146u
 #define SIMPLE_PARAM_UI_COUNT           14u    /* تعداد پارامترهایی که پنل می‌خواند */
 
 /* ==================== وای‌فای ==================== */
