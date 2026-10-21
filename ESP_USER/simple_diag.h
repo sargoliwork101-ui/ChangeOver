@@ -148,7 +148,6 @@ static void func__Simple_ChartPushRange(uint32_t *uint32_t__ptr_pct,
         if (uint32_t__nowSec <= uint32_t__ptr_time[uint8_t__newestSlot]) return;
     }
 
-    BOOL__G__ChartsDirty = true;   /* نمودار عوض شد - باید ذخیره شود */
     uint32_t__ptr_pct[uint8_t__slot] = uint32_t__pct;
     uint32_t__ptr_vin[uint8_t__slot] = uint32_t__vin;
     uint32_t__ptr_vpack[uint8_t__slot] = uint32_t__vpack;
@@ -599,123 +598,15 @@ static void func__Simple_ChartRangeSave(File &file__f, const char *char__ptr_tag
     file__f.print("}");
 }
 
-/* ==================== ذخیرهٔ نمودارها - هر چهار بازه ==================== */
+/* ==================== نمودارها فقط در RAM نگه داشته می‌شوند (بدون فرسودگی فلش) ==================== */
 static void func__Simple_ChartsSave(void)
 {
-    if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "w");
-    if (!file__f) return;
-
-    file__f.print("{");
-    func__Simple_ChartRangeSave(file__f, "1d",
-        UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin, UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
-        UINT8_T__G__Chart1D_Count, UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
-    file__f.print(",");
-    func__Simple_ChartRangeSave(file__f, "7d",
-        UINT32_T__G__Chart7D_Pct, UINT32_T__G__Chart7D_Vin, UINT32_T__G__Chart7D_Vpack, UINT32_T__G__Chart7D_Time,
-        UINT8_T__G__Chart7D_Count, UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
-    file__f.print(",");
-    func__Simple_ChartRangeSave(file__f, "1m",
-        UINT32_T__G__Chart1M_Pct, UINT32_T__G__Chart1M_Vin, UINT32_T__G__Chart1M_Vpack, UINT32_T__G__Chart1M_Time,
-        UINT8_T__G__Chart1M_Count, UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
-    file__f.print(",");
-    func__Simple_ChartRangeSave(file__f, "3m",
-        UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin, UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
-        UINT8_T__G__Chart3M_Count, UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
-    file__f.print("}");
-    file__f.close();
     BOOL__G__ChartsDirty = false;
 }
 
-/* ==================== خواندن یک بازهٔ نمودار ====================
-   چهار آرایه خوانده می‌شود و تعداد معتبر = کمترینشان (اگر فایل نصفه
-   باشد، نقطه‌ای که زمان ندارد وارد نمودار نمی‌شود). */
-static bool func__Simple_ChartRangeLoad(const String &string__content, const char *char__ptr_tag,
-                                        uint32_t *uint32_t__ptr_pct,
-                                        uint32_t *uint32_t__ptr_vin,
-                                        uint32_t *uint32_t__ptr_vpack,
-                                        uint32_t *uint32_t__ptr_time,
-                                        uint8_t *uint8_t__ptr_count, uint8_t *uint8_t__ptr_index,
-                                        uint8_t uint8_t__size)
-{
-    String string__tagPrefix = String("\"") + char__ptr_tag + "\":";
-    int32_t int32_t__tagPos = string__content.indexOf(string__tagPrefix);
-    uint8_t uint8_t__nPct;
-    uint8_t uint8_t__nVin;
-    uint8_t uint8_t__nVpack;
-    uint8_t uint8_t__nTime;
-    uint8_t uint8_t__count;
-
-    if (int32_t__tagPos < 0) return false;
-
-    uint8_t__nPct = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"pct\":[", int32_t__tagPos), uint32_t__ptr_pct, uint8_t__size);
-    uint8_t__nVin = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"vin\":[", int32_t__tagPos), uint32_t__ptr_vin, uint8_t__size);
-    uint8_t__nVpack = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"vpack\":[", int32_t__tagPos), uint32_t__ptr_vpack, uint8_t__size);
-    uint8_t__nTime = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"time\":[", int32_t__tagPos), uint32_t__ptr_time, uint8_t__size);
-
-    uint8_t__count = uint8_t__nPct;
-    if (uint8_t__nVin < uint8_t__count) uint8_t__count = uint8_t__nVin;
-    if (uint8_t__nVpack < uint8_t__count) uint8_t__count = uint8_t__nVpack;
-    if (uint8_t__nTime < uint8_t__count) uint8_t__count = uint8_t__nTime;
-    if (uint8_t__count == 0u) return false;
-
-    /* محور زمان باید یکدست «ثانیهٔ یونیکس» باشد؛ نقاطی که زمانشان ثانیهٔ
-       از بوت است (فایل‌های قدیمی) دور ریخته می‌شوند و فایل بازنویسی می‌شود */
-    {
-        uint8_t uint8_t__keep = 0u;
-        uint8_t uint8_t__i;
-        uint32_t uint32_t__lastStamp = 0u;
-        for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
-        {
-            if (uint32_t__ptr_time[uint8_t__i] < SIMPLE_TIME_VALID_MIN) continue;
-            /* نقطهٔ تکراری یا عقب‌رفته (باقی‌ماندهٔ نسخه‌های قدیمی) هم دور می‌ریزد */
-            if (uint32_t__ptr_time[uint8_t__i] <= uint32_t__lastStamp) continue;
-            uint32_t__lastStamp = uint32_t__ptr_time[uint8_t__i];
-            uint32_t__ptr_pct[uint8_t__keep] = uint32_t__ptr_pct[uint8_t__i];
-            uint32_t__ptr_vin[uint8_t__keep] = uint32_t__ptr_vin[uint8_t__i];
-            uint32_t__ptr_vpack[uint8_t__keep] = uint32_t__ptr_vpack[uint8_t__i];
-            uint32_t__ptr_time[uint8_t__keep] = uint32_t__ptr_time[uint8_t__i];
-            uint8_t__keep++;
-        }
-        if (uint8_t__keep != uint8_t__count)
-        {
-            BOOL__G__ChartsDirty = true;   /* فایل یک‌بار پاک‌سازی و بازنویسی شود */
-            uint8_t__count = uint8_t__keep;
-        }
-    }
-    if (uint8_t__count == 0u) return false;
-
-    *uint8_t__ptr_count = uint8_t__count;
-    *uint8_t__ptr_index = (uint8_t)(uint8_t__count % uint8_t__size);
-    return true;
-}
-
-/* ==================== خواندن نمودارها از فایل - هر چهار بازه ==================== */
 static void func__Simple_ChartsLoad(void)
 {
-    if (!BOOL__G__FsOk) return;
-    if (!LittleFS.exists(SIMPLE_CHARTS_FILE)) return;
-    File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "r");
-    if (!file__f) return;
-    String string__content = file__f.readString();
-    file__f.close();
-
-    (void)func__Simple_ChartRangeLoad(string__content, "1d",
-        UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin, UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
-        &UINT8_T__G__Chart1D_Count, &UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "7d",
-        UINT32_T__G__Chart7D_Pct, UINT32_T__G__Chart7D_Vin, UINT32_T__G__Chart7D_Vpack, UINT32_T__G__Chart7D_Time,
-        &UINT8_T__G__Chart7D_Count, &UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "1m",
-        UINT32_T__G__Chart1M_Pct, UINT32_T__G__Chart1M_Vin, UINT32_T__G__Chart1M_Vpack, UINT32_T__G__Chart1M_Time,
-        &UINT8_T__G__Chart1M_Count, &UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "3m",
-        UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin, UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
-        &UINT8_T__G__Chart3M_Count, &UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
+    BOOL__G__ChartsDirty = false;
 }
 
 /* ==================== ذخیره دیاگ محلی - خطاها و برق ==================== */

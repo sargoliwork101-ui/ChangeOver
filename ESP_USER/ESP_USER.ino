@@ -40,6 +40,7 @@ void setup(void)
     Serial.setRxBufferSize(SIMPLE_LINK_RX_BUFFER_SIZE);
     Serial.begin(SIMPLE_LINK_BAUD_RATE, SERIAL_8N1);
 
+    WiFi.persistent(false);
     WiFi.mode(WIFI_AP);
 #if defined(ESP8266)
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
@@ -58,7 +59,6 @@ void setup(void)
     func__Simple_TimeLoad();          /* ساعت ذخیره‌شده - دیگر پرسیده نمی‌شود */
     func__Simple_ParamsLoad();        /* پارامترهای خود برد از آخرین بار */
     func__Simple_ChargeHistoryLoad();
-    func__Simple_ChartsLoad();        /* هر چهار بازه */
     func__Simple_DiagLoad();
 
     // بازیابی prev counts برای تشخیص شارژ بعد از ریستارت
@@ -137,7 +137,10 @@ void loop(void)
         if (bool__adopt)
         {
             func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
-            func__Simple_TimeSave();
+            if (BOOL__G__FsOk && !LittleFS.exists(SIMPLE_TIME_FILE))
+            {
+                func__Simple_TimeSave();
+            }
             BOOL__G__TimePushed = true;   /* ساعت از خود برد گرفته شد - نیازی به فرستادن نیست */
         }
     }
@@ -190,25 +193,15 @@ void loop(void)
         func__Simple_RecoveryArm();
     }
 
-    // ذخیره دوره‌ای تاریخچه شارژ و نمودارها و دیاگ هر ۳۰ ثانیه
-    // هر کدام فقط اگر عوض شده باشد نوشته می‌شود (کم‌کردن فرسودگی فلش)
+    // ذخیره دوره‌ای تاریخچه شارژ و دیاگ و پارامترها هر ۳۰ ثانیه
+    // هر کدام فقط اگر عوض شده باشد نوشته می‌شود (نمودارها فقط در RAM هستند)
     static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)
     {
         if (BOOL__G__ChargeHistDirty) func__Simple_ChargeHistorySave();
-        if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
         if (BOOL__G__DiagDirty) func__Simple_DiagSave();
         if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
         uint32_t__lastSaveMs = uint32_t__now;
-    }
-
-    /* ساعت حداکثر روزی یک‌بار (هر ۲۴ ساعت) روی فایل تازه می‌شود تا فرسودگی
-       فلش کم شود (برد اصلی خودش ساعت را نگه می‌دارد و به پنل می‌دهد) */
-    static uint32_t uint32_t__lastTimeSaveMs = 0u;
-    if (BOOL__G__TimeValid && ((uint32_t__now - uint32_t__lastTimeSaveMs) > 86400000u))
-    {
-        func__Simple_TimeSave();
-        uint32_t__lastTimeSaveMs = uint32_t__now;
     }
 
     // ریبوت خودکار بعد از تغییر وای‌فای - ۲ ثانیه تاخیر
@@ -217,7 +210,6 @@ void loop(void)
         if ((uint32_t__now - UINT32_T__G__WifiRebootMs) > 2000u)
         {
             if (BOOL__G__ChargeHistDirty) func__Simple_ChargeHistorySave();
-            if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
             if (BOOL__G__DiagDirty) func__Simple_DiagSave();
             if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
 #if defined(ESP8266)

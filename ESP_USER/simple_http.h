@@ -638,6 +638,13 @@ static void func__Simple_HttpSetWifi(void)
     if (string__ssid.length() < 1u || string__ssid.length() > SIMPLE_WIFI_SSID_MAX) { SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"ssid len\"}"); return; }
     if (string__pass.length() < 8u || string__pass.length() > SIMPLE_WIFI_PASS_MAX) { SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pass len 8-32\"}"); return; }
 
+    if ((strcmp(CHAR__G__WifiSsid, string__ssid.c_str()) == 0) &&
+        (strcmp(CHAR__G__WifiPass, string__pass.c_str()) == 0))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"reboot\":0}");
+        return;
+    }
+
     (void)strncpy(CHAR__G__WifiSsid, string__ssid.c_str(), SIMPLE_WIFI_SSID_MAX);
     CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX] = '\0';
     (void)strncpy(CHAR__G__WifiPass, string__pass.c_str(), SIMPLE_WIFI_PASS_MAX);

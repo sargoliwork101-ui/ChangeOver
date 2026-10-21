@@ -365,6 +365,7 @@ extern SimLittleFS LittleFS;
 class SimWiFi
 {
 public:
+    void persistent(bool bool__enabled) { (void)bool__enabled; }
     void mode(int int__value) { modeValue = int__value; }
     void setSleep(bool bool__enabled) { (void)bool__enabled; }
     void setSleepMode(int int__value) { (void)int__value; }

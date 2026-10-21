@@ -578,6 +578,7 @@ static bool func__Simple_SetUserPass(const char *char__ptr_name, const char *cha
     if (char__ptr_newPass == NULL) return false;
     if (strlen(char__ptr_newPass) < SIMPLE_USER_PASS_MIN) return false;
     if (strlen(char__ptr_newPass) > SIMPLE_USER_PASS_MAX) return false;
+    if (func__Simple_VerifyUserPass(char__ptr_name, char__ptr_newPass)) return true;
 
     func__Simple_HashPass(char__ptr_newPass, char__hash);
     (void)strncpy(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__hash, 64);

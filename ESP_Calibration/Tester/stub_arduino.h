@@ -109,6 +109,7 @@ extern StubSerial Serial;
 #define WIFI_AP 1
 #define WIFI_NONE_SLEEP 0
 struct StubWiFi {
+    void persistent(bool) {}
     void mode(int) {}
     void setSleepMode(int) {}
     void setSleep(bool) {}

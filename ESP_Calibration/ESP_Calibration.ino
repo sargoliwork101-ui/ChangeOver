@@ -123,6 +123,7 @@ void setup(void)
     Serial.setRxBufferSize(ESP_LINK_RX_BUFFER_SIZE);
     Serial.begin(ESP_LINK_BAUD_RATE, SERIAL_8N1);
 
+    WiFi.persistent(false);
     WiFi.mode(WIFI_AP);
 #if defined(ESP8266)
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
