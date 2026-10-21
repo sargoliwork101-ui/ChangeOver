@@ -593,6 +593,23 @@ static bool func__Simple_SetUserPass(const char *char__ptr_name, const char *cha
       پرچم /boot_no_login.json نوشته می‌شود.
    ۲) ورود هر کاربر: پرچم پاک می‌شود (ریستارت معمولی رمزها را دست نمی‌زند).
    ۳) بوت بعدی که پرچم را ببیند: پرچم پاک و کاربران پیش‌فرض می‌شوند. */
+static bool func__Simple_AuthIsDefault(void)
+{
+    uint8_t uint8_t__i;
+    uint8_t uint8_t__activeCount = 0u;
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
+    {
+        if (SIMPLE_USER_T__G__Users[uint8_t__i].active)
+        {
+            uint8_t__activeCount++;
+        }
+    }
+    if (uint8_t__activeCount != 1u) return false;
+    if (SIMPLE_USER_T__G__Users[0].role != 1u) return false;
+    return func__Simple_VerifyUserPass("admin", "admin");
+}
+
 static bool func__Simple_RecoveryFlagExists(void)
 {
     if (!BOOL__G__FsOk) return false;
@@ -603,6 +620,11 @@ static void func__Simple_RecoveryArm(void)
 {
     if (!BOOL__G__FsOk) return;
     if (BOOL__G__RecoveryArmed) return;                 /* همین بوت نوشته شده */
+    if (func__Simple_AuthIsDefault())
+    {
+        BOOL__G__RecoveryArmed = true;                  /* رمزها پیش‌فرض است؛ نیازی به نوشتن فلش نیست */
+        return;
+    }
     if (func__Simple_RecoveryFlagExists())
     {
         BOOL__G__RecoveryArmed = true;                  /* از بوت قبلی مانده */
@@ -633,9 +655,12 @@ static void func__Simple_RecoveryApply(void)
 {
     if (!func__Simple_RecoveryFlagExists()) return;
     LittleFS.remove(SIMPLE_RECOVERY_FILE);
-    func__Simple_AuthDefaults();
-    func__Simple_AuthSave();
-    BOOL__G__RecoveryHappened = true;
+    if (!func__Simple_AuthIsDefault())
+    {
+        func__Simple_AuthDefaults();
+        func__Simple_AuthSave();
+        BOOL__G__RecoveryHappened = true;
+    }
 }
 
 /* ==================== بارگذاری کاربران ====================

@@ -173,19 +173,6 @@ static uint8_t  UINT8_T__G__SlotNakId = 0u;
 static uint8_t  UINT8_T__G__SlotNakCode = 0u;
 static uint8_t  UINT8_T__G__SlotBusyReject = 0u;
 
-/* ==================== ذخیره یک پارامتر رسیده از برد ==================== */
-static void func__Simple_StoreBoardParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
-{
-    if (uint8_t__id >= SIMPLE_PARAM_COUNT) return;
-    if (!BOOL__G__BoardParamKnown[uint8_t__id] || (UINT32_T__G__BoardParam[uint8_t__id] != uint32_t__value))
-    {
-        BOOL__G__BoardParamsDirty = true;
-    }
-    UINT32_T__G__BoardParam[uint8_t__id] = uint32_t__value;
-    BOOL__G__BoardParamKnown[uint8_t__id] = true;
-    BOOL__G__BoardParamSeen = true;
-}
-
 /* ==================== فهرست پارامترهایی که پنل به آن‌ها نیاز دارد ====================
    ترتیب همین آرایه، ترتیب آرایهٔ pv در JSON است؛ پنل با همین ترتیب می‌خواند. */
 static const uint8_t UINT8_T__G__ParamUiIds[SIMPLE_PARAM_UI_COUNT] =
@@ -205,6 +192,36 @@ static const uint8_t UINT8_T__G__ParamUiIds[SIMPLE_PARAM_UI_COUNT] =
     SIMPLE_PARAM_CHG_PCT_VMIN_MV,   /* 12 */
     SIMPLE_PARAM_CHG_PCT_VMAX_MV    /* 13 */
 };
+
+static bool func__Simple_IsUiParamId(uint8_t uint8_t__id)
+{
+    uint8_t uint8_t__i;
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_PARAM_UI_COUNT; uint8_t__i++)
+    {
+        if (UINT8_T__G__ParamUiIds[uint8_t__i] == uint8_t__id)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* ==================== ذخیره یک پارامتر رسیده از برد ==================== */
+static void func__Simple_StoreBoardParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
+{
+    uint32_t uint32_t__prevEffective;
+
+    if (uint8_t__id >= SIMPLE_PARAM_COUNT) return;
+    uint32_t__prevEffective = func__Simple_BoardParam(uint8_t__id);
+    if (func__Simple_IsUiParamId(uint8_t__id) && (uint32_t__prevEffective != uint32_t__value))
+    {
+        BOOL__G__BoardParamsDirty = true;
+    }
+    UINT32_T__G__BoardParam[uint8_t__id] = uint32_t__value;
+    BOOL__G__BoardParamKnown[uint8_t__id] = true;
+    BOOL__G__BoardParamSeen = true;
+}
 
 /* ==================== ساعت ====================
    ساعت یک بار از مرورگر گرفته و در فایل ذخیره می‌شود. از آن به بعد لنگر
@@ -248,16 +265,24 @@ static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToB
     }
 }
 
+static uint32_t UINT32_T__G__LastSavedTimeSec = 0u; /* آخرین ساعت ذخیره‌شده روی فلش */
+
 /* ==================== ذخیره ساعت روی فایل ==================== */
 static void func__Simple_TimeSave(void)
 {
+    uint32_t uint32_t__nowSec;
+
     if (!BOOL__G__FsOk || !BOOL__G__TimeValid) return;
+    uint32_t__nowSec = func__Simple_NowSec();
+    if (uint32_t__nowSec < SIMPLE_TIME_VALID_MIN) return;
+    if (uint32_t__nowSec == UINT32_T__G__LastSavedTimeSec) return;
     File file__f = LittleFS.open(SIMPLE_TIME_FILE, "w");
     if (!file__f) return;
     file__f.print("{\"ts\":");
-    file__f.print((unsigned long)UINT32_T__G__TimeAnchorSec);
+    file__f.print((unsigned long)uint32_t__nowSec);
     file__f.print("}");
     file__f.close();
+    UINT32_T__G__LastSavedTimeSec = uint32_t__nowSec;
 }
 
 /* ==================== خواندن ساعت از فایل (بعد از هر بوت) ==================== */
@@ -284,6 +309,7 @@ static void func__Simple_TimeLoad(void)
     string__value.trim();
 
     uint32_t__savedSec = (uint32_t)string__value.toInt();
+    UINT32_T__G__LastSavedTimeSec = uint32_t__savedSec;
     /* لحظهٔ ذخیره‌شدن روی فایل نه‌فت‌نخورده مانده، پس لنگر را می‌گذاریم
        روی همین ثانیه؛ از این لحظه به بعد با millis جلو می‌رود */
     func__Simple_TimeSet(uint32_t__savedSec, false);

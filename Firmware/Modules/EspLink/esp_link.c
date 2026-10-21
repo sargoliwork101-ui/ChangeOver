@@ -1684,6 +1684,9 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
 #if MODULE_CHARGER
             func__Charger_NotifyEspLinkActivity();
 #endif /* MODULE_CHARGER */
+            uint32_t uint32_t__previousValue = 0u;
+            bool bool__hadPrevious =
+                func__EspLink_GetParam(uint8_t__payload[0], &uint32_t__previousValue);
             uint32_t__value = func__EspLink_GetU32(uint8_t__payload, 1u);
             if (func__EspLink_ApplyParam(uint8_t__payload[0], uint32_t__value,
                                          &uint32_t__appliedValue) == false)
@@ -1697,13 +1700,17 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
                                               uint32_t__appliedValue);
                 /* [EN] v1.14 (user order 2026-09-25: values must survive
                    power loss): a successfully applied PERSISTED parameter
-                   arms the debounced flash save (transient test ids are
-                   filtered inside MarkDirty).
+                   arms the debounced flash save when the value changed
+                   (transient test ids are filtered inside MarkDirty).
                    [FA] v1.14 (دستور کاربر: مقادیر با قطع برق باید بمانند):
-                   اعمال موفق یک پارامتر «ذخیره‌شونده»، ذخیرهٔ دیبانس‌شدهٔ
-                   فلش را مسلح می‌کند (شناسه‌های تست گذرا داخل MarkDirty
-                   فیلتر می‌شوند). */
-                func__EspLink_NvmMarkDirty(uint8_t__payload[0]);
+                   اعمال موفق یک پارامتر «ذخیره‌شونده» در صورت تغییر مقدار،
+                   ذخیرهٔ دیبانس‌شدهٔ فلش را مسلح می‌کند (شناسه‌های تست گذرا
+                   داخل MarkDirty فیلتر می‌شوند). */
+                if ((bool__hadPrevious == false) ||
+                    (uint32_t__appliedValue != uint32_t__previousValue))
+                {
+                    func__EspLink_NvmMarkDirty(uint8_t__payload[0]);
+                }
             }
         }
         else

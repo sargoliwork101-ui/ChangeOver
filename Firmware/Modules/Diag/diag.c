@@ -247,7 +247,7 @@ void func__Diag_Init(void)
     DIAG_RECORD_T__G__Active.uint32_t__uptimeSec = 0u;
     DIAG_RECORD_T__G__Active.uint32_t__resetCount++;
     BOOL__G__Dirty = true;
-    UINT32_T__G__SaveDelaySec = 5u; /* save soon after boot */
+    UINT32_T__G__SaveDelaySec = 600u; /* save after 10 min of stable run or with next event */
     UINT32_T__G__LastChargeUptimeSec = 0xFFFFFFFFu;
 
     (void)memcpy(&DIAG_RECORD_T__G__Stage, &DIAG_RECORD_T__G__Active, sizeof(diag_record_t));
@@ -278,6 +278,9 @@ void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec)
 {
     int32_t int32_t__lock;
     uint32_t uint32_t__uptime;
+    uint32_t uint32_t__newBase;
+    uint32_t uint32_t__oldBase;
+    uint32_t uint32_t__diff;
 
     if (uint32_t__unixSec < 1000000000u) return; /* sanity: after 2001 */
 
@@ -285,14 +288,25 @@ void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec)
     uint32_t__uptime = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
     if (uint32_t__unixSec >= uint32_t__uptime)
     {
-        DIAG_RECORD_T__G__Active.uint32_t__boardTimeBase = uint32_t__unixSec - uint32_t__uptime;
+        uint32_t__newBase = uint32_t__unixSec - uint32_t__uptime;
     }
     else
     {
-        DIAG_RECORD_T__G__Active.uint32_t__boardTimeBase = uint32_t__unixSec;
+        uint32_t__newBase = uint32_t__unixSec;
     }
-    BOOL__G__Dirty = true;
-    UINT32_T__G__SaveDelaySec = 2u;
+    uint32_t__oldBase = DIAG_RECORD_T__G__Active.uint32_t__boardTimeBase;
+    uint32_t__diff = (uint32_t__newBase >= uint32_t__oldBase)
+                         ? (uint32_t__newBase - uint32_t__oldBase)
+                         : (uint32_t__oldBase - uint32_t__newBase);
+    DIAG_RECORD_T__G__Active.uint32_t__boardTimeBase = uint32_t__newBase;
+    if ((uint32_t__oldBase == 0u) || (uint32_t__diff >= 300u))
+    {
+        BOOL__G__Dirty = true;
+        if ((UINT32_T__G__SaveDelaySec == 0u) || (UINT32_T__G__SaveDelaySec > 2u))
+        {
+            UINT32_T__G__SaveDelaySec = 2u;
+        }
+    }
     if (int32_t__lock >= 0)
     {
         (void)osKernelRestoreLock(int32_t__lock);

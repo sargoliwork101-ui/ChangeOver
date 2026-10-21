@@ -202,10 +202,10 @@ void loop(void)
         uint32_t__lastSaveMs = uint32_t__now;
     }
 
-    /* ساعت هر ۳۰ دقیقه روی فایل تازه می‌شود تا بعد از قطع برق، اختلاف
-       با زمان واقعی بیشتر از همان ۳۰ دقیقه نشود (پنل RTC ندارد) */
+    /* ساعت حداکثر روزی یک‌بار (هر ۲۴ ساعت) روی فایل تازه می‌شود تا فرسودگی
+       فلش کم شود (برد اصلی خودش ساعت را نگه می‌دارد و به پنل می‌دهد) */
     static uint32_t uint32_t__lastTimeSaveMs = 0u;
-    if (BOOL__G__TimeValid && ((uint32_t__now - uint32_t__lastTimeSaveMs) > 1800000u))
+    if (BOOL__G__TimeValid && ((uint32_t__now - uint32_t__lastTimeSaveMs) > 86400000u))
     {
         func__Simple_TimeSave();
         uint32_t__lastTimeSaveMs = uint32_t__now;
@@ -216,11 +216,10 @@ void loop(void)
     {
         if ((uint32_t__now - UINT32_T__G__WifiRebootMs) > 2000u)
         {
-            func__Simple_ChargeHistorySave();
-            func__Simple_ChartsSave();
-            func__Simple_DiagSave();
-            func__Simple_ParamsSave();
-            func__Simple_TimeSave();
+            if (BOOL__G__ChargeHistDirty) func__Simple_ChargeHistorySave();
+            if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
+            if (BOOL__G__DiagDirty) func__Simple_DiagSave();
+            if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
 #if defined(ESP8266)
             ESP.restart();
 #else

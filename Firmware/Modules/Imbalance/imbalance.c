@@ -544,12 +544,13 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         BOOL__G__RequireFreshFullCycle = false;
         UINT32_T__G__ChargeStartMs  = uint32_t__nowMs;
 
-        /* [EN] Count a post-latch charging cycle only if the clean-cycle rule
-           above did not already clear the latch. [FA] شمارش سیکل قفل فقط اگر
-           قانون سه سیکل پاک، قفل را همین‌جا پاک نکرده باشد. */
+        /* [EN] Count a post-latch charging cycle only while within the
+           ‎configured post-latch cycle budget. [FA]‎ شمارش سیکل قفل فقط تا سقف
+           تنظیم‌شدهٔ سیکل‌های مجاز پس از قفل. */
         if (UINT32_T__G__Latched != 0u)
         {
-            if (UINT32_T__G__LatchedCycles < IMBAL_MAX_COUNT)
+            if (UINT32_T__G__LatchedCycles <
+                func__Imbalance_ReadParam(IMBAL_PARAM_MAX_LATCHED_CYCLES))
             {
                 UINT32_T__G__LatchedCycles++;
                 bool__persistChanged = true;
