@@ -753,8 +753,9 @@ static void func__Simple_HttpClearHistory(void)
 /* ==================== ریست دستی قفل‌ها - فقط ادمین ==================== */
 /**
  * @brief  درخواست ریست قفل را در صف می‌گذارد (POST /latch/reset?n=5|6).
- *         سناریو ۵: پرچم قفل (۲۰۲) و شمارنده‌هایش (۲۰۱ و ۲۰۰) صفر می‌شوند
- *         تا از اول شمرده شود؛ سناریو ۶: ماسک حکم باتری خراب (۲۰۳) صفر.
+ *         سناریو ۵: شمارنده‌های رویداد/سیکل (۲۰۰ و ۲۰۱) و در آخر پرچم قفل
+ *         (۲۰۲) صفر می‌شوند تا بین فریم‌ها دوباره فعال نشود؛ سناریو ۶:
+ *         ماسک حکم باتری خراب (۲۰۳) صفر می‌شود.
  * @return JSON با ok؛ صف پر → کد ۴۰۹ با e=1، ورودی بد → ۴۰۰ با e=2
  */
 static void func__Simple_HttpLatchReset(void)
@@ -774,10 +775,11 @@ static void func__Simple_HttpLatchReset(void)
 
         if (int32_t__n == 5)
         {
-            /* اول پرچم قفل تا چراغ قرمز همان لحظه خاموش شود، بعد شمارنده‌ها. */
-            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u);
+            /* اول شمارنده‌ها صفر شوند؛ قفل آخر پاک شود تا کنترل‌گر بین فریم‌ها
+               با آستانهٔ قدیمی آن را دوباره فعال نکند. */
+            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u);
             bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) == true) && bool__ok;
-            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u) == true) && bool__ok;
+            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u) == true) && bool__ok;
         }
         else if (int32_t__n == 6)
         {
@@ -803,8 +805,8 @@ static void func__Simple_HttpLatchReset(void)
 
 /**
  * @brief  وضعیت صف و آخرین پژواک برد (GET /latch) - فقط ادمین.
- *         پنل از همین جواب می‌فهمد ریست روی برد نشست (rep بالاتر و val صفر)
- *         یا برد ردش کرد (nak بالاتر).
+ *         پنل ‎rep/nak‎ را با خط پایه، ‎id/val‎ را با هدف و ‎q‎ را با صفر
+ *         مقایسه می‌کند؛ سناریوی ۵ هم تا سه پژواک نرسد موفق اعلام نمی‌شود.
  * @return JSON با id/val/known/rep/req/nak/busy/q
  */
 static void func__Simple_HttpLatchState(void)

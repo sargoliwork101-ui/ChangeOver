@@ -54,6 +54,7 @@ static bool     BOOL__G__ChargingEdge;      /* [EN] charging seen at startup? / 
 static uint32_t UINT32_T__G__ChargeStartMs; /* [EN] This session's start / شروع این سیکل */
 static bool     BOOL__G__PrevCharging;      /* [EN] Edge memory / حافظهٔ لبه */
 static bool     BOOL__G__CycleFullSeen;      /* [EN] This cycle reached FLOAT / این سیکل به فول رسید */
+static bool     BOOL__G__RequireFreshFullCycle; /* [EN] Ignore stale FLOAT after a battery swap / فول تازه لازم است */
 static bool     BOOL__G__CycleHasImbalance;  /* [EN] Deferred candidate / نامزدِ معوق */
 static bool     BOOL__G__CycleEventRecorded; /* [EN] One event already committed / رویداد ثبت‌شدهٔ همین سیکل */
 static uint8_t  UINT8_T__G__CleanFullCycles; /* [EN] Consecutive full cycles without event / سیکل‌های کامل پاک */
@@ -236,6 +237,7 @@ void func__Imbalance_Init(void)
     UINT32_T__G__ChargeStartMs = 0u;
     BOOL__G__PrevCharging      = false;
     BOOL__G__CycleFullSeen     = false;
+    BOOL__G__RequireFreshFullCycle = false;
     BOOL__G__CycleHasImbalance = false;
     BOOL__G__CycleEventRecorded = false;
     UINT8_T__G__CleanFullCycles = 0u;
@@ -272,6 +274,87 @@ void func__Imbalance_GetOutputs(imbalance_outputs_t *imbalance_outputs_t__output
     }
 }
 
+/**
+ * @brief  [EN] Drop every RAM-only charge-cycle/episode value after a battery
+ *              absence signal. A new charging edge is required before a stale
+ *              FLOAT indication can qualify a cycle again.
+ *         [FA] همهٔ وضعیت‌های موقت چرخه/رویداد را پس از نبود باتری پاک می‌کند؛
+ *              پیش از پذیرش FLOAT، شروع یک شارژ تازه لازم است.
+ * @param  uint32_t__nowMs [EN] Current monotonic time in ms / زمان یکنواخت فعلی، میلی‌ثانیه
+ * @return void [EN] No return value / خروجی ندارد
+ */
+static void func__Imbalance_ResetCycleState(uint32_t uint32_t__nowMs)
+{
+    BOOL__G__HasChargeEnd       = false;
+    UINT32_T__G__RestAnchorMs   = uint32_t__nowMs;
+    BOOL__G__ChargingEdge       = false;
+    UINT32_T__G__ChargeStartMs  = uint32_t__nowMs;
+    BOOL__G__PrevCharging       = false;
+    BOOL__G__CycleFullSeen      = false;
+    BOOL__G__RequireFreshFullCycle = true;
+    BOOL__G__CycleHasImbalance  = false;
+    BOOL__G__CycleEventRecorded = false;
+    UINT8_T__G__CleanFullCycles = 0u;
+    BOOL__G__Episode            = false;
+    UINT32_T__G__EpisodeLimitMv = 0u;
+    UINT32_T__G__OverSinceMs    = 0u;
+    BOOL__G__OverTiming         = false;
+    UINT32_T__G__LastBeepMs     = uint32_t__nowMs;
+}
+
+/**
+ * @brief  [EN] Clear battery-owned persistent counters/latch after a
+ *              qualified battery swap.
+ *         [FA] شمارنده‌ها و قفلِ متعلق به باتری را پس از تأیید تعویض پاک می‌کند.
+ * @‎return bool [EN] true iff an NVM-backed value changed‎ / اگر مقدار ماندگار عوض شد true
+ */
+static bool func__Imbalance_ClearBatteryState(void)
+{
+    bool bool__changed = ((UINT32_T__G__Events != 0u) ||
+                          (UINT32_T__G__LatchedCycles != 0u) ||
+                          (UINT32_T__G__Latched != 0u));
+
+    UINT32_T__G__Events        = 0u;
+    UINT32_T__G__LatchedCycles = 0u;
+    UINT32_T__G__Latched       = 0u;
+
+    return bool__changed;
+}
+
+/**
+ * @brief  [EN] Publish the current live and persisted Imbalance outputs.
+ *         [FA] خروجی زنده و ماندگارِ عدم‌توازن را برای مصرف‌کننده منتشر می‌کند.
+ * @‎param  uint32_t__imbalanceMv [EN] Absolute half-voltage difference in mV‎ / اختلاف دو نیم، میلی‌ولت
+ * @‎param  bool__sameState [EN] true when both charger channels match / true‎ اگر دو کانال هم‌حالت‌اند
+ * @‎param  bool__beepDue [EN] One-pass beep pulse‎ / پالس بوق همین پاس
+ * @param  imbalance_outputs_t__outputs [EN] Optional output copy / کپی خروجی، ممکن است NULL باشد
+ * @return void [EN] No return value / خروجی ندارد
+ */
+static void func__Imbalance_PublishOutputs(uint32_t uint32_t__imbalanceMv,
+                                           bool bool__sameState,
+                                           bool bool__beepDue,
+                                           imbalance_outputs_t *imbalance_outputs_t__outputs)
+{
+    IMBAL_OUTPUTS_T__G__Last.bool__halvesMismatch = (bool__sameState == false);
+    IMBAL_OUTPUTS_T__G__Last.uint32_t__imbalanceMv = uint32_t__imbalanceMv;
+    IMBAL_OUTPUTS_T__G__Last.bool__episode = BOOL__G__Episode;
+    IMBAL_OUTPUTS_T__G__Last.uint32_t__events = UINT32_T__G__Events;
+    IMBAL_OUTPUTS_T__G__Last.bool__latched = (UINT32_T__G__Latched != 0u);
+    IMBAL_OUTPUTS_T__G__Last.uint32_t__latchedCycles = UINT32_T__G__LatchedCycles;
+    IMBAL_OUTPUTS_T__G__Last.bool__blockOutput =
+        ((UINT32_T__G__Latched != 0u) &&
+         (func__Imbalance_ReadParam(IMBAL_PARAM_BLOCK_OUTPUT_EN) != 0u));
+    IMBAL_OUTPUTS_T__G__Last.bool__chargingAllowed =
+        ((UINT32_T__G__Latched == 0u) ||
+         (UINT32_T__G__LatchedCycles < func__Imbalance_ReadParam(IMBAL_PARAM_MAX_LATCHED_CYCLES)));
+    IMBAL_OUTPUTS_T__G__Last.bool__beepDue = bool__beepDue;
+
+    if (imbalance_outputs_t__outputs != NULL)
+    {
+        *imbalance_outputs_t__outputs = IMBAL_OUTPUTS_T__G__Last;
+    }
+}
+
 bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inputs,
                               uint32_t uint32_t__nowMs,
                               imbalance_outputs_t *imbalance_outputs_t__outputs)
@@ -284,11 +367,15 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     bool     bool__chargeComplete;
     bool     bool__sameState;
     bool     bool__justLatched;
+    bool     bool__beepDue;
+    bool     bool__absenceElapsed;
 
     bool__persistChanged = false;
     bool__windowOpen     = false;
     uint32_t__activeLimitMv  = 0u;
     bool__justLatched    = false;
+    bool__beepDue        = false;
+    bool__absenceElapsed = false;
 
     if (imbalance_inputs_t__inputs == NULL)
     {
@@ -318,6 +405,11 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     if (imbalance_inputs_t__inputs->bool__valid == false)
     {
         BOOL__G__OverTiming = false;
+        /* [EN] Invalid data breaks the continuous-absence proof; never count
+           its elapsed time toward a battery-swap reset.
+           [FA] نمونهٔ نامعتبر پیوستگی نبود را می‌شکند؛ زمانش برای ریست شمرده نشود. */
+        BOOL__G__AbsentTiming = false;
+        UINT32_T__G__AbsentSinceMs = 0u;
         if (imbalance_outputs_t__outputs != NULL)
         {
             *imbalance_outputs_t__outputs = IMBAL_OUTPUTS_T__G__Last;
@@ -335,6 +427,53 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
        [FA] فقط وقتی قابل مقایسه‌اند که هر دو نیم هم‌حالت باشند. */
     bool__sameState = (imbalance_inputs_t__inputs->bool__chargingCh1 ==
                        imbalance_inputs_t__inputs->bool__chargingCh2);
+
+    /* ---- battery-removal priority: quarantine, then full reset ---- */
+    if (imbalance_inputs_t__inputs->bool__batAbsent == true)
+    {
+        if (BOOL__G__AbsentTiming == false)
+        {
+            BOOL__G__AbsentTiming     = true;
+            UINT32_T__G__AbsentSinceMs = uint32_t__nowMs;
+        }
+        bool__absenceElapsed =
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__AbsentSinceMs) >=
+             IMBAL_ABSENT_RESET_MS);
+
+        /* [EN] While the battery is absent, discard any in-flight candidate
+           and skip cycle/window evaluation. This prevents the same pass that
+           clears NVM slots from immediately recreating an event or latch.
+           [FA] هنگام نبود باتری، نامزد و چرخهٔ نیمه‌کاره کنار گذاشته می‌شود؛
+           این دور پس از ریست وارد ارزیابی عادی نمی‌شود. */
+        func__Imbalance_ResetCycleState(uint32_t__nowMs);
+        if (bool__absenceElapsed != false)
+        {
+            bool__persistChanged = func__Imbalance_ClearBatteryState();
+        }
+        func__Imbalance_PublishOutputs(0u, bool__sameState, false,
+                                       imbalance_outputs_t__outputs);
+        return bool__persistChanged;
+    }
+
+    /* [EN] Also honor the full 3 s if the first present sample arrives just
+       after the threshold; a reconnect must not erase an already-qualified
+       absence interval. [FA] اگر نمونهٔ اتصال پس از مرز ۳s آمد، همان‌جا ریست کن. */
+    if (BOOL__G__AbsentTiming != false)
+    {
+        bool__absenceElapsed =
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__AbsentSinceMs) >=
+             IMBAL_ABSENT_RESET_MS);
+        BOOL__G__AbsentTiming = false;
+        UINT32_T__G__AbsentSinceMs = 0u;
+        if (bool__absenceElapsed != false)
+        {
+            bool__persistChanged = func__Imbalance_ClearBatteryState();
+            func__Imbalance_ResetCycleState(uint32_t__nowMs);
+            func__Imbalance_PublishOutputs(0u, bool__sameState, false,
+                                           imbalance_outputs_t__outputs);
+            return bool__persistChanged;
+        }
+    }
 
     if ((bool__charging == true) && (BOOL__G__PrevCharging == false))
     {
@@ -382,6 +521,7 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         BOOL__G__CycleHasImbalance  = false;
         BOOL__G__CycleEventRecorded = false;
         BOOL__G__ChargingEdge       = true;
+        BOOL__G__RequireFreshFullCycle = false;
         UINT32_T__G__ChargeStartMs  = uint32_t__nowMs;
 
         /* [EN] Count a post-latch charging cycle only if the clean-cycle rule
@@ -416,45 +556,12 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     /* [EN] IsChargeComplete is sampled after the charger has parked in FLOAT.
        It qualifies this cycle, but it does not by itself create an event.
        [FA] کامل‌شدن فقط سیکل را معتبر می‌کند و به‌تنهایی رویداد نمی‌سازد. */
-    if (bool__chargeComplete == true)
+    if ((bool__chargeComplete == true) &&
+        (BOOL__G__RequireFreshFullCycle == false))
     {
         BOOL__G__CycleFullSeen = true;
     }
     BOOL__G__PrevCharging = bool__charging;
-
-    /* ---- automatic reset on battery absence (real battery swap) ----
-     * [EN] Counters and the latch belong to the BATTERY, not to the board:
-     *      when the pack physically leaves, the memory must leave with it.
-     *      3000 ms continuous absence - a battery swap takes minutes.
-     * [FA] شمارنده‌ها متعلق به باتری‌اند؛ با تعویض واقعی، خودکار صفر. */
-    if (imbalance_inputs_t__inputs->bool__batAbsent == true)
-    {
-        if (BOOL__G__AbsentTiming == false)
-        {
-            BOOL__G__AbsentTiming    = true;
-            UINT32_T__G__AbsentSinceMs = uint32_t__nowMs;
-        }
-        else if ((uint32_t__nowMs - UINT32_T__G__AbsentSinceMs) >= IMBAL_ABSENT_RESET_MS)
-        {
-            if ((UINT32_T__G__Events != 0u) || (UINT32_T__G__LatchedCycles != 0u) || (UINT32_T__G__Latched != 0u))
-            {
-                UINT32_T__G__Events        = 0u;
-                UINT32_T__G__LatchedCycles = 0u;
-                UINT32_T__G__Latched       = 0u;
-                bool__persistChanged       = true;
-            }
-            BOOL__G__Episode    = false;
-            BOOL__G__OverTiming = false;
-        }
-        else
-        {
-            /* [EN] Absent but still within the qualifier: nothing to do. */
-        }
-    }
-    else
-    {
-        BOOL__G__AbsentTiming = false;
-    }
 
     /* ---- window classification / طبقه‌بندی پنجره ----
      * [EN] discharge: output on battery (and not charging) -> immediate,
@@ -618,7 +725,6 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     }
 
     /* ---- hourly beep while latched / بوق ساعتی در قفل ---- */
-    IMBAL_OUTPUTS_T__G__Last.bool__beepDue = false;
     if (UINT32_T__G__Latched != 0u)
     {
         uint32_t uint32_t__periodMs = func__Imbalance_ReadParam(IMBAL_PARAM_LATCH_BEEP_PERIOD_MS);
@@ -628,14 +734,14 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
             /* [EN] Confirmation beep at the latch moment: the operator must
              *      hear the verdict immediately, then hourly.
              * [FA] بوق تأیید در لحظهٔ قفل، سپس هر یک دوره. */
-            IMBAL_OUTPUTS_T__G__Last.bool__beepDue = true;
-            UINT32_T__G__LastBeepMs               = uint32_t__nowMs;
+            bool__beepDue = true;
+            UINT32_T__G__LastBeepMs = uint32_t__nowMs;
         }
         else if ((uint32_t__periodMs != 0u) &&
                  ((uint32_t__nowMs - UINT32_T__G__LastBeepMs) >= uint32_t__periodMs))
         {
-            IMBAL_OUTPUTS_T__G__Last.bool__beepDue = true;
-            UINT32_T__G__LastBeepMs               = uint32_t__nowMs;
+            bool__beepDue = true;
+            UINT32_T__G__LastBeepMs = uint32_t__nowMs;
         }
         else
         {
@@ -643,24 +749,8 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         }
     }
 
-    /* ---- outputs / خروجی‌ها ---- */
-    IMBAL_OUTPUTS_T__G__Last.bool__halvesMismatch    = (bool__sameState == false);
-    IMBAL_OUTPUTS_T__G__Last.uint32_t__imbalanceMv   = uint32_t__imbalanceMv;
-    IMBAL_OUTPUTS_T__G__Last.bool__episode           = BOOL__G__Episode;
-    IMBAL_OUTPUTS_T__G__Last.uint32_t__events        = UINT32_T__G__Events;
-    IMBAL_OUTPUTS_T__G__Last.bool__latched           = (UINT32_T__G__Latched != 0u);
-    IMBAL_OUTPUTS_T__G__Last.uint32_t__latchedCycles = UINT32_T__G__LatchedCycles;
-    IMBAL_OUTPUTS_T__G__Last.bool__blockOutput =
-        ((UINT32_T__G__Latched != 0u) &&
-         (func__Imbalance_ReadParam(IMBAL_PARAM_BLOCK_OUTPUT_EN) != 0u));
-    IMBAL_OUTPUTS_T__G__Last.bool__chargingAllowed =
-        ((UINT32_T__G__Latched == 0u) ||
-         (UINT32_T__G__LatchedCycles < func__Imbalance_ReadParam(IMBAL_PARAM_MAX_LATCHED_CYCLES)));
-
-    if (imbalance_outputs_t__outputs != NULL)
-    {
-        *imbalance_outputs_t__outputs = IMBAL_OUTPUTS_T__G__Last;
-    }
+    func__Imbalance_PublishOutputs(uint32_t__imbalanceMv, bool__sameState,
+                                   bool__beepDue, imbalance_outputs_t__outputs);
 
     return bool__persistChanged;
 }
@@ -688,10 +778,10 @@ bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,
     }
     else if ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) && (uint8_t__paramId <= IMBAL_SLOT_LAST_ID))
     {
-        /* [EN] Runtime slots: NVM boot replay only. The panel never sends
-         *      these (not in XIDS/backup), values clamp to 0..255 because
-         *      the counters live in a u8 budget by design.
-         * [FA] اسلات‌های زمان‌اجرا: فقط پخش NVM هنگام بوت؛ گیره ۰..۲۵۵. */
+        /* [EN] Runtime slots: NVM boot replay plus the dedicated ESP latch-reset
+         *      action (not ordinary XIDS/backup edits); clamp to the u8 budget.
+         * [FA] اسلات‌های زمان‌اجرا: پخش NVM و مسیر مستقل ریست قفل ESP؛ نه
+         *      ویرایش معمولی پنل/پشتیبان. گیره مطابق بودجهٔ ۸بیتی است. */
         uint32_t uint32_t__clamped = (uint32_t__value > IMBAL_MAX_COUNT) ? IMBAL_MAX_COUNT : uint32_t__value;
 
         switch (uint8_t__paramId)

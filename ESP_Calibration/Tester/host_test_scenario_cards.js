@@ -484,6 +484,114 @@ function testCharging(win, doc) {
     typeInto(win, doc, 'q68', 1000);
 }
 
+/* ==================== Latch reset route contracts / قرارداد مسیر ریست قفل ==================== */
+
+function sourceSection(source, startMarker, endMarker) {
+    const start = source.indexOf(startMarker);
+    const end = source.indexOf(endMarker, start);
+    return start >= 0 && end > start ? source.slice(start, end) : '';
+}
+
+function testLatchResetSourceContracts() {
+    console.log('\nlatch-reset source contracts / قرارداد مسیر ریست قفل');
+    const calHttp = fs.readFileSync(path.join(__dirname, '..', 'plink_http.h'), 'utf8');
+    const simpleHttp = fs.readFileSync(path.join(__dirname, '..', '..', 'ESP_USER', 'simple_http.h'), 'utf8');
+    const calPanel = fs.readFileSync(path.join(__dirname, '..', 'plink_panel.h'), 'utf8');
+    const simplePanel = fs.readFileSync(path.join(__dirname, '..', '..', 'ESP_USER', 'simple_panel.h'), 'utf8');
+    const routes = [
+        sourceSection(calHttp, 'static void func__Esp_HttpLatchReset(', 'static void func__Esp_HttpLatchState('),
+        sourceSection(simpleHttp, 'static void func__Simple_HttpLatchReset(', 'static void func__Simple_HttpLatchState(')
+    ];
+    const slots = [
+        ['ESP کالیبراسیون', 'func__Esp_QueueSlot(ESP_SLOT_EVENTS_ID, 0u)',
+            'func__Esp_QueueSlot(ESP_SLOT_CYCLES_ID, 0u)', 'func__Esp_QueueSlot(ESP_SLOT_LATCH_ID, 0u)'],
+        ['ESP ساده', 'func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u)',
+            'func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u)', 'func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u)']
+    ];
+    routes.forEach((route, i) => {
+        const [name, eventToken, cycleToken, latchToken] = slots[i];
+        const eventPos = route.indexOf(eventToken);
+        const cyclePos = route.indexOf(cycleToken);
+        const latchPos = route.indexOf(latchToken);
+        check(eventPos >= 0 && eventPos < cyclePos && cyclePos < latchPos,
+            name + ' queues counters before clearing the latch');
+    });
+
+    const calReset = sourceSection(calPanel, 'async function latchrst(n){', 'async function wrestore(');
+    const simpleReset = sourceSection(simplePanel, 'async function latchReset(n){', 'async function loadUsers(');
+    [
+        ['ESP کالیبراسیون', calReset, 'Number(s.id)===targetId'],
+        ['ESP ساده', simpleReset, 'Number(st.id)===targetId']
+    ].forEach(([name, reset, targetCheck]) => {
+        const valueCheck = reset.includes('Number(s.val)===0') || reset.includes('Number(st.val)===0');
+        const echoCountCheck = reset.includes('Number(s.rep)>=Number(before.rep)+requiredEchoes') ||
+            reset.includes('Number(st.rep)>=Number(b.rep)+requiredEchoes');
+        check(reset.includes('const targetId=n===5?202:203;') &&
+              reset.includes('const requiredEchoes=n===5?3:1;') &&
+              reset.includes(targetCheck) && valueCheck && echoCountCheck,
+              name + ' requires the target id, zero value and scenario-5 echo count');
+        check(reset.includes('Number(s.q)===0') || reset.includes('Number(st.q)===0'),
+              name + ' waits for the reset queue to drain');
+    });
+}
+
+async function testLatchResetHandshake(win, doc) {
+    console.log('\nlatch-reset acknowledgement / تأیید پژواک ریست قفل');
+    const oldFetch = win.fetch;
+    const oldConfirm = win.pmConfirm;
+
+    function response(status, body) {
+        return { status, ok: status >= 200 && status < 300, json: async () => body };
+    }
+    async function exercise(n, states) {
+        let gets = 0;
+        let posts = 0;
+        win.pmConfirm = async () => true;
+        win.fetch = async (url, options) => {
+            if (String(url).indexOf('/latch/reset') === 0) {
+                posts += 1;
+                return response(200, { ok: 1, n });
+            }
+            if (String(url) === '/latch') {
+                const sample = states[Math.min(gets, states.length - 1)];
+                gets += 1;
+                return response(sample.status || 200, sample.body || sample);
+            }
+            return response(404, {});
+        };
+        await win.eval('latchrst')(n);
+        return { gets, posts, message: textOf(doc, 'rst' + n) };
+    }
+
+    try {
+        const s5 = await exercise(5, [
+            { rep: 10, nak: 0, q: 0, id: 202, val: 0 },
+            { rep: 11, nak: 0, q: 2, id: 200, val: 0 },
+            { rep: 12, nak: 0, q: 1, id: 201, val: 0 },
+            { rep: 13, nak: 0, q: 0, id: 202, val: 0 }
+        ]);
+        check(s5.posts === 1 && s5.gets === 4 && s5.message.indexOf('✅') === 0,
+            'scenario 5 waits for events, cycles and the final latch echo before success', JSON.stringify(s5));
+
+        const s6 = await exercise(6, [
+            { rep: 20, nak: 0, q: 0, id: 203, val: 0 },
+            { rep: 21, nak: 0, q: 0, id: 202, val: 0 },
+            { rep: 22, nak: 0, q: 0, id: 203, val: 0 }
+        ]);
+        check(s6.posts === 1 && s6.gets === 3 && s6.message.indexOf('✅') === 0,
+            'scenario 6 ignores a fresh wrong-id echo and waits for id 203', JSON.stringify(s6));
+
+        const stale = await exercise(5, [
+            { status: 503, body: { rep: 40, nak: 0, q: 0, id: 202, val: 0 } }
+        ]);
+        check(stale.posts === 0 && stale.gets === 1 && stale.message.indexOf('⚠') === 0,
+            'no reset is reported or queued when the pre-reset status cannot be read', JSON.stringify(stale));
+    } finally {
+        win.fetch = oldFetch;
+        win.pmConfirm = oldConfirm;
+    }
+}
+
 /* ==================== Scenario 5 - imbalance ==================== */
 
 function testImbalance(win, doc) {
@@ -2166,7 +2274,9 @@ setTimeout(async () => {
         testDisconnect(win, doc);
         testDischarge(win, doc);
         testCharging(win, doc);
-            testImbalance(win, doc);
+        testImbalance(win, doc);
+        testLatchResetSourceContracts();
+        await testLatchResetHandshake(win, doc);
         testSimulator(win, doc);
         await testSendQueue(win, doc);
         testFixRules(win, doc);

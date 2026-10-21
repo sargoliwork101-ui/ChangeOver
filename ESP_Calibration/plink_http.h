@@ -318,9 +318,9 @@ static bool func__Esp_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value)
 
 /**
  * @brief  دکمهٔ ریست کارت سناریو: ‎POST /latch/reset‎?‎n=5|6‎ را جواب می‌دهد.
- *         برای سناریو ۵ پرچم قفل (۲۰۲) و شمارنده‌هایش (۲۰۱ و ۲۰۰) صفر
- *         می‌شوند تا از اول شمرده شود؛ برای سناریو ۶ ماسک حکم باتری خراب
- *         (۲۰۳) صفر می‌شود. مقدار صفر = پاک، همان اثر تعویض واقعی باتری.
+ *         برای سناریو ۵ ابتدا شمارنده‌های رویداد/سیکل (۲۰۰ و ۲۰۱) و در آخر
+ *         پرچم قفل (۲۰۲) صفر می‌شوند تا بین فریم‌ها دوباره فعال نشود؛ برای
+ *         سناریو ۶ ماسک حکم باتری خراب (۲۰۳) صفر می‌شود. مقدار صفر = پاک.
  * @param  n شمارهٔ سناریو؛ هر چیزی جز ۵ یا ۶ رد می‌شود
  * @return JSON با ok؛ صف پر → کد ۴۰۹ با ‎e=1‎، ورودی بد → کد ۴۰۰ با ‎e=2‎
  */
@@ -340,10 +340,11 @@ static void func__Esp_HttpLatchReset(void)
 
     if (int32_t__n == 5)
     {
-        /* اول پرچم قفل تا چراغ قرمز همان لحظه خاموش شود، بعد شمارنده‌ها. */
-        bool__queued = func__Esp_QueueSlot(ESP_SLOT_LATCH_ID, 0u);
+        /* اول شمارنده‌ها صفر شوند؛ قفل آخر پاک شود تا کنترل‌گر بین فریم‌ها
+           با آستانهٔ قدیمی آن را دوباره فعال نکند. */
+        bool__queued = func__Esp_QueueSlot(ESP_SLOT_EVENTS_ID, 0u);
         bool__queued = (func__Esp_QueueSlot(ESP_SLOT_CYCLES_ID, 0u) == true) && bool__queued;
-        bool__queued = (func__Esp_QueueSlot(ESP_SLOT_EVENTS_ID, 0u) == true) && bool__queued;
+        bool__queued = (func__Esp_QueueSlot(ESP_SLOT_LATCH_ID, 0u) == true) && bool__queued;
     }
     else
     {
@@ -358,8 +359,8 @@ static void func__Esp_HttpLatchReset(void)
 
 /**
  * @brief  وضعیت صف و آخرین پژواک برد: ‎GET /latch‎.
- *         پنل از همین جواب می‌فهمد ریست روی برد نشسته (مقدار اعمال‌شده و
- *         شناخته‌شدن) یا برد ردش کرده (شمارندهٔ NAK).
+ *         پنل از ‎rep/nak‎ نسبت به خط پایه، شناسه/مقدار آخر و صف باقی‌مانده
+ *         می‌فهمد ریست هدف واقعاً نشسته یا برد آن را رد کرده است.
  * @return JSON با ‎id/val/known/rep/req/nak/busy/q‎
  */
 static void func__Esp_HttpLatchState(void)

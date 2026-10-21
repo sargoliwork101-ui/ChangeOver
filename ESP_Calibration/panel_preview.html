@@ -519,7 +519,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 22024b9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 746a656</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3170,30 +3170,36 @@ async function setv(id,v){
   }
  }
  throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
-/* ریست دستی قفل‌ها: درخواست به صف جداگانهٔ ESP می‌رود (‎/latch/reset‎) و
-   تأیید برد از پژواک REPORT خوانده می‌شود؛ رد شدن = شمارندهٔ NAK بالاتر.
-   سناریو ۵ قفل و شمارنده‌ها را صفر می‌کند، سناریو ۶ ماسک حکم باتری خراب. */
+/* ریست دستی قفل‌ها: درخواست به صف جداگانهٔ ESP می‌رود (‎/latch/reset‎).
+   موفقیت فقط با پژواک تازهٔ شناسهٔ هدف، مقدار صفر و صف خالی است؛ سناریو ۵
+   سه پژواک می‌خواهد و قفل را پس از صفرشدن شمارنده‌ها پاک می‌کند. NAK هم رد را نشان می‌دهد. */
 async function latchrst(n){
  const e=$('rst'+n),was=e?e.textContent:'';
  const q=n===5?'قفل عدم‌توازن پاک شود و شمارنده‌های رویداد و سیکل از صفر شمرده شوند؟'
               :'حکم «باتری خراب» پاک شود و شارژ آن کانال دوباره آزاد شود؟';
  if(!(await pmConfirm(q)))return;
  if(e)e.textContent='در حال ارسال…';
+ const targetId=n===5?202:203;
+ const requiredEchoes=n===5?3:1;
  try{
-  let before={rep:0,nak:0};
-  try{before=await req('/latch');}catch(x){}
+  const before=await req('/latch');
+  if(before._s!==200||!Number.isFinite(Number(before.rep))||!Number.isFinite(Number(before.nak)))
+   throw new Error('وضعیت فعلی قفل خوانده نشد؛ بعد از وصل لینک دوباره بزن');
   const j=await req('/latch/reset?n='+n,'POST');
-  if(j.ok!==1)throw new Error(j.e===1?'صف ESP پر است؛ چند لحظه بعد دوباره بزن':'درخواست رد شد');
+  if(j._s!==200||j.ok!==1)throw new Error(j.e===1?'صف ESP پر است؛ چند لحظه بعد دوباره بزن':'درخواست رد شد');
   if(e)e.textContent='ارسال شد؛ منتظر تأیید برد…';
   for(let k=0;k<25;k++){
    await sl(200);
-   const s=await req('/latch');
-   if(Number(s.nak)>Number(before.nak||0))throw new Error('برد درخواست را نپذیرفت (NAK)');
-   if(Number(s.rep)>Number(before.rep||0)&&Number(s.val)===0){
+   let s;
+   try{s=await req('/latch');}catch(x){continue;}
+   if(s._s!==200)continue;
+   if(Number(s.nak)>Number(before.nak))throw new Error('برد درخواست را نپذیرفت (NAK)');
+   if(Number(s.rep)>=Number(before.rep)+requiredEchoes&&Number(s.id)===targetId&&
+      Number(s.val)===0&&Number(s.q)===0){
     if(e)e.textContent='✅ پاک شد'+(n===5?'؛ از صفر شمرده می‌شود':'');
     return;}
   }
-  if(e)e.textContent='⚠ تأیید برد نرسید؛ سلامت لینک و کابل را ببین';
+  if(e)e.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک و کابل را ببین';
  }catch(err){if(e)e.textContent='⚠ '+(err&&err.message?err.message:err);}
  finally{setTimeout(()=>{const t2=$('rst'+n);if(t2&&was&&t2.textContent.indexOf('✅')!==0&&t2.textContent.indexOf('⚠')!==0)t2.textContent=was;},9000);}}
 async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){}}}

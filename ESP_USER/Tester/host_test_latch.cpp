@@ -14,6 +14,8 @@
    - پژواک REPORT: مقدار اعمال‌شده ثبت و خانهٔ همان درخواست آزاد می‌شود.
    - NAK: شناسه و کد ثبت می‌شوند و خانهٔ صف دست نمی‌خورد.
    - پارامترهای عادی (شناسهٔ ۵) دست‌نخورده از مسیر قبلی می‌روند.
+   - سناریوی ۵ در مسیر واقعی: اول شمارنده‌ها، بعد قفل؛ پنل فقط پس از پژواک
+     تازهٔ شناسهٔ هدف و دریافت پاسخ‌های لازم موفقیت اعلام می‌کند.
 
    اجرا: bash ESP_USER/Tester/run_simple_tests.sh            */
 
@@ -30,6 +32,9 @@ typedef ESP8266WebServer esp_web_server_t;
 
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <unistd.h>
 
 /* ==================== نمونه‌های سراسری استاب‌ها ==================== */
@@ -125,6 +130,59 @@ static void func__T_InjectFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__p
 }
 
 /* ==================== بررسی‌ها ==================== */
+static std::string func__T_ReadEspUserSource(const char *char__ptr_fileName)
+{
+    std::string string__path(__FILE__);
+    std::size_t size_t__separator = string__path.find_last_of("/\\\\");
+    if (size_t__separator != std::string::npos) { string__path.resize(size_t__separator); }
+    size_t__separator = string__path.find_last_of("/\\\\");
+    if (size_t__separator != std::string::npos) { string__path.resize(size_t__separator); }
+    string__path += "/";
+    string__path += char__ptr_fileName;
+
+    std::ifstream file__source(string__path.c_str());
+    std::ostringstream stream__source;
+    if (!file__source) { return std::string(); }
+    stream__source << file__source.rdbuf();
+    return stream__source.str();
+}
+
+static void func__T_TestResetOrderAndHandshake(void)
+{
+    const std::string string__http = func__T_ReadEspUserSource("simple_http.h");
+    const std::string string__panel = func__T_ReadEspUserSource("simple_panel.h");
+    const std::size_t size_t__routeStart = string__http.find("static void func__Simple_HttpLatchReset(");
+    const std::size_t size_t__routeEnd = string__http.find("static void func__Simple_HttpLatchState(", size_t__routeStart);
+    const std::string string__route = (size_t__routeStart != std::string::npos &&
+                                       size_t__routeEnd != std::string::npos)
+        ? string__http.substr(size_t__routeStart, size_t__routeEnd - size_t__routeStart)
+        : std::string();
+    const std::size_t size_t__events = string__route.find("func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u)");
+    const std::size_t size_t__cycles = string__route.find("func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u)");
+    const std::size_t size_t__latch = string__route.find("func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u)");
+    const std::size_t size_t__panelStart = string__panel.find("async function latchReset(n){");
+    const std::size_t size_t__panelEnd = string__panel.find("async function loadUsers", size_t__panelStart);
+    const std::string string__panelReset = (size_t__panelStart != std::string::npos &&
+                                            size_t__panelEnd != std::string::npos)
+        ? string__panel.substr(size_t__panelStart, size_t__panelEnd - size_t__panelStart)
+        : std::string();
+    const std::size_t size_t__baseline = string__panelReset.find("const beforeResp=await fetch('/latch'");
+    const std::size_t size_t__post = string__panelReset.find("const postResp=await fetch('/latch/reset?n='+n");
+
+    (void)printf("\n== ترتیب ریست و تأیید پنل ==\n");
+    func__T_Check(size_t__routeStart != std::string::npos && size_t__routeEnd != std::string::npos &&
+                  size_t__events < size_t__cycles && size_t__cycles < size_t__latch,
+                  "مسیر واقعی اول شمارندهٔ رویداد/سیکل و در آخر قفل را صف می‌کند");
+    func__T_Check(size_t__baseline != std::string::npos && size_t__post > size_t__baseline &&
+                  string__panelReset.find("if(!beforeResp.ok)") < size_t__post,
+                  "پنل پیش از ارسال، وضعیت قبلی را با پاسخ سالم می‌خواند");
+    func__T_Check(string__panelReset.find("const targetId=n===5?202:203;") != std::string::npos &&
+                  string__panelReset.find("const requiredEchoes=n===5?3:1;") != std::string::npos &&
+                  string__panelReset.find("Number(st.id)===targetId") != std::string::npos &&
+                  string__panelReset.find("Number(st.val)===0") != std::string::npos,
+                  "موفقیت فقط با پژواک صفرِ شناسهٔ هدف و هر سه پژواک سناریوی ۵ اعلام می‌شود");
+}
+
 static void func__T_TestQueue(void)
 {
     (void)printf("\n== صف درخواست ریست ==\n");
@@ -262,6 +320,7 @@ int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
 
+    func__T_TestResetOrderAndHandshake();
     func__T_TestQueue();
     func__T_TestSender();
     func__T_TestEchoAndNak();

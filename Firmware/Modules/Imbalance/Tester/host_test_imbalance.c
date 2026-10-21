@@ -278,6 +278,31 @@ int main(void)
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 4u);
 
+    /* ---- manual reset order: clear counters before clearing the latch ----
+       [EN] Clearing slot 202 while the event budget is still exhausted lets
+            the next control pass immediately latch again. The ESP reset path
+            therefore clears 200 and 201 first and 202 last.
+       [FA] اگر ۲۰۲ پیش از شمارندهٔ رویدادِ تمام‌شده پاک شود، پاس بعدی دوباره
+            قفل می‌کند؛ پس مسیر ESP اول ۲۰۰ و ۲۰۱ و در آخر ۲۰۲ را صفر می‌کند. */
+    CHECK(func__Imbalance_SetParam(200u, 10u, NULL));
+    CHECK(func__Imbalance_SetParam(201u, 4u, NULL));
+    CHECK(func__Imbalance_SetParam(202u, 0u, NULL));
+    func__Run(uint32_t__t + 20000u, true);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 10u);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);
+
+    CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
+    func__Run(uint32_t__t + 20001u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);
+    CHECK(func__Imbalance_SetParam(201u, 0u, NULL));
+    func__Run(uint32_t__t + 20002u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 0u);
+    CHECK(func__Imbalance_SetParam(202u, 0u, NULL));
+    func__Run(uint32_t__t + 20003u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 0u);
+
     /* ---- battery absent 3 s -> automatic full reset remains a second path ---- */
     CHECK(func__Imbalance_SetParam(200u, 4u, NULL));
     CHECK(func__Imbalance_SetParam(202u, 1u, NULL));

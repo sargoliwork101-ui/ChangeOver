@@ -52,6 +52,29 @@ Measurement) — بعد با جدول جریان بنچ (روی محور شما�
 آستانه یا تایمری دیگر در این ماژول برای قطع باتری نیست. UI هم همان بیت را با
 سناریوی BatLost نشان می‌دهد.
 
+## سناریو ۶ — زمان شارژ باتری خراب / Dead-battery charge timer
+
+[EN] The timer accumulates only while a channel is in `BULK` or `ABSORB`. A
+completed `FLOAT` cycle clears it; a shorter stop preserves it, while any
+non-charging pause that reaches parameter 126 (default `60000 ms`) clears it.
+An invalid input puts the channel in `INPUT_WAIT`: the final active interval is
+accounted for before `SafeIdle`, and the pause clock is serviced on every
+waiting pass. This keeps a long input outage from being counted as continuous
+charging toward the 24-hour dead-battery verdict.
+
+[FA] شمارنده فقط در `BULK` و `ABSORB` جمع می‌شود. با رسیدن به `FLOAT` صفر
+می‌شود؛ مکث کوتاه مقدار را نگه می‌دارد، اما هر توقف شارژی که به زمان شناسهٔ
+۱۲۶ (پیش‌فرض `۶۰۰۰۰ ms`) برسد، شمارنده را صفر می‌کند. ورودی نامعتبر کانال را
+به `INPUT_WAIT` می‌برد: زمان آخرین دور فعال پیش از `SafeIdle` ثبت می‌شود و
+ساعت مکث در هر دور انتظار بررسی می‌شود. بنابراین قطع طولانی ورودی به‌اشتباه
+شارژ پیوستهٔ ۲۴ ساعته برای تشخیص باتری خراب محسوب نمی‌شود.
+
+ریست تأییدشدهٔ پنل با صفرکردن اسلات زمان‌اجرای ۲۰۳، ماسک قفل و دفترچهٔ زمان
+زندهٔ همان کانال را با هم پاک می‌کند؛ این پاک‌سازی زیر قفل زمان‌بند انجام
+می‌شود تا ساعت قدیمی بعد از آزادشدن دوباره قفل را فوری فعال نکند. اگر باتری
+هنوز خراب باشد، شمارش از صفر آغاز می‌شود. تشخیص تعویض فیزیکی باتری همچنان مسیر
+خودکار مستقلی است.
+
 ## سناریو ۷ — خطای فنی برد / Technical board fault
 
 این سناریو مخصوص خرابی طبقهٔ قدرت و به‌ویژه سوختن ترانزیستور شارژر است. تشخیص

@@ -1,4 +1,5 @@
 /**
+ * @file    Firmware/Bsp/Tester/host_test_bsp_gpio.c
  * [EN] Host test for the REAL board GPIO port (Firmware/Bsp/Src/bsp_gpio.c).
  *      bsp_gpio.c is the only file that turns a logical signal into a pin and
  *      a physical level, so it is also the only place where input polarity can

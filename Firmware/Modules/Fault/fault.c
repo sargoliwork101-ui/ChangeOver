@@ -37,6 +37,9 @@ static volatile fault_mask_t FAULT_MASK_T__G__Mask = FAULT_NONE;
 static uint32_t UINT32_T__G__BatOverSinceTick    = 0u;
 static uint32_t UINT32_T__G__BatAbsentSinceTick  = 0u;
 static uint32_t UINT32_T__G__BatHealthySinceTick = 0u;
+/* [EN] Live reset-only signal: never use the shared, latched alarm bit for
+   ‎battery-swap timing. [FA]‎ سیگنال زندهٔ مخصوص ریست؛ نه بیت خطای قفل‌شده. */
+static bool BOOL__G__BatteryAbsentForReset = false;
 
 /* ==================== Runtime alarm thresholds (v1.15) ==================== */
 /* [EN] The eight FAULT_* numbers as one live struct - ids 27..34,
@@ -398,6 +401,7 @@ void func__Fault_Init(void)
     UINT32_T__G__BatOverSinceTick    = 0u;
     UINT32_T__G__BatAbsentSinceTick  = 0u;
     UINT32_T__G__BatHealthySinceTick = 0u;
+    BOOL__G__BatteryAbsentForReset   = false;
 }
 
 /**
@@ -487,6 +491,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     bool     bool__inputOk;
     bool     bool__anyOver;
     bool     bool__anyHalfLow;
+    bool     bool__anyHalfHardAbsent;
     bool     bool__batteryTrulyPresent;
     bool     bool__healthy;
     bool     bool__highHalfInstalled;
@@ -504,6 +509,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
         UINT32_T__G__BatOverSinceTick = 0u;
         UINT32_T__G__BatAbsentSinceTick = 0u;
         UINT32_T__G__BatHealthySinceTick = 0u;
+        BOOL__G__BatteryAbsentForReset = false;
         return;
     }
 
@@ -516,6 +522,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
         UINT32_T__G__BatOverSinceTick    = 0u;
         UINT32_T__G__BatAbsentSinceTick  = 0u;
         UINT32_T__G__BatHealthySinceTick = 0u;
+        BOOL__G__BatteryAbsentForReset   = false;
         return;
     }
 
@@ -569,6 +576,28 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
           (uint32_t__lowMv  < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv)) ||
          ((bool__highHalfInstalled == true) &&
           (uint32_t__highMv < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv)));
+
+    /* [EN] Reset-only physical-open signature. A fitted half below 3 V is a
+       much stronger removal clue than the adjustable 6 V alarm threshold;
+       it also works when the mains input is absent. Do not add it to the
+       shared FAULT_CHARGER_BAT_LOST bit.
+       [FA] نشانهٔ سختِ قطع، فقط برای ریست. نیمِ نصب‌شده زیر ۳V نشانهٔ
+       محکم‌تری از حد آلارمِ قابل‌تنظیم ۶V است و با نبود ورودی هم کار می‌کند؛
+       آن را به بیت خطای مشترک اضافه نکن. */
+    bool__anyHalfHardAbsent =
+        (((bool__lowHalfInstalled  == true) &&
+          (uint32_t__lowMv  < FAULT_BAT_HARD_ABSENT_MV)) ||
+         ((bool__highHalfInstalled == true) &&
+          (uint32_t__highMv < FAULT_BAT_HARD_ABSENT_MV)));
+
+    /* [EN] Publish a live reset signal, not the shared latched fault bit.
+       The imbalance module supplies the continuous 3 s qualifier.
+       [FA] برای ریست، نشانهٔ زنده بده نه بیت خطای مشترک؛ گیت پیوستهٔ ۳s
+       را خود ماژول Imbalance اعمال می‌کند. */
+    BOOL__G__BatteryAbsentForReset =
+        ((bool__anyOver == true) ||
+         ((bool__inputOk == true) && (bool__anyHalfLow == true)) ||
+         (bool__anyHalfHardAbsent == true));
 
     /* ---------- Rule 1: pumped overvoltage => latch ---------- */
     if ((bool__anyOver == true) &&
@@ -638,4 +667,18 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     {
         /* [EN] Settle still running. [FA] زمان پایداری در جریان است. */
     }
+}
+
+/**
+ * @brief  [EN] Return the live battery-removal signal prepared by the latest
+ *              valid Fault_Evaluate() call. It is intentionally independent
+ *              of FAULT_CHARGER_BAT_LOST, whose latch also serves charger
+ *              safety and may have a different recovery window.
+ *         [FA] نشانهٔ زندهٔ جدایی باتری را که آخرین Evaluate معتبر ساخته
+ *              برمی‌گرداند؛ عمداً از بیت قفل‌شدهٔ خطای مشترک جداست.
+ * @return bool [EN] true while a removal signature is present / هنگام حضور نشانه true
+ */
+bool func__Fault_IsBatteryAbsent(void)
+{
+    return BOOL__G__BatteryAbsentForReset;
 }

@@ -2,6 +2,7 @@
 #define HOST_STUB_CORTEX_H
 
 /**
+ * @file    Firmware/Bsp/Tester/host_stub_cortex.h
  * [EN] Host shim that lets the PRODUCTION Firmware/Bsp/Src/bsp_gpio.c be
  *      compiled and RUN on a PC. The real CMSIS/HAL headers are included
  *      first (so every type and macro keeps its board meaning), then the

@@ -70,6 +70,14 @@
  * [FA] آستانهٔ غیبت (حالت ۲)؛ بازیابی روی ۷V بالاتر می‌ماند: فاصلهٔ ۱V
  *      هیسترزیس جفت ‎Set/Clear‎ است. */
 #define FAULT_BAT_ABSENT_MV                6000u
+/* [EN] Reset-only hard-open signature: a fitted 12 V half below 3 V is
+ *      treated as physically removed even when the mains input is absent.
+ *      This does not set the shared charger fault bit; Imbalance still
+ *      requires its own 3 s continuous qualifier.
+ * [FA] نشانهٔ سختِ قطع، فقط برای ریست: نیمِ نصب‌شده زیر ۳V حتی با نبود
+ *      ورودی، جداشده فرض می‌شود. این شرط بیت خطای مشترک شارژر را ست نمی‌کند؛
+ *      خود Imbalance هنوز ۳ ثانیه نبود پیوسته می‌خواهد. */
+#define FAULT_BAT_HARD_ABSENT_MV           3000u
 /* [EN] Recovery threshold: >= 7 V on BOTH halves, not 6 V (a half can
  *      sit near 6 V while charging).
  * [FA] آستانهٔ بازیابی: هر دو نیم >= ۷V نه ۶V (حین شارژ ممکن است نزدیک
@@ -126,6 +134,19 @@ bool func__Fault_Any(void);
  * @param  measurement_snapshot_t__snap [EN] Snapshot pointer, may be NULL / اشاره‌گر snapshot
  */
 void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap);
+
+/**
+ * @brief  [EN] Return the live battery-removal signal for the imbalance
+ *         battery-swap reset. It is separate from the latched shared fault
+ *         bit: pumped-overvoltage, the existing low-half/input signature, or
+ *         a fitted half below FAULT_BAT_HARD_ABSENT_MV. False after an invalid
+ *         snapshot or during manual charger testing. Call after Evaluate().
+ *         [FA] نشانهٔ زندهٔ نبود باتری برای ریست تعویضِ Imbalance؛ جدا از بیت
+ *         خطای مشترک است: امضای پمپ، نیمِ کم‌ولتاژ با ورودی سالم، یا نیمِ
+ *         نصب‌شده زیر آستانهٔ سخت. با snapshot نامعتبر یا تست دستی false است.
+ * @return bool [EN] true while a removal signature is present / هنگام حضور نشانه true
+ */
+bool func__Fault_IsBatteryAbsent(void);
 
 /* ==================== Runtime alarm thresholds (v1.15) ==================== */
 /* [EN] The eight FAULT_* numbers above are runtime panel ids 27..34,

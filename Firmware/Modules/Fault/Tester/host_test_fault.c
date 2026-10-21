@@ -193,6 +193,7 @@ int main(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = 0u;      /* [EN] would trip if judged */
     func__RunMs(5000u);
     CHECK(func__Fault_Get() == FAULT_NONE);
+    CHECK(func__Fault_IsBatteryAbsent() == false);
 
     /* ---- 3. detector 1: a PUMPED half flying over the disconnect level ----
        [EN] The rule is armed per half by that half's own charging channel.
@@ -204,6 +205,7 @@ int main(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = FAULT_BAT_DISCONNECT_MV + 500u;
     func__RunMs(3000u);
     CHECK(func__Fault_Get() == FAULT_NONE);
+    CHECK(func__Fault_IsBatteryAbsent() == false);
 
     /* [EN] Now the LOW half's own channel (index 1) pumps: after the 150 ms
             debounce the bit latches - but not before it.
@@ -212,8 +214,10 @@ int main(void)
     BOOL__G__Ch1Active = true;
     func__RunMs(100u);
     CHECK(func__Fault_Get() == FAULT_NONE);
+    CHECK(func__Fault_IsBatteryAbsent() == true);
     func__RunMs(100u);
     CHECK(func__Fault_Get() == FAULT_CHARGER_BAT_LOST);
+    CHECK(func__Fault_IsBatteryAbsent() == true);
 
     /* [EN] The wrong channel must not arm the other half.
        [FA] کانال اشتباه نباید نیم دیگر را مسلح کند. */
@@ -231,8 +235,10 @@ int main(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = FAULT_BAT_ABSENT_MV - 1u;
     func__RunMs(900u);
     CHECK(func__Fault_Get() == FAULT_NONE);          /* [EN] 1 s debounce not done */
+    CHECK(func__Fault_IsBatteryAbsent() == true);    /* [EN] reset signal is live, not latched */
     func__RunMs(200u);
     CHECK(func__Fault_Get() == FAULT_CHARGER_BAT_LOST);
+    CHECK(func__Fault_IsBatteryAbsent() == true);
 
     /* [EN] Same dip WITHOUT a healthy input must never latch: no mains means
             no way to tell a missing battery from a flat one.
@@ -251,6 +257,26 @@ int main(void)
     func__RunMs(5000u);
     CHECK(func__Fault_Get() == FAULT_NONE);
 
+    /* [EN] A hard-open half remains visible to the reset-only signal with no
+       mains, while the shared charger-fault bit stays clear. Exactly 3 V is
+       not below the threshold; one mV less is.
+       [FA] نیمِ کاملاً قطع حتی بدون ورودی برای ریست دیده می‌شود، اما بیت
+       خطای شارژر روشن نمی‌شود؛ دقیقاً ۳V کافی نیست و یک میلی‌ولت کمتر هست. */
+    func__Reset(37000u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 0u;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = FAULT_BAT_HARD_ABSENT_MV;
+    func__RunMs(20u);
+    CHECK(func__Fault_IsBatteryAbsent() == false);
+    CHECK(func__Fault_Get() == FAULT_NONE);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = FAULT_BAT_HARD_ABSENT_MV - 1u;
+    func__RunMs(10u);
+    CHECK(func__Fault_IsBatteryAbsent() == true);
+    CHECK(func__Fault_Get() == FAULT_NONE);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+    func__RunMs(10u);
+    CHECK(func__Fault_IsBatteryAbsent() == false);
+
     /* ---- 5. recovery: 7 V back-threshold with 1 V hysteresis ----
        [EN] A battery sitting between 6 V and 7 V has stopped tripping but is
             not healthy yet, so the latched bit must stay.
@@ -262,7 +288,10 @@ int main(void)
     CHECK(func__Fault_Get() == FAULT_CHARGER_BAT_LOST);
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = FAULT_BATTERY_BACK_MV - 1u;
-    func__RunMs(5000u);
+    func__RunMs(10u);
+    CHECK(func__Fault_Get() == FAULT_CHARGER_BAT_LOST);
+    CHECK(func__Fault_IsBatteryAbsent() == false);
+    func__RunMs(4990u);
     CHECK(func__Fault_Get() == FAULT_CHARGER_BAT_LOST);
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = FAULT_BATTERY_BACK_MV;
@@ -277,6 +306,7 @@ int main(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = FAULT_BAT_ABSENT_MV - 1u;
     func__RunMs(5000u);
     CHECK(func__Fault_Get() == FAULT_NONE);
+    CHECK(func__Fault_IsBatteryAbsent() == false);
 
     /* [EN] And it also freezes CLEARING: a bit latched before the mode was
             entered survives until the mode ends.
@@ -289,6 +319,7 @@ int main(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = 12500u;
     func__RunMs(5000u);
     CHECK(func__Fault_Get() == FAULT_CHARGER_BAT_LOST);
+    CHECK(func__Fault_IsBatteryAbsent() == false);
     BOOL__G__ManualTestActive = false;
     func__RunMs(1200u);
     CHECK(func__Fault_Get() == FAULT_NONE);

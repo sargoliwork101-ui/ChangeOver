@@ -265,7 +265,8 @@ extern "C" {
  *  - v_high_mv / v_low_mv from snapshot.v_bat_high_mv / v_bat_low_mv
  *  - input_present from snapshot.input_present
  *  - valid = snapshot.valid AND no ADC fault bit
- *  - bat_absent = Fault module battery-absent condition (param-29 based)
+ *  - bat_absent = Fault live removal signature (pump, healthy-input low
+ *    half, or a fitted half below 3 V); not the shared latched fault bit
  *  - charging = func__Charger_IsAnyChannelActive()
  *  - on_battery = changeover state == APP_STATE_BATTERY (output on battery)
  * [FA] ورودی‌های یک پاس ارزیابی؛ نگاشت توسط فراخوان. */

@@ -2599,13 +2599,41 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__appliedValue)
 {
     uint32_t uint32_t__applied;
+    uint32_t uint32_t__oldMask;
+    uint32_t uint32_t__clearedMask;
+    uint32_t uint32_t__bit;
     uint8_t  uint8_t__index;
+    int32_t  int32_t__savedKernelLock;
 
     if (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID)
     {
-        /* [EN] NVM boot replay of the latched verdict. [FA] پخش قفل از NVM. */
+        /* [EN] A panel reset clears the same channel's live timer as its
+         *      latched verdict. Hold the scheduler lock because this setter
+         *      runs in the ESP task while DeadBatteryTick runs in control.
+         * [FA] ریست پنل، همراه قفل همان کانال، شمارندهٔ زنده‌اش را هم صفر
+         *      می‌کند؛ قفل زمان‌بند از برخورد تسک ESP و کنترل جلوگیری می‌کند. */
         uint32_t__applied = (uint32_t__value & 0x03u);
+        int32_t__savedKernelLock = osKernelLock();
+        uint32_t__oldMask = (UINT32_T__G__DeadMask & 0x03u);
+        uint32_t__clearedMask = uint32_t__oldMask & (~uint32_t__applied);
         UINT32_T__G__DeadMask = uint32_t__applied;
+
+        for (uint8_t__index = 0u; uint8_t__index < CHG_CHANNEL_COUNT; uint8_t__index++)
+        {
+            uint32_t__bit = (uint32_t)1u << uint8_t__index;
+            if ((uint32_t__clearedMask & uint32_t__bit) != 0u)
+            {
+                UINT32_T__G__DeadChargeMs[uint8_t__index] = 0u;
+                UINT32_T__G__DeadLastTick[uint8_t__index] = 0u;
+                BOOL__G__DeadWasCharging[uint8_t__index] = false;
+                UINT32_T__G__DeadPauseTick[uint8_t__index] = 0u;
+            }
+        }
+        if (int32_t__savedKernelLock >= 0)
+        {
+            (void)osKernelRestoreLock(int32_t__savedKernelLock);
+        }
+
         if (uint32_t__appliedValue != NULL)
         {
             *uint32_t__appliedValue = uint32_t__applied;
@@ -2994,15 +3022,23 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (bool__inputAdcValid == false)
     {
-        /* [EN] SafeIdle FIRST, then stamp INPUT_WAIT (full-program audit
-           2026-09-26): the old order wrote INPUT_WAIT and immediately
-           wiped it back to OFF inside SafeIdle, so the state was never
-           observable. BAT_LOST cannot be present here (its bit forces app
-           FAULT, caught by the earlier gate), only FINAL is skipped.
-           [FA] اول SafeIdle بعد مهر INPUT_WAIT (ممیزی کل برنامه): ترتیب
-           قدیم INPUT_WAIT را می‌نوشت و بلافاصله داخل SafeIdle به OFF
-           برمی‌گرداند، پس حالت هرگز دیده نمی‌شد. BAT_LOST اینجا ممکن
-           نیست (بیتش FAULT می‌آورد و گیت قبلی می‌گیرد)، فقط FINAL رد می‌شود. */
+        /* [EN] Account for the last active interval before SafeIdle. Then
+           stamp INPUT_WAIT and service its pause timer on every control pass;
+           a long input outage must reset the scenario-6 charge counter.
+           [FA] پیش از توقف، زمان آخرین دور فعال ثبت می‌شود. سپس مکثِ انتظار
+           ورودی در هر دور کنترل بررسی می‌شود تا قطع طولانی شمارندهٔ سناریوی ۶
+           را صفر کند. حالت باتریِ قطع‌شده اینجا ممکن نیست چون گیت قبلی آن را
+           می‌گیرد؛ خطای نهایی هم بالاتر رسیدگی شده است. */
+        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
+        {
+            if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+                 CHG_STATE_FINAL_FAULT))
+            {
+                func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
+            }
+        }
+
         func__Charger_SafeIdle();
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
         {
@@ -3011,6 +3047,10 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             {
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                     CHG_STATE_INPUT_WAIT;
+                if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true)
+                {
+                    func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
+                }
             }
         }
         return;

@@ -47,6 +47,22 @@
 دیوایدر آرام خالی می‌شود و تشخیص حالت دوم ~۲۰-۴۰ ثانیه طول می‌کشد (حین شارژ
 همان ۱۵۰ms قاعده اول است). با نبودِ snapshot معتبر هیچ Set/Clear رخ نمی‌دهد.
 
+### نشانهٔ زنده برای ریست تعویض باتری
+
+`func__Fault_IsBatteryAbsent()` یک نشانهٔ زنده و جدا از بیت قفل‌شدهٔ خطای ۶
+می‌دهد. این نشانه فقط پس از `func__Fault_Evaluate()` و snapshot معتبر به‌روز
+می‌شود؛ snapshot نامعتبر و مود تست دستی آن را خاموش می‌کنند. امضاها:
+
+- نیمِ نصب‌شده زیر ۳V، حتی وقتی ورودی برق نیست؛
+- نیمِ نصب‌شده زیر ۶V با ورودی سالم؛
+- نیمِ متناظر با کانال شارژ فعال، بالاتر از حد قطع قابل‌تنظیم (پیش‌فرض ۱۴٫۸V).
+
+این getter خودش `FAULT_CHARGER_BAT_LOST` را set یا clear نمی‌کند. در
+`task_control.c` سیگنال به `bool__batAbsent` داده می‌شود؛ Imbalance نبود پیوسته
+را ۳ ثانیه می‌سنجد و سپس شناسه‌های ماندگار ۲۰۰ تا ۲۰۲ را پاک می‌کند. پس debounce
+۱۵۰ms/۱s خطای مشترک با زمان ۳s ریست یکی نیست. حد سخت ۳V هنوز روی برد اندازه‌گیری
+و تأیید نشده است.
+
 ## `FAULT_CHARGER_TECHNICAL` (بیت ۷) — خطای فنی برد / Scenario 7
 
 ماژول Fault فقط مالک بیت مرکزی `FAULT_CHARGER_TECHNICAL` (بیت ۷) است. تشخیص امضای ترانزیستور در `Charger` انجام می‌شود، سپس
@@ -74,6 +90,7 @@
 | `func__Fault_Get` | ماسک فعلی |
 | `func__Fault_Any` | اگر چیزی غیر از NONE باشد true |
 | `func__Fault_Evaluate` | هر پاس از `task_control` (قبل از Get): تشخیص/پاک‌سازی متمرکز `FAULT_CHARGER_BAT_LOST` از snapshot |
+| `func__Fault_IsBatteryAbsent` | خواندن نشانهٔ زندهٔ reset-only؛ مستقل از بیت خطای ۶ و فقط با snapshot معتبر |
 
 بیت‌ها: `FAULT_ADC`، بیت‌های رزرو جریان/جیتر، `FAULT_CHARGER_BAT_LOST` (بیت ۶) و
 `FAULT_CHARGER_TECHNICAL` (بیت ۷، سناریوی خطای فنی برد).
@@ -92,7 +109,7 @@ Init همه بیت‌ها را صفر می‌کند.
 
 ```text
 protection.c      func__Fault_Set
-task_control.c    func__Fault_Evaluate + func__Fault_Get
+task_control.c    func__Fault_Evaluate + func__Fault_Get + func__Fault_IsBatteryAbsent
 task_comm.c       func__Fault_Get
 charger.c         func__Fault_Set (سناریوی ۷) + func__Fault_Get (آینهٔ CHG_STATE_BAT_LOST)
 ui_led.c          func__Fault_Get (سناریو ۵ و سناریو ۷)
@@ -112,11 +129,13 @@ fault.c
 
 ## تستر
 
-`Tester/` — تست هاست ماژول خطا با ساعت و شارژر بدلی (۴۴ بررسی: API ماسک، دو
-آشکارساز قطع باتری با دبانس، بازیابی، فریز مود تست دستی، گیرهٔ پارامترها و
-سرریز تیک). اجرا با `Tester/run_host_test_fault.sh`؛ داخل
-`tools/check_firmware_syntax.sh` هم اجرا می‌شود. توضیح کامل در
-`Tester/README.md`.
+`Tester/` — تست هاست ماژول خطا با ساعت و شارژر بدلی (۶۳ بررسی: API ماسک، دو
+آشکارساز قفل‌شونده، getter زندهٔ reset-only، مرز ۳V، snapshot نامعتبر، مود تست
+دستی، گیرهٔ پارامترها و سرریز تیک). اجرا با `Tester/run_host_test_fault.sh`؛
+داخل `tools/check_firmware_syntax.sh` هم اجرا می‌شود. تست یکپارچهٔ
+`../Imbalance/Tester/run_host_test_battery_swap.sh` مسیر Fault→TaskControl→Imbalance
+را با ۱۳۰ بررسی میزبان و آزمون اتصال کد پوشش می‌دهد. نتیجه‌ها جای تست برد را
+نمی‌گیرند.
 
 ## ماشین حالت
 

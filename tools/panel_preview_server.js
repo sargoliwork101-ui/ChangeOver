@@ -24,6 +24,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const assert = require("assert");
 
 /* ---------- extract the real panel HTML from the panel module ---------- */
 const panelPath = path.join(__dirname, "..", "ESP_Calibration", "plink_panel.h");
@@ -422,8 +423,31 @@ let benchSize = 3120; /* simulated /benchlog.csv bytes (nonzero so the resume/ch
 const SIM_MS = 100;
 let ms = 0;
 
-function stepChannel(c, phase) {
+/* [EN] Advance one channel by a 100 ms tick using the current input voltage.
+ * [FA] وضعیت یک کانال را در یک گام ۱۰۰ میلی‌ثانیه‌ای با ولتاژ ورودی به‌روز می‌کند. */
+function stepChannel(c, phase, inputMv) {
     const prof = { enter: P[21], absorb: P[20], float: P[23], reentry: P[24], imax: P[25], taper: P[26] };
+    if (inputMv < P[33] || inputMv > P[34]) {
+        /* [EN] Mirror the firmware's INPUT_WAIT gate: no input, no PWM.
+         * [FA] آینهٔ گیت INPUT_WAIT فرم‌ور: ورودی نامعتبر یعنی توقف شارژ. */
+        c.state = 6;
+        c.i = 0;
+        c.duty = 0;
+        c.soak = 0;
+        c.taper = 0;
+        c.off = 0;
+        c.floatT = 0;
+        return;
+    }
+    if (c.state === 6) {
+        /* [EN] Recovery goes through OFF's normal stability gate.
+         * [FA] پس از بازیابی، شروع امن از گیت پایداری OFF می‌گذرد. */
+        c.state = 0;
+        c.off = 0;
+        c.soak = 0;
+        c.taper = 0;
+        c.floatT = 0;
+    }
     switch (c.state) {
         case 0: /* OFF: connection-stability gate (demo: 3 s) */
             c.i = 0; c.duty = 0;
@@ -455,6 +479,14 @@ function stepChannel(c, phase) {
     }
 }
 
+/* [EN] Return demo input voltage for the given cycle offset in milliseconds.
+ * [FA] ولتاژ ورودی نمایشی را از روی زمانِ چرخه، به میلی‌ثانیه، برمی‌گرداند. */
+function demoInputMv(cycleMs) {
+    if (cycleMs >= 30000 && cycleMs < 38000) return 29500;
+    if (cycleMs >= 46000 && cycleMs < 54000) return 15000;
+    return 24100;
+}
+
 /* battery current -> ADC raw counts via the v1.13 power model (rough inverse) */
 function rawFromCurrent(iBat, vMv) {
     const p = iBat * vMv / 1000; /* mW */
@@ -475,26 +507,98 @@ let imbFl2 = 0;  /* [EN] scenario 5 demo flags (byte 3 of TLM) / [FA] بیت‌�
  *      (مثل یک فریم در هر نوبت روی برد)، پژواک برای پنل و شمارندهٔ NAK. */
 let latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: DEMO_DEAD, imbBase: 0,
-              chargeSec: [0, 0], cutAt: [0, 0] };
+              chargeSec: [0, 0], pauseAt: [null, null], cutAt: [0, 0] };
+
+/* [EN] Scenario 6 counts only BULK/ABSORB, clears on FLOAT, and keeps a
+ *      short pause but resets at the configured gap (id 126), including
+ *      INPUT_WAIT. `nowMs` uses the simulator clock, not browser polling.
+ * [FA] سناریوی ۶ فقط هنگام شارژ سریع و پایانی می‌شمارد و با کامل‌شدن شارژ
+ *      صفر می‌شود؛ مکث کوتاه را نگه می‌دارد و با رسیدن مکث به حد شناسهٔ ۱۲۶
+ *      (از جمله انتظار ورودی) صفر می‌شود. زمان از ساعت شبیه‌ساز است، نه درخواست پنل. */
+function updateDeadChargeCounter(timerState, channelIndex, channelState, nowMs, resetGapMs) {
+    if (channelState === 3) {
+        timerState.chargeSec[channelIndex] = 0;
+        timerState.pauseAt[channelIndex] = null;
+        return;
+    }
+    if (channelState === 1 || channelState === 2) {
+        const pauseAt = timerState.pauseAt[channelIndex];
+        if (pauseAt !== null) {
+            if (nowMs - pauseAt >= resetGapMs) timerState.chargeSec[channelIndex] = 0;
+            timerState.pauseAt[channelIndex] = null;
+        }
+        timerState.chargeSec[channelIndex] += SIM_MS / 1000;
+        return;
+    }
+    if (timerState.pauseAt[channelIndex] === null) timerState.pauseAt[channelIndex] = nowMs;
+    if (nowMs - timerState.pauseAt[channelIndex] >= resetGapMs) {
+        timerState.chargeSec[channelIndex] = 0;
+    }
+}
+
+/* [EN] Apply one echoed runtime-slot request. Clearing scenario 6 also clears
+ *      the selected channel's live timer, matching Charger_SetDeadParam.
+ * [FA] یک درخواست اسلات را اعمال می‌کند؛ پاک‌کردن حکم سناریوی ۶ ساعت زندهٔ
+ *      همان کانال را هم صفر می‌کند، مثل func__Charger_SetDeadParam. */
+function applyLatchItem(item) {
+    if (item.id === 202) latch.imbBase = ms;
+    if (item.id === 203) {
+        const newMask = item.val & 3;
+        const clearedMask = latch.deadMask & (~newMask);
+        for (let channelIndex = 0; channelIndex < 2; channelIndex += 1) {
+            if (clearedMask & (1 << channelIndex)) {
+                latch.chargeSec[channelIndex] = 0;
+                latch.pauseAt[channelIndex] = null;
+            }
+        }
+        latch.deadMask = newMask;
+    }
+    latch.lastId = item.id;
+    latch.lastVal = item.val;
+    latch.known = 1;
+    latch.rep += 1;
+}
+
+function queueLatchReset(n) {
+    const ids = n === 5 ? [200, 201, 202] : (n === 6 ? [203] : []);
+    if (ids.length === 0) return false;
+    const fresh = ids.filter(id => !latch.q.some(item => item.id === id));
+    if (latch.q.length + fresh.length > 4) {
+        latch.busy += 1;
+        return false;
+    }
+    for (const id of fresh) latch.q.push({ id, val: 0 });
+    latch.req += fresh.length;
+    return true;
+}
 
 /* [EN] The sim runs on a REAL 100 ms ticker (like the STM32 measurement
  *      task), independent of browser polling; /t just snapshots it.
  * [FA] شبیه‌سازی روی تیکر واقعی ۱۰۰ms (مثل تسک اندازه‌گیری STM32) مستقل
  *      از poll مرورگر جلو می‌رود؛ /t فقط عکس لحظه را می‌دهد. */
-setInterval(() => { SNAP = telemetry(); }, SIM_MS);
 
 function telemetry() {
     /* [FA] صف ریست قفل‌ها: در هر تیک یک درخواست اعمال می‌شود؛ سناریو ۵
-       چرخهٔ نمایشی را از صفر شروع می‌کند (قفل پاک، شمارش از اول) و
-       سناریو ۶ ماسک حکم باتری خراب را می‌نویسد. */
+       شمارنده‌ها را پیش از قفل پاک می‌کند و سناریو ۶ ساعت زندهٔ کانال را هم
+       همراه ماسک حکم صفر می‌کند. */
     if (latch.q.length) {
         const item = latch.q.shift();
-        if (item.id === 202 || item.id === 201 || item.id === 200) { latch.imbBase = ms; }
-        if (item.id === 203) { latch.deadMask = item.val & 3; }
-        latch.lastId = item.id; latch.lastVal = item.val; latch.known = 1; latch.rep += 1;
+        applyLatchItem(item);
     }
-    stepChannel(ch[0], 0);
-    stepChannel(ch[1], 2.1);
+    const cyc = ms % 60000;
+    const inputBaseMv = demoInputMv(cyc);
+    const inputMv = inputBaseMv + (P[4] | 0);
+    const inputValid = inputMv >= P[33] && inputMv <= P[34];
+    for (let k = 0; k < 2; k++) {
+        const previousState = ch[k].state;
+        if (!inputValid) {
+            /* [EN] Match the firmware's pre-SafeIdle final active-time tick.
+             * [FA] مثل فرم‌ور، آخرین زمان فعال پیش از توقف ثبت می‌شود. */
+            updateDeadChargeCounter(latch, k, previousState, ms, P[126]);
+        }
+        stepChannel(ch[k], k === 0 ? 0 : 2.1, inputMv);
+        updateDeadChargeCounter(latch, k, ch[k].state, ms, P[126]);
+    }
     const vlow = ch[1].v, vhigh = ch[0].v;
     const t = new Array(TLM_FIELDS).fill(0);
     for (let k = 0; k < 2; k++) {
@@ -524,7 +628,7 @@ function telemetry() {
         t[b + 5] = c.duty;
         t[b + 6] = c.state;
     }
-    t[14] = 24100;                 /* input, one reading per run (bench rule) */
+    t[14] = inputBaseMv;           /* input reading follows the demo scenario */
     t[15] = vlow + vhigh;          /* 24 V pack */
     t[16] = vlow;                  /* 12 V mid node (see invariant below) */
     t[17] = vlow;                  /* battery low  */
@@ -533,10 +637,8 @@ function telemetry() {
     /* v1.16 demo: rotate scenarios so the LED/buzzer mirror shows every face:
      * 0-30 s normal charging, 30-38 s input overvoltage, 38-46 s battery lost,
      * 46-54 s BatteryRun (input absent, double-beep band), 54-60 s normal. */
-    const cyc = ms % 60000;
-    if (cyc >= 30000 && cyc < 38000) t[14] = 29500;
-    else if (cyc >= 38000 && cyc < 46000) t[19] = 64;
-    else if (cyc >= 46000 && cyc < 54000) { t[14] = 15000; t[17] = 22200; t[18] = 22200; t[6] = 0; t[13] = 0; }
+    if (cyc >= 38000 && cyc < 46000) t[19] = 64;
+    else if (cyc >= 46000 && cyc < 54000) { t[17] = 22200; t[18] = 22200; }
 
     /* [EN] Re-impose the firmware's own relationship AFTER the demo scenarios
      *      have had their say, so no scenario can emit a combination the real
@@ -605,15 +707,7 @@ function telemetry() {
         else { t[26] = 0; t[27] = 0; imbFl2 = 0; }
     }
 
-    /* v1.87: dead-battery charging counters */
-    for (let k = 0; k < 2; k++) {
-        const st = ch[k].state;
-        if (st === 1 || st === 2) {
-            latch.chargeSec[k] += SIM_MS / 1000;
-        } else if (st === 3) {
-            latch.chargeSec[k] = 0;
-        }
-    }
+    /* v1.87: scenario-6 counters were advanced with the channel state above. */
     t[29] = Math.floor(latch.chargeSec[0]);
     t[30] = Math.floor(latch.chargeSec[1]);
 
@@ -622,6 +716,7 @@ function telemetry() {
         if (latch.cutAt[k] > 0 && ms - latch.cutAt[k] >= 3000) {
             latch.deadMask &= ~(1 << k);
             latch.chargeSec[k] = 0;
+            latch.pauseAt[k] = null;
             latch.cutAt[k] = 0;
         }
     }
@@ -822,14 +917,7 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/latch/reset") {
         const n = Number(url.searchParams.get("n"));
         if (n !== 5 && n !== 6) return send(400, "application/json", '{"ok":0,"e":2}');
-        const ids = n === 5 ? [202, 201, 200] : [203];
-        const fresh = ids.filter(id => !latch.q.some(it => it.id === id));
-        if (latch.q.length + fresh.length > 4) {
-            latch.busy += 1;
-            return send(409, "application/json", '{"ok":0,"e":1}');
-        }
-        for (const id of fresh) latch.q.push({ id, val: 0 });
-        latch.req += fresh.length;
+        if (!queueLatchReset(n)) return send(409, "application/json", '{"ok":0,"e":1}');
         return send(200, "application/json", JSON.stringify({ ok: 1, n }));
     }
     if (req.method === "GET" && url.pathname === "/benchlog") {
@@ -862,6 +950,117 @@ const server = http.createServer((req, res) => {
     return send(404, "text/plain", "not found");
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`panel preview: http://0.0.0.0:${PORT}  (charge tab: BULK->ABSORB->FLOAT->reentry cycle, ~1 min loop)`);
-});
+/* [EN] Check invalid-input and long-pause recovery without starting the server.
+ * [FA] توقف ورودی و بازیابی پس از مکث طولانی را بدون بالا آوردن سرور می‌سنجد. */
+function runPreviewSelfTests() {
+    for (const invalidMv of [15000, 29500]) {
+        const channel = mkChannel();
+        channel.state = 1;
+        channel.i = 600;
+        channel.duty = 100;
+        stepChannel(channel, 0, invalidMv);
+        assert.strictEqual(channel.state, 6, `input ${invalidMv} mV must enter INPUT_WAIT`);
+        assert.strictEqual(channel.i, 0, "INPUT_WAIT must stop simulated current");
+        assert.strictEqual(channel.duty, 0, "INPUT_WAIT must stop simulated duty");
+        stepChannel(channel, 0, 24100);
+        assert.strictEqual(channel.state, 0, "input recovery must restart through OFF");
+    }
+
+    const transition = { chargeSec: [10, 0], pauseAt: [null, null] };
+    const channel = mkChannel();
+    channel.state = 1;
+    updateDeadChargeCounter(transition, 0, channel.state, 0, 1000);
+    stepChannel(channel, 0, 15000);
+    updateDeadChargeCounter(transition, 0, channel.state, 0, 1000);
+    assert.strictEqual(transition.chargeSec[0], 10.1,
+        "input loss must preserve the last active interval and start a pause");
+    assert.strictEqual(transition.pauseAt[0], 0, "INPUT_WAIT must start the pause clock");
+
+    const shortPause = { chargeSec: [42, 0], pauseAt: [null, null] };
+    updateDeadChargeCounter(shortPause, 0, 6, 0, 1000);
+    updateDeadChargeCounter(shortPause, 0, 6, 999, 1000);
+    assert.strictEqual(shortPause.chargeSec[0], 42,
+        "a pause shorter than the configured gap must preserve the counter");
+    updateDeadChargeCounter(shortPause, 0, 1, 999, 1000);
+    assert.strictEqual(shortPause.chargeSec[0], 42.1,
+        "charging recovery before the gap must resume the existing counter");
+
+    const longPause = { chargeSec: [42, 0], pauseAt: [null, null] };
+    updateDeadChargeCounter(longPause, 0, 6, 0, 1000);
+    updateDeadChargeCounter(longPause, 0, 6, 999, 1000);
+    assert.strictEqual(longPause.chargeSec[0], 42,
+        "the counter must survive until the configured gap is reached");
+    updateDeadChargeCounter(longPause, 0, 6, 1000, 1000);
+    assert.strictEqual(longPause.chargeSec[0], 0,
+        "a pause reaching the configured gap must reset the counter");
+    updateDeadChargeCounter(longPause, 0, 1, 1100, 1000);
+    assert.strictEqual(longPause.chargeSec[0], 0.1,
+        "after a long pause, resumed charging must start from zero");
+
+    /* [EN] Exercise the full telemetry path at the 30 s input-loss episode.
+     * [FA] مسیر کامل تله‌متری را هنگام قطع ورودیِ ثانیهٔ ۳۰ می‌سنجد. */
+    const savedResetGapMs = P[126];
+    P[126] = 5000;
+    ch[0] = mkChannel();
+    ch[1] = mkChannel();
+    ch[0].state = 1;
+    ch[1].state = 1;
+    latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: 0, imbBase: 0, chargeSec: [42, 42],
+              pauseAt: [null, null], cutAt: [0, 0] };
+    ms = 30000;
+    let frame = telemetry();
+    assert.strictEqual(frame.t[6], 6, "demo overvoltage must publish INPUT_WAIT");
+    assert.strictEqual(frame.t[13], 6, "both installed channels must wait on invalid input");
+    assert.strictEqual(frame.t[29], 42, "initial input loss must preserve accrued charge time");
+    assert.strictEqual(latch.pauseAt[0], 30000, "telemetry must start the input-wait pause clock");
+
+    ms = 35000;
+    frame = telemetry();
+    assert.strictEqual(frame.t[29], 0, "telemetry must reset the counter when the pause reaches id 126");
+    assert.strictEqual(frame.t[30], 0, "the pause reset must apply independently to both channels");
+
+    ms = 38000;
+    frame = telemetry();
+    assert.strictEqual(frame.t[6], 0, "recovered input must restart through OFF");
+    assert.strictEqual(frame.t[5], 0, "the recovery pass must remain at zero duty");
+    assert.strictEqual(frame.t[29], 0, "charging after a long outage must start from zero");
+
+    latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: 0, imbBase: 0, chargeSec: [0, 0],
+              pauseAt: [null, null], cutAt: [0, 0] };
+    assert.strictEqual(queueLatchReset(5), true,
+        "scenario 5 reset must fit in the runtime-slot queue");
+    assert.deepStrictEqual(latch.q.map(item => item.id), [200, 201, 202],
+        "scenario 5 must queue event and cycle counters before the latch");
+
+    latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: 1, imbBase: 0, chargeSec: [86400, 57],
+              pauseAt: [123, 456], cutAt: [0, 0] };
+    assert.strictEqual(queueLatchReset(6), true,
+        "scenario 6 reset must fit in the runtime-slot queue");
+    applyLatchItem(latch.q.shift());
+    assert.strictEqual(latch.deadMask, 0,
+        "scenario 6 reset must clear the latched dead-battery bit");
+    assert.strictEqual(latch.chargeSec[0], 0,
+        "scenario 6 reset must clear the selected live 24-hour timer");
+    assert.strictEqual(latch.pauseAt[0], null,
+        "scenario 6 reset must clear the selected pause bookkeeping");
+    assert.strictEqual(latch.chargeSec[1], 57,
+        "clearing one channel must preserve the other channel's live timer");
+    assert.strictEqual(latch.pauseAt[1], 456,
+        "clearing one channel must preserve the other channel's pause state");
+    P[126] = savedResetGapMs;
+}
+
+if (process.argv.includes("--self-test")) {
+    runPreviewSelfTests();
+    console.log("ALL PANEL PREVIEW SCENARIO-5/6 SELF-TESTS PASSED");
+} else {
+    /* [EN] Keep state advancing independently of browser polling.
+     * [FA] وضعیت شبیه‌سازی مستقل از درخواست‌های پنل جلو می‌رود. */
+    setInterval(() => { SNAP = telemetry(); }, SIM_MS);
+    server.listen(PORT, "0.0.0.0", () => {
+        console.log(`panel preview: http://0.0.0.0:${PORT}  (charge tab: BULK->ABSORB->FLOAT->reentry cycle, ~1 min loop)`);
+    });
+}

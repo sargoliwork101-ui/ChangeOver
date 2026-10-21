@@ -109,8 +109,20 @@ python3 Firmware/Modules/Ui/Tester/host_test_ui.py
 echo "--- Charger host tests / تست هاست شارژر ---"
 python3 Firmware/Modules/Charger/Tester/host_test_charger.py
 
+# [EN] Run deterministic scenario-6 regression checks in the panel preview simulator.
+# [FA] تست‌های رگرسیون قطعی سناریوی ۶ را در شبیه‌ساز پیش‌نمایش اجرا کن.
+echo "--- Panel preview scenario-6 self-test / تست سناریوی ۶ شبیه‌ساز ---"
+node tools/panel_preview_server.js --self-test
+
 echo "--- Imbalance host test / تست هاست عدم‌توازن ---"
 ./Firmware/Modules/Imbalance/Tester/run_host_test_imbalance.sh
+
+# [EN] Cross-module regression: the live Fault removal signal must be wired
+#      through TaskControl to Imbalance, and a 3 s swap clears persisted state.
+# [FA] رگرسیون بین‌ماژولی: نشانهٔ زندهٔ Fault از TaskControl به Imbalance
+#      برسد و تعویض ۳ ثانیه‌ای وضعیت ماندگار را پاک کند.
+echo "--- Battery swap integration test / تست یکپارچهٔ تعویض باتری ---"
+./Firmware/Modules/Imbalance/Tester/run_host_test_battery_swap.sh
 
 echo "--- Changeover host test / تست هاست Changeover ---"
 ./Firmware/Modules/Changeover/Tester/run_host_test_changeover.sh

@@ -313,7 +313,7 @@ def test_input_voltage_is_real_adc_22000mv():
     # Vin out of range path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
     idx = text_c.find("bool__inputAdcValid == false")
     check(idx >= 0, "low-Vin gate must exist")
-    snippet = text_c[idx:idx+1400]  # C26 (2026-09-26): SafeIdle-first + comment widened the block
+    snippet = text_c[idx:idx+3000]  # Include the timer servicing added for INPUT_WAIT
     check("func__Charger_SafeIdle();" in snippet, "out-of-range Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
     check("CHG_STATE_INPUT_WAIT" in snippet, "out-of-range Vin must put channels into INPUT_WAIT (no retry/PWM until recovery)")
 
@@ -327,6 +327,59 @@ def test_input_recovery_restarts_with_safe_duty():
           "safe restart duty must be 10 permille = 1%")
     check("CHG_STATE_OFF" in text_c,
           "on Vin recovery channels must transition back to OFF/start duty")
+
+
+def test_input_wait_services_dead_battery_pause_counter():
+    """[EN] INPUT_WAIT must keep the scenario-6 pause clock running.
+    [FA] در حالت انتظار ورودی ساعت مکث سناریوی ۶ باید به کار ادامه دهد."""
+    text_c = CHARGER_C.read_text()
+    eval_start = text_c.find("void func__Charger_Evaluate(")
+    invalid_start = text_c.find("if (bool__inputAdcValid == false)", eval_start)
+    invalid_end = text_c.find("#if MODULE_JITTER", invalid_start)
+    check(eval_start >= 0 and invalid_start > eval_start and invalid_end > invalid_start,
+          "charger input-invalid branch must be identifiable")
+    invalid_branch = text_c[invalid_start:invalid_end]
+    tick_calls = [match.start() for match in re.finditer(
+        r"func__Charger_DeadBatteryTick\(uint8_t__channelIndex, uint32_t__nowTick\);",
+        invalid_branch)]
+    safe_idle = invalid_branch.find("func__Charger_SafeIdle();")
+    input_wait = invalid_branch.find("CHG_STATE_INPUT_WAIT", safe_idle)
+    check(len(tick_calls) == 2 and tick_calls[0] < safe_idle,
+          "input loss must account for the final active interval before SafeIdle")
+    check(safe_idle < input_wait < tick_calls[1],
+          "the dead-charge timer must be serviced after INPUT_WAIT is stamped")
+    active_start = text_c.find("bool func__Charger_IsChannelActive(")
+    active_end = text_c.find("\n}", active_start)
+    active_body = text_c[active_start:active_end]
+    check("CHG_STATE_BULK" in active_body and "CHG_STATE_ABSORB" in active_body and
+          "CHG_STATE_INPUT_WAIT" not in active_body,
+          "INPUT_WAIT must be treated as a pause, not active charging")
+    dead_tick = text_c[text_c.find("static void func__Charger_DeadBatteryTick("):]
+    check(re.search(r"uint32_t__gapMs\s*=\s*UINT32_T__G__DeadParam\[1\];", dead_tick) and
+          re.search(r">=\s+uint32_t__gapMs", dead_tick),
+          "scenario-6 pause must reset the counter at the configured gap")
+
+
+def test_manual_dead_battery_reset_clears_live_timer():
+    """[EN] Clearing runtime slot 203 must clear the matching channel timer.
+    [FA] پاک‌کردن اسلات ۲۰۳ باید ساعت زندهٔ همان کانال را هم صفر کند."""
+    text_c = CHARGER_C.read_text()
+    setter_start = text_c.find("bool func__Charger_SetDeadParam(")
+    setter_end = text_c.find("void func__Charger_DeadFaceShape(", setter_start)
+    check(setter_start >= 0 and setter_end > setter_start,
+          "scenario-6 runtime setter must be identifiable")
+    setter = text_c[setter_start:setter_end]
+    check("uint32_t__clearedMask = uint32_t__oldMask & (~uint32_t__applied);" in setter and
+          "if ((uint32_t__clearedMask & uint32_t__bit) != 0u)" in setter,
+          "only channels whose dead-battery latch is cleared may have their timer reset")
+    check(all(token in setter for token in (
+        "UINT32_T__G__DeadChargeMs[uint8_t__index] = 0u;",
+        "UINT32_T__G__DeadLastTick[uint8_t__index] = 0u;",
+        "BOOL__G__DeadWasCharging[uint8_t__index] = false;",
+        "UINT32_T__G__DeadPauseTick[uint8_t__index] = 0u;")),
+          "manual reset must clear charge, active-tick, charging-edge and pause-tick RAM state")
+    check("osKernelLock()" in setter and "osKernelRestoreLock(int32_t__savedKernelLock)" in setter,
+          "the ESP task must reset shared timer state under the scheduler lock")
 
 
 def test_no_shadowing_in_duty_adjustments():
@@ -4149,6 +4202,8 @@ def main():
         test_jit_is_active_low_and_retry_captures_duty_before_stop,
         test_input_voltage_is_real_adc_22000mv,
         test_input_recovery_restarts_with_safe_duty,
+        test_input_wait_services_dead_battery_pause_counter,
+        test_manual_dead_battery_reset_clears_live_timer,
         test_no_shadowing_in_duty_adjustments,
         test_jit_per_channel_sequence,
         test_low_current_is_not_fault,

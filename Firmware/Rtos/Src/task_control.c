@@ -237,8 +237,17 @@ void func__TaskControl(void *void_ptr__argument)
                 imbalance_inputs_t__imbalanceInputs.bool__valid =
                     ((measurement_snapshot_t__snap.valid != false) &&
                      ((fault_mask_t__faults & FAULT_ADC) == 0u));
+                /* [EN] Use Fault's live, reset-only battery-removal signal;
+                   the shared BAT_LOST latch also represents charger pump
+                   protection and can clear on a different schedule.
+                   [FA] نشانهٔ زندهٔ مخصوص ریست را بگیر؛ بیت مشترک BAT_LOST
+                   حفاظت شارژر را هم نشان می‌دهد و زمان پاک‌شدن متفاوتی دارد. */
+#if MODULE_FAULT
                 imbalance_inputs_t__imbalanceInputs.bool__batAbsent =
-                    ((fault_mask_t__faults & FAULT_CHARGER_BAT_LOST) != 0u);
+                    func__Fault_IsBatteryAbsent();
+#else
+                imbalance_inputs_t__imbalanceInputs.bool__batAbsent = false;
+#endif
                 imbalance_inputs_t__imbalanceInputs.bool__charging =
 #if MODULE_CHARGER
                     func__Charger_IsAnyChannelActive();
