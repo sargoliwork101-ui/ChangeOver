@@ -597,9 +597,10 @@ async function testLatchResetHandshake(win, doc) {
 function testImbalance(win, doc) {
     console.log('\nscenario 5 - imbalance / عدم‌توازن');
 
-    check(doc.getElementById('q110').getAttribute('max') === '18000000' &&
-          doc.getElementById('q111').getAttribute('max') === '18000000',
-          'the imbalance wait editors allow the requested five hours');
+    check(doc.getElementById('q110').getAttribute('max') === '36000000' &&
+          doc.getElementById('q111').getAttribute('max') === '36000000' &&
+          doc.getElementById('q112').getAttribute('max') === '36000000',
+          'the imbalance wait and stability editors allow the requested ten hours');
     const c5 = doc.getElementById('ucard5');
     const c5secs = [...c5.querySelectorAll('.sec')].map(e => e.textContent.trim());
     check(c5secs.findIndex(x => x.indexOf('چشمک قرمز') >= 0) <
@@ -1095,15 +1096,15 @@ async function testSendQueue(win, doc) {
     /* An out-of-range pending value is rejected locally: no /s is sent and
        the report names the exact id, name, value and board-side consequence.
        / مقدار خارج از بازه پیش از هر POST محلی رد می‌شود. */
-    win.qput(111, 18000001);
+    win.qput(111, 36000001);
     await win.sendall();
-    check(posts.length === 0 && win.PEND['111'] === 18000001,
+    check(posts.length === 0 && win.PEND['111'] === 36000001,
           'an out-of-range pending value blocks the whole batch before POST');
     const rangeReport = doc.getElementById('srsm').textContent;
     check(rangeReport.indexOf('شناسهٔ 111') >= 0 &&
-          rangeReport.indexOf('صبر پس از شروع شارژ') >= 0 &&
-          rangeReport.indexOf('18000001') >= 0 &&
-          rangeReport.indexOf('18000000') >= 0 &&
+          rangeReport.indexOf('تأخیر شروع بررسی حین شارژ پس از آغاز شارژ') >= 0 &&
+          rangeReport.indexOf('36000001') >= 0 &&
+          rangeReport.indexOf('36000000') >= 0 &&
           rangeReport.indexOf('نمی‌پذیرد') >= 0 &&
           rangeReport.indexOf('clamp') >= 0,
           'the blocked report explains id, name, value, range and board clamp/reject',

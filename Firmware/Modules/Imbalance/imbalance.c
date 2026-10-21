@@ -60,6 +60,7 @@ static uint32_t UINT32_T__G__RestAnchorMs;  /* [EN] Rest window anchor: last cha
 static bool     BOOL__G__ChargingEdge;      /* [EN] charging seen at startup? / تشخیص لبهٔ اول */
 static uint32_t UINT32_T__G__ChargeStartMs; /* [EN] This session's start / شروع این سیکل */
 static bool     BOOL__G__PrevCharging;      /* [EN] Edge memory / حافظهٔ لبه */
+static bool     BOOL__G__PrevOnBattery;     /* [EN] Discharge edge memory / حافظهٔ لبهٔ دشارژ */
 static bool     BOOL__G__CycleFullSeen;      /* [EN] This cycle reached FLOAT / این سیکل به فول رسید */
 static bool     BOOL__G__RequireFreshFullCycle; /* [EN] Ignore stale FLOAT after a battery swap / فول تازه لازم است */
 static bool     BOOL__G__CycleHasImbalance;  /* [EN] Deferred candidate / نامزدِ معوق */
@@ -243,6 +244,7 @@ void func__Imbalance_Init(void)
     BOOL__G__ChargingEdge      = false;
     UINT32_T__G__ChargeStartMs = 0u;
     BOOL__G__PrevCharging      = false;
+    BOOL__G__PrevOnBattery     = false;
     BOOL__G__CycleFullSeen     = false;
     BOOL__G__RequireFreshFullCycle = false;
     BOOL__G__CycleHasImbalance = false;
@@ -302,6 +304,7 @@ static void func__Imbalance_ResetCycleState(uint32_t uint32_t__nowMs)
     BOOL__G__ChargingEdge       = false;
     UINT32_T__G__ChargeStartMs  = uint32_t__nowMs;
     BOOL__G__PrevCharging       = false;
+    BOOL__G__PrevOnBattery      = false;
     BOOL__G__CycleFullSeen      = false;
     BOOL__G__RequireFreshFullCycle = true;
     BOOL__G__CycleHasImbalance  = false;
@@ -573,7 +576,22 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     {
         BOOL__G__CycleFullSeen = true;
     }
-    BOOL__G__PrevCharging = bool__charging;
+    if ((imbalance_inputs_t__inputs->bool__onBattery == true) &&
+        (BOOL__G__PrevOnBattery == false) &&
+        (bool__charging == false) &&
+        (BOOL__G__CycleFullSeen == true))
+    {
+        /* [EN] A new discharge session gets its own one-event budget so each
+           charge/discharge cycle with a stable imbalance counts once.
+           [FA] هر سیکل دشارژ تازه سهم یک رویداد مستقل خودش را دارد تا هر سیکل
+           شارژ/دشارژ دارای عدم‌توازن پایدار یک‌بار شمرده شود. */
+        BOOL__G__CycleHasImbalance  = false;
+        BOOL__G__CycleEventRecorded = false;
+        BOOL__G__Episode            = false;
+        BOOL__G__OverTiming         = false;
+    }
+    BOOL__G__PrevCharging  = bool__charging;
+    BOOL__G__PrevOnBattery = imbalance_inputs_t__inputs->bool__onBattery;
 
     /* ---- window classification / طبقه‌بندی پنجره ----
      * [EN] discharge: output on battery (and not charging) -> immediate,

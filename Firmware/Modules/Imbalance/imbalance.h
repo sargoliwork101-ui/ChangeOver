@@ -75,21 +75,22 @@ extern "C" {
 #define IMBAL_PARAM_DISCHARGE_LIMIT_MV       109u
 
 /** [EN] Wait after a full charge session end before rest evaluation (ms),
- *  default 600000 (10 min), max 18000000 (5 h); 0 disables rest evaluation.
- *  [FA] مکث پس از پایان سیکل کامل تا ارزیابی در استراحت (ms)، پیش‌فرض
- *  ۶۰۰۰۰۰، سقف ۱۸۰۰۰۰۰۰ (۵ ساعت)؛ صفر یعنی ارزیابی استراحت خاموش. */
+ *  default 600000 (10 min), max 36000000 (10 h); 0 disables rest evaluation.
+ *  [FA] تأخیر پس از پایان سیکل کامل تا شروع بررسی در استراحت (ms)، پیش‌فرض
+ *  ۶۰۰۰۰۰، سقف ۳۶۰۰۰۰۰۰ (۱۰ ساعت)؛ صفر یعنی بررسی در استراحت خاموش. */
 #define IMBAL_PARAM_POST_CHARGE_WAIT_MS      110u
 
 /** [EN] Wait after charge start before during-charge evaluation (ms),
- *  default 600000 (10 min), max 18000000 (5 h); 0 disables it.
- *  [FA] مکث پس از شروع شارژ تا ارزیابی حین شارژ (ms)، پیش‌فرض ۶۰۰۰۰۰،
- *  سقف ۱۸۰۰۰۰۰۰ (۵ ساعت)؛ صفر یعنی خاموش. */
+ *  default 600000 (10 min), max 36000000 (10 h); 0 disables it.
+ *  [FA] تأخیر پس از آغاز شارژ تا شروع بررسی حین شارژ (ms)، پیش‌فرض ۶۰۰۰۰۰،
+ *  سقف ۳۶۰۰۰۰۰۰ (۱۰ ساعت)؛ صفر یعنی خاموش. */
 #define IMBAL_PARAM_IN_CHARGE_WAIT_MS        111u
 
 /** [EN] Episode stability time (ms): imbalance must stay over the limit
  *  continuously for this long before the episode counts ONCE,
- *  default 30000 (30 s).
- *  [FA] زمان پایداری رویداد (ms)، پیش‌فرض ۳۰۰۰۰. */
+ *  default 30000 (30 s), max 36000000 (10 h).
+ *  [FA] مدت ماندگاری اختلاف بالای حد تا ثبت رویداد (ms)، پیش‌فرض ۳۰۰۰۰،
+ *  سقف ۳۶۰۰۰۰۰۰ (۱۰ ساعت). */
 #define IMBAL_PARAM_STABILITY_MS             112u
 
 /** [EN] Episode hysteresis (mV): an active episode ends only when the
@@ -229,9 +230,9 @@ extern "C" {
  *      workshop, tight enough that a typo cannot create a dead monitor.
  * [FA] پنجره‌های گیره برای هر شناسه. */
 #define IMBAL_MAX_LIMIT_MV                   2000u     /* [EN] ids 108/109 / برای ۱۰۸/۱۰۹ */
-#define IMBAL_MAX_WAIT_MS                    18000000u /* [EN] ids 110/111، تا ۵ ساعت */
+#define IMBAL_MAX_WAIT_MS                    36000000u /* [EN] ids 110/111، تا ۱۰ ساعت */
 #define IMBAL_MIN_STABILITY_MS               1000u     /* [EN] id 112, at least 1 s */
-#define IMBAL_MAX_STABILITY_MS               600000u
+#define IMBAL_MAX_STABILITY_MS               36000000u /* [EN] id 112، تا ۱۰ ساعت */
 #define IMBAL_MAX_HYSTERESIS_MV              1000u     /* [EN] id 113 */
 #define IMBAL_MAX_COUNT                      255u      /* [EN] ids 114/118 */
 #define IMBAL_MAX_BEEP_PERIOD_MS             86400000u /* [EN] id 115، تا ۲۴ ساعت */

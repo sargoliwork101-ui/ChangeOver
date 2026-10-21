@@ -48,15 +48,15 @@ int main(void)
             مقدار ذخیره‌شده باید از ‎Init‎ جان سالم به‌در ببرد؛ قبلاً هر بار
             روشن‌شدن پاک می‌شد. پارامتر غایب در رکورد باید پیش‌فرض بگیرد. */
     CHECK(func__Imbalance_SetParam(108u, 777u, &uint32_t__value) && (uint32_t__value == 777u));
-    CHECK(func__Imbalance_SetParam(110u, 18000000u, &uint32_t__value) && (uint32_t__value == 18000000u));
-    CHECK(func__Imbalance_SetParam(111u, 18000000u, &uint32_t__value) && (uint32_t__value == 18000000u));
+    CHECK(func__Imbalance_SetParam(110u, 36000000u, &uint32_t__value) && (uint32_t__value == 36000000u));
+    CHECK(func__Imbalance_SetParam(111u, 36000000u, &uint32_t__value) && (uint32_t__value == 36000000u));
     CHECK(func__Imbalance_SetParam(113u, 250u, &uint32_t__value) && (uint32_t__value == 250u));
 
     func__Imbalance_Init();
 
     CHECK(func__Imbalance_GetParam(108u, &uint32_t__value) && (uint32_t__value == 777u));
-    CHECK(func__Imbalance_GetParam(110u, &uint32_t__value) && (uint32_t__value == 18000000u));
-    CHECK(func__Imbalance_GetParam(111u, &uint32_t__value) && (uint32_t__value == 18000000u));
+    CHECK(func__Imbalance_GetParam(110u, &uint32_t__value) && (uint32_t__value == 36000000u));
+    CHECK(func__Imbalance_GetParam(111u, &uint32_t__value) && (uint32_t__value == 36000000u));
     CHECK(func__Imbalance_GetParam(113u, &uint32_t__value) && (uint32_t__value == 250u));
     CHECK(func__Imbalance_GetParam(109u, &uint32_t__value) && (uint32_t__value == 500u));
 
@@ -131,7 +131,7 @@ int main(void)
     /* ---- clamp ---- */
     uint32_t__value = 0u;
     CHECK(func__Imbalance_SetParam(108u, 99999u, &uint32_t__value) && (uint32_t__value == 2000u));
-    CHECK(func__Imbalance_SetParam(111u, 18000001u, &uint32_t__value) && (uint32_t__value == 18000000u));
+    CHECK(func__Imbalance_SetParam(111u, 36000001u, &uint32_t__value) && (uint32_t__value == 36000000u));
     CHECK(func__Imbalance_SetParam(112u, 0u, &uint32_t__value) && (uint32_t__value == 1000u));
     CHECK(func__Imbalance_SetParam(114u, 0u, &uint32_t__value) && (uint32_t__value == 1u));
     CHECK(func__Imbalance_SetParam(117u, 7u, &uint32_t__value) && (uint32_t__value == 1u));
@@ -355,6 +355,18 @@ int main(void)
     IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
     func__Run(632000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+
+    /* ---- discharge cycle after a full charge cycle counts its own 1 event ---- */
+    IMBAL_INPUTS_T__G__In.bool__onBattery = true;
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12600u; /* 600 > discharge 500 */
+    func__Run(633000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+    func__Run(663000u, true);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 2u);
+    /* staying imbalanced in the same discharge cycle does not add another event */
+    func__Run(700000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 2u);
 
     /* ---- halves in different states are NOT comparable ---- */
     func__Imbalance_Init();

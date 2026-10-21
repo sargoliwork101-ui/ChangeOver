@@ -391,9 +391,9 @@
  *      ماندگار ۲۰۰..۲۰۲ پارامتر نیستند. */
 #define ESPLINK_PARAM_IMBAL_REST_LIMIT_MV      108u  /* u32, mV, def 300,    0..2000 */
 #define ESPLINK_PARAM_IMBAL_DISCH_LIMIT_MV     109u  /* u32, mV, def 500,    0..2000 */
-#define ESPLINK_PARAM_IMBAL_REST_WAIT_MS       110u  /* u32, ms, def 600000, 0..18000000 (0 = rest check off; max 5 h) */
-#define ESPLINK_PARAM_IMBAL_CHG_WAIT_MS        111u  /* u32, ms, def 600000, 0..18000000 (0 = during-charge check off; max 5 h) */
-#define ESPLINK_PARAM_IMBAL_EVENT_STABLE_MS    112u  /* u32, ms, def 30000,  1000..600000 */
+#define ESPLINK_PARAM_IMBAL_REST_WAIT_MS       110u  /* u32, ms, def 600000, 0..36000000 (0 = rest check off; max 10 h) */
+#define ESPLINK_PARAM_IMBAL_CHG_WAIT_MS        111u  /* u32, ms, def 600000, 0..36000000 (0 = during-charge check off; max 10 h) */
+#define ESPLINK_PARAM_IMBAL_EVENT_STABLE_MS    112u  /* u32, ms, def 30000,  1000..36000000 */
 #define ESPLINK_PARAM_IMBAL_EVENT_HYST_MV      113u  /* u32, mV, def 100,    0..1000 */
 #define ESPLINK_PARAM_IMBAL_EVENT_MAX          114u  /* u8,  def 10,  1..255: latch after N episodes */
 #define ESPLINK_PARAM_IMBAL_BEEP_PERIOD_MS     115u  /* u32, ms, def 3600000, 0..86400000 (0 = silent latch) */
