@@ -67,6 +67,28 @@ static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
  */
 static uint32_t UINT32_T__G__BuzzerCycleStartTick = 0;
 
+/* ==================== Buzzer exact window / پنجره دقیق بوق ==================== */
+
+/**
+ * @brief  [EN] Exact millisecond duty window queued by func__Ui_BeepDutyPercent,
+ *         plus the last accepted window for change detection.
+ *         [FA] پنجرهٔ دقیق میلی‌ثانیه‌ای صف‌شده و آخرین پنجرهٔ پذیرفته‌شده.
+ */
+static uint32_t UINT32_T__G__BuzzerPendingWindowMs = 0u;
+static uint32_t UINT32_T__G__BuzzerWindowMs = 0u;
+
+/* ==================== Ui_Buzzer_SetDutyWindowMs ==================== */
+
+/**
+ * @brief  [EN] Queue an exact millisecond duty window for the next buzzer tick.
+ *         [FA] ثبت پنجرهٔ دقیق دیوتی بر حسب میلی‌ثانیه برای تیک بعدی بازر.
+ * @‎param  uint32_t__windowMs [EN] Exact duty window in ms (0 = use percent)‎ / پنجره بر حسب ms
+ */
+void func__Ui_Buzzer_SetDutyWindowMs(uint32_t uint32_t__windowMs)
+{
+    UINT32_T__G__BuzzerPendingWindowMs = uint32_t__windowMs;
+}
+
 /* ==================== Buzzer service / سرویس بازر ==================== */
 
 /**
@@ -102,8 +124,12 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
     uint32_t uint32_t__currentBeepOnMs;
     uint8_t uint8_t__beepIndex;
     uint32_t uint32_t__gapProduct;
+    uint32_t uint32_t__pendingWindowMs;
     bool bool__configurationChanged;
     bool bool__buzzerOn;
+
+    uint32_t__pendingWindowMs = UINT32_T__G__BuzzerPendingWindowMs;
+    UINT32_T__G__BuzzerPendingWindowMs = 0u;
 
     /* [EN] Zero is an intentional safe-off command, not an invalid configuration.
        [FA] صفر یک فرمان خاموشی امن و عمدی است، نه تنظیمات نامعتبر. */
@@ -144,6 +170,11 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         ((uint32_t__periodMs / UI_BUZZER_PERCENT_SCALE) * (uint32_t)uint8_t__dutyPercent) +
         (((uint32_t__periodMs % UI_BUZZER_PERCENT_SCALE) * (uint32_t)uint8_t__dutyPercent) /
          UI_BUZZER_PERCENT_SCALE);
+    if ((uint32_t__pendingWindowMs > 0u) &&
+        (uint32_t__pendingWindowMs <= uint32_t__periodMs))
+    {
+        uint32_t__dutyWindowMs = uint32_t__pendingWindowMs;
+    }
 
     uint32_t__gapCount = (uint32_t)uint8_t__beepCount - 1u;
     /* [EN] Gap total in u32 (flash diet 2026-09-27): an overflowing product
@@ -221,6 +252,10 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
     {
         bool__configurationChanged = true;
     }
+    if (UINT32_T__G__BuzzerWindowMs != uint32_t__dutyWindowMs)
+    {
+        bool__configurationChanged = true;
+    }
 
     uint32_t__nowTick = osKernelGetTickCount();
     if (bool__configurationChanged == true)
@@ -229,6 +264,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         UINT8_T__G__BuzzerDutyPercent = uint8_t__dutyPercent;
         UINT8_T__G__BuzzerCount = uint8_t__beepCount;
         UINT32_T__G__BuzzerGapMs = uint32_t__effectiveGapMs;
+        UINT32_T__G__BuzzerWindowMs = uint32_t__dutyWindowMs;
         UINT32_T__G__BuzzerCycleStartTick = uint32_t__nowTick;
         BOOL__G__BuzzerPatternValid = true;
     }

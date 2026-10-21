@@ -10,6 +10,7 @@
 #include "diag.h"
 #include "bsp_flash.h"
 #include "bsp_pwm.h"
+#include "cmsis_os2.h"
 #include "modules_enable.h"
 #if MODULE_CHARGER
 #include "charger.h"
@@ -273,9 +274,13 @@ void func__Diag_Tick(void)
 
 void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec)
 {
+    int32_t int32_t__lock;
+    uint32_t uint32_t__uptime;
+
     if (uint32_t__unixSec < 1000000000u) return; /* sanity: after 2001 */
 
-    uint32_t uint32_t__uptime = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
+    int32_t__lock = osKernelLock();
+    uint32_t__uptime = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
     if (uint32_t__unixSec >= uint32_t__uptime)
     {
         DIAG_RECORD_T__G__Active.uint32_t__boardTimeBase = uint32_t__unixSec - uint32_t__uptime;
@@ -286,6 +291,10 @@ void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec)
     }
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 2u;
+    if (int32_t__lock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__lock);
+    }
 }
 
 /* ==================== Diag_GetBoardTime ==================== */
@@ -548,6 +557,18 @@ bool func__Diag_SaveNow(void)
     uint16_t uint16_t__newSeq;
     int16_t int16__seqDiff;
 
+#if MODULE_CHARGER
+    /* [EN] Defer the diag save while another flash writer (NVM / CalLut)
+       already holds the charger suspend window; BOOL__G__Dirty stays set so
+       the next 1 s tick retries cleanly without overlapping FPEC accesses.
+       [FA] اگر نویسندهٔ دیگری (‎NVM/CalLut)‎ از قبل شارژر را معلق کرده، ذخیرهٔ
+       دیاگ به تیک بعدی موکول می‌شود تا دو نوشتن فلش با هم تداخل نکنند. */
+    if (func__Charger_IsSuspended() != false)
+    {
+        return false;
+    }
+#endif
+
     /* [EN] Judge page A in the Stage scratch; keep only its sequence.
        [FA] داوری صفحهٔ ‎A‎ در ‎Stage‎؛ فقط شمارهٔ ترتیب نگه داشته می‌شود. */
     func__Diag_ReadFlash(DIAG_PAGE_A_ADDR, &DIAG_RECORD_T__G__Stage);
@@ -569,27 +590,21 @@ bool func__Diag_SaveNow(void)
     }
 
     /* [EN] Decide the next sequence and the target page (the older one),
-       with the exact same comparisons as before: plain greater-than for
-       the sequence, wrap-safe int16 difference for the page choice.
-       [FA] تعیین شمارهٔ ترتیب بعدی و صفحهٔ مقصد (همان قدیمی‌تر) با دقیقاً
-       همان مقایسه‌های قبلی. */
+       using the wrap-safe int16 difference for both sequence advancement
+       and page selection.
+       [FA] تعیین شمارهٔ ترتیب بعدی و صفحهٔ مقصد (همان قدیمی‌تر) با تفاضل
+       علامت‌دار ۱۶بیتیِ مقاوم در برابر سرریز. */
     if (bool__validA && bool__validB)
     {
-        if (uint16_t__seqA > uint16_t__seqB)
-        {
-            uint16_t__newSeq = (uint16_t)(uint16_t__seqA + 1u);
-        }
-        else
-        {
-            uint16_t__newSeq = (uint16_t)(uint16_t__seqB + 1u);
-        }
         int16__seqDiff = (int16_t)(uint16_t__seqA - uint16_t__seqB);
         if (int16__seqDiff > 0)
         {
+            uint16_t__newSeq = (uint16_t)(uint16_t__seqA + 1u);
             uint32_t__targetAddr = DIAG_PAGE_B_ADDR;
         }
         else
         {
+            uint16_t__newSeq = (uint16_t)(uint16_t__seqB + 1u);
             uint32_t__targetAddr = DIAG_PAGE_A_ADDR;
         }
     }

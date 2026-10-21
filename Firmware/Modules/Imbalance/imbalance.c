@@ -23,6 +23,13 @@
 
 #include <stddef.h>   /* NULL */
 
+#if defined(__has_include)
+#if __has_include("cmsis_os2.h")
+#include "cmsis_os2.h"
+#define IMBAL_HAS_RTOS_LOCK 1
+#endif
+#endif
+
 /* ==================== Compile-time invariants / ناورداهای زمان کامپایل ==================== */
 _Static_assert(IMBAL_PARAM_LAST_ID >= IMBAL_PARAM_FIRST_ID, "param range");
 _Static_assert(IMBAL_PARAM_TABLE_SIZE <= 32u, "table size");
@@ -258,8 +265,13 @@ void func__Imbalance_Init(void)
     IMBAL_OUTPUTS_T__G__Last.uint32_t__events       = UINT32_T__G__Events;
     IMBAL_OUTPUTS_T__G__Last.bool__latched          = (UINT32_T__G__Latched != 0u);
     IMBAL_OUTPUTS_T__G__Last.uint32_t__latchedCycles = UINT32_T__G__LatchedCycles;
-    IMBAL_OUTPUTS_T__G__Last.bool__blockOutput      = false;
-    IMBAL_OUTPUTS_T__G__Last.bool__chargingAllowed  = true;
+    IMBAL_OUTPUTS_T__G__Last.bool__blockOutput      =
+        ((UINT32_T__G__Latched != 0u) &&
+         (func__Imbalance_ReadParam(IMBAL_PARAM_BLOCK_OUTPUT_EN) != 0u));
+    IMBAL_OUTPUTS_T__G__Last.bool__chargingAllowed  =
+        ((UINT32_T__G__Latched == 0u) ||
+         (UINT32_T__G__LatchedCycles <
+          func__Imbalance_ReadParam(IMBAL_PARAM_MAX_LATCHED_CYCLES)));
     IMBAL_OUTPUTS_T__G__Last.bool__beepDue          = false;
     IMBAL_OUTPUTS_T__G__Last.bool__halvesMismatch   = false;
 }
@@ -600,10 +612,10 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
             {
                 if (BOOL__G__HasChargeEnd == false)
                 {
-                    /* [EN] No charge ended yet: anchor at boot so rest is
-                     *      monitored after 110 ms-time from power-up.
-                     * [FA] هنوز شارژی تمام نشده: لنگر = بوت. */
-                    if (uint32_t__nowMs >= uint32_t__waitMs)
+                    /* [EN] No charge ended yet: anchor at boot (or latest reset)
+                     *      so rest is monitored after 110 ms-time from anchor.
+                     * [FA] هنوز شارژی تمام نشده: لنگر = بوت یا آخرین ریست. */
+                    if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__RestAnchorMs) >= uint32_t__waitMs)
                     {
                         bool__windowOpen    = true;
                         uint32_t__activeLimitMv = func__Imbalance_ReadParam(IMBAL_PARAM_REST_LIMIT_MV);
@@ -760,6 +772,9 @@ bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,
                               uint32_t *uint32_t__appliedValue)
 {
     bool bool__ret = false;
+#if defined(IMBAL_HAS_RTOS_LOCK)
+    int32_t int32_t__savedKernelLock = osKernelLock();
+#endif
 
     /* [EN] Make sure defaults exist before any panel/NVM write or read.
      * [FA] پیش از هر نوشتن/خواندن پنل یا ‎NVM‎، وجود پیش‌فرض‌ها تضمین می‌شود. */
@@ -801,6 +816,27 @@ bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,
     {
         /* [EN] Not ours. / مال ما نیست. */
     }
+
+    if (bool__ret == true)
+    {
+        IMBAL_OUTPUTS_T__G__Last.uint32_t__events = UINT32_T__G__Events;
+        IMBAL_OUTPUTS_T__G__Last.bool__latched = (UINT32_T__G__Latched != 0u);
+        IMBAL_OUTPUTS_T__G__Last.uint32_t__latchedCycles = UINT32_T__G__LatchedCycles;
+        IMBAL_OUTPUTS_T__G__Last.bool__blockOutput =
+            ((UINT32_T__G__Latched != 0u) &&
+             (func__Imbalance_ReadParam(IMBAL_PARAM_BLOCK_OUTPUT_EN) != 0u));
+        IMBAL_OUTPUTS_T__G__Last.bool__chargingAllowed =
+            ((UINT32_T__G__Latched == 0u) ||
+             (UINT32_T__G__LatchedCycles <
+              func__Imbalance_ReadParam(IMBAL_PARAM_MAX_LATCHED_CYCLES)));
+    }
+
+#if defined(IMBAL_HAS_RTOS_LOCK)
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+#endif
 
     return bool__ret;
 }

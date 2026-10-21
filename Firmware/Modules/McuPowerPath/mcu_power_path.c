@@ -220,19 +220,11 @@ void func__McuPowerPath_Run(void)
                    نوشتن ساده پنجره‌ای می‌گذاشت که همان وصل اضطراری با این پاس
                    کهنه بازنویسی شود و MCU بی‌برق بماند. جفت ماسک‌شدهٔ کوتاه در
                    BSP است و اگر ورودی از قبل رفته باشد false می‌دهد. */
+                BOOL__G__BatteryConnected     = false;
+                BOOL__G__McuPowerTimerActive = false;
                 if (func__BspGpio_DisconnectBatteryPathIfInputPresent() == false)
                 {
-                    BOOL__G__McuPowerTimerActive = false;
-                    if (BOOL__G__BatteryConnected == false)
-                    {
-                        func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true);
-                        BOOL__G__BatteryConnected = true;
-                    }
-                }
-                else
-                {
-                    BOOL__G__BatteryConnected     = false;
-                    BOOL__G__McuPowerTimerActive = false;
+                    BOOL__G__BatteryConnected = true;
                 }
             }
         }

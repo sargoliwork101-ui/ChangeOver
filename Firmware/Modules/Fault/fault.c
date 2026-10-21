@@ -559,10 +559,12 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        فقط ch2 آلارم قطع‌باتریِ خیالی قفل می‌کرد. */
     bool__anyOver =
         (((bool__lowHalfInstalled  == true) &&
-          (func__Charger_IsChannelActive(1u) == true) &&
+          ((func__Charger_IsChannelActive(1u) == true) ||
+           ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)) &&
           (uint32_t__lowMv  > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)) ||
          ((bool__highHalfInstalled == true) &&
-          (func__Charger_IsChannelActive(0u) == true) &&
+          ((func__Charger_IsChannelActive(0u) == true) ||
+           ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)) &&
           (uint32_t__highMv > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)));
 
     /* [EN] Case 2: EITHER half below the absent threshold (6 V) with a

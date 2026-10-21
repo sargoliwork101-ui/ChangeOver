@@ -112,4 +112,16 @@
  */
 int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs);
 
+/* ==================== Buzzer duty-window override / پنجره دقیق دیوتی بازر ==================== */
+
+/**
+ * @brief  [EN] Supply an exact millisecond duty window for the next
+ *         func__Ui_Buzzer_Tick() call so long periods (e.g. 1 h = 3600000 ms)
+ *         keep millisecond pulse precision instead of 1%-of-period rounding.
+ *         [FA] پنجرهٔ دقیق دیوتی بر حسب میلی‌ثانیه را برای فراخوانی بعدی
+ *         سرویس بوق ثبت می‌کند تا در دوره‌های بلند، طول بوق گرد نشود.
+ * @‎param  uint32_t__windowMs [EN] Exact duty window in ms (0 = use percent)‎ / پنجره بر حسب ms
+ */
+void func__Ui_Buzzer_SetDutyWindowMs(uint32_t uint32_t__windowMs);
+
 #endif /* UI_BUZZER_H */

@@ -381,6 +381,7 @@ bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length
     if (uint16_t__freeSlots < uint16_t__length)
     {
         BOOL__G__TxWriteActive = false;
+        func__BspUart_PumpTx();
         return false;
     }
 

@@ -61,6 +61,7 @@ static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
    هر ترکیدگی کوتاه‌تر از ۳ فریم را نابود می‌کند و پلهٔ واقعی با حدود دو
    فریم تأخیر عبور می‌کند. */
 static uint32_t UINT32_T__G__BatVoltageMedianHistoryCounts[2][5];
+static bool BOOL__G__BatVoltageMedianSeeded[2];
 
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
 /* [EN] Median history per current channel (0=Current1, 1=Current2), window
@@ -74,6 +75,7 @@ static uint32_t UINT32_T__G__BatVoltageMedianHistoryCounts[2][5];
  *      تأخیر اضافه حذف می‌کند. فقط وقتی کلید فیلتر کامپایل روشن است
  *      وجود دارد. */
 static uint32_t UINT32_T__G__CurrentMedianHistoryCounts[2][MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX];
+static bool BOOL__G__CurrentMedianSeeded[2];
 #endif
 
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
@@ -220,14 +222,25 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
     }
 
     uint32_t__historyCounts = UINT32_T__G__CurrentMedianHistoryCounts[uint8_t__channelIndex];
-    for (uint8_t__index = (uint8_t)(uint8_t__medianSize - 1u);
-         uint8_t__index > 0u;
-         uint8_t__index--)
+    if (BOOL__G__CurrentMedianSeeded[uint8_t__channelIndex] == false)
     {
-        uint32_t__historyCounts[uint8_t__index] =
-            uint32_t__historyCounts[uint8_t__index - 1u];
+        for (uint8_t__index = 0u; uint8_t__index < uint8_t__medianSize; uint8_t__index++)
+        {
+            uint32_t__historyCounts[uint8_t__index] = uint32_t__sampleCounts;
+        }
+        BOOL__G__CurrentMedianSeeded[uint8_t__channelIndex] = true;
     }
-    uint32_t__historyCounts[0] = uint32_t__sampleCounts;
+    else
+    {
+        for (uint8_t__index = (uint8_t)(uint8_t__medianSize - 1u);
+             uint8_t__index > 0u;
+             uint8_t__index--)
+        {
+            uint32_t__historyCounts[uint8_t__index] =
+                uint32_t__historyCounts[uint8_t__index - 1u];
+        }
+        uint32_t__historyCounts[0] = uint32_t__sampleCounts;
+    }
 
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__medianSize; uint8_t__index++)
     {
@@ -389,6 +402,7 @@ static void func__Measurement_ResetCurrentFilters(void)
         {
             UINT32_T__G__CurrentMedianHistoryCounts[uint32_t__i][uint32_t__j] = 0u;
         }
+        BOOL__G__CurrentMedianSeeded[uint32_t__i] = false;
     }
 #endif
 
@@ -430,11 +444,23 @@ static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__cha
     }
 
     uint32_t__historyCounts = UINT32_T__G__BatVoltageMedianHistoryCounts[uint8_t__channelIndex];
-    uint32_t__historyCounts[0] = uint32_t__historyCounts[1];
-    uint32_t__historyCounts[1] = uint32_t__historyCounts[2];
-    uint32_t__historyCounts[2] = uint32_t__historyCounts[3];
-    uint32_t__historyCounts[3] = uint32_t__historyCounts[4];
-    uint32_t__historyCounts[4] = uint32_t__sampleCounts;
+    if (BOOL__G__BatVoltageMedianSeeded[uint8_t__channelIndex] == false)
+    {
+        uint32_t__historyCounts[0] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[1] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[2] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[3] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[4] = uint32_t__sampleCounts;
+        BOOL__G__BatVoltageMedianSeeded[uint8_t__channelIndex] = true;
+    }
+    else
+    {
+        uint32_t__historyCounts[0] = uint32_t__historyCounts[1];
+        uint32_t__historyCounts[1] = uint32_t__historyCounts[2];
+        uint32_t__historyCounts[2] = uint32_t__historyCounts[3];
+        uint32_t__historyCounts[3] = uint32_t__historyCounts[4];
+        uint32_t__historyCounts[4] = uint32_t__sampleCounts;
+    }
 
     return func__Measurement_Median5(uint32_t__historyCounts);
 }
@@ -516,6 +542,8 @@ void func__Measurement_Init(void)
        تا جمع‌شدن تعداد لازم فریم‌های پایدار چیزی معتبر نیست. */
 
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
+    BOOL__G__BatVoltageMedianSeeded[0u] = false;
+    BOOL__G__BatVoltageMedianSeeded[1u] = false;
 
     /* [EN] Clean filter state and re-sync the applied-copy of the runtime
        filter configuration (a config that arrived before Init cannot

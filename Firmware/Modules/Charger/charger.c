@@ -202,6 +202,7 @@ static volatile uint32_t UINT32_T__G__ChargerValidFloorMv = CHG_MIN_VALID_BATTER
    [FA] پرچم تعلیق برای ذخیرهٔ NVM: تسک ارتباط دور ذخیرهٔ فلش ست می‌کند و
    تسک کنترل می‌خواند. تک‌بولین volatile بدون قفل. */
 static volatile bool BOOL__G__ChargerSuspended = false;
+static volatile uint8_t UINT8_T__G__ChargerSuspendDepth = 0u;
 
 /* [EN] Live diag array - see the layout map in charger.h (user order
  *      2026-09-22: all charge-decision values visible in one Live
@@ -286,6 +287,7 @@ static bool BOOL__G__RelayOpen;
    [FA] قفل ایمنی سناریوی ۷ فقط در RAM است و هیچ مسیر عادی شارژ حق پاک‌کردنش
    را ندارد؛ تنها Init پس از ریست آن را پاک می‌کند. */
 static bool BOOL__G__TechnicalFaultLockout;
+static uint32_t UINT32_T__G__TechOpenStartTick[CHG_CHANNEL_COUNT] = {0u, 0u};
 static uint32_t UINT32_T__G__RelaySettleDeadline;
 
 /* [EN] Thermal rest: 1h continuous at max current -> 10min rest per channel.
@@ -2018,6 +2020,8 @@ void func__Charger_Init(void)
        ‎which is reached after a MCU reset/power-cycle. [FA]‎ حکم فنی طبقهٔ
        قدرت عمداً فقط اینجا، یعنی پس از reset/روشن‌شدن دوباره، پاک می‌شود. */
     BOOL__G__TechnicalFaultLockout = false;
+    UINT32_T__G__TechOpenStartTick[0u] = 0u;
+    UINT32_T__G__TechOpenStartTick[1u] = 0u;
     BOOL__G__ChargerInitialized = true;
     BOOL__G__RelayOpen = false;
     UINT32_T__G__RelaySettleDeadline = 0u;
@@ -2171,7 +2175,29 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
  */
 void func__Charger_SetSuspended(bool bool__suspended)
 {
-    BOOL__G__ChargerSuspended = bool__suspended;
+    int32_t int32_t__savedKernelLock = osKernelLock();
+
+    if (bool__suspended != false)
+    {
+        if (UINT8_T__G__ChargerSuspendDepth < UINT8_MAX)
+        {
+            UINT8_T__G__ChargerSuspendDepth++;
+        }
+    }
+    else if (UINT8_T__G__ChargerSuspendDepth > 0u)
+    {
+        UINT8_T__G__ChargerSuspendDepth--;
+    }
+    else
+    {
+        /* [EN] Already zero. [FA] از قبل صفر است. */
+    }
+    BOOL__G__ChargerSuspended = (UINT8_T__G__ChargerSuspendDepth > 0u);
+
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
 }
 
 /* ==================== Charger_IsSuspended ==================== */
@@ -2434,6 +2460,7 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
     uint32_t uint32_t__gapMs;
     uint32_t uint32_t__stepMs;
     bool     bool__charging;
+    bool     bool__batteryAbsent;
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
     uint32_t__timeoutMs = UINT32_T__G__DeadParam[0];
@@ -2442,7 +2469,15 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
     /* [EN] Step 1: a real battery swap wipes the verdict - the latch belongs
            to the battery, not to the board (same rule as scenario 5).
        [FA] گام ۱: تعویض واقعی باتری، قفل را پاک می‌کند. */
-    if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST)
+    bool__batteryAbsent =
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST);
+#if MODULE_FAULT
+    if (func__Fault_IsBatteryAbsent() != false)
+    {
+        bool__batteryAbsent = true;
+    }
+#endif
+    if (bool__batteryAbsent != false)
     {
         if (BOOL__G__DeadAbsentTiming[uint8_t__channelIndex] == false)
         {
@@ -2914,6 +2949,20 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         (app_state_t__state == APP_STATE_SAFE))
     {
         func__Charger_SafeIdle();
+        if ((measurement_snapshot_t__snap != NULL) &&
+            (measurement_snapshot_t__snap->valid == true) &&
+            (CHG_INSTALLED_CHANNEL_MASK != 0u))
+        {
+            for (uint8_t__channelIndex = 0u;
+                 uint8_t__channelIndex < CHG_CHANNEL_COUNT;
+                 uint8_t__channelIndex++)
+            {
+                if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true)
+                {
+                    func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
+                }
+            }
+        }
         return;
     }
 
@@ -3406,16 +3455,58 @@ void func__Charger_EvaluateTechnicalFault(
             (uint8_t__channelIndex == 0u)
                 ? measurement_snapshot_t__snap->i_ch1_ma
                 : measurement_snapshot_t__snap->i_ch2_ma;
+        uint32_t uint32_t__batteryMv =
+            func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
+                                           uint8_t__channelIndex);
+        bool bool__batLostFault = false;
+
+#if MODULE_FAULT
+        if (((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE) ||
+            (func__Fault_IsBatteryAbsent() != false))
+        {
+            bool__batLostFault = true;
+        }
+#endif
 
         if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) > 200u) &&
             (uint32_t__currentMa == 0u) &&
-            (func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
-                                            uint8_t__channelIndex) >=
-             CHG_TECH_OPEN_MIN_BATTERY_MV) &&
+            (uint32_t__batteryMv >= CHG_TECH_OPEN_MIN_BATTERY_MV) &&
+            (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == true) &&
+            (bool__batLostFault == false) &&
             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
              CHG_STATE_BAT_LOST))
         {
-            bool__openFault = true;
+            uint32_t uint32_t__nowTick = osKernelGetTickCount();
+            uint32_t uint32_t__debounceMs = 250u;
+
+#if MODULE_FAULT
+            if (func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_DISCONNECT_DEB_MS,
+                                          &uint32_t__debounceMs) == true)
+            {
+                uint32_t__debounceMs += 50u;
+            }
+#endif
+            if (UINT32_T__G__TechOpenStartTick[uint8_t__channelIndex] == 0u)
+            {
+                UINT32_T__G__TechOpenStartTick[uint8_t__channelIndex] =
+                    (uint32_t__nowTick != 0u) ? uint32_t__nowTick : 1u;
+            }
+            else if (func__Rtos_TicksToMilliseconds(
+                         uint32_t__nowTick -
+                         UINT32_T__G__TechOpenStartTick[uint8_t__channelIndex]) >=
+                     uint32_t__debounceMs)
+            {
+                bool__openFault = true;
+            }
+            else
+            {
+                /* [EN] Wait for the disconnect debounce window before locking.
+                   [FA] صبر تا پایان پنجرهٔ دبانس قطع باتری پیش از قفل فنی. */
+            }
+        }
+        else
+        {
+            UINT32_T__G__TechOpenStartTick[uint8_t__channelIndex] = 0u;
         }
     }
 

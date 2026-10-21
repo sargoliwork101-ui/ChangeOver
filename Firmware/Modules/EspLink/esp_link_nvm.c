@@ -669,18 +669,36 @@ static bool func__EspLink_NvmSaveNow(void)
  */
 bool func__EspLink_NvmFlushForReset(void)
 {
+    int32_t int32_t__savedKernelLock;
+    uint32_t uint32_t__seqAtStart;
+    bool bool__saved;
+    int32_t int32_t__lock;
+
+    int32_t__savedKernelLock = osKernelLock();
     if (UINT16_T__G__NvmDirtyRuns == 0u)
     {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
         return true;
     }
+    uint32_t__seqAtStart = UINT32_T__G__NvmChangeSeq;
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
 
-    if (func__EspLink_NvmSaveNow() != false)
+    bool__saved = func__EspLink_NvmSaveNow();
+
+    int32_t__lock = osKernelLock();
+    if (bool__saved != false)
     {
-        UINT16_T__G__NvmDirtyRuns = 0u;
-        UINT8_T__G__NvmSaveRetries = 0u;
-        BOOL__G__NvmParked = false;
+        if (UINT32_T__G__NvmChangeSeq == uint32_t__seqAtStart)
+        {
+            UINT16_T__G__NvmDirtyRuns = 0u;
+            UINT8_T__G__NvmSaveRetries = 0u;
+            BOOL__G__NvmParked = false;
+        }
+        (void)osKernelRestoreLock(int32_t__lock);
         return true;
     }
+    (void)osKernelRestoreLock(int32_t__lock);
+
     /* [EN] Keep the dirty flag and the LUT reset authorization intact after a
        failed flush. The caller can report the failure and retry without
        rebooting into an older calibration snapshot.

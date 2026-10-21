@@ -345,6 +345,7 @@ static uint8_t func__Ui_BeepDutyPercent(uint32_t uint32_t__periodMs,
     if ((uint32_t__periodMs == 0u) || (uint32_t__durMs == 0u) ||
         (uint32_t__count == 0u))
     {
+        func__Ui_Buzzer_SetDutyWindowMs(0u);
         return 0u;
     }
 
@@ -368,14 +369,15 @@ static uint8_t func__Ui_BeepDutyPercent(uint32_t uint32_t__periodMs,
        ساکت شود نه دیوتی بریده‌شده. */
     if (uint32_t__windowMs > uint32_t__periodMs)
     {
+        func__Ui_Buzzer_SetDutyWindowMs(0u);
         return (uint8_t)(UI_BUZZER_DUTY_MAX_PERCENT + 1u);
     }
 
-    /* [EN] Step 3: duty = ceil(window * 100 / period)
-       [FA] گام ۳: دیوتی با سقف‌گرد */
+    /* [EN] Step 3: queue the exact ms window and compute ceil(window * 100 / period)
+       [FA] گام ۳: ثبت پنجرهٔ دقیق میلی‌ثانیه‌ای و محاسبهٔ دیوتی با سقف‌گرد */
+    func__Ui_Buzzer_SetDutyWindowMs(uint32_t__windowMs);
     uint32_t__scaledWindow = uint32_t__windowMs * UI_PERCENT_SCALE;
-    return (uint8_t)((uint32_t__scaledWindow + uint32_t__periodMs - 1u) /
-                     uint32_t__periodMs);
+    return (uint8_t)(((uint32_t__scaledWindow - 1u) / uint32_t__periodMs) + 1u);
 }
 
 /**
@@ -2145,7 +2147,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     {
         /* [EN] Input disconnected → BatteryRun uses 2% hysteresis + 0/1.
            [FA] ورودی قطع → BatteryRun با هیسترزیس ۲٪ + ۰/۱. */
-        func__Ui_ScenarioBatteryRun_Tick(uint32_t__batteryClampedMv);
+        func__Ui_ScenarioBatteryRun_Tick(uint32_t__batteryVoltageMv);
     }
 }
 
