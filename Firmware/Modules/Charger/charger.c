@@ -3421,6 +3421,17 @@ void func__Charger_EvaluateTechnicalFault(
         return;
     }
 
+    if (BOOL__G__ChargerManualModeActive != false)
+    {
+        for (uint8_t__channelIndex = 0u;
+             uint8_t__channelIndex < CHG_CHANNEL_COUNT;
+             uint8_t__channelIndex++)
+        {
+            UINT32_T__G__TechOpenStartTick[uint8_t__channelIndex] = 0u;
+        }
+        return;
+    }
+
 #if MODULE_JITTER
     /* [EN] Short/burned transistor signature: relay already disconnected,
        applied PWM is zero, and the JIT latch is present. The conjunction is
@@ -3433,7 +3444,8 @@ void func__Charger_EvaluateTechnicalFault(
              uint8_t__channelIndex < CHG_CHANNEL_COUNT;
              uint8_t__channelIndex++)
         {
-            if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) == 0u) &&
+            if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed != false) &&
+                (func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) == 0u) &&
                 (func__Jitter_ChannelTripped((uint8_t)(uint8_t__channelIndex + 1u)) != false))
             {
                 bool__shortFault = true;
@@ -3468,7 +3480,8 @@ void func__Charger_EvaluateTechnicalFault(
         }
 #endif
 
-        if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) > 200u) &&
+        if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed != false) &&
+            (func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) > 200u) &&
             (uint32_t__currentMa == 0u) &&
             (uint32_t__batteryMv >= CHG_TECH_OPEN_MIN_BATTERY_MV) &&
             (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == true) &&
@@ -3515,9 +3528,6 @@ void func__Charger_EvaluateTechnicalFault(
         BOOL__G__TechnicalFaultLockout = true;
 #if MODULE_FAULT
         func__Fault_Set(FAULT_CHARGER_TECHNICAL);
-#endif
-#if MODULE_DIAG
-        func__Diag_RecordFault(FAULT_CHARGER_TECHNICAL, measurement_snapshot_t__snap);
 #endif
     }
 }

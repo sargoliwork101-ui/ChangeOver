@@ -62,8 +62,8 @@ void setup(void)
     func__Simple_DiagLoad();
 
     // بازیابی prev counts برای تشخیص شارژ بعد از ریستارت
-    UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
-    UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
+    UINT32_T__G__ChargeCountCh1 = UINT32_T__G__PrevChargeCountCh1;
+    UINT32_T__G__ChargeCountCh2 = UINT32_T__G__PrevChargeCountCh2;
 
     (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
 

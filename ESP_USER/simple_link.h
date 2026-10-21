@@ -65,8 +65,8 @@ static void func__Simple_HandleFrame(void)
 
         if (uint8_t__chunk == 0u && UINT16_T__G__RxLen >= 23u)
         {
-            uint32_t uint32_t__prevCh1 = UINT32_T__G__ChargeCountCh1;
-            uint32_t uint32_t__prevCh2 = UINT32_T__G__ChargeCountCh2;
+            uint32_t uint32_t__prevCh1 = UINT32_T__G__PrevChargeCountCh1;
+            uint32_t uint32_t__prevCh2 = UINT32_T__G__PrevChargeCountCh2;
             UINT32_T__G__TotalChargeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 1u);
             UINT32_T__G__ChargeCount = func__Simple_ReadU32(uint8_t__ptr_payload, 5u);
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
@@ -76,6 +76,18 @@ static void func__Simple_HandleFrame(void)
             uint8_t uint8_t__newPwr = uint8_t__ptr_payload[22];
             if (uint8_t__newErr > SIMPLE_DIAG_MAX_ERRORS) uint8_t__newErr = SIMPLE_DIAG_MAX_ERRORS;
             if (uint8_t__newPwr > SIMPLE_DIAG_MAX_POWER_EVENTS) uint8_t__newPwr = SIMPLE_DIAG_MAX_POWER_EVENTS;
+            if (BOOL__G__DiagClearPending)
+            {
+                if ((uint8_t__newErr == 0u) && (uint8_t__newPwr == 0u))
+                {
+                    BOOL__G__DiagClearPending = false;
+                }
+                else
+                {
+                    uint8_t__newErr = 0u;
+                    uint8_t__newPwr = 0u;
+                }
+            }
             /* اگر برد اصلی صفر گزارش داد ولی ما محلی خطا داریم، محلی را نگه دار */
             if (uint8_t__newErr == 0u && UINT8_T__G__DiagErrorCount > 0u)
             {
@@ -125,70 +137,90 @@ static void func__Simple_HandleFrame(void)
                 UINT32_T__G__ChargeCountCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 27u);
                 UINT32_T__G__ChargeSecCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 31u);
                 UINT32_T__G__ChargeSecCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 35u);
-                /* ثبت تاریخچه شارژ: اگر تعداد افزایش یافت، زمان (ساعت پنل) را ذخیره کن - با بافر چرخشی */
-                uint32_t uint32_t__stampSec = func__Simple_NowSec();
-                if ((UINT32_T__G__ChargeCountCh1 > uint32_t__prevCh1) && (uint32_t__stampSec != 0u))
+                if (!BOOL__G__ChargeCountBaselineReady)
                 {
-                    BOOL__G__ChargeHistDirty = true;
-                    uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh1 - uint32_t__prevCh1;
-                    if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
-                    uint32_t uint32_t__k;
-                    for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
-                    {
-                        if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
-                        {
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 1u;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
-                            UINT8_T__G__ChargeHistoryCount++;
-                        }
-                        else
-                        {
-                            /* بافر پر - قدیمی‌ترین را حذف و شیفت بده */
-                            uint8_t uint8_t__s;
-                            for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
-                            {
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
-                            }
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 1u;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
-                        }
-                    }
                     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
-                }
-                if ((UINT32_T__G__ChargeCountCh2 > uint32_t__prevCh2) && (uint32_t__stampSec != 0u))
-                {
-                    BOOL__G__ChargeHistDirty = true;
-                    uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh2 - uint32_t__prevCh2;
-                    if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
-                    uint32_t uint32_t__k;
-                    for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
-                    {
-                        if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
-                        {
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 2u;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
-                            UINT8_T__G__ChargeHistoryCount++;
-                        }
-                        else
-                        {
-                            uint8_t uint8_t__s;
-                            for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
-                            {
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
-                            }
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 2u;
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
-                        }
-                    }
                     UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
+                    BOOL__G__ChargeCountBaselineReady = true;
+                    BOOL__G__ChargeHistDirty = true;
+                }
+                else
+                {
+                    /* ثبت تاریخچه شارژ: اگر تعداد افزایش یافت، زمان (ساعت پنل) را ذخیره کن - با بافر چرخشی */
+                    uint32_t uint32_t__stampSec = func__Simple_NowSec();
+                    if (UINT32_T__G__ChargeCountCh1 < uint32_t__prevCh1)
+                    {
+                        UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
+                        BOOL__G__ChargeHistDirty = true;
+                    }
+                    else if ((UINT32_T__G__ChargeCountCh1 > uint32_t__prevCh1) && (uint32_t__stampSec != 0u))
+                    {
+                        BOOL__G__ChargeHistDirty = true;
+                        uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh1 - uint32_t__prevCh1;
+                        if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
+                        uint32_t uint32_t__k;
+                        for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
+                        {
+                            if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
+                            {
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 1u;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
+                                UINT8_T__G__ChargeHistoryCount++;
+                            }
+                            else
+                            {
+                                /* بافر پر - قدیمی‌ترین را حذف و شیفت بده */
+                                uint8_t uint8_t__s;
+                                for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
+                                {
+                                    SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
+                                }
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 1u;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
+                            }
+                        }
+                        UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
+                    }
+                    if (UINT32_T__G__ChargeCountCh2 < uint32_t__prevCh2)
+                    {
+                        UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
+                        BOOL__G__ChargeHistDirty = true;
+                    }
+                    else if ((UINT32_T__G__ChargeCountCh2 > uint32_t__prevCh2) && (uint32_t__stampSec != 0u))
+                    {
+                        BOOL__G__ChargeHistDirty = true;
+                        uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh2 - uint32_t__prevCh2;
+                        if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
+                        uint32_t uint32_t__k;
+                        for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
+                        {
+                            if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
+                            {
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 2u;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
+                                UINT8_T__G__ChargeHistoryCount++;
+                            }
+                            else
+                            {
+                                uint8_t uint8_t__s;
+                                for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
+                                {
+                                    SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
+                                }
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 2u;
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
+                            }
+                        }
+                        UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
+                    }
                 }
             }
         }
-        else if ((uint8_t__chunk == 1u || uint8_t__chunk == 2u) && UINT16_T__G__RxLen >= 3u)
+        else if ((uint8_t__chunk == 1u || uint8_t__chunk == 2u) && UINT16_T__G__RxLen >= 3u && !BOOL__G__DiagClearPending)
         {
             uint8_t uint8_t__start = uint8_t__ptr_payload[1];
             uint8_t uint8_t__count = uint8_t__ptr_payload[2];
@@ -210,7 +242,7 @@ static void func__Simple_HandleFrame(void)
                 uint16_t__offset += 32u;
             }
         }
-        else if ((uint8_t__chunk == 3u || uint8_t__chunk == 4u) && UINT16_T__G__RxLen >= 3u)
+        else if ((uint8_t__chunk == 3u || uint8_t__chunk == 4u) && UINT16_T__G__RxLen >= 3u && !BOOL__G__DiagClearPending)
         {
             uint8_t uint8_t__start = uint8_t__ptr_payload[1];
             uint8_t uint8_t__count = uint8_t__ptr_payload[2];

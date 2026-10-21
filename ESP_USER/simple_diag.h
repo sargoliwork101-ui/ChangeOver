@@ -390,21 +390,33 @@ static void func__Simple_SendTimeSync(uint32_t uint32_t__unixSec)
 /* ==================== درخواست دیاگ ==================== */
 static void func__Simple_SendDiagReq(void)
 {
-    uint8_t UINT8_T__A__Frame[8];
+    uint8_t UINT8_T__A__Frame[9];
     uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
+    uint8_t uint8_t__len = BOOL__G__DiagClearPending ? 1u : 0u;
     UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
     UINT8_T__A__Frame[2] = SIMPLE_LINK_PROTOCOL_VERSION;
     UINT8_T__A__Frame[3] = SIMPLE_MSG_DIAG_REQ;
-    UINT8_T__A__Frame[4] = 0u;
+    UINT8_T__A__Frame[4] = uint8_t__len;
     UINT8_T__A__Frame[5] = 0u;
     uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_LINK_PROTOCOL_VERSION);
     uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_MSG_DIAG_REQ);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, uint8_t__len);
     uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
-    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
-    UINT8_T__A__Frame[6] = (uint8_t)(uint16_t__crc & 0xFFu);
-    UINT8_T__A__Frame[7] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
-    (void)Serial.write(UINT8_T__A__Frame, 8u);
+    if (uint8_t__len == 1u)
+    {
+        UINT8_T__A__Frame[6] = 1u;
+        uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 1u);
+        UINT8_T__A__Frame[7] = (uint8_t)(uint16_t__crc & 0xFFu);
+        UINT8_T__A__Frame[8] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+        (void)Serial.write(UINT8_T__A__Frame, 9u);
+    }
+    else
+    {
+        UINT8_T__A__Frame[6] = (uint8_t)(uint16_t__crc & 0xFFu);
+        UINT8_T__A__Frame[7] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+        (void)Serial.write(UINT8_T__A__Frame, 8u);
+    }
     UINT32_T__G__LastDiagReqMs = (uint32_t)millis();
 }
 
@@ -483,6 +495,8 @@ static void func__Simple_ChargeHistoryLoad(void)
         {
             String string__p1 = string__content.substring(int32_t__prev1Pos, int32_t__prev1End);
             UINT32_T__G__PrevChargeCountCh1 = (uint32_t)string__p1.toInt();
+            UINT32_T__G__ChargeCountCh1 = UINT32_T__G__PrevChargeCountCh1;
+            BOOL__G__ChargeCountBaselineReady = true;
         }
     }
     int32_t int32_t__prev2Pos = string__content.indexOf("\"prevCh2\":");
@@ -494,6 +508,8 @@ static void func__Simple_ChargeHistoryLoad(void)
         {
             String string__p2 = string__content.substring(int32_t__prev2Pos, int32_t__prev2End);
             UINT32_T__G__PrevChargeCountCh2 = (uint32_t)string__p2.toInt();
+            UINT32_T__G__ChargeCountCh2 = UINT32_T__G__PrevChargeCountCh2;
+            BOOL__G__ChargeCountBaselineReady = true;
         }
     }
     int32_t int32_t__pos = 0;
@@ -864,9 +880,14 @@ static void func__Simple_ChargeHistoryClear(void)
     UINT8_T__G__ChargeHistoryCount = 0u;
     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
     UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
+    BOOL__G__ChargeCountBaselineReady = BOOL__G__DiagValid;
     if (BOOL__G__FsOk)
     {
         LittleFS.remove(SIMPLE_CHARGE_HISTORY_FILE);
+    }
+    if (BOOL__G__ChargeCountBaselineReady)
+    {
+        func__Simple_ChargeHistorySave();
     }
 }
 
@@ -892,8 +913,10 @@ static void func__Simple_DiagClear(void)
     UINT32_T__G__LastLocalFaultMask = 0u;
     BOOL__G__LastLocalInputValid = false;
     BOOL__G__LocalPowerOffActive = false;
+    BOOL__G__DiagClearPending = true;
     if (BOOL__G__FsOk)
     {
         LittleFS.remove(SIMPLE_DIAG_FILE);
     }
+    func__Simple_SendDiagReq();
 }

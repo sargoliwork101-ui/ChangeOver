@@ -28,6 +28,7 @@ static bool BOOL__G__Dirty = false;
 static uint32_t UINT32_T__G__SaveDelaySec = 0u;
 static uint32_t UINT32_T__G__PowerOffTime = 0u;
 static bool BOOL__G__PowerOffActive = false;
+static uint32_t UINT32_T__G__LastChargeUptimeSec = 0xFFFFFFFFu;
 
 /* ==================== CRC32 ==================== */
 
@@ -247,6 +248,7 @@ void func__Diag_Init(void)
     DIAG_RECORD_T__G__Active.uint32_t__resetCount++;
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 5u; /* save soon after boot */
+    UINT32_T__G__LastChargeUptimeSec = 0xFFFFFFFFu;
 
     (void)memcpy(&DIAG_RECORD_T__G__Stage, &DIAG_RECORD_T__G__Active, sizeof(diag_record_t));
 }
@@ -312,7 +314,19 @@ uint32_t func__Diag_GetBoardTime(void)
 
 void func__Diag_AddChargeSec(uint8_t uint8_t__channel, uint32_t uint32_t__sec)
 {
-    DIAG_RECORD_T__G__Active.uint32_t__totalChargeSec += uint32_t__sec;
+    int32_t int32_t__lock = osKernelLock();
+
+    /* [EN] Count wall-clock charging time once per uptime second even when
+       both channels 0 and 1 are active in the same 1-second tick, and keep
+       the 60 s debounce from firing while charging is continuously active.
+       [FA] زمان کل شارژ در هر ثانیهٔ آپتایم فقط یک‌بار جمع می‌شود حتی اگر هر
+       دو کانال فعال باشند، و تایمر ۶۰ ثانیه‌ای حین شارژ پیوسته نگه‌داشته
+       می‌شود تا فلش و PWM هر دقیقه قطع نشوند. */
+    if (DIAG_RECORD_T__G__Active.uint32_t__uptimeSec != UINT32_T__G__LastChargeUptimeSec)
+    {
+        DIAG_RECORD_T__G__Active.uint32_t__totalChargeSec += uint32_t__sec;
+        UINT32_T__G__LastChargeUptimeSec = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
+    }
     if (uint8_t__channel == 0u)
     {
         DIAG_RECORD_T__G__Active.uint32_t__chargeSecCh1 += uint32_t__sec;
@@ -322,9 +336,14 @@ void func__Diag_AddChargeSec(uint8_t uint8_t__channel, uint32_t uint32_t__sec)
         DIAG_RECORD_T__G__Active.uint32_t__chargeSecCh2 += uint32_t__sec;
     }
     BOOL__G__Dirty = true;
-    if (UINT32_T__G__SaveDelaySec == 0u)
+    if ((UINT32_T__G__SaveDelaySec == 0u) ||
+        (UINT32_T__G__SaveDelaySec >= (DIAG_SAVE_DELAY_SEC - 1u)))
     {
         UINT32_T__G__SaveDelaySec = DIAG_SAVE_DELAY_SEC;
+    }
+    if (int32_t__lock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__lock);
     }
 }
 
@@ -332,6 +351,8 @@ void func__Diag_AddChargeSec(uint8_t uint8_t__channel, uint32_t uint32_t__sec)
 
 void func__Diag_RecordChargeComplete(uint8_t uint8_t__channel)
 {
+    int32_t int32_t__lock = osKernelLock();
+
     DIAG_RECORD_T__G__Active.uint32_t__chargeCount++;
     if (uint8_t__channel == 0u)
     {
@@ -343,23 +364,31 @@ void func__Diag_RecordChargeComplete(uint8_t uint8_t__channel)
     }
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 5u;
+    if (int32_t__lock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__lock);
+    }
 }
 
 /* ==================== Diag_RecordFault ==================== */
 
 void func__Diag_RecordFault(fault_mask_t fault_mask_t__faults, const measurement_snapshot_t *measurement_snapshot_t__snap)
 {
+    int32_t int32_t__lock;
     uint8_t uint8_t__idx;
-    uint32_t uint32_t__now = func__Diag_GetBoardTime();
-    if (uint32_t__now == 0u)
-    {
-        uint32_t__now = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec; /* fallback to uptime */
-    }
+    uint32_t uint32_t__now;
 
     /* [EN] Do not log FAULT_NONE or transient */
     if (fault_mask_t__faults == 0u)
     {
         return;
+    }
+
+    int32_t__lock = osKernelLock();
+    uint32_t__now = func__Diag_GetBoardTime();
+    if (uint32_t__now == 0u)
+    {
+        uint32_t__now = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec; /* fallback to uptime */
     }
 
     /* [EN] Shift old errors, newest at 0 */
@@ -407,6 +436,10 @@ void func__Diag_RecordFault(fault_mask_t fault_mask_t__faults, const measurement
 
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 3u;
+    if (int32_t__lock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__lock);
+    }
 }
 
 /* ==================== Diag_RecordPowerOff ==================== */
@@ -426,12 +459,14 @@ void func__Diag_RecordPowerOff(void)
 
 void func__Diag_RecordPowerOn(void)
 {
+    int32_t int32_t__lock;
     uint32_t uint32_t__now;
     uint8_t uint8_t__idx;
 
     if (!BOOL__G__PowerOffActive) return;
     BOOL__G__PowerOffActive = false;
 
+    int32_t__lock = osKernelLock();
     uint32_t__now = func__Diag_GetBoardTime();
     if (uint32_t__now == 0u)
     {
@@ -463,14 +498,42 @@ void func__Diag_RecordPowerOn(void)
 
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 3u;
+    if (int32_t__lock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__lock);
+    }
+}
+
+/* ==================== Diag_ClearHistory ==================== */
+
+void func__Diag_ClearHistory(void)
+{
+    int32_t int32_t__lock = osKernelLock();
+
+    DIAG_RECORD_T__G__Active.uint8_t__errorCount = 0u;
+    DIAG_RECORD_T__G__Active.uint8_t__powerEventCount = 0u;
+    (void)memset(DIAG_RECORD_T__G__Active.diag_error_t__A__Errors, 0,
+                 sizeof(DIAG_RECORD_T__G__Active.diag_error_t__A__Errors));
+    (void)memset(DIAG_RECORD_T__G__Active.diag_power_event_t__A__PowerEvents, 0,
+                 sizeof(DIAG_RECORD_T__G__Active.diag_power_event_t__A__PowerEvents));
+    BOOL__G__PowerOffActive = false;
+    BOOL__G__Dirty = true;
+    UINT32_T__G__SaveDelaySec = 2u;
+    if (int32_t__lock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__lock);
+    }
 }
 
 /* ==================== Diag_UpdateMinMax ==================== */
 
 void func__Diag_UpdateMinMax(const measurement_snapshot_t *measurement_snapshot_t__snap)
 {
+    int32_t int32_t__lock;
+
     if (measurement_snapshot_t__snap == NULL || !measurement_snapshot_t__snap->valid) return;
 
+    int32_t__lock = osKernelLock();
     if (measurement_snapshot_t__snap->v_in_mv > DIAG_RECORD_T__G__Active.uint32_t__maxVinMv)
         DIAG_RECORD_T__G__Active.uint32_t__maxVinMv = measurement_snapshot_t__snap->v_in_mv;
     if (measurement_snapshot_t__snap->v_in_mv < DIAG_RECORD_T__G__Active.uint32_t__minVinMv)
@@ -504,11 +567,32 @@ void func__Diag_UpdateMinMax(const measurement_snapshot_t *measurement_snapshot_
         DIAG_RECORD_T__G__Active.uint32_t__maxIch1Ma = measurement_snapshot_t__snap->i_ch1_ma;
     if (measurement_snapshot_t__snap->i_ch2_ma > DIAG_RECORD_T__G__Active.uint32_t__maxIch2Ma)
         DIAG_RECORD_T__G__Active.uint32_t__maxIch2Ma = measurement_snapshot_t__snap->i_ch2_ma;
+    if (int32_t__lock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__lock);
+    }
 }
 
 const diag_record_t *func__Diag_GetRecord(void)
 {
     return &DIAG_RECORD_T__G__Active;
+}
+
+/* ==================== Diag_LockRecord ==================== */
+
+int32_t func__Diag_LockRecord(void)
+{
+    return osKernelLock();
+}
+
+/* ==================== Diag_UnlockRecord ==================== */
+
+void func__Diag_UnlockRecord(int32_t int32_t__savedLock)
+{
+    if (int32_t__savedLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedLock);
+    }
 }
 
 /* ==================== Diag SaveNow ==================== */
@@ -652,9 +736,14 @@ bool func__Diag_SaveNow(void)
 
     if (bool__ok)
     {
+        int32_t int32_t__lock = osKernelLock();
         BOOL__G__Dirty = false;
         UINT32_T__G__SaveDelaySec = 0u;
         (void)memcpy(&DIAG_RECORD_T__G__Active, &DIAG_RECORD_T__G__Stage, sizeof(diag_record_t));
+        if (int32_t__lock >= 0)
+        {
+            (void)osKernelRestoreLock(int32_t__lock);
+        }
     }
     return bool__ok;
 }

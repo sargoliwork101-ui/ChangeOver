@@ -91,6 +91,11 @@ bool func__BspPwm_IsGatePulsing(bsp_pwm_channel_t bsp_pwm_channel_t__channel)
     return BOOL__G__GatePulsing;
 }
 
+void func__BspPwm_StopAll(void)
+{
+    BOOL__G__GatePulsing = false;
+}
+
 /* [EN] ESP-Link UART double: captures every transmitted frame byte so the
    LUT_ACK regression below can read the real ACK the module emits.
    [FA] بدل UART لینک ESP: بایت‌های ارسالی را نگه می‌دارد تا واپس‌آزمون

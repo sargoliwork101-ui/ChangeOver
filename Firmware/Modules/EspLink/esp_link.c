@@ -1199,6 +1199,7 @@ static void func__EspLink_SendDiagChunk0(void)
 {
     uint8_t UINT8_T__A__Payload[64];
     uint16_t uint16_t__cursor = 0u;
+    int32_t int32_t__savedLock = func__Diag_LockRecord();
     const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
     uint32_t uint32_t__boardTime = func__Diag_GetBoardTime();
     if (uint32_t__boardTime == 0u)
@@ -1231,6 +1232,7 @@ static void func__EspLink_SendDiagChunk0(void)
                          diag_record_t__rec->uint32_t__chargeSecCh1);
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                          diag_record_t__rec->uint32_t__chargeSecCh2);
+    func__Diag_UnlockRecord(int32_t__savedLock);
 
     func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_DIAG_DATA,
                             UINT8_T__A__Payload, uint16_t__cursor);
@@ -1243,7 +1245,8 @@ static void func__EspLink_SendDiagErrors(uint8_t uint8_t__chunkId,
     /* [EN] Each error = 8*u32 =32 bytes, payload = 3 + count*32 <= 163 for 5 */
     uint8_t UINT8_T__A__Payload[3u + (5u * 32u)];
     uint16_t uint16_t__cursor = 0u;
-    const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
+    int32_t int32_t__savedLock;
+    const diag_record_t *diag_record_t__rec;
     uint8_t uint8_t__i;
 
     if (uint8_t__count > 5u) uint8_t__count = 5u;
@@ -1253,6 +1256,8 @@ static void func__EspLink_SendDiagErrors(uint8_t uint8_t__chunkId,
         uint8_t__count = (uint8_t)(DIAG_MAX_ERRORS - uint8_t__start);
     }
 
+    int32_t__savedLock = func__Diag_LockRecord();
+    diag_record_t__rec = func__Diag_GetRecord();
     UINT8_T__A__Payload[0] = uint8_t__chunkId;
     UINT8_T__A__Payload[1] = uint8_t__start;
     UINT8_T__A__Payload[2] = uint8_t__count;
@@ -1278,6 +1283,7 @@ static void func__EspLink_SendDiagErrors(uint8_t uint8_t__chunkId,
         func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                              diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__state2);
     }
+    func__Diag_UnlockRecord(int32_t__savedLock);
 
     func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_DIAG_DATA,
                             UINT8_T__A__Payload, uint16_t__cursor);
@@ -1289,7 +1295,8 @@ static void func__EspLink_SendDiagPower(uint8_t uint8_t__chunkId,
 {
     uint8_t UINT8_T__A__Payload[3u + (10u * 12u)];
     uint16_t uint16_t__cursor = 0u;
-    const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
+    int32_t int32_t__savedLock;
+    const diag_record_t *diag_record_t__rec;
     uint8_t uint8_t__i;
 
     if (uint8_t__count > 10u) uint8_t__count = 10u;
@@ -1299,6 +1306,8 @@ static void func__EspLink_SendDiagPower(uint8_t uint8_t__chunkId,
         uint8_t__count = (uint8_t)(DIAG_MAX_POWER_EVENTS - uint8_t__start);
     }
 
+    int32_t__savedLock = func__Diag_LockRecord();
+    diag_record_t__rec = func__Diag_GetRecord();
     UINT8_T__A__Payload[0] = uint8_t__chunkId;
     UINT8_T__A__Payload[1] = uint8_t__start;
     UINT8_T__A__Payload[2] = uint8_t__count;
@@ -1314,6 +1323,7 @@ static void func__EspLink_SendDiagPower(uint8_t uint8_t__chunkId,
         func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                              diag_record_t__rec->diag_power_event_t__A__PowerEvents[uint8_t__idx].uint32_t__durationSec);
     }
+    func__Diag_UnlockRecord(int32_t__savedLock);
 
     func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_DIAG_DATA,
                             UINT8_T__A__Payload, uint16_t__cursor);
@@ -1323,9 +1333,11 @@ static void func__EspLink_SendDiagPower(uint8_t uint8_t__chunkId,
 
 static void func__EspLink_SendDiagData(void)
 {
+    int32_t int32_t__savedLock = func__Diag_LockRecord();
     const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
     uint8_t uint8_t__err = diag_record_t__rec->uint8_t__errorCount;
     uint8_t uint8_t__pow = diag_record_t__rec->uint8_t__powerEventCount;
+    func__Diag_UnlockRecord(int32_t__savedLock);
     uint8_t uint8_t__err1 = (uint8_t__err > 5u) ? 5u : uint8_t__err;
     uint8_t uint8_t__err2 = (uint8_t__err > 5u) ? (uint8_t)(uint8_t__err - 5u) : 0u;
     uint8_t uint8_t__pow1 = (uint8_t__pow > 10u) ? 10u : uint8_t__pow;
@@ -1727,6 +1739,10 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_DIAG_REQ)
     {
 #if MODULE_DIAG
+        if ((uint16_t__payloadLength == 1u) && (uint8_t__payload[0] == 1u))
+        {
+            func__Diag_ClearHistory();
+        }
         func__EspLink_SendDiagData();
 #endif
 #if MODULE_CHARGER

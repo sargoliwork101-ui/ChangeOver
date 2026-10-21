@@ -171,6 +171,12 @@ void func__Diag_RecordPowerOff(void);
 void func__Diag_RecordPowerOn(void);
 
 /**
+ * @brief  [EN] Clear stored diagnostic error and power event histories.
+ *         [FA] پاک‌کردن تاریخچهٔ خطاها و رویدادهای برق در دیاگ.
+ */
+void func__Diag_ClearHistory(void);
+
+/**
  * @brief  [EN] Update min/max voltages and currents from snapshot.
  *         [FA] به‌روزرسانی کمینه بیشینه از نمونه.
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
@@ -190,5 +196,20 @@ const diag_record_t *func__Diag_GetRecord(void);
  * @return bool [EN] true on success / موفقیت
  */
 bool func__Diag_SaveNow(void);
+
+/**
+ * @brief  [EN] Lock the scheduler around a cross-task read of the active
+ *              diagnostic record.
+ *         [FA] قفل زمان‌بند هنگام خواندن رکورد فعال دیاگ از تسک دیگر.
+ * @return int32_t [EN] Previous kernel lock state / وضعیت قبلی قفل کرنل
+ */
+int32_t func__Diag_LockRecord(void);
+
+/**
+ * @brief  [EN] Restore the scheduler lock after reading the active record.
+ *         [FA] بازگردانی قفل زمان‌بند پس از خواندن رکورد فعال دیاگ.
+ * @param  int32_t__savedLock [EN] Value returned by func__Diag_LockRecord / مقدار بازگشتی قفل
+ */
+void func__Diag_UnlockRecord(int32_t int32_t__savedLock);
 
 #endif /* DIAG_H */

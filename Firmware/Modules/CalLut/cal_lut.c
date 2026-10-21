@@ -770,6 +770,7 @@ void func__CalLut_Tick(void)
        تا مقداردهی دوبارهٔ جانبی روشن می‌گذارد. */
     func__Charger_SetSuspended(true);
 #endif
+    func__BspPwm_StopAll();
     NVIC_SystemReset();
 #endif
 }

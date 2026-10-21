@@ -349,7 +349,7 @@ void func__TaskControl(void *void_ptr__argument)
                     (fault_mask_t)(fault_mask_t__faults & (fault_mask_t)~FAULT_MASK_T__G__DiagPrev);
                 if (fault_mask_t__newBits != FAULT_NONE)
                 {
-                    func__Diag_RecordFault(fault_mask_t__faults, &measurement_snapshot_t__snap);
+                    func__Diag_RecordFault(fault_mask_t__newBits, &measurement_snapshot_t__snap);
                 }
             }
             FAULT_MASK_T__G__DiagPrev = fault_mask_t__faults;

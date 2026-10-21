@@ -311,6 +311,8 @@ static uint32_t UINT32_T__G__WifiRebootMs = 0u;
 /* ==================== ذخیره prev شارژ برای ریستارت ==================== */
 static uint32_t UINT32_T__G__PrevChargeCountCh1 = 0u;
 static uint32_t UINT32_T__G__PrevChargeCountCh2 = 0u;
+static bool BOOL__G__ChargeCountBaselineReady = false;
+static bool BOOL__G__DiagClearPending = false;
 
 /* ==================== کاربر و سشن ==================== */
 typedef struct
