@@ -519,7 +519,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bcc0921</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2ef4c54</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -856,7 +856,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <ul>
 <li><b>اندازه</b> — قدرمطلق اختلاف دو نیم.</li>
 <li><b>گیت زمانی</b> — در استراحت و شارژ، بررسی پس از زمان تأخیر آغاز می‌شود؛ در دشارژ بلافاصله با حد دشارژ انجام می‌گیرد.</li>
-<li><b>رویداد</b> — ماندنِ بالای حد به مدت «ماندگاری اختلاف» در هر سیکل شارژ (با رسیدن به <b>FLOAT / Full واقعی</b>) یا دشارژ ۱ رویداد ثبت می‌کند.</li>
+<li><b>رویداد</b> — هر سیکل شارژ و دشارژ فقط پس از <b>FLOAT / شارژ کامل</b> و ماندن اختلاف در استراحت، حداکثر ۱ رویداد ثبت می‌کند؛ شارژ ناقص ریست می‌شود.</li>
 <li><b>قفل با حافظه</b> — با رسیدن شمارنده به «سقف رویداد»: قرمز <b>چشمک‌زن</b> + بوق دوره‌ای. سیکل‌های کامل سالم فقط شمارنده را صفر می‌کنند و قفل تا تعویض باتری می‌ماند.</li>
 <li><b>بعد از قفل</b> — شارژ تا «سیکل تا مسدودی» مجاز است و بعد قطع می‌شود؛ مسدودی خروجی جدا تنظیم‌پذیر است.</li>
 </ul>

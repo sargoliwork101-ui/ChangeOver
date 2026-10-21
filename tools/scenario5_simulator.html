@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>فلوچارت و شبیه‌ساز ساده — خطای عدم‌توازن باتری</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px 14px;
+    font-family: Tahoma, "Vazirmatn", sans-serif;
+    background: #111827;
+    color: #f9fafb;
+    line-height: 1.75;
+  }
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 0 0 6px 0;
+    color: #38bdf8;
+    text-align: center;
+  }
+  .sub {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.92rem;
+    margin: 0 0 18px 0;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 780px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: #1f2937;
+    border: 1.5px solid #374151;
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .card h2 {
+    font-size: 1.05rem;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #374151;
+    color: #7dd3fc;
+  }
+
+  /* Simple vertical flowchart */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .fbox {
+    width: 100%;
+    background: #111827;
+    border: 2px solid #4b5563;
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 0.92rem;
+    transition: all 0.2s;
+  }
+  .fbox b { display: block; font-size: 0.98rem; margin-bottom: 2px; }
+  .fbox small { color: #9ca3af; font-size: 0.82rem; }
+  .fbox.active {
+    border-color: #38bdf8;
+    background: #1e3a5f;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+  }
+  .fbox.ok {
+    border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.15);
+  }
+  .fbox.warn {
+    border-color: #eab308;
+    background: rgba(234, 179, 8, 0.16);
+  }
+  .fbox.err {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.18);
+  }
+  .arrow {
+    color: #9ca3af;
+    font-size: 1.1rem;
+    line-height: 1.2;
+    margin: 4px 0;
+  }
+  .branch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* Simple Simulator Panel */
+  .counter-card {
+    background: #111827;
+    border: 2px solid #374151;
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .counter-num {
+    font-size: 2.4rem;
+    font-weight: bold;
+    color: #facc15;
+    direction: ltr;
+    line-height: 1.2;
+  }
+  .counter-num.locked { color: #ef4444; }
+  .status-msg {
+    background: #111827;
+    border-right: 4px solid #38bdf8;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 0.93rem;
+  }
+  .btn {
+    display: block;
+    width: 100%;
+    text-align: right;
+    font-family: inherit;
+    font-size: 0.92rem;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 9px;
+    border: 1.5px solid #4b5563;
+    background: #273549;
+    color: #f9fafb;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .btn:hover:not(:disabled) {
+    border-color: #38bdf8;
+    filter: brightness(1.12);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn.red { background: #7f1d1d; border-color: #ef4444; }
+  .btn.green { background: #14532d; border-color: #22c55e; }
+  .btn.blue { background: #0c4a6e; border-color: #38bdf8; }
+  .btn.gray { background: #1f2937; border-color: #4b5563; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>فلوچارت و شبیه‌ساز سادهٔ خطای عدم‌توازن باتری</h1>
+  <p class="sub">هر سیکل (کار روی باتری و شارژ) فقط <b>۱ عدد</b> اضافه می‌کند، آن هم <b>فقط بعد از شارژ کامل و ماندنِ تفاوت در حالت استراحت</b>.</p>
+
+  <div class="layout">
+    <!-- ستون راست: فلوچارت ساده و سرراست -->
+    <div class="card">
+      <h2>فلوچارت تشخیص خطای عدم‌توازن</h2>
+      <div class="flow">
+        <div class="fbox active" id="node1">
+          <b>۱. کار روی باتری (دشارژ) یا حین شارژ</b>
+          <small>اختلاف ولتاژ دو باتری بررسی می‌شود (در شارژ بعد از گذشت زمان تأخیر تا سقف ۱۰ ساعت).</small>
+        </div>
+        <div class="arrow">⬇️ اگر خطا دیده شد و زمان‌ها گذشت</div>
+
+        <div class="fbox" id="node2">
+          <b>۲. منتظر ماندن تا شارژ کامل (FLOAT)</b>
+          <small>فعلاً هیچ عددی اضافه نمی‌شود؛ سیستم صبر می‌کند تا شارژ کامل شود.</small>
+        </div>
+        <div class="arrow">⬇️ آیا شارژ کامل شد؟</div>
+
+        <div class="branch">
+          <div class="fbox" id="nodeAbort">
+            <b>❌ نه — شارژ وسط کار قطع شد</b>
+            <small>شمارنده‌ها و تایمرهای این سیکل <b>ریست می‌شوند و از اول!</b> (۰ اضافه می‌شود)</small>
+          </div>
+          <div class="fbox" id="nodeFull">
+            <b>✅ بله — شارژ کامل شد</b>
+            <small>ورود به <b>حالت استراحت</b> و صبر به مدت زمان استراحت (تا سقف ۱۰ ساعت).</small>
+          </div>
+        </div>
+        <div class="arrow">⬇️ پس از گذشت زمان استراحت: آیا هنوز تفاوت وجود دارد؟</div>
+
+        <div class="branch">
+          <div class="fbox" id="nodeRestOk">
+            <b>🟢 نه — تفاوت برطرف شده</b>
+            <small>به شمارنده اضافه نمی‌شود.<br>(۳ سیکل کاملِ سالم = صفر شدن شمارنده)</small>
+          </div>
+          <div class="fbox" id="nodePlusOne">
+            <b>🔴 بله — هنوز تفاوت هست</b>
+            <small><b>+۱ عدد</b> به عدم‌توازن باتری اضافه می‌شود (فقط همین ۱ بار در این سیکل).</small>
+          </div>
+        </div>
+        <div class="arrow">⬇️ اگر شمارنده به ۱۰ برسد</div>
+
+        <div class="fbox" id="nodeLock">
+          <b>🔒 قفل عدم‌توازن باتری (۱۰ از ۱۰)</b>
+          <small>چراغ قرمز چشمک‌زن + بوق دوره‌ای (پاک شدن فقط با تعویض باتری / ۳ ثانیه نبود باتری یا ریست پنل).</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- ستون چپ: شبیه‌ساز بسیار ساده -->
+    <div class="card">
+      <h2>شبیه‌ساز ساده (گام‌به‌گام کلیک کنید)</h2>
+
+      <div class="counter-card">
+        <div style="font-size:0.88rem; color:#9ca3af;">شمارندهٔ عدم‌توازن باتری</div>
+        <div class="counter-num" id="cntNum">0 / 10</div>
+        <div id="cntSub" style="font-size:0.82rem; color:#9ca3af; margin-top:4px;">سیکل‌های کاملِ سالم متوالی: ۰ از ۳</div>
+      </div>
+
+      <div class="status-msg" id="statusBox">
+        <b>وضعیت الان:</b> ابتدای سیکل (روی دکمهٔ ۱ کلیک کنید).
+      </div>
+
+      <button class="btn blue" id="btn1" onclick="step1_seeFault()">
+        ۱) خطا دیده شد و زمان‌ها گذشت (منتظر شارژ کامل بماند)
+      </button>
+
+      <button class="btn red" id="btnAbort" onclick="step2_abortCharge()" disabled>
+        ۲-الف) ❌ شارژ کامل نشد و وسطش قطع شد (ریست از اول!)
+      </button>
+
+      <button class="btn green" id="btnFull" onclick="step2_fullCharge()" disabled>
+        ۲-ب) ✅ شارژ کامل شد ⬅ رفت به حالت استراحت
+      </button>
+
+      <button class="btn red" id="btnRestFault" onclick="step3_restStillImbalanced()" disabled>
+        ۳-الف) 🔴 در حالت استراحت هنوز تفاوت وجود دارد (افزودن +۱)
+      </button>
+
+      <button class="btn green" id="btnRestOk" onclick="step3_restBalanced()" disabled>
+        ۳-ب) 🟢 در حالت استراحت تفاوت برطرف شده است (بدون افزایش)
+      </button>
+
+      <hr style="border:none; border-top:1px solid #374151; margin:12px 0;">
+
+      <button class="btn gray" onclick="nextCycle()">
+        🔄 شروع سیکل بعدی
+      </button>
+      <button class="btn gray" onclick="resetAll()">
+        🧹 ریست کامل (تعویض باتری — صفر کردن شمارنده)
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let events = 0;
+  let cleanCycles = 0;
+  let stage = 'start'; // 'start' | 'wait_full' | 'aborted' | 'in_rest' | 'done_plus1' | 'done_ok'
+
+  function clearHighlights() {
+    ['node1', 'node2', 'nodeAbort', 'nodeFull', 'nodeRestOk', 'nodePlusOne', 'nodeLock'].forEach(id => {
+      document.getElementById(id).className = 'fbox';
+    });
+  }
+
+  function updateUI(msg, borderColor) {
+    const cnt = document.getElementById('cntNum');
+    cnt.textContent = events + ' / 10';
+    cnt.classList.toggle('locked', events >= 10);
+    document.getElementById('cntSub').textContent =
+      (events >= 10)
+        ? '🔒 باتری قفل شد! (چراغ قرمز چشمک‌زن + بوق دوره‌ای)'
+        : `سیکل‌های کاملِ سالم متوالی: ${cleanCycles} از ۳`;
+
+    const st = document.getElementById('statusBox');
+    st.innerHTML = msg;
+    st.style.borderRightColor = borderColor || '#38bdf8';
+
+    document.getElementById('btn1').disabled = (stage !== 'start');
+    document.getElementById('btnAbort').disabled = (stage !== 'wait_full');
+    document.getElementById('btnFull').disabled = (stage !== 'wait_full' && stage !== 'start');
+    document.getElementById('btnRestFault').disabled = (stage !== 'in_rest');
+    document.getElementById('btnRestOk').disabled = (stage !== 'in_rest');
+
+    if (events >= 10) {
+      document.getElementById('nodeLock').classList.add('err');
+    }
+  }
+
+  function step1_seeFault() {
+    stage = 'wait_full';
+    clearHighlights();
+    document.getElementById('node1').classList.add('warn');
+    document.getElementById('node2').classList.add('active');
+    updateUI(
+      '<b>گام ۲:</b> خطا دیده شد و زمان‌ها گذشت. اکنون <b>تا شارژ کامل منتظر می‌ماند</b> (هنوز هیچ عددی اضافه نشده). حالا یا شارژ کامل می‌شود (۲-ب) یا وسط کار قطع می‌شود (۲-الف).',
+      '#eab308'
+    );
+  }
+
+  function step2_abortCharge() {
+    stage = 'start';
+    clearHighlights();
+    document.getElementById('nodeAbort').classList.add('err');
+    updateUI(
+      '<b>ریست شد:</b> چون شارژ کامل نشد و وسط کار قطع شد، <b>شمارنده‌ها و تایمرهای این سیکل ریست شدند و از اول!</b> هیچ عددی به عدم‌توازن اضافه نشد.',
+      '#ef4444'
+    );
+  }
+
+  function step2_fullCharge() {
+    stage = 'in_rest';
+    clearHighlights();
+    document.getElementById('nodeFull').classList.add('active');
+    updateUI(
+      '<b>گام ۳ (حالت استراحت پس از شارژ کامل):</b> شارژ کامل شد و زمان استراحت گذشت. حالا بررسی می‌کند که آیا در حالت استراحت <b>هنوز تفاوت ولتاژ وجود دارد</b> یا نه؟',
+      '#38bdf8'
+    );
+  }
+
+  function step3_restStillImbalanced() {
+    stage = 'done_plus1';
+    events = Math.min(10, events + 1);
+    cleanCycles = 0;
+    clearHighlights();
+    document.getElementById('nodePlusOne').classList.add('err');
+    updateUI(
+      `<b>ثبت شد (+۱):</b> چون بعد از شارژ کامل در حالت استراحت هنوز تفاوت وجود داشت، <b>۱ عدد</b> به عدم‌توازن باتری اضافه شد (جمع: ${events} از ۱۰). در این سیکل دیگر عددی اضافه نمی‌شود.`,
+      '#ef4444'
+    );
+  }
+
+  function step3_restBalanced() {
+    stage = 'done_ok';
+    cleanCycles++;
+    let extra = '';
+    if (cleanCycles >= 3) {
+      if (events > 0 && events < 10) {
+        events = 0;
+        extra = ' (۳ سیکل کاملِ سالم پر شد ⬅ شمارندهٔ خطا صفر شد!)';
+      }
+      cleanCycles = 0;
+    }
+    clearHighlights();
+    document.getElementById('nodeRestOk').classList.add('ok');
+    updateUI(
+      `<b>سالم (۰ اضافه شد):</b> در حالت استراحت پس از شارژ کامل تفاوتی وجود نداشت، پس هیچ عددی اضافه نشد.${extra}`,
+      '#22c55e'
+    );
+  }
+
+  function nextCycle() {
+    stage = 'start';
+    clearHighlights();
+    document.getElementById('node1').classList.add('active');
+    updateUI(
+      '<b>شروع سیکل جدید:</b> آمادهٔ بررسی سیکل بعدی (کار روی باتری / شارژ).',
+      '#38bdf8'
+    );
+  }
+
+  function resetAll() {
+    events = 0;
+    cleanCycles = 0;
+    stage = 'start';
+    clearHighlights();
+    document.getElementById('node1').classList.add('active');
+    updateUI(
+      '<b>ریست کامل:</b> شمارندهٔ عدم‌توازن صفر شد و از اول شروع شد.',
+      '#38bdf8'
+    );
+  }
+</script>
+</body>
+</html>

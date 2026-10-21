@@ -356,17 +356,14 @@ int main(void)
     func__Run(632000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
-    /* ---- discharge cycle after a full charge cycle counts its own 1 event ---- */
+    /* ---- discharge in the same completed cycle does NOT add a second event ---- */
     IMBAL_INPUTS_T__G__In.bool__onBattery = true;
     IMBAL_INPUTS_T__G__In.bool__charging = false;
     IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12600u; /* 600 > discharge 500 */
     func__Run(633000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
-    func__Run(663000u, true);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 2u);
-    /* staying imbalanced in the same discharge cycle does not add another event */
-    func__Run(700000u, false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 2u);
+    func__Run(663000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
     /* ---- halves in different states are NOT comparable ---- */
     func__Imbalance_Init();
