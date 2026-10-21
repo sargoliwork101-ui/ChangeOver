@@ -240,7 +240,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Diag/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester|Firmware/Modules/FlashLock/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="Firmware/Bsp/Tester|Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/Charger/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Diag/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester|Firmware/Modules/FlashLock/Tester|Firmware/Modules/Ui/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -363,7 +363,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Diag/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester|Firmware/Modules/FlashLock/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="Firmware/Bsp/Tester|Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/Charger/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Diag/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester|Firmware/Modules/FlashLock/Tester|Firmware/Modules/Ui/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

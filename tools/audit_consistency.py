@@ -1791,7 +1791,7 @@ def sec_cubeide_includes():
     #      Tester folder holding a host-main in BOTH configurations.
     # [FA] تستر هاست main خودش را دارد؛ اگر پوشه‌اش از بیلد CubeIDE حذف
     #      نشده باشد، لینک هدف با «multiple definition of main» می‌میرد.
-    for tester in (ROOT / "Firmware" / "Modules").glob("*/Tester"):
+    for tester in sorted((ROOT / "Firmware").glob("**/Tester")):
         host_src = [c for c in list(tester.glob("*.c")) + list(tester.glob("*.cpp"))
                     if "main(" in c.read_text(encoding="utf-8", errors="ignore")]
         if not host_src:
