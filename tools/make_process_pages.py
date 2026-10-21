@@ -1861,15 +1861,17 @@ def main():
                     idx[k2] = (v2[0] + 2, v2[1], v2[2])
             fallback = GH_TREE + 'Firmware/Modules/' + DIRS[key]
         GO = {
-         'system': {'۱) اندازه‌گیری': 'measurement', '۲) Fault': 'fault', 'Jitter': 'jitter',
+         'system': {'۱) اندازه‌گیری': 'measurement', '۲) بررسی خطاها': 'fault',
+                    'جیتر: پرچم قطع ایمنی': 'jitter',
                     'خطای فنی': 'charging', '۳) مسیر تغذیه': 'mcupowerpath',
-                    '۵) تعویض خروجی': 'changeover', '۶) Charger': 'charging', '۴) عدم‌توازن': 'imbalance',
+                    '۵) تعویض خروجی': 'changeover', '۶) شارژر': 'charging',
+                    '۴) نابرابری ولتاژ': 'imbalance',
                     '۷) ثبت سابقه': 'diag', 'هم‌زمان: link پنل': 'esplink', 'هم‌زمان: نمایش': 'ui'},
          'charging': {'قفل خطای فنی (خطای ۷) از قبل set شده؟': 'alarm:fault_7_technical',
                       'خطای نهایی (FINAL_FAULT)': 'alarm:fault_7_technical',
                       'اطلاع به چراغ و بوق': 'ui', 'پرچم trip': 'jitter'},
          'measurement': {'یک بستهٔ کامل و تازه از مبدل رسید؟': 'alarm:fault_0_adc',
-                         'تبدیل شمارش به مقدار واقعی': 'callut', 'انتشار Snapshot': 'system'},
+                         'تبدیل عدد خام': 'callut', 'انتشار عکس اندازه‌گیری': 'system'},
          'fault': {'خروجی: پرچم خطای ۶': 'alarm:fault_6_battery_lost'},
          'changeover': {'باتری برای خروجی ممنوع است': 'imbalance'},
          'ui': {'خطای فنی (۷) set است؟': 'alarm:fault_7_technical',
@@ -1879,9 +1881,8 @@ def main():
                 'عدم‌توازن قفل شده؟': 'alarm:imbalance_latched',
                 'شارژ کامل است؟': 'alarm:charge_full',
                 'استراحت حرارتی فعال است؟': 'alarm:thermal_rest',
-                'کانالی در حال شارژ است؟': 'alarm:charging',
-                'ورودی سالم: سبز ثابت': 'alarm:input_ok',
-                'چهرهٔ کار روی باتری': 'alarm:battery_run'},
+                'channelی در حال شارژ است؟': 'alarm:charging',
+                'ورودی سالم: سبز ثابت': 'alarm:input_ok'},
          'esplink': {'نوشتن: فرستادن به ماژول صاحب شناسه': 'system'},
          'diag': {'record آمادهٔ خواندن از پنل است': 'esplink'},
          'jitter': {'شارژر پرچم را می‌خواند': 'charging'},
@@ -1889,8 +1890,6 @@ def main():
          'rtos': {'task اندازه‌گیری': 'measurement', 'task کنترل': 'system', 'task ارتباط': 'esplink',
                   'task نمایش': 'ui', 'task حفاظت': 'protection'},
          'callut': {'نشستن جدول تازه': 'esplink'},
-         'rtosmap': {'task اندازه‌گیری': 'measurement', 'task کنترل': 'system',
-                     'task ارتباط': 'esplink', 'task نمایش': 'ui', 'task حفاظت': 'protection'},
          'imbalance': {'رویدادها به حد قفل رسیدند؟': 'alarm:imbalance_latched',
                        'پاک‌شدن‌ها': 'ui'},
         }
@@ -2073,12 +2072,29 @@ def main():
                         tp = target_path(tgt)
                     n['go'] = os.path.relpath(tp, os.path.dirname(path)).replace(os.sep, '/')
                     break
+            # [EN] A box may also name a page directly (`go='protection'`). Normalise
+            #      those to a real relative path too, otherwise the browser opens a
+            #      page that does not exist.
+            # [FA] بعضی کادرها نام صفحه را مستقیم می‌دهند (`go='protection'`). آن‌ها
+            #      هم باید به مسیر واقعی تبدیل شوند، وگرنه مرورگر صفحهٔ ناموجود باز
+            #      می‌کند.
+            g0 = n.get('go')
+            if g0 and not g0.endswith('.html') and '/' not in g0:
+                if g0.startswith('alarm:'):
+                    tp = os.path.join(ROOT, 'Documentation', 'alarms',
+                                      g0.split(':', 1)[1] + '.html')
+                else:
+                    tp = target_path(g0)
+                n['go'] = os.path.relpath(tp, os.path.dirname(path)).replace(os.sep, '/')
         orphan = [k3 for k3 in AFTER if k3[0] == key and k3 not in after_hit]
         if orphan:
             raise SystemExit('AFTER title no longer exists on page %r: %r' % (key, orphan))
         titles = [(x.get('t') or '') for x in m['flow']]
         orphan2 = [k3 for k3 in RET_END if k3[0] == key
                    and not any(x.startswith(k3[1]) for x in titles)]
+        orphan3 = [s3 for s3 in GO.get(key, {}) if not any(x.startswith(s3) for x in titles)]
+        if orphan3:
+            raise SystemExit('GO text no longer exists on page %r: %r' % (key, orphan3))
         if orphan2:
             raise SystemExit('RET_END title no longer exists on page %r: %r' % (key, orphan2))
         alarm_dir = os.path.join(ROOT, 'Documentation', 'alarms')
@@ -2090,6 +2106,10 @@ def main():
         errmap = {'۰': alarm_href('fault_0_adc'),
                   '۶': alarm_href('fault_6_battery_lost'),
                   '۷': alarm_href('fault_7_technical')}
+        missing_go = [x.get('go') for x in m['flow'] if x.get('go') and
+                      not os.path.exists(os.path.normpath(os.path.join(os.path.dirname(path), x['go'])))]
+        if missing_go:
+            raise SystemExit('page %r links to a missing file: %r' % (key, missing_go))
         mm = dict(m); mm['nav'] = nav; mm['errmap'] = errmap
         mm['gloss'] = [list(row) for row in GLOSSARY]
         mm = plain_module(mm)
