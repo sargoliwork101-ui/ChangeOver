@@ -2652,34 +2652,45 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__appliedValue)
 {
     uint32_t uint32_t__applied;
-    uint32_t uint32_t__oldMask;
-    uint32_t uint32_t__clearedMask;
     uint32_t uint32_t__bit;
     uint8_t  uint8_t__index;
     int32_t  int32_t__savedKernelLock;
 
     if (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID)
     {
-        /* [EN] A panel reset clears the same channel's live timer as its
-         *      latched verdict. Hold the scheduler lock because this setter
+        /* [EN] A panel reset clears the live timer as well as the latched
+         *      verdict and restarts the channel from the beginning of charge
+         *      (OFF -> BULK). Hold the scheduler lock because this setter
          *      runs in the ESP task while DeadBatteryTick runs in control.
-         * [FA] ریست پنل، همراه قفل همان کانال، شمارندهٔ زنده‌اش را هم صفر
-         *      می‌کند؛ قفل زمان‌بند از برخورد تسک ESP و کنترل جلوگیری می‌کند. */
+         * [FA] ریست پنل، شمارندهٔ زنده و قفل کانال را صفر می‌کند و شارژ را از
+         *      ابتدا بازآغاز می‌کند؛ قفل زمان‌بند از برخورد تسک ESP و کنترل
+         *      جلوگیری می‌کند. */
         uint32_t__applied = (uint32_t__value & 0x03u);
         int32_t__savedKernelLock = osKernelLock();
-        uint32_t__oldMask = (UINT32_T__G__DeadMask & 0x03u);
-        uint32_t__clearedMask = uint32_t__oldMask & (~uint32_t__applied);
         UINT32_T__G__DeadMask = uint32_t__applied;
 
         for (uint8_t__index = 0u; uint8_t__index < CHG_CHANNEL_COUNT; uint8_t__index++)
         {
             uint32_t__bit = (uint32_t)1u << uint8_t__index;
-            if ((uint32_t__clearedMask & uint32_t__bit) != 0u)
+            if ((uint32_t__applied & uint32_t__bit) == 0u)
             {
                 UINT32_T__G__DeadChargeMs[uint8_t__index] = 0u;
                 UINT32_T__G__DeadLastTick[uint8_t__index] = 0u;
                 BOOL__G__DeadWasCharging[uint8_t__index] = false;
                 UINT32_T__G__DeadPauseTick[uint8_t__index] = 0u;
+                UINT32_T__G__ThermalRestUntilTick[uint8_t__index] = 0u;
+                UINT32_T__G__ThermalContinuousSinceTick[uint8_t__index] = 0u;
+                if ((BOOL__G__ChargerInitialized != false) &&
+                    (CHARGER_CHANNEL_T__G__State[uint8_t__index].charger_state_t__state !=
+                     CHG_STATE_FINAL_FAULT) &&
+                    (CHARGER_CHANNEL_T__G__State[uint8_t__index].charger_state_t__state !=
+                     CHG_STATE_BAT_LOST) &&
+                    (CHARGER_CHANNEL_T__G__State[uint8_t__index].charger_state_t__state !=
+                     CHG_STATE_MANUAL))
+                {
+                    func__Charger_ResetChannelToOff(uint8_t__index);
+                    func__Charger_StopOneChannel(uint8_t__index);
+                }
             }
         }
         if (int32_t__savedKernelLock >= 0)

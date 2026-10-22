@@ -136,8 +136,9 @@ SHIM = """<script>
    ========================================================================== */
 (function(){
 const P = __PARAMS__;
-const T0 = Date.now();
+let T0 = Date.now();
 let seq = 0;
+let latchRep = 1, latchId = 0, latchVal = 0;
 
 /* one full cycle in ~75 s so the chart visibly walks the CC/CV path */
 function sim(){
@@ -179,6 +180,8 @@ function tlm(){
   else if(imbCyc<75000){t[26]=10;t[27]=Math.round((imbCyc-30000)/1500);fl2=2|(P[117]?4:0)|1;}
   else if(imbCyc<90000){t[26]=10;t[27]=20;fl2=2|4|8;}
   else{t[26]=0;t[27]=0;fl2=0;}
+  const chgSec = (a.st===1||a.st===2) ? Math.floor(((Date.now()-T0)/1000)%75) : 0;
+  t[28] = 0; t[29] = chgSec; t[30] = chgSec;
   seq = (seq+1) & 0xFFFF;
   return {on:1, age:40, seq:seq, fl:0, fl2:fl2, n:seq, q:0, q2:0, q3:0, q4:0,
           ka:120, vm:0, ce:0, t:t, p:P};
@@ -198,6 +201,16 @@ window.fetch = function(url, opt){
     const q = /[?&]id=(\\d+)&v=(-?\\d+)/.exec(u);
     if(q){ const id=+q[1], val=+q[2]; if(id>=0 && id<P.length) P[id]=val; }
     body = {ok:1};
+  } else if(u.indexOf('/latch/reset') === 0){
+    const q = /[?&]n=(\\d+)/.exec(u);
+    const n = q ? +q[1] : 6;
+    T0 = Date.now();
+    latchId = (n === 5) ? 202 : 203;
+    latchVal = 0;
+    latchRep += (n === 5) ? 3 : 1;
+    body = {ok:1, n:n};
+  } else if(u.indexOf('/latch') === 0){
+    body = {q:0, id:latchId, val:latchVal, known:1, rep:latchRep, req:latchRep, nak:0, busy:0};
   } else if(u.indexOf('/benchlog') === 0){
     body = {fs:1, size:0, max:102400, ok:1};
   } else {

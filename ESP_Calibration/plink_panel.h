@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d1aa4a5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 89973af</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3123,7 +3123,8 @@ async function latchrst(n){
    if(Number(s.nak)>Number(before.nak))throw new Error('برد درخواست را نپذیرفت (NAK)');
    if(Number(s.rep)>=Number(before.rep)+requiredEchoes&&Number(s.id)===targetId&&
       Number(s.val)===0&&Number(s.q)===0){
-    if(e)e.textContent='✅ پاک شد'+(n===5?'؛ از صفر شمرده می‌شود':'');
+    if(n===5)simrst5();else if(n===6)simrst6();
+    if(e)e.textContent='✅ پاک شد؛ از صفر شمرده می‌شود';
     return;}
   }
   if(e)e.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک و کابل را ببین';

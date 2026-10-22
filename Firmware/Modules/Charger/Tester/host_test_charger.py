@@ -361,23 +361,26 @@ def test_input_wait_services_dead_battery_pause_counter():
 
 
 def test_manual_dead_battery_reset_clears_live_timer():
-    """[EN] Clearing runtime slot 203 must clear the matching channel timer.
-    [FA] پاک‌کردن اسلات ۲۰۳ باید ساعت زندهٔ همان کانال را هم صفر کند."""
+    """[EN] Clearing runtime slot 203 must clear the matching channel timer
+    (even when not yet latched) and restart charging from the beginning.
+    [FA] پاک‌کردن اسلات ۲۰۳ باید ساعت زندهٔ کانال را (حتی پیش از قفل‌شدن)
+    صفر کند و شارژ را از ابتدا آغاز کند."""
     text_c = CHARGER_C.read_text()
     setter_start = text_c.find("bool func__Charger_SetDeadParam(")
     setter_end = text_c.find("void func__Charger_DeadFaceShape(", setter_start)
     check(setter_start >= 0 and setter_end > setter_start,
           "scenario-6 runtime setter must be identifiable")
     setter = text_c[setter_start:setter_end]
-    check("uint32_t__clearedMask = uint32_t__oldMask & (~uint32_t__applied);" in setter and
-          "if ((uint32_t__clearedMask & uint32_t__bit) != 0u)" in setter,
-          "only channels whose dead-battery latch is cleared may have their timer reset")
+    check("if ((uint32_t__applied & uint32_t__bit) == 0u)" in setter,
+          "any channel cleared to 0 in slot 203 must have its live timer reset even before latching")
     check(all(token in setter for token in (
         "UINT32_T__G__DeadChargeMs[uint8_t__index] = 0u;",
         "UINT32_T__G__DeadLastTick[uint8_t__index] = 0u;",
         "BOOL__G__DeadWasCharging[uint8_t__index] = false;",
-        "UINT32_T__G__DeadPauseTick[uint8_t__index] = 0u;")),
-          "manual reset must clear charge, active-tick, charging-edge and pause-tick RAM state")
+        "UINT32_T__G__DeadPauseTick[uint8_t__index] = 0u;",
+        "func__Charger_ResetChannelToOff(uint8_t__index);",
+        "func__Charger_StopOneChannel(uint8_t__index);")),
+          "manual reset must clear charge, active-tick, charging-edge and pause-tick RAM state and restart the channel from OFF->BULK")
     check("osKernelLock()" in setter and "osKernelRestoreLock(int32_t__savedKernelLock)" in setter,
           "the ESP task must reset shared timer state under the scheduler lock")
 

@@ -429,8 +429,9 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
    ========================================================================== */
 (function(){
 const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0, 14400, 14300, 14600, 13500, 12800, 650, 50, 14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 14850, 2000, 1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100, 40, 20, 10, 1, 60000, 20000, 10000, 10000, 1, 1000, 2000, 10000, 1, 2, 3, 100, 1000, 10, 1000, 150, 28000, 1000, 0, 0, 21000, 29000, 0, 100, 95, 5, 2, 2, 3, 12, 1600, 0, 1000, 1000, 50, 18000, 0, 10, 1000, 3600000, 100, 600000, 60000, 8, 700, 32, 14800, 100, 500, 10, 15000, 3000, 3000, 500, 300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20, 21000, 29000, 1000, 60000, 1000, 50, 86400000, 60000, 0, 600000, 120, 0, 50, 1, 0, 1, 0, 3, 3000, 200, 3, 100, 1000, 50, 1800000, 60000, 120000, 20];
-const T0 = Date.now();
+let T0 = Date.now();
 let seq = 0;
+let latchRep = 1, latchId = 0, latchVal = 0;
 
 /* one full cycle in ~75 s so the chart visibly walks the CC/CV path */
 function sim(){
@@ -472,6 +473,8 @@ function tlm(){
   else if(imbCyc<75000){t[26]=10;t[27]=Math.round((imbCyc-30000)/1500);fl2=2|(P[117]?4:0)|1;}
   else if(imbCyc<90000){t[26]=10;t[27]=20;fl2=2|4|8;}
   else{t[26]=0;t[27]=0;fl2=0;}
+  const chgSec = (a.st===1||a.st===2) ? Math.floor(((Date.now()-T0)/1000)%75) : 0;
+  t[28] = 0; t[29] = chgSec; t[30] = chgSec;
   seq = (seq+1) & 0xFFFF;
   return {on:1, age:40, seq:seq, fl:0, fl2:fl2, n:seq, q:0, q2:0, q3:0, q4:0,
           ka:120, vm:0, ce:0, t:t, p:P};
@@ -491,6 +494,16 @@ window.fetch = function(url, opt){
     const q = /[?&]id=(\d+)&v=(-?\d+)/.exec(u);
     if(q){ const id=+q[1], val=+q[2]; if(id>=0 && id<P.length) P[id]=val; }
     body = {ok:1};
+  } else if(u.indexOf('/latch/reset') === 0){
+    const q = /[?&]n=(\d+)/.exec(u);
+    const n = q ? +q[1] : 6;
+    T0 = Date.now();
+    latchId = (n === 5) ? 202 : 203;
+    latchVal = 0;
+    latchRep += (n === 5) ? 3 : 1;
+    body = {ok:1, n:n};
+  } else if(u.indexOf('/latch') === 0){
+    body = {q:0, id:latchId, val:latchVal, known:1, rep:latchRep, req:latchRep, nak:0, busy:0};
   } else if(u.indexOf('/benchlog') === 0){
     body = {fs:1, size:0, max:102400, ok:1};
   } else {
@@ -519,7 +532,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d1aa4a5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 89973af</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3218,7 +3231,8 @@ async function latchrst(n){
    if(Number(s.nak)>Number(before.nak))throw new Error('برد درخواست را نپذیرفت (NAK)');
    if(Number(s.rep)>=Number(before.rep)+requiredEchoes&&Number(s.id)===targetId&&
       Number(s.val)===0&&Number(s.q)===0){
-    if(e)e.textContent='✅ پاک شد'+(n===5?'؛ از صفر شمرده می‌شود':'');
+    if(n===5)simrst5();else if(n===6)simrst6();
+    if(e)e.textContent='✅ پاک شد؛ از صفر شمرده می‌شود';
     return;}
   }
   if(e)e.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک و کابل را ببین';

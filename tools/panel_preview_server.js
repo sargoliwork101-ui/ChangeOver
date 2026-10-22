@@ -552,11 +552,14 @@ function applyLatchItem(item) {
     if (item.id === 202) latch.imbBase = ms;
     if (item.id === 203) {
         const newMask = item.val & 3;
-        const clearedMask = latch.deadMask & (~newMask);
         for (let channelIndex = 0; channelIndex < 2; channelIndex += 1) {
-            if (clearedMask & (1 << channelIndex)) {
+            if ((newMask & (1 << channelIndex)) === 0) {
                 latch.chargeSec[channelIndex] = 0;
                 latch.pauseAt[channelIndex] = null;
+                ch[channelIndex].state = 1;
+                ch[channelIndex].v = 12400;
+                ch[channelIndex].soak = 0;
+                ch[channelIndex].taper = 0;
             }
         }
         latch.deadMask = newMask;
@@ -1045,19 +1048,25 @@ function runPreviewSelfTests() {
     latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: 1, imbBase: 0, chargeSec: [86400, 57],
               pauseAt: [123, 456], cutAt: [0, 0] };
+    ch[0].state = 3;
+    ch[1].state = 2;
     assert.strictEqual(queueLatchReset(6), true,
         "scenario 6 reset must fit in the runtime-slot queue");
     applyLatchItem(latch.q.shift());
     assert.strictEqual(latch.deadMask, 0,
         "scenario 6 reset must clear the latched dead-battery bit");
     assert.strictEqual(latch.chargeSec[0], 0,
-        "scenario 6 reset must clear the selected live 24-hour timer");
+        "scenario 6 reset must clear channel 1's live 24-hour timer");
     assert.strictEqual(latch.pauseAt[0], null,
-        "scenario 6 reset must clear the selected pause bookkeeping");
-    assert.strictEqual(latch.chargeSec[1], 57,
-        "clearing one channel must preserve the other channel's live timer");
-    assert.strictEqual(latch.pauseAt[1], 456,
-        "clearing one channel must preserve the other channel's pause state");
+        "scenario 6 reset must clear channel 1's pause bookkeeping");
+    assert.strictEqual(latch.chargeSec[1], 0,
+        "scenario 6 reset (val=0) must also zero channel 2's live timer even before latching");
+    assert.strictEqual(latch.pauseAt[1], null,
+        "scenario 6 reset (val=0) must also clear channel 2's pause state");
+    assert.strictEqual(ch[0].state, 1,
+        "scenario 6 reset must restart channel 1 from BULK");
+    assert.strictEqual(ch[1].state, 1,
+        "scenario 6 reset must restart channel 2 from BULK");
     P[126] = savedResetGapMs;
 }
 
