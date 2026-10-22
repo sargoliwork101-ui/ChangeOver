@@ -101,7 +101,6 @@ typedef struct
     uint32_t uint32_t__pidLastTick;     /* [EN] tick of the last PID update / تیک آخرین به‌روزرسانی */
     bool     bool__pidSeeded;           /* [EN] false = re-seed from hardware duty / نادرست = بذرگیری دوباره */
     bool     bool__pidLastWasVoltage;   /* [EN] winning branch last update / شاخهٔ برندهٔ قبلی */
-    bool     bool__deadForcedFloat;     /* [EN] true when FLOAT was entered via 1h absorb timeout without taper / ورود اجباری به فلوت با سقف ۱ ساعته */
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -359,7 +358,6 @@ static void func__Charger_ClearAbsorbWindow(
     charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
-    charger_channel_state_t__channel->bool__deadForcedFloat = false;
 }
 
 /* [EN] Dip reset (v1.17b): like ClearAbsorbWindow EXCEPT the 1 h safety
@@ -1865,13 +1863,9 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 (bool__absorbTimedOut == true))
             {
                 /* [EN] Episode over: drop the episode timers so the next
-                   absorb starts from a clean sheet. Record whether FLOAT was
-                   earned by soak+taper or forced by the 1-hour safety ceiling.
+                   absorb starts from a clean sheet.
                    [FA] این سفرقسمت تمام شد؛ تایمرهای اپیزود صفر تا ابزورب بعدی
-                   از صفحهٔ تمیز آغاز شود. مشخص می‌شود ورود به FLOAT با پر شدن
-                   واقعی بوده یا با سقف ایمنی ۱ ساعته. */
-                charger_channel_state_t__channel->bool__deadForcedFloat =
-                    ((bool__soakDone == true) && (bool__taperDone == true)) ? false : true;
+                   از صفحهٔ تمیز آغاز شود. */
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
@@ -2524,26 +2518,22 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
         BOOL__G__DeadAbsentTiming[uint8_t__channelIndex] = false;
     }
 
-    /* [EN] Step 2: scenario off, or the channel reached a genuine FLOAT (soak +
-           taper completed) - which is the definition of "this battery does
-           charge". Clock back to zero. If FLOAT was forced by the 1-hour
-           absorb ceiling without tapering, or the channel is in its mandatory
-           10-minute thermal rest, hold the accumulated charge time without
-           resetting it.
-       [FA] گام ۲: سناریو خاموش است یا کانال با پر شدن واقعی به FLOAT رسیده؛
-           ساعت صفر می‌شود. اگر ورود به FLOAT با سقف ایمنی ۱ ساعته بوده یا کانال
-           در استراحت حرارتی ۱۰ دقیقه‌ای خود شارژر است، زمان انباشته حفظ می‌شود. */
+    /* [EN] Step 2: scenario off, or the channel reached FLOAT (including via
+           the 1-hour absorb ceiling) - which counts as a completed charge.
+           Clock back to zero. If the channel is in its mandatory 10-minute
+           thermal rest, hold the accumulated charge time without resetting it.
+       [FA] گام ۲: سناریو خاموش است یا کانال به FLOAT رسیده (شامل ورود با سقف
+           ۱ ساعتهٔ ابزورب که شارژ کامل محسوب می‌شود)؛ ساعت صفر می‌شود. در حالت
+           استراحت حرارتی ۱۰ دقیقه‌ای خود شارژر، زمان انباشته حفظ می‌شود. */
     if ((uint32_t__timeoutMs == 0u) ||
-        ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) &&
-         (charger_channel_state_t__channel->bool__deadForcedFloat == false)))
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT))
     {
         UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
         BOOL__G__DeadWasCharging[uint8_t__channelIndex]  = false;
         return;
     }
 
-    if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) ||
-        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
+    if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
         (UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] != 0u))
     {
         BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
