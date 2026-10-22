@@ -420,7 +420,7 @@ int main(void)
     func__Run(1862000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
-    /* ---- thermal rest mid-charge preserves candidate and does not double-count cycles ---- */
+    /* ---- thermal rest mid-charge resets timers & candidate and does not double-count cycles ---- */
     func__Imbalance_Init();
     CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
     CHECK(func__Imbalance_SetParam(201u, 0u, NULL));
@@ -436,25 +436,32 @@ int main(void)
     IMBAL_INPUTS_T__G__In.bool__charging = true;
     func__Run(32000u, true); /* cycle 1 starts */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 1u);
-    /* Enter 10-minute thermal rest: charging drops false while thermalRest is true */
+    /* Enter 1-hour thermal rest: charging drops false while thermalRest is true -> resets timers & candidate */
     IMBAL_INPUTS_T__G__In.bool__charging = false;
     IMBAL_INPUTS_T__G__In.bool__thermalRest = true;
     func__Run(3632000u, false);
-    /* Resume BULK after thermal rest: latchedCycles must stay 1 and candidate survives */
+    /* Resume BULK after thermal rest: latchedCycles stays 1, candidate was reset, in-charge timer starts fresh */
     IMBAL_INPUTS_T__G__In.bool__charging = true;
     IMBAL_INPUTS_T__G__In.bool__thermalRest = false;
     func__Run(4232000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 1u);
+    /* Before 10 min in-charge wait (111) elapses from 4232000, no candidate is raised */
+    func__Run(4500000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == false);
+    /* After 10 min in-charge wait (4832000) + 30 s stability (4862000), new candidate is raised */
+    func__Run(4832000u, false);
+    func__Run(4862000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == true);
     /* Reach FLOAT, enter post-charge rest, verify brief dip does not wipe candidate */
     IMBAL_INPUTS_T__G__In.bool__charging = false;
     IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
-    func__Run(4233000u, false);
+    func__Run(4863000u, false);
     IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12050u; /* single sample dip in rest */
-    func__Run(4833000u, false);
+    func__Run(5463000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
     IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u; /* sustained > 300 mV for 30 s */
-    func__Run(4834000u, false);
-    func__Run(4864000u, true);
+    func__Run(5464000u, false);
+    func__Run(5494000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
     CHECK(func__Imbalance_SetParam(202u, 0u, NULL));
     CHECK(func__Imbalance_SetParam(201u, 0u, NULL));

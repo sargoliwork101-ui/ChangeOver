@@ -2519,25 +2519,21 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
     }
 
     /* [EN] Step 2: scenario off, or the channel reached FLOAT (including via
-           the 1-hour absorb ceiling) - which counts as a completed charge.
-           Clock back to zero. If the channel is in its mandatory 10-minute
-           thermal rest, hold the accumulated charge time without resetting it.
-       [FA] گام ۲: سناریو خاموش است یا کانال به FLOAT رسیده (شامل ورود با سقف
-           ۱ ساعتهٔ ابزورب که شارژ کامل محسوب می‌شود)؛ ساعت صفر می‌شود. در حالت
-           استراحت حرارتی ۱۰ دقیقه‌ای خود شارژر، زمان انباشته حفظ می‌شود. */
+           the 1-hour absorb ceiling), or the channel is in its 1-hour thermal
+           rest (user order 2026-10-22: reset dead-battery timer on thermal
+           rest so larger parallel battery banks are not falsely condemned).
+           Clock back to zero.
+       [FA] گام ۲: سناریو خاموش است، یا کانال به FLOAT رسیده (شامل ورود اجباری
+           با سقف ۱ ساعتهٔ ابزورب)، یا وارد استراحت حرارتی ۱ ساعته شده (دستور
+           کاربر ۲۰۲۶-۱۰-۲۲: ریست تایمر در استراحت ۱ ساعته برای پشتیبانی از
+           افزایش ظرفیت باتری‌ها)؛ ساعت صفر می‌شود. */
     if ((uint32_t__timeoutMs == 0u) ||
-        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT))
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) ||
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
+        (UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] != 0u))
     {
         UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
         BOOL__G__DeadWasCharging[uint8_t__channelIndex]  = false;
-        return;
-    }
-
-    if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
-        (UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] != 0u))
-    {
-        BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
-        UINT32_T__G__DeadPauseTick[uint8_t__channelIndex] = uint32_t__nowTick;
         return;
     }
 
@@ -3303,6 +3299,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                                 UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] =
                                     uint32_t__now + func__Charger_DurationTicks(CHG_THERMAL_REST_MS);
                                 UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                                UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
+                                BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
                                 func__Charger_StopOneChannel(uint8_t__channelIndex);
                                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                                     CHG_STATE_THERMAL_REST;

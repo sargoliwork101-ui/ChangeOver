@@ -60,6 +60,7 @@ static uint32_t UINT32_T__G__RestAnchorMs;  /* [EN] Rest window anchor: last cha
 static bool     BOOL__G__ChargingEdge;      /* [EN] charging seen at startup? / تشخیص لبهٔ اول */
 static uint32_t UINT32_T__G__ChargeStartMs; /* [EN] This session's start / شروع این سیکل */
 static bool     BOOL__G__PrevCharging;      /* [EN] Edge memory / حافظهٔ لبه */
+static bool     BOOL__G__PrevThermalRest;   /* [EN] Thermal-rest edge memory / حافظهٔ لبهٔ استراحت حرارتی */
 static bool     BOOL__G__CycleFullSeen;      /* [EN] This cycle reached FLOAT / این سیکل به فول رسید */
 static bool     BOOL__G__RequireFreshFullCycle; /* [EN] Ignore stale FLOAT after a battery swap / فول تازه لازم است */
 static bool     BOOL__G__CycleHasImbalance;  /* [EN] Deferred candidate / نامزدِ معوق */
@@ -243,6 +244,7 @@ void func__Imbalance_Init(void)
     BOOL__G__ChargingEdge      = false;
     UINT32_T__G__ChargeStartMs = 0u;
     BOOL__G__PrevCharging      = false;
+    BOOL__G__PrevThermalRest   = false;
     BOOL__G__CycleFullSeen     = false;
     BOOL__G__RequireFreshFullCycle = false;
     BOOL__G__CycleHasImbalance = false;
@@ -302,6 +304,7 @@ static void func__Imbalance_ResetCycleState(uint32_t uint32_t__nowMs)
     BOOL__G__ChargingEdge       = false;
     UINT32_T__G__ChargeStartMs  = uint32_t__nowMs;
     BOOL__G__PrevCharging       = false;
+    BOOL__G__PrevThermalRest    = false;
     BOOL__G__CycleFullSeen      = false;
     BOOL__G__RequireFreshFullCycle = true;
     BOOL__G__CycleHasImbalance  = false;
@@ -431,17 +434,34 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
 
     /* ---- charge-session edges and full-charge qualification ---- */
     bool__charging      = imbalance_inputs_t__inputs->bool__charging;
-    if (imbalance_inputs_t__inputs->bool__thermalRest == true)
+    if ((imbalance_inputs_t__inputs->bool__thermalRest == true) ||
+        (BOOL__G__PrevThermalRest == true))
     {
-        /* [EN] A mandatory 10-minute charger thermal rest pauses the active
-           charge session without ending it: keep the session state across the
-           pause so candidates are not discarded and post-latch cycles are not
-           double-counted when BULK resumes.
-           [FA] استراحت حرارتی ۱۰ دقیقه‌ای شارژر، جلسهٔ شارژ را بدون پایان‌دادن
-           متوقف نگه می‌دارد تا نامزد عدم‌توازن پاک نشود و سیکل قفل هنگام ادامهٔ
-           بالک دوباره شمرده نشود. */
-        bool__charging = BOOL__G__PrevCharging;
+        /* [EN] During the charger's 1-hour thermal rest (and at the pass it
+           exits), reset the imbalance timers and current-cycle candidate (user
+           order 2026-10-22: if the user added higher-capacity batteries, long
+           charging with thermal rests must reset the imbalance and dead-battery
+           timers) without double-counting post-latch cycles when BULK resumes.
+           [FA] در زمان استراحت حرارتی ۱ ساعتهٔ شارژر (و لحظهٔ خروج از آن)،
+           تایمرها و نامزد عدم‌توازن ریست می‌شوند (دستور کاربر ۲۰۲۶-۱۰-۲۲: در
+           صورت افزایش ظرفیت باتری‌ها توسط کاربر و طولانی‌شدن زمان شارژ، تایمرها
+           در استراحت ۱ ساعته ریست شوند) و سیکل قفل هنگام ادامهٔ بالک دوباره
+           شمرده نمی‌شود. */
+        UINT32_T__G__ChargeStartMs  = uint32_t__nowMs;
+        UINT32_T__G__RestAnchorMs   = uint32_t__nowMs;
+        BOOL__G__OverTiming         = false;
+        UINT32_T__G__OverSinceMs    = 0u;
+        BOOL__G__Episode            = false;
+        UINT32_T__G__EpisodeLimitMv = 0u;
+        BOOL__G__CycleFullSeen      = false;
+        BOOL__G__CycleHasImbalance  = false;
+        BOOL__G__CycleEventRecorded = false;
+        if (imbalance_inputs_t__inputs->bool__thermalRest == true)
+        {
+            bool__charging = BOOL__G__PrevCharging;
+        }
     }
+    BOOL__G__PrevThermalRest = imbalance_inputs_t__inputs->bool__thermalRest;
     bool__chargeComplete = imbalance_inputs_t__inputs->bool__chargeComplete;
 
     /* [EN] v1.72 (user order): comparable only when both halves are in the
@@ -618,7 +638,8 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         }
     }
 
-    if (bool__windowOpen == false)
+    if ((bool__windowOpen == false) &&
+        (imbalance_inputs_t__inputs->bool__thermalRest == false))
     {
         if (bool__charging == true)
         {
