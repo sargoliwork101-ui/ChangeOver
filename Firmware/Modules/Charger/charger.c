@@ -2973,6 +2973,9 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     if ((measurement_snapshot_t__snap == NULL) ||
         (measurement_snapshot_t__snap->valid == false) ||
         (CHG_INSTALLED_CHANNEL_MASK == 0u) ||
+#if MODULE_FAULT
+        (func__Fault_Get() != FAULT_NONE) ||
+#endif
         (app_state_t__state == APP_STATE_FAULT))
     {
         func__Charger_SafeIdle();

@@ -1382,7 +1382,12 @@ void func__Ui_ScenarioBatLost_Tick(void)
                      UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct) /
                     UI_PERCENT_SCALE));
 
-    func__green(true);
+    /* [EN] Green reflects whether mains input is still present; if mains drops
+       while FAULT_CHARGER_BAT_LOST remains latched, turn green off so the face
+       never falsely indicates input power.
+       [FA] چراغ سبز فقط در صورت حضور برق ورودی روشن می‌ماند تا هنگام قطع برق
+       شهر در وضعیت قفل قطع باتری، به اشتباه وصل بودن برق را نشان ندهد. */
+    func__green(BOOL__G__UiInputPresent);
     func__yellow(false);
     func__red(bool__redOn);
 

@@ -192,6 +192,18 @@ int main(void)
     CHECK(UINT32_T__G__ProtectWrites == 0u);
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_INPUT);
 
+    /* ---- 3b. charger-only faults must NOT disable battery cut or BATTERY state ---- */
+    func__Reset(500u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    CHECK(func__Step(10u, FAULT_CHARGER_TECHNICAL) == APP_STATE_BATTERY);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    (void)func__Step(10u, FAULT_CHARGER_TECHNICAL | FAULT_CHARGER_BAT_LOST);
+    CHECK(BOOL__G__ProtectLine == false);
+    (void)func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_CHARGER_TECHNICAL | FAULT_CHARGER_BAT_LOST);
+    CHECK(BOOL__G__ProtectLine == false);
+    CHECK(func__Step(1u, FAULT_CHARGER_TECHNICAL | FAULT_CHARGER_BAT_LOST) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+
     /* ---- 4. critical cut: below 20800 mV, 3 s filter ---- */
     func__Reset(1000u);
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;

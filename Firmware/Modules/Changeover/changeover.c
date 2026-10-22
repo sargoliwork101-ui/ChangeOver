@@ -160,9 +160,17 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     }
 
     /* [EN] Snapshot is valid from here - use ONLY allowed fields.
-          Now handle fault: fault -> FAULT, no pin change.
-       [FA] از اینجا snapshot معتبر است - فقط فیلدهای مجاز؛ اگر fault غیرصفر بود FAULT. */
-    if (fault_mask_t__faults != FAULT_NONE)
+          Now handle fault: charger-only faults (FAULT_CHARGER_BAT_LOST /
+          FAULT_CHARGER_TECHNICAL) belong to the charger and must NOT disable
+          24 V battery-to-load changeover or deep-discharge protection (PB11).
+          Only non-charger faults (such as FAULT_ADC) enter APP_STATE_FAULT
+          and freeze PB11.
+       [FA] از اینجا snapshot معتبر است: خطاهای اختصاصی شارژر
+          (‎FAULT_CHARGER_BAT_LOST / FAULT_CHARGER_TECHNICAL)‎ نباید چنج‌اور و
+          حفاظت دشارژ عمیق باتری (PB11) را از کار بیندازند؛ فقط خطاهای غیرشارژر
+          (مثل FAULT_ADC) وارد APP_STATE_FAULT می‌شوند. */
+    if ((fault_mask_t__faults &
+         (fault_mask_t)~(FAULT_CHARGER_BAT_LOST | FAULT_CHARGER_TECHNICAL)) != FAULT_NONE)
     {
         APP_STATE_T__G__State = APP_STATE_FAULT;
         BOOL__G__CutTimerActive = false;
