@@ -136,14 +136,12 @@ static void func__Reset(uint32_t uint32_t__startTick)
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid         = true;
 
-    /* [EN] Init now drives the protect line once to "connected" (2026-10-22).
-       That single boot write has its own test, so the counters restart after
-       it and each scenario keeps counting only its own decision edges.
-       [FA] Init حالا خط حفاظت را یک‌بار روی «وصل» می‌راند. همان نوشتن بوت تست
-       جداگانه دارد، پس شمارنده‌ها بعد از آن صفر می‌شوند و هر سناریو فقط
-       گذرهای تصمیم خودش را می‌شمارد. */
+    /* [EN] Simulate the safe boot pin, then the first healthy sample that
+       permits connection. Clear the write counter so each test measures only
+       its own transitions. [FA] بوت امن و سپس نمونهٔ سالمِ مجوز وصل را شبیه‌سازی کن. */
     func__Changeover_Init();
-    BOOL__G__ProtectLine       = false;
+    BOOL__G__ProtectLine = true;
+    (void)func__Changeover_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap, FAULT_NONE);
     UINT32_T__G__ProtectWrites = 0u;
 }
 
@@ -172,18 +170,48 @@ int main(void)
 
     printf("== Changeover host test ==\n");
 
-    /* ---- 1. boot and the "no decision" guards ----
-       [EN] Init starts in BOOT; a NULL or invalid snapshot must change
-            nothing at all - no state move, no pin write.
-       [FA] شروع از BOOT؛ snapshot خالی یا نامعتبر هیچ چیزی را عوض نمی‌کند. */
+    /* ---- 1. boot remains protected until a valid, healthy sample ----
+       [EN] Invalid data, a blocking fault, or voltage below the existing
+            21.2 V hysteresis-clear threshold must not connect the output.
+       [FA] دادهٔ نامعتبر، خطای مسدودکننده یا ولتاژ زیر حد ۲۱٫۲ ولت نباید
+            خروجی را وصل کند. */
     func__Reset(0u);
+    func__Changeover_Init();
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(UINT32_T__G__ProtectWrites == 1u);
+    UINT32_T__G__ProtectWrites = 0u;
+
     CHECK(func__Changeover_Evaluate(NULL, FAULT_NONE) == APP_STATE_BOOT);
+    CHECK(BOOL__G__ProtectLine == true);
     CHECK(UINT32_T__G__ProtectWrites == 0u);
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_BOOT);
+    CHECK(BOOL__G__ProtectLine == true);
     CHECK(UINT32_T__G__ProtectWrites == 0u);
+
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = true;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_RECONNECT_MV - 1u;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(UINT32_T__G__ProtectWrites == 0u);
+
+    CHECK(func__Step(10u, FAULT_ADC) == APP_STATE_FAULT);
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(UINT32_T__G__ProtectWrites == 0u);
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_RECONNECT_MV;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_INPUT);
+    CHECK(BOOL__G__ProtectLine == false);
+    CHECK(UINT32_T__G__ProtectWrites == 1u);
+
+    /* [EN] A healthy no-mains sample connects immediately after validation.
+       [FA] نمونهٔ سالم بدون ورودی پس از اعتبارسنجی مسیر را وصل می‌کند. */
+    func__Reset(100u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_BATTERY);
+    CHECK(BOOL__G__ProtectLine == false);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
 
     /* ---- 2. plain mapping from input presence ---- */
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_INPUT);
@@ -403,20 +431,26 @@ int main(void)
     app_state_t__state = func__Step(10u, FAULT_NONE);
     CHECK(app_state_t__state == APP_STATE_INPUT);
 
-    /* ---- 11. the reported field symptom: mains gone, healthy pack ---- */
-    /* [EN] A healthy pack with the mains absent must leave the protect line
-     *      DEASSERTED, i.e. the battery path closed and feeding the output.
-     *      Init drives that level once (2026-10-22 polarity audit); afterwards
-     *      three seconds of passes must neither assert the line nor re-drive it.
-     * [FA] بستهٔ سالم با ورودی قطع باید خط حفاظت را غیرفعال بگذارد، یعنی مسیر
-     *      باتری بسته و روی خروجی باشد. Init این سطح را یک‌بار می‌نویسد و بعد از
-     *      آن سه ثانیه پاس نه خط را فعال می‌کند و نه دوباره می‌نویسد. */
+    /* ---- 11. boot validation with no mains, healthy battery ---- */
+    /* [EN] Init must keep the battery cut until a valid sample arrives; with
+       no mains, a healthy 24 V pack then connects and remains connected.
+       [FA] Init تا نمونهٔ معتبر مسیر باتری را قطع نگه می‌دارد؛ بدون ورودی،
+       پک سالم ۲۴ ولت پس از نمونه وصل می‌شود و وصل می‌ماند. */
     func__Reset(700000u);
     func__Changeover_Init();
+    CHECK(BOOL__G__ProtectLine == true);
     CHECK(UINT32_T__G__ProtectWrites == 1u);
-    CHECK(BOOL__G__ProtectLine == false);
-
+    UINT32_T__G__ProtectWrites = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_BOOT);
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(UINT32_T__G__ProtectWrites == 0u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.valid = true;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_BATTERY);
+    CHECK(BOOL__G__ProtectLine == false);
+    CHECK(UINT32_T__G__ProtectWrites == 1u);
+
     for (uint32_t__i = 0u; uint32_t__i < 300u; uint32_t__i++)
     {
         (void)func__Step(10u, FAULT_NONE);

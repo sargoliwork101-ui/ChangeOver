@@ -28,12 +28,10 @@
 /* ==================== Functions ==================== */
 
 /**
- * @brief  [EN] Start in BOOT, timers inactive, then deassert the battery
- *              protect line once so the battery path is connected from the
- *              first control pass (2026-10-22: deasserted = physical Low).
- *         [FA] از حالت BOOT شروع می‌کند، تایمرها خاموش‌اند و سپس خط حفاظت
- *              باتری یک‌بار غیرفعال می‌شود تا مسیر باتری از اولین پاس کنترل
- *              بسته باشد.
+ * @brief  [EN] Start protected in BOOT; wait for a valid, non-blocked sample
+ *              at or above the existing 21200 mV reconnect threshold.
+ *         [FA] در BOOT حفاظت فعال می‌ماند؛ تا نمونهٔ معتبر و بدون خطا با
+ *              ولتاژ حداقل ۲۱۲۰۰ میلی‌ولت وصل نمی‌کند.
  */
 void func__Changeover_Init(void);
 

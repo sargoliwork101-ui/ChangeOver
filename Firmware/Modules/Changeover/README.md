@@ -15,7 +15,8 @@
 - فقط وقتی `snapshot` معتبر است و `fault_mask != FAULT_NONE` → `state=APP_STATE_FAULT` بدون تغییر هیچ pin.
 - قطع با گیت: `v_bat24_mv<21000` و قفل داخلی باتری کم (ست زیر ۲۱۰۰۰، پاک در ۲۱۲۰۰) به‌مدت پیوسته 3000ms → قطع باتری (PB11 Low-Active).
 - قطع مستقل: `v_bat24_mv<20800` مستقل از فلگ، به‌مدت پیوسته 3000ms → قطع باتری.
-- وصل مجدد (v1.88): `input_present==true` پایدار 30000ms + `v_bat24_mv≥21200` به‌مدت پیوسته 3000ms → وصل باتری (PB11 High-Safe). تاخیر 30 ثانیه اضافه فقط زمان است، نه ولتاژ 24V، تا ورودی چشمک‌زن دوباره باتری را وصل نکند (دستور کاربر 2026-10-12).
+- بوت: PB11 در حالت قطع امن می‌ماند. بعد از snapshot معتبر، نبود خطای مسدودکننده/وتو و ولتاژ `v_bat24_mv≥21200`، مسیر وصل می‌شود؛ شرط ۳۰ ثانیهٔ ورودی برای شروع بوت لازم نیست.
+- وصل مجدد پس از قطع کم‌باتری حین کار: `input_present==true` پایدار 30000ms + `v_bat24_mv≥21200` به‌مدت پیوسته 3000ms → وصل باتری. هیسترزیس ۲۱۰۰۰/۲۱۲۰۰mV حفظ می‌شود؛ تاخیر ورودی فقط برای جلوگیری از چرخهٔ قطع/وصل بعد از افت ولتاژ است.
 
 ## فایل‌ها
 
@@ -33,7 +34,7 @@
 
 | نام | کار |
 |---|---|
-| `func__Changeover_Init` | `s_state=APP_STATE_BOOT`، تایمرها inactive، `protect=false` (safe High) |
+| `func__Changeover_Init` | `s_state=APP_STATE_BOOT`، تایمرها inactive، `protect=true` و PB11 روی قطع امن؛ اتصال تا snapshot معتبر و ولتاژ ≥۲۱۲۰۰mV معطل می‌ماند |
 | `func__Changeover_Evaluate(snap, faults)` | اگر `snap==NULL`/`!valid` → حفظ state/PB11 و reset تایمر (fault هم FAULT نمی‌شود)؛ وگرنه اگر `fault!=0` → `FAULT` بدون pin؛ وگرنه ارزیابی قطع (`v<20800` مستقل و `v<21000&&flag` گیت) و وصل (`input&&v>=21200`) هر کدام پیوسته 3000ms فقط روی `BSP_GPIO_PROTECT_BATTERY`؛ زمان با `func__Rtos_MillisecondsToTicks` و بدون فرض `tick=1ms` |
 | `TaskControl` | فقط اگر Changeover یا Charger یا Jitter یک باشد ساخته می‌شود |
 
@@ -55,7 +56,7 @@ Changeover **فقط** از سیگنال منطقی `BSP_GPIO_PROTECT_BATTERY` (P
 
 ## پیش‌فرض امن
 
-- بوت: `func__BspGpio_Init` و `main.c` پایه را فیزیکی High می‌گذارند که همان قطع امن است. سپس `func__Changeover_Init` یک‌بار خط را روی «وصل» می‌راند تا مسیر باتری بسته شود (ممیزی قطبیت ۲۰۲۶-۱۰-۲۲) و `state=BOOT` می‌ماند.
+- بوت: `func__BspGpio_Init` پایه را فیزیکی High می‌گذارد که قطع امن است. `func__Changeover_Init` نیز حفاظت را فعال نگه می‌دارد. فقط پس از snapshot معتبر، نبود خطای مسدودکننده و رسیدن ولتاژ پک به ۲۱۲۰۰mV، مسیر وصل می‌شود؛ سپس state از ورودی حاضر/غایب تعیین می‌شود.
 - اگر `snapshot==NULL` یا `!valid` → `state` و `PB11` حفظ، تایمرهای pending reset، حتی `fault!=0` هم `FAULT` نمی‌شود و زمان نامعتبر جزو 3000ms حساب نمی‌شود.
 - فقط وقتی `snapshot` معتبر است و `fault!=0` → `state=FAULT` بدون تغییر هیچ pin (تایمرها reset).
 - زمان‌گیری فقط با `osKernelGetTickCount()` و `func__Rtos_MillisecondsToTicks(CHANGEOVER_DURATION_MS)` و بدون فرض `tick=1ms`؛ `MillisecondsToTicks` نرخ تیک را از `osKernelGetTickFreq()` می‌گیرد.
@@ -94,7 +95,7 @@ snapshot از Measurement می‌آید، faults از Fault، flag از UI؛ Cha
 
 ## تستر
 
-`Tester/` — تست هاست ماشین حالت با ساعت و GPIO بدلی (۱۱۴ بررسی، شامل رگرسیون
+`Tester/` — تست هاست ماشین حالت با ساعت و GPIO بدلی (۲۰۱ بررسی؛ شامل رگرسیون
 قفل باتری‌ضعیف v1.81 و سرریز تیک). اجرا با
 `Tester/run_host_test_changeover.sh`؛ داخل `tools/check_firmware_syntax.sh` هم
 اجرا می‌شود. توضیح کامل در `Tester/README.md`.

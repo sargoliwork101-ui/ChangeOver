@@ -43,6 +43,12 @@ static app_state_t APP_STATE_T__G__State = APP_STATE_BOOT;
 static bool BOOL__G__ChangeoverProtectAsserted = false;
 
 /**
+ * @brief [EN] Boot stays protected until a valid sample passes blocking checks.
+ *        [FA] بوت تا عبور نمونهٔ معتبر از بررسی‌های مسدودکننده در حفاظت می‌ماند.
+ */
+static bool BOOL__G__BootPending = true;
+
+/**
  * @brief  [EN] Tick at which the current cut condition became continuously true.
  *         [FA] تیکی که در آن شرط قطع به‌صورت پیوسته true شد.
  */
@@ -86,17 +92,16 @@ static bool BOOL__G__InputStableActive = false;
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
 /**
- * @brief  [EN] Start in BOOT, timers inactive, then deassert the battery
- *              protect line once so the battery path is connected from the
- *              first control pass (2026-10-22: deasserted = physical Low now).
- *         [FA] از حالت BOOT شروع می‌کند، تایمرها خاموش‌اند و سپس خط حفاظت
- *              باتری یک‌بار غیرفعال می‌شود تا مسیر باتری از همان اولین پاس
- *              کنترل بسته باشد.
+ * @brief  [EN] Start protected in BOOT; connect only after valid measurements
+ *              pass blocking checks and the existing battery threshold.
+ *         [FA] در BOOT حفاظت را فعال می‌کند؛ پس از عبور نمونهٔ معتبر از بررسی
+ *              خطا و رسیدن باتری به آستانهٔ موجود، مسیر را وصل می‌کند.
  */
 void func__Changeover_Init(void)
 {
     APP_STATE_T__G__State = APP_STATE_BOOT;
-    BOOL__G__ChangeoverProtectAsserted = false;
+    BOOL__G__ChangeoverProtectAsserted = true;
+    BOOL__G__BootPending = true;
     UINT32_T__G__CutStartTick = 0u;
     BOOL__G__CutTimerActive = false;
     UINT32_T__G__ReconnectStartTick = 0u;
@@ -105,19 +110,11 @@ void func__Changeover_Init(void)
     UINT32_T__G__InputStableSinceTick = 0u;
     BOOL__G__InputStableActive = false;
 
-    /* [EN] Drive the protect line once to the deasserted level, which means the
-          battery path is CLOSED. Since the 2026-10-22 polarity audit the
-          deasserted level is a physical Low (Q17 off, GATE_ON_OFF released,
-          series Q15/Q16 on), so a healthy pack reaches the output as soon as
-          the mains is gone. Without this write the pin kept its safe boot level
-          (physical High = cut) until the first cut/reconnect edge - exactly the
-          reported symptom "the battery never runs the output".
-       [FA] خط حفاظت یک‌بار روی سطح غیرفعال رانده می‌شود، یعنی مسیر باتری بسته
-          است. از ممیزی قطبیت ۲۰۲۶-۱۰-۲۲ سطح غیرفعال، سطح فیزیکی پایین است،
-          پس بستهٔ سالم به‌محض قطع ورودی روی خروجی می‌نشیند. بدون این نوشتن،
-          پایه سطح امن بوت را که همان قطع است تا اولین گذر قطع/وصل نگه می‌داشت
-          و همان ایراد گزارش‌شده باقی می‌ماند. */
-    func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
+    /* [EN] Keep the path physically cut until the first valid, non-blocked
+          sample confirms the pack has reached the 21.2 V hysteresis-clear
+          threshold. [FA] مسیر را تا نمونهٔ معتبرِ بدون خطا و رسیدن ولتاژ
+          به آستانهٔ پاک‌شدن هیسترزیس (۲۱٫۲ ولت) قطع نگه می‌دارد. */
+    func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
 }
 
 /* ==================== Changeover_Evaluate / ارزیابی ==================== */
@@ -274,6 +271,31 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     {
         /* [EN] Hysteresis band 21000..21200 mV: keep the previous latch value.
            [FA] بازهٔ هیسترزیس: مقدار قبلی حفظ می‌شود. */
+    }
+
+    /* [EN] Boot connection is distinct from recovery after a runtime
+          low-battery cut. Require a valid sample at the existing hysteresis
+          clear threshold; the reconnect input-stability delay is not needed
+          for first startup. [FA] وصل بوت با بازیابی پس از قطع کمبود باتری
+          فرق دارد؛ نمونهٔ معتبر باید به حد پاک‌شدن هیسترزیس برسد و تأخیر
+          پایداری ورودیِ وصل مجدد برای شروع اولیه لازم نیست. */
+    if (BOOL__G__BootPending == true)
+    {
+        if (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_RECONNECT_MV)
+        {
+            func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
+            BOOL__G__ChangeoverProtectAsserted = false;
+            BOOL__G__BootPending = false;
+            APP_STATE_T__G__State =
+                (measurement_snapshot_t__snap->input_present == true)
+                    ? APP_STATE_INPUT
+                    : APP_STATE_BATTERY;
+        }
+        else
+        {
+            APP_STATE_T__G__State = APP_STATE_SAFE;
+        }
+        return APP_STATE_T__G__State;
     }
 
     /* [EN] Evaluate cut conditions (require continuous 3000ms):
