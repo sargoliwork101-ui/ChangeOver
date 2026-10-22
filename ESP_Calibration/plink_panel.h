@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1eb0681</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d1aa4a5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1049,7 +1049,7 @@ function pendRestore(){
   const saved=JSON.parse(localStorage.getItem(PEND_KEY)||'{}');
   if(!saved||typeof saved!=='object'||Array.isArray(saved))return;
   for(const id of Object.keys(saved)){
-   if(!/^\\d+$/.test(id)||!Number.isFinite(+saved[id]))continue;
+   if(!/^\d+$/.test(id)||!Number.isFinite(+saved[id]))continue;
    const n=+id;if(n<0||n>146)continue;PEND[n]=saved[id];
    const e=pctrl(n);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!saved[id];else e.value=saved[id];}
    const a=$('a'+n);if(a)a.textContent='در صف';
@@ -3023,8 +3023,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const f2s=(f2&2)?'قفل دائمی - باتری را تعویض کنید':(f2&1)?'اپیزود جاری':'سالم';
   $('imbst').textContent=f2s;$('imbst').className='tg '+((f2&2)?'r':(f2&1)?'y':'g');
   const b117=p[117]==null?1:p[117],bt=document.getElementById('ib117');
-  if(bt&&document.activeElement!==bt)bt.checked=!!b117;
-  if($('a117'))$('a117').textContent=b117?'الان روشن است: باتریِ قفل‌شده نه شارژ می‌شود و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژ قطع می‌شود و باتریِ قفل‌شده همچنان بار را تغذیه می‌کند (ریسکش با شماست).';}
+  if(!(117 in PEND)){if(bt&&document.activeElement!==bt)bt.checked=!!b117;
+   if($('a117'))$('a117').textContent=b117?'الان روشن است: باتریِ قفل‌شده نه شارژ می‌شود و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژ قطع می‌شود و باتریِ قفل‌شده همچنان بار را تغذیه می‌کند (ریسکش با شماست).';}}
  /* ‎v1.72 scenario-6 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
  if($('dbst')){const dm=t[28]==null?0:t[28],lim=p[125]==null?86400000:p[125];
   /* v1.76: t[29] = شارژ پیوستهٔ کانال ۱ و t[30] = کانال ۲ (ثانیه) — هر باتری ساعت خودش */
@@ -3034,8 +3034,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const ds=dm?('قفل دائمی — باتری '+((dm&3)===3?'هر دو کانال':(dm&1)?'کانال ۱':'کانال ۲')+' خراب است، تعویضش کنید'):'سالم';
   $('dbst').textContent=ds;$('dbst').className='tg '+(dm?'r':'g');
   const b127=p[127]==null?0:p[127],bt7=document.getElementById('db127');
-  if(bt7&&document.activeElement!==bt7)bt7.checked=!!b127;
-  if($('a127'))$('a127').textContent=b127?'الان روشن است: باتریِ محکوم از خروجی هم برداشته می‌شود — نه شارژ می‌گیرد و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژِ آن کانال قطع است و باتری تا وقتی ولتاژ دارد به بار برق می‌دهد.';}
+  if(!(127 in PEND)){if(bt7&&document.activeElement!==bt7)bt7.checked=!!b127;
+   if($('a127'))$('a127').textContent=b127?'الان روشن است: باتریِ محکوم از خروجی هم برداشته می‌شود — نه شارژ می‌گیرد و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژِ آن کانال قطع است و باتری تا وقتی ولتاژ دارد به بار برق می‌دهد.';}}
 
  /* v1.86 (دستور کاربر): عدد شمارش سناریوی ۶ (شارژ پیوستهٔ هر باتری) فقط در
     همین پنل کالیبراسیون، در کادر «خطاهای قفل‌شده» زنده نشان داده می‌شود تا

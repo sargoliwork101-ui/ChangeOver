@@ -29,6 +29,7 @@ typedef ESP8266WebServer esp_web_server_t;
 #include "../simple_config.h"
 #include "../simple_state.h"
 #include "../simple_link.h"
+#include "../simple_auth.h"
 #include "../simple_diag.h"
 
 #include <cstdio>
@@ -513,6 +514,35 @@ static void func__T_TestDiagStatePersistenceAndClear(void)
                   "خطای فعالِ فعلی بلافاصله بعد از پاک کردن تاریخچه دوباره ثبت نمی‌شود");
 }
 
+/* ==================== ۸) حفاظت از نقش ادمین و شمارش کاربران ==================== */
+static void func__T_TestAuthAdminProtection(void)
+{
+    (void)printf("\n== حفاظت از نقش ادمین و شمارش کاربران ==\n");
+
+    BOOL__G__FsOk = LittleFS.begin();
+    func__Simple_CryptoKeyInit();
+    func__Simple_AuthDefaults();
+    (void)func__Simple_AuthLogin("admin", "admin");
+
+    /* تلاش برای تنزل دادن ادمین اصلی به کاربر ساده (role=0) باید نقش ادمین (1) را حفظ کند */
+    (void)func__Simple_AddUser("admin", "newadminpass", 0u);
+    func__T_Check(SIMPLE_USER_T__G__Users[0].role == 1u,
+                  "حساب admin حتی در صورت ارسال role=0 در AddUser نقش ادمین (1) را حفظ می‌کند");
+
+    /* افزودن کاربر با نام ۲۴ کاراکتری (حداکثر طول) و بررسی پایان‌دهندهٔ رشته و شمارنده */
+    const char *char__ptr_maxName = "123456789012345678901234";
+    bool bool__added = func__Simple_AddUser(char__ptr_maxName, "pass1234", 0u);
+    func__T_Check(bool__added &&
+                  (strlen(SIMPLE_USER_T__G__Users[1].name) == 24u) &&
+                  (UINT8_T__G__UserCount == 2u),
+                  "افزودن کاربر با نام ۲۴ کاراکتری رشته را با '\\0' می‌بندد و UserCount به ۲ می‌رسد");
+
+    /* حذف کاربر دوم باید UserCount را به ۱ برگرداند */
+    bool bool__deleted = func__Simple_DeleteUser(char__ptr_maxName);
+    func__T_Check(bool__deleted && (UINT8_T__G__UserCount == 1u),
+                  "حذف کاربر شمارندهٔ UserCount را به تعداد واقعی کاربران فعال کاهش می‌دهد");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -524,6 +554,7 @@ int main(void)
     func__T_TestWifiPowerSave();
     func__T_TestStm32TimeAndChartScheduling();
     func__T_TestDiagStatePersistenceAndClear();
+    func__T_TestAuthAdminProtection();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

@@ -2285,6 +2285,26 @@ function testWifiPowerSaveTab(win, doc) {
           Number(q146.value) === 20,
           'wdef() restores factory defaults 1800000 ms, 60000 ms, 120000 ms, and 20%');
     win.pundo();
+
+    /* pendRestore() must restore numeric parameter IDs from localStorage, and
+       draw(D) must not clobber pending checkbox states ib117 / db127. */
+    win.localStorage.setItem('changeover-pending-params-v1', JSON.stringify({ '25': 700, '117': 0, '127': 1 }));
+    win.pendRestore();
+    const ib117 = doc.getElementById('ib117');
+    const db127 = doc.getElementById('db127');
+    check(win.eval('PEND')[25] === 700 &&
+          win.eval('PEND')[117] === 0 &&
+          win.eval('PEND')[127] === 1 &&
+          ib117.checked === false &&
+          db127.checked === true,
+          'pendRestore() restores numeric parameter IDs and checkbox states from localStorage');
+    win.draw(win.D);
+    check(ib117.checked === false &&
+          db127.checked === true &&
+          doc.getElementById('a117').textContent === 'در صف' &&
+          doc.getElementById('a127').textContent === 'در صف',
+          'draw(D) preserves pending ib117 and db127 checkbox states until sent or undone');
+    win.pundo();
 }
 
 

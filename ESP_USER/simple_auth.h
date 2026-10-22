@@ -806,6 +806,12 @@ static bool func__Simple_AddUser(const char *char__ptr_name, const char *char__p
     if (strlen(char__ptr_name) == 0u || strlen(char__ptr_name) > SIMPLE_USER_NAME_MAX) return false;
     if (strlen(char__ptr_pass) == 0u || strlen(char__ptr_pass) > SIMPLE_USER_PASS_MAX) return false;
 
+    /* ادمین اصلی هرگز به کاربر ساده تنزل پیدا نکند */
+    if (strcmp(char__ptr_name, "admin") == 0)
+    {
+        uint8_t__role = 1u;
+    }
+
     /* اگر وجود دارد آپدیت کن */
     uint8_t uint8_t__i;
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
@@ -825,10 +831,15 @@ static bool func__Simple_AddUser(const char *char__ptr_name, const char *char__p
         if (!SIMPLE_USER_T__G__Users[uint8_t__i].active)
         {
             (void)strncpy(SIMPLE_USER_T__G__Users[uint8_t__i].name, char__ptr_name, SIMPLE_USER_NAME_MAX);
+            SIMPLE_USER_T__G__Users[uint8_t__i].name[SIMPLE_USER_NAME_MAX] = '\0';
             func__Simple_HashPass(char__ptr_pass, SIMPLE_USER_T__G__Users[uint8_t__i].passHash);
             SIMPLE_USER_T__G__Users[uint8_t__i].role = uint8_t__role;
             SIMPLE_USER_T__G__Users[uint8_t__i].active = true;
-            if (uint8_t__i >= UINT8_T__G__UserCount) UINT8_T__G__UserCount = (uint8_t)(uint8_t__i + 1u);
+            UINT8_T__G__UserCount = 0u;
+            for (uint8_t uint8_t__k = 0u; uint8_t__k < SIMPLE_USERS_MAX; uint8_t__k++)
+            {
+                if (SIMPLE_USER_T__G__Users[uint8_t__k].active) UINT8_T__G__UserCount++;
+            }
             func__Simple_AuthSave();
             return true;
         }
@@ -848,6 +859,11 @@ static bool func__Simple_DeleteUser(const char *char__ptr_name)
             strcmp(SIMPLE_USER_T__G__Users[uint8_t__i].name, char__ptr_name) == 0)
         {
             SIMPLE_USER_T__G__Users[uint8_t__i].active = false;
+            UINT8_T__G__UserCount = 0u;
+            for (uint8_t uint8_t__k = 0u; uint8_t__k < SIMPLE_USERS_MAX; uint8_t__k++)
+            {
+                if (SIMPLE_USER_T__G__Users[uint8_t__k].active) UINT8_T__G__UserCount++;
+            }
             func__Simple_AuthSave();
             return true;
         }

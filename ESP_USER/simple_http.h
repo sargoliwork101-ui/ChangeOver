@@ -7,7 +7,7 @@ static bool func__Simple_ParseInt(const char *char__ptr_text, int32_t *int32_t__
     bool bool__negative = (char__ptr_text[0] == '-');
     uint8_t uint8_t__index = bool__negative ? 1u : 0u;
     uint8_t uint8_t__digits = 0u;
-    int32_t int32_t__value = 0;
+    int64_t int64_t__value = 0;
     while (char__ptr_text[uint8_t__index] != '\0')
     {
         char char__digit = char__ptr_text[uint8_t__index];
@@ -15,12 +15,21 @@ static bool func__Simple_ParseInt(const char *char__ptr_text, int32_t *int32_t__
         {
             return false;
         }
-        int32_t__value = int32_t__value * 10 + (int32_t)(char__digit - '0');
+        int64_t__value = int64_t__value * 10 + (int64_t)(char__digit - '0');
         uint8_t__digits++;
         uint8_t__index++;
     }
     if (uint8_t__digits == 0u) return false;
-    *int32_t__ptr_value = bool__negative ? -int32_t__value : int32_t__value;
+    if (bool__negative)
+    {
+        if (int64_t__value > 2147483648LL) return false;
+        *int32_t__ptr_value = (int32_t)(-int64_t__value);
+    }
+    else
+    {
+        if (int64_t__value > 2147483647LL) return false;
+        *int32_t__ptr_value = (int32_t)int64_t__value;
+    }
     return true;
 }
 
