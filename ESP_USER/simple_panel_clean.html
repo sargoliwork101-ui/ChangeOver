@@ -1727,11 +1727,11 @@ async function clearHistory(type){
   if(j.ok){
    if(msgEl) msgEl.textContent='تاریخچه '+type+' پاک شد';
    if(type==='charge' || type==='all'){
-    window._lastChargeHistory=[]; chartData.chargeHistory=[]; 
+    window._lastChargeHistory=[];
     drawChargeHistory([], chartRanges.charge); renderChargeHistoryList([]);
    }
    if(type==='charts' || type==='all'){
-    chartData.vin=[]; chartData.vpack=[]; chartDataPct.pct=[]; chartDataPct.time=[];
+    chartDataPct.pct=[]; chartDataPct.time=[];
     chartDataVolt.vin=[]; chartDataVolt.vpack=[]; chartDataVolt.time=[];
     drawChart('cPct', [], '#ffb84d', 0, 100, [], '1d');
     drawVoltChart('cVolt', [], [], [], '1d');
@@ -1780,7 +1780,7 @@ async function latchReset(n){
   if(m)m.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک را ببین';
  }catch(e){ if(m)m.textContent='⚠ '+(e&&e.message?e.message:'خطای شبکه'); }
 }
-async function loadUsers(){ try{ let r=await fetch('/users',{cache:'no-store'}); let j=await r.json(); let div=document.getElementById('usersList'); let cnt=document.getElementById('usersCount'); if(cnt) cnt.textContent=(j.users?j.users.length:0)+' کاربر'; if(div){ if(!j.users||j.users.length==0) div.textContent='کاربری ثبت نشده'; else { let html=''; for(let u of j.users){ html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><span>'+u.user+' <span class=badge '+(u.role==1?'admin':'viewer')+'>'+(u.role==1?'ادمین':'ساده')+'</span></span><span style="font-size:10px;color:var(--mu)">'+(u.lastLogin?fmtTime(u.lastLogin):'--')+'</span></div>'; } div.innerHTML=html; } } }catch(e){} }
+async function loadUsers(){ try{ let r=await fetch('/users',{cache:'no-store'}); let j=await r.json(); let div=document.getElementById('usersList'); let cnt=document.getElementById('usersCount'); if(cnt) cnt.textContent=(j.users?j.users.length:0)+' کاربر'; if(div){ if(!j.users||j.users.length==0) div.textContent='کاربری ثبت نشده'; else { let html=''; for(let u of j.users){ html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><span>'+(u.name||u.user)+' <span class=badge '+(u.role==1?'admin':'viewer')+'>'+(u.role==1?'ادمین':'ساده')+'</span></span><span style="font-size:10px;color:var(--mu)">'+(u.lastLogin?fmtTime(u.lastLogin):'--')+'</span></div>'; } div.innerHTML=html; } } }catch(e){} }
 async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
 async function loadWifi(){ try{ let r=await fetch('/wifi',{cache:'no-store'}); let j=await r.json(); let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--'; }catch(e){} }
 async function syncTime(){ 

@@ -380,6 +380,8 @@ int main(void)
     {
         int32_t v = 0;
         check(func__Esp_ParseInt("650", &v) && v == 650, "a plain number parses");
+        check(func__Esp_ParseInt("36000000", &v) && v == 36000000, "10-hour scenario 5 limit (36000000 ms) parses");
+        check(func__Esp_ParseInt("86400000", &v) && v == 86400000, "24-hour scenario 6 limit (86400000 ms) parses");
         check(func__Esp_ParseInt("-40", &v) && v == -40, "a negative number parses");
         check(func__Esp_ParseInt("0", &v) && v == 0, "zero parses");
         check(!func__Esp_ParseInt("", &v), "an empty string is refused");

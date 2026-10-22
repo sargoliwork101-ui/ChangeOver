@@ -44,15 +44,25 @@ SimWiFi WiFi;
 SimEsp ESP;
 SimLittleFS LittleFS;
 
-/* فایل‌سیستم اینجا لازم نیست (setup صدا زده نمی‌شود) ولی نمادهایش باید
-   تعریف شوند تا لینک کامل شود. */
+/* فایل‌سیستم تست در /tmp نگه داشته می‌شود تا مسیر ذخیره و بازیابی هم بررسی شود. */
+static std::string func__T_FsPath(const char *char__ptr_path)
+{
+    const char *char__ptr_name = (char__ptr_path[0] == '/') ? (char__ptr_path + 1) : char__ptr_path;
+    return std::string("/tmp/changeover_simple_test_") + std::string(char__ptr_name);
+}
 bool SimLittleFS::begin(bool bool__formatOnFail) { (void)bool__formatOnFail; return true; }
 File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
 {
-    return File(std::string(char__ptr_path), char__ptr_mode);
+    return File(func__T_FsPath(char__ptr_path), char__ptr_mode);
 }
-bool SimLittleFS::remove(const char *char__ptr_path) { (void)char__ptr_path; return false; }
-bool SimLittleFS::exists(const char *char__ptr_path) { (void)char__ptr_path; return false; }
+bool SimLittleFS::remove(const char *char__ptr_path)
+{
+    return (::unlink(func__T_FsPath(char__ptr_path).c_str()) == 0);
+}
+bool SimLittleFS::exists(const char *char__ptr_path)
+{
+    return (::access(func__T_FsPath(char__ptr_path).c_str(), F_OK) == 0);
+}
 
 /* ==================== شمارندهٔ بررسی‌ها ==================== */
 static uint32_t UINT32_T__G__Checks = 0u;
@@ -461,6 +471,48 @@ static void func__T_TestStm32TimeAndChartScheduling(void)
                   "نقطهٔ بعدی نمودارها بر اساس ثانیهٔ واقعی میکرو (حتی پس از ریست millis) ثبت شد");
 }
 
+/* ==================== ۷) ذخیرهٔ وضعیت کانال‌ها در خطا و پاک‌سازی تاریخچه ==================== */
+static void func__T_TestDiagStatePersistenceAndClear(void)
+{
+    (void)printf("\n== ذخیرهٔ وضعیت کانال‌ها در خطا و پاک‌سازی تاریخچه ==\n");
+
+    BOOL__G__FsOk = LittleFS.begin();
+    UINT8_T__G__DiagErrorCount = 0u;
+    UINT32_T__G__LastLocalFaultMask = 0u;
+    UINT32_T__G__TlmField[6] = 1u;
+    UINT32_T__G__TlmField[13] = 10u;
+    UINT32_T__G__TlmField[19] = 0x40u;
+
+    func__Simple_LocalRecordFault(0x40u, 24000u, 25000u, 12500u, 12500u);
+    UINT32_T__G__LastLocalFaultMask = 0x40u;
+    func__T_Check((UINT8_T__G__DiagErrorCount == 1u) &&
+                  (SIMPLE_DIAG_ERROR_T__G__Errors[0].state1 == 1u) &&
+                  (SIMPLE_DIAG_ERROR_T__G__Errors[0].state2 == 10u),
+                  "ثبت محلی خطا وضعیت کانال ۱ و ۲ (s1 و s2) را از تله‌متری ذخیره می‌کند");
+
+    func__Simple_DiagSave();
+    SIMPLE_DIAG_ERROR_T__G__Errors[0].state1 = 0u;
+    SIMPLE_DIAG_ERROR_T__G__Errors[0].state2 = 0u;
+    UINT8_T__G__DiagErrorCount = 0u;
+    func__Simple_DiagLoad();
+    func__T_Check((UINT8_T__G__DiagErrorCount == 1u) &&
+                  (SIMPLE_DIAG_ERROR_T__G__Errors[0].state1 == 1u) &&
+                  (SIMPLE_DIAG_ERROR_T__G__Errors[0].state2 == 10u),
+                  "فایل /diag.json وضعیت کانال ۱ و ۲ را پس از بارگذاری حفظ می‌کند");
+
+    BOOL__G__DiagDirty = true;
+    BOOL__G__ChartsDirty = true;
+    func__Simple_DiagClear();
+    func__Simple_ChartsClear();
+    func__T_Check((BOOL__G__DiagDirty == false) && (BOOL__G__ChartsDirty == false),
+                  "پاک‌سازی تاریخچه پرچم‌های Dirty را صفر می‌کند");
+
+    /* همان خطای فعال قبلی نباید در تیک بعدی دوباره وارد تاریخچه شود */
+    func__Simple_LocalRecordFault(0x40u, 24000u, 25000u, 12500u, 12500u);
+    func__T_Check(UINT8_T__G__DiagErrorCount == 0u,
+                  "خطای فعالِ فعلی بلافاصله بعد از پاک کردن تاریخچه دوباره ثبت نمی‌شود");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -471,6 +523,7 @@ int main(void)
     func__T_TestEchoAndNak();
     func__T_TestWifiPowerSave();
     func__T_TestStm32TimeAndChartScheduling();
+    func__T_TestDiagStatePersistenceAndClear();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

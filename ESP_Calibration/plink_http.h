@@ -4,12 +4,12 @@
 /* ==================== HTTP Handlers ==================== */
 
 /**
- * @brief  [EN] Strict decimal parse of an HTTP argument: optional '-', 1..7 digits, nothing else.
+ * @brief  [EN] Strict decimal parse of an HTTP argument: optional '-', 1..9 digits, nothing else.
  *              (String::toInt() returns 0 for garbage, which would silently target ID 0 / value 0.)
- *         [FA] تبدیل سخت‌گیرانهٔ آرگومان HTTP به عدد: '-' اختیاری و ۱ تا ۷ رقم، بدون هیچ چیز دیگر.
+ *         [FA] تبدیل سخت‌گیرانهٔ آرگومان HTTP به عدد: '-' اختیاری و ۱ تا ۹ رقم، بدون هیچ چیز دیگر.
  *              (toInt() برای ورودی خراب صفر می‌دهد و بی‌صدا شناسه/مقدار صفر را هدف می‌گیرد.)
  * @param  char__ptr_text      [EN] NUL-terminated text / [FA]‎ متن پایان‌یافته با NUL
- * @param  int32_t__ptr_value  [EN] Output, -9999999..9999999 / [FA]‎ خروجی، -۹۹۹۹۹۹۹ تا ۹۹۹۹۹۹۹
+ * @param  int32_t__ptr_value  [EN] Output, -999999999..999999999 / [FA]‎ خروجی، -۹۹۹۹۹۹۹۹۹ تا ۹۹۹۹۹۹۹۹۹
  * @return [EN] true when the text is a valid integer / [FA] true‎ اگر متن عدد صحیح معتبر باشد
  */
 static bool func__Esp_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr_value)
@@ -22,7 +22,7 @@ static bool func__Esp_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr
     while (char__ptr_text[uint8_t__index] != '\0')
     {
         char char__digit = char__ptr_text[uint8_t__index];
-        if ((char__digit < '0') || (char__digit > '9') || (uint8_t__digits >= 7u))
+        if ((char__digit < '0') || (char__digit > '9') || (uint8_t__digits >= 9u))
         {
             return false;
         }

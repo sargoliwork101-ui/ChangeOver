@@ -284,8 +284,8 @@ static void func__Simple_LocalRecordFault(uint32_t uint32_t__faultMask, uint32_t
     SIMPLE_DIAG_ERROR_T__G__Errors[0].vPack = uint32_t__vpack;
     SIMPLE_DIAG_ERROR_T__G__Errors[0].vLow = uint32_t__vLow;
     SIMPLE_DIAG_ERROR_T__G__Errors[0].vHigh = uint32_t__vHigh;
-    SIMPLE_DIAG_ERROR_T__G__Errors[0].state1 = 0u;
-    SIMPLE_DIAG_ERROR_T__G__Errors[0].state2 = 0u;
+    SIMPLE_DIAG_ERROR_T__G__Errors[0].state1 = UINT32_T__G__TlmField[6];
+    SIMPLE_DIAG_ERROR_T__G__Errors[0].state2 = UINT32_T__G__TlmField[13];
     if (UINT8_T__G__DiagErrorCount < SIMPLE_DIAG_MAX_ERRORS) UINT8_T__G__DiagErrorCount++;
     BOOL__G__DiagDirty = true;
     BOOL__G__DiagValid = true;
@@ -804,6 +804,10 @@ static void func__Simple_DiagSave(void)
         file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vLow);
         file__f.print(",\"vh\":");
         file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vHigh);
+        file__f.print(",\"s1\":");
+        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state1);
+        file__f.print(",\"s2\":");
+        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state2);
         file__f.print("}");
     }
     file__f.print("],\"pwr\":[");
@@ -869,8 +873,28 @@ static void func__Simple_DiagLoad(void)
                 int32_t int32_t__vh = string__errArr.indexOf("\"vh\":", int32_t__vlEnd);
                 if (int32_t__vh < 0) break;
                 int32_t__vh += 5;
-                int32_t int32_t__vhEnd = string__errArr.indexOf("}", int32_t__vh);
-                if (int32_t__vhEnd < 0) break;
+                int32_t int32_t__objEnd = string__errArr.indexOf("}", int32_t__vh);
+                if (int32_t__objEnd < 0) break;
+                int32_t int32_t__vhComma = string__errArr.indexOf(",", int32_t__vh);
+                int32_t int32_t__vhEnd = ((int32_t__vhComma >= 0) && (int32_t__vhComma < int32_t__objEnd)) ? int32_t__vhComma : int32_t__objEnd;
+                uint32_t uint32_t__s1 = 0u;
+                uint32_t uint32_t__s2 = 0u;
+                int32_t int32_t__s1 = string__errArr.indexOf("\"s1\":", int32_t__vhEnd);
+                if ((int32_t__s1 >= 0) && (int32_t__s1 < int32_t__objEnd))
+                {
+                    int32_t__s1 += 5;
+                    int32_t int32_t__s1Comma = string__errArr.indexOf(",", int32_t__s1);
+                    int32_t int32_t__s1End = ((int32_t__s1Comma >= 0) && (int32_t__s1Comma < int32_t__objEnd)) ? int32_t__s1Comma : int32_t__objEnd;
+                    uint32_t__s1 = (uint32_t)string__errArr.substring(int32_t__s1, int32_t__s1End).toInt();
+                }
+                int32_t int32_t__s2 = string__errArr.indexOf("\"s2\":", int32_t__vhEnd);
+                if ((int32_t__s2 >= 0) && (int32_t__s2 < int32_t__objEnd))
+                {
+                    int32_t__s2 += 5;
+                    int32_t int32_t__s2Comma = string__errArr.indexOf(",", int32_t__s2);
+                    int32_t int32_t__s2End = ((int32_t__s2Comma >= 0) && (int32_t__s2Comma < int32_t__objEnd)) ? int32_t__s2Comma : int32_t__objEnd;
+                    uint32_t__s2 = (uint32_t)string__errArr.substring(int32_t__s2, int32_t__s2End).toInt();
+                }
 
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].timestamp = (uint32_t)string__errArr.substring(int32_t__ts, int32_t__tsEnd).toInt();
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].faultMask = (uint32_t)string__errArr.substring(int32_t__fm, int32_t__fmEnd).toInt();
@@ -878,10 +902,10 @@ static void func__Simple_DiagLoad(void)
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].vPack = (uint32_t)string__errArr.substring(int32_t__vp, int32_t__vpEnd).toInt();
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].vLow = (uint32_t)string__errArr.substring(int32_t__vl, int32_t__vlEnd).toInt();
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].vHigh = (uint32_t)string__errArr.substring(int32_t__vh, int32_t__vhEnd).toInt();
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].state1 = 0u;
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].state2 = 0u;
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].state1 = uint32_t__s1;
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].state2 = uint32_t__s2;
                 uint8_t__cnt++;
-                int32_t__pos = int32_t__vhEnd + 1;
+                int32_t__pos = int32_t__objEnd + 1;
             }
             if (uint8_t__cnt > 0)
             {
@@ -939,6 +963,7 @@ static void func__Simple_ChargeHistoryClear(void)
     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
     UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
     BOOL__G__ChargeCountBaselineReady = BOOL__G__DiagValid;
+    BOOL__G__ChargeHistDirty = false;
     if (BOOL__G__FsOk)
     {
         LittleFS.remove(SIMPLE_CHARGE_HISTORY_FILE);
@@ -959,6 +984,7 @@ static void func__Simple_ChartsClear(void)
     UINT8_T__G__Chart3M_Count = 0u; UINT8_T__G__Chart3M_Index = 0u;
     UINT32_T__G__Last1D_Ms = 0u; UINT32_T__G__Last7D_Ms = 0u; UINT32_T__G__Last1M_Ms = 0u; UINT32_T__G__Last3M_Ms = 0u;
     UINT32_T__G__LastChartSaveSec = 0u;
+    BOOL__G__ChartsDirty = false;
     if (BOOL__G__FsOk)
     {
         LittleFS.remove(SIMPLE_CHARTS_FILE);
@@ -969,10 +995,11 @@ static void func__Simple_DiagClear(void)
 {
     UINT8_T__G__DiagErrorCount = 0u;
     UINT8_T__G__PowerEventCount = 0u;
-    UINT32_T__G__LastLocalFaultMask = 0u;
+    UINT32_T__G__LastLocalFaultMask = UINT32_T__G__TlmField[19];
     BOOL__G__LastLocalInputValid = false;
     BOOL__G__LocalPowerOffActive = false;
     BOOL__G__DiagClearPending = true;
+    BOOL__G__DiagDirty = false;
     if (BOOL__G__FsOk)
     {
         LittleFS.remove(SIMPLE_DIAG_FILE);
