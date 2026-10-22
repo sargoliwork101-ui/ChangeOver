@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 89973af</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2623013</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1337,7 +1337,8 @@ function stickfit(){
  r.setProperty('--t-nav',H+'px');
  r.setProperty('--t-sub',(H+N+6)+'px');
  r.setProperty('--t-sub2',(H+N+S+10)+'px');}
-addEventListener('resize',stickfit);addEventListener('load',stickfit);
+function panelResize(){stickfit();if(D&&TAB==0||D&&TAB==2&&STAB==0)qgraph();}
+addEventListener('resize',panelResize);addEventListener('load',panelResize);
 let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));stickfit();panelViewSave();if(D)draw(D);});
 /* v1.15b: زیرتب داخل تنظیمات — v1.42 (دستور کاربر: پشتیبان‌گیری آخرین زیرتب): ۰=شارژ و PID، ۱=سناریوها، ۲=نظارت و ایمنی، ۳=کالیبراسیون و فیلتر جریان، ۴=پشتیبان‌گیری */
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
@@ -1709,22 +1710,13 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     درخواستِ هنوز-اعمال‌نشده با خط‌چین دیده می‌شود. */
  const lo=Math.max(7600,Math.min(q.r.v,12000)-500),hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
- /* [EN] v1.36 (user order: chart texts are FAR too big on some browsers):
-    the SVG stretches with the page width, and SVG scales font-size along
-    with everything else - on a wide browser window an 8px label renders
-    at ~15px. Therefore the on-screen font size is DYNAMIC: measure the
-    real mount width and shrink every size by W/width so it renders close
-    to the designed pixel size on every browser. Shrink-only (never grow),
-    floor 6.5 so an ultra-wide window cannot make it unreadable.
-    [FA] v1.36 (دستور کاربر: نوشته‌های نمودار روی بعضی مرورگرها خیلی درشت
-    است): چون SVG خودش را با پهنای صفحه می‌کشد، فونت هم با آن بزرگ می‌شود؛
-    پس اندازهٔ فونت داینامیک شد: با پهنای واقعی محل نصب سنجیده و هر
-    اندازه در ‎W/width‎ ضرب می‌شود تا روی صفحه نزدیک همان پیکسلِ طراحی بماند.
-    فقط کوچک‌کننده (هرگز بزرگ نمی‌کند) و کف ۶٫۵ تا روی صفحهٔ خیلی عریض
-    ناخوانا نشود. */
- const RWM=(MG.length&&MG[0].clientWidth)?MG[0].clientWidth:0;
- const FKF=RWM>W?W/RWM:1;
- const F=fs=>Math.max(6.5,+(fs*FKF).toFixed(2));
+ /* [EN] Responsive SVG: preserve the plot's natural aspect ratio while fitting
+    the actual mount width. Counter-scale labels for narrow and wide screens.
+    [FA] نمودار واکنش‌گراست: نسبت اصلی حفظ می‌شود و در عرض محل نصب جا می‌گیرد.
+    اندازهٔ نوشته‌ها متناسب می‌شود تا در صفحهٔ باریک و عریض خوانا بمانند. */
+ const RWM=(MG.length&&MG[0].clientWidth)?MG[0].clientWidth:W;
+ const FKF=RWM>0?W/RWM:1;
+ const F=fs=>+(fs*FKF).toFixed(2);
  const IMAX=Math.max(200,Math.round(Math.max((im.v||650)*1.25,(evp(35).v||0)*1.05)/50)*50);
  const Y=mv=>Math.round(H-24-(H-46)*(mv-lo)/(hi-lo));
  const X=ma=>Math.round(X0+(X1-X0)*Math.min(Math.max(ma,0),IMAX)/IMAX);
@@ -1769,7 +1761,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
   return A.map(o=>{const yc=Math.min(Math.max(o.y,14),H-10),y=Math.max(last+LBL_GAP,yc),sh=y-yc>3;last=y;
    return (sh?`<line x1="${x}" y1="${yc+3}" x2="${x}" y2="${y-3}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
    `<text ${o.i!=null?evat(o.i):''} x="${x}" y="${y}" text-anchor="${anchor}" font-size="${F(fs)}" font-weight="700" fill="${o.i!=null&&evcl(o.i)?'#f7c13c':o.c}">${o.txt}${o.val?' '+o.val:''}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
- let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
+ let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;max-width:100%;height:auto;font-family:inherit">`;
  s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(99,162,255,.08)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(99,162,255,.22)" stroke-width="1"/></pattern></defs>`;
  s+=`<rect x="${X0}" y="12" width="${X1-X0}" height="${H-34}" fill="#080b12" stroke="#38455e" rx="6"/>`;
  /* شبکهٔ ولتاژ (افقی) */
