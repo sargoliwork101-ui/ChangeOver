@@ -47,15 +47,15 @@ Changeover **فقط** از سیگنال منطقی `BSP_GPIO_PROTECT_BATTERY` (P
 
 | پایه منطقی | پایه فیزیکی | لیبل | نقش | HIGH یعنی (شماتیک) |
 |---|---|---|---|---|
-| `BSP_GPIO_PROTECT_BATTERY` | PB11 | `MCU_LOW_BAT` / `MCU_PROTECT_BATT` | قطع مسیر باتری Q17 | High امن و مسیر غیرفعال (فعال Low) |
+| `BSP_GPIO_PROTECT_BATTERY` | PB11 | `MCU_LOW_BAT` / `MCU_PROTECT_BATT` | قطع مسیر باتری Q17 | High = Q17 روشن و مسیر قطع (امن)؛ Low = مسیر باتری وصل (فعال-بالا) |
 | `BSP_GPIO_BATTERY_SWITCH` (PB5) | PB5 | `MCU_BAT_SWITCH` | — | **ممنوع: تغییر نمی‌کند** |
 | `BSP_GPIO_RELAY` (PB7) | PB7 | `MCU_PROTECT_CHARGER` | — | **ممنوع: تغییر نمی‌کند** |
 
-قطبیت از شماتیک است، روی برد اندازه نشده.
+قطبیت از شماتیک است، روی برد اندازه نشده. مسیر شماتیک: PB11 → R45 → بیس Q17؛ High یعنی Q17 روشن، `GATE_ON_OFF` به زمین کشیده می‌شود، Q12 خاموش می‌ماند و گیت Q15/Q16 بالا می‌ماند؛ پس زوج سری بسته است و باتری به OUT نمی‌رسد. با Low، Q17 خاموش و `GATE_ON_OFF` آزاد می‌شود؛ فقط اگر ورودی هم قطع باشد (Q11 خاموش) خط بالا می‌آید و باتری روی خروجی می‌نشیند.
 
 ## پیش‌فرض امن
 
-- بعد از `func__Changeover_Init`، `state=BOOT` و `PB11` منطقی `false` (Safe High فیزیکی)؛ `BSP` در `func__BspGpio_Init` قبلاً Safe High را اعمال کرده است.
+- بوت: `func__BspGpio_Init` و `main.c` پایه را فیزیکی High می‌گذارند که همان قطع امن است. سپس `func__Changeover_Init` یک‌بار خط را روی «وصل» می‌راند تا مسیر باتری بسته شود (ممیزی قطبیت ۲۰۲۶-۱۰-۲۲) و `state=BOOT` می‌ماند.
 - اگر `snapshot==NULL` یا `!valid` → `state` و `PB11` حفظ، تایمرهای pending reset، حتی `fault!=0` هم `FAULT` نمی‌شود و زمان نامعتبر جزو 3000ms حساب نمی‌شود.
 - فقط وقتی `snapshot` معتبر است و `fault!=0` → `state=FAULT` بدون تغییر هیچ pin (تایمرها reset).
 - زمان‌گیری فقط با `osKernelGetTickCount()` و `func__Rtos_MillisecondsToTicks(CHANGEOVER_DURATION_MS)` و بدون فرض `tick=1ms`؛ `MillisecondsToTicks` نرخ تیک را از `osKernelGetTickFreq()` می‌گیرد.
@@ -73,9 +73,9 @@ rtos_app.c → TaskControl → task_control.c
   state = func__Changeover_Evaluate(&snap, faults);
     ├── snap==NULL || !valid → preserve state/PB11, reset timers, fault هم FAULT نمی‌شود (invalid not counted)
     ├── else if fault!=0 → state=FAULT, no pin change
-    ├── else if v<20800 for 3000ms → BSP_GPIO_PROTECT_BATTERY = true (Low active, cut) → SAFE
+    ├── else if v<20800 for 3000ms → BSP_GPIO_PROTECT_BATTERY = true (High physical, cut) → SAFE
     ├── else if v<21000 && قفل داخلی باتری کم (21000/21200) for 3000ms → cut → SAFE
-    ├── else if input==true && v>=21200 for 3000ms → BSP_GPIO_PROTECT_BATTERY = false (High safe, reconnect) → INPUT
+    ├── else if input==true && v>=21200 for 3000ms → BSP_GPIO_PROTECT_BATTERY = false (Low physical, connect) → INPUT
     └── else valid without cut → INPUT (input true) یا BATTERY (input false)
 ```
 

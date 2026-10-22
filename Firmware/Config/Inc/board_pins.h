@@ -38,10 +38,28 @@
 #define PIN_PROTECT_BATT_PORT   GPIOB
 #define PIN_PROTECT_BATT_PIN    GPIO_PIN_11     /* PB11 MCU_LOW_BAT / MCU_PROTECT_BATT */
 
-/* [EN] Logical output polarity is board data, not module data. BAT_SWITCH and
- *      PROTECT_BATT are active-low on the confirmed schematic.
- * [FA] قطبیت خروجی منطقی دادهٔ برد است، نه دادهٔ ماژول. BAT_SWITCH و
- *      PROTECT_BATT در شماتیک تأییدشده ‎active-low‎ هستند. */
+/* [EN] Logical output polarity is board data, not module data.
+ *      BAT_SWITCH (logical meaning: "battery switch closed") is ACTIVE LOW:
+ *      PB5 High -> Q1 on -> Q2 on -> Q3 gate to 24 V -> IRF4905 off -> cut.
+ *      PROTECT_BATT (logical meaning: "battery protect asserted / path cut")
+ *      is ACTIVE HIGH: PB11 High -> Q17 on -> GATE_ON_OFF pulled low -> Q12
+ *      off -> Q15 gate high -> series Q15/Q16 off -> battery never reaches OUT.
+ *      Audit 2026-10-22 (user symptom: with the mains gone the battery never
+ *      reached the output): PROTECT_BATT was declared active-low here while the
+ *      schematic cuts with a physical High, so every logical "connect" was a
+ *      real cut and PB11 stayed High from boot. Module logic and every
+ *      threshold are unchanged; only this board datum was wrong.
+ * [FA] قطبیت خروجی منطقی دادهٔ برد است، نه دادهٔ ماژول.
+ *      ‎BAT_SWITCH‎ که معنای منطقی‌اش «کلید باتری بسته» است فعال-پایین است.
+ *      ‎PROTECT_BATT‎ که معنای منطقی‌اش «حفاظت باتری فعال / مسیر قطع» است
+ *      فعال-بالا است: سطح بالا ‎Q17‎ را روشن می‌کند، با کشیدن
+ *      ‎GATE_ON_OFF‎ به زمین جفت ‎Q15/Q16‎ را می‌بندد و باتری هرگز به
+ *      خروجی نمی‌رسد.
+ *      ممیزی ۲۰۲۶-۱۰-۲۲ (شکایت کاربر: با قطع ورودی باتری به خروجی نمی‌رود):
+ *      این ثابت فعال-پایین اعلام شده بود در حالی که شماتیک با سطح بالا قطع
+ *      می‌کند؛ پس هر «وصل» منطقی یک قطع واقعی بود و ‎PB11‎ هم از بوت بالا
+ *      می‌ماند. منطق ماژول و همهٔ آستانه‌ها دست‌نخورده‌اند و فقط این دادهٔ برد
+ *      غلط بود. */
 #define PIN_BUZZER_ACTIVE_HIGH       1u
 #define PIN_ESP_CHPD_ACTIVE_HIGH     1u
 #define PIN_LED_R_ACTIVE_HIGH        1u
@@ -49,7 +67,7 @@
 #define PIN_LED_G_ACTIVE_HIGH        1u
 #define PIN_BAT_SWITCH_ACTIVE_HIGH   0u
 #define PIN_RELAY_ACTIVE_HIGH        1u
-#define PIN_PROTECT_BATT_ACTIVE_HIGH 0u
+#define PIN_PROTECT_BATT_ACTIVE_HIGH 1u
 
 /* ==================== Digital inputs / ورودی‌های دیجیتال ==================== */
 /* [EN] Schematic LM393 outputs are open-collector active-low: high is the
@@ -86,11 +104,14 @@
 /* ==================== Safe startup levels / سطوح امن شروع ==================== */
 /* [EN] Active-high loads are kept low; PB5 (MCU battery path Q1, active-low)
  *      is kept low to keep the MCU supplied from the battery at boot.
- *      PB11 (Changeover Q17, active-low) is kept high (safe disconnected)
- *      and remains independent from PB5.
+ *      PB11 (Changeover Q17, active-high) is kept high at boot: that is the
+ *      disconnected safe state, and Changeover closes the battery path on
+ *      its first valid evaluation. PB11 stays independent from PB5.
  * [FA] بارهای ‎active-high‎ پایین نگه داشته می‌شوند؛ PB5 (مسیر باتری MCU با Q1،
  *      ‎active-low)‎ پایین نگه داشته می‌شود تا تغذیهٔ MCU از باتری در boot وصل بماند.
- *      PB11 (Changeover Q17، ‎active-low)‎ بالا و در وضعیت امن و مستقل از PB5 می‌ماند. */
+ *      ‎PB11‎ (‎Q17‎ چنج‌اور، ‎active-high‎) در بوت بالا می‌ماند که همان حالت
+ *      امن و قطع‌شده است؛ چنج‌اور در اولین ارزیابی معتبر مسیر باتری را وصل می‌کند.
+ *      ‎PB11‎ مستقل از ‎PB5‎ می‌ماند. */
 #define PIN_SAFE_BUZZER_HIGH        0u
 #define PIN_SAFE_ESP_CHPD_HIGH      0u
 #define PIN_SAFE_LED_R_HIGH         0u

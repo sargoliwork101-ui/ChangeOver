@@ -86,8 +86,12 @@ static bool BOOL__G__InputStableActive = false;
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
 /**
- * @brief  [EN] Start in BOOT, timers inactive, protect deasserted (safe).
- *         [FA] از حالت BOOT شروع می‌کند.
+ * @brief  [EN] Start in BOOT, timers inactive, then deassert the battery
+ *              protect line once so the battery path is connected from the
+ *              first control pass (2026-10-22: deasserted = physical Low now).
+ *         [FA] از حالت BOOT شروع می‌کند، تایمرها خاموش‌اند و سپس خط حفاظت
+ *              باتری یک‌بار غیرفعال می‌شود تا مسیر باتری از همان اولین پاس
+ *              کنترل بسته باشد.
  */
 void func__Changeover_Init(void)
 {
@@ -100,6 +104,20 @@ void func__Changeover_Init(void)
     BOOL__G__LowBatteryLatched = false;
     UINT32_T__G__InputStableSinceTick = 0u;
     BOOL__G__InputStableActive = false;
+
+    /* [EN] Drive the protect line once to the deasserted level, which means the
+          battery path is CLOSED. Since the 2026-10-22 polarity audit the
+          deasserted level is a physical Low (Q17 off, GATE_ON_OFF released,
+          series Q15/Q16 on), so a healthy pack reaches the output as soon as
+          the mains is gone. Without this write the pin kept its safe boot level
+          (physical High = cut) until the first cut/reconnect edge - exactly the
+          reported symptom "the battery never runs the output".
+       [FA] خط حفاظت یک‌بار روی سطح غیرفعال رانده می‌شود، یعنی مسیر باتری بسته
+          است. از ممیزی قطبیت ۲۰۲۶-۱۰-۲۲ سطح غیرفعال، سطح فیزیکی پایین است،
+          پس بستهٔ سالم به‌محض قطع ورودی روی خروجی می‌نشیند. بدون این نوشتن،
+          پایه سطح امن بوت را که همان قطع است تا اولین گذر قطع/وصل نگه می‌داشت
+          و همان ایراد گزارش‌شده باقی می‌ماند. */
+    func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
 }
 
 /* ==================== Changeover_Evaluate / ارزیابی ==================== */

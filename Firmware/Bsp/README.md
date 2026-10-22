@@ -77,7 +77,7 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 | `BSP_GPIO_LED_GREEN` | PB10 | خروجی | active-high، Low |
 | `BSP_GPIO_BATTERY_SWITCH` | PB5 | خروجی | active-low، High |
 | `BSP_GPIO_RELAY` | PB7 | خروجی | active-high، Low |
-| `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-low، High |
+| `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-high، High = قطع (امن)، Low = وصل |
 | `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | ورودی + EXTI | تشخیص منطقی سطح High |
 | `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | خروجی LM393 active-low (‎`PIN_JITTER1_ACTIVE_HIGH 0u`‎)، فقط falling معتبر است |
 | `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | خروجی LM393 active-low (‎`PIN_JITTER2_ACTIVE_HIGH 0u`‎)، فقط falling معتبر است |

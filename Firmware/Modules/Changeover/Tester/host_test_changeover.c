@@ -123,8 +123,6 @@ static app_state_t func__Step(uint32_t uint32_t__advanceMs, fault_mask_t fault_m
 static void func__Reset(uint32_t uint32_t__startTick)
 {
     UINT32_T__G__FakeTick       = uint32_t__startTick;
-    BOOL__G__ProtectLine        = false;
-    UINT32_T__G__ProtectWrites  = 0u;
     BOOL__G__ImbalanceBlocks    = false;
     BOOL__G__DeadBlocks         = false;
 
@@ -138,7 +136,15 @@ static void func__Reset(uint32_t uint32_t__startTick)
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid         = true;
 
+    /* [EN] Init now drives the protect line once to "connected" (2026-10-22).
+       That single boot write has its own test, so the counters restart after
+       it and each scenario keeps counting only its own decision edges.
+       [FA] Init حالا خط حفاظت را یک‌بار روی «وصل» می‌راند. همان نوشتن بوت تست
+       جداگانه دارد، پس شمارنده‌ها بعد از آن صفر می‌شوند و هر سناریو فقط
+       گذرهای تصمیم خودش را می‌شمارد. */
     func__Changeover_Init();
+    BOOL__G__ProtectLine       = false;
+    UINT32_T__G__ProtectWrites = 0u;
 }
 
 /**
@@ -396,6 +402,27 @@ int main(void)
     func__Reset(600000u);
     app_state_t__state = func__Step(10u, FAULT_NONE);
     CHECK(app_state_t__state == APP_STATE_INPUT);
+
+    /* ---- 11. the reported field symptom: mains gone, healthy pack ---- */
+    /* [EN] A healthy pack with the mains absent must leave the protect line
+     *      DEASSERTED, i.e. the battery path closed and feeding the output.
+     *      Init drives that level once (2026-10-22 polarity audit); afterwards
+     *      three seconds of passes must neither assert the line nor re-drive it.
+     * [FA] بستهٔ سالم با ورودی قطع باید خط حفاظت را غیرفعال بگذارد، یعنی مسیر
+     *      باتری بسته و روی خروجی باشد. Init این سطح را یک‌بار می‌نویسد و بعد از
+     *      آن سه ثانیه پاس نه خط را فعال می‌کند و نه دوباره می‌نویسد. */
+    func__Reset(700000u);
+    func__Changeover_Init();
+    CHECK(UINT32_T__G__ProtectWrites == 1u);
+    CHECK(BOOL__G__ProtectLine == false);
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    for (uint32_t__i = 0u; uint32_t__i < 300u; uint32_t__i++)
+    {
+        (void)func__Step(10u, FAULT_NONE);
+    }
+    CHECK(BOOL__G__ProtectLine == false);
+    CHECK(UINT32_T__G__ProtectWrites == 1u);
 
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;

@@ -14,7 +14,11 @@
  *      fact taken from the schematic, not a restatement of the macro:
  *        - JITTER1 / JITTER2: LM393 open-collector -> asserted = LOW
  *        - INPUT_24V_PRESENT: opto output -> asserted = HIGH
- *        - BUZZER active-high, PROTECT_BATTERY / BATTERY_SWITCH active-low
+ *        - BUZZER active-high
+ *        - BATTERY_SWITCH active-low: Q1/Q2/Q3 chain cuts on a High
+ *        - PROTECT_BATTERY active-high: PB11 High -> Q17 on -> GATE_ON_OFF
+ *          low -> series Q15/Q16 off, so the cut is a physical High
+ *          (audit 2026-10-22: this one was declared active-low)
  *
  * [FA] تست هاست برای پورت واقعی پایه‌های برد (bsp_gpio.c). این فایل تنها
  *      جایی است که سیگنال منطقی به پایه و سطح فیزیکی تبدیل می‌شود، پس تنها
@@ -30,7 +34,11 @@
  *      را می‌گوید، نه تکرار ماکرو را:
  *        - ‎JITTER1/JITTER2‎: خروجی ‎open-collector LM393 ->‎ تریپ = سطح پایین
  *        - INPUT_24V_PRESENT: خروجی اپتو -> حضور = سطح بالا
- *        - BUZZER فعال-بالا، PROTECT_BATTERY و BATTERY_SWITCH فعال-پایین
+ *        - ‎BUZZER‎ فعال-بالا
+ *        - ‎BATTERY_SWITCH‎ فعال-پایین: زنجیرهٔ ‎Q1/Q2/Q3‎ با سطح بالا قطع می‌کند
+ *        - ‎PROTECT_BATTERY‎ فعال-بالا: با سطح بالا ‎Q17‎ روشن و
+ *          ‎GATE_ON_OFF‎ پایین می‌شود و جفت ‎Q15/Q16‎ می‌بندد؛ پس قطع
+ *          یعنی سطح فیزیکی بالا (ممیزی ۲۰۲۶-۱۰-۲۲: قبلاً فعال-پایین اعلام شده بود)
  */
 
 #include <stdbool.h>
@@ -122,8 +130,20 @@ int main(void)
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_RESET);
 
+    /* [EN] PROTECT_BATTERY is active-high: a logical cut must drive the pin
+     *      HIGH physically (Q17 on, GATE_ON_OFF low, Q15/Q16 off). A logical
+     *      "connect" must drive it LOW. Audit 2026-10-22: the old expectation
+     *      here was RESET, i.e. it encoded the wrong polarity and stayed green.
+     * [FA] خط حفاظت باتری فعال-بالا است: «قطع» منطقی باید پایه را فیزیکی بالا
+     *      ببرد و «وصل» منطقی باید پایین ببرد. ممیزی ۲۰۲۶-۱۰-۲۲: انتظار قبلی
+     *      این تست سطح پایین بود، یعنی همان قطبیت غلط را تأیید می‌کرد. */
     INT32_T__G__WriteCount = 0;
     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
+    CHECK(INT32_T__G__WriteCount == 1);
+    CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_SET);
+
+    INT32_T__G__WriteCount = 0;
+    func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_RESET);
 
