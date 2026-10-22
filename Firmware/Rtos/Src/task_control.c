@@ -277,6 +277,12 @@ void func__TaskControl(void *void_ptr__argument)
 #endif
                 imbalance_inputs_t__imbalanceInputs.bool__onBattery =
                     (APP_STATE_T__G__ImbalancePrevState == APP_STATE_BATTERY);
+                imbalance_inputs_t__imbalanceInputs.bool__thermalRest =
+#if MODULE_CHARGER
+                    func__Charger_IsAnyChannelInThermalRest();
+#else
+                    false;
+#endif
 
                 if ((bool__timeValid != false) &&
                     (func__Imbalance_Evaluate(&imbalance_inputs_t__imbalanceInputs,

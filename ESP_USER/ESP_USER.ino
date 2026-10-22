@@ -108,13 +108,16 @@ void loop(void)
     /* صف ریست قفل‌ها: هر ۱۲۰ms حداکثر یک فریم SET_PARAM */
     func__Simple_SlotTick();
 
-    // درخواست دیاگ مستقل هر ۱۰ ثانیه - حتی اگر تب دیاگ باز نباشد
+    // درخواست دیاگ مستقل: اولین بار به محض دریافت تله‌متری (برای همگام‌سازی فوری ساعت از STM32) و سپس هر ۱۰ ثانیه
     static uint32_t uint32_t__lastDiagReqLoopMs = 0u;
+    static bool bool__diagReqDone = false;
     uint32_t uint32_t__now = (uint32_t)millis();
-    if ((uint32_t__now - uint32_t__lastDiagReqLoopMs) > 10000u)
+    if ((BOOL__G__TlmSeen && !bool__diagReqDone) ||
+        ((uint32_t__now - uint32_t__lastDiagReqLoopMs) > 10000u))
     {
         func__Simple_SendDiagReq();
         uint32_t__lastDiagReqLoopMs = uint32_t__now;
+        if (BOOL__G__TlmSeen) bool__diagReqDone = true;
     }
 
     // خواندن پارامترهای خود برد (درصد باتری و چشمک‌ها) - اول بار بعد از آمدن لینک
@@ -126,20 +129,24 @@ void loop(void)
         bool__paramsReqDone = true;
     }
 
-    /* ساعت: RTC خود برد منبع دقیق‌تری است (پنل بین دو روشن‌شدن خواب است و
-       ساعتش عقب می‌ماند). اگر پنل ساعت نداشت یا با ساعت برد至少 ۵ دقیقه
-       (SIMPLE_TIME_ADOPT_DIFF_SEC = 300s) اختلاف داشت، ساعت برد را برمی‌داریم
-       و ذخیره می‌کنیم. */
+    /* ساعت: ساعت میکرو STM32 منبع دقیق‌تری است (چون در زمان خاموشی موقت وای‌فای
+       میکرو روشن می‌ماند و ساعتش جلو می‌رود). اگر پنل ساعت نداشت، یا ساعت STM32
+       جلوتر بود، یا بیش از ۵ دقیقه اختلاف داشت، ساعت STM32 را برمی‌داریم و
+       در صورت رسیدن به آستانهٔ ۵ دقیقه روی فایل ذخیره می‌کنیم. */
     if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
     {
         bool bool__adopt = !BOOL__G__TimeValid;
         if (BOOL__G__TimeValid)
         {
             uint32_t uint32_t__panelSec = func__Simple_NowSec();
-            uint32_t uint32_t__gap = (UINT32_T__G__BoardTimeSec > uint32_t__panelSec)
-                ? (UINT32_T__G__BoardTimeSec - uint32_t__panelSec)
-                : (uint32_t__panelSec - UINT32_T__G__BoardTimeSec);
-            if (uint32_t__gap >= SIMPLE_TIME_ADOPT_DIFF_SEC) bool__adopt = true;
+            if (UINT32_T__G__BoardTimeSec > uint32_t__panelSec)
+            {
+                bool__adopt = true;
+            }
+            else if ((uint32_t__panelSec - UINT32_T__G__BoardTimeSec) >= SIMPLE_TIME_ADOPT_DIFF_SEC)
+            {
+                bool__adopt = true;
+            }
         }
         if (bool__adopt)
         {
@@ -148,7 +155,7 @@ void loop(void)
             BOOL__G__TimePushed = true;   /* ساعت از خود برد گرفته شد - نیازی به فرستادن نیست */
         }
     }
-    if (BOOL__G__TimeValid && BOOL__G__TlmSeen && !BOOL__G__TimePushed)
+    if (BOOL__G__TimeValid && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
     {
         bool bool__fresh = ((uint32_t__now - UINT32_T__G__LastTlmMs) < SIMPLE_LINK_TIMEOUT_MS);
         bool bool__due = false;
@@ -207,13 +214,26 @@ void loop(void)
         uint32_t__lastSaveMs = uint32_t__now;
     }
 
-    // ذخیرهٔ نمودارها روی فلش فقط روزی ۱ بار (هر ۲۴ ساعت) و فقط در صورت تغییر
+    // ذخیرهٔ نمودارها روی فلش فقط روزی ۱ بار (هر ۲۴ ساعت = ۸۶۴۰۰ ثانیهٔ واقعی یا ۸۶۴۰۰۰۰۰ میلی‌ثانیه) و فقط در صورت تغییر
     static uint32_t uint32_t__lastChartSaveMs = 0u;
-    if ((uint32_t__now - uint32_t__lastChartSaveMs) >= 86400000u)
+    uint32_t uint32_t__nowSecForChartSave = func__Simple_NowSec();
+    if ((uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN) &&
+        (UINT32_T__G__LastChartSaveSec == 0u))
+    {
+        UINT32_T__G__LastChartSaveSec = uint32_t__nowSecForChartSave;
+    }
+    if (((uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN) &&
+         (uint32_t__nowSecForChartSave >= UINT32_T__G__LastChartSaveSec) &&
+         ((uint32_t__nowSecForChartSave - UINT32_T__G__LastChartSaveSec) >= 86400u)) ||
+        ((uint32_t__now - uint32_t__lastChartSaveMs) >= 86400000u))
     {
         if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
         if (BOOL__G__TimeValid) func__Simple_TimeSave();
         uint32_t__lastChartSaveMs = uint32_t__now;
+        if (uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN)
+        {
+            UINT32_T__G__LastChartSaveSec = uint32_t__nowSecForChartSave;
+        }
     }
 
     // ریبوت خودکار بعد از تغییر وای‌فای - ۲ ثانیه تاخیر

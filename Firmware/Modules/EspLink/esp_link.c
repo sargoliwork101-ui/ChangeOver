@@ -111,6 +111,7 @@ static uint32_t UINT32_T__G__WifiCycleOffMs = ESPLINK_WIFI_CYCLE_OFF_MS;
 static uint32_t UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
 static uint8_t  UINT8_T__G__BatteryPercent = 100u;
 static bool     BOOL__G__LastInputPresent = true;
+static bool     BOOL__G__WifiBatCutoffLatched = false;
 
 /* [EN] TLM_LIVE flag bits (payload offset 2). / [FA] بیت‌های پرچم TLM_LIVE. */
 #define ESPLINK_TLM_FLAG_SNAP_VALID     0x01u
@@ -2077,6 +2078,7 @@ void func__EspLink_HostTest_Reset(void)
     UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
     UINT8_T__G__BatteryPercent = 100u;
     BOOL__G__LastInputPresent = true;
+    BOOL__G__WifiBatCutoffLatched = false;
 }
 
 /* ==================== EspLink_HostTest_FeedByte ==================== */
@@ -2164,6 +2166,7 @@ void func__EspLink_Init(void)
     UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
     UINT8_T__G__BatteryPercent = 100u;
     BOOL__G__LastInputPresent = true;
+    BOOL__G__WifiBatCutoffLatched = false;
     func__EspLink_Power(true);
 }
 
@@ -2246,7 +2249,8 @@ void func__EspLink_NotifyWifiClientState(bool bool__connected)
     if (bool__connected != false)
     {
         if ((BOOL__G__LastInputPresent == false) &&
-            ((uint32_t)UINT8_T__G__BatteryPercent < UINT32_T__G__WifiBatCutoffPct))
+            ((BOOL__G__WifiBatCutoffLatched != false) ||
+             ((uint32_t)UINT8_T__G__BatteryPercent < UINT32_T__G__WifiBatCutoffPct)))
         {
             BOOL__G__WifiClientConnected = false;
             UINT32_T__G__ClientActiveHoldMs = 0u;
@@ -2343,17 +2347,45 @@ void func__EspLink_PowerSaveTick(bool bool__inputPresent,
     bool__manualActive = func__Charger_IsManualTestModeActive();
 #endif
 
-    if ((bool__inputPresent == false) &&
-        (bool__manualActive == false) &&
-        ((uint32_t)UINT8_T__G__BatteryPercent < UINT32_T__G__WifiBatCutoffPct))
+    if ((bool__inputPresent != false) ||
+        (bool__manualActive != false) ||
+        (UINT32_T__G__WifiBatCutoffPct == 0u))
     {
-        BOOL__G__WifiClientConnected = false;
-        UINT32_T__G__ClientActiveHoldMs = 0u;
-        if (BOOL__G__EspPowerOn != false)
+        BOOL__G__WifiBatCutoffLatched = false;
+    }
+    else
+    {
+        if ((uint32_t)UINT8_T__G__BatteryPercent < UINT32_T__G__WifiBatCutoffPct)
         {
-            func__EspLink_Power(false);
+            BOOL__G__WifiBatCutoffLatched = true;
         }
-        return;
+        else if (BOOL__G__WifiBatCutoffLatched != false)
+        {
+            uint32_t uint32_t__recoverPct = UINT32_T__G__WifiBatCutoffPct + 2u;
+            if (uint32_t__recoverPct > 100u)
+            {
+                uint32_t__recoverPct = 100u;
+            }
+            if ((uint32_t)UINT8_T__G__BatteryPercent >= uint32_t__recoverPct)
+            {
+                BOOL__G__WifiBatCutoffLatched = false;
+            }
+        }
+        else
+        {
+            /* [EN] Above cutoff and not latched. / بالای حد قطع و بدون قفل. */
+        }
+
+        if (BOOL__G__WifiBatCutoffLatched != false)
+        {
+            BOOL__G__WifiClientConnected = false;
+            UINT32_T__G__ClientActiveHoldMs = 0u;
+            if (BOOL__G__EspPowerOn != false)
+            {
+                func__EspLink_Power(false);
+            }
+            return;
+        }
     }
 
     if (UINT32_T__G__ClientActiveHoldMs > uint32_t__stepMs)

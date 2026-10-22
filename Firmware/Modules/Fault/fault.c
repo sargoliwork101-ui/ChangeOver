@@ -40,6 +40,8 @@ static uint32_t UINT32_T__G__BatHealthySinceTick = 0u;
 /* [EN] Live reset-only signal: never use the shared, latched alarm bit for
    ‎battery-swap timing. [FA]‎ سیگنال زندهٔ مخصوص ریست؛ نه بیت خطای قفل‌شده. */
 static bool BOOL__G__BatteryAbsentForReset = false;
+static bool BOOL__G__BatteryAbsentCh0      = false;
+static bool BOOL__G__BatteryAbsentCh1      = false;
 
 /* ==================== Runtime alarm thresholds (v1.15) ==================== */
 /* [EN] The eight FAULT_* numbers as one live struct - ids 27..34,
@@ -402,6 +404,8 @@ void func__Fault_Init(void)
     UINT32_T__G__BatAbsentSinceTick  = 0u;
     UINT32_T__G__BatHealthySinceTick = 0u;
     BOOL__G__BatteryAbsentForReset   = false;
+    BOOL__G__BatteryAbsentCh0        = false;
+    BOOL__G__BatteryAbsentCh1        = false;
 }
 
 /**
@@ -489,9 +493,14 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     uint32_t uint32_t__lowMv;
     uint32_t uint32_t__highMv;
     bool     bool__inputOk;
+    bool     bool__highOver;
+    bool     bool__lowOver;
     bool     bool__anyOver;
+    bool     bool__highHalfLow;
+    bool     bool__lowHalfLow;
     bool     bool__anyHalfLow;
-    bool     bool__anyHalfHardAbsent;
+    bool     bool__highHalfHardAbsent;
+    bool     bool__lowHalfHardAbsent;
     bool     bool__batteryTrulyPresent;
     bool     bool__healthy;
     bool     bool__highHalfInstalled;
@@ -506,10 +515,12 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        ورود بیت BAT_LOST را پاک می‌کند و آشکارسازها بعد از خروج از صفر. */
     if (func__Charger_IsManualTestModeActive() != false)
     {
-        UINT32_T__G__BatOverSinceTick = 0u;
-        UINT32_T__G__BatAbsentSinceTick = 0u;
+        UINT32_T__G__BatOverSinceTick    = 0u;
+        UINT32_T__G__BatAbsentSinceTick  = 0u;
         UINT32_T__G__BatHealthySinceTick = 0u;
-        BOOL__G__BatteryAbsentForReset = false;
+        BOOL__G__BatteryAbsentForReset   = false;
+        BOOL__G__BatteryAbsentCh0        = false;
+        BOOL__G__BatteryAbsentCh1        = false;
         return;
     }
 
@@ -523,6 +534,8 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
         UINT32_T__G__BatAbsentSinceTick  = 0u;
         UINT32_T__G__BatHealthySinceTick = 0u;
         BOOL__G__BatteryAbsentForReset   = false;
+        BOOL__G__BatteryAbsentCh0        = false;
+        BOOL__G__BatteryAbsentCh1        = false;
         return;
     }
 
@@ -557,15 +570,17 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        نمی‌تواند بالا پرود و قضاوت نمی‌شود. به‌ویژه vhigh مشتق‌شده =
        V24 − V12 با جریان بار کانال دیگر حرکت می‌کند و قضاوتش حین پمپِ
        فقط ch2 آلارم قطع‌باتریِ خیالی قفل می‌کرد. */
-    bool__anyOver =
-        (((bool__lowHalfInstalled  == true) &&
-          ((func__Charger_IsChannelActive(1u) == true) ||
-           ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)) &&
-          (uint32_t__lowMv  > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)) ||
-         ((bool__highHalfInstalled == true) &&
-          ((func__Charger_IsChannelActive(0u) == true) ||
-           ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)) &&
-          (uint32_t__highMv > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)));
+    bool__highOver =
+        ((bool__highHalfInstalled == true) &&
+         ((func__Charger_IsChannelActive(0u) == true) ||
+          ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)) &&
+         (uint32_t__highMv > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv));
+    bool__lowOver =
+        ((bool__lowHalfInstalled  == true) &&
+         ((func__Charger_IsChannelActive(1u) == true) ||
+          ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)) &&
+         (uint32_t__lowMv  > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv));
+    bool__anyOver = ((bool__lowOver == true) || (bool__highOver == true));
 
     /* [EN] Case 2: EITHER half below the absent threshold (6 V) with a
        valid input = battery disconnected. Recovery keeps 7 V (1 V
@@ -573,11 +588,13 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        without tripping).
        [FA] حالت ۲: هر نیم زیر ۶V با ورودی سالم = قطع باتری؛ بازیابی روی
        ۷V (هیسترزیس ۱V تا دشارژ عمیقِ وصل بدون تریپ رد شود). */
-    bool__anyHalfLow =
-        (((bool__lowHalfInstalled  == true) &&
-          (uint32_t__lowMv  < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv)) ||
-         ((bool__highHalfInstalled == true) &&
-          (uint32_t__highMv < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv)));
+    bool__highHalfLow =
+        ((bool__highHalfInstalled == true) &&
+         (uint32_t__highMv < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv));
+    bool__lowHalfLow =
+        ((bool__lowHalfInstalled  == true) &&
+         (uint32_t__lowMv  < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv));
+    bool__anyHalfLow = ((bool__lowHalfLow == true) || (bool__highHalfLow == true));
 
     /* [EN] Reset-only physical-open signature. A fitted half below 3 V is a
        much stronger removal clue than the adjustable 6 V alarm threshold;
@@ -586,20 +603,28 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        [FA] نشانهٔ سختِ قطع، فقط برای ریست. نیمِ نصب‌شده زیر ۳V نشانهٔ
        محکم‌تری از حد آلارمِ قابل‌تنظیم ۶V است و با نبود ورودی هم کار می‌کند؛
        آن را به بیت خطای مشترک اضافه نکن. */
-    bool__anyHalfHardAbsent =
-        (((bool__lowHalfInstalled  == true) &&
-          (uint32_t__lowMv  < FAULT_BAT_HARD_ABSENT_MV)) ||
-         ((bool__highHalfInstalled == true) &&
-          (uint32_t__highMv < FAULT_BAT_HARD_ABSENT_MV)));
+    bool__highHalfHardAbsent =
+        ((bool__highHalfInstalled == true) &&
+         (uint32_t__highMv < FAULT_BAT_HARD_ABSENT_MV));
+    bool__lowHalfHardAbsent =
+        ((bool__lowHalfInstalled  == true) &&
+         (uint32_t__lowMv  < FAULT_BAT_HARD_ABSENT_MV));
 
-    /* [EN] Publish a live reset signal, not the shared latched fault bit.
-       The imbalance module supplies the continuous 3 s qualifier.
-       [FA] برای ریست، نشانهٔ زنده بده نه بیت خطای مشترک؛ گیت پیوستهٔ ۳s
-       را خود ماژول Imbalance اعمال می‌کند. */
+    /* [EN] Publish per-channel and combined live reset signals, not the
+       shared latched fault bit.
+       [FA] برای ریست، نشانهٔ زندهٔ هر کانال و مجموع دو کانال را بساز، نه بیت
+       خطای مشترک. */
+    BOOL__G__BatteryAbsentCh0 =
+        ((bool__highOver == true) ||
+         ((bool__inputOk == true) && (bool__highHalfLow == true)) ||
+         (bool__highHalfHardAbsent == true));
+    BOOL__G__BatteryAbsentCh1 =
+        ((bool__lowOver == true) ||
+         ((bool__inputOk == true) && (bool__lowHalfLow == true)) ||
+         (bool__lowHalfHardAbsent == true));
     BOOL__G__BatteryAbsentForReset =
-        ((bool__anyOver == true) ||
-         ((bool__inputOk == true) && (bool__anyHalfLow == true)) ||
-         (bool__anyHalfHardAbsent == true));
+        ((BOOL__G__BatteryAbsentCh0 == true) ||
+         (BOOL__G__BatteryAbsentCh1 == true));
 
     /* ---------- Rule 1: pumped overvoltage => latch ---------- */
     if ((bool__anyOver == true) &&
@@ -683,4 +708,28 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
 bool func__Fault_IsBatteryAbsent(void)
 {
     return BOOL__G__BatteryAbsentForReset;
+}
+
+/* ==================== Fault_IsChannelBatteryAbsent ==================== */
+
+/**
+ * @brief  [EN] Return the live per-channel battery-removal signal (channel 0
+ *              = high half, channel 1 = low half) prepared by the latest valid
+ *              Fault_Evaluate() call.
+ *         [FA] نشانهٔ زندهٔ جدایی باتری را به‌تفکیک کانال (۰ = نیم بالا، ۱ =
+ *              نیم پایین) از آخرین Evaluate معتبر برمی‌گرداند.
+ * @param  uint8_t__channelIndex [EN] Channel index (0 or 1) / شمارهٔ کانال (۰ یا ۱)
+ * @return bool [EN] true while that channel's removal signature is present / هنگام حضور نشانه true
+ */
+bool func__Fault_IsChannelBatteryAbsent(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex == 0u)
+    {
+        return BOOL__G__BatteryAbsentCh0;
+    }
+    if (uint8_t__channelIndex == 1u)
+    {
+        return BOOL__G__BatteryAbsentCh1;
+    }
+    return false;
 }

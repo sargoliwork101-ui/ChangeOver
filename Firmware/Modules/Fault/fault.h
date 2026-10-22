@@ -148,6 +148,19 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
  */
 bool func__Fault_IsBatteryAbsent(void);
 
+/**
+ * @brief  [EN] Return the live per-channel battery-removal signal (channel 0
+ *         = high half, channel 1 = low half) prepared by the latest valid
+ *         Fault_Evaluate() call. Used by Scenario 6 dead-battery supervision
+ *         so removing one battery only clears that channel's latch/timer.
+ *         [FA] نشانهٔ زندهٔ جدایی باتری به‌تفکیک کانال (کانال ۰ = نیم بالا،
+ *         کانال ۱ = نیم پایین) برای سناریوی ۶ تا جداسازی یک باتری فقط قفل و
+ *         تایمر همان باتری را پاک کند.
+ * @param  uint8_t__channelIndex [EN] Channel index (0 or 1) / شمارهٔ کانال (۰ یا ۱)
+ * @return bool [EN] true while that channel's removal signature is present / در حضور نشانه true
+ */
+bool func__Fault_IsChannelBatteryAbsent(uint8_t uint8_t__channelIndex);
+
 /* ==================== Runtime alarm thresholds (v1.15) ==================== */
 /* [EN] The eight FAULT_* numbers above are runtime panel ids 27..34,
  *      flash-persisted and clamped as a set on every write; the macros

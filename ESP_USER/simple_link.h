@@ -72,6 +72,17 @@ static void func__Simple_HandleFrame(void)
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
             UINT32_T__G__ResetCount = func__Simple_ReadU32(uint8_t__ptr_payload, 13u);
             UINT32_T__G__BoardTimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 17u);
+            if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
+            {
+                uint32_t uint32_t__panelNowSec = func__Simple_NowSec();
+                if ((!BOOL__G__TimeValid) ||
+                    (UINT32_T__G__BoardTimeSec > uint32_t__panelNowSec) ||
+                    ((uint32_t__panelNowSec - UINT32_T__G__BoardTimeSec) >= SIMPLE_TIME_ADOPT_DIFF_SEC))
+                {
+                    func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
+                    BOOL__G__TimePushed = true;
+                }
+            }
             uint8_t uint8_t__newErr = uint8_t__ptr_payload[21];
             uint8_t uint8_t__newPwr = uint8_t__ptr_payload[22];
             if (uint8_t__newErr > SIMPLE_DIAG_MAX_ERRORS) uint8_t__newErr = SIMPLE_DIAG_MAX_ERRORS;

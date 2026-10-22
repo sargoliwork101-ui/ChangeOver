@@ -187,15 +187,17 @@ int main(void)
     IMBAL_INPUTS_T__G__In.bool__chargeComplete = true; /* FLOAT */
     func__Run(1331001u, false);             /* rest anchor stamped; wait 110 (600 s) */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    func__Run(1931001u, true);              /* rest wait elapsed + diff still > 300 mV -> +1 */
+    func__Run(1931001u, false);             /* rest wait elapsed -> rest stability starts */
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    func__Run(1961001u, true);              /* rest stability (30 s) elapsed + diff > 300 mV -> +1 */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
-    func__Run(1932001u, false);
+    func__Run(1962001u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
     /* [EN] Hysteresis still closes the live episode, but does not affect the
        ‎one-event-per-cycle rule. [FA]‎ هیسترزیس اپیزود زنده را می‌بندد. */
     IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12200u;
-    func__Run(1940000u, false);
+    func__Run(1970000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == false);
 
     /* ---- persistence via runtime slots (NVM round trip) ---- */
@@ -234,7 +236,9 @@ int main(void)
         uint32_t__t += 631000u;
         func__Run(uint32_t__t, false);       /* FLOAT reached: wait rest (q110) */
         uint32_t__t += 600000u;
-        func__Run(uint32_t__t, true);        /* rest wait elapsed + diff still > 300 mV: commit one */
+        func__Run(uint32_t__t, false);       /* rest wait elapsed -> rest stability starts */
+        uint32_t__t += 30000u;
+        func__Run(uint32_t__t, true);        /* rest stability elapsed + diff > 300 mV: commit one */
         CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == (uint32_t)(2u + i));
         IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12000u;
         func__Run(uint32_t__t + 1000u, false);
@@ -350,7 +354,9 @@ int main(void)
     IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
     func__Run(73000u, false); /* FLOAT reached; wait rest (600 s) */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    func__Run(673000u, true); /* rest wait elapsed + diff still > 300 mV -> +1 */
+    func__Run(673000u, false); /* rest wait elapsed -> rest stability starts */
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    func__Run(703000u, true); /* rest stability (30 s) elapsed + diff > 300 mV -> +1 */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
     /* ---- during-charge condition is deferred until FLOAT + rest, and dropped if balanced in rest ---- */
@@ -368,16 +374,18 @@ int main(void)
     IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
     func__Run(632000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    func__Run(1232000u, true);
+    func__Run(1232000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    func__Run(1262000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
     /* ---- discharge in the same completed cycle does NOT add a second event ---- */
     IMBAL_INPUTS_T__G__In.bool__onBattery = true;
     IMBAL_INPUTS_T__G__In.bool__charging = false;
     IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12600u; /* 600 > discharge 500 */
-    func__Run(1233000u, false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
     func__Run(1263000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+    func__Run(1293000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
     /* ---- halves in different states are NOT comparable ---- */
@@ -407,8 +415,49 @@ int main(void)
     IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
     func__Run(1232000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    func__Run(1832000u, true);
+    func__Run(1832000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    func__Run(1862000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+
+    /* ---- thermal rest mid-charge preserves candidate and does not double-count cycles ---- */
+    func__Imbalance_Init();
+    CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
+    CHECK(func__Imbalance_SetParam(201u, 0u, NULL));
+    CHECK(func__Imbalance_SetParam(202u, 1u, NULL));
+    IMBAL_INPUTS_T__G__In.bool__onBattery = true;
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
+    IMBAL_INPUTS_T__G__In.bool__thermalRest = false;
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12600u;
+    func__Run(1000u, false);
+    func__Run(31000u, false); /* discharge candidate raised */
+    IMBAL_INPUTS_T__G__In.bool__onBattery = false;
+    IMBAL_INPUTS_T__G__In.bool__charging = true;
+    func__Run(32000u, true); /* cycle 1 starts */
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 1u);
+    /* Enter 10-minute thermal rest: charging drops false while thermalRest is true */
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    IMBAL_INPUTS_T__G__In.bool__thermalRest = true;
+    func__Run(3632000u, false);
+    /* Resume BULK after thermal rest: latchedCycles must stay 1 and candidate survives */
+    IMBAL_INPUTS_T__G__In.bool__charging = true;
+    IMBAL_INPUTS_T__G__In.bool__thermalRest = false;
+    func__Run(4232000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 1u);
+    /* Reach FLOAT, enter post-charge rest, verify brief dip does not wipe candidate */
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
+    func__Run(4233000u, false);
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12050u; /* single sample dip in rest */
+    func__Run(4833000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u; /* sustained > 300 mV for 30 s */
+    func__Run(4834000u, false);
+    func__Run(4864000u, true);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+    CHECK(func__Imbalance_SetParam(202u, 0u, NULL));
+    CHECK(func__Imbalance_SetParam(201u, 0u, NULL));
 
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;

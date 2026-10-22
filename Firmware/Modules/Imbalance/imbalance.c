@@ -431,6 +431,17 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
 
     /* ---- charge-session edges and full-charge qualification ---- */
     bool__charging      = imbalance_inputs_t__inputs->bool__charging;
+    if (imbalance_inputs_t__inputs->bool__thermalRest == true)
+    {
+        /* [EN] A mandatory 10-minute charger thermal rest pauses the active
+           charge session without ending it: keep the session state across the
+           pause so candidates are not discarded and post-latch cycles are not
+           double-counted when BULK resumes.
+           [FA] استراحت حرارتی ۱۰ دقیقه‌ای شارژر، جلسهٔ شارژ را بدون پایان‌دادن
+           متوقف نگه می‌دارد تا نامزد عدم‌توازن پاک نشود و سیکل قفل هنگام ادامهٔ
+           بالک دوباره شمرده نشود. */
+        bool__charging = BOOL__G__PrevCharging;
+    }
     bool__chargeComplete = imbalance_inputs_t__inputs->bool__chargeComplete;
 
     /* [EN] v1.72 (user order): comparable only when both halves are in the
@@ -559,19 +570,21 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     }
     if ((bool__charging == false) && (BOOL__G__PrevCharging == true))
     {
-        /* [EN] Falling edge: anchor the rest window. If FLOAT was not reached,
-           discard the candidate and do not register an event.
-           [FA] لبهٔ نزولی: لنگر استراحت. اگر FLOAT نرسیده، نامزد دور ریخته
-           می‌شود و هیچ رویدادی ثبت نمی‌شود. */
+        /* [EN] Falling edge: anchor the rest window and require a fresh
+           stability proof in post-charge rest before committing an event.
+           If FLOAT was not reached, discard the candidate and do not register
+           an event.
+           [FA] لبهٔ نزولی: لنگر استراحت و بازآغاز تایمر پایداری در استراحت پس از
+           شارژ؛ اگر به FLOAT نرسیده، نامزد دور ریخته می‌شود. */
         BOOL__G__HasChargeEnd     = true;
         UINT32_T__G__RestAnchorMs = uint32_t__nowMs;
         BOOL__G__OverTiming       = false;
+        BOOL__G__Episode          = false;
         if (bool__chargeComplete == false)
         {
             BOOL__G__CycleFullSeen      = false;
             BOOL__G__CycleHasImbalance  = false;
             BOOL__G__CycleEventRecorded = false;
-            BOOL__G__Episode            = false;
         }
     }
 
@@ -648,10 +661,13 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         }
     }
 
-    /* [EN] v1.72: halves out of step - shut the window and drop the
-           stability timer, so nothing counts while they are incomparable.
-       [FA] دو نیم هم‌حالت نیستند: پنجره بسته و تایمر پایداری صفر. */
-    if (bool__sameState == false)
+    /* [EN] v1.72: halves out of step or charger in thermal rest - shut the
+           window and drop the stability timer, so nothing counts while they
+           are incomparable or paused in mid-charge thermal rest.
+       [FA] دو نیم هم‌حالت نیستند یا شارژر در استراحت حرارتی است: پنجره بسته و
+           تایمر پایداری صفر می‌شود. */
+    if ((bool__sameState == false) ||
+        (imbalance_inputs_t__inputs->bool__thermalRest == true))
     {
         bool__windowOpen = false;
         BOOL__G__OverTiming = false;
@@ -725,38 +741,33 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
 
     /* [EN] Commit at most one event for this cycle, and only after FLOAT
        once the post-charge rest delay (param 110) has elapsed and the rest
-       voltage difference still exceeds param 108.
+       voltage difference has stayed above param 108 for the stability duration
+       (param 112, proven by BOOL__G__Episode in the rest window).
        [FA] حداکثر یک رویداد برای هر سیکل، فقط بعد از FLOAT و گذشت زمان انتظار
-       استراحت (۱۱۰)، در صورتی که در حالت استراحت هنوز اختلاف بیش از حد (۱۰۸)
-       وجود داشته باشد. */
+       استراحت (۱۱۰)، در صورتی که در حالت استراحت اختلاف بیش از حد (۱۰۸) به مدت
+       پایداری (۱۱۲) برقرار مانده باشد. */
     if ((BOOL__G__CycleFullSeen == true) &&
         (bool__charging == false) &&
         (imbalance_inputs_t__inputs->bool__onBattery == false) &&
         (bool__sameState == true) &&
         (BOOL__G__CycleHasImbalance == true) &&
+        (BOOL__G__Episode == true) &&
         (BOOL__G__CycleEventRecorded == false))
     {
         uint32_t uint32_t__restWaitMs = func__Imbalance_ReadParam(IMBAL_PARAM_POST_CHARGE_WAIT_MS);
         bool     bool__restReady      = ((uint32_t)(uint32_t__nowMs - UINT32_T__G__RestAnchorMs) >=
                                          uint32_t__restWaitMs);
 
-        if (bool__restReady == true)
+        if ((bool__restReady == true) &&
+            (uint32_t__imbalanceMv > func__Imbalance_ReadParam(IMBAL_PARAM_REST_LIMIT_MV)))
         {
-            if (uint32_t__imbalanceMv > func__Imbalance_ReadParam(IMBAL_PARAM_REST_LIMIT_MV))
+            if (UINT32_T__G__Events < IMBAL_MAX_COUNT)
             {
-                if (UINT32_T__G__Events < IMBAL_MAX_COUNT)
-                {
-                    UINT32_T__G__Events++;
-                    bool__persistChanged = true;
-                }
-                BOOL__G__CycleEventRecorded = true;
-                UINT8_T__G__CleanFullCycles = 0u;
+                UINT32_T__G__Events++;
+                bool__persistChanged = true;
             }
-            else
-            {
-                BOOL__G__CycleHasImbalance = false;
-                BOOL__G__Episode           = false;
-            }
+            BOOL__G__CycleEventRecorded = true;
+            UINT8_T__G__CleanFullCycles = 0u;
         }
     }
 

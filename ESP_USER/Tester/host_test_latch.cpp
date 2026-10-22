@@ -29,6 +29,7 @@ typedef ESP8266WebServer esp_web_server_t;
 #include "../simple_config.h"
 #include "../simple_state.h"
 #include "../simple_link.h"
+#include "../simple_diag.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -405,6 +406,61 @@ static void func__T_TestWifiPowerSave(void)
                   "با وصل شدن مجدد برق ورودی، وای‌فای با بیشترین قدرت آنتن روشن می‌شود");
 }
 
+/* ==================== همگام‌سازی ساعت از میکرو STM32 و ثبت نمودار با ثانیهٔ واقعی ==================== */
+static void func__T_TestStm32TimeAndChartScheduling(void)
+{
+    uint8_t uint8_t__payload[23];
+    uint8_t uint8_t__frame[48];
+    uint16_t uint16_t__len;
+    uint16_t uint16_t__i;
+    uint32_t uint32_t__stmTimeSec = 1790000000u;
+
+    (void)printf("\n== همگام‌سازی ساعت از میکرو STM32 و ثبت نمودار زمان‌دار ==\n");
+
+    func__Simple_ChartsClear();
+    /* پنل با یک ساعت قدیمی‌تر (مثلاً ۲ دقیقه عقب‌تر از میکرو بعد از خواب CH_PD) بیدار می‌شود */
+    func__Simple_TimeSet(uint32_t__stmTimeSec - 120u, false);
+
+    for (uint16_t__i = 0u; uint16_t__i < 23u; uint16_t__i++)
+    {
+        uint8_t__payload[uint16_t__i] = 0u;
+    }
+    uint8_t__payload[0] = 0u; /* chunk 0 */
+    uint8_t__payload[17] = (uint8_t)(uint32_t__stmTimeSec & 0xFFu);
+    uint8_t__payload[18] = (uint8_t)((uint32_t__stmTimeSec >> 8) & 0xFFu);
+    uint8_t__payload[19] = (uint8_t)((uint32_t__stmTimeSec >> 16) & 0xFFu);
+    uint8_t__payload[20] = (uint8_t)((uint32_t__stmTimeSec >> 24) & 0xFFu);
+
+    uint16_t__len = func__T_MakeFrame(uint8_t__frame, SIMPLE_MSG_DIAG_DATA, uint8_t__payload, 23u);
+    for (uint16_t__i = 0u; uint16_t__i < uint16_t__len; uint16_t__i++)
+    {
+        func__Simple_ParseByte(uint8_t__frame[uint16_t__i]);
+    }
+
+    func__T_Check(func__Simple_NowSec() >= uint32_t__stmTimeSec,
+                  "به‌محض دریافت دیاگ از میکرو STM32، ساعت پنل با ساعت جلوترِ میکرو همگام می‌شود");
+
+    func__Simple_ChartAddTimed(80u, 24000u, 25000u);
+    func__T_Check((UINT8_T__G__Chart1D_Count == 1u) && (UINT8_T__G__Chart7D_Count == 1u),
+                  "اولین نقطهٔ نمودار ۱ روزه و ۷ روزه با ساعت میکرو ثبت شد");
+
+    /* شبیه‌سازی گذشت ۵ دقیقه روی ساعت میکرو بدون افزایش millis بیش از ۱ دقیقه */
+    uint32_t__stmTimeSec += 300u;
+    uint8_t__payload[17] = (uint8_t)(uint32_t__stmTimeSec & 0xFFu);
+    uint8_t__payload[18] = (uint8_t)((uint32_t__stmTimeSec >> 8) & 0xFFu);
+    uint8_t__payload[19] = (uint8_t)((uint32_t__stmTimeSec >> 16) & 0xFFu);
+    uint8_t__payload[20] = (uint8_t)((uint32_t__stmTimeSec >> 24) & 0xFFu);
+    uint16_t__len = func__T_MakeFrame(uint8_t__frame, SIMPLE_MSG_DIAG_DATA, uint8_t__payload, 23u);
+    for (uint16_t__i = 0u; uint16_t__i < uint16_t__len; uint16_t__i++)
+    {
+        func__Simple_ParseByte(uint8_t__frame[uint16_t__i]);
+    }
+
+    func__Simple_ChartAddTimed(82u, 24000u, 25200u);
+    func__T_Check((UINT8_T__G__Chart1D_Count == 2u) && (UINT8_T__G__Chart7D_Count == 2u),
+                  "نقطهٔ بعدی نمودارها بر اساس ثانیهٔ واقعی میکرو (حتی پس از ریست millis) ثبت شد");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -414,6 +470,7 @@ int main(void)
     func__T_TestSender();
     func__T_TestEchoAndNak();
     func__T_TestWifiPowerSave();
+    func__T_TestStm32TimeAndChartScheduling();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

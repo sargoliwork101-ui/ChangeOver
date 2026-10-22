@@ -296,6 +296,7 @@ typedef struct
     bool     bool__chargingCh1;      /* [EN] Charger 1 active / شارژ کانال ۱ */
     bool     bool__chargingCh2;      /* [EN] Charger 2 active / شارژ کانال ۲ */
     bool     bool__onBattery;        /* [EN] Output runs on battery / خروجی روی باتری */
+    bool     bool__thermalRest;      /* [EN] Any charger channel in 10-min thermal rest / استراحت حرارتی شارژر */
 } imbalance_inputs_t;
 
 /** [EN] Outputs after one evaluation pass - everything consumers need.

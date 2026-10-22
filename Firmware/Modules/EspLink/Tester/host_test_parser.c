@@ -256,9 +256,25 @@ int main(void)
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == false);
 
+    /* +2% hysteresis: rebounding to 20% or 21% on battery stays OFF until 22% */
+    func__EspLink_SetBatteryPercent(20u);
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_IsPowerOn() == false);
+    func__EspLink_SetBatteryPercent(21u);
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_IsPowerOn() == false);
+
     func__EspLink_NotifyWifiClientState(true);
     CHECK(func__EspLink_IsPowerOn() == false);
     CHECK(func__EspLink_IsWifiClientConnected() == false);
+
+    func__EspLink_SetBatteryPercent(22u);
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_IsPowerOn() == true);
+
+    func__EspLink_SetBatteryPercent(19u);
+    func__EspLink_PowerSaveTick(false, 100u);
+    CHECK(func__EspLink_IsPowerOn() == false);
 
     func__EspLink_PowerSaveTick(true, 100u);
     CHECK(func__EspLink_IsPowerOn() == true);

@@ -101,6 +101,7 @@ typedef struct
     uint32_t uint32_t__pidLastTick;     /* [EN] tick of the last PID update / تیک آخرین به‌روزرسانی */
     bool     bool__pidSeeded;           /* [EN] false = re-seed from hardware duty / نادرست = بذرگیری دوباره */
     bool     bool__pidLastWasVoltage;   /* [EN] winning branch last update / شاخهٔ برندهٔ قبلی */
+    bool     bool__deadForcedFloat;     /* [EN] true when FLOAT was entered via 1h absorb timeout without taper / ورود اجباری به فلوت با سقف ۱ ساعته */
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -358,6 +359,7 @@ static void func__Charger_ClearAbsorbWindow(
     charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+    charger_channel_state_t__channel->bool__deadForcedFloat = false;
 }
 
 /* [EN] Dip reset (v1.17b): like ClearAbsorbWindow EXCEPT the 1 h safety
@@ -1863,9 +1865,13 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 (bool__absorbTimedOut == true))
             {
                 /* [EN] Episode over: drop the episode timers so the next
-                   absorb starts from a clean sheet.
+                   absorb starts from a clean sheet. Record whether FLOAT was
+                   earned by soak+taper or forced by the 1-hour safety ceiling.
                    [FA] این سفرقسمت تمام شد؛ تایمرهای اپیزود صفر تا ابزورب بعدی
-                   از صفحهٔ تمیز آغاز شود. */
+                   از صفحهٔ تمیز آغاز شود. مشخص می‌شود ورود به FLOAT با پر شدن
+                   واقعی بوده یا با سقف ایمنی ۱ ساعته. */
+                charger_channel_state_t__channel->bool__deadForcedFloat =
+                    ((bool__soakDone == true) && (bool__taperDone == true)) ? false : true;
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
@@ -2467,15 +2473,26 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
     uint32_t__gapMs     = UINT32_T__G__DeadParam[1];
 
     /* [EN] Step 1: a real battery swap wipes the verdict - the latch belongs
-           to the battery, not to the board (same rule as scenario 5).
-       [FA] گام ۱: تعویض واقعی باتری، قفل را پاک می‌کند. */
+           to the battery, not to the board (same rule as scenario 5). Use the
+           per-channel live absence signal when Fault supervision is active so
+           removing one battery only clears that channel's latch/timer.
+       [FA] گام ۱: تعویض واقعی باتری، قفل همان کانال را پاک می‌کند (با نشانهٔ
+           تفکیکی هر کانال تا جداسازی یک باتری قفل کانال دیگر را پاک نکند). */
+#if MODULE_FAULT
+    if ((func__Fault_IsBatteryAbsent() != false) ||
+        ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE))
+    {
+        bool__batteryAbsent =
+            func__Fault_IsChannelBatteryAbsent(uint8_t__channelIndex);
+    }
+    else
+    {
+        bool__batteryAbsent =
+            (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST);
+    }
+#else
     bool__batteryAbsent =
         (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST);
-#if MODULE_FAULT
-    if (func__Fault_IsBatteryAbsent() != false)
-    {
-        bool__batteryAbsent = true;
-    }
 #endif
     if (bool__batteryAbsent != false)
     {
@@ -2507,15 +2524,30 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
         BOOL__G__DeadAbsentTiming[uint8_t__channelIndex] = false;
     }
 
-    /* [EN] Step 2: scenario off, or the channel reached FLOAT - which is the
-           definition of "this battery does charge". Clock back to zero.
-       [FA] گام ۲: سناریو خاموش است یا کانال به FLOAT رسیده؛ یعنی باتری
-           واقعاً شارژ می‌شود، پس ساعت صفر می‌شود. */
+    /* [EN] Step 2: scenario off, or the channel reached a genuine FLOAT (soak +
+           taper completed) - which is the definition of "this battery does
+           charge". Clock back to zero. If FLOAT was forced by the 1-hour
+           absorb ceiling without tapering, or the channel is in its mandatory
+           10-minute thermal rest, hold the accumulated charge time without
+           resetting it.
+       [FA] گام ۲: سناریو خاموش است یا کانال با پر شدن واقعی به FLOAT رسیده؛
+           ساعت صفر می‌شود. اگر ورود به FLOAT با سقف ایمنی ۱ ساعته بوده یا کانال
+           در استراحت حرارتی ۱۰ دقیقه‌ای خود شارژر است، زمان انباشته حفظ می‌شود. */
     if ((uint32_t__timeoutMs == 0u) ||
-        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT))
+        ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) &&
+         (charger_channel_state_t__channel->bool__deadForcedFloat == false)))
     {
         UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
         BOOL__G__DeadWasCharging[uint8_t__channelIndex]  = false;
+        return;
+    }
+
+    if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) ||
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
+        (UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] != 0u))
+    {
+        BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
+        UINT32_T__G__DeadPauseTick[uint8_t__channelIndex] = uint32_t__nowTick;
         return;
     }
 

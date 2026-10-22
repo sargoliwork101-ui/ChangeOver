@@ -270,6 +270,7 @@ static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToB
 }
 
 static uint32_t UINT32_T__G__LastSavedTimeSec = 0u; /* آخرین ساعت ذخیره‌شده روی فلش */
+static uint32_t UINT32_T__G__LastChartSaveSec = 0u; /* آخرین زمان ذخیرهٔ روزانهٔ نمودارها (ثانیهٔ یونیکس) */
 
 /* ==================== ذخیره ساعت روی فایل (فقط در صورت اختلاف >= ۵ دقیقه) ==================== */
 static void func__Simple_TimeSave(void)

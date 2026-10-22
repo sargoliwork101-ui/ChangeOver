@@ -161,9 +161,23 @@ static void func__Simple_ChartPushRange(uint32_t *uint32_t__ptr_pct,
     }
 }
 
+/* ==================== خواندن زمان آخرین نقطهٔ ثبت‌شده در یک بازهٔ نمودار ==================== */
+static uint32_t func__Simple_ChartLastSec(const uint32_t *uint32_t__ptr_time,
+                                          uint8_t uint8_t__count,
+                                          uint8_t uint8_t__index,
+                                          uint8_t uint8_t__size)
+{
+    uint8_t uint8_t__newestSlot;
+
+    if (uint8_t__count == 0u) return 0u;
+    uint8_t__newestSlot = (uint8_t)((uint8_t__index + uint8_t__size - 1u) % uint8_t__size);
+    return uint32_t__ptr_time[uint8_t__newestSlot];
+}
+
 /* ==================== افزودن نقطه زمان‌دار به هر چهار بازه ====================
-   زمان از «ساعت پنل» می‌آید (فرازمانی که یک‌بار تنظیم و ذخیره شده)؛ تا وقتی
-   ساعت تنظیم نشده هیچ نقطه‌ای ثبت نمی‌شود تا محور زمان خراب نشود. */
+   زمان از «ساعت پنل» (همگام با ساعت میکرو STM32) می‌آید؛ فاصلهٔ نقاط با ثانیهٔ
+   واقعی سنجیده می‌شود تا در چرخهٔ خاموش/روشن کاهش مصرف باتری هم نقاط ۱ روزه،
+   ۷ روزه، ۱ ماهه و ۳ ماهه بدون ریست شدن تایمر ثبت شوند. */
 static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t__vin, uint32_t uint32_t__vpack)
 {
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
@@ -171,10 +185,15 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
 
     if (uint32_t__nowSec == 0u) return;   /* ساعت تنظیم نشده */
 
-    /* ۱ روزه - ۲۴ نقطه: اول هر ۱ دقیقه تا پر شدن، بعد هر ۱ ساعت */
+    /* ۱ روزه - ۲۴ نقطه: اول هر ۱ دقیقه (۶۰ ثانیه) تا پر شدن، بعد هر ۱ ساعت (۳۶۰۰ ثانیه) */
     {
-        uint32_t uint32_t__interval = (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) ? 60000u : 3600000u;
-        if ((uint32_t__nowMs - UINT32_T__G__Last1D_Ms) >= uint32_t__interval)
+        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) ? 60u : 3600u;
+        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart1D_Time, UINT8_T__G__Chart1D_Count,
+            UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
+        if ((uint32_t__lastSec == 0u) ||
+            ((uint32_t__nowSec >= uint32_t__lastSec) &&
+             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
         {
             func__Simple_ChartPushRange(UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin,
                                         UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
@@ -185,10 +204,15 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
         }
     }
 
-    /* ۷ روزه - ۲۸ نقطه: اول هر ۵ دقیقه، بعد هر ۶ ساعت */
+    /* ۷ روزه - ۲۸ نقطه: اول هر ۵ دقیقه (۳۰۰ ثانیه)، بعد هر ۶ ساعت (۲۱۶۰۰ ثانیه) */
     {
-        uint32_t uint32_t__interval = (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) ? 300000u : 21600000u;
-        if ((uint32_t__nowMs - UINT32_T__G__Last7D_Ms) >= uint32_t__interval)
+        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) ? 300u : 21600u;
+        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart7D_Time, UINT8_T__G__Chart7D_Count,
+            UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
+        if ((uint32_t__lastSec == 0u) ||
+            ((uint32_t__nowSec >= uint32_t__lastSec) &&
+             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
         {
             func__Simple_ChartPushRange(UINT32_T__G__Chart7D_Pct, UINT32_T__G__Chart7D_Vin,
                                         UINT32_T__G__Chart7D_Vpack, UINT32_T__G__Chart7D_Time,
@@ -199,10 +223,15 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
         }
     }
 
-    /* ۱ ماهه - ۳۰ نقطه: اول هر ۱۵ دقیقه، بعد هر ۱ روز */
+    /* ۱ ماهه - ۳۰ نقطه: اول هر ۱۵ دقیقه (۹۰۰ ثانیه)، بعد هر ۱ روز (۸۶۴۰۰ ثانیه) */
     {
-        uint32_t uint32_t__interval = (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) ? 900000u : 86400000u;
-        if ((uint32_t__nowMs - UINT32_T__G__Last1M_Ms) >= uint32_t__interval)
+        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) ? 900u : 86400u;
+        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart1M_Time, UINT8_T__G__Chart1M_Count,
+            UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
+        if ((uint32_t__lastSec == 0u) ||
+            ((uint32_t__nowSec >= uint32_t__lastSec) &&
+             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
         {
             func__Simple_ChartPushRange(UINT32_T__G__Chart1M_Pct, UINT32_T__G__Chart1M_Vin,
                                         UINT32_T__G__Chart1M_Vpack, UINT32_T__G__Chart1M_Time,
@@ -213,10 +242,15 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
         }
     }
 
-    /* ۳ ماهه - ۹۰ نقطه: اول هر ۳۰ دقیقه، بعد هر ۱ روز */
+    /* ۳ ماهه - ۹۰ نقطه: اول هر ۳۰ دقیقه (۱۸۰۰ ثانیه)، بعد هر ۱ روز (۸۶۴۰۰ ثانیه) */
     {
-        uint32_t uint32_t__interval = (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) ? 1800000u : 86400000u;
-        if ((uint32_t__nowMs - UINT32_T__G__Last3M_Ms) >= uint32_t__interval)
+        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) ? 1800u : 86400u;
+        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart3M_Time, UINT8_T__G__Chart3M_Count,
+            UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
+        if ((uint32_t__lastSec == 0u) ||
+            ((uint32_t__nowSec >= uint32_t__lastSec) &&
+             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
         {
             func__Simple_ChartPushRange(UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin,
                                         UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
@@ -630,6 +664,10 @@ static void func__Simple_ChartsSave(void)
     file__f.print("}");
     file__f.close();
     BOOL__G__ChartsDirty = false;
+    if (func__Simple_NowSec() >= SIMPLE_TIME_VALID_MIN)
+    {
+        UINT32_T__G__LastChartSaveSec = func__Simple_NowSec();
+    }
 }
 
 /* ==================== خواندن یک بازهٔ نمودار ==================== */
@@ -712,6 +750,29 @@ static void func__Simple_ChartsLoad(void)
     (void)func__Simple_ChartRangeLoad(string__content, "3m",
         UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin, UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
         &UINT8_T__G__Chart3M_Count, &UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
+    {
+        uint32_t uint32_t__maxSec = 0u;
+        uint32_t uint32_t__s1 = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart1D_Time, UINT8_T__G__Chart1D_Count,
+            UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
+        uint32_t uint32_t__s7 = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart7D_Time, UINT8_T__G__Chart7D_Count,
+            UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
+        uint32_t uint32_t__s1m = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart1M_Time, UINT8_T__G__Chart1M_Count,
+            UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
+        uint32_t uint32_t__s3m = func__Simple_ChartLastSec(
+            UINT32_T__G__Chart3M_Time, UINT8_T__G__Chart3M_Count,
+            UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
+        if (uint32_t__s1 > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s1;
+        if (uint32_t__s7 > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s7;
+        if (uint32_t__s1m > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s1m;
+        if (uint32_t__s3m > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s3m;
+        if (uint32_t__maxSec >= SIMPLE_TIME_VALID_MIN)
+        {
+            UINT32_T__G__LastChartSaveSec = uint32_t__maxSec;
+        }
+    }
     BOOL__G__ChartsDirty = false;
 }
 
@@ -897,6 +958,7 @@ static void func__Simple_ChartsClear(void)
     UINT8_T__G__Chart1M_Count = 0u; UINT8_T__G__Chart1M_Index = 0u;
     UINT8_T__G__Chart3M_Count = 0u; UINT8_T__G__Chart3M_Index = 0u;
     UINT32_T__G__Last1D_Ms = 0u; UINT32_T__G__Last7D_Ms = 0u; UINT32_T__G__Last1M_Ms = 0u; UINT32_T__G__Last3M_Ms = 0u;
+    UINT32_T__G__LastChartSaveSec = 0u;
     if (BOOL__G__FsOk)
     {
         LittleFS.remove(SIMPLE_CHARTS_FILE);
