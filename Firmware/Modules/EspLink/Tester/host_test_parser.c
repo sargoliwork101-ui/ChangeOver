@@ -294,8 +294,20 @@ int main(void)
         CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, &readBack) == true);
         CHECK(readBack == 20u);
 
+        CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS, 900000u, &applied) == true);
+        CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_CYCLE_ON_MS, 45000u, &applied) == true);
+        CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_CYCLE_OFF_MS, 90000u, &applied) == true);
         CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, 35u, &applied) == true);
         CHECK(applied == 35u);
+
+        /* func__EspLink_Init runs in TaskComm after func__EspLink_NvmInit in App_Init;
+           it must NOT overwrite NVM-restored Wi-Fi parameters 143..146. */
+        func__EspLink_Init();
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS, &readBack) == true && readBack == 900000u);
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_CYCLE_ON_MS, &readBack) == true && readBack == 45000u);
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_CYCLE_OFF_MS, &readBack) == true && readBack == 90000u);
+        CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, &readBack) == true && readBack == 35u);
+
         func__EspLink_SetBatteryPercent(30u);
         func__EspLink_PowerSaveTick(false, 100u);
         CHECK(func__EspLink_IsPowerOn() == false);

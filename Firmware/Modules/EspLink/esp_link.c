@@ -2150,7 +2150,9 @@ bool func__EspLink_HostTest_HandleLutFrame(uint8_t uint8_t__messageType,
  */
 void func__EspLink_Init(void)
 {
+#ifndef ESPLINK_HOST_TEST
     func__BspUart_Init();
+#endif
     ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
     BOOL__G__LutResetAuthorized = false;
     UINT8_T__G__LutStageN1 = 0u;
@@ -2160,10 +2162,6 @@ void func__EspLink_Init(void)
     BOOL__G__WifiClientConnected = false;
     UINT32_T__G__ClientActiveHoldMs = 0u;
     UINT32_T__G__BatteryIdleElapsedMs = 0u;
-    UINT32_T__G__WifiIdleLowPowerMs = ESPLINK_WIFI_IDLE_LOW_POWER_MS;
-    UINT32_T__G__WifiCycleOnMs = ESPLINK_WIFI_CYCLE_ON_MS;
-    UINT32_T__G__WifiCycleOffMs = ESPLINK_WIFI_CYCLE_OFF_MS;
-    UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
     UINT8_T__G__BatteryPercent = 100u;
     BOOL__G__LastInputPresent = true;
     BOOL__G__WifiBatCutoffLatched = false;
