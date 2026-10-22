@@ -2105,6 +2105,10 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     {
         bool__isFull = false;
     }
+    else if (func__Charger_IsAnyChannelInThermalRest() == true)
+    {
+        bool__isFull = false;
+    }
 #endif
 
     if (BOOL__G__UiInputPresent == true)

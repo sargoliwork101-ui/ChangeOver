@@ -762,11 +762,11 @@ inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
     }
     if (func__Sim_ArgU32(web_server__server, "s1", &uint32_t__value))
     {
-        SIM_BOARD_STATE_T__G__Board.state1 = (uint32_t__value > 9u) ? 9u : uint32_t__value;
+        SIM_BOARD_STATE_T__G__Board.state1 = (uint32_t__value > 10u) ? 10u : uint32_t__value;
     }
     if (func__Sim_ArgU32(web_server__server, "s2", &uint32_t__value))
     {
-        SIM_BOARD_STATE_T__G__Board.state2 = (uint32_t__value > 9u) ? 9u : uint32_t__value;
+        SIM_BOARD_STATE_T__G__Board.state2 = (uint32_t__value > 10u) ? 10u : uint32_t__value;
     }
     if (func__Sim_ArgU32(web_server__server, "fault", &uint32_t__value))
     {

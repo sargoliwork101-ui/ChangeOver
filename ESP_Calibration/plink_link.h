@@ -1203,17 +1203,17 @@ static uint32_t func__Esp_ComputeBatteryPercent(void)
  *                at maximum TX power.
  *              - On battery at/above cutoff with no user connected:
  *                * First window (default 30 minutes = 1800000 ms): AP stays ON
- *                  at low TX power (0 dBm).
+ *                  at low TX power (10 dBm).
  *                * After initial window: AP cycles OFF/ON (default 2 minutes
  *                  OFF / 1 minute ON) at low TX power until a user connects.
  *         [FA] گام مدیریت ترکیبی قدرت آنتن و چرخهٔ خاموش/روشن وای‌فای روی باتری:
  *              - در حضور برق ورودی: روشنِ دائم با بیشترین قدرت آنتن (۲۰٫۵ dBm).
- *              - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪): خاموش شدن کامل
- *                اکسس‌پوینت و روشن نشدن در هیچ حالتی.
+ *              - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪ با ۲٪ hysteresis):
+ *                خاموش شدن کامل اکسس‌پوینت تا رسیدن به ۲۲٪ یا وصل شدن برق ورودی.
  *              - روی باتری بالای حد قطع با حضور کاربر: روشنِ دائم با بیشترین
  *                قدرت آنتن.
  *              - روی باتری بالای حد قطع و بدون کاربر: در بازهٔ اولیه (پیش‌فرض
- *                ۳۰ دقیقه) روشن با قدرت آنتن پایین (۰ dBm) و پس از آن چرخهٔ
+ *                ۳۰ دقیقه) روشن با قدرت آنتن پایین (۱۰ dBm) و پس از آن چرخهٔ
  *                خاموش/روشن با قدرت آنتن پایین تا زمان اتصال کاربر.
  * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
  *                         [FA] زمان فعلی بر حسب میلی‌ثانیه
@@ -1233,7 +1233,28 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         ESP_PARAM_WIFI_BAT_CUTOFF_PCT, ESP_WIFI_BAT_CUTOFF_PCT);
     uint32_t uint32_t__batteryPct = func__Esp_ComputeBatteryPercent();
 
-    if ((!bool__inputPresent) && (uint32_t__batteryPct < uint32_t__batCutoffPct))
+    if (bool__inputPresent || (uint32_t__batCutoffPct == 0u))
+    {
+        BOOL__G__WifiBatCutoffLatched = false;
+    }
+    else if (uint32_t__batteryPct < uint32_t__batCutoffPct)
+    {
+        BOOL__G__WifiBatCutoffLatched = true;
+    }
+    else if (BOOL__G__WifiBatCutoffLatched)
+    {
+        uint32_t uint32_t__recoverPct = uint32_t__batCutoffPct + 2u;
+        if (uint32_t__recoverPct > 100u)
+        {
+            uint32_t__recoverPct = 100u;
+        }
+        if (uint32_t__batteryPct >= uint32_t__recoverPct)
+        {
+            BOOL__G__WifiBatCutoffLatched = false;
+        }
+    }
+
+    if ((!bool__inputPresent) && BOOL__G__WifiBatCutoffLatched)
     {
         BOOL__G__WifiClientConnected = false;
         if (BOOL__G__WifiLastReportedConnected && (UINT8_T__G__LutTxStage == 0u))

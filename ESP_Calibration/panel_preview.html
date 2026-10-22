@@ -519,7 +519,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 836afeb</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1eb0681</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1097,8 +1097,8 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <script>
 const $=i=>document.getElementById(i);
-const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','JIT wait','Input wait','Final fault','باتری قطع','دستی'];
-const SC=['','g','g','g','y','r','y','r','r','y'];
+const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','JIT wait','Input wait','Final fault','باتری قطع','دستی','استراحت حرارتی'];
+const SC=['','g','g','g','y','r','y','r','r','y','y'];
 /* ثابت‌های بخش 2 سند (زنجیرهٔ جریان باتری) */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*68000/6800,K24B=K24,K12=3300/4095*34398/6800;
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
@@ -1936,7 +1936,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     تیره (‎paint-order)‎ تا روی هر منحنی/برچسبی خوانا بماند. */
  let lg='';const BT=[];
  if(D&&D.t){const tt=D.t;
-  const BST={0:['Off','#96a1b8'],1:['Bulk','#63a2ff'],2:['Absorb','#f7c13c'],3:['Float','#35d6a0'],4:['Bring-up','#9ac8ff'],5:['JIT wait','#96a1b8'],6:['Input wait','#96a1b8'],7:['Final fault','#ff6873'],8:['Battery lost','#ff6873'],9:['Manual','#c084fc']};
+  const BST={0:['Off','#96a1b8'],1:['Bulk','#63a2ff'],2:['Absorb','#f7c13c'],3:['Float','#35d6a0'],4:['Bring-up','#9ac8ff'],5:['JIT wait','#96a1b8'],6:['Input wait','#96a1b8'],7:['Final fault','#ff6873'],8:['Battery lost','#ff6873'],9:['Manual','#c084fc'],10:['Thermal rest','#f7c13c']};
   const bats=[['Battery low (Vlow)',tt[17],tt[13],tt[10],'#c084fc',0.60],['Battery high (Vhigh)',tt[18],tt[6],tt[3],'#f7c13c',0.82]];
   bats.forEach(b=>{
    if(b[1]>lo&&b[1]<hi){const y=Y(b[1]),x=X(b[3]);

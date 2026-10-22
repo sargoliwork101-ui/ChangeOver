@@ -2960,11 +2960,20 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
+    /* [EN] APP_STATE_SAFE only means Changeover cut the 24 V battery-to-load
+       output (PB11) due to low battery, Scenario 5 output veto, or Scenario 6
+       output veto. Charging must remain allowed in APP_STATE_SAFE whenever
+       mains input is valid, so a low battery (< 21.2 V) can be charged back up
+       to CHANGEOVER_BAT_RECONNECT_MV, Scenario 5 can use its 20-cycle budget,
+       and Scenario 6 only stops the condemned channel.
+       [FA] حالت APP_STATE_SAFE فقط یعنی خروجی ۲۴ ولت بار (PB11) توسط چنج‌اور
+       قطع شده است؛ در صورت حضور برق ورودی، شارژر باید فعال بماند تا باتریِ
+       ضعیف به ۲۱٫۲ ولت برسد، سهمیهٔ ۲۰ بار شارژ سناریوی ۵ کار کند و در
+       سناریوی ۶ فقط کانال خراب متوقف شود. */
     if ((measurement_snapshot_t__snap == NULL) ||
         (measurement_snapshot_t__snap->valid == false) ||
         (CHG_INSTALLED_CHANNEL_MASK == 0u) ||
-        (app_state_t__state == APP_STATE_FAULT) ||
-        (app_state_t__state == APP_STATE_SAFE))
+        (app_state_t__state == APP_STATE_FAULT))
     {
         func__Charger_SafeIdle();
         if ((measurement_snapshot_t__snap != NULL) &&

@@ -887,7 +887,7 @@ function showToast(msg, ms){
 }
 /* نمایش تاریخ همه‌جای پنل: همان تابع شمسی (نمونه: ۲۲ مهر ۱۴۰۵ - ۱۴:۳۵) */
 function fmtTime(ts){ return fmtJalali(ts); }
-function stateText(s){ const m={0:'خاموش',1:'در حال شارژ',2:'تکمیل شارژ',3:'آماده',4:'راه‌اندازی',5:'بررسی ورودی',6:'انتظار',7:'خطا',8:'باتری قطع',9:'دستی'}; return m[s]||('حالت '+s); }
+function stateText(s){ const m={0:'خاموش',1:'در حال شارژ',2:'تکمیل شارژ',3:'آماده',4:'راه‌اندازی',5:'بررسی ورودی',6:'انتظار',7:'خطا',8:'باتری قطع',9:'دستی',10:'استراحت حرارتی'}; return m[s]||('حالت '+s); }
 function faultText(mask){
  let t=[];
  if(mask & 1) t.push('خطای اندازه‌گیری ولتاژ - سنسور یا سیم‌کشی');
@@ -1080,6 +1080,7 @@ function renderLeds(){
  let s1=lastData.state1||0, s2=lastData.state2||0;
  let inputPresent=lastData.inputPresentStable, inputOV=lastData.inputOV;
  let charging=(s1==1||s1==2||s2==1||s2==2);
+ let thermalRest=(s1==10||s2==10);
  let stablePct=lastData.pctPackStable||0;
  let chgStablePct=lastData.pctPackChgStable||stablePct;
  let isTech=(fault & FAULT_TECH)!==0;
@@ -1094,7 +1095,7 @@ function renderLeds(){
  else if(isDead) scn='dead';
  else if(isImbLatched) scn='imb';
  else if(!inputPresent){ scn=isCritical?'crit':'batt'; }
- else { if(lastData.fullActive) scn='full'; else if(!charging) scn='inputok'; else scn='charging'; }
+ else { if(lastData.fullActive) scn='full'; else if(thermalRest) scn='thermal'; else if(!charging) scn='inputok'; else scn='charging'; }
  resetBlinksIfScenarioChanged(scn);
  if(scn==='tech'){ let on=updRedBlink(1000,50); if(on){ g.classList.add('on-green'); y.classList.add('on-yellow'); r.classList.add('on-red'); } }
  else if(scn==='ov'){ g.classList.add('on-green'); if(updRedBlink(1000,50)) r.classList.add('on-red'); }
@@ -1104,6 +1105,7 @@ function renderLeds(){
  else if(scn==='crit'){ }
  else if(scn==='batt'){ if(updGreenBlink(stablePct)) g.classList.add('on-green'); }
  else if(scn==='full' || scn==='inputok'){ g.classList.add('on-green'); }
+ else if(scn==='thermal'){ g.classList.add('on-green'); if(updRedBlink(1000,50)) y.classList.add('on-yellow'); }
  else if(scn==='charging'){ g.classList.add('on-green'); if(updYellowBlink(chgStablePct)) y.classList.add('on-yellow'); }
 
 }
@@ -1525,12 +1527,13 @@ function render(data){
     کامل ۹۹٪ نشان داده شود) */
  let fillPct=pctPack;
  let isCharging=(s1==1||s1==2||s2==1||s2==2);
+ let isThermalRest=(s1==10||s2==10);
  let ch1Charging=(s1==1||s1==2);
  let ch2Charging=(s2==1||s2==2);
  let ch1Enabled=((fl&0x18)===0)?true:((fl&0x08)!==0);
  let ch2Enabled=((fl&0x18)===0)?true:((fl&0x10)!==0);
  let isFloatComplete=(ch1Enabled||ch2Enabled)&&(!ch1Enabled||s1==3)&&(!ch2Enabled||s2==3);
- let fullActive=isFloatComplete?true:(isCharging?false:g_fullActive);
+ let fullActive=isFloatComplete?true:((isCharging||isThermalRest)?false:g_fullActive);
  g_isCharging=isCharging; g_ch1Charging=ch1Charging; g_ch2Charging=ch2Charging;
  g_highPct=pctHigh; g_lowPct=pctLow;
  if(isCharging){
@@ -1613,6 +1616,10 @@ function render(data){
  }
  else if(isImbEpisode && !isCharging){ stTxt='عدم‌توازن در جریان'; ssTxt='اختلاف دو نیم‌پک '+imb+' میلی‌ولت'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt='عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت - زیر نظر'; }
  else if(fullActive){ stTxt='شارژ کامل'; ssTxt='باتری پر - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='شارژ کامل - باتری پر ('+pctPack+'٪)'; }
+ else if(isThermalRest){
+  stTxt='استراحت حرارتی شارژر';
+  ssTxt='استراحت ۱۰ دقیقه‌ای پس از ۱ ساعت شارژ - باتری '+pctPack+' درصد';
+ }
  else if(s1==1||s1==2||s2==1||s2==2){
   let q=getChargingBounds(pctPack);
   stTxt='در حال شارژ ⚡ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';

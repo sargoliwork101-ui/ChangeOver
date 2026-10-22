@@ -398,3 +398,4 @@ static bool BOOL__G__WifiLastReportedConnected = false;
 static uint32_t UINT32_T__G__WifiLastReportMs = 0u;
 static uint32_t UINT32_T__G__WifiBatteryIdleStartMs = 0u;
 static bool BOOL__G__WifiBatteryIdleTracking = false;
+static bool BOOL__G__WifiBatCutoffLatched = false;

@@ -976,7 +976,7 @@ for as long as it is left on.
 
 
 Charger states: `0 OFF, 1 BULK, 2 ABSORB, 3 FLOAT, 4 BRINGUP, 5 JIT_RETRY_WAIT,
-6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST, 9 MANUAL`.
+6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST, 9 MANUAL, 10 THERMAL_REST`.
 
 Channel mapping: **channel 1 = Trans1 = upper battery (Vhigh)**,
 **channel 2 = Trans2 = lower battery (Vlow)**.

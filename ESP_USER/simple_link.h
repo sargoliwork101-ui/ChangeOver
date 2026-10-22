@@ -631,7 +631,28 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     uint32_t uint32_t__batCutoffPct = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_BAT_CUTOFF_PCT);
     uint32_t uint32_t__batteryPct = func__Simple_ComputeBatteryPercent();
 
-    if ((!bool__inputPresent) && (uint32_t__batteryPct < uint32_t__batCutoffPct))
+    if (bool__inputPresent || (uint32_t__batCutoffPct == 0u))
+    {
+        BOOL__G__WifiBatCutoffLatched = false;
+    }
+    else if (uint32_t__batteryPct < uint32_t__batCutoffPct)
+    {
+        BOOL__G__WifiBatCutoffLatched = true;
+    }
+    else if (BOOL__G__WifiBatCutoffLatched)
+    {
+        uint32_t uint32_t__recoverPct = uint32_t__batCutoffPct + 2u;
+        if (uint32_t__recoverPct > 100u)
+        {
+            uint32_t__recoverPct = 100u;
+        }
+        if (uint32_t__batteryPct >= uint32_t__recoverPct)
+        {
+            BOOL__G__WifiBatCutoffLatched = false;
+        }
+    }
+
+    if ((!bool__inputPresent) && BOOL__G__WifiBatCutoffLatched)
     {
         BOOL__G__WifiClientConnected = false;
         if (BOOL__G__WifiLastReportedConnected)

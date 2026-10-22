@@ -428,8 +428,15 @@ void func__Diag_RecordFault(fault_mask_t fault_mask_t__faults, const measurement
         DIAG_RECORD_T__G__Active.diag_error_t__A__Errors[0].uint32_t__vLowMv = 0u;
         DIAG_RECORD_T__G__Active.diag_error_t__A__Errors[0].uint32_t__vHighMv = 0u;
     }
+#if MODULE_CHARGER
+    DIAG_RECORD_T__G__Active.diag_error_t__A__Errors[0].uint32_t__state1 =
+        UINT32_T__G__ChargerDiag[0u * CHG_DIAG_CHANNEL_STRIDE + CHG_DIAG_IDX_STATE];
+    DIAG_RECORD_T__G__Active.diag_error_t__A__Errors[0].uint32_t__state2 =
+        UINT32_T__G__ChargerDiag[1u * CHG_DIAG_CHANNEL_STRIDE + CHG_DIAG_IDX_STATE];
+#else
     DIAG_RECORD_T__G__Active.diag_error_t__A__Errors[0].uint32_t__state1 = 0u;
     DIAG_RECORD_T__G__Active.diag_error_t__A__Errors[0].uint32_t__state2 = 0u;
+#endif
 
     if (DIAG_RECORD_T__G__Active.uint8_t__errorCount < DIAG_MAX_ERRORS)
     {
