@@ -2077,6 +2077,10 @@ function render(data){
  let isCharging=(s1==1||s1==2||s2==1||s2==2);
  let ch1Charging=(s1==1||s1==2);
  let ch2Charging=(s2==1||s2==2);
+ let ch1Enabled=((fl&0x18)===0)?true:((fl&0x08)!==0);
+ let ch2Enabled=((fl&0x18)===0)?true:((fl&0x10)!==0);
+ let isFloatComplete=(ch1Enabled||ch2Enabled)&&(!ch1Enabled||s1==3)&&(!ch2Enabled||s2==3);
+ let fullActive=isFloatComplete?true:(isCharging?false:g_fullActive);
  g_isCharging=isCharging; g_ch1Charging=ch1Charging; g_ch2Charging=ch2Charging;
  g_highPct=pctHigh; g_lowPct=pctLow;
  if(isCharging){
@@ -2089,7 +2093,7 @@ function render(data){
  data.pctPack=pctPack; data.pctPackStable=stablePack; data.pctPackChgStable=chgStablePack;
  data.pctLowStable=stableLow; data.pctHighStable=stableHigh;
  data.faultMask=fault; data.state1=s1; data.state2=s2; data.deadMask=deadMask;
- data.fl=fl; data.fl2=fl2; data.fullActive=g_fullActive;
+ data.fl=fl; data.fl2=fl2; data.fullActive=fullActive;
  data.inputPresentStable=inputPresent; data.inputPresent=data.inputPresent; data.inputPresentGpio=data.inputPresent;
  data.inputOV=inputOV; data.vPackCal=vPack; data.vLowCal=vLow; data.vHighCal=vHigh; data.vInCal=vIn;
  data.rawPackDis=rawPackDis; data.rawPackChg=rawPackChg; data.fillPct=fillPct;
@@ -2158,7 +2162,7 @@ function render(data){
   else { heroFaultCls='hero-fault warn show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+brd.gPer+'ms'; }
  }
  else if(isImbEpisode && !isCharging){ stTxt='عدم‌توازن در جریان'; ssTxt='اختلاف دو نیم‌پک '+imb+' میلی‌ولت'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt='عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت - زیر نظر'; }
- else if(g_fullActive || (s1==3 && s2==3)){ stTxt='شارژ کامل'; ssTxt='باتری پر - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='شارژ کامل - باتری پر ('+pctPack+'٪)'; }
+ else if(fullActive){ stTxt='شارژ کامل'; ssTxt='باتری پر - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='شارژ کامل - باتری پر ('+pctPack+'٪)'; }
  else if(s1==1||s1==2||s2==1||s2==2){
   let q=getChargingBounds(pctPack);
   stTxt='در حال شارژ ⚡ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
