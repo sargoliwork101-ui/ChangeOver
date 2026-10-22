@@ -310,6 +310,16 @@ int main(void)
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 0u);
+    /* [EN] Manual reset must also clear the stale full-charge/rest timers so a
+       lingering FLOAT + voltage gap does not record a new event without a
+       fresh charge cycle.
+       [FA] ریست دستی باید تایمرهای شارژ کامل و استراحت قبلی را هم صفر کند تا
+       بدون شروع سیکل شارژ جدید، رویداد تازه ثبت نشود. */
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;
+    func__Run(uint32_t__t + 700000u, false);
+    func__Run(uint32_t__t + 750000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12000u;
 
     /* ---- battery absent 3 s -> automatic full reset remains a second path ---- */
     CHECK(func__Imbalance_SetParam(200u, 4u, NULL));

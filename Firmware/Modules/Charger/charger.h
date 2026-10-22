@@ -1788,4 +1788,12 @@ void func__Charger_DeadBeepPattern(uint32_t *uint32_t__beepCount,
  */
 bool func__Charger_DeadTakePersistFlag(void);
 
+/**
+ * @brief  [EN] Reset active charger channels to OFF so the next control pass
+ *              restarts charging from the beginning (BULK).
+ *         [FA] کانال‌های فعال شارژر را به OFF برمی‌گرداند تا در پاس بعدی
+ *              شارژ از ابتدا (BULK) آغاز شود.
+ */
+void func__Charger_RestartCycle(void);
+
 #endif /* CHARGER_H */

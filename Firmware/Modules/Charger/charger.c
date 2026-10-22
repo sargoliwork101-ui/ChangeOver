@@ -2794,6 +2794,47 @@ void func__Charger_DeadBeepPattern(uint32_t *uint32_t__beepCount,
     }
 }
 
+/* ==================== Charger_RestartCycle ==================== */
+
+/**
+ * @brief  [EN] Reset active charger channels to OFF so the next control pass
+ *              restarts charging from the beginning (BULK).
+ *         [FA] کانال‌های فعال شارژر را به OFF برمی‌گرداند تا در پاس بعدی
+ *              شارژ از ابتدا (BULK) آغاز شود.
+ */
+void func__Charger_RestartCycle(void)
+{
+    uint8_t  uint8_t__index;
+    uint32_t uint32_t__bit;
+    int32_t  int32_t__savedKernelLock;
+
+    int32_t__savedKernelLock = osKernelLock();
+    if (BOOL__G__ChargerInitialized != false)
+    {
+        for (uint8_t__index = 0u; uint8_t__index < CHG_CHANNEL_COUNT; uint8_t__index++)
+        {
+            uint32_t__bit = (uint32_t)1u << uint8_t__index;
+            UINT32_T__G__ThermalRestUntilTick[uint8_t__index] = 0u;
+            UINT32_T__G__ThermalContinuousSinceTick[uint8_t__index] = 0u;
+            if (((UINT32_T__G__DeadMask & uint32_t__bit) == 0u) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__index].charger_state_t__state !=
+                 CHG_STATE_FINAL_FAULT) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__index].charger_state_t__state !=
+                 CHG_STATE_BAT_LOST) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__index].charger_state_t__state !=
+                 CHG_STATE_MANUAL))
+            {
+                func__Charger_ResetChannelToOff(uint8_t__index);
+                func__Charger_StopOneChannel(uint8_t__index);
+            }
+        }
+    }
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+}
+
 bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__value)
 {

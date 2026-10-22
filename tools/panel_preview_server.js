@@ -549,7 +549,19 @@ function updateDeadChargeCounter(timerState, channelIndex, channelState, nowMs, 
  * [FA] یک درخواست اسلات را اعمال می‌کند؛ پاک‌کردن حکم سناریوی ۶ ساعت زندهٔ
  *      همان کانال را هم صفر می‌کند، مثل func__Charger_SetDeadParam. */
 function applyLatchItem(item) {
-    if (item.id === 202) latch.imbBase = ms;
+    if (item.id === 202) {
+        latch.imbBase = ms;
+        if (item.val === 0) {
+            for (let channelIndex = 0; channelIndex < 2; channelIndex += 1) {
+                if ((latch.deadMask & (1 << channelIndex)) === 0) {
+                    ch[channelIndex].state = 1;
+                    ch[channelIndex].v = 12400;
+                    ch[channelIndex].soak = 0;
+                    ch[channelIndex].taper = 0;
+                }
+            }
+        }
+    }
     if (item.id === 203) {
         const newMask = item.val & 3;
         for (let channelIndex = 0; channelIndex < 2; channelIndex += 1) {

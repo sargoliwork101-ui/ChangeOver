@@ -73,6 +73,7 @@ static bool     BOOL__G__OverTiming;        /* [EN] Over-limit timing active / �
 static uint32_t UINT32_T__G__AbsentSinceMs; /* [EN] Battery-absent continuous start / شروع نبود باتری */
 static bool     BOOL__G__AbsentTiming;      /* [EN] Absence timer active / تایمر نبود فعال */
 static uint32_t UINT32_T__G__LastBeepMs;    /* [EN] Last latch beep / آخرین بوق قفل */
+static bool     BOOL__G__ManualResetPending;/* [EN] Manual reset pending nowMs anchor / ریست دستی در انتظار تیک زمان */
 
 /* ==================== Internal helpers / کمکی‌های داخلی ==================== */
 
@@ -261,6 +262,7 @@ void func__Imbalance_Init(void)
      * [FA] اولین بوق دقیقاً یک دوره پس از قفل. */
 
     UINT32_T__G__LastBeepMs   = 0u;
+    BOOL__G__ManualResetPending = false;
 
     IMBAL_OUTPUTS_T__G__Last.uint32_t__imbalanceMv  = 0u;
     IMBAL_OUTPUTS_T__G__Last.bool__episode          = false;
@@ -434,6 +436,31 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
 
     /* ---- charge-session edges and full-charge qualification ---- */
     bool__charging      = imbalance_inputs_t__inputs->bool__charging;
+    if (BOOL__G__ManualResetPending != false)
+    {
+        /* [EN] Manual reset from the panel clears all Scenario 5 timers and
+           anchors the current charge/rest clock to nowMs so counting restarts
+           cleanly from zero.
+           [FA] ریست دستی از پنل همهٔ تایمرهای سناریوی ۵ را صفر می‌کند و مبدأ
+           زمان شارژ و استراحت را روی لحظهٔ فعلی می‌گذارد تا از اول بشمارد. */
+        BOOL__G__ManualResetPending    = false;
+        BOOL__G__HasChargeEnd          = false;
+        UINT32_T__G__RestAnchorMs      = uint32_t__nowMs;
+        BOOL__G__ChargingEdge          = bool__charging;
+        UINT32_T__G__ChargeStartMs     = uint32_t__nowMs;
+        BOOL__G__PrevCharging          = bool__charging;
+        BOOL__G__PrevThermalRest       = imbalance_inputs_t__inputs->bool__thermalRest;
+        BOOL__G__CycleFullSeen         = false;
+        BOOL__G__RequireFreshFullCycle = (bool__charging == false);
+        BOOL__G__CycleHasImbalance     = false;
+        BOOL__G__CycleEventRecorded    = false;
+        UINT8_T__G__CleanFullCycles    = 0u;
+        BOOL__G__Episode               = false;
+        UINT32_T__G__EpisodeLimitMv    = 0u;
+        UINT32_T__G__OverSinceMs       = 0u;
+        BOOL__G__OverTiming            = false;
+        UINT32_T__G__LastBeepMs        = uint32_t__nowMs;
+    }
     if ((imbalance_inputs_t__inputs->bool__thermalRest == true) ||
         (BOOL__G__PrevThermalRest == true))
     {
@@ -875,15 +902,41 @@ bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,
                 UINT32_T__G__Events = uint32_t__clamped;
                 if (uint32_t__clamped == 0u)
                 {
-                    BOOL__G__Episode            = false;
-                    BOOL__G__OverTiming         = false;
-                    BOOL__G__CycleHasImbalance  = false;
-                    BOOL__G__CycleEventRecorded = false;
-                    UINT8_T__G__CleanFullCycles = 0u;
+                    BOOL__G__HasChargeEnd          = false;
+                    BOOL__G__CycleFullSeen         = false;
+                    BOOL__G__RequireFreshFullCycle = true;
+                    BOOL__G__Episode               = false;
+                    UINT32_T__G__EpisodeLimitMv    = 0u;
+                    UINT32_T__G__OverSinceMs       = 0u;
+                    BOOL__G__OverTiming            = false;
+                    BOOL__G__CycleHasImbalance     = false;
+                    BOOL__G__CycleEventRecorded    = false;
+                    UINT8_T__G__CleanFullCycles    = 0u;
+                    BOOL__G__ManualResetPending    = true;
+                }
+                else
+                {
+                    BOOL__G__ManualResetPending = false;
                 }
                 break;
             case IMBAL_SLOT_CYCLES_ID: UINT32_T__G__LatchedCycles = uint32_t__clamped; break;
-            case IMBAL_SLOT_LATCH_ID:  UINT32_T__G__Latched       = (uint32_t__clamped != 0u) ? 1u : 0u; break;
+            case IMBAL_SLOT_LATCH_ID:
+                UINT32_T__G__Latched = (uint32_t__clamped != 0u) ? 1u : 0u;
+                if ((uint32_t__clamped == 0u) && (UINT32_T__G__Events == 0u))
+                {
+                    BOOL__G__HasChargeEnd          = false;
+                    BOOL__G__CycleFullSeen         = false;
+                    BOOL__G__RequireFreshFullCycle = true;
+                    BOOL__G__Episode               = false;
+                    UINT32_T__G__EpisodeLimitMv    = 0u;
+                    UINT32_T__G__OverSinceMs       = 0u;
+                    BOOL__G__OverTiming            = false;
+                    BOOL__G__CycleHasImbalance     = false;
+                    BOOL__G__CycleEventRecorded    = false;
+                    UINT8_T__G__CleanFullCycles    = 0u;
+                    BOOL__G__ManualResetPending    = true;
+                }
+                break;
             default: break;
         }
         if (uint32_t__appliedValue != NULL)
@@ -899,6 +952,7 @@ bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,
 
     if (bool__ret == true)
     {
+        IMBAL_OUTPUTS_T__G__Last.bool__episode = BOOL__G__Episode;
         IMBAL_OUTPUTS_T__G__Last.uint32_t__events = UINT32_T__G__Events;
         IMBAL_OUTPUTS_T__G__Last.bool__latched = (UINT32_T__G__Latched != 0u);
         IMBAL_OUTPUTS_T__G__Last.uint32_t__latchedCycles = UINT32_T__G__LatchedCycles;

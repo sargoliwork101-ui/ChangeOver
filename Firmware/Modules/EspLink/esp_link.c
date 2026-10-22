@@ -430,9 +430,18 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                 ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
                  (uint8_t__paramId <= IMBAL_SLOT_LAST_ID)))
             {
-                return func__Imbalance_SetParam(uint8_t__paramId,
-                                                uint32_t__value,
-                                                uint32_t__appliedValue);
+                bool bool__imbOk = func__Imbalance_SetParam(uint8_t__paramId,
+                                                            uint32_t__value,
+                                                            uint32_t__appliedValue);
+#if MODULE_CHARGER
+                if ((bool__imbOk == true) &&
+                    (uint8_t__paramId == IMBAL_SLOT_LATCH_ID) &&
+                    (uint32_t__value == 0u))
+                {
+                    func__Charger_RestartCycle();
+                }
+#endif
+                return bool__imbOk;
             }
 #endif
 #if MODULE_CHARGER
