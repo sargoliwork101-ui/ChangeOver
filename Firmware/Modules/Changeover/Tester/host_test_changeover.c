@@ -26,6 +26,10 @@
 #include "imbalance.h"
 #endif
 
+#if MODULE_FAULT
+#include "fault.h"
+#endif
+
 /* ==================== Check helper / کمک‌کنندهٔ بررسی ==================== */
 
 static int INT32_T__G__Checks = 0;
@@ -53,6 +57,12 @@ static uint32_t UINT32_T__G__ProtectWrites = 0u;
 /* [EN] Collaborator verdicts the test drives. / [FA] نظر همکارهای بدلی. */
 static bool BOOL__G__ImbalanceBlocks = false;
 static bool BOOL__G__DeadBlocks      = false;
+
+/* [EN] Fake live battery-absence signal of the Fault module: true while the
+       test pretends the pack is physically removed.
+   [FA] سیگنال بدلی نبود باتری ماژول Fault: تا وقتی تست باتری را جدا فرض
+       کند true است. */
+static bool BOOL__G__BatteryAbsent = false;
 
 uint32_t osKernelGetTickCount(void);
 uint32_t osKernelGetTickCount(void)
@@ -102,6 +112,14 @@ bool func__Charger_DeadBlocksOutput(void)
 }
 #endif
 
+#if MODULE_FAULT
+bool func__Fault_IsBatteryAbsent(void);
+bool func__Fault_IsBatteryAbsent(void)
+{
+    return BOOL__G__BatteryAbsent;
+}
+#endif
+
 /* ==================== Test driver / رانندهٔ تست ==================== */
 
 static measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
@@ -125,6 +143,7 @@ static void func__Reset(uint32_t uint32_t__startTick)
     UINT32_T__G__FakeTick       = uint32_t__startTick;
     BOOL__G__ImbalanceBlocks    = false;
     BOOL__G__DeadBlocks         = false;
+    BOOL__G__BatteryAbsent      = false;
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv       = 230000u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv    = 25000u;
@@ -390,6 +409,80 @@ int main(void)
     CHECK(BOOL__G__ProtectLine == true);
     CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_INPUT);
     CHECK(BOOL__G__ProtectLine == false);
+
+#if MODULE_FAULT
+    /* ---- 6c. battery swap with NO mains: the output must come back ----
+       [EN] Field report 2026-10-23: the output was cut, the mains was absent,
+            and unplugging + replugging one battery wire left the output dead
+            for ever (the 2026-10-06 rule needs the mains). A continuous 3 s
+            absence qualifies a swap: the new pack then reconnects on its own
+            voltage after the normal 3 s filter, and the state must be BATTERY
+            (the mains is still absent), not INPUT.
+       [FA] گزارش میدانی ۲۰۲۶-۱۰-۲۳: خروجی قطع بود، برق شهر نبود و قطع/وصل
+            یک سیم باتری خروجی را برای همیشه قطع می‌گذاشت (قانون ۲۰۲۶-۱۰-۰۶
+            برق شهر می‌خواهد). غیبت پیوستهٔ ۳ ثانیه «تعویض» را تأیید می‌کند:
+            بستهٔ نو با ولتاژ خودش و پس از فیلتر ۳ ثانیه وصل می‌شود و حالت
+            باید BATTERY باشد (برق شهر هنوز نیست)، نه INPUT. */
+    func__Reset(800000u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    func__CutAndVerifyTiming();
+    CHECK(BOOL__G__ProtectLine == true);
+
+    /* [EN] Wire pulled: the removed half reads ~0 V and Fault says absent.
+       [FA] سیم جدا شد: نیمِ جدا‌شده حدود ۰ ولت است و Fault «غایب» می‌گوید. */
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 0u;
+    BOOL__G__BatteryAbsent = true;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Step(CHANGEOVER_SWAP_ABSENT_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);                       /* [EN] not armed yet / هنوز مسلح نشده */
+    CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_SAFE);       /* [EN] 3 s absence = swap / ۳ ثانیه غیبت */
+    CHECK(BOOL__G__ProtectLine == true);                       /* [EN] protect stays on / محافظ فعال می‌ماند */
+
+    /* [EN] New pack plugged in while the mains is still absent.
+       [FA] بستهٔ نو وصل می‌شود، در حالی که برق شهر هنوز نیست. */
+    BOOL__G__BatteryAbsent = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);      /* [EN] 3 s filter starts / فیلتر ۳ ثانیه */
+    CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_BATTERY);    /* [EN] reconnected, no mains / وصل بدون برق شهر */
+    CHECK(BOOL__G__ProtectLine == false);
+
+    /* [EN] And the flag does not linger: a later voltage dip alone still parks
+            the module in SAFE with no mains (the 2026-10-06 rule is intact).
+       [FA] پرچم نمی‌ماند: افت ولتاژ بعدی تنها، بدون برق شهر همچنان SAFE
+            می‌دهد (قانون ۲۰۲۶-۱۰-۰۶ دست‌نخورده). */
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    func__CutAndVerifyTiming();
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 24000u;
+    for (uint32_t__i = 0u; uint32_t__i < 20u; uint32_t__i++)
+    {
+        CHECK(func__Step(1000u, FAULT_NONE) == APP_STATE_SAFE);
+    }
+    CHECK(BOOL__G__ProtectLine == true);
+
+    /* ---- 6d. an absence shorter than the swap window is NOT a swap ----
+       [EN] 2 s of absence (a loose contact, a fast re-seat) must not open the
+            mains-free gate: the output stays cut until the mains returns.
+       [FA] ۲ ثانیه غیبت (تماس شل یا جا‌زدن سریع) نباید گیت بدون برق شهر را
+            باز کند: خروجی تا برگشت برق شهر قطع می‌ماند. */
+    func__Reset(900000u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    func__CutAndVerifyTiming();
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 0u;
+    BOOL__G__BatteryAbsent = true;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Step(2000u, FAULT_NONE) == APP_STATE_SAFE);
+    BOOL__G__BatteryAbsent = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+    for (uint32_t__i = 0u; uint32_t__i < 20u; uint32_t__i++)
+    {
+        CHECK(func__Step(1000u, FAULT_NONE) == APP_STATE_SAFE);
+    }
+    CHECK(BOOL__G__ProtectLine == true);
+#endif
 
 #if MODULE_IMBALANCE
     /* ---- 7. scenario-5 veto: a latched imbalance never reaches the output ---- */

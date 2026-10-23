@@ -4,11 +4,14 @@
  *          [FA] ماشین حالت مسیر ورودی یا باتری - قطع/وصل با فیلتر ۳ ثانیه.
  *
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
- *              snapshot.input_present, fault_mask (the low-battery latch is internal).
+ *              snapshot.input_present, fault_mask (the low-battery latch is internal),
+ *              and (MODULE_FAULT) the live battery-absence signal
+ *              func__Fault_IsBatteryAbsent() that qualifies a battery swap.
  *              No board_pins.h, no HAL, no PB5/PB7, no float/queue/task.
  *              Time conversion ONLY via rtos_time.h (MillisecondsToTicks); tick=1ms assumption is forbidden.
  *              PB11 (BSP_GPIO_PROTECT_BATTERY) is the ONLY logical pin used.
  *          [FA] فقط از داده‌های مجاز بالا استفاده می‌کند و فقط PB11 منطقی را می‌زند.
+ *              (با ماژول Fault) سیگنال زندهٔ نبود باتری برای تشخیص تعویض باتری.
  */
 
 #include "changeover.h"
@@ -23,6 +26,10 @@
 
 #if MODULE_CHARGER
 #include "charger.h"
+#endif
+
+#if MODULE_FAULT
+#include "fault.h"
 #endif
 
 #include <stdbool.h>
@@ -89,6 +96,30 @@ static bool BOOL__G__ReconnectTimerActive = false;
 static uint32_t UINT32_T__G__InputStableSinceTick = 0u;
 static bool BOOL__G__InputStableActive = false;
 
+#if MODULE_FAULT
+/**
+ * @brief  [EN] Tick at which the battery became continuously absent, and the
+ *         running flag of that measurement. A continuous absence for at least
+ *         CHANGEOVER_SWAP_ABSENT_MS means the pack was physically swapped, not
+ *         merely weak.
+ *         [FA] تیکی که باتری به‌صورت پیوسته غایب شد و پرچم در حال اندازه‌گیری
+ *         آن. غیبت پیوستهٔ حداقل ‎CHANGEOVER_SWAP_ABSENT_MS‎ یعنی باتری
+ *         فیزیکی عوض شده، نه اینکه فقط ضعیف باشد.
+ */
+static uint32_t UINT32_T__G__SwapAbsentSinceTick = 0u;
+static bool BOOL__G__SwapAbsentActive = false;
+
+/**
+ * @brief  [EN] A qualified battery swap was seen, so the reconnect gate stays
+ *         open without mains until the new pack passes the normal 3 s voltage
+ *         filter. Cleared only by a completed reconnect or by Init().
+ *         [FA] تعویض باتریِ تأییدشده دیده شد؛ پس گیت وصل مجدد بدون برق شهر
+ *         باز می‌ماند تا بستهٔ جدید فیلتر ۳ ثانیه‌ای ولتاژ را رد کند. فقط با
+ *         وصل کامل یا Init پاک می‌شود.
+ */
+static bool BOOL__G__SwapReconnectArmed = false;
+#endif
+
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
 /**
@@ -109,6 +140,11 @@ void func__Changeover_Init(void)
     BOOL__G__LowBatteryLatched = false;
     UINT32_T__G__InputStableSinceTick = 0u;
     BOOL__G__InputStableActive = false;
+#if MODULE_FAULT
+    UINT32_T__G__SwapAbsentSinceTick = 0u;
+    BOOL__G__SwapAbsentActive = false;
+    BOOL__G__SwapReconnectArmed = false;
+#endif
 
     /* [EN] Keep the path physically cut until the first valid, non-blocked
           sample confirms the pack has reached the 21.2 V hysteresis-clear
@@ -254,6 +290,50 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         BOOL__G__ReconnectTimerActive = false;
         return APP_STATE_T__G__State;
     }
+
+#if MODULE_FAULT
+    /* [EN] Battery-swap qualifier (user order 2026-10-23). The absent signal
+          of the Fault module is live and works with no mains: an unplugged
+          half reads below FAULT_BAT_HARD_ABSENT_MV. A CONTINUOUS absence of
+          at least CHANGEOVER_SWAP_ABSENT_MS (3 s) means the pack was taken
+          out and put back, so a later reconnect on voltage alone is safe.
+          A pack that was never removed (only weak) never arms this flag and
+          keeps the deliberate 2026-10-06 rule: no mains, no reconnect.
+          The 3 s voltage filter below still has to pass on the new pack, and
+          the protect line stays asserted while the absence holds.
+       [FA] تأییدکنندهٔ تعویض باتری (دستور کاربر ۲۰۲۶-۱۰-۲۳). سیگنال نبودِ
+          باتری در ماژول Fault زنده است و بدون برق شهر هم کار می‌کند: نیمِ
+          جدا‌شده زیر ‎FAULT_BAT_HARD_ABSENT_MV‎ خوانده می‌شود. غیبتِ پیوستهٔ
+          حداقل ‎CHANGEOVER_SWAP_ABSENT_MS‎ (۳ ثانیه) یعنی باتری برداشته و
+          دوباره گذاشته شده، پس وصلِ بعدی فقط با ولتاژ بی‌خطر است. باتری‌ای
+          که اصلاً جدا نشده (فقط ضعیف است) این پرچم را مسلح نمی‌کند و همان
+          قانون عمدی ۲۰۲۶-۱۰-۰۶ می‌ماند: بدون برق شهر، بدون وصل. فیلتر
+          ۳ ثانیه‌ای ولتاژ هم باید روی بستهٔ جدید رد شود و خط محافظ در تمام
+          مدت غیبت فعال می‌ماند. */
+    if (func__Fault_IsBatteryAbsent() == true)
+    {
+        if (BOOL__G__SwapAbsentActive == false)
+        {
+            BOOL__G__SwapAbsentActive = true;
+            UINT32_T__G__SwapAbsentSinceTick = uint32_t__nowTick;
+        }
+        else if ((uint32_t__nowTick - UINT32_T__G__SwapAbsentSinceTick) >=
+                 func__Rtos_MillisecondsToTicks(CHANGEOVER_SWAP_ABSENT_MS))
+        {
+            BOOL__G__SwapReconnectArmed = true;
+        }
+        else
+        {
+            /* [EN] Absence still shorter than the swap window.
+               [FA] غیبت هنوز کوتاه‌تر از پنجرهٔ تعویض است. */
+        }
+    }
+    else
+    {
+        BOOL__G__SwapAbsentActive = false;
+        UINT32_T__G__SwapAbsentSinceTick = 0u;
+    }
+#endif
 
     /* [EN] v1.74: update the internal low-battery latch with hysteresis before
           using it. Below 21000 mV it sets, at or above 21200 mV it clears, and in
@@ -438,37 +518,64 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
           cycle. The battery stays parked until a real charging source is
           present. Do not "fix" this. User order 2026-10-12: add 30s extra
           stable-input delay before reconnect (time only, not voltage 24V).
+          EXCEPTION (user order 2026-10-23): a QUALIFIED battery swap
+          (CHANGEOVER_SWAP_ABSENT_MS of continuous absence, see above) arms the
+          gate without mains - the user plugged a new pack in and wants the
+          output back, and a swapped pack is not the recovered weak pack the
+          2026-10-06 decision was written for. The 3 s voltage filter and the
+          elevated protect line are unchanged.
        [FA] وصل مجدد فقط وقتی ورودی حاضر و ولتاژ باتری >=21200 به مدت ۳ ثانیه
           به‌علاوه ورودی ۳۰ ثانیه پایدار. تأییدشده ۲۰۲۶-۱۰-۰۶ (تصمیم کاربر):
           شرطِ حضور ورودی عمدی است. دستور ۲۰۲۶-۱۰-۱۲: تاخیر ۳۰ ثانیه اضافه
-          پایداری ورودی قبل از وصل مجدد (فقط زمان، نه ولتاژ ۲۴). */
+          پایداری ورودی قبل از وصل مجدد (فقط زمان، نه ولتاژ ۲۴).
+          استثنا (دستور کاربر ۲۰۲۶-۱۰-۲۳): تعویض باتریِ تأییدشده (غیبت پیوستهٔ
+          ‎CHANGEOVER_SWAP_ABSENT_MS‎) گیت را بدون برق شهر باز می‌کند، چون کاربر
+          بستهٔ نو گذاشته و خروجی را می‌خواهد؛ بستهٔ عوض‌شده همان باتری ضعیفِ
+          بازیابی‌شدهٔ تصمیم ۲۰۲۶-۱۰-۰۶ نیست. فیلتر ۳ ثانیه‌ای ولتاژ و خط محافظ
+          فعال دست‌نخورده‌اند. */
     bool__reconnectCondition = false;
-    if ((measurement_snapshot_t__snap->input_present == true) &&
-        (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_RECONNECT_MV))
     {
-        if (BOOL__G__InputStableActive == true)
-        {
-            uint32_t uint32_t__inputStableElapsed;
+        bool bool__reconnectGateOpen = false;
 
-            uint32_t__inputStableElapsed = uint32_t__nowTick - UINT32_T__G__InputStableSinceTick;
-            if (uint32_t__inputStableElapsed >=
-                func__Rtos_MillisecondsToTicks(CHANGEOVER_INPUT_STABLE_MS))
+        if (measurement_snapshot_t__snap->input_present == true)
+        {
+            if (BOOL__G__InputStableActive == true)
             {
-                bool__reconnectCondition = true;
+                uint32_t uint32_t__inputStableElapsed;
+
+                uint32_t__inputStableElapsed = uint32_t__nowTick - UINT32_T__G__InputStableSinceTick;
+                if (uint32_t__inputStableElapsed >=
+                    func__Rtos_MillisecondsToTicks(CHANGEOVER_INPUT_STABLE_MS))
+                {
+                    bool__reconnectGateOpen = true;
+                }
+                else
+                {
+                    bool__reconnectGateOpen = false;
+                }
             }
             else
             {
-                bool__reconnectCondition = false;
+                bool__reconnectGateOpen = false;
             }
+        }
+
+#if MODULE_FAULT
+        if (BOOL__G__SwapReconnectArmed == true)
+        {
+            bool__reconnectGateOpen = true;
+        }
+#endif
+
+        if ((bool__reconnectGateOpen == true) &&
+            (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_RECONNECT_MV))
+        {
+            bool__reconnectCondition = true;
         }
         else
         {
             bool__reconnectCondition = false;
         }
-    }
-    else
-    {
-        bool__reconnectCondition = false;
     }
 
     if (bool__reconnectCondition == true)
@@ -477,16 +584,24 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         {
             BOOL__G__ReconnectTimerActive = true;
             UINT32_T__G__ReconnectStartTick = uint32_t__nowTick;
-            /* [EN] While waiting for reconnect duration, keep SAFE if already cut,
-                  otherwise report INPUT.
-               [FA] در انتظار reconnect، اگر قبلاً قطع شده SAFE بماند. */
+            /* [EN] While waiting for the reconnect duration, keep SAFE if
+                  already cut, otherwise report the mapped state.
+               [FA] در انتظار reconnect، اگر قبلاً قطع شده SAFE بماند و
+                  وگرنه حالت نگاشت‌شده گزارش شود. */
             if (BOOL__G__ChangeoverProtectAsserted == true)
             {
                 APP_STATE_T__G__State = APP_STATE_SAFE;
             }
             else
             {
-                APP_STATE_T__G__State = APP_STATE_INPUT;
+                if (measurement_snapshot_t__snap->input_present == true)
+                {
+                    APP_STATE_T__G__State = APP_STATE_INPUT;
+                }
+                else
+                {
+                    APP_STATE_T__G__State = APP_STATE_BATTERY;
+                }
             }
         }
         else
@@ -501,7 +616,21 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
                     BOOL__G__ChangeoverProtectAsserted = false;
                 }
-                APP_STATE_T__G__State = APP_STATE_INPUT;
+#if MODULE_FAULT
+                /* [EN] The swap gate can reconnect with no mains, so the state
+                      must follow the input instead of being forced to INPUT.
+                   [FA] گیت تعویض می‌تواند بدون برق شهر وصل کند، پس حالت
+                      باید از ورودی پیروی کند نه اینکه حتماً INPUT شود. */
+                BOOL__G__SwapReconnectArmed = false;
+#endif
+                if (measurement_snapshot_t__snap->input_present == true)
+                {
+                    APP_STATE_T__G__State = APP_STATE_INPUT;
+                }
+                else
+                {
+                    APP_STATE_T__G__State = APP_STATE_BATTERY;
+                }
             }
             else
             {
@@ -511,7 +640,14 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                 }
                 else
                 {
+                    if (measurement_snapshot_t__snap->input_present == true)
+                {
                     APP_STATE_T__G__State = APP_STATE_INPUT;
+                }
+                else
+                {
+                    APP_STATE_T__G__State = APP_STATE_BATTERY;
+                }
                 }
             }
         }

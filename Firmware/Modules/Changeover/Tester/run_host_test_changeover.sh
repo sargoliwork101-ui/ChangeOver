@@ -15,6 +15,7 @@ gcc -std=c11 -Wall -Wextra -Wpedantic -Werror -O0 \
     -I "${ROOT}/Firmware/Config/Inc" \
     -I "${ROOT}/Firmware/Rtos/Inc" \
     -I "${ROOT}/Firmware/Modules/Changeover" \
+    -I "${ROOT}/Firmware/Modules/Fault" \
     -I "${ROOT}/Firmware/Modules/Charger" \
     -I "${ROOT}/Firmware/Modules/Imbalance" \
     -I "${ROOT}/Firmware/Modules/Measurement" \

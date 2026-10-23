@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-پیاده‌سازی کامل منطق قطع/وصل با فیلتر 3000ms، `MODULE_CHANGEOVER = 1` است تا منطق واقعی روی تسک کنترل اجرا و روی برد تست شود. فقط از داده‌های مجاز استفاده می‌کند: `snapshot.valid`, `snapshot.v_bat24_mv`, `snapshot.input_present`, `fault_mask` (قفل باتری کم از v1.74 داخلی است). تبدیل زمان فقط با `rtos_time.h` و بدون فرض `tick=1ms`. فقط `BSP_GPIO_PROTECT_BATTERY` (PB11 منطقی) استفاده می‌شود؛ `PB5` و `PB7` ممنوع و به هیچ‌وجه تغییر نمی‌کنند. `board_pins.h`، HAL و پایه فیزیکی در ماژول ممنوع است.
+پیاده‌سازی کامل منطق قطع/وصل با فیلتر 3000ms، `MODULE_CHANGEOVER = 1` است تا منطق واقعی روی تسک کنترل اجرا و روی برد تست شود. فقط از داده‌های مجاز استفاده می‌کند: `snapshot.valid`, `snapshot.v_bat24_mv`, `snapshot.input_present`, `fault_mask` (قفل باتری کم از v1.74 داخلی است) و (با `MODULE_FAULT`) سیگنال زندهٔ `func__Fault_IsBatteryAbsent()` برای تشخیص تعویض باتری. تبدیل زمان فقط با `rtos_time.h` و بدون فرض `tick=1ms`. فقط `BSP_GPIO_PROTECT_BATTERY` (PB11 منطقی) استفاده می‌شود؛ `PB5` و `PB7` ممنوع و به هیچ‌وجه تغییر نمی‌کنند. `board_pins.h`، HAL و پایه فیزیکی در ماژول ممنوع است.
 
 منطق (snapshot-first):
 - اگر `snapshot==NULL` یا `snapshot.valid==false` → هیچ تصمیمی، `state` حفظ، `PB11` حفظ، تایمرهای pending reset، `fault` هم در این حالت `state` را تغییر نمی‌دهد، زمان نامعتبر جزو 3000ms حساب نمی‌شود.
@@ -17,6 +17,7 @@
 - قطع مستقل: `v_bat24_mv<20800` مستقل از فلگ، به‌مدت پیوسته 3000ms → قطع باتری.
 - بوت: PB11 در حالت قطع امن می‌ماند. بعد از snapshot معتبر، نبود خطای مسدودکننده/وتو و ولتاژ `v_bat24_mv≥21200`، مسیر وصل می‌شود؛ شرط ۳۰ ثانیهٔ ورودی برای شروع بوت لازم نیست.
 - وصل مجدد پس از قطع کم‌باتری حین کار: `input_present==true` پایدار 30000ms + `v_bat24_mv≥21200` به‌مدت پیوسته 3000ms → وصل باتری. هیسترزیس ۲۱۰۰۰/۲۱۲۰۰mV حفظ می‌شود؛ تاخیر ورودی فقط برای جلوگیری از چرخهٔ قطع/وصل بعد از افت ولتاژ است.
+- استثنای تعویض باتری (دستور کاربر ۲۰۲۶-۱۰-۲۳): اگر سیگنال نبودِ باتری به‌مدت پیوستهٔ `CHANGEOVER_SWAP_ABSENT_MS` (۳۰۰۰ms) true بماند، یعنی باتری برداشته و دوباره گذاشته شده؛ از آن لحظه وصل مجدد **بدون برق شهر** هم مجاز است و فقط `v_bat24_mv≥21200` به‌مدت پیوسته ۳۰۰۰ms لازم است. خط محافظ در تمام مدت نبودِ باتری فعال می‌ماند و باتری‌ای که جدا نشده (فقط ضعیف است) همان قانون ۲۰۲۶-۱۰-۰۶ را نگه می‌دارد: بدون ورودی، بدون وصل.
 
 ## فایل‌ها
 
@@ -26,7 +27,7 @@
 | `../../Rtos/Src/task_control.c` | تسک مشترک؛ `func__Measurement_GetSnapshot(&snap)` + `func__Fault_Get()` + `func__Changeover_Evaluate(&snap, faults)` (از v1.74 بدون هیچ فلگ UI) |
 | `../../Rtos/Src/task_ui.c` | فقط LED و بازر؛ از v1.74 هیچ فلگ باتری کمی ندارد |
 | `../../Config/Inc/app_types.h` | `app_state_t`, `measurement_snapshot_t`, `fault_mask_t` |
-| `Changeover_Board_Validation.xlsx` | برگه اعتبارسنجی با 24 سناریو (invalid، fault+invalid، fault+valid، فول، 21000+flag، 20800 مستقل، <3s، 3s، reconnect <3s/3s، PB5/PB7، مدت‌تیک صفر، snapshot صفرشده، وصل مجدد با 30 ثانیه پایداری ورودی) |
+| `Changeover_Board_Validation.xlsx` | برگه اعتبارسنجی بورد: CO-025 قطع کم‌باتری، CO-026 وصل مجدد با ورودی، CO-027 قطع/وصل برق شهر، CO-028 خطای شارژر بدون تکان خروجی، CO-029 وصل مجدد بعد از تعویض باتری بدون برق شهر (۲۰۲۶-۱۰-۲۳) |
 
 `changeover.c` را به بیلد LED اضافه نکن.
 
@@ -35,10 +36,10 @@
 | نام | کار |
 |---|---|
 | `func__Changeover_Init` | `s_state=APP_STATE_BOOT`، تایمرها inactive، `protect=true` و PB11 روی قطع امن؛ اتصال تا snapshot معتبر و ولتاژ ≥۲۱۲۰۰mV معطل می‌ماند |
-| `func__Changeover_Evaluate(snap, faults)` | اگر `snap==NULL`/`!valid` → حفظ state/PB11 و reset تایمر (fault هم FAULT نمی‌شود)؛ وگرنه اگر `fault!=0` → `FAULT` بدون pin؛ وگرنه ارزیابی قطع (`v<20800` مستقل و `v<21000&&flag` گیت) و وصل (`input&&v>=21200`) هر کدام پیوسته 3000ms فقط روی `BSP_GPIO_PROTECT_BATTERY`؛ زمان با `func__Rtos_MillisecondsToTicks` و بدون فرض `tick=1ms` |
+| `func__Changeover_Evaluate(snap, faults)` | اگر `snap==NULL`/`!valid` → حفظ state/PB11 و reset تایمر (fault هم FAULT نمی‌شود)؛ وگرنه اگر `fault!=0` → `FAULT` بدون pin؛ وگرنه تشخیص تعویض باتری (نبودِ پیوسته ۳۰۰۰ms)، ارزیابی قطع (`v<20800` مستقل و `v<21000&&flag` گیت) و وصل (`input` پایدار ۳۰s یا تعویض تأییدشده، با `v>=21200`) هر کدام پیوسته 3000ms فقط روی `BSP_GPIO_PROTECT_BATTERY`؛ زمان با `func__Rtos_MillisecondsToTicks` و بدون فرض `tick=1ms` |
 | `TaskControl` | فقط اگر Changeover یا Charger یا Jitter یک باشد ساخته می‌شود |
 
-حالت‌ها: `BOOT`، `INPUT`، `BATTERY`، `FAULT`، `SAFE` — `IDLE` برای حالت معتبر استفاده نمی‌شود؛ پس از `BOOT` و با `snapshot` معتبر بدون cut → `BATTERY` (input false) یا `INPUT` (input true)، پس از cut → `SAFE`، پس از reconnect → `INPUT`؛ `MODULE_CHANGEOVER` در build تست برد 1 است.
+حالت‌ها: `BOOT`، `INPUT`، `BATTERY`، `FAULT`، `SAFE` — `IDLE` برای حالت معتبر استفاده نمی‌شود؛ پس از `BOOT` و با `snapshot` معتبر بدون cut → `BATTERY` (input false) یا `INPUT` (input true)، پس از cut → `SAFE`، پس از reconnect → `INPUT` (یا `BATTERY` اگر وصل از راه تعویض باتری و بدون ورودی باشد)؛ `MODULE_CHANGEOVER` در build تست برد 1 است.
 
 ## پایه‌ها
 
@@ -76,7 +77,7 @@ rtos_app.c → TaskControl → task_control.c
     ├── else if fault!=0 → state=FAULT, no pin change
     ├── else if v<20800 for 3000ms → BSP_GPIO_PROTECT_BATTERY = true (High physical, cut) → SAFE
     ├── else if v<21000 && قفل داخلی باتری کم (21000/21200) for 3000ms → cut → SAFE
-    ├── else if input==true && v>=21200 for 3000ms → BSP_GPIO_PROTECT_BATTERY = false (Low physical, connect) → INPUT
+    ├── else if (input پایدار ۳۰s یا تعویض باتریِ تأییدشده) && v>=21200 for 3000ms → BSP_GPIO_PROTECT_BATTERY = false (Low physical, connect) → INPUT/BATTERY
     └── else valid without cut → INPUT (input true) یا BATTERY (input false)
 ```
 
@@ -87,6 +88,7 @@ changeover.c
   ├── bsp_gpio.h → func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true/false) // true=cut/protect, false=reconnect
   ├── rtos_time.h → func__Rtos_MillisecondsToTicks(CHANGEOVER_DURATION_MS) + osKernelGetTickCount()
   ├── cmsis_os2.h → osKernelGetTickCount()
+  ├── fault.h → func__Fault_IsBatteryAbsent() // فقط برای تشخیص تعویض باتری
   └── app_types.h → app_state_t, measurement_snapshot_t, fault_mask_t
 
 snapshot از Measurement می‌آید، faults از Fault، flag از UI؛ Changeover آن‌ها را include نمی‌کند جز flag به‌صورت extern. فقط BOARD_PINS/HAL ممنوع.
@@ -95,8 +97,9 @@ snapshot از Measurement می‌آید، faults از Fault، flag از UI؛ Cha
 
 ## تستر
 
-`Tester/` — تست هاست ماشین حالت با ساعت و GPIO بدلی (۲۰۱ بررسی؛ شامل رگرسیون
-قفل باتری‌ضعیف v1.81 و سرریز تیک). اجرا با
+`Tester/` — تست هاست ماشین حالت با ساعت و GPIO بدلی (۲۷۶ بررسی؛ شامل رگرسیون
+قفل باتری‌ضعیف v1.81، وصل مجدد بعد از تعویض باتری بدون برق شهر، رد شدن غیبت
+کوتاه‌تر از ۳ ثانیه و سرریز تیک). اجرا با
 `Tester/run_host_test_changeover.sh`؛ داخل `tools/check_firmware_syntax.sh` هم
 اجرا می‌شود. توضیح کامل در `Tester/README.md`.
 

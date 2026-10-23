@@ -8,15 +8,17 @@
  *              and (MODULE_IMBALANCE) the func__Imbalance_GetOutputs() veto
  *              flag, plus (MODULE_CHARGER) func__Charger_DeadBlocksOutput()
  *              for the condemned-pack veto - both vetos assert the battery
- *              protect line and sit in SAFE. Time conversion uses rtos_time.h
- *              only, tick=1ms
+ *              protect line and sit in SAFE. With MODULE_FAULT it also reads
+ *              the live func__Fault_IsBatteryAbsent() signal to qualify a
+ *              battery swap. Time conversion uses rtos_time.h only, tick=1ms
  *              assumption is forbidden.
  *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
  *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask،
  *              قفل داخلی باتری کم و (با ماژول عدم‌توازن) پرچم وتوی GetOutputs
  *              به‌علاوهٔ (با ماژول شارژر) وتوی باتری خرابِ DeadBlocksOutput
  *              استفاده می‌کند - هر دو وتو خط محافظ باتری را فعال و به SAFE
- *              می‌روند.
+ *              می‌روند. با ماژول Fault سیگنال زندهٔ نبود باتری را هم برای
+ *              تشخیص تعویض باتری می‌خواند.
  */
 
 #ifndef CHANGEOVER_H
@@ -65,7 +67,8 @@ void func__Changeover_Init(void);
 
 /**
  * @brief  [EN] Battery voltage at or above which a reconnect is allowed, in millivolts.
- *         Range 0..40000 mV; effect: input_present true and v_bat24_mv >= 21200 for 3000 ms -> reconnect.
+ *         Range 0..40000 mV; effect: (input_present true with 30 s stable input, or a
+ *         qualified battery swap with mains absent) and v_bat24_mv >= 21200 for 3000 ms -> reconnect.
  *         [FA] ولتاژ باتری که در آن یا بالاتر از آن وصل مجدد مجاز است، بر حسب میلی‌ولت.
  */
 #define CHANGEOVER_BAT_RECONNECT_MV       21200u
@@ -86,6 +89,19 @@ void func__Changeover_Init(void);
  *         بعد از قطع، ورودی باید این مدت پایدار بماند علاوه بر شرط ۳ ثانیه ولتاژ.
  */
 #define CHANGEOVER_INPUT_STABLE_MS        30000u
+
+/**
+ * @brief  [EN] Continuous battery absence that qualifies a battery swap, in milliseconds.
+ *         Range 1..60000 ms; effect: func__Fault_IsBatteryAbsent() staying true
+ *         for this long arms a mains-free reconnect (the normal 3 s voltage
+ *         filter at CHANGEOVER_BAT_RECONNECT_MV still applies). A pack that was
+ *         never removed keeps the 2026-10-06 rule: no mains, no reconnect.
+ *         [FA] مدت پیوستهٔ نبودِ باتری که «تعویض باتری» را تأیید می‌کند، بر حسب میلی‌ثانیه.
+ *         اگر سیگنال نبودِ باتری این مدت پیوسته true بماند، وصل مجدد بدون برق
+ *         شهر مجاز می‌شود (فیلتر ۳ ثانیه‌ای ولتاژ روی آستانهٔ وصل همچنان لازم است).
+ *         باتری‌ای که جدا نشده، همان قانون ۲۰۲۶-۱۰-۰۶ را نگه می‌دارد: بدون برق شهر، بدون وصل.
+ */
+#define CHANGEOVER_SWAP_ABSENT_MS         3000u
 
 /* ==================== Changeover_Evaluate / ارزیابی Changeover ==================== */
 
