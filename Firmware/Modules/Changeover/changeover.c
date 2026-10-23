@@ -632,13 +632,33 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         UINT32_T__G__HealthySinceTick = 0u;
     }
 
-    /* [EN] Rest peak: the highest pack voltage seen while the load was OFF.
-          That is the number a worn pack is judged by - an empty pack rests
-          low, a worn one rests high and still collapses when loaded.
-       [FA] اوج استراحت: بالاترین ولتاژ پک در حالی که بار خاموش است. پک
-          فرسوده با همین عدد سنجیده می‌شود: پک خالی استراحتِ پایین دارد و پک
-          فرسوده استراحتِ بالا ولی زیر بار فرو می‌ریزد. */
-    if (BOOL__G__ChangeoverProtectAsserted == true)
+    /* [EN] Rest peak: the highest pack voltage seen while the load was OFF
+          AND the mains was absent. That is the number a worn pack is judged
+          by - an empty pack rests low, a worn one rests high and still
+          collapses when loaded.
+          v1.90a (review 2026-10-23): the mains-present samples are excluded
+          on purpose. With the load cut and the mains back, the charger keeps
+          charging this pack, and its terminal voltage is the CHARGE voltage
+          (up to ~27 V), not a rest voltage. Counting it let a short mains
+          blip fake "rested at 25 V or more": the next mains loss then put a
+          discharged pack back on the load, and the collapse inside the guard
+          latched a false worn-battery verdict for a pack that was only
+          empty. Rest means no load and no charger - so only the no-mains
+          samples count.
+       [FA] اوج استراحت: بالاترین ولتاژ پک در حالی که هم بار خاموش است و هم
+          برق شهر نیست. پک فرسوده با همین عدد سنجیده می‌شود: پک خالی
+          استراحتِ پایین دارد و پک فرسوده استراحتِ بالا ولی زیر بار فرو
+          می‌ریزد.
+          نسخهٔ ۱٫۹۰-الف (بازبینی ۲۰۲۶-۱۰-۲۳): نمونه‌های زمانِ حضور برق شهر
+          عمداً کنار گذاشته شدند. با بسته‌بودن مسیر بار و برگشتن برق شهر،
+          شارژر همین پک را شارژ می‌کند و ولتاژ پایانه‌اش ولتاژ شارژ است (تا
+          حدود ۲۷ ولت)، نه ولتاژ استراحت. شمردن آن باعث می‌شد یک چشمک کوتاه
+          برق شهر «استراحت ۲۵ ولت یا بالاتر» را جعل کند: در قطع بعدی، پکِ
+          دشارژ روی بار برمی‌گشت و فروپاشی داخل پنجرهٔ محافظ حکم کاذب «باتری
+          فرسوده» می‌داد برای پکی که فقط خالی بود. استراحت یعنی نه بار و نه
+          شارژ - پس فقط نمونه‌های بدون برق شهر شمرده می‌شوند. */
+    if ((BOOL__G__ChangeoverProtectAsserted == true) &&
+        (measurement_snapshot_t__snap->input_present == false))
     {
         if (measurement_snapshot_t__snap->v_bat24_mv > UINT32_T__G__RestPeakMv)
         {

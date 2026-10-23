@@ -657,6 +657,48 @@ int main(void)
         CHECK(BOOL__G__ProtectLine == false);
     }
 
+    /* ---- 6f. charger voltage is NOT rest voltage (2026-10-23 review) ---- */
+    /* [EN] The rest floor must be judged on a pack that is really resting: no
+          load AND no charger. A mains blip that lifts the pack to 27 V while
+          the charger pumps must never be mistaken for "this pack rested at
+          25 V or more", otherwise the very next mains loss puts a discharged
+          pack back on the load and the collapse inside the guard latches a
+          FALSE worn-battery verdict - exactly the complaint of 2026-10-23.
+       [FA] آستانهٔ استراحت باید روی پکی سنجیده شود که واقعاً استراحت می‌کند:
+          نه بار و نه شارژ. یک چشمکِ برق شهر که پک را موقع شارژ تا ۲۷ ولت
+          بالا می‌برد نباید «استراحت ۲۵ ولت یا بالاتر» شمرده شود، وگرنه در
+          قطع بعدی، پکِ دشارژ روی بار برمی‌گردد و فروپاشی داخل پنجرهٔ محافظ
+          حکم کاذب «باتری فرسوده» می‌دهد - همان شکایت ۲۰۲۶-۱۰-۲۳. */
+    {
+        func__Reset(1020000u);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+        func__CutAndVerifyTiming();
+
+        /* [EN] A 20 s mains blip: the charger lifts the pack to 27 V, but the
+              input never stays long enough to reconnect through the mains
+              path, so the battery switch is still open when it goes away.
+           [FA] چشمک ۲۰ ثانیه‌ای برق شهر: شارژر پک را تا ۲۷ ولت بالا می‌برد،
+              ولی ورودی به‌قدری نمی‌ماند که مسیر ورودی وصل شود؛ پس با رفتن
+              برق، کلید باتری هنوز باز است. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 27000u;
+        (void)func__Step(20000u, FAULT_NONE);
+        CHECK(BOOL__G__ProtectLine == true);
+
+        /* [EN] Mains gone, the pack settles at 23.0 V: discharged, so it must
+              stay off the load with no verdict.
+           [FA] برق رفت و پک روی ۲۳٫۰ ولت می‌نشیند: دشارژ است، پس باید دور از
+              بار و بدون حکم بماند. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 23000u;
+        (void)func__Step(10u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS + 1000u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+        CHECK(BOOL__G__ProtectLine == true);
+        CHECK(func__Changeover_WeakVerdictActive() == false);
+    }
+
     /* [EN] The panel reset key hands the attempt back, but the rest floor still
           decides whether the pack may come back with no mains.
        [FA] کلید ریست پنل تلاش را برمی‌گرداند، ولی آستانهٔ استراحت همچنان
