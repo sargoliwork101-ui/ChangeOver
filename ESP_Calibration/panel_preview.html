@@ -534,7 +534,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a486610</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 067833b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1071,18 +1071,18 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="c4n" id="s8z"></div>
 <div class="sec">۴) رفتار پس از حکم</div>
-<div class="sx"><b>حکم فعال</b> = اگر خاموش باشد این سناریو هیچ کاری نمی‌کند.<br><b>جدا ماندن باتری</b> = تا پاک‌شدن حکم، باتری به خروجی وصل نمی‌شود (شارژ قطع نمی‌شود).<br><b>ریست</b> = همین حالا حکم را پاک می‌کند و سقف سه تلاش را برمی‌گرداند.<br><b>نمایش</b> = قرمز چشمک‌زن فقط بدون برق شهر دیده می‌شود.</div>
+<div class="sx"><b>حکم فعال</b> = اگر خاموش باشد این سناریو هیچ کاری نمی‌کند.<br><b>جدا ماندن باتری</b> = تا پاک‌شدن حکم، باتری به خروجی وصل نمی‌شود (شارژ قطع نمی‌شود).<br><b>ریست</b> = همین حالا حکم را پاک می‌کند و آن یک تلاش را برمی‌گرداند.<br><b>نمایش</b> = قرمز چشمک‌زن فقط بدون برق شهر دیده می‌شود.</div>
 <div class="bqr">
 <label class="ckr"><input type="checkbox" id="cb147"><span><span class="ckt">حکم باتری ضعیف فعال باشد</span><span class="cks" id="a147"></span></span></label>
 <label class="ckr"><input type="checkbox" id="cb157"><span><span class="ckt">تا پاک‌شدن حکم، باتری از خروجی جدا بماند</span><span class="cks" id="a157"></span></span></label>
-<button class="sb sb-rst fwb" onclick="latchrst(8)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری ضعیف</button><span class="lb fwb" id="rst8">حکم را پاک می‌کند و سقف سه تلاش را برمی‌گرداند</span>
+<button class="sb sb-rst fwb" onclick="latchrst(8)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری ضعیف</button><span class="lb fwb" id="rst8">حکم را پاک می‌کند و یک بار وصل دوباره را آزاد می‌کند</span>
 </div>
 <div class="prod">وضعیت حکم: <b id="wbst"></b></div>
 <div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
 <ul>
 <li><b>۱ · وصل بدون برق شهر</b> — ولتاژ سالم می‌شود و برد باتری را وصل می‌کند.</li>
 <li><b>۲ · قطع دوباره</b> — داخل پنجرهٔ محافظ قطع شد: یک تلاش ناموفق. اگر باتری پیش از وصل به «ولتاژ استراحت لازم» رسیده بود، حکم قفل می‌شود.</li>
-<li><b>۲ب · باتری فقط خالی</b> — اگر استراحت کمتر از آن عدد بود، حکم زده نمی‌شود؛ بعد از ۳ تلاش، مسیر باتری تا برگشت برق شهر بسته می‌ماند.</li>
+<li><b>۲ب · باتری فقط خالی</b> — اگر استراحت کمتر از آن عدد بود، حکم زده نمی‌شود؛ بعد از همان یک تلاش، مسیر باتری تا برگشت برق شهر بسته می‌ماند.</li>
 <li><b>۳ · هشدار</b> — قرمز چشمک‌زن + بوق؛ با تیک «جدا ماندن»، باتری روی خروجی نمی‌آید.</li>
 <li><b>۴ · استراحت</b> — ولتاژ سالم و پیوسته بماند: بعد از مدت استراحت حکم پاک و فقط یک بار دوباره وصل می‌شود.</li>
 <li><b>۵ · برق شهر</b> — برگشت برق شهر حکم را پاک نمی‌کند؛ فقط مسیر ورودی برمی‌گردد.</li>

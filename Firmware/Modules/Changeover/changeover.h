@@ -171,16 +171,23 @@ void func__Changeover_Init(void);
  *             زیر بار فرو می‌ریزد، همان سناریوی ۸ واقعی است. */
 #define CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV   165u
 
-/* [EN] Retry budget (user decision 2026-10-23, second order): a mains-free
- *      reconnect that ends in a cut inside the cycle-guard window is one FAILED
- *      ATTEMPT. After three of them, with no mains in between, the battery path
- *      stays parked until the mains returns - an empty pack must not be put back
- *      on the load over and over.
- *      [FA] سقف تلاش (تصمیم کاربر ۲۰۲۶-۱۰-۲۳): وصلِ بدون برق شهری که داخل پنجرهٔ
- *      محافظ چرخه به قطع برسد یک «تلاش ناموفق» است. بعد از سه تلاش و بدون
- *      برگشت برق شهر، مسیر باتری تا برگشت برق شهر بسته می‌ماند - پک خالی نباید
- *      پشت سر هم روی بار گذاشته شود. */
-#define CHANGEOVER_MAINS_FREE_RETRY_BUDGET    3u
+/* [EN] Retry budget (user decision 2026-10-23, final wording): ONE mains-free
+ *      reconnect. A cut inside the cycle-guard window after that single attempt
+ *      ends the mains-free reconnecting until the mains returns. The user's
+ *      reasoning: a worn pack is already identified by the rest-floor rule on
+ *      the first attempt, and an empty pack gets one chance and no more - the
+ *      load must not be pushed back on a pack that has just proved it cannot
+ *      carry it. Two separate questions therefore: ONE attempt here, and the
+ *      25 V rest floor decides whether that attempt was a worn battery or an
+ *      empty one.
+ *      [FA] سقف تلاش (تصمیم نهایی کاربر ۲۰۲۶-۱۰-۲۳): فقط «یک» وصلِ بدون برق
+ *      شهر. قطعِ داخل پنجرهٔ محافظ بعد از همین یک تلاش، وصلِ خودکار بدون برق
+ *      شهر را تا برگشت برق شهر می‌بندد. استدلال کاربر: باتری فرسوده همان
+ *      بار اول با قانون آستانهٔ استراحت شناخته می‌شود و باتری خالی هم فقط یک
+ *      شانس می‌گیرد؛ باری که پک ثابت کرد تحملش نمی‌کند دوباره روی آن گذاشته
+ *      نمی‌شود. پس دو پرسش جدا هستند: «یک تلاش» اینجا، و «آستانهٔ ۲۵ ولت»
+ *      که می‌گوید آن تلاش باتری فرسوده بود یا خالی. */
+#define CHANGEOVER_MAINS_FREE_RETRY_BUDGET    1u
 
 /* [EN] Runtime command slot (not a user parameter): write 0 here through the
  *      link to drop the scenario-8 verdict right away, exactly like the

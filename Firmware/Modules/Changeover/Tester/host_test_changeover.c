@@ -589,16 +589,22 @@ int main(void)
         CHECK(uint32_t__applied == 0u);
     }
 
-    /* ---- 6e. v1.88: an EMPTY pack is not a WEAK pack ---- */
-    /* [EN] Second user order 2026-10-23 (after a new battery was flagged): a
-          pack that rests LOW before the mains-free reconnect only proves it
-          has no charge left. It must NOT raise the scenario-8 verdict; the
-          retry budget must park the path after three failed attempts instead
-          of cycling the relay, and returning mains must hand the budget back.
-       [FA] دستور دوم کاربر ۲۰۲۶-۱۰-۲۳ (بعد از آنکه باتری نو «ضعیف» خوانده شد):
-          پکی که پیش از وصلِ بدون برق شهر استراحتِ پایین دارد فقط ثابت می‌کند
-          شارژ ندارد و نباید حکم سناریوی ۸ بزند؛ در عوض سقف تلاش باید بعد از
-          سه تلاش ناموفق مسیر را پارک کند و برگشت برق شهر سقف را برگرداند. */
+    /* ---- 6e. an EMPTY pack is not a WEAK pack, and gets ONE attempt ---- */
+    /* [EN] Second user order 2026-10-23 (after a new battery was flagged), final
+          wording same day: a pack that rests LOW before the mains-free
+          reconnect only proves it has no charge left. It must NOT raise the
+          scenario-8 verdict, and it gets exactly ONE mains-free attempt - the
+          load is not pushed back on a pack that just proved it cannot carry
+          it. Afterwards the path stays parked until the mains returns, and the
+          mains hands the attempt back. The verdict, by contrast, is retried
+          once per quiet-rest window (covered in 6d).
+       [FA] دستور دوم کاربر ۲۰۲۶-۱۰-۲۳ (بعد از آنکه باتری نو «ضعیف» خوانده شد)
+          و متن نهایی همان روز: پکی که پیش از وصلِ بدون برق شهر استراحتِ پایین
+          دارد فقط ثابت می‌کند شارژ ندارد؛ نباید حکم سناریوی ۸ بزند و فقط
+          «یک» تلاش بدون برق شهر دارد - باری که پک ثابت کرد تحملش نمی‌کند
+          دوباره رویش گذاشته نمی‌شود. بعد از آن مسیر تا برگشت برق شهر بسته
+          می‌ماند و برق شهر تلاش را برمی‌گرداند. حکم اما در هر پنجرهٔ استراحت
+          یک بار امتحان می‌شود (بخش ۶د). */
     {
         func__Reset(1000000u);
         MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
@@ -632,13 +638,49 @@ int main(void)
         /* [EN] Budget spent: the path stays parked even after a long healthy
               rest - no more relay cycling on an empty pack.
            [FA] سقف تمام شد: مسیر حتی بعد از استراحت سالم طولانی بسته
-              می‌ماند و رله روی پک خالی دیگر نمی‌زند. */
+              می‌ماند و مسیر باتری روی پک خالی دیگر وصل/قطع نمی‌شود. */
         CHECK(func__Changeover_MainsFreeParked() == true);
         MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 26000u;
         (void)func__Step(10u, FAULT_NONE);
         (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS + 1000u, FAULT_NONE);
         CHECK(BOOL__G__ProtectLine == true);
         CHECK(func__Changeover_WeakVerdictActive() == false);
+
+        /* [EN] The same holds with the scenario switched OFF: one attempt is
+              still the limit, so the feature being off can never turn into an
+              endless reconnect loop.
+           [FA] با خاموش‌بودن سناریو هم همین‌طور است: یک تلاش سقف است، پس
+              خاموشیِ قابلیت هیچ‌وقت به حلقهٔ وصل بی‌پایان تبدیل نمی‌شود. */
+        {
+            uint32_t uint32_t__applied = 0u;
+
+            CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_ENABLE, 0u,
+                                            &uint32_t__applied) == true);
+        }
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 22000u;
+        (void)func__Changeover_WeakVerdictReset();
+        CHECK(func__Changeover_MainsFreeParked() == false);
+        (void)func__Step(10u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+        CHECK(BOOL__G__ProtectLine == false);                    /* [EN] the single attempt */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+        (void)func__Step(10u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+        CHECK(func__Changeover_WeakVerdictActive() == false);
+        CHECK(func__Changeover_MainsFreeParked() == true);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 26000u;
+        (void)func__Step(10u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS + 1000u, FAULT_NONE);
+        CHECK(BOOL__G__ProtectLine == true);                     /* [EN] no second try */
+        {
+            uint32_t uint32_t__applied = 0u;
+
+            CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_ENABLE,
+                                            CHANGEOVER_DEF_WEAK_ENABLE,
+                                            &uint32_t__applied) == true);
+        }
 
         /* [EN] Mains returns: the budget is handed back and the path may come
               up normally through the input-stability gate.

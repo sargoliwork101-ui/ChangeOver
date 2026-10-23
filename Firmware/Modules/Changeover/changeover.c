@@ -758,12 +758,31 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
           همان استراحتِ آرام که تنها تلاش مجدد است. بعد، تا وقتی حکم برجاست،
           مسیر باتری بسته نگه داشته می‌شود (شناسهٔ ۱۵۷) تا باتری ضعیف دوباره
           بار نخورد. */
-    if ((func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_ENABLE) == 0u) ||
-        ((BOOL__G__WeakVerdict == true) &&
-         (BOOL__G__HealthyActive == true) &&
-         ((uint32_t__nowTick - UINT32_T__G__HealthySinceTick) >= uint32_t__restTicks)))
+    if (func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_ENABLE) == 0u)
     {
         BOOL__G__WeakVerdict = false;
+    }
+    else if ((BOOL__G__WeakVerdict == true) &&
+             (BOOL__G__HealthyActive == true) &&
+             ((uint32_t__nowTick - UINT32_T__G__HealthySinceTick) >= uint32_t__restTicks))
+    {
+        /* [EN] The quiet rest IS the retry permission (user order): the verdict
+              falls AND the single mains-free attempt comes back, so a worn pack
+              is retried once per rest window - never every few seconds.
+              Turning the scenario off above deliberately does NOT do this,
+              otherwise the feature being off would mean endless attempts.
+           [FA] همان استراحتِ آرام اجازهٔ تلاش است (دستور کاربر): حکم پاک
+              می‌شود و آن یک تلاش بدون برق شهر هم برمی‌گردد، پس باتری فرسوده
+              در هر پنجرهٔ استراحت یک بار امتحان می‌شود - نه هر چند ثانیه.
+              خاموش‌کردن سناریو در شاخهٔ بالا عمداً این کار را نمی‌کند، وگرنه
+              خاموشیِ قابلیت به معنای تلاش بی‌پایان می‌شد. */
+        BOOL__G__WeakVerdict = false;
+        UINT8_T__G__MainsFreeFailCount = 0u;
+        BOOL__G__MainsFreeParked = false;
+    }
+    else
+    {
+        /* [EN] Verdict still holding (or nothing to clear). [FA] حکم هنوز برجاست. */
     }
 
     if ((BOOL__G__WeakVerdict == true) &&
@@ -895,9 +914,10 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                           must not light the weak-battery face.
                        [FA] نسخهٔ ۱٫۸۸ (دستور دوم کاربر ۲۰۲۶-۱۰-۲۳): یک
                           تلاش ناموفق = قطعی داخل پنجرهٔ محافظ بعد از وصلِ
-                          بدون برق شهر. همین شمارنده جلوی چرخهٔ رله روی پک
-                          خالی را می‌گیرد: بعد از سقف تلاش و بدون برق شهر،
-                          مسیر تا برگشت برق شهر بسته می‌ماند.
+                          بدون برق شهر. همین شمارنده جلوی وصل/قطعِ پشت‌سرهم
+                          مسیر باتری روی پک خالی را می‌گیرد: بعد از سقف تلاش
+                          (یک بار) و بدون برق شهر، مسیر تا برگشت برق شهر
+                          بسته می‌ماند.
                           حکم سؤال دیگری است و یک دلیل بیشتر می‌خواهد: پک باید
                           پیش از این تلاش در ولتاژ آستانهٔ استراحت یا بالاتر
                           استراحت کرده باشد. پکی که نزدیک خالی استراحت می‌کند
