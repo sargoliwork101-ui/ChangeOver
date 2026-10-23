@@ -695,7 +695,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_CHG_FULL_EXIT_PCT   78u  /* %, 0..100, < 77 after clamp */
 #define UI_ALARM_PARAM_CHG_HYST_PCT        79u  /* %, 0..50, charging stable-percent hysteresis (0 = follow raw) */
 #define UI_ALARM_PARAM_RUN_HYST_PCT        80u  /* %, 0..50, BatteryRun stable-percent hysteresis (0 = follow raw) */
-#define UI_ALARM_PARAM_RUN_ZERO_EXIT       81u  /* %, 0..100, raw needed to leave the 0% state to 1 */
+#define UI_ALARM_PARAM_RUN_ZERO_EXIT       81u  /* %, 1..100 (v1.92: 0 made the 0% test always true), raw needed to leave the 0% state to 1 */
 #define UI_ALARM_PARAM_RUN_ONE_EXIT        82u  /* %, 0..100, raw needed to leave the 1% state to 2 */
 #define UI_ALARM_PARAM_MIN_ID              38u
 #define UI_ALARM_PARAM_MAX_ID              82u

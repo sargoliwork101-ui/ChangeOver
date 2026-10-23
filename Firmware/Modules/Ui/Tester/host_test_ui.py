@@ -533,7 +533,7 @@ def ui_clamp_mirror(s):
          "pctVminMv": (15000, 25000), "pctVmaxMv": (25000, 32000),
          "buzzerMute": (0, 1), "chgFullEnterPct": (1, 100), "chgFullExitPct": (0, 100),
          "chgHystPct": (0, 50), "runHystPct": (0, 50),
-         "runZeroExit": (0, 100), "runOneExit": (0, 100),
+         "runZeroExit": (1, 100), "runOneExit": (0, 100),
          "chgPctVminMv": (15000, 25000), "chgPctVmaxMv": (25000, 32000),
          "runDoubleDurMs": (0, 600000)}
     for k, (lo, hi) in W.items():
@@ -771,7 +771,7 @@ def run_ui_alarm_tests():
         assert_true(0 <= s["chgFullExitPct"] <= 100, label + " 78 window")
         assert_true(0 <= s["chgHystPct"] <= 50, label + " 79 window")
         assert_true(0 <= s["runHystPct"] <= 50, label + " 80 window")
-        assert_true(0 <= s["runZeroExit"] <= 100, label + " 81 window")
+        assert_true(1 <= s["runZeroExit"] <= 100, label + " 81 window (0 would make the 0% test always true)")
         assert_true(0 <= s["runOneExit"] <= 100, label + " 82 window")
     random.seed(1616)
     fields = list(defs.keys())

@@ -426,7 +426,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 559fae7</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0b9309a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -705,7 +705,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4f" id="s3hy"></div>
 <div class="bqr">
 <label>hysteresis پایداری دشارژ (٪)<input type="number" id="q80" step="1" min="0" max="50"><span class="lb" id="a80"></span></label>
-<label>خروج از حالت ۰٪ (٪)<input type="number" id="q81" step="1" min="0" max="100"><span class="lb" id="a81"></span></label>
+<label>خروج از حالت ۰٪ (٪)<input type="number" id="q81" step="1" min="1" max="100"><span class="lb" id="a81"></span></label>
 <label>خروج از حالت ۱٪ (٪)<input type="number" id="q82" step="1" min="0" max="100"><span class="lb" id="a82"></span></label>
 </div>
 <div class="c4f">سبز: مانده = ۱۰۰ − درصد → گام = دوره ÷ ۱۰۰ → خاموش = بیشینهٔ («حداقل خاموشی»، مانده × گام) → روشن = دوره − خاموش. بوق هر باند: پنجره = مدت × تعداد + گپ × (تعداد − ۱) و باید در «فاصلهٔ تکرار» همان باند جا شود، وگرنه برد آن باند را بی‌صدا می‌گذارد.</div>
@@ -1611,7 +1611,7 @@ const PX={
  78:['درصد خروج از پر','زیر این درصد، از حالت «پر» بیرون می‌آید؛ عمداً کمتر از ورود است تا نمایش چشمک نزند.'],
  79:['hysteresis شارژ','چقدر تغییر لازم است تا درصد نمایش شارژ عوض شود؛ جلوی بالا-پایین شدن دائمی عدد را می‌گیرد.'],
  80:['hysteresis مصرف','همان پایدارسازی برای درصد در حالت مصرف.'],
- 81:['خروج از صفر درصد','تا این درصد بالا نرود، نمایش از صفر بیرون نمی‌آید.'],
+ 81:['خروج از صفر درصد','تا این درصد بالا نرود، نمایش از صفر بیرون نمی‌آید. کمینه ۱ است (از نسخهٔ ۱٫۹۲): صفر باعث می‌شد شرط همیشه درست باشد و درصد هر لحظه بین ۰ و ۱ بپرد.'],
  82:['خروج از یک درصد','تا این درصد بالا نرود، نمایش از یک بیرون نمی‌آید.'],
  0:['آفست جریان ۱','شمارش ADC که در جریان صفر خوانده می‌شود و از هر نمونه کم می‌گردد؛ اگر در حالت بی‌بار عدد جریان صفر نیست، این را تنظیم کنید.'],
  1:['آفست جریان ۲','شمارش ADC که کانال دوم در جریان صفر می‌خواند و از هر نمونه کم می‌شود؛ اگر بی‌بار عدد جریان ۲ صفر نیست، این را تنظیم کنید.'],
@@ -2167,7 +2167,7 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  else if(!(a.u78<=a.u77-1))w.push({ids:[78,77],msg:'خروج فول باید زیر ورود باشد (≤ '+(a.u77-1)+')'});
  if(bad(a.u79,0,50))w.push({ids:[79],msg:'hysteresis شارژ باید ۰..۵۰ باشد'});
  if(bad(a.u80,0,50))w.push({ids:[80],msg:'hysteresis دشارژ باید ۰..۵۰ باشد'});
- if(bad(a.u81,0,100))w.push({ids:[81],msg:'خروج از ۰٪ باید ۰..۱۰۰ باشد'});
+ if(bad(a.u81,1,100))w.push({ids:[81],msg:'خروج از ۰٪ باید ۱..۱۰۰ باشد (صفر یعنی شرط همیشه درست و درصد هر پاس وارونه می‌شد)'});
  if(bad(a.u82,0,100))w.push({ids:[82],msg:'خروج از ۱٪ باید ۰..۱۰۰ باشد'});
  /* سناریوی ۷: چهار عدد بوق و cadence سه LED، کاملاً مستقل از ۱۳۲..۱۳۵ */
  perW(137,a.u137,'دوره بوق خطای فنی');

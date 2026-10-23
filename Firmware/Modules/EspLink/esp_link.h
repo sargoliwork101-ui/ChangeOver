@@ -356,7 +356,7 @@
 #define ESPLINK_PARAM_UI_CHG_FULL_EXIT_PCT   78u  /* u32, %,  def 95,    0..100, < 77 after clamp */
 #define ESPLINK_PARAM_UI_CHG_HYST_PCT        79u  /* u32, %,  def 5,     0..50 */
 #define ESPLINK_PARAM_UI_RUN_HYST_PCT        80u  /* u32, %,  def 2,     0..50 */
-#define ESPLINK_PARAM_UI_RUN_ZERO_EXIT       81u  /* u32, %,  def 2,     0..100 */
+#define ESPLINK_PARAM_UI_RUN_ZERO_EXIT       81u  /* u32, %,  def 2,     1..100 (v1.92: 0 made the 0% test always true) */
 #define ESPLINK_PARAM_UI_RUN_ONE_EXIT        82u  /* u32, %,  def 3,     0..100 */
 /* [EN] Two-loop CC/CV PID charge regulator, ids 83..92 (v1.22, user order
  *      2026-09-28). Dense and in the same order as charger_pid_t packs

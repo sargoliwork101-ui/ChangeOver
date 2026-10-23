@@ -2228,7 +2228,7 @@ def test_ui_mirror_v117():
           and "function fixrules(v)" in ino and "return [];" in ino
           and "uint32_t__chgHystPct, 0u, 50u" in text_uic
           and "uint32_t__runHystPct, 0u, 50u" in text_uic
-          and "uint32_t__runZeroExit, 0u, 100u" in text_uic
+          and "uint32_t__runZeroExit, 1u, 100u" in text_uic
           and "uint32_t__runOneExit, 0u, 100u" in text_uic,
           "ClampAlarms keeps the real per-field windows and the panel does not mutate dependent fields")
 

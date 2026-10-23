@@ -295,8 +295,22 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgHystPct, 0u, 50u);
     UI_ALARM_T__G__Alarm.uint32_t__runHystPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runHystPct, 0u, 50u);
+    /* [EN] v1.92 audit 2026-10-23: the zero-exit floor of 0 made the
+       condition "raw >= 0" ALWAYS true, so a pack sitting at a raw 0% jumped
+       to 1% and fell straight back to 0% on the next pass - the percent
+       toggled every pass, the critical band re-armed its one-shot 10 s beep
+       each time, and the face flickered between "all LEDs off" and the
+       3-beep band. Leaving 0% is a real decision, so its threshold must be
+       at least 1%; 0 is reported back as 1 and the panel shows that.
+       [FA] ممیزی v1.92 (۲۰۲۶-۱۰-۲۳): کف صفر برای «خروج از ۰٪» شرط
+       «‎raw >= 0‎» را همیشه درست می‌کرد؛ پکی که واقعاً روی ۰٪ بود به ۱٪
+       می‌پرید و پاس بعد به ۰٪ برمی‌گشت - درصد هر پاس وارونه می‌شد، باند
+       بحرانی هر بار بوق یک‌بارهٔ ۱۰ ثانیه‌ای را از نو مسلح می‌کرد و چهره بین
+       «همه خاموش» و باند سه‌بوقی چشمک می‌زد. خروج از ۰٪ یک تصمیم واقعی است،
+       پس آستانه‌اش دست‌کم ۱٪ است؛ صفر به‌صورت ۱ گزارش می‌شود و پنل همان را
+       نشان می‌دهد. */
     UI_ALARM_T__G__Alarm.uint32_t__runZeroExit =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runZeroExit, 0u, 100u);
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runZeroExit, 1u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__runOneExit =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runOneExit, 0u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv =
