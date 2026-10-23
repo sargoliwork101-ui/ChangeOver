@@ -656,10 +656,12 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     if (measurement_snapshot_t__snap->input_present == true)
     {
         BOOL__G__MainsFreeReconnectDone = false;
-        /* [EN] v1.88: mains also pays the retry budget back and un-parks the
-              battery path, so the next outage starts with three fresh attempts.
+        /* [EN] v1.88: mains also pays the attempt budget back and un-parks the
+              battery path, so the next outage starts with its one fresh
+              mains-free attempt (v1.90: the budget is 1, not 3).
            [FA] نسخهٔ ۱٫۸۸: برق شهر سقف تلاش را برمی‌گرداند و پارک را برمی‌دارد،
-              پس قطع بعدی با سه تلاش تازه شروع می‌شود. */
+              پس قطع بعدی با همان یک تلاش تازهٔ بدون برق شهر شروع می‌شود
+              (نسخهٔ ۱٫۹۰: سقف یک است، نه سه). */
         UINT8_T__G__MainsFreeFailCount = 0u;
         BOOL__G__MainsFreeParked = false;
     }
