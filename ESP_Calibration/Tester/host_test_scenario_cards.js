@@ -764,9 +764,9 @@ function testImbalance(win, doc) {
           readings.
        [FA] نسخهٔ ۱.۹۱: کف محور ولتاژ روی ۱۰٫۰ ولت ثابت است؛ کف خودکارِ
           نسخهٔ ۱.۸۷ هم باتریِ زیر ۱۱٫۵ ولت را پنهان می‌کرد. */
-    check(calSrc.includes('const lo=10000,hi=15060') &&
+    check(calSrc.includes('const lo=10000,hi=16000') &&
           calSrc.indexOf('QLO') < 0 && calSrc.indexOf('_wantLo') < 0,
-          'the voltage axis is pinned at a fixed 10.0 V floor, so a discharged pack stays visible');
+          'the voltage axis is pinned at a fixed 10.0..16.0 V window, so a discharged pack stays visible');
 
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&

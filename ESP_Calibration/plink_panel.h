@@ -426,7 +426,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4599f27</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b9fb064</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1824,13 +1824,16 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     auto-floor still hid a pack below 11.5 V on the user's panel, and a
     moving axis also makes two readings impossible to compare. 10.0 V keeps
     a fully discharged 12 V battery on the picture and the scale steady; the
-    top stays 15.06 V.
+    top is a fixed 16.0 V (user order 2026-10-23) so the over-voltage band
+    has visible room above the 15.0 V line.
     [FA] نسخهٔ ۱.۹۱ (دستور کاربر ۲۰۲۶-۱۰-۲۳): کف محور ولتاژ روی ۱۰٫۰ ولت
     ثابت شد - نه کف خودکار و نه جمع‌شدن پله‌پله. کف خودکارِ نسخهٔ ۱.۸۷ هم
     باتریِ زیر ۱۱٫۵ ولت را روی پنل کاربر نشان نمی‌داد و محورِ متحرک مقایسهٔ دو
     خواندن را هم سخت می‌کرد. ۱۰٫۰ ولت باتریِ کاملاً خالی ۱۲ ولتی را در تصویر
-    نگه می‌دارد و مقیاس ثابت می‌ماند؛ سقف همان ۱۵٫۰۶ ولت است. */
- const lo=10000,hi=15060,W=760,H=420,X0=48,X1=742;
+    نگه می‌دارد و مقیاس ثابت می‌ماند؛ سقف هم ۱۶٫۰ ولت ثابت است (دستور کاربر
+    ۲۰۲۶-۱۰-۲۳) تا ناحیهٔ اضافه‌ولتاژ بالای خط ۱۵٫۰ ولت جا برای دیده‌شدن
+    داشته باشد. */
+ const lo=10000,hi=16000,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
  /* [EN] Responsive SVG: preserve the plot's natural aspect ratio while fitting
     the actual mount width. Counter-scale labels for narrow and wide screens.
