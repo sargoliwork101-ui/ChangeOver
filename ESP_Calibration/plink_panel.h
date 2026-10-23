@@ -452,7 +452,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b531cce</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d36390f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1091,7 +1091,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="logcd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">این جدول می‌گوید برد از وقتی پنل باز شده چه وضعیت‌هایی را گذرانده است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، معتبر بودن دادهٔ برد، نزدیک‌شدن باتری به مرز قطع و قطع/برگشت ارتباط. <b>فقط وقتی چیزی عوض شود یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط تازه نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ همین پنل ذخیره می‌شود و ۳۰ روز نگه داشته می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.
+<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل ذخیره و تا ۳۰ روز نگه داشته می‌شود؛ از حدی که بگذرد، اول قدیمی‌ترین روز حذف می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «ضربان» نوشته می‌شود.
 <br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">امروز</option></select></label>
@@ -4320,6 +4320,8 @@ function evtDayCode(d){
 }
 function evtToday(){return evtDayCode(new Date());}
 function evtDayFa(code){
+  /* [‎EN] day 0 = no phone yet. / [FA]‎ روز صفر = هنوز گوشی نیامده. */
+  if(code===0||code==='0')return 'بدون ساعت';
   const c=String(code||evtToday());
   const y=+c.slice(0,4),m=+c.slice(4,6),d=+c.slice(6,8);
   const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(y,m-1,d).getDay()];
@@ -4363,29 +4365,47 @@ function evtRowText(r){
     const t=evtFlags(f2);
     add('قفل و وضعیت: '+(t||'همه پاک شد'),(f2&(2|16))?3:((f2&(1|4|8|32|64))?2:1));
   }
+  if(chg&1024){add('ولتاژ پک یک پله جابه‌جا شد',0);}
   if(chg&64){add(r.v24<21200?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
   if(chg&512){
     const who=((r.dm&3)===3)?'هر دو باتری':(((r.dm&1)!==0)?'باتری ۱':'باتری ۲');
     add('حکم باتری خراب: '+who,3);
   }
   if(chg&256){
+    /* [EN] only the bits that are ON are named.
+       [FA] فقط بیت‌های روشن نام برده می‌شوند. */
     let any=0;
     EVT_FL.forEach(b=>{if(fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
-    if(!any)add('مود دستی و اجازهٔ شارژرها خاموش شد و دادهٔ برد معتبر نیست',2);
+    if(!any)add('کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است',2);
   }
   /* [EN] a row written without any known change bit still says which phase
           both channels are in - the log never shows a blank line.
      [FA] ردیفی که هیچ بیت تغییری ندارد هم مرحلهٔ دو کانال را می‌گوید تا هرگز
           خط خالی دیده نشود. */
+  /* [EN] v1.96 heartbeat: nothing happened, the panel is alive.
+     [FA] ضربان: هیچ اتفاقی نیفتاد و پنل زنده است. */
+  if(r.note===5){add('ضربان — هیچ تغییری نبود و پنل زنده است',0);}
   if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
   const v='پک '+(r.v24/1000).toFixed(2)+'V · پایین '+(r.vlow/1000).toFixed(2)+'V · بالا '+(r.vhigh/1000).toFixed(2)+'V · Δ '+r.imbal+'mV';
-  return {txt:parts.join(' · '),lv:lv,v:v,time:evtTime(r.epoch)};
+  /* [EN] v1.96: rails, currents and duties; old files just skip them.
+     [FA] ولتاژها، جریان‌ها و duty؛ فایل قدیمی این ستون‌ها را ندارد. */
+  const extra=[];
+  if(r.vin!==null)extra.push('ورودی '+(r.vin/1000).toFixed(2)+'V');
+  if(r.v12!==null)extra.push('نود ۱۲V '+(r.v12/1000).toFixed(2)+'V');
+  if(r.i1!==null)extra.push('جریان ۱ '+(r.i1/1000).toFixed(2)+'A');
+  if(r.i2!==null)extra.push('جریان ۲ '+(r.i2/1000).toFixed(2)+'A');
+  if(r.d1!==null)extra.push('duty ۱ '+(r.d1/10).toFixed(0)+'٪');
+  if(r.d2!==null)extra.push('duty ۲ '+(r.d2/10).toFixed(0)+'٪');
+  return {txt:parts.join(' · '),lv:lv,v:v+(extra.length?' · '+extra.join(' · '):''),time:evtTime(r.epoch)};
 }
 function evtParse(line){
   const f=line.split(',');
   return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
           fl:+f[5]||0,c1:+f[6]||0,c2:+f[7]||0,fault:+f[8]||0,flags2:+f[9]||0,
           v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0,
+          vin:(f.length>15)?+f[15]:null,v12:(f.length>16)?+f[16]:null,
+          i1:(f.length>17)?+f[17]:null,i2:(f.length>18)?+f[18]:null,
+          d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
           band:(+f[10]||0)<21200};
 }
 function evtRender(text,code){

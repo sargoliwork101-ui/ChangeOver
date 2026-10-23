@@ -396,15 +396,18 @@
 #define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"  /* [EN] phone clock anchor / [FA] لنگر ساعت گوشی */
 #define ESP_LOG_FILE_PREFIX         "/evt-"
 #define ESP_LOG_CUT_BAND_MV         21200u   /* [EN] battery "near the cut" line / [FA] مرز «نزدیک قطع» باتری */
+#define ESP_LOG_VSTEP_MV             200u     /* [EN] pack step that counts as a change / [FA] پلهٔ ولتاژ پک که تغییر حساب می‌شود */
+#define ESP_LOG_HEARTBEAT_MS         21600000u /* [EN] 6 h: one "still alive" row / [FA] هر ۶ ساعت یک ردیف «زنده‌ام» */
+#define ESP_LOG_TOTAL_BUDGET_BYTES     200000u   /* [EN] old days are dropped past this / [FA] از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
 #define ESP_LOG_MIN_INTERVAL_MS     2000u    /* [EN] merges a burst into one row / [FA] ادغام چند تغییر پشت‌سرهم */
 #define ESP_LOG_LINK_TIMEOUT_MS     5000u    /* [EN] no frame = link lost / [FA] بی‌فریم یعنی قطع ارتباط */
 #define ESP_LOG_CLOCK_SAVE_MS       600000u  /* [EN] clock to flash every 10 min / [FA] ذخیرهٔ ساعت هر ۱۰ دقیقه */
 #define ESP_LOG_CLOCK_VALID_MIN     1700000000u /* [EN] below this the phone time is junk / [FA] کمتر از این یعنی زمان بی‌معنی */
 #define ESP_LOG_HEADER \
     "# state history / تاریخچهٔ وضعیت\n" \
-    "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask\n" \
-    "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead\n" \
-    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full\n" \
+    "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille\n" \
+    "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
+    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full 5=heartbeat\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 
 /* [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of

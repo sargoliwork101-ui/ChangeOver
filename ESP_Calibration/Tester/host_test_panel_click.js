@@ -699,6 +699,33 @@ function main() {
                   "a condemned-battery verdict is a red line that names the battery",
                   txt(0));
 
+            /* [EN] v1.96: a row now carries the rails, both currents and both
+                     duties, the pack voltage step is its own change bit, and a
+                     quiet board writes a heartbeat line.
+               [FA] نسخهٔ ۱٫۹۶: ردیف حالا ولتاژهای ورودی و نود، هر دو جریان و
+                     هر دو دیوتی را دارد؛ گام ولتاژ پک بیت تغییر خودش را دارد و
+                     برد آرام هم ردیف ضربان می‌نویسد. */
+            w.evtRender("1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
+            check(txt(0).indexOf("ولتاژ پک یک پله") >= 0,
+                  "a voltage step is a line of its own", txt(0));
+            check(txt(0).indexOf("ورودی 23.00V") >= 0,
+                  "the line shows the input rail", txt(0));
+            check(txt(0).indexOf("جریان ۱ 1.20A") >= 0 &&
+                  txt(0).indexOf("جریان ۲ 1.10A") >= 0,
+                  "and both battery currents", txt(0));
+            check(txt(0).indexOf("duty ۱ 45٪") >= 0 &&
+                  txt(0).indexOf("duty ۲ 30٪") >= 0,
+                  "and both commands as a percentage", txt(0));
+
+            w.evtRender("1792756800,12,0,5,1,1,3,0,0,0,24000,23960,24040,20,0", "");
+            check(txt(0).indexOf("ضربان") >= 0 && rows()[0].className.indexOf("lv0") >= 0,
+                  "a heartbeat line says the panel is alive, in grey", txt(0));
+
+            /* an old 15-column file still reads, without the new columns */
+            w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0", "");
+            check(txt(0).indexOf("ورودی") < 0 && txt(0).indexOf("24.00") >= 0,
+                  "a day file written before v1.96 still opens", txt(0));
+
             /* an empty day says so instead of an empty box */
             w.evtRender("", "");
             check(w.document.getElementById("evtlist").textContent.indexOf("هنوز چیزی ثبت نشده") >= 0,

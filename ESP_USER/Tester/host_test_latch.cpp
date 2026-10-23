@@ -556,9 +556,24 @@ static void func__T_TestStateHistoryLog(void)
     func__Simple_TimeSet(1792756800u, false);
     INT32_T__G__LogTzSec = 12600;
 
+    /* فایل‌های /tmp از اجرای قبلی پاک می‌شوند تا شمارش ردیف‌ها از صفر شروع شود */
+    {
+        char char__ptr_old[SIMPLE_LOG_PATH_MAX];
+        const uint32_t uint32_t__old[3] = { 20261001u, 20261002u, 20261003u };
+        for (uint8_t uint8_t__i = 0u; uint8_t__i < 3u; uint8_t__i++)
+        {
+            func__SimpleLog_PathOf(char__ptr_old, uint32_t__old[uint8_t__i]);
+            (void)LittleFS.remove(char__ptr_old);
+        }
+        func__SimpleLog_PathOf(char__ptr_old, func__SimpleLog_TodayCode());
+        (void)LittleFS.remove(char__ptr_old);
+        (void)LittleFS.remove(SIMPLE_LOG_INDEX_PATH);
+        (void)LittleFS.remove(SIMPLE_LOG_LAST_PATH);
+    }
+
     /* پاک کردن وضعیت قبلی */
     UINT8_T__G__LogIndexCount = 0u;
-    UINT32_T__G__LogDayCode = 0u;
+    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
     BOOL__G__LogHasPrev = false;
@@ -621,9 +636,102 @@ static void func__T_TestStateHistoryLog(void)
     func__T_Check(string__tail.find("20608") != std::string::npos,
                   "خواندن تاریخچه ردیف‌های ذخیره‌شده را برمی‌گرداند");
 
+    /* ---------- v1.96: گام ولتاژ، ضربان و بودجهٔ حجم ---------- */
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+    UINT32_T__G__TlmField[15] = 20608u + 199u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 4u,
+                  "جهش کمتر از گام ولتاژ ردیف نمی‌سازد");
+
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+    UINT32_T__G__TlmField[15] = 20608u + 200u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 5u,
+                  "پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک ردیف می‌سازد");
+    {
+        char char__ptr_tail[1024];
+        (void)func__SimpleLog_Tail(char__ptr_tail, sizeof(char__ptr_tail), 0u, 10u);
+        std::string string__last(char__ptr_tail);
+        func__T_Check(string__last.find(",1024,") != std::string::npos,
+                      "آن ردیف با بیت «گام ولتاژ» علامت می‌خورد");
+    }
+
+    /* ضربان: در یک بازهٔ کامل هیچ اتفاقی نمی‌افتد، یک ردیف «زنده‌ام» نوشته می‌شود */
+    {
+        const uint16_t uint16_t__before = UINT16_T__G__LogRowsToday;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_HEARTBEAT_MS;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__SimpleLog_Tick();
+        func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__before + 1u),
+                      "بعد از یک بازهٔ آرام، یک ردیف «زنده‌ام» نوشته می‌شود");
+        char char__ptr_tail[1024];
+        (void)func__SimpleLog_Tail(char__ptr_tail, sizeof(char__ptr_tail), 0u, 10u);
+        std::string string__beat(char__ptr_tail);
+        func__T_Check(string__beat.find(",5,") != std::string::npos,
+                      "آن ردیف یادداشت ضربان را دارد");
+    }
+
     (void)func__SimpleLog_Clear();
     func__T_Check((UINT8_T__G__LogIndexCount == 0u) && (!LittleFS.exists(char__path)),
                   "پاک کردن، فایل روزها را برمی‌دارد");
+
+
+    /* بودجهٔ حجم: روزهای بزرگ‌تر از بودجه، از قدیمی‌ترین حذف می‌شوند */
+    {
+        const uint32_t uint32_t__days[3] = { 20261001u, 20261002u, 20261003u };
+        std::string string__big(80000u, 'x');
+        UINT8_T__G__LogIndexCount = 0u;
+        for (uint8_t uint8_t__k = 0u; uint8_t__k < 3u; uint8_t__k++)
+        {
+            char char__ptr_day[SIMPLE_LOG_PATH_MAX];
+            func__SimpleLog_PathOf(char__ptr_day, uint32_t__days[uint8_t__k]);
+            File file__big = LittleFS.open(char__ptr_day, "w");
+            if (file__big) { file__big.print(string__big.c_str()); file__big.close(); }
+            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = uint32_t__days[uint8_t__k];
+            UINT8_T__G__LogIndexCount++;
+        }
+        func__SimpleLog_TrimDays();
+        func__T_Check(UINT8_T__G__LogIndexCount == 1u,
+                      "روزهای بیشتر از بودجهٔ حجم، از قدیمی‌ترین حذف می‌شوند");
+        func__T_Check(UINT32_T__G__LogIndexDay[0] == 20261003u,
+                      "روزی که می‌ماند جدیدترین است");
+        for (uint8_t uint8_t__i = 0u; uint8_t__i < 3u; uint8_t__i++)
+        {
+            char char__ptr_day[SIMPLE_LOG_PATH_MAX];
+            func__SimpleLog_PathOf(char__ptr_day, uint32_t__days[uint8_t__i]);
+            (void)LittleFS.remove(char__ptr_day);
+        }
+
+    /* بدون ساعت هم ذخیره می‌شود: گوشی ممکن است ساعت‌ها بعد وصل شود */
+    {
+        (void)func__SimpleLog_Clear();
+        (void)LittleFS.remove("/evt-00000000.csv");
+        BOOL__G__TimeValid = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__TlmFlags = 0x02u;
+        UINT32_T__G__TlmField[15] = 23800u;
+
+        func__SimpleLog_OnFrame();
+        func__T_Check(LittleFS.exists("/evt-00000000.csv"),
+                      "بدون ساعت هم اولین ردیف در فایل روزِ «بدون ساعت» ذخیره می‌شود");
+
+        func__Simple_TimeSet(1792756800u, false);
+        UINT8_T__G__TlmFlags = 0x00u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT8_T__G__LogIndexCount == 2u,
+                      "بعد از رسیدن ساعت، فایل روزِ امروز هم به فهرست اضافه می‌شود");
+        func__T_Check(LittleFS.exists("/evt-00000000.csv"),
+                      "فایل «بدون ساعت» دور ریخته نمی‌شود");
+    }
+    }
 }
 
 int main(void)

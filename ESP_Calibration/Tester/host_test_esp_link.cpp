@@ -936,7 +936,7 @@ int main(void)
         /* a clean history */
         LittleFS.files.clear();
         UINT8_T__G__LogIndexCount = 0u;
-        UINT32_T__G__LogDayCode = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
         UINT16_T__G__LogRowsToday = 0u;
         BOOL__G__LogDayFull = false;
         BOOL__G__LogHasPrev = false;
@@ -1074,6 +1074,82 @@ int main(void)
                   std::to_string(row_field(bodyDead, 4u, 14u)));
         }
 
+        /* [EN] v1.96 (user order 2026-10-23: more detail in the log): the
+                 pack voltage itself, in visible steps, plus the input rail,
+                 the 12 V node, both currents and both duties. The step is what
+                 draws the charge curve; the extra columns are what the bench
+                 needs to see WHY a row happened.
+           [FA] نسخهٔ ۱٫۹۶ (دستور کاربر: جزئیات بیشتر در لاگ): خودِ ولتاژ پک با
+                 گام محسوس، به‌همراه ولتاژ ورودی، نود ۱۲ ولت، هر دو جریان و هر
+                 دو دیوتی. گام، منحنی شارژ را می‌کشد و ستون‌های تازه نشان
+                 می‌دهند چرا یک ردیف نوشته شد. */
+        {
+            const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+            const size_t deadOff = ESP_LINK_TLM_FIELD_OFFSET + (28u * 4u);
+
+            /* 199 mV: below the step, nothing may be written. The verdict
+               field is pinned to the value the previous test left behind,
+               otherwise its own change would write the row. */
+            std::vector<uint8_t> drift = tlm_payload_v24(212u, 20807u);
+            drift[deadOff] = 0x01u; drift[deadOff + 1u] = 0x00u;
+            drift[deadOff + 2u] = 0x00u; drift[deadOff + 3u] = 0x00u;
+            G_StubMillis += 5000u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, drift));
+            check(UINT16_T__G__LogRowsToday == rowsBefore,
+                  "a pack drift smaller than the step writes nothing");
+
+            /* 200 mV more: a row, marked as a voltage step */
+            std::vector<uint8_t> step = tlm_payload_v24(213u, 21007u);
+            step[deadOff] = 0x01u; step[deadOff + 1u] = 0x00u;
+            step[deadOff + 2u] = 0x00u; step[deadOff + 3u] = 0x00u;
+            G_StubMillis += 5000u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, step));
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
+                  "a 200 mV step of the pack writes one row");
+            std::string bodyStep = LittleFS.files[std::string(path)];
+            const size_t stepRow = (size_t)(rowsBefore);
+            check((row_field(bodyStep, stepRow, 2u) & 1024L) != 0L,
+                  "that row carries the voltage-step change bit",
+                  std::to_string(row_field(bodyStep, stepRow, 2u)));
+            check(row_field(bodyStep, stepRow, 10u) == 21007L,
+                  "the row keeps the new pack voltage",
+                  std::to_string(row_field(bodyStep, stepRow, 10u)));
+            check(row_field(bodyStep, stepRow, 15u) == 1014L,
+                  "the input rail is saved as well",
+                  std::to_string(row_field(bodyStep, stepRow, 15u)));
+            check(row_field(bodyStep, stepRow, 16u) == 1016L,
+                  "so is the 12 V node",
+                  std::to_string(row_field(bodyStep, stepRow, 16u)));
+            check(row_field(bodyStep, stepRow, 17u) == 1003L &&
+                  row_field(bodyStep, stepRow, 18u) == 1010L,
+                  "and both battery currents");
+            check(row_field(bodyStep, stepRow, 19u) == 1005L &&
+                  row_field(bodyStep, stepRow, 20u) == 1012L,
+                  "and both duties");
+        }
+
+        /* [EN] v1.96: a quiet board still says "I am alive" once every six
+                 hours. Without that row a silent log cannot be told apart from
+                 a dead panel - which is the whole point of keeping the log.
+           [FA] نسخهٔ ۱٫۹۶: برد آرام هم هر شش ساعت یک بار می‌گوید «زنده‌ام».
+                 بدون آن ردیف، لاگِ خالی با پنل مرده اشتباه می‌شود؛ و هدف لاگ
+                 همین است. */
+        {
+            const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+            UINT32_T__G__LastTlmMs = (uint32_t)millis();     /* link is fine */
+            G_StubMillis += ESP_LOG_HEARTBEAT_MS;
+            UINT32_T__G__LastTlmMs = (uint32_t)millis();
+            func__EspLog_Tick();
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
+                  "after a whole quiet heartbeat window, Tick writes one row");
+            std::string bodyBeat = LittleFS.files[std::string(path)];
+            check(row_field(bodyBeat, (size_t)rowsBefore, 3u) == 5L,
+                  "that row is marked as a heartbeat",
+                  std::to_string(row_field(bodyBeat, (size_t)rowsBefore, 3u)));
+            check(row_field(bodyBeat, (size_t)rowsBefore, 2u) == 0L,
+                  "and claims no change - nothing happened");
+        }
+
         /* a burst inside the merge window becomes ONE row, not five */
         uint16_t before = UINT16_T__G__LogRowsToday;
         for (uint8_t k = 0u; k < 4u; k++) {
@@ -1102,6 +1178,102 @@ int main(void)
         feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(220u)));
         check(UINT16_T__G__LogRowsToday == 1u,
               "the history starts again from a clean file after a clear");
+    }
+
+    /* ---- 31. v1.96: the byte budget, not just the day count ------------
+       [EN] A day cap alone cannot bound the flash: six busy days are bigger
+            than thirty quiet ones. The log keeps the whole history inside one
+            byte budget and drops the oldest day first.
+       [FA] سقف تعداد روز، فلش را کران‌دار نمی‌کند: شش روز شلوغ از سی روز آرام
+            بزرگ‌تر است. لاگ کل تاریخچه را داخل یک بودجهٔ بایتی نگه می‌دارد و
+            اول قدیمی‌ترین روز را می‌برد. */
+    {
+        LittleFS.files.clear();
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+
+        const uint32_t days[3] = { 20261001u, 20261002u, 20261003u };
+        std::string big(150000u, 'x');            /* > 2 x the day budget */
+        for (size_t k = 0u; k < 3u; k++) {
+            char dayPath[32];
+            (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv", (unsigned long)days[k]);
+            bool ok = false;
+            File f = LittleFS.open(dayPath, "w");
+            if (f) { f.print(big.c_str()); ok = true; f.close(); }
+            check(ok, "the test could write a big day file");
+            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = days[k];
+            UINT8_T__G__LogIndexCount++;
+        }
+
+        func__EspLog_TrimDays();
+        check(UINT8_T__G__LogIndexCount == 1u,
+              "days above the byte budget are dropped, oldest first",
+              std::to_string(UINT8_T__G__LogIndexCount));
+        check(UINT32_T__G__LogIndexDay[0] == 20261003u,
+              "the day that survives is the newest one");
+        check(!LittleFS.exists("/evt-20261001.csv") &&
+              !LittleFS.exists("/evt-20261002.csv") &&
+              LittleFS.exists("/evt-20261003.csv"),
+              "the dropped days are gone from the flash and the newest is kept");
+    }
+
+    /* ---- 32. v1.97: storage never waits for the clock -------------------
+       [EN] The phone may connect hours after the board is powered. Until then
+            every row goes to a day file of its own ("no clock"), which is
+            listed so the panel can open it. Nothing is dropped and nothing is
+            deferred - the log is the only witness of what the board did.
+       [FA] ممکن است گوشی ساعت‌ها بعد از روشن‌شدن برد وصل شود. تا آن لحظه هر ردیف
+            در فایل روزِ «بدون ساعت» می‌نشیند و همان فایل هم در فهرست می‌آید تا
+            پنل بتواند بازش کند. هیچ ردیفی دور ریخته یا عقب انداخته نمی‌شود. */
+    {
+        ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        BOOL__G__LogClockValid = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogDayFull = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        UINT16_T__G__LogPendingMask = 0u;
+
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(240u, 23800u)));
+
+        check(LittleFS.exists("/evt-00000000.csv"),
+              "with no phone clock at all, the first row still lands in a day file");
+        std::string noClock = LittleFS.files[std::string("/evt-00000000.csv")];
+        check(row_field(noClock, 0u, 0u) == 0L,
+              "that row carries time 0, which the panel shows as \"no clock\"",
+              std::to_string(row_field(noClock, 0u, 0u)));
+        check(UINT8_T__G__LogIndexCount == 1u,
+              "and the no-clock day is listed, so the panel can open it",
+              std::to_string(UINT8_T__G__LogIndexCount));
+        check(row_field(noClock, 0u, 2u) == 1L,
+              "the row is a boot row like any other");
+
+        /* the phone connects: the next change goes to the real day file */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("sec", "1792756800");
+        ESP_WEB_SERVER_T__G__Server.setArg("tz", "12600");
+        ESP_WEB_SERVER_T__G__Server.call("/clock", HTTP_POST);
+
+        std::vector<uint8_t> mainsNow = tlm_payload_v24(241u, 23800u);
+        mainsNow[2] = 0x02u;
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, mainsNow));
+
+        check(UINT8_T__G__LogIndexCount == 2u,
+              "once the clock arrives, today's own day file is added beside it",
+              std::to_string(UINT8_T__G__LogIndexCount));
+        check(func__EspLog_TodayCode() != 0u,
+              "and the board now knows the real day");
+        check(LittleFS.exists("/evt-00000000.csv"),
+              "the no-clock file is kept, not thrown away");
     }
 
     std::cout << std::string(70, '=') << "\n";

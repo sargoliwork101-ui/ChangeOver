@@ -22,7 +22,13 @@ static bool     BOOL__G__LogClockValid = false;
 static uint32_t UINT32_T__G__LogLastClockSaveMs = 0u;
 
 /* ==================== Open day / روز باز ==================== */
-static uint32_t UINT32_T__G__LogDayCode = 0u;   /* ‎YYYYMMDD‎, 0 = clock unknown */
+/* [EN] v1.97: the sentinel says "no day opened yet". Day 0 is a real
+        day: the day of a board that has never seen a phone yet. Storage
+        must never wait for the clock - the phone may connect hours later.
+   [FA] نسخهٔ ۱٫۹۷: این مقدار یعنی «هنوز روزی باز نشده». روز صفر یک روز
+        واقعی است: روزِ بردی که هنوز گوشی‌ای ندیده. ذخیره‌سازی هرگز نباید
+        منتظر ساعت بماند - ممکن است گوشی ساعت‌ها بعد وصل شود. */
+static uint32_t UINT32_T__G__LogDayCode = 0xFFFFFFFFu;   /* ‎YYYYMMDD‎, sentinel = none */
 static uint16_t UINT16_T__G__LogRowsToday = 0u;
 static bool     BOOL__G__LogDayFull = false;
 static bool     BOOL__G__LogBootRowPending = true;
@@ -40,6 +46,11 @@ static uint8_t  UINT8_T__G__LogPrevFl = 0u;
    [FA] حکم باتری خراب هم یک وضعیت است و در بیت‌های خطا نیست؛
         فیلد خودش را روی سیم دارد. */
 static uint32_t UINT32_T__G__LogPrevDead = 0u;
+/* [EN] v1.96: the pack voltage itself is a change trigger, in visible
+        steps - that is what draws the charge curve in the log.
+   [FA] نسخهٔ ۱٫۹۶: خودِ ولتاژ پک هم محرک تغییر است، با گام محسوس -
+        همان چیزی که منحنی شارژ را در لاگ می‌کشد. */
+static uint32_t UINT32_T__G__LogPrevV24 = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg1 = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg2 = 0u;
 static uint8_t  UINT8_T__G__LogPrevFlags2 = 0u;
@@ -67,8 +78,9 @@ static uint8_t  UINT8_T__G__LogIndexCount = 0u;
 #define ESP_LOG_CHG_FLAGS   0x0020u
 #define ESP_LOG_CHG_BAND    0x0040u
 #define ESP_LOG_CHG_LINK    0x0080u
-#define ESP_LOG_CHG_MODE    0x0100u
-#define ESP_LOG_CHG_DEAD    0x0200u   /* [EN] condemned-battery verdict / [FA] حکم باتری خراب */   /* [EN] hand mode / data validity / [FA] مود دستی و اعتبار داده */
+#define ESP_LOG_CHG_MODE    0x0100u   /* [EN] hand mode / data validity / [FA] مود دستی و اعتبار داده */
+#define ESP_LOG_CHG_DEAD    0x0200u   /* [EN] condemned-battery verdict / [FA] حکم باتری خراب */
+#define ESP_LOG_CHG_VSTEP   0x0400u   /* [EN] pack voltage moved a visible step / [FA] ولتاژ پک یک پلهٔ محسوس جابه‌جا شد */
 
 /* ==================== Notes / یادداشت ردیف ==================== */
 #define ESP_LOG_NOTE_NONE      0u
@@ -76,6 +88,7 @@ static uint8_t  UINT8_T__G__LogIndexCount = 0u;
 #define ESP_LOG_NOTE_LINK_LOST 2u
 #define ESP_LOG_NOTE_LINK_BACK 3u
 #define ESP_LOG_NOTE_DAY_FULL  4u
+#define ESP_LOG_NOTE_HEARTBEAT  5u   /* [EN] nothing changed, the panel is alive / [FA] چیزی عوض نشد، پنل زنده است */
 
 #define ESP_LOG_PATH_MAX       24u
 
@@ -349,6 +362,29 @@ static void func__EspLog_IndexSave(void)
 }
 
 /**
+ * @brief  [EN] Size of one day file, so the log can be kept inside the flash.
+ *         [FA] حجم یک فایل روز، تا لاگ داخل فلش بماند.
+ * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
+ * @‎return [EN] bytes / [FA]‎ بایت
+ */
+static uint32_t func__EspLog_DayBytes(uint32_t uint32_t__dayCode)
+{
+    char char__path[ESP_LOG_PATH_MAX];
+    File file__day;
+    uint32_t uint32_t__bytes = 0u;
+
+    func__EspLog_PathOf(char__path, uint32_t__dayCode);
+    file__day = LittleFS.open(char__path, "r");
+    if (!file__day)
+    {
+        return 0u;
+    }
+    uint32_t__bytes = (uint32_t)file__day.size();
+    file__day.close();
+    return uint32_t__bytes;
+}
+
+/**
  * @brief  [EN] Delete the oldest day when the retention count is passed.
  *         [FA] حذف قدیمی‌ترین روز وقتی تعداد روزهای نگه‌داری رد شود.
  * @return [EN] None / [FA]‎ ندارد
@@ -360,6 +396,37 @@ static void func__EspLog_TrimDays(void)
 
     while (UINT8_T__G__LogIndexCount > ESP_LOG_MAX_DAYS)
     {
+        func__EspLog_PathOf(char__path, UINT32_T__G__LogIndexDay[0]);
+        (void)LittleFS.remove(char__path);
+        for (uint8_t__slot = 1u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+        {
+            UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] =
+                UINT32_T__G__LogIndexDay[uint8_t__slot];
+        }
+        UINT8_T__G__LogIndexCount--;
+    }
+
+    /* [EN] v1.96: the day count alone does not bound the flash -
+            a busy day is bigger than a quiet week. Keep the whole
+            history inside one byte budget and drop the oldest day
+            first, so a full flash can never stop the log.
+       [FA] نسخهٔ ۱٫۹۶: تعداد روز تنها فلش را کران‌دار نمی‌کند -
+            یک روز شلوغ از یک هفتهٔ آرام بزرگ‌تر است. کل تاریخچه
+            داخل یک بودجهٔ بایتی نگه داشته می‌شود و اول قدیمی‌ترین
+            روز می‌رود، تا پر شدن فلش هرگز لاگ را نخواباند.
+       */
+    while (UINT8_T__G__LogIndexCount > 1u)
+    {
+        uint32_t uint32_t__bytes = 0u;
+
+        for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+        {
+            uint32_t__bytes += func__EspLog_DayBytes(UINT32_T__G__LogIndexDay[uint8_t__slot]);
+        }
+        if (uint32_t__bytes <= ESP_LOG_TOTAL_BUDGET_BYTES)
+        {
+            break;
+        }
         func__EspLog_PathOf(char__path, UINT32_T__G__LogIndexDay[0]);
         (void)LittleFS.remove(char__path);
         for (uint8_t__slot = 1u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
@@ -532,10 +599,23 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     file__day.print(",");
     file__day.print((unsigned long)UINT32_T__G__TlmField[25]);
     file__day.print(",");
-    file__day.println((unsigned long)UINT32_T__G__TlmField[28]);
+    file__day.print((unsigned long)UINT32_T__G__TlmField[28]);
+    file__day.print(",");
+    file__day.print((unsigned long)UINT32_T__G__TlmField[14]);   /* input V  */
+    file__day.print(",");
+    file__day.print((unsigned long)UINT32_T__G__TlmField[16]);   /* 12 V node */
+    file__day.print(",");
+    file__day.print((unsigned long)UINT32_T__G__TlmField[3]);    /* battery A1 */
+    file__day.print(",");
+    file__day.print((unsigned long)UINT32_T__G__TlmField[10]);   /* battery A2 */
+    file__day.print(",");
+    file__day.print((unsigned long)UINT32_T__G__TlmField[5]);    /* duty 1 */
+    file__day.print(",");
+    file__day.println((unsigned long)UINT32_T__G__TlmField[12]); /* duty 2 */
     file__day.close();
 
     UINT16_T__G__LogRowsToday++;
+    UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
     UINT32_T__G__LogLastRowMs = (uint32_t)millis();
     BOOL__G__LogLastRowValid = true;
     UINT16_T__G__LogPendingMask = 0u;
@@ -607,6 +687,17 @@ static uint8_t func__EspLog_LoadLastDanger(void)
         return 0u;
     }
     return (string__content.substring(int32_t__lastComma + 1).toInt() != 0) ? 1u : 0u;
+}
+
+/**
+ * @brief  [EN] Absolute difference of two unsigned readings.
+ *         [FA] اختلاف مطلق دو خوانش بدون علامت.
+ * @‎return [EN] difference / [FA]‎ اختلاف
+ */
+static uint32_t func__EspLog_AbsDiff(uint32_t uint32_t__a, uint32_t uint32_t__b)
+{
+    return (uint32_t__a >= uint32_t__b) ? (uint32_t__a - uint32_t__b)
+                                        : (uint32_t__b - uint32_t__a);
 }
 
 /* ==================== Change detection / تشخیص تغییر ==================== */
@@ -706,6 +797,7 @@ static void func__EspLog_DetectChanges(void)
         UINT8_T__G__LogPrevBand = uint8_t__band;
         UINT8_T__G__LogPrevFl = uint8_t__fl;
         UINT32_T__G__LogPrevDead = uint32_t__dead;
+        UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
         return;
     }
 
@@ -741,6 +833,13 @@ static void func__EspLog_DetectChanges(void)
     {
         uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_DEAD);
     }
+    /* [EN] a step of the pack voltage, either way.
+       [FA] یک پلهٔ ولتاژ پک، بالا یا پایین. */
+    if (func__EspLog_AbsDiff(UINT32_T__G__TlmField[15],
+                          UINT32_T__G__LogPrevV24) >= ESP_LOG_VSTEP_MV)
+    {
+        uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_VSTEP);
+    }
 
     if (uint16_t__mask != 0u)
     {
@@ -764,6 +863,11 @@ static void func__EspLog_DetectChanges(void)
     UINT8_T__G__LogPrevBand = uint8_t__band;
     UINT8_T__G__LogPrevFl = uint8_t__fl;
     UINT32_T__G__LogPrevDead = uint32_t__dead;
+    /* [EN] the pack voltage is NOT stored here: it is compared
+            with the value at the last ROW, so a slow charge still
+            produces one row per step.
+       [FA] ولتاژ پک اینجا ذخیره نمی‌شود: با مقدار آخرین ردیف
+            مقایسه می‌شود تا شارژ آرام هم هر گام یک ردیف بدهد. */
 }
 
 /* ==================== Hooks / قلاب‌ها ==================== */
@@ -834,6 +938,23 @@ static void func__EspLog_Tick(void)
         {
             BOOL__G__LogLinkDown = true;
             func__EspLog_Queue(ESP_LOG_CHG_LINK, ESP_LOG_NOTE_LINK_LOST);
+        }
+    }
+
+    /* [EN] v1.96: if nothing at all has happened for a whole heartbeat
+            window, write one row that says so. It is the difference
+            between "nothing changed" and "the panel stopped working":
+            a board that keeps beating is a board that kept running.
+       [FA] نسخهٔ ۱٫۹۶: اگر در یک بازهٔ کامل هیچ اتفاقی نیفتاده باشد، یک
+            ردیف نوشته می‌شود که همین را بگوید. تفاوت «چیزی عوض نشده» با
+            «پنل از کار افتاده» همین است: ضربانِ پیوسته یعنی پنل زنده ماند.
+       */
+    if (BOOL__G__LogLastRowValid != false)
+    {
+        if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >=
+            ESP_LOG_HEARTBEAT_MS)
+        {
+            func__EspLog_Queue(0u, ESP_LOG_NOTE_HEARTBEAT);
         }
     }
 }
@@ -989,7 +1110,7 @@ static uint8_t func__EspLog_Clear(void)
     (void)LittleFS.remove(ESP_LOG_INDEX_PATH);
     (void)LittleFS.remove(ESP_LOG_LAST_PATH);
     UINT8_T__G__LogIndexCount = 0u;
-    UINT32_T__G__LogDayCode = 0u;
+    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
     return uint8_t__removed;

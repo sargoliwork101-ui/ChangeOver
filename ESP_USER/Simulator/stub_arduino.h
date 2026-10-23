@@ -356,6 +356,16 @@ public:
         if (long__end < long__here) { return 0; }
         return (int)(long__end - long__here);
     }
+    size_t size(void)
+    {
+        if (handle == NULL) { return 0u; }
+        long long__here = ftell(handle);
+        if (long__here < 0) { return 0u; }
+        if (fseek(handle, 0, SEEK_END) != 0) { return 0u; }
+        long long__end = ftell(handle);
+        (void)fseek(handle, long__here, SEEK_SET);
+        return (long__end > 0) ? (size_t)long__end : 0u;
+    }
     String readStringUntil(char char__terminator)
     {
         String string__line;

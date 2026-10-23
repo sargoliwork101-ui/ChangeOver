@@ -2425,6 +2425,7 @@ function evtPad(n){return String(n).padStart(2,'0');}
 function evtFaNum(x){return String(x).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
 function evtToday(){const d=new Date();return d.getFullYear()+evtPad(d.getMonth()+1)+evtPad(d.getDate());}
 function evtDayFa(code){
+ if(code===0||code==='0')return 'بدون ساعت';
  const c=String(code||evtToday());
  const y=+c.slice(0,4),m=+c.slice(4,6),d=+c.slice(6,8);
  const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(y,m-1,d).getDay()];
@@ -2452,16 +2453,20 @@ function evtTextFa(r){
   const f=[];EVT_FLAG_FA.forEach(p=>{if(r.flags2&p[0])f.push(p[1]);});
   add('قفل و وضعیت: '+(f.join(' + ')||'همه پاک شد'),(r.flags2&18)?3:((r.flags2&(1|4|8|32|64))?2:1));
  }
+ if(r.chg&1024){add('ولتاژ پک یک پله جابه‌جا شد',0);}
  if(r.chg&64){add(r.v24<21200?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
  if(r.chg&512){
   const who=((r.dm&3)===3)?'هر دو باتری':(((r.dm&1)!==0)?'باتری ۱':'باتری ۲');
   add('حکم باتری خراب: '+who,3);
  }
  if(r.chg&256){
+  /* فقط بیت‌های روشن نام برده می‌شوند؛ اگر همه خاموش باشند خط همان را می‌گوید */
   let any=0;
   EVT_FL_FA.forEach(b=>{if(r.fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
-  if(!any)add('مود دستی و اجازهٔ شارژرها خاموش شد و دادهٔ برد معتبر نیست',2);
+  if(!any)add('کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است',2);
  }
+ /* ردیف ضربان یعنی «هیچ اتفاقی نیفتاد و پنل زنده است» */
+ if(r.note===5)add('ضربان — هیچ تغییری نبود و پنل زنده است',0);
  if(!parts.length)add('وضعیت: کانال ۱ «'+(EVT_CHG_FA[r.c1]||r.c1)+'» · کانال ۲ «'+(EVT_CHG_FA[r.c2]||r.c2)+'»',0);
  return {txt:parts.join(' · '),lv:lv};
 }
@@ -2469,7 +2474,10 @@ function evtParse(line){
  const f=line.split(',');
  return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
          fl:+f[5]||0,c1:+f[6]||0,c2:+f[7]||0,fault:+f[8]||0,flags2:+f[9]||0,
-         v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0};
+         v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0,
+         vin:(f.length>15)?+f[15]:null,v12:(f.length>16)?+f[16]:null,
+         i1:(f.length>17)?+f[17]:null,i2:(f.length>18)?+f[18]:null,
+         d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null};
 }
 function evtRenderFa(text,day){
  const box=document.getElementById('evtList');if(!box)return;
@@ -2488,7 +2496,17 @@ function evtRenderFa(text,day){
   '<span style="padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)">مجموع: '+rows.length+' خط</span>';
  box.innerHTML=rows.slice().reverse().map(r=>{
   const t=evtTextFa(r);
-  const v='پک '+(r.v24/1000).toFixed(2)+'V · پایین '+(r.vlow/1000).toFixed(2)+'V · بالا '+(r.vhigh/1000).toFixed(2)+'V · Δ '+r.imbal+'mV';
+  let v='پک '+(r.v24/1000).toFixed(2)+'V · پایین '+(r.vlow/1000).toFixed(2)+'V · بالا '+(r.vhigh/1000).toFixed(2)+'V · Δ '+r.imbal+'mV';
+  /* ولتاژ ورودی و نود، جریان و duty هر دو کانال؛ فایل‌های قدیمی این ستون‌ها
+     را ندارند و فقط ولتاژها را نشان می‌دهند. */
+  const extra=[];
+  if(r.vin!==null)extra.push('ورودی '+(r.vin/1000).toFixed(2)+'V');
+  if(r.v12!==null)extra.push('نود ۱۲V '+(r.v12/1000).toFixed(2)+'V');
+  if(r.i1!==null)extra.push('جریان ۱ '+(r.i1/1000).toFixed(2)+'A');
+  if(r.i2!==null)extra.push('جریان ۲ '+(r.i2/1000).toFixed(2)+'A');
+  if(r.d1!==null)extra.push('duty ۱ '+(r.d1/10).toFixed(0)+'٪');
+  if(r.d2!==null)extra.push('duty ۲ '+(r.d2/10).toFixed(0)+'٪');
+  if(extra.length)v+=' · '+extra.join(' · ');
   return '<div style="display:flex;gap:8px;padding:4px 6px;margin:2px 0;border-radius:6px;align-items:baseline;border-inline-start:3px solid '+EVT_LVC[t.lv]+';background:'+EVT_LVB[t.lv]+'">'+
    '<span style="color:var(--mu);min-width:58px;white-space:nowrap">'+evtTimeFa(r.epoch)+'</span>'+
    '<span style="flex:1">'+t.txt+'</span>'+
