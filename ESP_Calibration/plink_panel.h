@@ -455,7 +455,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 089201b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ecb89fa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1094,7 +1094,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="logcd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل ذخیره و تا ۳۰ روز نگه داشته می‌شود؛ از حدی که بگذرد، اول قدیمی‌ترین روز حذف می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «ضربان» نوشته می‌شود.
+<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل ذخیره و تا ۳۰ روز نگه داشته می‌شود؛ از حدی که بگذرد، اول قدیمی‌ترین روز حذف می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای» نوشته می‌شود.
 <br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">امروز</option></select></label>
@@ -1113,7 +1113,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 const $=i=>document.getElementById(i);
 const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','JIT wait','Input wait','Final fault','باتری قطع','دستی','استراحت حرارتی'];
 /* [FA] نام فارسی همان مرحله‌ها، برای نوار وضعیت‌های زنده. */
-const STFA=['خاموش','شارژ اصلی','جذب','شناور','راه‌اندازی','انتظار تلاش دوباره','منتظر ورودی','خطای نهایی','باتری قطع','دستی','استراحت حرارتی'];
+const STFA=['خاموش','شارژ اصلی','جذب','شناور','راه‌اندازی','انتظار تلاش دوباره','منتظر ورودی','خطای نهایی','باتری وصل نیست','دستی','استراحت حرارتی'];
 const SC=['','g','g','g','y','r','y','r','r','y','y'];
 /* ثابت‌های بخش 2 سند (زنجیرهٔ جریان باتری) */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*68000/6800,K24B=K24,K12=3300/4095*34398/6800;
@@ -1850,18 +1850,12 @@ const PXT={
    [FA] v1.36: متن کامل v1.36 اگر هست همان، وگرنه ردیف کلاسیک PX - تا حباب
    کمک و تراشه همیشه یک حرف بزنند. */
 const pxt=id=>(typeof PXT!=='undefined'&&PXT[id])?[EVN[id]||((PX[id]||['',''])[0]),PXT[id]]:PX[id];
-/* [EN] v1.31: the chart is mounted in two places - above the operating table
-   on the chargers page (where you read the numbers, so where you reach for
-   them) and next to the profile fields in settings (where the dashed
-   "typed but not applied" preview is worth seeing). ONE renderer fills every
-   mount, so the two can never say different things; adding or moving a mount
-   is markup only. The containers are classes, not ids, for exactly that
-   reason - $('qg') would have silently filled only the first.
-   [FA] نمودار در دو جا نصب شده - بالای جدول عملکرد در صفحهٔ شارژرها (جایی که
-   اعداد را می‌خوانید، پس همان‌جا سراغشان می‌روید) و کنار فیلدهای profile در
-   تنظیمات (جایی که پیش‌نمایش خط‌چینِ «تایپ‌شده ولی هنوز اعمال‌نشده» ارزش
-   دیدن دارد). یک رندرکننده همهٔ محل‌ها را پر می‌کند، پس آن دو هرگز نمی‌توانند
-   دو چیز متفاوت بگویند؛ افزودن یا جابه‌جاکردن یک محل فقط مارک‌آپ است. */
+/* [EN] v1.31: ONE renderer fills every chart mount - above the operating table
+   on the chargers page and next to the profile fields in settings. The mounts
+   are classes, not ids: $('qg') would have filled only the first.
+   [FA] v1.31: یک رندرکننده همهٔ محل‌های نمودار را پر می‌کند - بالای جدول عملکرد
+   در صفحهٔ شارژرها و کنار فیلدهای profile در تنظیمات. محل‌ها class هستند نه id،
+   وگرنه فقط اولی پر می‌شد. */
 function qgraph(){const MG=document.querySelectorAll('.qgm');
  if(!MG.length||EVOPEN!=null)return;const g=MG[0];
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
@@ -3857,16 +3851,13 @@ async function calmodalApply(){
 
 
 /* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
-   [FA] «حتماً باید جدول را در کد میکرو بچسبانیم و بیلد کنیم؟» نه. برد از این
-   نسخه یک بلوک فلش «جدا از بقیهٔ متغیرها» دارد (دو صفحهٔ ۱ کیلوبایتی،
-   پینگ‌پنگ، CRC مخصوص خودش) که فقط جدول بنچ در آن می‌نشیند. مسیر قدیمی هم
-   دست‌نخورده ماند: «ساخت کد برای میکرو» همچنان فایل calibration.h را می‌دهد.
-   سه مرحله: چیدن (‎BEGIN+CHUNK)‎ ← کامیت با CRC32 ← دست‌دادن؛ و فقط بعد از
-   دست‌دادنِ موفق، دکمهٔ ریست برد فعال می‌شود تا همهٔ ماژول‌ها با جدول نو
-   شروع کنند.
-   [EN] The push is content-addressed: the browser CRC32s the exact bytes it
-   sends, the board CRC32s what it received, and the commit is refused unless
-   they match. */
+   [FA] جدول بنچ در یک بلوک فلش جدا (دو صفحهٔ ۱ کیلوبایتی، پینگ‌پنگ، CRC مخصوص)
+   می‌نشیند؛ مسیر «ساخت کد برای میکرو» دست‌نخورده است. سه مرحله: چیدن
+   (‎BEGIN+CHUNK)‎ ← کامیت با CRC32 ← دست‌دادن؛ و فقط بعد از دست‌دادنِ موفق،
+   دکمهٔ ریست برد فعال می‌شود.
+   [EN] The bench table lands in its own flash block (ping-pong, own CRC32);
+   the code-export path stays. The push is content-addressed: the commit is
+   refused unless the browser and board CRC32s match. */
 const LUTMAX=24;
 const LUTST={0:'موفق',1:'برد مرحلهٔ شروع را ندیده بود',2:'تعداد نقاط برای برد نامعتبر بود',
  3:'یکی از تکه‌های جدول به برد نرسید',4:'محور جریان روی برد صعودی نبود',
@@ -4274,13 +4265,13 @@ poll();
         into Persian lines and keeps the phone's clock on the panel.
    [FA] ESP برای هر تغییر واقعی یک ردیف می‌نویسد؛ این کد فقط آن ردیف‌ها را به
         خط فارسی تبدیل می‌کند و ساعت گوشی را به پنل می‌رساند. */
-const EVT_FAULT=['ADC','اضافه‌جریان ۱','اضافه‌جریان ۲','ولتاژ باتری','JIT۱','JIT۲','قطع باتری','خطای فنی','قفل عدم‌توازن','باتری خراب'];
-const EVT_FLAG=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌توازن'],[4,'مسدودی خروجی'],[8,'قطع شارژ'],[16,'حکم باتری ضعیف'],[32,'مسیر باتری قطع'],[64,'استراحت حرارتی']];
+const EVT_FAULT=['اندازه‌گیری (ADC)','اضافه‌جریان کانال ۱','اضافه‌جریان کانال ۲','ولتاژ باتری','تلاش دوبارهٔ ۱','تلاش دوبارهٔ ۲','قطع باتری','خطای فنی','قفل عدم‌توازن','باتری فرسوده'];
+const EVT_FLAG=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌توازن'],[4,'خروجی مسدود شد'],[8,'قطع شارژ'],[16,'باتری ضعیف شناخته شد'],[32,'مسیر باتری قطع'],[64,'استراحت حرارتی']];
 /* [EN] The general byte of the frame, one line per bit. Nothing here is a
         guess: each text is the meaning the board gives that bit.
    [FA] بایت عمومی فریم، هر بیت یک معنی. هیچ‌کدام حدس نیست؛ هر متن همان
         معنایی است که برد به آن بیت می‌دهد. */
-const EVT_FL=[[1,'دادهٔ لحظه‌ای (snapshot) رسید','دادهٔ لحظه‌ای نرسید'],[2,'برق ورودی وصل شد','برق ورودی قطع شد'],
+const EVT_FL=[[1,'دادهٔ لحظه‌ای رسید','دادهٔ لحظه‌ای نرسید'],[2,'برق ورودی وصل شد','برق ورودی قطع شد'],
               [4,'اندازه‌گیری معتبر شد','اندازه‌گیری نامعتبر شد'],[8,'شارژر ۱ اجازه گرفت','شارژر ۱ از کار افتاد'],
               [16,'شارژر ۲ اجازه گرفت','شارژر ۲ از کار افتاد'],[32,'مود دستی روشن شد','مود دستی خاموش شد']];
 function evtNow(){return Math.floor(Date.now()/1000);}
@@ -4351,7 +4342,7 @@ function evtRowText(r){
   const add=(txt,l)=>{parts.push(txt);if(l>lv)lv=l;};
   const stName=v=>((typeof STFA!=='undefined'&&STFA[v])?STFA[v]:(ST[v]||('#'+v)));
   if(chg&1){add('پنل روشن شد'+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
-  if(chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد برگشت',(r.note===2)?2:1);}
+  if(chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد دوباره برقرار شد',(r.note===2)?2:1);}
   if(chg&2){add(mains?'برق شهر وصل شد':'برق شهر قطع شد',(mains?(r.band?2:1):2));}
   if(chg&4){add('کانال ۱ به مرحلهٔ «'+stName(c1)+'» رفت',(c1>=7&&c1<=8)?3:((c1===10)?2:0));}
   if(chg&8){add('کانال ۲ به مرحلهٔ «'+stName(c2)+'» رفت',(c2>=7&&c2<=8)?3:((c2===10)?2:0));}
@@ -4360,11 +4351,11 @@ function evtRowText(r){
     const t=evtFlags(f2);
     add('قفل و وضعیت: '+(t||'همه پاک شد'),(f2&(2|16))?3:((f2&(1|4|8|32|64))?2:1));
   }
-  if(chg&1024){add('ولتاژ پک یک پله جابه‌جا شد',0);}
-  if(chg&64){add(r.v24<21200?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
+  if(chg&1024){add('ولتاژ پک یک پلهٔ ۲۰۰ میلی‌ولتی جابه‌جا شد',0);}
+  if(chg&64){add(r.v24<21200?'ولتاژ باتری به مرز قطع نزدیک شد':'ولتاژ باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
   if(chg&512){
     const who=((r.dm&3)===3)?'هر دو باتری':(((r.dm&1)!==0)?'باتری ۱':'باتری ۲');
-    add('حکم باتری خراب: '+who,3);
+    add('نتیجه: '+who+' فرسوده شناخته شد',3);
   }
   if(chg&256){
     /* [EN] only the bits that are ON are named.
@@ -4379,18 +4370,18 @@ function evtRowText(r){
           خط خالی دیده نشود. */
   /* [EN] v1.96 heartbeat: nothing happened, the panel is alive.
      [FA] ضربان: هیچ اتفاقی نیفتاد و پنل زنده است. */
-  if(r.note===5){add('ضربان — هیچ تغییری نبود و پنل زنده است',0);}
+  if(r.note===5){add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);}
   if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
-  const v='پک '+(r.v24/1000).toFixed(2)+'V · پایین '+(r.vlow/1000).toFixed(2)+'V · بالا '+(r.vhigh/1000).toFixed(2)+'V · Δ '+r.imbal+'mV';
+  const v='ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
   /* [EN] v1.96: rails, currents and duties; old files just skip them.
      [FA] ولتاژها، جریان‌ها و duty؛ فایل قدیمی این ستون‌ها را ندارد. */
   const extra=[];
-  if(r.vin!==null)extra.push('ورودی '+(r.vin/1000).toFixed(2)+'V');
-  if(r.v12!==null)extra.push('نود ۱۲V '+(r.v12/1000).toFixed(2)+'V');
-  if(r.i1!==null)extra.push('جریان ۱ '+(r.i1/1000).toFixed(2)+'A');
-  if(r.i2!==null)extra.push('جریان ۲ '+(r.i2/1000).toFixed(2)+'A');
-  if(r.d1!==null)extra.push('duty ۱ '+(r.d1/10).toFixed(0)+'٪');
-  if(r.d2!==null)extra.push('duty ۲ '+(r.d2/10).toFixed(0)+'٪');
+  if(r.vin!==null)extra.push('ولتاژ ورودی '+(r.vin/1000).toFixed(2)+'V');
+  if(r.v12!==null)extra.push('نود ۱۲ ولت '+(r.v12/1000).toFixed(2)+'V');
+  if(r.i1!==null)extra.push('جریان کانال ۱ '+(r.i1/1000).toFixed(2)+'A');
+  if(r.i2!==null)extra.push('جریان کانال ۲ '+(r.i2/1000).toFixed(2)+'A');
+  if(r.d1!==null)extra.push('فرمان کانال ۱ '+(r.d1/10).toFixed(0)+'٪');
+  if(r.d2!==null)extra.push('فرمان کانال ۲ '+(r.d2/10).toFixed(0)+'٪');
   return {txt:parts.join(' · '),lv:lv,v:v+(extra.length?' · '+extra.join(' · '):''),time:evtTime(r.epoch)};
 }
 function evtParse(line){

@@ -716,7 +716,7 @@ function main() {
             /* the condemned-battery verdict has its own column and its own bit */
             w.evtRender("1792756800,12,512,0,0,0,1,3,0,0,24000,23960,24040,20,1", "");
             check(rows()[0] && rows()[0].className.indexOf("lv3") >= 0 &&
-                  txt(0).indexOf("حکم باتری خراب: باتری ۱") >= 0,
+                  txt(0).indexOf("نتیجه: باتری ۱ فرسوده") >= 0,
                   "a condemned-battery verdict is a red line that names the battery",
                   txt(0));
 
@@ -731,15 +731,15 @@ function main() {
                   "a voltage step is a line of its own", txt(0));
             check(txt(0).indexOf("ورودی 23.00V") >= 0,
                   "the line shows the input rail", txt(0));
-            check(txt(0).indexOf("جریان ۱ 1.20A") >= 0 &&
-                  txt(0).indexOf("جریان ۲ 1.10A") >= 0,
+            check(txt(0).indexOf("جریان کانال ۱ 1.20A") >= 0 &&
+                  txt(0).indexOf("جریان کانال ۲ 1.10A") >= 0,
                   "and both battery currents", txt(0));
-            check(txt(0).indexOf("duty ۱ 45٪") >= 0 &&
-                  txt(0).indexOf("duty ۲ 30٪") >= 0,
+            check(txt(0).indexOf("فرمان کانال ۱ 45٪") >= 0 &&
+                  txt(0).indexOf("فرمان کانال ۲ 30٪") >= 0,
                   "and both commands as a percentage", txt(0));
 
             w.evtRender("1792756800,12,0,5,1,1,3,0,0,0,24000,23960,24040,20,0", "");
-            check(txt(0).indexOf("ضربان") >= 0 && rows()[0].className.indexOf("lv0") >= 0,
+            check(txt(0).indexOf("گزارش دوره‌ای") >= 0 && rows()[0].className.indexOf("lv0") >= 0,
                   "a heartbeat line says the panel is alive, in grey", txt(0));
 
             /* an old 15-column file still reads, without the new columns */
