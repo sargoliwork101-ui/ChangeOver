@@ -425,7 +425,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
    grey - the colour is the first thing the eye finds.
    [FA] نسخهٔ ۱٫۹۵: هر خط یک نوار رنگی خودش دارد: خطا قرمز، هشدار نارنجی،
    برگشت به سلامتی سبز و تغییر سادهٔ وضعیت خاکستری. */
-.evtrow{display:flex;gap:8px;padding:4px 6px;margin:2px 0;border-radius:6px;align-items:baseline;background:rgba(255,255,255,.02);border-inline-start:3px solid #4a5568}
+.evtrow{display:flex;gap:8px;flex-wrap:wrap;padding:5px 8px;margin:3px 0;border-radius:8px;align-items:baseline;background:rgba(255,255,255,.02);border-inline-start:3px solid #4a5568}
 .evtrow.lv3{border-inline-start-color:#e5484d;background:rgba(229,72,77,.10)}
 .evtrow.lv2{border-inline-start-color:#c9a227;background:rgba(201,162,39,.10)}
 .evtrow.lv1{border-inline-start-color:#2f9e63;background:rgba(47,158,99,.10)}
@@ -436,9 +436,12 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evtsum span.r{background:rgba(229,72,77,.16);color:#ffb4b4}
 .evtsum span.y{background:rgba(201,162,39,.16);color:#ffe08a}
 .evtsum span.g{background:rgba(47,158,99,.16);color:#9ff0c0}
+.lt{direction:ltr;unicode-bidi:isolate}
+.ep+.ep:before{content:'·';margin:0 5px;color:var(--mu);opacity:.7}
+.m{display:inline-block;margin:1px 2px;padding:1px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:11px}
 .evtt{color:var(--mu);font-family:Vazirmatn;white-space:nowrap;min-width:64px}
 .evtd{flex:1}
-.evtv{color:var(--mu);white-space:nowrap;font-family:Vazirmatn}
+.evtv{color:var(--mu);font-family:Vazirmatn}
 .evttag{display:inline-block;min-width:8px;height:8px;border-radius:2px;margin-left:6px;background:#5b6472}
 .evttag.g{background:#2f9e63}.evttag.y{background:#c9a227}.evttag.r{background:#c0392b}
 </style><script>
@@ -560,7 +563,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 62a7d69</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 089201b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1970,33 +1973,15 @@ const pxt=id=>(typeof PXT!=='undefined'&&PXT[id])?[EVN[id]||((PX[id]||['',''])[0
 function qgraph(){const MG=document.querySelectorAll('.qgm');
  if(!MG.length||EVOPEN!=null)return;const g=MG[0];
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
- /* v3 (دستور کاربر ۲۰۲۶-۰۹-۲۹): نمودار دوبعدی جریان-ولتاژ.
-    محور افقی = جریان (mA)، محور عمودی = ولتاژ (mV).
-    قبلاً فقط یک نردبان عمودی ولتاژ بود و جریان اصلاً روی نمودار نبود؛ حالا
-    مسیر واقعی شارژ ‎CC/CV‎ دیده می‌شود: Bulk یک خط عمودی روی سقف جریان است
-    (جریان ثابت، ولتاژ بالا می‌رود) و Absorb یک خط افقی روی ولتاژ هدف
-    (ولتاژ ثابت، جریان پایین می‌آید). نقطهٔ زندهٔ هر باتری روی مختصات واقعی
-    خودش (جریان، ولتاژ) می‌نشیند، پس یک نگاه می‌گوید کجای مسیر است.
-    v3: a real current-voltage chart. X = current, Y = voltage. The CC/CV
-    path is now visible as what it is - a vertical leg at the current limit
-    and a horizontal leg at the absorb voltage - and each battery's live dot
-    sits at its true (I, V), so one look says where it is on that path.
-    ناحیه‌ها از مقدار نمایشی v می‌آیند؛ مقدار اعمال‌شده d پایهٔ خط و ‎read-back‎ است و
-    درخواستِ هنوز-اعمال‌نشده با خط‌چین دیده می‌شود. */
- /* [EN] v1.91 (user order 2026-10-23): the voltage axis is pinned at a
-    FIXED 10.0 V floor - no auto-floor and no slow narrowing. The v1.87
-    auto-floor still hid a pack below 11.5 V on the user's panel, and a
-    moving axis also makes two readings impossible to compare. 10.0 V keeps
-    a fully discharged 12 V battery on the picture and the scale steady; the
-    top is a fixed 16.0 V (user order 2026-10-23) so the over-voltage band
-    has visible room above the 15.0 V line.
-    [FA] نسخهٔ ۱.۹۱ (دستور کاربر ۲۰۲۶-۱۰-۲۳): کف محور ولتاژ روی ۱۰٫۰ ولت
-    ثابت شد - نه کف خودکار و نه جمع‌شدن پله‌پله. کف خودکارِ نسخهٔ ۱.۸۷ هم
-    باتریِ زیر ۱۱٫۵ ولت را روی پنل کاربر نشان نمی‌داد و محورِ متحرک مقایسهٔ دو
-    خواندن را هم سخت می‌کرد. ۱۰٫۰ ولت باتریِ کاملاً خالی ۱۲ ولتی را در تصویر
-    نگه می‌دارد و مقیاس ثابت می‌ماند؛ سقف هم ۱۶٫۰ ولت ثابت است (دستور کاربر
-    ۲۰۲۶-۱۰-۲۳) تا ناحیهٔ اضافه‌ولتاژ بالای خط ۱۵٫۰ ولت جا برای دیده‌شدن
-    داشته باشد. */
+ /* v3 (دستور کاربر ۲۰۲۶-۰۹-۲۹): نمودار جریان-ولتاژ: افقی = جریان (mA)، عمودی = ولتاژ (mV).
+   مسیر ‎CC/CV‎ = پایهٔ عمودی روی سقف جریان و پایهٔ افقی روی ولتاژ جذب؛ نقطهٔ زنده روی (جریان، ولتاژ) واقعی می‌نشیند.
+   ناحیه‌ها از مقدار نمایشی v؛ خط پایه از d (‎read-back‎)؛ درخواستِ هنوز-اعمال‌نشده با خط‌چین.
+   v3: real I‑V chart - the CC/CV legs and the live (I, V) dot say where each battery is. */
+ /* [EN] v1.91 (user order 2026-10-23): the voltage axis is pinned - fixed 10.0 V
+   floor (a pack under 11.5 V stays visible, two readings stay comparable) and
+   fixed 16.0 V top so the over-voltage band has room above the 15.0 V line.
+   [FA] v1.91: محور ولتاژ ثابت است: کف ۱۰٫۰ ولت (باتریِ زیر ۱۱٫۵ ولت دیده شود و دو
+   خواندن مقایسه‌پذیر بماند) و سقف ۱۶٫۰ ولت تا ناحیهٔ اضافه‌ولتاژ بالای ۱۵٫۰ ولت جا داشته باشد. */
  const lo=10000,hi=16000,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
  /* [EN] Responsive SVG: preserve the plot's natural aspect ratio while fitting
@@ -2012,20 +1997,12 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  const V=mv=>(mv/1000).toFixed(2);
  /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
  const LL=[],PL=[]; /* [EN] v1.41 audit: zone-name container ZL died with the v1.39 legend move / [FA] ممیزی v1.41: ظرف ZL با رفتن نام‌ها به راهنما مرده بود */
- /* [EN] v1.38 (user follow-up): the Persian left label carries ONLY the
-    name - number+unit live on the right English label; it hangs BELOW its
-    line (never above); and each line gets exactly ONE Persian label. Zone
-    names float at the CENTER of their band so a band name can never look
-    like a second label for the boundary line touching it. Names come from
-    PX (the same source the chips and help bubbles read), so a rename can
-    never drift in two places. Left labels are display mirrors: editing
-    stays with the English labels on the right.
-    [FA] v1.38 (دستور پیگیری): برچسب فارسیِ چپ فقط نام است - عدد و واحد
-    همان برچسب انگلیسی سمت راست؛ زیر خط خودش می‌آویزد (هرگز بالای آن نیست)
-    و هر خط دقیقاً یک برچسب فارسی دارد. نام ناحیه‌ها هم وسط ناحیهٔ خودشان
-    شناور است تا اسم ناحیه، دومین برچسب خط مرزیِ مجاور به نظر نرسد. نام‌ها
-    از PX می‌آیند (همان منبع تراشه‌ها و حباب‌های کمک) تا تکرار دوبرابری
-    نشود. برچسب‌های چپ فقط نمایشی‌اند؛ ویرایش همان انگلیسی سمت راست است. */
+ /* [EN] v1.38: the Persian left label is name-only (number+unit stay on the right
+   English label), hangs below its line, one label per line; zone names float at
+   their band center. Names come from PX. Left labels are display-only.
+   [FA] v1.38: برچسب فارسیِ چپ فقط نام است (عدد و واحد روی برچسب انگلیسی راست)، زیر
+   خط خودش می‌آویزد، یک برچسب در هر خط؛ نام ناحیه‌ها وسط ناحیهٔ خودشان. نام‌ها از PX؛
+   برچسب‌های چپ فقط نمایشی‌اند. */
  const pfn=id=>(PX[id]?PX[id][0]:(EVN[id]||''));
  /* [EN] v1.39 (user order: the band names crowded the plot - take them out
     and put them OUTSIDE the chart, like a map legend: which colour means
@@ -2134,19 +2111,12 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
    return `<span class="tg" style="background:${st[1]}22;color:${st[1]};border:1px solid ${st[1]}66">● ${b[0]}: <b>${V(b[1])}V</b> · ${b[3]}mA · ${st[0]}</span>`;}).join(' ')+
    `<span class="lb"> · Bulk ≤ ${im.v}mA · Taper < ${tp.v}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
  }else lg='در انتظار دادهٔ برد…';
- /* [EN] v1.32 (user order): the loop and timing numbers go ON the plot, each
-    one next to the line it actually acts on - not listed underneath it. A
-    tspan carries data-i exactly like an axis label does, so the same click
-    handler and the same floating editor serve them with no second mechanism.
-    They are deliberately quiet: small and muted until you hover, because
-    these are the numbers you touch once, and the chart still has to be
-    readable at a glance for the ones you watch.
-    [FA] اعداد حلقه و زمان‌بندی روی خود نمودار می‌آیند، هر کدام کنار همان خطی
-    که واقعاً رویش اثر می‌گذارد - نه فهرست‌شده زیرش. هر tspan دقیقاً مثل برچسب
-    محور صفت ‎data-i‎ دارد، پس همان شنوندهٔ کلیک و همان ویرایشگر Float بدون هیچ
-    ساز و کار دومی سرویسشان می‌دهد. عمداً کم‌صدا هستند: ریز و محو تا وقتی ماوس
-    رویشان برود، چون این‌ها عددهایی‌اند که یک‌بار تنظیم می‌شوند و نمودار باید
-    برای آن‌هایی که مدام می‌پاییدشان در یک نگاه خوانا بماند. */
+ /* [EN] v1.32: the loop and timing numbers go ON the plot, next to the line they
+   act on; a tspan carries data-i like an axis label, so the same click handler
+   and floating editor serve them. Quiet: small and muted until hover.
+   [FA] v1.32: اعداد حلقه و زمان‌بندی روی خود نمودار، کنار همان خطی که رویش اثر
+   می‌گذارند می‌آیند؛ هر tspan مثل برچسب محور ‎data-i‎ دارد، پس همان ویرایشگر Float
+   سرویسشان می‌دهد. عمداً کم‌صدا: ریز و محو تا هاور. */
  /* [EN] The timers and gains used to be drawn here, as <tspan> runs floating
     over the plane. They are gone from the picture and live in chips under it
     now (user order 2026-10-03: "write those times underneath so the charts do
@@ -4431,15 +4401,36 @@ function evtDayCode(d){
   return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate());
 }
 function evtToday(){return evtDayCode(new Date());}
+/* [EN] v1.99 (user order 2026-10-23): every date the log shows - the day
+   picker, the status line, the download name - is an Iranian (Jalali) date.
+   [FA] v1.99: هر تاریخی که لاگ نشان می‌دهد - فهرست روزها، خط وضعیت، نام فایل
+   دانلود - تاریخ ایرانی (شمسی) است. */
+const xdiv=(a,b)=>~~(a/b),xmod=(a,b)=>a-~~(a/b)*b;
+function xg2d(gy,gm,gd){let d=xdiv((gy+xdiv(gm-8,6)+100100)*1461,4)+xdiv(153*xmod(gm+9,12)+2,5)+gd-34840408;return d-xdiv(xdiv(gy+100100+xdiv(gm-8,6),100)*3,4)+752;}
+const JF=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function jal(c){
+  const gy=+c.slice(0,4),jy=gy-621,jdn=xg2d(gy,+c.slice(4,6),+c.slice(6,8));
+  const B=[-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
+  let leapJ=-14,jp=B[0],jump=0,i,n,yy=jy;
+  for(i=1;i<19;i++){jump=B[i]-jp;if(jy<B[i])break;leapJ+=xdiv(jump,33)*8+xdiv(xmod(jump,33),4);jp=B[i];}
+  n=jy-jp;leapJ+=xdiv(n,33)*8+xdiv(xmod(n,33)+3,4);if(xmod(jump,33)===4&&jump-n===4)leapJ++;
+  const gy2=jy+621,march=20+leapJ-(xdiv(gy2,4)-xdiv((xdiv(gy2,100)+1)*3,4)-150);
+  if(jump-n<6)n=n-jump+xdiv(jump+4,33)*33;
+  let leap=xmod(xmod(n+1,33)-1,4);if(leap===-1)leap=4;
+  let k=jdn-xg2d(gy2,3,march),jm,jd;
+  if(k>=0){if(k<=185){jm=1+xdiv(k,31);jd=xmod(k,31)+1;return [yy,jm,jd];}k-=186;}
+  else{yy--;k+=179;if(leap===1)k++;}
+  return [yy,7+xdiv(k,30),xmod(k,30)+1];
+}
+function evtFa(x){return String(x).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
 function evtDayFa(code){
   /* [‎EN] day 0 = no phone yet. / [FA]‎ روز صفر = هنوز گوشی نیامده. */
   if(code===0||code==='0')return 'بدون ساعت';
-  const c=String(code||evtToday());
-  const y=+c.slice(0,4),m=+c.slice(4,6),d=+c.slice(6,8);
-  const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(y,m-1,d).getDay()];
-  const fa=n=>String(n).padStart(2,'0').replace(/[0-9]/g,x=>'۰۱۲۳۴۵۶۷۸۹'[+x]);
-  return wd+' '+fa(y)+'-'+fa(m)+'-'+fa(d);
+  const c=String(code||evtToday()),j=jal(c);
+  const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(+c.slice(0,4),+c.slice(4,6)-1,+c.slice(6,8)).getDay()];
+  return wd+' '+evtFa(j[2])+' '+JF[j[1]-1]+' '+evtFa(j[0]);
 }
+function evtDaySh(code){const j=jal(String(code||evtToday())),p=n=>String(n).padStart(2,'0');return evtFa(j[0])+'-'+evtFa(p(j[1]))+'-'+evtFa(p(j[2]));}
 function evtFaults(mask){
   const out=[];
   for(let i=0;i<EVT_FAULT.length;i++){if((mask>>i)&1)out.push(EVT_FAULT[i]);}
@@ -4520,6 +4511,12 @@ function evtParse(line){
           d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
           band:(+f[10]||0)<21200};
 }
+/* [EN] v1.99: every piece of a line sits in its own span and every number or
+   latin word is bidi-isolated, so mixed Persian/latin text cannot tangle.
+   [FA] v1.99: هر تکه از خط در span خودش می‌نشیند و هر عدد یا واژهٔ انگلیسی
+   جدا نگه داشته می‌شود تا متن قاطی نشود. */
+const xiso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
+const xspr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+xiso(x)+'</span>').join('');
 function evtRender(text,code){
   const box=$('evtlist'),sum=$('evtsum');
   const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
@@ -4537,8 +4534,8 @@ function evtRender(text,code){
      [FA] جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
   box.innerHTML=rows.slice().reverse().map(r=>{
     const t=evtRowText(r);
-    return '<div class="evtrow lv'+t.lv+'"><span class="evtt">'+t.time+'</span><span class="evtd">'+t.txt+
-           '</span><span class="evtv">'+t.v+'</span></div>';
+    return '<div class="evtrow lv'+t.lv+'"><span class="evtt">'+xiso(t.time)+'</span><span class="evtd">'+xspr(t.txt,'ep')+
+           '</span><span class="evtv">'+xspr(t.v,'m')+'</span></div>';
   }).join('');
 }
 async function evtfetch(manual){
@@ -4575,7 +4572,9 @@ async function evtDays(){
 }
 function evtdl(){
   const day=($('evtday')&&$('evtday').value.trim())||evtToday();
-  window.location='/evt/dl?day='+encodeURIComponent(day);
+  const a=document.createElement('a');
+  a.href='/evt/dl?day='+encodeURIComponent(day);
+  a.download='تاریخچه-'+evtDaySh(day)+'.csv';a.click();
 }
 async function evtdlall(){
   const days=await evtDays();
@@ -4583,11 +4582,11 @@ async function evtdlall(){
   let out='';
   for(const d of days){
     const r=await fetch('/evt/dl?day='+d,{cache:'no-store'});
-    out+='# day '+d+'\n'+(await r.text());
+    out+='# '+evtDayFa(d)+'\n'+(await r.text());
   }
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([out],{type:'text/csv;charset=utf-8'}));
-  a.download='evt-all.csv';a.click();URL.revokeObjectURL(a.href);
+  a.download='تاریخچه-کامل.csv';a.click();URL.revokeObjectURL(a.href);
 }
 async function evtclr(){
   if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟ این کار برگشت‌پذیر نیست.'))return;

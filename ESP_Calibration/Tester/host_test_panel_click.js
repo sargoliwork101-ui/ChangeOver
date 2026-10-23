@@ -751,6 +751,25 @@ function main() {
             w.evtRender("", "");
             check(w.document.getElementById("evtlist").textContent.indexOf("هنوز چیزی ثبت نشده") >= 0,
                   "an empty day says so in words");
+
+            /* v1.99 (user order 2026-10-23): the day labels are Iranian (Jalali)
+               dates, and each piece of a line sits in its own span with numbers
+               and latin words bidi-isolated, so mixed text cannot tangle. */
+            check(w.evtDayFa("20261023").indexOf("آبان") >= 0 &&
+                  w.evtDayFa("20261023").indexOf("۱۴۰۵") >= 0,
+                  "the day label is an Iranian (Shamsi) date", w.evtDayFa("20261023"));
+            check(w.evtDaySh("20261023").indexOf("۱۴۰۵") >= 0 &&
+                  w.evtDaySh("20261023").indexOf("-") >= 0,
+                  "the download name carries the Iranian date too", w.evtDaySh("20261023"));
+            w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
+            check(rows()[0].querySelectorAll(".ep").length >= 1 &&
+                  rows()[0].querySelectorAll(".evtv .m").length >= 8,
+                  "each message and each measurement sits in its own span",
+                  rows()[0].querySelectorAll(".ep").length + "/" +
+                  rows()[0].querySelectorAll(".evtv .m").length);
+            check(rows()[0].querySelectorAll(".lt").length >= 9,
+                  "numbers and latin words run inside their own left-to-right spans",
+                  String(rows()[0].querySelectorAll(".lt").length));
         }
 
             const pm = d.getElementById("pmod");

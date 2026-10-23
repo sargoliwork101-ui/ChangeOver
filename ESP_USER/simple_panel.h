@@ -340,6 +340,13 @@ code,pre,.mono{font-family:Vazirmatn !important}
 .bat-bolt.show{display:block}
 @keyframes boltPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:1}50%{transform:translate(-50%,-50%) scale(1.15);opacity:.9}}
 .bat-wrap.charging .bat-fill{filter:drop-shadow(0 0 12px rgba(255,184,77,.45)) !important}
+.evtrow{display:flex;gap:8px;flex-wrap:wrap;padding:5px 8px;margin:3px 0;border-radius:8px;align-items:baseline}
+.lt{direction:ltr;unicode-bidi:isolate}
+.ep+.ep:before{content:'·';margin:0 5px;color:var(--mu);opacity:.7}
+.m{display:inline-block;margin:1px 2px;padding:1px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:11px}
+.evtt{color:var(--mu);white-space:nowrap;min-width:58px}
+.evtd{flex:1}
+.evtv{color:var(--mu)}
 </style>
 </head>
 <body data-theme="0">
@@ -1874,13 +1881,33 @@ const EVT_LVN=['خاکستری: تغییر ساده','سبز: برگشت به س
 function evtPad(n){return String(n).padStart(2,'0');}
 function evtFaNum(x){return String(x).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
 function evtToday(){const d=new Date();return d.getFullYear()+evtPad(d.getMonth()+1)+evtPad(d.getDate());}
+/* v1.99: هر تاریخی که لاگ نشان می‌دهد - فهرست روزها، خط وضعیت، نام فایل دانلود -
+   تاریخ ایرانی (شمسی) است. [EN] every date the log shows is an Iranian (Jalali) date. */
+const evtDv=(a,b)=>~~(a/b),evtMd=(a,b)=>a-~~(a/b)*b;
+function evtG2d(gy,gm,gd){let d=evtDv((gy+evtDv(gm-8,6)+100100)*1461,4)+evtDv(153*evtMd(gm+9,12)+2,5)+gd-34840408;return d-evtDv(evtDv(gy+100100+evtDv(gm-8,6),100)*3,4)+752;}
+const EVT_JF=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function evtJal(c){
+ const gy=+c.slice(0,4),jy=gy-621,jdn=evtG2d(gy,+c.slice(4,6),+c.slice(6,8));
+ const B=[-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
+ let leapJ=-14,jp=B[0],jump=0,i,n,yy=jy;
+ for(i=1;i<19;i++){jump=B[i]-jp;if(jy<B[i])break;leapJ+=evtDv(jump,33)*8+evtDv(evtMd(jump,33),4);jp=B[i];}
+ n=jy-jp;leapJ+=evtDv(n,33)*8+evtDv(evtMd(n,33)+3,4);if(evtMd(jump,33)===4&&jump-n===4)leapJ++;
+ const gy2=jy+621,march=20+leapJ-(evtDv(gy2,4)-evtDv((evtDv(gy2,100)+1)*3,4)-150);
+ if(jump-n<6)n=n-jump+evtDv(jump+4,33)*33;
+ let leap=evtMd(evtMd(n+1,33)-1,4);if(leap===-1)leap=4;
+ let k=jdn-evtG2d(gy2,3,march),jm,jd;
+ if(k>=0){if(k<=185){jm=1+evtDv(k,31);jd=evtMd(k,31)+1;return [yy,jm,jd];}k-=186;}
+ else{yy--;k+=179;if(leap===1)k++;}
+ return [yy,7+evtDv(k,30),evtMd(k,30)+1];
+}
 function evtDayFa(code){
  if(code===0||code==='0')return 'بدون ساعت';
- const c=String(code||evtToday());
+ const c=String(code||evtToday()),j=evtJal(c);
  const y=+c.slice(0,4),m=+c.slice(4,6),d=+c.slice(6,8);
  const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(y,m-1,d).getDay()];
- return wd+' '+evtFaNum(y)+'-'+evtFaNum(evtPad(m))+'-'+evtFaNum(evtPad(d));
+ return wd+' '+evtFaNum(j[2])+' '+EVT_JF[j[1]-1]+' '+evtFaNum(j[0]);
 }
+function evtDaySh(code){const j=evtJal(String(code||evtToday()));return evtFaNum(j[0])+'-'+evtFaNum(evtPad(j[1]))+'-'+evtFaNum(evtPad(j[2]));}
 function evtTimeFa(epoch){
  if(!epoch)return 'بی‌ساعت';
  const d=new Date(epoch*1000);
@@ -1929,6 +1956,10 @@ function evtParse(line){
          i1:(f.length>17)?+f[17]:null,i2:(f.length>18)?+f[18]:null,
          d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null};
 }
+/* v1.99: هر تکه از خط در span خودش می‌نشیند؛ عدد و واژهٔ انگلیسی جدا نگه داشته
+   می‌شوند تا متن راست‌به‌چپ قاطی نشود. [EN] every piece in its own span, bidi-isolated. */
+const evtIso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
+const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
 function evtRenderFa(text,day){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
@@ -1957,10 +1988,10 @@ function evtRenderFa(text,day){
   if(r.d1!==null)extra.push('duty ۱ '+(r.d1/10).toFixed(0)+'٪');
   if(r.d2!==null)extra.push('duty ۲ '+(r.d2/10).toFixed(0)+'٪');
   if(extra.length)v+=' · '+extra.join(' · ');
-  return '<div style="display:flex;gap:8px;padding:4px 6px;margin:2px 0;border-radius:6px;align-items:baseline;border-inline-start:3px solid '+EVT_LVC[t.lv]+';background:'+EVT_LVB[t.lv]+'">'+
-   '<span style="color:var(--mu);min-width:58px;white-space:nowrap">'+evtTimeFa(r.epoch)+'</span>'+
-   '<span style="flex:1">'+t.txt+'</span>'+
-   '<span style="color:var(--mu);white-space:nowrap">'+v+'</span></div>';
+  return '<div class="evtrow" style="border-inline-start:3px solid '+EVT_LVC[t.lv]+';background:'+EVT_LVB[t.lv]+'">'+
+   '<span class="evtt">'+evtIso(evtTimeFa(r.epoch))+'</span>'+
+   '<span class="evtd">'+evtSpr(t.txt,'ep')+'</span>'+
+   '<span class="evtv">'+evtSpr(v,'m')+'</span></div>';
  }).join('');
 }
 async function evtFetch(manual){
@@ -1993,7 +2024,9 @@ async function evtDays(){
 function evtDl(){
  const sel=document.getElementById('evtDay');
  const day=(sel&&sel.value)||evtToday();
- window.location='/evt/dl?day='+encodeURIComponent(day);
+ const a=document.createElement('a');
+ a.href='/evt/dl?day='+encodeURIComponent(day);
+ a.download='تاریخچه-'+evtDaySh(day)+'.csv';a.click();
 }
 async function evtDlAll(){
  const days=await evtDays();
@@ -2001,11 +2034,11 @@ async function evtDlAll(){
  let out='';
  for(const d of days){
   const r=await fetch('/evt/dl?day='+d,{cache:'no-store'});
-  out+='# day '+d+'\n'+(await r.text());
+  out+='# '+evtDayFa(d)+'\n'+(await r.text());
  }
  const a=document.createElement('a');
  a.href=URL.createObjectURL(new Blob([out],{type:'text/csv;charset=utf-8'}));
- a.download='evt-all.csv';a.click();URL.revokeObjectURL(a.href);
+ a.download='تاریخچه-کامل.csv';a.click();URL.revokeObjectURL(a.href);
 }
 async function evtClear(){
  if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟'))return;
