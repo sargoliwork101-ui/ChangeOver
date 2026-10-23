@@ -675,7 +675,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
       <button class="btn danger" onclick="latchReset(6)">ریست حکم باتری خراب</button>
       <button class="btn danger" onclick="latchReset(8)">ریست حکم باتری ضعیف</button>
      </div>
-     <div id="latchMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
+     <div id="latchState" style="font-size:12px;color:var(--mu);line-height:1.9;margin-top:6px;text-align:center">—</div>
+    <div id="latchMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
     </div>
    </div>
 
@@ -1587,6 +1588,12 @@ function render(data){
   else if(!charging && sameState && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
   else { setCls(ib,'imb'); setTxt('imbBox',''); }
  }
+ /* وضعیت زندهٔ سه قفل در کارت «قفل‌ها» — همان بیت‌های فریم زنده */
+ {let ls=document.getElementById('latchState');
+  if(ls){
+   const lat=v=>'<b style="color:'+(v?'#e05252':'#2ea36b')+'">'+(v?'قفل است':'پاک است')+'</b>';
+   ls.innerHTML='عدم‌توازن: '+lat(isImbLatched)+' · باتری خراب: '+lat(isDead)+' · باتری ضعیف: '+lat(isWeak);
+  }}
  let bIn=document.getElementById('bdgInput');
  if(bIn){
   if(inputOV){ setHtml('bdgInput','<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg err'); }

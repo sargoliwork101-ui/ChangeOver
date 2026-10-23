@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7c5634a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fefe536</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2421,7 +2421,7 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  /* کادر خطاهای قفل‌شده حالا قفل‌های ماژولی را هم نشان می‌دهد، پس کلید
     تغییر فقط بیت‌های fault نیست: قفل عدم‌توازن و حکم باتری خراب هم داخل
     امضای کش می‌آیند تا متن و رنگ کادر با هر تغییر به‌روز شود. */
- const dmW=(t[28]|0),flW=(D.fl2|0),sig=t[19]+','+(flW&3)+','+dmW;
+ const dmW=(t[28]|0),flW=(D.fl2|0),sig=t[19]+','+(flW&19)+','+dmW;
  if(sig!==ASB.mask){ASB.mask=sig;
   const dmWho=((dmW&3)===3)?'هر دو کانال':((dmW&1)?'کانال ۱':'کانال ۲');
   const h=[];
@@ -2430,6 +2430,7 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
   if(flW&2)h.push('⚠ <b>قفل عدم‌توازن</b> — قفل دائمی؛ باتری را تعویض کنید');
   else if(flW&1)h.push('ℹ <b>عدم‌توازن در جریان</b> — اپیزود در حال ثبت است');
   if(dmW)h.push('⚠ <b>باتری خراب</b> — باتری '+dmWho+' خراب حکم شده؛ تعویضش کنید');
+  if(flW&16)h.push('⚠ <b>باتری ضعیف</b> — باتری بار را تحمل نکرد؛ مسیر باتری بسته مانده تا حکم پاک شود');
   /* v1.86 (دستور کاربر): همهٔ خطاها در یک خط نوشته می‌شوند، نه هر کدام در یک
      سطر جدا؛ متن از همان دادهٔ زنده ساخته می‌شود و با رفتن خطا کوتاه می‌شود. */
   if(h.length){ASB.flt.innerHTML=h.join(' · ');ASB.box5.className='ab bad';}

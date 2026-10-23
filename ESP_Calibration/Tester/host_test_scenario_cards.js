@@ -672,6 +672,20 @@ function testImbalance(win, doc) {
           'draw() mirrors the board into both switches and says what each state means',
           'cb147=' + cb147.checked + ' cb157=' + cb157.checked + ' | ' +
           doc.getElementById('a147').textContent);
+    /* [EN] Scenario 8 must be visible everywhere the panel lists locked
+       verdicts, not just inside its own card: the live status button in the
+       top bar, the locked-error text box, and the button's refresh signature.
+       [FA] سناریوی ۸ باید همه‌جایی که پنل حکم‌های قفل‌شده را نشان می‌دهد
+       دیده شود: دکمهٔ وضعیت نوار بالا، متن کادر «خطاهای قفل‌شده» و کلید
+       تازه‌سازی همان کادر. */
+    const calSrc = fs.readFileSync(path.join(__dirname, '..', 'plink_panel.h'), 'utf8');
+    check(calSrc.includes("flip('باتری ضعیف',weakNow,8,") &&
+          calSrc.includes("if(flW&16)h.push('⚠ <b>باتری ضعیف</b>") &&
+          calSrc.includes("(flW&19)"),
+          'the weak-battery verdict reaches the top-bar switch and the locked-error text');
+    check(doc.getElementById('wbst') !== null,
+          'card 8 has its live verdict line');
+
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&
           c5beep.querySelector('#q132').type === 'number' &&
