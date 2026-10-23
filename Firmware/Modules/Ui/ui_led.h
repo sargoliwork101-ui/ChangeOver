@@ -861,4 +861,66 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value);
 
+/* ==================== Scenario alarm switches / کلیدهای هشدار سناریو ==================== */
+
+/* [EN] v1.87 (user order): every scenario card in the panel carries an
+ *      "enabled" tick, but until now that tick only muted the card in the
+ *      browser and never reached the board. These seven ids are the board
+ *      side of the same ticks: 0 switches THAT scenario's LED/beep face off
+ *      while its detection, its latch and every output protection stay
+ *      exactly as they were; 1 (the default) shows the face again.
+ * [FA] نسخهٔ ۱.۸۷ (دستور کاربر): هر کارت سناریو در پنل یک تیک «فعال» دارد،
+ *      ولی تا امروز آن تیک فقط کارت را در مرورگر خاموش می‌کرد و به برد
+ *      نمی‌رسید. این هفت شناسه سمت بردِ همان تیک‌هاست: صفر چهرهٔ چراغ و بوقِ
+ *      همان سناریو را خاموش می‌کند در حالی که تشخیص، قفل و همهٔ محافظ‌های
+ *      خروجی دست‌نخورده می‌مانند؛ یک (پیش‌فرض) دوباره نشانش می‌دهد. */
+/* [EN] Numbering follows the PANEL CARD order (the number the user reads on
+ *      the card), which is not the dispatch order of func__Ui_Tick:
+ *        1 = input overvoltage, 2 = battery lost, 3 = discharge (no input),
+ *        4 = normal charge, 5 = imbalance, 6 = dead battery, 7 = technical
+ *        fault. Card 8 (weak battery) has no face switch.
+ * [FA] شماره‌گذاری از ترتیب کارت‌های پنل می‌آید (همان شماره‌ای که کاربر روی
+ *      کارت می‌بیند) و با ترتیب انتخاب در func__Ui_Tick یکی نیست:
+ *        ۱ = اضافه‌ولتاژ ورودی، ۲ = قطع باتری، ۳ = دشارژ بی‌ورودی،
+ *        ۴ = شارژ عادی، ۵ = عدم‌توازن، ۶ = باتری خراب، ۷ = خطای فنی.
+ *      کارت ۸ (باتری ضعیف) کلید چهره ندارد. */
+#define UI_SCENARIO_ALARM_ID_FIRST  158u  /* [EN] card 1, input overvoltage / [FA] کارت ۱، اضافه‌ولتاژ */
+#define UI_SCENARIO_ALARM_ID_LAST   164u  /* [EN] card 7, technical fault / [FA] کارت ۷، خطای فنی */
+
+/**
+ * @brief  [EN] Write one scenario-alarm switch (158..164 = scenarios 1..7).
+ *              Values clamp to 0/1; the applied value comes back.
+ *         [FA] نوشتن کلید هشدار یک سناریو (۱۵۸..۱۶۴ = سناریو ۱..۷). مقدار
+ *              به ۰/۱ گیره می‌خورد و مقدار اعمال‌شده برمی‌گردد.
+ * @‎param  uint8_t__paramId [EN] 158..164‎ / شناسه
+ * @‎param  uint32_t__value [EN] 0 = face off, 1 = face on‎ / صفر خاموش، یک روشن
+ * @param  uint32_t__appliedValue [EN] Required out; NULL rejects / خروجی الزامی
+ * @return bool [EN] true when the id is in range / شناسه در بازه بود
+ */
+bool func__Ui_SetScenarioAlarm(uint8_t uint8_t__paramId,
+                               uint32_t uint32_t__value,
+                               uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one scenario-alarm switch (158..164).
+ *         [FA] خواندن کلید هشدار یک سناریو (۱۵۸..۱۶۴).
+ * @‎param  uint8_t__paramId [EN] 158..164‎ / شناسه
+ * @‎param  uint32_t *uint32_t__value [EN] Value out‎ / مقدار
+ * @return bool [EN] true when the id is in range / شناسه در بازه بود
+ */
+bool func__Ui_GetScenarioAlarm(uint8_t uint8_t__paramId,
+                               uint32_t *uint32_t__value);
+
+/**
+ * @brief  [EN] Is the LED/beep face of this scenario allowed to run?
+ *              Scenario numbers are 1..8; anything outside 1..7 is true, so a
+ *              caller can never silence a face by passing a bad number.
+ *         [FA] آیا چهرهٔ چراغ و بوق این سناریو اجازهٔ نمایش دارد؟ شماره‌ها
+ *              ۱..۸ هستند؛ هر عدد بیرون ۱..۷ «بله» است تا فراخوان با شمارهٔ
+ *              اشتباه نتواند چهره‌ای را بی‌صدا کند.
+ * @‎param  uint8_t__scenario [EN] 1..7‎ / شمارهٔ سناریو
+ * @return bool [EN] true when the face may run / اجازهٔ نمایش
+ */
+bool func__Ui_ScenarioAlarmOn(uint8_t uint8_t__scenario);
+
 #endif /* UI_LED_H */

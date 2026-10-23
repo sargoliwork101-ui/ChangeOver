@@ -686,6 +686,50 @@ function testImbalance(win, doc) {
     check(doc.getElementById('wbst') !== null,
           'card 8 has its live verdict line');
 
+    /* [EN] v1.87 (user order): the «فعال» tick of cards 1..7 is no longer a
+       browser-only mute. Unticking must queue a 0 for that scenario's alarm
+       id (158..164) so the LAMP AND BUZZER stay silent on the board while
+       detection and protection keep running. Scenario 8 has no such face
+       switch and must not invent one.
+       [FA] نسخهٔ ۱٫۸۷: تیک «فعال» کارت‌های ۱..۷ دیگر فقط در مرورگر نیست.
+       برداشتن تیک باید صفر را برای شناسهٔ هشدار همان سناریو (۱۵۸..۱۶۴) در
+       صف بگذارد تا چراغ و بوق روی برد ساکت بمانند، در حالی که تشخیص و
+       محافظت کار می‌کند. سناریوی ۸ چنین کلیدی ندارد و نباید بسازد. */
+    win.scenarioToggle(2, false);
+    check(win.eval('PEND')[159] === 0,
+          'unticking scenario 2 queues 0 for its own alarm id 159',
+          JSON.stringify(win.eval('PEND')[159]));
+    check(doc.getElementById('sen2').checked === false,
+          'the tick itself shows the unticked state');
+    win.scenarioToggle(2, true);
+    check(win.eval('PEND')[159] === 1,
+          'ticking it back queues 1, so the face returns without a reboot',
+          JSON.stringify(win.eval('PEND')[159]));
+    const pend0 = win.eval('PEND');
+    const pendKeys = Object.keys(pend0).filter(k => +k >= 158 && +k <= 164);
+    win.scenarioToggle(8, false);
+    check(!Object.keys(win.eval('PEND')).some(k => +k === 165),
+          'scenario 8 has no alarm id and never invents one',
+          Object.keys(win.eval('PEND')).join(','));
+    win.scenarioToggle(8, true);
+    /* [EN] and the tick follows the BOARD, not just this browser: a frame
+       carrying 0 for id 160 must mute card 3 without queueing anything.
+       [FA] تیک از برد هم پیروی می‌کند: فریمی با صفر برای شناسهٔ ۱۶۰ باید
+       کارت ۳ را بی‌صدا کند بدون آن‌که چیزی در صف بگذارد. */
+    win.D.p[160] = 0;
+    win.draw(win.D);
+    check(doc.getElementById('sen3').checked === false &&
+          win.eval('PEND')[160] === undefined,
+          'draw() mirrors the board alarm state into the tick and sends nothing back',
+          'sen3=' + doc.getElementById('sen3').checked + ' pend=' +
+          JSON.stringify(win.eval('PEND')[160]));
+    win.D.p[160] = 1;
+    win.draw(win.D);
+    check(doc.getElementById('sen3').checked === true,
+          'a board value of 1 puts the tick back on');
+    check(pendKeys.every(k => +k >= 158 && +k <= 164),
+          'the seven alarm ids are the only extras the card ticks touch');
+
     /* [EN] v1.87 (user order): every scenario card must say, in simple
           Persian, what makes that error go away - the scenario-8 card had
           that line and the other seven did not.

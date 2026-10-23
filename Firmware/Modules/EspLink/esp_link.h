@@ -549,7 +549,23 @@
    ۱۳۴/۱۳۵ شکل بوق باتری خراب، ۱۳۶ تعداد سیکل‌های کامل پاک، ۱۳۷..۱۴۲
    سناریوی ۷، ۱۴۳..۱۴۶ کاهش مصرف وای‌فای و ۱۴۷..۱۵۷ سناریوی ۸ (باتری
    ضعیف، متعلق به Changeover) را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
-#define ESPLINK_PARAM_COUNT               158u
+/* [EN] Scenario LED/beep ticks (v1.87, user order): 158..164 mute the face of
+ *      scenario 1..7 on the board; 1 = lamp + buzzer on (default), 0 = silent.
+ *      Detection, latching and the output gates are NOT touched - the tick is
+ *      an alarm switch, not a scenario disable.
+ * [FA] تیک هشدار سناریو (نسخهٔ ۱٫۸۷، دستور کاربر): ۱۵۸..۱۶۴ چهرهٔ سناریوهای
+ *      ۱..۷ را روی برد خاموش/روشن می‌کند؛ ۱ = چراغ و بوق روشن (پیش‌فرض) و
+ *      ۰ = ساکت. تشخیص و قفل و گیت خروجی دست نمی‌خورند؛ این تیک کلید
+ *      هشدار است نه غیرفعال‌کردن سناریو. */
+#define ESPLINK_PARAM_SCN1_ALARM               158u  /* u8, 0/1, def 1, scenario 1 LED/beep */
+#define ESPLINK_PARAM_SCN2_ALARM               159u  /* u8, 0/1, def 1, scenario 2 LED/beep */
+#define ESPLINK_PARAM_SCN3_ALARM               160u  /* u8, 0/1, def 1, scenario 3 LED/beep */
+#define ESPLINK_PARAM_SCN4_ALARM               161u  /* u8, 0/1, def 1, scenario 4 LED/beep */
+#define ESPLINK_PARAM_SCN5_ALARM               162u  /* u8, 0/1, def 1, scenario 5 LED/beep */
+#define ESPLINK_PARAM_SCN6_ALARM               163u  /* u8, 0/1, def 1, scenario 6 LED/beep */
+#define ESPLINK_PARAM_SCN7_ALARM               164u  /* u8, 0/1, def 1, scenario 7 LED/beep */
+
+#define ESPLINK_PARAM_COUNT               165u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

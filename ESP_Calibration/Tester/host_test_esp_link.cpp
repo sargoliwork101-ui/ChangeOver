@@ -328,17 +328,22 @@ int main(void)
     }
 
     /* ---- 8. the pending-mask arithmetic, at every boundary --------------
-       [EN] The panel learns which parameters are still in flight from four
+       [EN] The panel learns which parameters are still in flight from six
             32-bit masks in /t. id 96 is the first bit of the fourth word, and
             getting that boundary wrong once meant evaluating 1UL << 32:
             undefined behaviour, not an off-by-one. Both sides of all three
             boundaries are checked, by reading the JSON the browser reads.
-       [FA] پنل از چهار ماسک ۳۲ بیتی در t/ می‌فهمد کدام پارامترها در راه‌اند.
+       [FA] پنل از شش ماسک ۳۲ بیتی در t/ می‌فهمد کدام پارامترها در راه‌اند.
             شناسهٔ ۹۶ اولین بیت کلمهٔ چهارم است و یک‌بار اشتباه در همین مرز
             یعنی 1UL << 32 - رفتار تعریف‌نشده. هر دو طرف هر سه مرز از روی
             همان JSON که مرورگر می‌خواند آزموده می‌شود. */
     {
+        /* [EN] v1.87: the sixth word starts at 160, so both sides of every
+               word boundary are edges now, not just the first three.
+           [FA] نسخهٔ ۱٫۸۷: کلمهٔ ششم از ۱۶۰ شروع می‌شود، پس هر دو طرف همهٔ
+               مرزهای کلمه آزموده می‌شود. */
         const uint16_t edges[] = { 0u, 31u, 32u, 63u, 64u, 95u, 96u,
+                                   127u, 128u, 159u, 160u,
                                    (uint16_t)(ESP_PARAM_COUNT - 1u) };
         for (size_t k = 0; k < sizeof edges / sizeof edges[0]; k++) {
             const uint16_t id = edges[k];
@@ -350,17 +355,17 @@ int main(void)
 
             /* the word this id must land in, and the bit inside it */
             /* v1.80: ids 128..131 (scenario-6 lamp/buzzer) added a fifth word */
-            const int word = id / 32;                       /* 0..4 */
+            const int word = id / 32;                       /* 0..5 */
             const unsigned bit = (unsigned)(id % 32);
-            static const char *keys[5] = { "\"q\":", "\"q2\":", "\"q3\":", "\"q4\":", "\"q5\":" };
+            static const char *keys[6] = { "\"q\":", "\"q2\":", "\"q3\":", "\"q4\":", "\"q5\":", "\"q6\":" };
             bool found = true;
-            unsigned long seen[5] = { 0, 0, 0, 0, 0 };
-            for (int w = 0; w < 5; w++) {
+            unsigned long seen[6] = { 0, 0, 0, 0, 0, 0 };
+            for (int w = 0; w < 6; w++) {
                 const size_t at = body.find(keys[w]);
                 if (at == std::string::npos) { found = false; break; }
                 seen[w] = strtoul(body.c_str() + at + strlen(keys[w]), NULL, 10);
             }
-            check(found, "the telemetry JSON carries all five pending masks");
+            check(found, "the telemetry JSON carries all six pending masks");
             if (!found) break;
             check(seen[word] == (1UL << bit),
                   "parameter " + std::to_string(id) + " sets exactly its own bit, in word " +
@@ -368,9 +373,9 @@ int main(void)
                   "got " + std::to_string(seen[word]) + ", expected " +
                       std::to_string(1UL << bit));
             unsigned long others = 0;
-            for (int w = 0; w < 5; w++) if (w != word) others |= seen[w];
+            for (int w = 0; w < 6; w++) if (w != word) others |= seen[w];
             check(others == 0uL,
-                  "parameter " + std::to_string(id) + " leaves the other four words clear",
+                  "parameter " + std::to_string(id) + " leaves the other five words clear",
                   "a spilled bit makes the panel wait forever on a parameter nobody sent");
         }
         for (uint16_t i = 0u; i < ESP_PARAM_COUNT; i++) BOOL__G__TxParamPending[i] = false;

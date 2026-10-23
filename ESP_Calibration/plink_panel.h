@@ -426,7 +426,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 83ac508</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 49041f0</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1443,8 +1443,27 @@ function scenarioToggle(n,on,save=true){
  const c=$('ucard'+n),sw=$('sen'+n);if(!c)return;
  on=!!on;c.classList.toggle('scenario-off',!on);c.setAttribute('aria-disabled',on?'false':'true');
  if(sw&&sw.checked!==on)sw.checked=on;
- c.querySelectorAll('input,select,button,textarea').forEach(e=>{if(e!==sw)e.disabled=!on;});
- if(save)try{const a=JSON.parse(localStorage.getItem(SCENARIO_KEY)||'{}');a[n]=on;localStorage.setItem(SCENARIO_KEY,JSON.stringify(a));}catch(e){}
+ c.querySelectorAll('input,select,button,textarea').forEach(e=>{if(e!==sw&&!e.classList.contains('fwb'))e.disabled=!on;});
+ if(save){
+  try{const a=JSON.parse(localStorage.getItem(SCENARIO_KEY)||'{}');a[n]=on;localStorage.setItem(SCENARIO_KEY,JSON.stringify(a));}catch(e){}
+  /* [EN] v1.87 (user order): scenarios 1..7 also mute their own LED/buzzer
+     face ON THE BOARD, id 157+n, 1 = on / 0 = silent. Detection, latching and
+     protection keep working. Scenario 8 has no such switch.
+     [FA] نسخهٔ ۱٫۸۷ (دستور کاربر): سناریوهای ۱..۷ چهرهٔ چراغ و بوق خودشان را
+     روی برد هم خاموش می‌کنند، شناسهٔ ۱۵۷+n. تشخیص و قفل و محافظت کار می‌کنند.
+     سناریوی ۸ چنین کلیدی ندارد. */
+  if(n>=1&&n<=7&&typeof qput==='function')qput(157+n,on?1:0);
+ }
+}
+/* [EN] v1.87: the ticks follow the board, not just this browser. On every
+   telemetry frame, unless the user has a newer value still queued, the
+   checkbox is set from the applied value.
+   [FA] نسخهٔ ۱٫۸۷: تیک‌ها از برد هم خوانده می‌شوند؛ در هر فریم تله‌متری،
+   تیک از مقدار اعمال‌شده پر می‌شود مگر مقداری در صف باشد. */
+function scenFill(){
+ if(!D||!D.p)return;
+ for(let n=1;n<=7;n++){const id=157+n,v=D.p[id];if(v==null||(id in PEND))continue;
+  scenarioToggle(n,v!==0,false);}
 }
 function scenarioInit(){let a={};try{a=JSON.parse(localStorage.getItem(SCENARIO_KEY)||'{}');}catch(e){}
  for(let n=1;n<=8;n++)scenarioToggle(n,typeof a[n]==='boolean'?a[n]:true,false);
@@ -1699,7 +1718,14 @@ const PX={
  154:['طول هر بوق باتری ضعیف','مدت هر بوق سناریوی ۸ (ms)؛ پیش‌فرض ۲۰۰.'],
  155:['تعداد بوق باتری ضعیف','تعداد بوق در هر الگوی سناریوی ۸؛ پیش‌فرض ۳.'],
  156:['گپ بوق باتری ضعیف','فاصلهٔ بین بوق‌های الگوی سناریوی ۸ (ms)؛ پیش‌فرض ۱۰۰.'],
- 157:['جدا نگه‌داشتن باتری ضعیف از خروجی','۱ = تا پاک‌شدن حکم، مسیر باتری بسته بماند؛ ۰ = فقط هشدار؛ پیش‌فرض ۱.']};
+ 157:['جدا نگه‌داشتن باتری ضعیف از خروجی','۱ = تا پاک‌شدن حکم، مسیر باتری بسته بماند؛ ۰ = فقط هشدار؛ پیش‌فرض ۱.'],
+ 158:['تیک هشدار سناریو 1 (اضافه‌ولتاژ ورودی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
+ 159:['تیک هشدار سناریو 2 (قطع باتری)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
+ 160:['تیک هشدار سناریو 3 (دشارژ بی‌ورودی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
+ 161:['تیک هشدار سناریو 4 (شارژ عادی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
+ 162:['تیک هشدار سناریو 5 (عدم‌توازن)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
+ 163:['تیک هشدار سناریو 6 (باتری خراب)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
+ 164:['تیک هشدار سناریو 7 (خطای فنی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.']};
 
 // [EN] v1.36 (user order: the chip tooltips must be EXPLICIT - plain
 //   language, real units, and what bigger vs smaller actually does. The
@@ -2031,7 +2057,14 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
 /* v1.49: ۱۱۹/۱۲۰ (نردبان سمت شارژ) هم مثل بقیه خوانده و نوشته می‌شود */
-const AIDS=[];for(let _i=27;_i<=157;_i++)AIDS.push(_i);
+/* [EN] v1.87: the bound tracks the top real id again (164 = scenario-7 alarm
+   tick). The last seven ids have no number field of their own - the card's
+   «فعال» ‎tick edits them - but the backup and the validation sweep iterate‎
+   this list, so leaving it at 157 would drop them from a settings backup.
+   [FA] نسخهٔ ۱٫۸۷: سقف دوباره بالاترین شناسهٔ واقعی است (۱۶۴). هفت شناسهٔ
+   آخر فیلد عددی ندارند و تیک «فعال» کارت ویرایششان می‌کند، ولی پشتیبان‌گیری
+   و اعتبارسنجی روی همین فهرست می‌گردند. */
+const AIDS=[];for(let _i=27;_i<=164;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 
@@ -2045,7 +2078,12 @@ const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 /* v1.82: ۱۲۸..۱۳۱ چراغ/بوق و ۱۳۴..۱۳۵ تعداد/گپ بوقِ خودِ سناریو ۶ */
 /* v1.81: ۱۳۲..۱۳۳ شکل بوق قفل عدم‌توازن، v1.82: ۱۳۴..۱۳۵ شکل بوق باتری خراب،
    v1.83: ۱۳۶ تعداد سیکل کامل پاک برای شمارندهٔ عدم‌توازن، v1.85: ۱۴۳..۱۴۶ وای‌فای و مصرف باتری. */
-const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20,1,600000,60000,10000,500,50,3000,200,3,100,1];
+/* [EN] v1.87: ids 158..164 (index 39..45) are the per-scenario LED/beep
+   ticks of scenarios 1..7, all defaulting to ON; they have no visible number
+   field, the card's «فعال» tick is their only editor.
+   [FA] نسخهٔ ۱٫۸۷: شناسه‌های ۱۵۸..۱۶۴ تیک هشدار سناریوهای ۱..۷ هستند و
+   پیش‌فرض همه «روشن» است؛ فیلد عددی ندارند و تنها ویرایشگرشان تیک «فعال» کارت است. */
+const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20,1,600000,60000,10000,500,50,3000,200,3,100,1,1,1,1,1,1,1,1];
 /* v1.71: شناسهٔ ۵۷ دیگر درصد نیست؛ مدت هر بوق بحرانی بر حسب ms است (۱۰۰۰۰ = همان صدای قبلی) */
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,10000,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
@@ -2167,7 +2205,7 @@ function afresh(){const w=achk();
  for(const id of AIDS){const ne=$('q'+id);if(ne){const hit=w.filter(x=>x.ids.includes(id));ne.style.borderColor=hit.length?(hit.some(x=>x.advisory)?'#f7c13c':'#e5484d'):'';ne.title=hit.length?hit.map(x=>(x.advisory?'⚠ توصیه: ':'⛔ ')+x.msg).join('\n'):'';}}
  try{c4();sall();}catch(e){}
  }
-function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):id<128?((D.q4||0)&(1<<(id-96))):((D.q5||0)&(1<<(id-128)));}
+function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):id<128?((D.q4||0)&(1<<(id-96))):id<160?((D.q5||0)&(1<<(id-128))):((D.q6||0)&(1<<(id-160)));}
 /* v1.70 (دستور کاربر): چیپ «روی برد: …» حذف شد — از فریم تله‌متری پر می‌شد و
    بعد از تغییر هنوز عدد قدیمی را نشان می‌داد. خود کادر از برد پر می‌شود،
    پیش‌فرض کارخانه کنار فیلد هست و کارت نتیجه می‌گوید برد چه را پذیرفت.
@@ -2805,7 +2843,7 @@ function pdflt(id){
  id=+id;
  /* v1.75 audit: CDEF grew to 119..127 with scenario 6 (ids 125..127) but this
     window still said 124, so the dead-battery fields printed no factory default. */
- if(id>=119&&id<=157)return CDEF[id-119];
+ if(id>=119&&id<=164)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -3097,7 +3135,7 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
  LINK_WARN_KEY=key;
  if(LINK_WARN_DISMISS===key){e.className='wbx';e.innerHTML='';return;}
  e.className='wbx '+kind;e.innerHTML='<button class="wclose" type="button" aria-label="بستن پیام" title="بستن" onclick="lnkDismiss()">×</button>'+body;}
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();scenFill();afill();
 /* [EN] Chart mount and render ownership. [FA] محل mount و مالکیت رندر نمودار. */
 if(TAB==2&&STAB==0)qgraph();
 if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
@@ -3328,7 +3366,9 @@ function wmeas(m,act){
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=158;
+/* [EN] v1.87: must equal ESP_PARAM_COUNT; the CSV column count and every
+   ‎per-id array are sized from it. [FA]‎ باید برابر تعداد پارامتر باشد. */
+const PN=165;
 /* [EN] Bench CSV column contract. [FA] قرارداد ستون‌های CSV بنچ. */
 function wset(){const P=[];for(let k=0;k<PN;k++)P.push(D.p[k]==null?'-':D.p[k]);return P.join(',');}
 let WSIG=null;

@@ -899,7 +899,11 @@ def sec_panel(ids):
         #      می‌رفت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32. شیفت مدولو-۳۲ پنل آن را
         #      پنهان می‌کرد.
         # v1.80: ids 128..131 needed a fifth word on both sides.
-        words = 5
+        # v1.87: the scenario alarm ticks run to id 164, which is the first
+        #        half of a SIXTH word - without it id 160 would shift by 32.
+        # [FA] v1.87: شناسه‌های ۱۵۸..۱۶۴ کلمهٔ ششم را لازم کردند، وگرنه
+        #        شناسهٔ ۱۶۰ شیفت ۳۲ می‌شد.
+        words = 6
         ok(hi < words * 32, "pending-mask has no word for the top id",
            f"id {hi} needs word {hi // 32 + 1} of {words}")
         p_http = read("ESP_Calibration/plink_http.h")
@@ -913,7 +917,7 @@ def sec_panel(ids):
             ok(f"(1<<(id-{lo_b}))" in P_PAN,
                "the panel pending-mask has no arm for this word",
                f"apend() must handle ids {lo_b}..{lo_b + 31}")
-        ok("static_assert(ESP_PARAM_COUNT <= 160" in p_http,
+        ok("static_assert(ESP_PARAM_COUNT <= 192" in p_http,
            "nothing stops the next parameter block from overflowing the masks")
 
         # [EN] The sketch is C++, so _Static_assert (a C11 keyword) does not

@@ -125,6 +125,7 @@ static void func__Esp_HttpTelemetry(void)
     /* [EN] v1.80: ids 128..131 (the scenario-6 lamp/buzzer) need a fifth word -
        the assert below had asked for exactly this. [FA] واژهٔ پنجم برای ۱۲۸..۱۳۱. */
     uint32_t uint32_t__pendingMask5 = 0u;
+    uint32_t uint32_t__pendingMask6 = 0u; /* [EN] v1.87: ids 160..164 (scenario ticks). / [FA] نسخهٔ ۱٫۸۷: شناسه‌های ۱۶۰..۱۶۴. */
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     uint8_t uint8_t__index;
     size_t size_t__used;
@@ -152,8 +153,8 @@ static void func__Esp_HttpTelemetry(void)
             ماسک۳ می‌ریخت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32 — رفتار تعریف‌نشده،
             نه فقط یک پیکسل غلط. حالا هر شاخه بازهٔ بسته دارد و assert پایین
             چیزی است که واقعاً جلوی نفر بعدی را می‌گیرد. */
-    static_assert(ESP_PARAM_COUNT <= 160,
-                   "pending masks cover ids 0..159; add a sixth word");
+    static_assert(ESP_PARAM_COUNT <= 192,
+                   "pending masks cover ids 0..191; add a seventh word");
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
         if (BOOL__G__TxParamPending[uint8_t__index])
@@ -174,9 +175,13 @@ static void func__Esp_HttpTelemetry(void)
             {
                 uint32_t__pendingMask4 |= (1UL << (uint8_t__index - 96u));
             }
-            else
+            else if (uint8_t__index < 160u)
             {
                 uint32_t__pendingMask5 |= (1UL << (uint8_t__index - 128u));
+            }
+            else
+            {
+                uint32_t__pendingMask6 |= (1UL << (uint8_t__index - 160u));
             }
         }
     }
@@ -189,12 +194,13 @@ static void func__Esp_HttpTelemetry(void)
            [‎FA] vm/ce‎: سلامت لینک. vm بزرگ‌تر از صفر یعنی STM32 و این پنل ناهماهنگ
            فلش شده‌اند - خرابی‌ای که قبلاً از کابل قطع قابل تشخیص نبود. ce خطاهای
            CRC را می‌شمارد تا هارنس نویزی قابل اندازه‌گیری باشد. */
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"q5\":%lu,\"ka\":%lu,\"vm\":%lu,\"ce\":%lu,\"nk\":%lu,\"nr\":%lu,\"nid\":%lu,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"q5\":%lu,\"q6\":%lu,\"ka\":%lu,\"vm\":%lu,\"ce\":%lu,\"nk\":%lu,\"nr\":%lu,\"nid\":%lu,\"t\":[",
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned int)UINT8_T__G__TlmFlags2, (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
         (unsigned long)uint32_t__pendingMask3, (unsigned long)uint32_t__pendingMask4,
         (unsigned long)uint32_t__pendingMask5,
+        (unsigned long)uint32_t__pendingMask6,
         (unsigned long)uint32_t__keepaliveAgeMs,
         (unsigned long)UINT32_T__G__RxVersionMismatch,
         (unsigned long)UINT32_T__G__RxCrcError,

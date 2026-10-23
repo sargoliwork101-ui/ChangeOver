@@ -565,6 +565,71 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
     return true;
 }
 
+/* ==================== Scenario Alarm Switches / کلیدهای هشدار سناریو ==================== */
+
+/* [EN] One flag per scenario 1..7 (index 0 = scenario 1), all ON at boot. The
+ *      panel's old "enabled" tick never left the browser; this array is the
+ *      board side of it. ONLY the LED/beep face reads it - detection,
+ *      latching and every output gate (Charger/Imbalance/Changeover) keep
+ *      working untouched, which is why silencing a face can never silence a
+ *      protection.
+ * [FA] یک پرچم برای هر سناریوی ۱..۷ (نمایهٔ ۰ = سناریو ۱)، همه در بوت روشن.
+ *      تیک «فعال» قدیمی پنل هرگز از مرورگر بیرون نمی‌آمد؛ این آرایه سمت
+ *      بردِ همان تیک است. فقط چهرهٔ چراغ/بوق آن را می‌خواند؛ تشخیص، قفل و
+ *      همهٔ گیت‌های خروجی (شارژر/عدم‌توازن/تغییر مسیر) دست‌نخورده کار
+ *      می‌کنند، پس بی‌صدا کردن یک چهره هرگز یک محافظ را خاموش نمی‌کند. */
+static bool BOOL__G__ScenarioAlarmOn[7] =
+{
+    true, true, true, true, true, true, true
+};
+
+bool func__Ui_SetScenarioAlarm(uint8_t uint8_t__paramId,
+                               uint32_t uint32_t__value,
+                               uint32_t *uint32_t__appliedValue)
+{
+    uint8_t uint8_t__index;
+
+    if ((uint32_t__appliedValue == NULL) ||
+        (uint8_t__paramId < UI_SCENARIO_ALARM_ID_FIRST) ||
+        (uint8_t__paramId > UI_SCENARIO_ALARM_ID_LAST))
+    {
+        return false;
+    }
+
+    uint8_t__index = (uint8_t)(uint8_t__paramId - UI_SCENARIO_ALARM_ID_FIRST);
+    BOOL__G__ScenarioAlarmOn[uint8_t__index] = (uint32_t__value != 0u);
+    *uint32_t__appliedValue =
+        (BOOL__G__ScenarioAlarmOn[uint8_t__index] == true) ? 1u : 0u;
+    return true;
+}
+
+bool func__Ui_GetScenarioAlarm(uint8_t uint8_t__paramId,
+                               uint32_t *uint32_t__value)
+{
+    uint8_t uint8_t__index;
+
+    if ((uint32_t__value == NULL) ||
+        (uint8_t__paramId < UI_SCENARIO_ALARM_ID_FIRST) ||
+        (uint8_t__paramId > UI_SCENARIO_ALARM_ID_LAST))
+    {
+        return false;
+    }
+
+    uint8_t__index = (uint8_t)(uint8_t__paramId - UI_SCENARIO_ALARM_ID_FIRST);
+    *uint32_t__value = (BOOL__G__ScenarioAlarmOn[uint8_t__index] == true) ? 1u : 0u;
+    return true;
+}
+
+bool func__Ui_ScenarioAlarmOn(uint8_t uint8_t__scenario)
+{
+    if ((uint8_t__scenario < 1u) || (uint8_t__scenario > 7u))
+    {
+        return true;
+    }
+
+    return BOOL__G__ScenarioAlarmOn[uint8_t__scenario - 1u];
+}
+
 /* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
 
 /**
@@ -1876,7 +1941,8 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
        [FA] نگهبان اولویت: اگر این helper مستقیم با فالت قطع باتری صدا زده
        شد، پیش از شروع بوق باتری خالی همان سناریو را جایگزین کن؛ پاک‌شدن
        فالت مرز برگشت باتری است. */
-    if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
+    if (((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE) &&
+        (func__Ui_ScenarioAlarmOn(2u) != false))
     {
         func__Ui_ScenarioBatLost_Tick();
         return;
@@ -2093,14 +2159,16 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
        اولویت نمایشی خطا است؛ وقتی قفل فنی فعال است هر سه LED باید فاز مشترک
        خودش را نشان دهند، حتی اگر اضافه‌ولتاژ ورودی هم حاضر باشد. بیت فقط با
        ریست پاک می‌شود. */
-    if ((func__Fault_Get() & FAULT_CHARGER_TECHNICAL) != FAULT_NONE)
+    if (((func__Fault_Get() & FAULT_CHARGER_TECHNICAL) != FAULT_NONE) &&
+        (func__Ui_ScenarioAlarmOn(7u) != false))
     {
         func__Ui_ScenarioTechnicalFault_Tick();
         return;
     }
 #endif
 
-    if (BOOL__G__UiInputOverVoltage == true)
+    if ((BOOL__G__UiInputOverVoltage == true) &&
+        (func__Ui_ScenarioAlarmOn(1u) != false))
     {
         func__Ui_ScenarioInputOverVoltage_Tick();
         return;
@@ -2114,7 +2182,8 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
        world). [FA] قطع باتری بعد از خطای فنی و اضافه‌ولتاژ، پیش از
        سناریوهای نرمال است؛ تا وقتی پرچم متمرکز قفل است نمایش می‌دهیم و
        return می‌کنیم تا بوق بحرانی دشارژ با آن قاطی نشود. */
-    if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
+    if (((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE) &&
+        (func__Ui_ScenarioAlarmOn(2u) != false))
     {
         func__Ui_ScenarioBatLost_Tick();
         return;
@@ -2126,7 +2195,8 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
           latch: a pack that never takes charge is the harder verdict and
           must own the lamp). Solid red until the battery is swapped.
        [FA] قفل باتری خراب، اولویت سوم - قرمز ثابت تا تعویض باتری. */
-    if (func__Charger_DeadMask() != 0u)
+    if ((func__Charger_DeadMask() != 0u) &&
+        (func__Ui_ScenarioAlarmOn(6u) != false))
     {
         func__Ui_ScenarioDeadBattery_Tick();
         return;
@@ -2145,7 +2215,8 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         imbalance_outputs_t imbalance_outputs_t__imbalance;
 
         func__Imbalance_GetOutputs(&imbalance_outputs_t__imbalance);
-        if (imbalance_outputs_t__imbalance.bool__latched == true)
+        if ((imbalance_outputs_t__imbalance.bool__latched == true) &&
+            (func__Ui_ScenarioAlarmOn(5u) != false))
         {
             func__Ui_ScenarioImbalance_Tick();
             return;
@@ -2250,16 +2321,36 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
             func__Ui_ScenarioInputOk();
         }
 #endif
-        else
+        else if (func__Ui_ScenarioAlarmOn(4u) != false)
         {
             func__Ui_ScenarioCharging_Tick(uint32_t__batteryClampedMv);
         }
+        else
+        {
+            /* [EN] Scenario 4's face is switched off in the panel: the LEDs
+               and the buzzer stay dark while the charger charges normally.
+               [FA] چهرهٔ سناریوی ۴ از پنل خاموش شده: چراغ و بوق خاموش
+               می‌مانند ولی شارژر عادی کار می‌کند. */
+            func__all_off();
+            func__Ui_ResetBatteryCriticalBeep();
+            func__Ui_ResetBatteryRunGreenBlink();
+            func__Ui_ResetChargingYellowBlink();
+        }
     }
-    else
+    else if (func__Ui_ScenarioAlarmOn(3u) != false)
     {
         /* [EN] Input disconnected → BatteryRun uses 2% hysteresis + 0/1.
            [FA] ورودی قطع → BatteryRun با هیسترزیس ۲٪ + ۰/۱. */
         func__Ui_ScenarioBatteryRun_Tick(uint32_t__batteryVoltageMv);
+    }
+    else
+    {
+        /* [EN] Scenario 3's face is switched off in the panel.
+           [FA] چهرهٔ سناریوی ۳ از پنل خاموش شده است. */
+        func__all_off();
+        func__Ui_ResetBatteryCriticalBeep();
+        func__Ui_ResetBatteryRunGreenBlink();
+        func__Ui_ResetChargingYellowBlink();
     }
 }
 

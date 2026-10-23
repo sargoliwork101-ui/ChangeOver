@@ -229,7 +229,11 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               verdict enable, rest window, cycle-guard window, healthy-hold
               window, red blink period/duty, beep period/length/count/gap and
               the output-disconnect checkbox. */
-           1, 600000, 60000, 10000, 500, 50, 3000, 200, 3, 100, 1];
+           1, 600000, 60000, 10000, 500, 50, 3000, 200, 3, 100, 1,
+           /* ‎v1.87 ids 158..164 = the‎ «فعال» ‎tick of scenario cards 1..7‎:
+              1 = that scenario's LED/buzzer face on (default), 0 = silent.
+              Detection, latching and the output gates are untouched. */
+           1, 1, 1, 1, 1, 1, 1];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */

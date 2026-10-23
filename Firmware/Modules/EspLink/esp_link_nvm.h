@@ -126,7 +126,14 @@
  * [FA] یادداشت تاریخی v1.80: انتقال از چیدمان تک‌صفحه‌ای ۱۲۶جایی به بانک
  *      دوصفحه‌ای ۱۴۴جایی برای کنترل‌های چهرهٔ سناریوی ۶ فضا ساخت؛ قالب فعلی v12
  *      همین ظرفیت را برای توسعهٔ سناریوهای ۵/۶ و شناسه‌های ۱۳۷..۱۴۲ سناریوی ۷ نگه می‌دارد. */
-#define ESP_LINK_NVM_ENTRY_MAX         160u
+/* [EN] v1.87: 168 entries (12 + 168 x 8 + 4 = 1360 B) - still inside the
+ *      2 KiB two-page bank. The seven scenario ticks take the persisted set
+ *      to 163, so the old 160 cap had to grow; no version bump, the record
+ *      still stores its own entry count.
+ *      [FA] نسخهٔ ۱٫۸۷: ۱۶۸ جا (۱۳۶۰ بایت) که هنوز در بانک ۲KB جا می‌شود.
+ *      هفت تیک سناریو مجموعه را به ۱۶۳ رساند و سقف ۱۶۰ باید بزرگ می‌شد؛
+ *      نسخهٔ قالب عوض نمی‌شود چون رکورد تعداد خودش را ذخیره می‌کند. */
+#define ESP_LINK_NVM_ENTRY_MAX         168u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -159,7 +166,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   157u /* [EN] v1.85 adds Wi-Fi battery power-saving controls 143..146. / [FA] نسخهٔ ۱٫۸۵ تنظیمات کاهش مصرف وای‌فای ۱۴۳..۱۴۶ را اضافه می‌کند. */
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   164u /* [EN] v1.87 appends the per-scenario LED/beep ticks 158..164 (scenarios 1..7); 157 still ends scenario 8. / [FA] نسخهٔ ۱٫۸۷ تیک‌های هشدار سناریو ۱۵۸..۱۶۴ را اضافه می‌کند؛ ۱۵۷ همچنان پایان سناریوی ۸ است. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

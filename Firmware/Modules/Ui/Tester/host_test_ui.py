@@ -813,6 +813,66 @@ def run_ui_alarm_tests():
                 "scenarios read live 77..82")
     print("Full latch + yellow 150 (v1.17) PASS")
 
+def run_scenario_alarm_switch_tests():
+    """[EN] v1.87 (user order): the panel's «فعال» tick must silence that
+       scenario's LED/beep face ON THE BOARD, and nothing else. These checks
+       pin the three properties that make that safe: the seven gates exist,
+       the store clamps to 0/1, and a scenario number outside 1..7 can never
+       silence anything (default true).
+       [FA] نسخهٔ ۱٫۸۷ (دستور کاربر): تیک «فعال» پنل باید چهرهٔ چراغ/بوق همان
+       سناریو را روی برد خاموش کند و هیچ‌چیز دیگر را نه. این بررسی‌ها سه
+       ویژگی را قفل می‌کنند: وجود هفت گیت، گیرهٔ ۰/۱ در انبار، و اینکه شمارهٔ
+       سناریوی بیرون ۱..۷ هرگز نتواند چیزی را خاموش کند."""
+    ui_h = open(os.path.join(BASE_DIR, "ui_led.h"), "r",
+                encoding="utf-8", errors="ignore").read()
+    ui_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r",
+                encoding="utf-8", errors="ignore").read()
+
+    assert_true(re.search(r"UI_SCENARIO_ALARM_ID_FIRST\s+158u", ui_h) and
+                re.search(r"UI_SCENARIO_ALARM_ID_LAST\s+164u", ui_h),
+                "the seven alarm ids must be 158..164 (one per scenario 1..7)")
+    for keep in ("func__Ui_SetScenarioAlarm", "func__Ui_GetScenarioAlarm",
+                 "func__Ui_ScenarioAlarmOn"):
+        assert_true(keep in ui_h and keep in ui_c,
+                    f"{keep} must be declared and defined")
+
+    # every scenario face is gated
+    for n in range(1, 8):
+        assert_true(re.search(r"func__Ui_ScenarioAlarmOn\(" + str(n) + r"u\)",
+                              ui_c) is not None,
+                    f"scenario {n}'s LED/beep face is not gated by its switch")
+
+    # the store can only ever hold 0 or 1, and refuses a bad id
+    m = re.search(r"bool func__Ui_SetScenarioAlarm.*?\n\}", ui_c, flags=re.S)
+    assert_true(m is not None, "func__Ui_SetScenarioAlarm must exist")
+    body = m.group(0)
+    assert_true("uint32_t__appliedValue == NULL" in body and
+                "UI_SCENARIO_ALARM_ID_FIRST" in body and
+                "UI_SCENARIO_ALARM_ID_LAST" in body,
+                "the setter must refuse a NULL out-pointer and an id outside 158..164")
+    assert_true("(uint32_t__value != 0u)" in body,
+                "the stored flag is a boolean, so a stray 5 or 100 cannot leak in")
+
+    # a scenario number that does not exist cannot silence a face
+    g = re.search(r"bool func__Ui_ScenarioAlarmOn.*?\n\}", ui_c, flags=re.S)
+    assert_true(g is not None, "func__Ui_ScenarioAlarmOn must exist")
+    assert_true("uint8_t__scenario < 1u" in g.group(0) and
+                "uint8_t__scenario > 7u" in g.group(0) and
+                "return true;" in g.group(0),
+                "an out-of-range scenario returns TRUE (alarm on), never false")
+    # boot default: all seven faces on
+    assert_true(re.search(r"static bool BOOL__G__ScenarioAlarmOn\[7\]\s*=\s*\{\s*"
+                          r"true,\s*true,\s*true,\s*true,\s*true,\s*true,\s*true\s*\}",
+                          ui_c) is not None,
+                "every scenario starts with its lamp and buzzer ON")
+    # silencing a face must not reach the protection side
+    for forbidden in ("func__Charger_SetEnable", "func__Changeover_", "func__Imbalance_"):
+        assert_true(forbidden not in ui_c[ui_c.find("Scenario Alarm Switches"):
+                                         ui_c.find("Battery Voltage To Percent")],
+                    f"the mute block must not touch {forbidden} - a face switch is not a protection")
+    print("Scenario alarm switches (v1.87) PASS")
+
+
 def main():
     print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")
     run_assertions()
@@ -822,6 +882,7 @@ def main():
     run_battery_hysteresis_tests()
     run_charging_hysteresis_tests()
     run_full_hysteresis_tests()
+    run_scenario_alarm_switch_tests()
     print("\n=== Additional checks ===")
     assert_equal(battery_voltage_to_percent(21000),0,"21000->0%")
     assert_equal(battery_voltage_to_percent(29000),100,"29000->100% (charging yellow blink ceiling raised 28->29 V, user order 2026-09-20)")

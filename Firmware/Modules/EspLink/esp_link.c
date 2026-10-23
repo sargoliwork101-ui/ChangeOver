@@ -463,6 +463,22 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                               uint32_t__value,
                                               uint32_t__appliedValue);
             }
+
+            /* [EN] v1.87 (user order): the per-scenario enable tick of every
+                   card, ids 158..164 = scenarios 1..7. Zero silences that
+                   scenario's LED/beep face only; detection, latching and the
+                   output gates stay untouched.
+               [FA] نسخهٔ ۱.۸۷ (دستور کاربر): تیک فعالِ هر کارت سناریو،
+                   شناسه‌های ۱۵۸..۱۶۴ = سناریو ۱..۷. صفر فقط چهرهٔ چراغ و
+                   بوقِ همان سناریو را خاموش می‌کند؛ تشخیص و قفل و گیت‌های
+                   خروجی دست‌نخورده می‌مانند. */
+            if ((uint8_t__paramId >= UI_SCENARIO_ALARM_ID_FIRST) &&
+                (uint8_t__paramId <= UI_SCENARIO_ALARM_ID_LAST))
+            {
+                return func__Ui_SetScenarioAlarm(uint8_t__paramId,
+                                                 uint32_t__value,
+                                                 uint32_t__appliedValue);
+            }
 #endif
 #if MODULE_IMBALANCE
             /* [EN] Imbalance scenario 5, ids 108..118, 123..124, 132..133
@@ -738,6 +754,17 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             {
                 return func__Ui_GetAlarmParam(uint8_t__paramId,
                                               uint32_t__value);
+            }
+
+            /* [EN] v1.87: live read of the per-scenario LED/beep ticks 158..164
+                   so the panel's checkboxes come back after a reboot.
+               [FA] نسخهٔ ۱٫۸۷: خواندن زندهٔ تیک‌های هشدار سناریو ۱۵۸..۱۶۴
+                   تا چک‌باکس‌های پنل بعد از ری‌استارت برگردند. */
+            if ((uint8_t__paramId >= UI_SCENARIO_ALARM_ID_FIRST) &&
+                (uint8_t__paramId <= UI_SCENARIO_ALARM_ID_LAST))
+            {
+                return func__Ui_GetScenarioAlarm(uint8_t__paramId,
+                                                 uint32_t__value);
             }
 #endif
 #if MODULE_IMBALANCE
