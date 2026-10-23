@@ -16,6 +16,11 @@ static bool     BOOL__G__LogBootRowPending = true;
 /* ==================== وضعیت قبلی و تغییر در انتظار ==================== */
 static bool     BOOL__G__LogHasPrev = false;
 static uint8_t  UINT8_T__G__LogPrevMains = 0u;
+/* [EN] v1.95: the board's general byte (hand mode, snapshot, valid
+        measurement) is logged too, so a mode change is an event.
+   [FA] نسخهٔ ۱٫۹۵: بایت عمومی برد (مود دستی، snapshot، معتبر بودن
+        اندازه‌گیری) هم ثبت می‌شود تا تغییر مود یک رویداد باشد. */
+static uint8_t  UINT8_T__G__LogPrevFl = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg1 = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg2 = 0u;
 static uint8_t  UINT8_T__G__LogPrevFlags2 = 0u;
@@ -41,6 +46,7 @@ static uint8_t  UINT8_T__G__LogIndexCount = 0u;
 #define SIMPLE_LOG_CHG_FLAGS   0x0020u
 #define SIMPLE_LOG_CHG_BAND    0x0040u
 #define SIMPLE_LOG_CHG_LINK    0x0080u
+#define SIMPLE_LOG_CHG_MODE    0x0100u   /* [EN] hand mode / data validity / [FA] مود دستی و اعتبار داده */
 
 #define SIMPLE_LOG_NOTE_NONE      0u
 #define SIMPLE_LOG_NOTE_LOW_STOP  1u
@@ -295,6 +301,8 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     file__day.print(",");
     file__day.print((unsigned int)uint8_t__mains);
     file__day.print(",");
+    file__day.print((unsigned int)UINT8_T__G__TlmFlags);
+    file__day.print(",");
     file__day.print((unsigned long)UINT32_T__G__TlmField[6]);
     file__day.print(",");
     file__day.print((unsigned long)UINT32_T__G__TlmField[13]);
@@ -411,6 +419,7 @@ static void func__SimpleLog_DetectChanges(void)
     uint8_t uint8_t__chg2;
     uint8_t uint8_t__flags2;
     uint8_t uint8_t__band;
+    uint8_t uint8_t__fl;
     uint32_t uint32_t__fault;
     uint16_t uint16_t__mask = 0u;
 
@@ -420,6 +429,13 @@ static void func__SimpleLog_DetectChanges(void)
     uint8_t__flags2 = UINT8_T__G__TlmFlags2;
     uint32_t__fault = UINT32_T__G__TlmField[19];
     uint8_t__band = (UINT32_T__G__TlmField[15] < SIMPLE_LOG_CUT_BAND_MV) ? 1u : 0u;
+    /* [EN] every state bit of the general byte except the input-present
+            bit, which already has its own change bit: snapshot, valid
+            measurement, both charger enables and hand mode.
+       [FA] همهٔ بیت‌های وضعیتِ بایت عمومی جز بیت برق ورودی، که بیت تغییر
+            خودش را دارد: snapshot، معتبر بودن اندازه‌گیری، اجازهٔ هر دو
+            شارژر و مود دستی. */
+    uint8_t__fl = (uint8_t)(UINT8_T__G__TlmFlags & 0x3Du);
 
     if (BOOL__G__LogHasPrev == false)
     {
@@ -430,6 +446,7 @@ static void func__SimpleLog_DetectChanges(void)
         UINT8_T__G__LogPrevFlags2 = uint8_t__flags2;
         UINT32_T__G__LogPrevFault = uint32_t__fault;
         UINT8_T__G__LogPrevBand = uint8_t__band;
+        UINT8_T__G__LogPrevFl = uint8_t__fl;
         return;
     }
 
@@ -457,6 +474,10 @@ static void func__SimpleLog_DetectChanges(void)
     {
         uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_BAND);
     }
+    if (uint8_t__fl != UINT8_T__G__LogPrevFl)
+    {
+        uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_MODE);
+    }
 
     if (uint16_t__mask != 0u)
     {
@@ -478,6 +499,7 @@ static void func__SimpleLog_DetectChanges(void)
     UINT8_T__G__LogPrevFlags2 = uint8_t__flags2;
     UINT32_T__G__LogPrevFault = uint32_t__fault;
     UINT8_T__G__LogPrevBand = uint8_t__band;
+    UINT8_T__G__LogPrevFl = uint8_t__fl;
 }
 
 /* ==================== قلاب‌ها ==================== */

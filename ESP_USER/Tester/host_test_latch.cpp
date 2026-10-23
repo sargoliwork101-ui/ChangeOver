@@ -597,6 +597,24 @@ static void func__T_TestStateHistoryLog(void)
     func__T_Check(LittleFS.exists(SIMPLE_LOG_LAST_PATH),
                   "آخرین وضعیت روی فلش می‌ماند تا ردیف بوت بداند پنل کجا خاموش شد");
 
+    /* مود دستی هم یک وضعیت است و باید در تاریخچه بیاید */
+    UINT8_T__G__TlmFlags = 0x22u;   /* برق شهر + مود دستی */
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 4u,
+                  "روشن شدن مود دستی یک ردیف می‌نویسد");
+    std::string string__head;
+    {
+        File file__head = LittleFS.open(char__path, "r");
+        while (file__head.available() > 0) {
+            string__head += file__head.readStringUntil('\n').c_str();
+            string__head += "\n";
+        }
+        file__head.close();
+    }
+    func__T_Check(string__head.find(",fl,") != std::string::npos,
+                  "ستون بایت عمومی وضعیت در سرصفحهٔ فایل هست");
+
     char char__ptr_out[1024];
     (void)func__SimpleLog_Tail(char__ptr_out, sizeof(char__ptr_out), 0u, 10u);
     std::string string__tail(char__ptr_out);

@@ -646,6 +646,58 @@ function main() {
            The modal opens one tick after the call (it queues behind any open dialog).
            [FA] کادر تأیید پنل: نمایش در کادر خود پنل، Enter = تأیید، Esc = انصراف. */
         {
+        /* --- v1.95 (user order): the log card at the bottom shows every state
+                 and every fault, one line per event, newest first, and each
+                 line carries its own colour (red fault, amber warning, green
+                 recovery, grey plain change). --- */
+        {
+            const ep = 1792756800;
+            const row = (chg, note, mains, fl, c1, c2, fault, f2, v) =>
+                [ep, 12, chg, note, mains, fl, c1, c2, fault, f2, v, v - 40, v + 40, 20].join(",");
+            const rows = () => [...w.document.querySelectorAll("#evtlist .evtrow")];
+            const txt = (i2) => rows()[i2] ? rows()[i2].textContent : "";
+
+            w.evtRender([
+                row(2, 0, 1, 0, 1, 3, 0, 0, 24000),          /* mains back */
+                row(16, 0, 1, 0, 1, 3, 8, 0, 24000),         /* a fault */
+                row(256, 0, 0, 32, 9, 9, 0, 0, 20600)        /* hand mode */
+            ].join("\n"), "");
+
+            check(rows().length === 3,
+                  "the log card draws one line per saved event",
+                  String(rows().length));
+            check(rows()[0] && rows()[0].className.indexOf("lv2") >= 0,
+                  "the newest line comes first (hand mode is the last event)",
+                  rows()[0] ? rows()[0].className : "none");
+            check(rows()[1] && rows()[1].className.indexOf("lv3") >= 0,
+                  "a fault line is red",
+                  rows()[1] ? rows()[1].className : "none");
+            check(rows()[2] && rows()[2].className.indexOf("lv1") >= 0,
+                  "a healthy board coming back is green",
+                  rows()[2] ? rows()[2].className : "none");
+            check(txt(1).indexOf("خطا: ولتاژ باتری") >= 0,
+                  "the red line names the fault, not just its colour", txt(1));
+            check(txt(1).indexOf("24.00") >= 0,
+                  "and every line carries the measured pack voltage", txt(1));
+            check(txt(0).indexOf("مود دستی") >= 0,
+                  "the mode line says hand mode in words", txt(0));
+            check(txt(2).indexOf("برق شهر وصل شد") >= 0,
+                  "a mains return is written in words too", txt(2));
+
+            /* every charger phase has a Persian name - none may fall back to #n */
+            const all = [];
+            for (let s1 = 0; s1 <= 10; s1++) all.push(row(4, 0, 0, 0, s1, s1, 0, 0, 24000));
+            w.evtRender(all.join("\n"), "");
+            check(txt(0).indexOf("#") < 0,
+                  "every charging phase has a Persian name in the log",
+                  txt(0));
+
+            /* an empty day says so instead of an empty box */
+            w.evtRender("", "");
+            check(w.document.getElementById("evtlist").textContent.indexOf("هنوز چیزی ثبت نشده") >= 0,
+                  "an empty day says so in words");
+        }
+
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
             const p1 = w.pmConfirm("تست کادر");

@@ -402,8 +402,8 @@
 #define ESP_LOG_CLOCK_VALID_MIN     1700000000u /* [EN] below this the phone time is junk / [FA] کمتر از این یعنی زمان بی‌معنی */
 #define ESP_LOG_HEADER \
     "# state history / تاریخچهٔ وضعیت\n" \
-    "# epoch,uptime_s,change_bits,note,mains,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv\n" \
-    "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link\n" \
+    "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv\n" \
+    "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode\n" \
     "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 

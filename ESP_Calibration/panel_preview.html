@@ -419,9 +419,23 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #pmt{white-space:pre-line;font-size:14px;line-height:1.9;margin-bottom:12px}
 #pmbtn{display:flex;gap:8px;flex-wrap:wrap}
 /* [‎EN] v1.93 state history rows (bottom card) / [FA]‎ ردیف‌های تاریخچهٔ وضعیت */
-.evtlist{max-height:320px;overflow:auto;border-top:1px solid var(--ln);margin-top:8px;font-size:12px;line-height:1.9}
-.evtrow{display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed var(--ln);align-items:baseline}
+.evtlist{max-height:360px;overflow:auto;border-top:1px solid var(--ln);margin-top:8px;font-size:12px;line-height:1.9}
+/* [‎EN] v1.95: one line per event, each line carrying its own colour bar so a
+   fault is red, a warning amber, a recovery green and a plain state change
+   grey - the colour is the first thing the eye finds.
+   [FA] نسخهٔ ۱٫۹۵: هر خط یک نوار رنگی خودش دارد: خطا قرمز، هشدار نارنجی،
+   برگشت به سلامتی سبز و تغییر سادهٔ وضعیت خاکستری. */
+.evtrow{display:flex;gap:8px;padding:4px 6px;margin:2px 0;border-radius:6px;align-items:baseline;background:rgba(255,255,255,.02);border-inline-start:3px solid #4a5568}
+.evtrow.lv3{border-inline-start-color:#e5484d;background:rgba(229,72,77,.10)}
+.evtrow.lv2{border-inline-start-color:#c9a227;background:rgba(201,162,39,.10)}
+.evtrow.lv1{border-inline-start-color:#2f9e63;background:rgba(47,158,99,.10)}
+.evtrow.lv0{border-inline-start-color:#4a5568}
 .evtrow:last-child{border-bottom:none}
+.evtsum{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
+.evtsum span{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)}
+.evtsum span.r{background:rgba(229,72,77,.16);color:#ffb4b4}
+.evtsum span.y{background:rgba(201,162,39,.16);color:#ffe08a}
+.evtsum span.g{background:rgba(47,158,99,.16);color:#9ff0c0}
 .evtt{color:var(--mu);font-family:Vazirmatn;white-space:nowrap;min-width:64px}
 .evtd{flex:1}
 .evtv{color:var(--mu);white-space:nowrap;font-family:Vazirmatn}
@@ -546,7 +560,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 28997c8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1a172b5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1185,14 +1199,16 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="cd" id="logcd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">این جدول می‌گوید برد از وقتی پنل باز شده چه وضعیت‌هایی را گذرانده است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، نزدیک‌شدن باتری به مرز قطع و قطع/برگشت ارتباط. <b>فقط وقتی چیزی عوض شود یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط تازه نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ همین پنل ذخیره می‌شود و ۳۰ روز نگه داشته می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.</div>
+<div class="sx">این جدول می‌گوید برد از وقتی پنل باز شده چه وضعیت‌هایی را گذرانده است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، معتبر بودن دادهٔ برد، نزدیک‌شدن باتری به مرز قطع و قطع/برگشت ارتباط. <b>فقط وقتی چیزی عوض شود یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط تازه نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ همین پنل ذخیره می‌شود و ۳۰ روز نگه داشته می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.
+<br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
 <div class="bqr">
-<label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">جدیدترین روز</option></select></label>
+<label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">امروز</option></select></label>
 <button class="sb" type="button" onclick="evtfetch(1)">به‌روزرسانی</button>
 <button class="sb" type="button" onclick="evtdl()">دانلود این روز</button>
 <button class="sb" type="button" onclick="evtdlall()">دانلود همهٔ روزها</button>
 <button class="sb sb2" type="button" onclick="evtclr()">پاک کردن تاریخچه</button>
 </div>
+<div class="evtsum" id="evtsum"></div>
 <div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
 </div>
 
@@ -4394,10 +4410,29 @@ poll();
         خط فارسی تبدیل می‌کند و ساعت گوشی را به پنل می‌رساند. */
 const EVT_FAULT=['ADC','اضافه‌جریان ۱','اضافه‌جریان ۲','ولتاژ باتری','JIT۱','JIT۲','قطع باتری','خطای فنی','قفل عدم‌توازن','باتری خراب'];
 const EVT_FLAG=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌توازن'],[4,'مسدودی خروجی'],[8,'قطع شارژ'],[16,'حکم باتری ضعیف'],[32,'مسیر باتری قطع'],[64,'استراحت حرارتی']];
+/* [EN] The general byte of the frame, one line per bit. Nothing here is a
+        guess: each text is the meaning the board gives that bit.
+   [FA] بایت عمومی فریم، هر بیت یک معنی. هیچ‌کدام حدس نیست؛ هر متن همان
+        معنایی است که برد به آن بیت می‌دهد. */
+const EVT_FL=[[1,'دادهٔ لحظه‌ای (snapshot) رسید','دادهٔ لحظه‌ای نرسید'],[2,'برق ورودی وصل شد','برق ورودی قطع شد'],
+              [4,'اندازه‌گیری معتبر شد','اندازه‌گیری نامعتبر شد'],[8,'شارژر ۱ اجازه گرفت','شارژر ۱ از کار افتاد'],
+              [16,'شارژر ۲ اجازه گرفت','شارژر ۲ از کار افتاد'],[32,'مود دستی روشن شد','مود دستی خاموش شد']];
 function evtNow(){return Math.floor(Date.now()/1000);}
 function evtClock(){
   const tz=-new Date().getTimezoneOffset()*60;
   req('/clock?sec='+evtNow()+'&tz='+tz,'POST').catch(()=>{});
+}
+function evtDayCode(d){
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate());
+}
+function evtToday(){return evtDayCode(new Date());}
+function evtDayFa(code){
+  const c=String(code||evtToday());
+  const y=+c.slice(0,4),m=+c.slice(4,6),d=+c.slice(6,8);
+  const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(y,m-1,d).getDay()];
+  const fa=n=>String(n).padStart(2,'0').replace(/[0-9]/g,x=>'۰۱۲۳۴۵۶۷۸۹'[+x]);
+  return wd+' '+fa(y)+'-'+fa(m)+'-'+fa(d);
 }
 function evtFaults(mask){
   const out=[];
@@ -4409,40 +4444,73 @@ function evtFlags(f2){
   EVT_FLAG.forEach(p=>{if(f2&p[0])out.push(p[1]);});
   return out.join(' + ');
 }
-function evtTime(epoch,uptime){
+function evtTime(epoch){
   if(!epoch)return 'بی‌ساعت';
   const d=new Date(epoch*1000);
   const p=n=>String(n).padStart(2,'0');
   return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
 }
+/* [EN] One row -> a Persian line and a severity: 3 = fault, 2 = warning,
+        1 = back to healthy, 0 = plain state change. The highest severity in
+        the row wins, so a frame that carries a fault and a mains return is
+        still drawn red.
+   [FA] هر ردیف به یک خط فارسی و یک شدت تبدیل می‌شود: ۳ خطا، ۲ هشدار،
+        ۱ برگشت به سلامتی، ۰ تغییر ساده. بالاترین شدت همان ردیف برنده است. */
 function evtRowText(r){
-  const chg=r.chg|0,mains=r.mains|0,c1=r.c1|0,c2=r.c2|0,fault=r.fault|0,f2=r.flags2|0;
-  const parts=[];let level='';
-  if(chg&1){parts.push('پنل روشن شد'+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''));level='y';}
-  if(chg&128){parts.push(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد برگشت');level='y';}
-  if(chg&2){parts.push(mains?'برق شهر وصل شد':'برق شهر قطع شد');level=mains?'g':'y';}
-  if(chg&4){parts.push('مرحلهٔ شارژ کانال ۱: '+(ST[c1]||c1));}
-  if(chg&8){parts.push('مرحلهٔ شارژ کانال ۲: '+(ST[c2]||c2));}
-  if(chg&16){parts.push('خطا: '+(evtFaults(fault)||'پاک شد'));level=fault?'r':'';}
-  if(chg&32){parts.push('قفل/وضعیت: '+(evtFlags(f2)||'هیچ'));level=(f2&(16|2))?'r':level;}
-  if(chg&64){parts.push((r.v24<21200)?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد');level=(r.v24<21200)?'r':'g';}
-  if(!parts.length)parts.push('تغییر وضعیت');
-  const v='پک: '+(r.v24/1000).toFixed(2)+'V · نیم‌پایین: '+(r.vlow/1000).toFixed(2)+'V · نیم‌بالا: '+(r.vhigh/1000).toFixed(2)+'V · Δ: '+r.imbal+'mV';
-  return {txt:parts.join(' · '),level:level,v:v,time:evtTime(r.epoch,r.uptime)};
+  const chg=r.chg|0,mains=r.mains|0,c1=r.c1|0,c2=r.c2|0,fault=r.fault|0,f2=r.flags2|0,fl=r.fl|0;
+  const parts=[];let lv=0;
+  const add=(txt,l)=>{parts.push(txt);if(l>lv)lv=l;};
+  const stName=v=>((typeof STFA!=='undefined'&&STFA[v])?STFA[v]:(ST[v]||('#'+v)));
+  if(chg&1){add('پنل روشن شد'+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+  if(chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد برگشت',(r.note===2)?2:1);}
+  if(chg&2){add(mains?'برق شهر وصل شد':'برق شهر قطع شد',(mains?(r.band?2:1):2));}
+  if(chg&4){add('کانال ۱ به مرحلهٔ «'+stName(c1)+'» رفت',(c1>=7&&c1<=8)?3:((c1===10)?2:0));}
+  if(chg&8){add('کانال ۲ به مرحلهٔ «'+stName(c2)+'» رفت',(c2>=7&&c2<=8)?3:((c2===10)?2:0));}
+  if(chg&16){add('خطا: '+(evtFaults(fault)||'همه پاک شد'),fault?3:1);}
+  if(chg&32){
+    const t=evtFlags(f2);
+    add('قفل و وضعیت: '+(t||'همه پاک شد'),(f2&(2|16))?3:((f2&(1|4|8|32|64))?2:1));
+  }
+  if(chg&64){add(r.v24<21200?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
+  if(chg&256){
+    let any=0;
+    EVT_FL.forEach(b=>{if(fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
+    if(!any)add('مود دستی و اجازهٔ شارژرها خاموش شد و دادهٔ برد معتبر نیست',2);
+  }
+  /* [EN] a row written without any known change bit still says which phase
+          both channels are in - the log never shows a blank line.
+     [FA] ردیفی که هیچ بیت تغییری ندارد هم مرحلهٔ دو کانال را می‌گوید تا هرگز
+          خط خالی دیده نشود. */
+  if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
+  const v='پک '+(r.v24/1000).toFixed(2)+'V · پایین '+(r.vlow/1000).toFixed(2)+'V · بالا '+(r.vhigh/1000).toFixed(2)+'V · Δ '+r.imbal+'mV';
+  return {txt:parts.join(' · '),lv:lv,v:v,time:evtTime(r.epoch)};
 }
-function evtRender(text){
-  const box=$('evtlist');
-  if(!text||!text.trim()){box.innerHTML='<span class="lb">هنوز چیزی ثبت نشده است.</span>';return;}
-  const rows=text.trim().split('\n').filter(l=>l&&l[0]!=='#').map(l=>{
-    const f=l.split(',');
-    return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
-            c1:+f[5]||0,c2:+f[6]||0,fault:+f[7]||0,flags2:+f[8]||0,
-            v24:+f[9]||0,vlow:+f[10]||0,vhigh:+f[11]||0,imbal:+f[12]||0};
-  });
-  box.innerHTML=rows.map(r=>{
+function evtParse(line){
+  const f=line.split(',');
+  return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
+          fl:+f[5]||0,c1:+f[6]||0,c2:+f[7]||0,fault:+f[8]||0,flags2:+f[9]||0,
+          v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,
+          band:(+f[10]||0)<21200};
+}
+function evtRender(text,code){
+  const box=$('evtlist'),sum=$('evtsum');
+  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
+  rows.forEach(r=>{r.band=r.v24<21200;});
+  if(sum)sum.innerHTML='';
+  if(!rows.length){
+    box.innerHTML='<span class="lb">'+(code?'برای این روز هنوز چیزی ثبت نشده است.':'امروز هنوز چیزی ثبت نشده است؛ به‌محض اولین تغییر، خط اول همین‌جا نوشته می‌شود.')+'</span>';
+    return;
+  }
+  let nf=0,nw=0,ng=0;
+  rows.forEach(r=>{const t=evtRowText(r);if(t.lv===3)nf++;else if(t.lv===2)nw++;else if(t.lv===1)ng++;});
+  if(sum)sum.innerHTML='<span class="r">خطا و قفل: '+nf+'</span><span class="y">هشدار: '+nw+'</span><span class="g">برگشت به سلامتی: '+ng+'</span><span>مجموع: '+rows.length+' خط</span>';
+  /* [EN] newest first: the last thing that happened is the first line the eye
+          meets when the card is opened.
+     [FA] جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
+  box.innerHTML=rows.slice().reverse().map(r=>{
     const t=evtRowText(r);
-    return '<div class="evtrow"><span class="evtt">'+t.time+'</span><span class="evtd">'+t.txt+
-           '<span class="evttag '+(t.level||'')+'"></span></span><span class="evtv">'+t.v+'</span></div>';
+    return '<div class="evtrow lv'+t.lv+'"><span class="evtt">'+t.time+'</span><span class="evtd">'+t.txt+
+           '</span><span class="evtv">'+t.v+'</span></div>';
   }).join('');
 }
 async function evtfetch(manual){
@@ -4450,9 +4518,11 @@ async function evtfetch(manual){
   try{
     const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
     const t=await r.text();
-    evtRender(t);
-    if($('evtst')){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;
-      $('evtst').textContent=n+' خط'+(day?(' · روز '+day):' · جدیدترین روز');}
+    evtRender(t,day);
+    if($('evtst')){
+      const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;
+      $('evtst').textContent=evtDayFa(day||evtToday())+' · '+n+' خط';
+    }
   }catch(e){ if($('evtst'))$('evtst').textContent='خواندن نشد'; }
 }
 async function evtDays(){
@@ -4463,15 +4533,21 @@ async function evtDays(){
     const sel=$('evtday');
     if(sel){
       const keep=sel.value;
-      sel.innerHTML='<option value="">جدیدترین روز</option>'+days.slice().reverse().map(d=>'<option value="'+d+'">'+d+'</option>').join('');
+      const today=evtToday();
+      let opts='<option value="">امروز ('+evtDayFa(today)+')</option>';
+      days.slice().reverse().forEach(d=>{
+        if(d!==today)opts+='<option value="'+d+'">'+evtDayFa(d)+'</option>';
+      });
+      if(sel.dataset.built!==opts){sel.innerHTML=opts;sel.dataset.built=opts;}
       sel.value=keep||'';
+      if(!sel.value&&!/<option value="">/.test(opts))sel.value='';
     }
     return days;
   }catch(e){return [];}
 }
 function evtdl(){
-  const day=($('evtday')&&$('evtday').value.trim())||'';
-  window.location='/evt/dl'+(day?('?day='+encodeURIComponent(day)):'');
+  const day=($('evtday')&&$('evtday').value.trim())||evtToday();
+  window.location='/evt/dl?day='+encodeURIComponent(day);
 }
 async function evtdlall(){
   const days=await evtDays();
@@ -4487,7 +4563,7 @@ async function evtdlall(){
 }
 async function evtclr(){
   if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟ این کار برگشت‌پذیر نیست.'))return;
-  try{const j=await req('/evt/clr','POST');if($('evtst'))$('evtst').textContent='پاک شد';await evtfetch(1);}
+  try{await req('/evt/clr','POST');if($('evtst'))$('evtst').textContent='پاک شد';await evtDays();await evtfetch(1);}
   catch(e){if($('evtst'))$('evtst').textContent='پاک نشد';}
 }
 evtClock();evtDays().then(()=>evtfetch(0));setInterval(evtClock,60000);

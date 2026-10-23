@@ -1026,6 +1026,28 @@ int main(void)
               ESP_WEB_SERVER_T__G__Server.lastBody.find(std::to_string(dayCode)) != std::string::npos,
               "GET /evt/days lists the saved day for the picker");
 
+        /* [EN] v1.95 (user order: every state must be in the log): hand mode
+                 and the general state byte are logged too, not just faults.
+           [FA] نسخهٔ ۱٫۹۵ (دستور کاربر: همهٔ وضعیت‌ها در لاگ باشد): مود دستی
+                 و بایت عمومی وضعیت هم ثبت می‌شوند، نه فقط خطاها. */
+        {
+            std::vector<uint8_t> manual = tlm_payload_v24(210u, 20608u);
+            manual[2] = 0x20u;   /* hand mode on, pack still on the cut band */
+            G_StubMillis += 5000u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, manual));
+            check(UINT16_T__G__LogRowsToday == 4u,
+                  "switching the board to hand mode writes a row");
+            std::string bodyMode = LittleFS.files[std::string(path)];
+            check(row_field(bodyMode, 3u, 2u) == 256u,
+                  "that row is marked as a mode change",
+                  std::to_string(row_field(bodyMode, 3u, 2u)));
+            check(row_field(bodyMode, 3u, 5u) == 32u,
+                  "and the saved state carries the hand-mode bit, so the line can say it",
+                  std::to_string(row_field(bodyMode, 3u, 5u)));
+            check(bodyMode.find(",fl,") != std::string::npos,
+                  "the column header names the general state byte");
+        }
+
         /* a burst inside the merge window becomes ONE row, not five */
         uint16_t before = UINT16_T__G__LogRowsToday;
         for (uint8_t k = 0u; k < 4u; k++) {
