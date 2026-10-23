@@ -2138,8 +2138,13 @@ def test_ui_mirror_v116():
           and all(f'id="q{i}"' not in bkpart for i in range(27, 93)),
           "v1.42 (user order: backup sub-tab LAST): the final sub-tab (s4) "
           "holds only the single backup card")
-    check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part,
-          "the merged voltages+alarm table sits on the main panel tab (p0, v1.16k: fixed layout, each value once), not in settings")
+    # [EN] v1.94 (user order): the fault box grew into two sections - "faults"
+    #      and "states right now" - and the header says so.
+    # [FA] نسخهٔ ۱٫۹۴: کادر خطا دو بخش شد - «خطاها» و «وضعیت‌ها» - و سرصفحه
+    #      همان را می‌گوید.
+    check("خطاها و وضعیت‌های زنده" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part
+          and "وضعیت آلارم‌ها" not in p0part,
+          "the voltages + faults + live-states box sits on the main panel tab (p0, fixed layout, each value once), not in settings")
     check("asb5" in ino and "abf0" not in ino and "abf1" not in ino and "abf2" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
           and "Math.max(t[3],t[10])" not in ino,
           "v1.16c (user order: per-battery current supervision, no max() merge); v1.16k: merged table rows for both currents (fault box kept)")

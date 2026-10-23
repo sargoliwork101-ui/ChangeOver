@@ -22,6 +22,9 @@ section{margin-top:12px}
 .cd{background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%),var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--sh)}
 .ti{font-size:12.5px;font-weight:700;color:var(--mu);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px}
 .lb{color:var(--mu);font-size:.86em}
+/* [FA] عنوان بخش‌های کادر وضعیت و خطا (نسخهٔ ۱٫۹۴) */
+.sub{display:block;text-align:center;font-size:11px;color:var(--mu);margin:6px 0 4px;border-top:1px dashed var(--ln);padding-top:6px}
+.sub:first-child{border-top:none;margin-top:0;padding-top:0}
 .bs{color:var(--mu);font-size:11px;font-variant-numeric:tabular-nums;letter-spacing:.5px;opacity:.75;margin-inline-start:auto;padding-inline-end:10px;direction:ltr}
 /* [EN] v1.29 click-to-edit (user order): the value IS the control. A dotted
    underline is the only affordance - a number that looks like a button stops
@@ -543,13 +546,13 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 962fc56</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 28997c8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
 <div class="pgx a" id="p0">
 <div id="lnkw" class="wbx"></div>
-<div class="cd" id="sh"><div class="hd"><b>ولتاژها و وضعیت آلارم‌ها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span> <span class="ldon" id="aslive"></span></b><div class="fl" id="fl"></div></div><div id="ast"></div>
+<div class="cd" id="sh"><div class="hd"><b>ولتاژها، خطاها و وضعیت‌های زندهٔ برد <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span> <span class="ldon" id="aslive"></span></b></div><div id="ast"></div>
 </div>
 
 <div class="ch" id="ch"></div>
@@ -1045,7 +1048,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="bqr"><button class="sb sb2 fwb" onclick="tdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۷</button></div>
 </div>
 <div class="cd" id="ucard8" style="display:none">
-<div class="hd"><b>سناریو ۸ — باتری ضعیف (قرمز چشمک‌زن + بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen8" checked onchange="scenarioToggle(8,this.checked)"><span>فعال</span></label></div>
+<div class="hd"><b>سناریو ۸ — باتری ضعیف (قرمز چشمک‌زن + بوق)</b><span class="lb">کلید واقعی این سناریو، تیک «حکم باتری ضعیف فعال باشد» پایین همین کارت است</span></div>
 <div class="ds c4ds"><b>این سناریو کِی می‌آید؟</b> باتری بار را تحمل نمی‌کند: بدون برق شهر وصل می‌شود و چند لحظه بعد دوباره قطع می‌شود.
 <ul>
 <li><b>تشخیص</b> — بعد از وصلِ بدون برق شهر، داخل «پنجرهٔ محافظ» دوباره قطع شد.</li>
@@ -1198,6 +1201,8 @@ window.addEventListener('DOMContentLoaded', function(){
 <script>
 const $=i=>document.getElementById(i);
 const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','JIT wait','Input wait','Final fault','باتری قطع','دستی','استراحت حرارتی'];
+/* [FA] نام فارسی همان مرحله‌ها، برای نوار وضعیت‌های زنده. */
+const STFA=['خاموش','شارژ اصلی','جذب','شناور','راه‌اندازی','انتظار تلاش دوباره','منتظر ورودی','خطای نهایی','باتری قطع','دستی','استراحت حرارتی'];
 const SC=['','g','g','g','y','r','y','r','r','y','y'];
 /* ثابت‌های بخش 2 سند (زنجیرهٔ جریان باتری) */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*68000/6800,K24B=K24,K12=3300/4095*34398/6800;
@@ -1478,7 +1483,17 @@ async function sendall(){
 const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2]];
 $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><tr><th>سیگنال</th><th>مقدار</th><th>فرمول / بازه</th><th>وضعیت</th><th>کالیبره با مولتی‌متر</th></tr>${SR.map(r=>{const k=r[1];
  const cal=k<3?`<input type="number" step="any" id="vm${k}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${k})"> <button class="sb sb2" onclick="vcal(${k})">اعمال</button> <span class="lb">±<span class="ap n" id="a${[4,5,6][k]}"></span></span>`:'';
- return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small style="display:block;text-align:center">خطاهای قفل‌شده (fault) — LED جدا برای هر بیت، همه در یک خط</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit ck" id="asbb6" title="باتری قطع است یا باتری نیست — تنظیمات سناریو ۲" onclick="errjmp(2)"><i></i><small>قطع‌باتری</small></span><span class="bit ck" id="asbb7" title="خرابی طبقهٔ قدرت شارژر — تنظیمات سناریو ۷" onclick="errjmp(7)"><i></i><small>فنی برد</small></span><span class="bit ck" id="asbb8" title="قفل عدم‌توازن فعال است — تنظیمات سناریو ۵" onclick="errjmp(5)"><i></i><small>خطای قفل شده</small></span><span class="bit ck" id="asbb9" title="باتری خراب حکم شده — تنظیمات سناریو ۶" onclick="errjmp(6)"><i></i><small>باتری خراب</small></span></div><div class="fx2" id="asf"></div><div id="dbcnt"></div></div>';
+ return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0">'
+ +
+ '<div class="sub">خطاها — قفل‌شده روی برد (کلیک روی هر چراغ، تنظیمات همان سناریو را باز می‌کند)</div>'
+ +
+ '<div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit ck" id="asbb6" title="باتری قطع است یا باتری نیست — تنظیمات سناریو ۲" onclick="errjmp(2)"><i></i><small>قطع‌باتری</small></span><span class="bit ck" id="asbb7" title="خرابی طبقهٔ قدرت شارژر — تنظیمات سناریو ۷" onclick="errjmp(7)"><i></i><small>فنی برد</small></span><span class="bit ck" id="asbb8" title="قفل عدم‌توازن فعال است — تنظیمات سناریو ۵" onclick="errjmp(5)"><i></i><small>خطای قفل شده</small></span><span class="bit ck" id="asbb9" title="باتری خراب حکم شده — تنظیمات سناریو ۶" onclick="errjmp(6)"><i></i><small>باتری خراب</small></span></div>'
+ +
+ '<div class="fx2" id="asf"></div>'
+ +
+ '<div class="sub">وضعیت‌ها — همین حالا</div><div class="fl" id="lv"></div>'
+ +
+ '<div id="dbcnt"></div></div>';
 let ASB=null;
 ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),lat:$('asbb8'),ded:$('asbb9'),box5:$('asb5'),mask:'',live:$('aslive'),tick:false};
 /* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
@@ -1572,6 +1587,9 @@ function errjmp(u){
    انتخاب در همین مرورگر پس از refresh حفظ می‌شود. */
 const SCENARIO_KEY='changeover-scenario-enabled-v1';
 function scenarioToggle(n,on,save=true){
+ /* کارت ۸ تیک «فعال» ندارد: کلید واقعی‌اش شناسهٔ ۱۴۷ است (حکم باتری ضعیف)،
+    پس نه خاکستری می‌شود و نه از حافظهٔ مرورگر خاموش برمی‌گردد. */
+ if(n===8)return;
  const c=$('ucard'+n),sw=$('sen'+n);if(!c)return;
  on=!!on;c.classList.toggle('scenario-off',!on);c.setAttribute('aria-disabled',on?'false':'true');
  if(sw&&sw.checked!==on)sw.checked=on;
@@ -3269,40 +3287,60 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();scenFill();afill();
 /* [EN] Chart mount and render ownership. [FA] محل mount و مالکیت رندر نمودار. */
 if(TAB==2&&STAB==0)qgraph();
-if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
+if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();livedraw(d);
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
- const F=[['snapshot',d.fl&1],['ورودی ۲۴ ولت',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
-  /* نوار بالا فقط وضعیت‌های عمومی را نگه می‌دارد. چراغ‌های خطا و قفل‌ها
-    به کادر «خطاهای قفل‌شده (fault)» زیر همین جدول منتقل شده‌اند (دستور
-    کاربر ۲۰۲۶-۱۰-۱۵): هر قفل باید کنار بیت‌های fault و در یک نگاه دیده
-    شود، هر کدام یک LED و کلیک‌پذیر به کارت سناریوی خودش. پرش با
-    errjmp انجام می‌شود که تب‌ها را با خود صفت‌هایشان کلیک می‌کند نه با
-    رشتهٔ سلکتور، چون ممیزی پروژه همان الگو را در جاوااسکریپت هم
-    می‌شمارد و رشتهٔ عددیِ سلکتور ادعای شمارش دکمه‌ها را خراب می‌کند. */
  /* سه چراغ بقیهٔ خطاها هم اضافه شد (دستور کاربر): حکم باتری خراب و خطای
     فنی برد همیشه سرِ جایشان می‌مانند (سالم سبز، خطا قرمز) و کلیک روی هرکدام
     تنظیمات همان سناریو را باز می‌کند؛ اپیزود عدم‌توازن تا وقتی جریان دارد یک
     چراغ زرد اضافه می‌کند. */
- const deadNow=((t[28]|0)!==0), techNow=(((t[19]|0)&128)!==0);
  /* [EN] v1.86 scenario 8: the board packs the weak-battery verdict into bit
           0x10 of the same status byte the imbalance bits use, so the panel can
           show the latch without a GET.
     [FA] نسخهٔ ۱٫۸۶ سناریوی ۸: برد حکم باتری ضعیف را در بیت ۰x۱۰ همان بایت
           وضعیت سناریوی ۵ می‌فرستد تا پنل قفل را بدون GET نشان دهد. */
  const weakNow=(((d.fl2|0)&16)!==0);
- const epiNow=((((d.fl2|0)&1)!==0)&&(((d.fl2|0)&2)===0));
- const dash=u=>' · برای تنظیمات سناریو '+['','۱','۲','۳','۴','۵','۶','۷','۸'][u]+' کلیک کنید';
- const flip=(txt,on,u,tipOn,tipOff)=>'<button type="button" class="tg tgk '+(on?'r':'g')+'" title="'+(on?tipOn:tipOff)+dash(u)+'" onclick="errjmp('+u+')">'+txt+'</button>';
- $('fl').innerHTML=
-  flip('باتری خراب',deadNow,6,'قفل دائمی — باتری خراب حکم شده، تعویضش کنید','باتری خرابی حکم نشده')
-  +flip('خطای فنی برد',techNow,7,'خرابی طبقهٔ قدرت شارژر — تا ریست قفل است','خطای فنی ثبت نشده')
-  +flip('باتری ضعیف',weakNow,8,'حکم باتری ضعیف قفل است — مسیر باتری بسته مانده تا باتری سالم شود','حکم باتری ضعیف قفل نیست')
-  +(epiNow?'<button type="button" class="tg tgk y" title="اختلاف دو نیم‌پک از حد گذشته و اپیزود در حال ثبت است'+dash(5)+'" onclick="errjmp(5)">عدم‌توازن در جریان</button>':'')
-  +F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')
-  +(man?'<span class="tg y">مود دستی</span>':'');
- [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
+ /* [EN] v1.94 (user order 2026-10-23): the always-on chips above the table
+           were repeating the locked-fault box, so they are gone. Everything
+           that is true RIGHT NOW is drawn in that box instead, under
+           «وضعیت‌ها — همین حالا»: mains, each channel's phase, the battery
+           path, thermal rest, every verdict, manual mode and whether the
+           board's data is complete.
+    [FA] نسخهٔ ۱٫۹۴ (دستور کاربر ۲۰۲۶-۱۰-۲۳): چراغ‌های همیشه‌روشن بالای جدول
+          تکرار کادر خطاهای قفل‌شده بودند و برداشته شدند. هر چیزی که همین
+          حالا درست است، داخل همان کادر زیر عنوان «وضعیت‌ها — همین حالا»
+          کشیده می‌شود. */
+ function liveCls(sv){return ((sv>=1)&&(sv<=6))?'y':(((sv===7)||(sv===8))?'r':'');}
+ function livedraw(dd){
+  const box=$('lv');if(!box||!dd||!dd.t||!dd.p)return;
+  const tt=dd.t,ff=dd.fl|0,f2=dd.fl2|0;
+  const mains=(ff&2)!==0, manual=(ff&32)!==0, dataOk=((ff&1)!==0)&&((ff&4)!==0);
+  const s1=tt[6]|0, s2=tt[13]|0;
+  const pathCut=(f2&32)!==0, rest=(f2&64)!==0;
+  const weak=(f2&16)!==0, latched=(f2&2)!==0, epi=((f2&1)!==0)&&!latched;
+  const dead=(tt[28]|0)!==0, tech=((tt[19]|0)&128)!==0;
+  const chip=(txt,cls,tip)=>'<span class="tg '+cls+'" title="'+(tip||'')+'">'+txt+'</span>';
+  let h='';
+  h+=chip(mains?'برق شهر: وصل':'برق شهر: قطع',mains?'g':'y',
+          mains?'ولتاژ ورودی هست و شارژ می‌تواند کار کند':'بدون برق شهر؛ برد از باتری تغذیه می‌کند');
+  h+=chip('کانال ۱: '+(STFA[s1]||('#'+s1)),liveCls(s1),'مرحلهٔ شارژ کانال ۱ همین حالا');
+  h+=chip('کانال ۲: '+(STFA[s2]||('#'+s2)),liveCls(s2),'مرحلهٔ شارژ کانال ۲ همین حالا');
+  h+=chip(pathCut?'مسیر باتری: قطع':'مسیر باتری: وصل',pathCut?'r':'g',
+          pathCut?'بار از باتری جدا است (حفاظت یا حکم)':'باتری بار را تغذیه می‌کند');
+  if(rest)h+=chip('استراحت حرارتی','y','کانال بعد از یک ساعت شارژ پیوسته در استراحت است');
+  /* حکم باتری ضعیف مثل بقیهٔ قفل‌ها راه خودش را به کارت ۸ دارد */
+  if(weak)h+='<span class="tg tgk r" title="حکم قفل است؛ مسیر باتری بسته مانده تا باتری سالم شود — برای تنظیمات سناریو ۸ کلیک کنید" onclick="errjmp(8)">حکم باتری ضعیف</span>';
+  if(latched)h+=chip('قفل عدم‌توازن','r','قفل دائمی عدم‌توازن؛ باتری باید تعویض شود');
+  else if(epi)h+=chip('عدم‌توازن در جریان','y','اختلاف دو نیم‌پک از حد گذشته و اپیزود در حال ثبت است');
+  if(dead)h+=chip('حکم باتری خراب','r','مهلت شارژ پیوسته تمام شد؛ شارژ آن کانال بسته است');
+  if(tech)h+=chip('خطای فنی برد','r','خرابی طبقهٔ قدرت شارژر تا ریست برد');
+  if(manual)h+=chip('مود دستی','y','duty از پنل می‌آید و گیت‌های باتری کنار رفته‌اند');
+  h+=chip(dataOk?'دادهٔ برد: کامل':'دادهٔ برد: ناقص',dataOk?'g':'r',
+          dataOk?'snapshot و اندازه‌گیری هر دو معتبرند':'برد هنوز عدد معتبر نمی‌فرستد');
+  box.innerHTML=h;
+ }
+[1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
   $('ie'+n).innerHTML=t[b+3]+' <span class="lb">mA</span>';
   const bv=n==1?t[18]:t[17];$('vb'+n).textContent=bv==null?'--':v2(bv);

@@ -473,8 +473,19 @@ function main() {
                  CURRENT draw instead of a reference captured earlier. --- */
         {
             w.scrollTo = () => {};
-            const chipWith = (txt) => [...d.querySelectorAll("#fl button")]
-                .find(b => b.textContent.indexOf(txt) >= 0);
+            /* [EN] v1.94 (user order 2026-10-23): the always-on chips above the
+                   table are gone; everything that is true right now lives in
+                   the fault box under «وضعیت‌ها — همین حالا», and the latched
+                   bits keep their own clickable lamps next to it.
+               [FA] نسخهٔ ۱٫۹۴: چراغ‌های همیشه‌روشن بالای جدول برداشته شدند؛ هر
+                   چیز که همین حالا درست است در کادر خطا زیر عنوان «وضعیت‌ها»
+                   می‌آید و بیت‌های قفل‌شده چراغ کلیک‌پذیر خودشان را دارند. */
+            const lvChip = (txt) => [...d.querySelectorAll("#lv span")]
+                .find(sp => sp.textContent.indexOf(txt) >= 0);
+            const ledSet = (id) => {
+                const el = d.getElementById(id);
+                return !!el && el.className.indexOf("set") >= 0;
+            };
             const activeTab = () => [...d.querySelectorAll("nav button")]
                 .filter(b => b.classList.contains("a")).map(b => b.dataset.t).join();
             const activeSub = () => [...d.querySelectorAll("#sbt button")]
@@ -482,65 +493,66 @@ function main() {
             const shownCard = () => [...d.querySelectorAll("#usel button")]
                 .filter(b => b.classList.contains("a")).map(b => b.dataset.u).join();
 
-            /* [EN] The two lock chips are always mounted - green when healthy,
-                    red when the board decides. A chip that only exists while
-                    the error is on is what makes a cause disappear from the
-                    panel the moment it is needed.
-               [FA] دو چراغ قفل همیشه سرِ جایشان‌اند: سالم سبز، خطا قرمز. */
-            w.D.fl2 = 0; w.D.t[28] = 0; w.D.t[19] = 0;
+            /* a healthy board: the strip says so in words */
+            w.D.fl = 2; w.D.fl2 = 0; w.D.t[28] = 0; w.D.t[19] = 0;
+            w.D.t[6] = 1; w.D.t[13] = 3;
             w.draw(w.D);
-            const deadOff = chipWith("باتری خراب"), techOff = chipWith("خطای فنی برد");
-            check(!!deadOff && !!techOff &&
-                  deadOff.className.indexOf("tgk r") < 0 &&
-                  techOff.className.indexOf("tgk r") < 0 &&
-                  !chipWith("عدم‌توازن"),
-                  "a healthy board keeps both lock lamps green and hides the episode chip",
-                  (deadOff ? deadOff.className : "-") + " | " +
-                  (techOff ? techOff.className : "-"));
+            check(!!lvChip("برق شهر: وصل"),
+                  "the live strip says the mains is present",
+                  d.getElementById("lv") ? d.getElementById("lv").textContent : "no strip");
+            check(!!lvChip("کانال ۱: شارژ اصلی") && !!lvChip("کانال ۲: شناور"),
+                  "and shows each channel's charging phase in Persian",
+                  d.getElementById("lv") ? d.getElementById("lv").textContent : "no strip");
+            check(!!lvChip("مسیر باتری: وصل"),
+                  "and says the battery path is connected");
+            check(!lvChip("استراحت حرارتی") && !lvChip("حکم باتری خراب"),
+                  "a healthy board shows no rest and no verdict");
 
-            w.D.t[28] = 1;
+            /* the two spare wire bits of byte 3 drive the two hardest states */
+            w.D.fl2 = 32 | 64;
             w.draw(w.D);
-            const dead = chipWith("باتری خراب");
-            check(!!dead && dead.className.indexOf("r") >= 0,
-                  "the condemned-battery chip turns red once the board decides",
-                  dead ? dead.className : "no chip");
-            check(!!dead && dead.getAttribute("onclick") === "errjmp(6)",
-                  "and it carries its own route to scenario 6");
-            if (dead) {
-                dead.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+            check(!!lvChip("مسیر باتری: قطع"),
+                  "wire bit b5 turns the strip to «battery path cut»",
+                  d.getElementById("lv") ? d.getElementById("lv").textContent : "no strip");
+            check(!!lvChip("استراحت حرارتی"),
+                  "wire bit b6 shows the thermal rest");
+            w.D.fl2 = 0;
+
+            /* a condemned battery: the LED lights AND the strip says it */
+            w.D.t[28] = 1;
+            w.draw(w.D); w.uview();
+            check(ledSet("asbb9"),
+                  "the condemned-battery lamp lights on the fault row");
+            check(!!lvChip("حکم باتری خراب"),
+                  "and the live strip carries the same verdict in words");
+            const deadLed = d.getElementById("asbb9");
+            if (deadLed) {
+                deadLed.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
                 check(activeTab() === "2" && activeSub() === "1" && shownCard() === "6",
-                      "clicking it opens Settings > scenarios on card 6",
+                      "clicking that lamp opens Settings > scenarios on card 6",
                       activeTab() + " | " + activeSub() + " | " + shownCard());
             }
 
+            /* the charger power stage */
             w.D.t[28] = 0; w.D.t[19] = 128;
-            w.draw(w.D);
-            const tech = chipWith("خطای فنی برد");
-            check(!!tech && tech.getAttribute("onclick") === "errjmp(7)",
-                  "the charger power-stage fault is clickable into scenario 7");
-            if (tech) {
-                tech.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-                check(shownCard() === "7", "and that click shows card 7", shownCard());
+            w.draw(w.D); w.uview();
+            check(ledSet("asbb7") && !!lvChip("خطای فنی برد"),
+                  "the technical fault lights its lamp and its chip");
+            const techLed = d.getElementById("asbb7");
+            if (techLed) {
+                techLed.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                check(shownCard() === "7", "and its click shows card 7", shownCard());
             }
 
-            /* [EN] v1.86 scenario 8: the weak-battery verdict has its own
-                   always-mounted lamp in the same bar, and its card says in
-                   words whether the battery path is being held cut.
-               [FA] سناریوی ۸: حکم باتری ضعیف چراغ همیشه‌سوار خودش را در همان
-                   نوار دارد و کارتش با جمله می‌گوید مسیر باتری بسته مانده یا نه. */
-            w.D.fl2 = 0; w.D.p[157] = 1;
+            /* the weak-battery verdict keeps its own route into card 8 */
+            w.D.t[19] = 0; w.D.fl2 = 16; w.D.p[157] = 1;
             w.draw(w.D);
-            const weakOff = chipWith("باتری ضعیف");
-            check(!!weakOff && weakOff.className.indexOf("tgk r") < 0 &&
-                  weakOff.getAttribute("onclick") === "errjmp(8)",
-                  "a healthy board keeps the weak-battery lamp green and routed to card 8",
-                  weakOff ? weakOff.className : "no chip");
-            w.D.fl2 = 16; w.D.fl = 0;
-            w.draw(w.D);
-            const weak = chipWith("باتری ضعیف");
-            check(!!weak && weak.className.indexOf("tgk r") >= 0,
-                  "fl2 bit 0x10 turns the weak-battery lamp red",
+            const weak = lvChip("حکم باتری ضعیف");
+            check(!!weak && weak.className.indexOf("r") >= 0,
+                  "fl2 bit 0x10 turns the weak-battery chip red",
                   weak ? weak.className : "no chip");
+            check(!!weak && weak.getAttribute("onclick") === "errjmp(8)",
+                  "and the chip carries its own route to scenario 8");
             const wbTxt = d.getElementById("wbst");
             check(!!wbTxt && wbTxt.textContent.indexOf("قفل است") >= 0 &&
                   wbTxt.className.indexOf("r") >= 0,
@@ -548,29 +560,27 @@ function main() {
                   wbTxt ? wbTxt.textContent : "no line");
             if (weak) {
                 weak.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-                check(shownCard() === "8", "and the lamp opens card 8", shownCard());
+                check(shownCard() === "8", "and the chip opens card 8", shownCard());
             }
             w.D.fl2 = 0;
 
+            /* a running imbalance episode is amber, the latch is a red lamp */
             w.D.t[19] = 0; w.D.fl2 = 1;
-            w.draw(w.D);
-            const epi = chipWith("عدم‌توازن");
-            check(!!epi && epi.className.indexOf("y") >= 0 &&
-                  epi.getAttribute("onclick") === "errjmp(5)",
-                  "a running imbalance episode is an amber chip into scenario 5");
+            w.draw(w.D); w.uview();
+            const epi = lvChip("عدم‌توازن در جریان");
+            check(!!epi && epi.className.indexOf("y") >= 0,
+                  "a running imbalance episode is an amber state chip");
 
             w.D.fl2 = 2;
             w.draw(w.D); w.uview();
-            const latLamp = d.getElementById("asbb8");
-            check(!!latLamp && latLamp.className.indexOf("set") >= 0,
-                  "the permanent latch keeps its own always-lit red lamp",
-                  latLamp ? latLamp.className : "no lamp");
-            check(!chipWith("عدم‌توازن"),
+            check(ledSet("asbb8"),
+                  "the permanent latch keeps its own always-lit red lamp");
+            check(!lvChip("عدم‌توازن در جریان"),
                   "and the amber episode chip yields to the permanent lock");
 
             w.D.fl2 = 0; w.D.t[28] = 0;
             w.draw(w.D); w.uview();
-            check(!!latLamp && latLamp.className.indexOf("set") < 0,
+            check(!ledSet("asbb8"),
                   "clearing the lock puts that lamp back out");
         }
 

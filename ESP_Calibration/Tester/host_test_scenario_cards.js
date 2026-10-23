@@ -694,10 +694,15 @@ function testImbalance(win, doc) {
           'the rest floor is explained in plain Persian, including the empty-vs-worn point');
 
     const calSrc = fs.readFileSync(path.join(__dirname, '..', 'plink_panel.h'), 'utf8');
-    check(calSrc.includes("flip('باتری ضعیف',weakNow,8,") &&
+    /* [EN] v1.94: the top-bar chips are gone, so the weak verdict must reach
+             the fault box AND its own clickable state chip into card 8.
+       [FA] نسخهٔ ۱٫۹۴: چراغ‌های بالای جدول برداشته شدند، پس حکم باتری ضعیف
+             باید هم در کادر خطا و هم به‌صورت چراغِ کلیک‌پذیرِ خودش به کارت ۸
+             برسد. */
+    check(calSrc.includes('onclick="errjmp(8)">حکم باتری ضعیف') &&
           calSrc.includes("if(flW&16)h.push('⚠ <b>باتری ضعیف</b>") &&
           calSrc.includes("(flW&19)"),
-          'the weak-battery verdict reaches the top-bar switch and the locked-error text');
+          'the weak-battery verdict reaches the state strip and the locked-error text');
     check(doc.getElementById('wbst') !== null,
           'card 8 has its live verdict line');
 
