@@ -716,6 +716,30 @@ int main(void)
         CHECK(func__Changeover_WeakVerdictActive() == false);   /* [EN] cut != verdict */
     }
 
+    /* [EN] Wire cut while running with NO mains (decision 2026-10-23): the
+          reading collapses to ~0 V. The board must treat it as an empty pack -
+          cut the path, stay silent, raise NO verdict - because the battery-lost
+          alarm is deliberately input-gated. This is the documented behaviour,
+          pinned so nobody turns it into a surprise alarm later.
+       [FA] قطع سیم باتری حین کار و بدون برق ورودی (تصمیم ۲۰۲۶-۱۰-۲۳): ولتاژ
+          به حدود صفر می‌رسد. برد باید آن را «پک خالی» بداند - مسیر قطع،
+          سکوت، و هیچ حکمی - چون آلارم قطع باتری عمداً فقط با برق ورودی کار
+          می‌کند. این رفتار مستند است و همین‌جا قفل می‌شود تا بعداً به یک
+          آلارم غافلگیرکننده تبدیل نشود. */
+    {
+        func__Reset(1030000u);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+        (void)func__Step(10u, FAULT_NONE);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 0u;          /* [EN] wire cut */
+        (void)func__Step(10u, FAULT_NONE);
+        CHECK(func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE) == APP_STATE_SAFE);
+        CHECK(BOOL__G__ProtectLine == true);
+        CHECK(func__Changeover_PathBlocked() == true);
+        CHECK(func__Changeover_WeakVerdictActive() == false);
+        CHECK(func__Changeover_MainsFreeParked() == false);
+    }
+
     /* [EN] The rest floor itself: clamped on both sides, readable back.
        [FA] خودِ آستانهٔ استراحت: از دو طرف گیره می‌خورد و خوانده می‌شود. */
     {
