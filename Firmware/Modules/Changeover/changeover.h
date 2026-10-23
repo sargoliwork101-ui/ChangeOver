@@ -8,17 +8,18 @@
  *              and (MODULE_IMBALANCE) the func__Imbalance_GetOutputs() veto
  *              flag, plus (MODULE_CHARGER) func__Charger_DeadBlocksOutput()
  *              for the condemned-pack veto - both vetos assert the battery
- *              protect line and sit in SAFE. With MODULE_FAULT it also reads
- *              the live func__Fault_IsBatteryAbsent() signal to qualify a
- *              battery swap. Time conversion uses rtos_time.h only, tick=1ms
+ *              protect line and sit in SAFE. A recovered pack may reconnect
+ *              with no mains after CHANGEOVER_HEALTHY_HOLD_MS of unbroken
+ *              healthy voltage, guarded by CHANGEOVER_CYCLE_GUARD_MS.
+ *              Time conversion uses rtos_time.h only, tick=1ms
  *              assumption is forbidden.
  *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
  *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask،
  *              قفل داخلی باتری کم و (با ماژول عدم‌توازن) پرچم وتوی GetOutputs
  *              به‌علاوهٔ (با ماژول شارژر) وتوی باتری خرابِ DeadBlocksOutput
  *              استفاده می‌کند - هر دو وتو خط محافظ باتری را فعال و به SAFE
- *              می‌روند. با ماژول Fault سیگنال زندهٔ نبود باتری را هم برای
- *              تشخیص تعویض باتری می‌خواند.
+ *              می‌روند. باتریِ بازیابی‌شده هم می‌تواند بعد از یک پنجرهٔ سالمِ
+ *              پیوسته بدون برق شهر وصل شود، با محافظ چرخه.
  */
 
 #ifndef CHANGEOVER_H
@@ -68,7 +69,8 @@ void func__Changeover_Init(void);
 /**
  * @brief  [EN] Battery voltage at or above which a reconnect is allowed, in millivolts.
  *         Range 0..40000 mV; effect: (input_present true with 30 s stable input, or a
- *         qualified battery swap with mains absent) and v_bat24_mv >= 21200 for 3000 ms -> reconnect.
+ *         healthy hold of CHANGEOVER_HEALTHY_HOLD_MS with mains absent) and
+ *         v_bat24_mv >= 21200 for 3000 ms -> reconnect.
  *         [FA] ولتاژ باتری که در آن یا بالاتر از آن وصل مجدد مجاز است، بر حسب میلی‌ولت.
  */
 #define CHANGEOVER_BAT_RECONNECT_MV       21200u
@@ -91,17 +93,26 @@ void func__Changeover_Init(void);
 #define CHANGEOVER_INPUT_STABLE_MS        30000u
 
 /**
- * @brief  [EN] Continuous battery absence that qualifies a battery swap, in milliseconds.
- *         Range 1..60000 ms; effect: func__Fault_IsBatteryAbsent() staying true
- *         for this long arms a mains-free reconnect (the normal 3 s voltage
- *         filter at CHANGEOVER_BAT_RECONNECT_MV still applies). A pack that was
- *         never removed keeps the 2026-10-06 rule: no mains, no reconnect.
- *         [FA] مدت پیوستهٔ نبودِ باتری که «تعویض باتری» را تأیید می‌کند، بر حسب میلی‌ثانیه.
- *         اگر سیگنال نبودِ باتری این مدت پیوسته true بماند، وصل مجدد بدون برق
- *         شهر مجاز می‌شود (فیلتر ۳ ثانیه‌ای ولتاژ روی آستانهٔ وصل همچنان لازم است).
- *         باتری‌ای که جدا نشده، همان قانون ۲۰۲۶-۱۰-۰۶ را نگه می‌دارد: بدون برق شهر، بدون وصل.
+ * @brief  [EN] Unbroken healthy-voltage time that allows a reconnect with no mains, in milliseconds.
+ *         Range 1..600000 ms; effect: v_bat24_mv must stay at or above
+ *         CHANGEOVER_BAT_RECONNECT_MV without any dip for this long; then the
+ *         normal 3 s reconnect filter runs. One dip restarts the window.
+ *         [FA] مدت پیوستهٔ ولتاژ سالم که وصل مجدد بدون برق شهر را مجاز می‌کند، بر حسب میلی‌ثانیه.
+ *         ولتاژ باید این مدت بدون هیچ افت در آستانهٔ وصل یا بالاتر بماند؛ بعد
+ *         فیلتر ۳ ثانیه‌ای وصل اجرا می‌شود. هر افت پنجره را از صفر شروع می‌کند.
  */
-#define CHANGEOVER_SWAP_ABSENT_MS         3000u
+#define CHANGEOVER_HEALTHY_HOLD_MS        10000u
+
+/**
+ * @brief  [EN] Cycle-guard window after a mains-free reconnect, in milliseconds.
+ *         Range 1..3600000 ms; effect: if the pack cuts again inside this
+ *         window, mains-free auto-reconnect is latched off until the mains
+ *         returns (a really weak pack must not reconnect every few seconds).
+ *         [FA] پنجرهٔ محافظ چرخه بعد از وصل بدون برق شهر، بر حسب میلی‌ثانیه.
+ *         اگر باتری داخل این پنجره دوباره قطع شود، وصل خودکار بدون برق شهر
+ *         قفل می‌شود تا برگشت برق شهر (باتری واقعاً ضعیف نباید هر چند ثانیه وصل شود).
+ */
+#define CHANGEOVER_CYCLE_GUARD_MS         60000u
 
 /* ==================== Changeover_Evaluate / ارزیابی Changeover ==================== */
 

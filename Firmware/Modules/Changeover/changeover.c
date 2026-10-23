@@ -4,14 +4,12 @@
  *          [FA] ماشین حالت مسیر ورودی یا باتری - قطع/وصل با فیلتر ۳ ثانیه.
  *
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
- *              snapshot.input_present, fault_mask (the low-battery latch is internal),
- *              and (MODULE_FAULT) the live battery-absence signal
- *              func__Fault_IsBatteryAbsent() that qualifies a battery swap.
+ *              snapshot.input_present, fault_mask (the low-battery latch and the
+ *              healthy-voltage hold window are internal).
  *              No board_pins.h, no HAL, no PB5/PB7, no float/queue/task.
  *              Time conversion ONLY via rtos_time.h (MillisecondsToTicks); tick=1ms assumption is forbidden.
  *              PB11 (BSP_GPIO_PROTECT_BATTERY) is the ONLY logical pin used.
  *          [FA] فقط از داده‌های مجاز بالا استفاده می‌کند و فقط PB11 منطقی را می‌زند.
- *              (با ماژول Fault) سیگنال زندهٔ نبود باتری برای تشخیص تعویض باتری.
  */
 
 #include "changeover.h"
@@ -26,10 +24,6 @@
 
 #if MODULE_CHARGER
 #include "charger.h"
-#endif
-
-#if MODULE_FAULT
-#include "fault.h"
 #endif
 
 #include <stdbool.h>
@@ -96,29 +90,30 @@ static bool BOOL__G__ReconnectTimerActive = false;
 static uint32_t UINT32_T__G__InputStableSinceTick = 0u;
 static bool BOOL__G__InputStableActive = false;
 
-#if MODULE_FAULT
 /**
- * @brief  [EN] Tick at which the battery became continuously absent, and the
- *         running flag of that measurement. A continuous absence for at least
- *         CHANGEOVER_SWAP_ABSENT_MS means the pack was physically swapped, not
- *         merely weak.
- *         [FA] تیکی که باتری به‌صورت پیوسته غایب شد و پرچم در حال اندازه‌گیری
- *         آن. غیبت پیوستهٔ حداقل ‎CHANGEOVER_SWAP_ABSENT_MS‎ یعنی باتری
- *         فیزیکی عوض شده، نه اینکه فقط ضعیف باشد.
+ * @brief  [EN] Continuous healthy-voltage window for the mains-free recovery
+ *         rule: true while v_bat24_mv has stayed at or above
+ *         CHANGEOVER_BAT_RECONNECT_MV with no break, plus the tick that window
+ *         started. One dip restarts it.
+ *         [FA] پنجرهٔ پیوستهٔ ولتاژ سالم برای بازیابی بدون برق شهر: تا وقتی
+ *         ولتاژ پک بدون وقفه در آستانهٔ وصل یا بالاتر مانده باشد true است،
+ *         به‌همراه تیکی که پنجره شروع شده. یک افت، پنجره را از صفر شروع می‌کند.
  */
-static uint32_t UINT32_T__G__SwapAbsentSinceTick = 0u;
-static bool BOOL__G__SwapAbsentActive = false;
+static uint32_t UINT32_T__G__HealthySinceTick = 0u;
+static bool BOOL__G__HealthyActive = false;
 
 /**
- * @brief  [EN] A qualified battery swap was seen, so the reconnect gate stays
- *         open without mains until the new pack passes the normal 3 s voltage
- *         filter. Cleared only by a completed reconnect or by Init().
- *         [FA] تعویض باتریِ تأییدشده دیده شد؛ پس گیت وصل مجدد بدون برق شهر
- *         باز می‌ماند تا بستهٔ جدید فیلتر ۳ ثانیه‌ای ولتاژ را رد کند. فقط با
- *         وصل کامل یا Init پاک می‌شود.
+ * @brief  [EN] Mains-free reconnect bookkeeping and cycle guard: tick and flag
+ *         of the last successful mains-free reconnect, plus the latch that
+ *         stops repeating it when the pack cuts again inside
+ *         CHANGEOVER_CYCLE_GUARD_MS. The latch clears when the mains returns.
+ *         [FA] سابقهٔ وصل بدون برق شهر و محافظ چرخه: تیک و پرچم آخرین وصلِ
+ *         موفق بدون برق شهر، به‌علاوهٔ قفلی که اگر باتری ظرف مدت محافظ دوباره
+ *         قطع شود از تکرار آن جلوگیری می‌کند. با برگشت برق شهر پاک می‌شود.
  */
-static bool BOOL__G__SwapReconnectArmed = false;
-#endif
+static uint32_t UINT32_T__G__MainsFreeReconnectTick = 0u;
+static bool BOOL__G__MainsFreeReconnectDone = false;
+static bool BOOL__G__MainsFreeReconnectBlocked = false;
 
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
@@ -140,11 +135,11 @@ void func__Changeover_Init(void)
     BOOL__G__LowBatteryLatched = false;
     UINT32_T__G__InputStableSinceTick = 0u;
     BOOL__G__InputStableActive = false;
-#if MODULE_FAULT
-    UINT32_T__G__SwapAbsentSinceTick = 0u;
-    BOOL__G__SwapAbsentActive = false;
-    BOOL__G__SwapReconnectArmed = false;
-#endif
+    UINT32_T__G__HealthySinceTick = 0u;
+    BOOL__G__HealthyActive = false;
+    UINT32_T__G__MainsFreeReconnectTick = 0u;
+    BOOL__G__MainsFreeReconnectDone = false;
+    BOOL__G__MainsFreeReconnectBlocked = false;
 
     /* [EN] Keep the path physically cut until the first valid, non-blocked
           sample confirms the pack has reached the 21.2 V hysteresis-clear
@@ -166,11 +161,13 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
 {
     uint32_t uint32_t__nowTick;
     uint32_t uint32_t__durationTicks;
+    uint32_t uint32_t__healthyHoldTicks;
     bool bool__cutCondition;
     bool bool__reconnectCondition;
 
     uint32_t__nowTick = osKernelGetTickCount();
     uint32_t__durationTicks = func__Rtos_MillisecondsToTicks(CHANGEOVER_DURATION_MS);
+    uint32_t__healthyHoldTicks = func__Rtos_MillisecondsToTicks(CHANGEOVER_HEALTHY_HOLD_MS);
 
     /* [EN] Snapshot check FIRST before any decision: if NULL or invalid,
           preserve state and PB11, reset pending timers, fault does NOT change state,
@@ -208,6 +205,43 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     {
         BOOL__G__InputStableActive = false;
         UINT32_T__G__InputStableSinceTick = 0u;
+    }
+
+    /* [EN] Healthy-pack window for the mains-free recovery rule (user decision
+          2026-10-23): the voltage must stay at or above the reconnect
+          threshold WITHOUT A BREAK for CHANGEOVER_HEALTHY_HOLD_MS before the
+          module will put the battery back on the output with no mains. Any
+          dip restarts the window, so a pack that only bounced for a moment
+          is not accepted. The absent signal of the Fault module is NOT used
+          here: it is a threshold guess, and one cut wire does not reliably
+          drive any sense input below its absent level (2026-10-23 order).
+          Returning mains clears the cycle guard of the next outage.
+       [FA] پنجرهٔ باتری سالم برای قانون بازیابی بدون برق شهر (تصمیم کاربر
+          ۲۰۲۶-۱۰-۲۳): ولتاژ باید بدون وقفه به‌مدت ‎CHANGEOVER_HEALTHY_HOLD_MS‎
+          در حد آستانهٔ وصل یا بالاتر بماند تا ماژول باتری را بدون برق شهر
+          روی خروجی برگرداند. هر افت، پنجره را از صفر شروع می‌کند تا باتری‌ای
+          که فقط یک لحظه بالا آمده پذیرفته نشود. سیگنال «نبود باتری» ماژول
+          Fault اینجا استفاده نمی‌شود: آن یک حدس آستانه‌ای است و با قطع یک سیم
+          هیچ ورودی حس به‌طور مطمئن زیر حد نبود نمی‌رود (دستور ۲۰۲۶-۱۰-۲۳).
+          برگشت برق شهر قفل چرخهٔ قطع بعدی را پاک می‌کند. */
+    if (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_RECONNECT_MV)
+    {
+        if (BOOL__G__HealthyActive == false)
+        {
+            BOOL__G__HealthyActive = true;
+            UINT32_T__G__HealthySinceTick = uint32_t__nowTick;
+        }
+    }
+    else
+    {
+        BOOL__G__HealthyActive = false;
+        UINT32_T__G__HealthySinceTick = 0u;
+    }
+
+    if (measurement_snapshot_t__snap->input_present == true)
+    {
+        BOOL__G__MainsFreeReconnectDone = false;
+        BOOL__G__MainsFreeReconnectBlocked = false;
     }
 
     /* [EN] Snapshot is valid from here - use ONLY allowed fields.
@@ -284,56 +318,12 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     /* [EN] Guard: if Rtos tick conversion yields zero ticks (e.g., tick freq 0),
           do not perform immediate cut/reconnect; preserve state and PB11, reset timers.
        [FA] نگهبان: اگر تبدیل میلی‌ثانیه به تیک صفر شد، هیچ قطع/وصلی فوری انجام نشود. */
-    if (uint32_t__durationTicks == 0u)
+    if ((uint32_t__durationTicks == 0u) || (uint32_t__healthyHoldTicks == 0u))
     {
         BOOL__G__CutTimerActive = false;
         BOOL__G__ReconnectTimerActive = false;
         return APP_STATE_T__G__State;
     }
-
-#if MODULE_FAULT
-    /* [EN] Battery-swap qualifier (user order 2026-10-23). The absent signal
-          of the Fault module is live and works with no mains: an unplugged
-          half reads below FAULT_BAT_HARD_ABSENT_MV. A CONTINUOUS absence of
-          at least CHANGEOVER_SWAP_ABSENT_MS (3 s) means the pack was taken
-          out and put back, so a later reconnect on voltage alone is safe.
-          A pack that was never removed (only weak) never arms this flag and
-          keeps the deliberate 2026-10-06 rule: no mains, no reconnect.
-          The 3 s voltage filter below still has to pass on the new pack, and
-          the protect line stays asserted while the absence holds.
-       [FA] تأییدکنندهٔ تعویض باتری (دستور کاربر ۲۰۲۶-۱۰-۲۳). سیگنال نبودِ
-          باتری در ماژول Fault زنده است و بدون برق شهر هم کار می‌کند: نیمِ
-          جدا‌شده زیر ‎FAULT_BAT_HARD_ABSENT_MV‎ خوانده می‌شود. غیبتِ پیوستهٔ
-          حداقل ‎CHANGEOVER_SWAP_ABSENT_MS‎ (۳ ثانیه) یعنی باتری برداشته و
-          دوباره گذاشته شده، پس وصلِ بعدی فقط با ولتاژ بی‌خطر است. باتری‌ای
-          که اصلاً جدا نشده (فقط ضعیف است) این پرچم را مسلح نمی‌کند و همان
-          قانون عمدی ۲۰۲۶-۱۰-۰۶ می‌ماند: بدون برق شهر، بدون وصل. فیلتر
-          ۳ ثانیه‌ای ولتاژ هم باید روی بستهٔ جدید رد شود و خط محافظ در تمام
-          مدت غیبت فعال می‌ماند. */
-    if (func__Fault_IsBatteryAbsent() == true)
-    {
-        if (BOOL__G__SwapAbsentActive == false)
-        {
-            BOOL__G__SwapAbsentActive = true;
-            UINT32_T__G__SwapAbsentSinceTick = uint32_t__nowTick;
-        }
-        else if ((uint32_t__nowTick - UINT32_T__G__SwapAbsentSinceTick) >=
-                 func__Rtos_MillisecondsToTicks(CHANGEOVER_SWAP_ABSENT_MS))
-        {
-            BOOL__G__SwapReconnectArmed = true;
-        }
-        else
-        {
-            /* [EN] Absence still shorter than the swap window.
-               [FA] غیبت هنوز کوتاه‌تر از پنجرهٔ تعویض است. */
-        }
-    }
-    else
-    {
-        BOOL__G__SwapAbsentActive = false;
-        UINT32_T__G__SwapAbsentSinceTick = 0u;
-    }
-#endif
 
     /* [EN] v1.74: update the internal low-battery latch with hysteresis before
           using it. Below 21000 mV it sets, at or above 21200 mV it clears, and in
@@ -433,6 +423,23 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                 {
                     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
                     BOOL__G__ChangeoverProtectAsserted = true;
+
+                    /* [EN] Cycle guard (user decision 2026-10-23): a cut that
+                          follows a mains-free reconnect inside
+                          CHANGEOVER_CYCLE_GUARD_MS proves the pack is really
+                          weak, so no further mains-free reconnect is allowed
+                          until the mains returns.
+                       [FA] محافظ چرخه (تصمیم کاربر ۲۰۲۶-۱۰-۲۳): قطعی که ظرف
+                          ‎CHANGEOVER_CYCLE_GUARD_MS‎ بعد از یک وصلِ بدون برق
+                          شهر رخ دهد یعنی باتری واقعاً ضعیف است؛ پس دیگر بدون
+                          برق شهر وصل نمی‌شود تا وقتی برق شهر برگردد. */
+                    if ((measurement_snapshot_t__snap->input_present == false) &&
+                        (BOOL__G__MainsFreeReconnectDone == true) &&
+                        ((uint32_t__nowTick - UINT32_T__G__MainsFreeReconnectTick) <
+                         func__Rtos_MillisecondsToTicks(CHANGEOVER_CYCLE_GUARD_MS)))
+                    {
+                        BOOL__G__MainsFreeReconnectBlocked = true;
+                    }
                 }
                 APP_STATE_T__G__State = APP_STATE_SAFE;
             }
@@ -518,21 +525,24 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
           cycle. The battery stays parked until a real charging source is
           present. Do not "fix" this. User order 2026-10-12: add 30s extra
           stable-input delay before reconnect (time only, not voltage 24V).
-          EXCEPTION (user order 2026-10-23): a QUALIFIED battery swap
-          (CHANGEOVER_SWAP_ABSENT_MS of continuous absence, see above) arms the
-          gate without mains - the user plugged a new pack in and wants the
-          output back, and a swapped pack is not the recovered weak pack the
-          2026-10-06 decision was written for. The 3 s voltage filter and the
-          elevated protect line are unchanged.
+          REVISION (user order 2026-10-23): the pack that recovers after the
+          cut (or is replaced) may come back with NO mains, but only after the
+          healthy-voltage window above has held without a single break; a dip
+          restarts it, and one quick repeat cut latches the cycle guard. That
+          is the "several seconds in a stable state" test the 2026-10-06
+          decision was missing. Mains-present reconnect is unchanged, and the
+          3 s voltage filter still runs after the gate opens.
        [FA] وصل مجدد فقط وقتی ورودی حاضر و ولتاژ باتری >=21200 به مدت ۳ ثانیه
           به‌علاوه ورودی ۳۰ ثانیه پایدار. تأییدشده ۲۰۲۶-۱۰-۰۶ (تصمیم کاربر):
           شرطِ حضور ورودی عمدی است. دستور ۲۰۲۶-۱۰-۱۲: تاخیر ۳۰ ثانیه اضافه
           پایداری ورودی قبل از وصل مجدد (فقط زمان، نه ولتاژ ۲۴).
-          استثنا (دستور کاربر ۲۰۲۶-۱۰-۲۳): تعویض باتریِ تأییدشده (غیبت پیوستهٔ
-          ‎CHANGEOVER_SWAP_ABSENT_MS‎) گیت را بدون برق شهر باز می‌کند، چون کاربر
-          بستهٔ نو گذاشته و خروجی را می‌خواهد؛ بستهٔ عوض‌شده همان باتری ضعیفِ
-          بازیابی‌شدهٔ تصمیم ۲۰۲۶-۱۰-۰۶ نیست. فیلتر ۳ ثانیه‌ای ولتاژ و خط محافظ
-          فعال دست‌نخورده‌اند. */
+          بازنگری (دستور کاربر ۲۰۲۶-۱۰-۲۳): باتری‌ای که بعد از قطع بازیابی (یا
+          تعویض) می‌شود می‌تواند بدون برق شهر برگردد، اما فقط بعد از اینکه
+          پنجرهٔ ولتاژ سالم بدون هیچ وقفه‌ای کامل شود؛ هر افت شمارش را از صفر
+          می‌کند و یک قطع سریع بعد از وصل، محافظ چرخه را قفل می‌کند. این همان
+          آزمون «چند ثانیه ماندن در وضعیت پایدار» است که تصمیم ۲۰۲۶-۱۰-۰۶
+          نداشت. مسیر حضور برق شهر دست‌نخورده است و فیلتر ۳ ثانیه‌ای هم بعد از
+          بازشدن گیت اجرا می‌شود. */
     bool__reconnectCondition = false;
     {
         bool bool__reconnectGateOpen = false;
@@ -560,12 +570,19 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             }
         }
 
-#if MODULE_FAULT
-        if (BOOL__G__SwapReconnectArmed == true)
+        else if ((BOOL__G__MainsFreeReconnectBlocked == false) &&
+                 (BOOL__G__HealthyActive == true) &&
+                 ((uint32_t__nowTick - UINT32_T__G__HealthySinceTick) >=
+                  uint32_t__healthyHoldTicks))
         {
+            /* [EN] No mains, but the pack has held a healthy voltage for the
+                  whole hold window: it recovered (or was replaced), so the
+                  output may come back. The 3 s filter below still applies.
+               [FA] بدون برق شهر، اما پک تمام پنجرهٔ نگهداری را سالم مانده:
+                  بازیابی (یا تعویض) شده است، پس خروجی می‌تواند برگردد.
+                  فیلتر ۳ ثانیه‌ای پایین همچنان لازم است. */
             bool__reconnectGateOpen = true;
         }
-#endif
 
         if ((bool__reconnectGateOpen == true) &&
             (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_RECONNECT_MV))
@@ -615,14 +632,17 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                 {
                     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
                     BOOL__G__ChangeoverProtectAsserted = false;
+
+                    /* [EN] A reconnect with no mains is the one the cycle
+                          guard watches: remember when it happened.
+                       [FA] وصل بدون برق شهر همانی است که محافظ چرخه زیر نظر
+                          دارد؛ زمانش را یادداشت کن. */
+                    if (measurement_snapshot_t__snap->input_present == false)
+                    {
+                        BOOL__G__MainsFreeReconnectDone = true;
+                        UINT32_T__G__MainsFreeReconnectTick = uint32_t__nowTick;
+                    }
                 }
-#if MODULE_FAULT
-                /* [EN] The swap gate can reconnect with no mains, so the state
-                      must follow the input instead of being forced to INPUT.
-                   [FA] گیت تعویض می‌تواند بدون برق شهر وصل کند، پس حالت
-                      باید از ورودی پیروی کند نه اینکه حتماً INPUT شود. */
-                BOOL__G__SwapReconnectArmed = false;
-#endif
                 if (measurement_snapshot_t__snap->input_present == true)
                 {
                     APP_STATE_T__G__State = APP_STATE_INPUT;
