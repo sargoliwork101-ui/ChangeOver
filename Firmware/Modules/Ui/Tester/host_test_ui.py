@@ -881,6 +881,18 @@ def run_scenario_alarm_switch_tests():
     assert_true(weak is not None,
                 "the scenario-8 face must be gated on input_present == false, "
                 "otherwise a charging pack still blinks the weak-battery face")
+    # [EN] v1.89 (user order 2026-10-23): a cut battery path with no mains must
+    #      leave EVERY lamp and the buzzer dark - the panel used to keep the
+    #      green "running on battery" blink alive next to a dead output.
+    # [FA] نسخهٔ ۱٫۸۹: مسیر باتریِ بسته بدون برق شهر باید همهٔ چراغ‌ها و بوق
+    #      را خاموش بگذارد؛ قبلاً چشمک سبز «کار روی باتری» کنار خروجیِ خاموش
+    #      روشن می‌ماند.
+    dark = re.search(r"if \(\(BOOL__G__UiInputPresent == false\) &&\s*\n"
+                     r"\s*\(func__Changeover_PathBlocked\(\) != false\)\)\s*\n"
+                     r"\s*\{\s*\n\s*func__all_off\(\);", ui_c)
+    assert_true(dark is not None,
+                "the no-mains + blocked-path case must call func__all_off() "
+                "before any scenario face can light a lamp")
     print("Scenario alarm switches (v1.87) PASS")
 
 

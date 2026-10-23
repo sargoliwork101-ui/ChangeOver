@@ -249,6 +249,15 @@ bool func__Changeover_GetParam(uint8_t uint8_t__paramId,
 bool func__Changeover_WeakVerdictActive(void);
 
 /**
+ * @brief  [EN] Is the battery path cut right now (low-battery protection,
+ *              scenario-8 block, or the parked retry budget)?
+ *         [FA] آیا مسیر باتری همین حالا بسته است (حفاظت ولتاژ پایین، بستن
+ *              سناریوی ۸، یا پارک سقف تلاش)؟
+ * @return bool [EN] true while the path is cut / هنگام بسته‌بودن مسیر
+ */
+bool func__Changeover_PathBlocked(void);
+
+/**
  * @brief  [EN] Is the mains-free reconnect parked because the retry budget is spent?
  *         [FA] آیا وصلِ بدون برق شهر به‌خاطر تمام‌شدن سقف تلاش پارک شده است؟
  * @return bool [EN] true while parked / هنگام پارک true

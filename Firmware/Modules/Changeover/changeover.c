@@ -423,6 +423,25 @@ bool func__Changeover_WeakVerdictActive(void)
     return BOOL__G__WeakVerdict;
 }
 
+/* ==================== Changeover_PathBlocked ==================== */
+
+/**
+ * @brief  [EN] Is the battery path physically cut right now? True covers every
+ *              reason the PB11 line is asserted: the 3 s low-battery filter
+ *              has completed, the scenario-8 block is holding the path, or the
+ *              retry budget parked it. The UI uses this to keep the lamps dark
+ *              instead of blinking "running on battery" while the load is off.
+ *         [FA] آیا مسیر باتری همین حالا فیزیکی بسته است؟ شامل همهٔ دلیل‌ها:
+ *              قطعِ ولتاژ پایین پس از فیلتر ۳ ثانیه، بستنِ حکم سناریوی ۸، یا
+ *              پارک‌شدن با سقف تلاش. UI از این برای خاموش‌ماندن چراغ‌ها استفاده
+ *              می‌کند، به‌جای چشمک «کار روی باتری» در حالی که بار قطع است.
+ * @return bool [EN] true while the path is cut / هنگام بسته‌بودن مسیر
+ */
+bool func__Changeover_PathBlocked(void)
+{
+    return BOOL__G__ChangeoverProtectAsserted;
+}
+
 /* ==================== Changeover_MainsFreeParked ==================== */
 
 /**

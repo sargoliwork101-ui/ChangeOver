@@ -2300,6 +2300,29 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     }
 #endif
 
+#if MODULE_CHANGEOVER
+    /* [EN] v1.89 (user order 2026-10-23): while the battery path is CUT and no
+          mains is present there is nothing to show - the load is off, the pack
+          is not feeding anything, and blinking "running on battery" beside a
+          dark output is a lie. All three LEDs and the buzzer stay off; the
+          charging face returns by itself as soon as the mains is back, because
+          this gate only speaks for the no-mains case.
+       [FA] نسخهٔ ۱٫۸۹ (دستور کاربر): تا وقتی مسیر باتری بسته است و برق شهر
+          نیست، چیزی برای نشان‌دادن نیست - بار خاموش است و پک چیزی را تغذیه
+          نمی‌کند؛ چشمک «کار روی باتری» کنار خروجیِ خاموش درست نیست. هر سه
+          LED و بوق خاموش می‌مانند و به‌محض برگشت برق شهر چهرهٔ شارژ خودش
+          برمی‌گردد، چون این گیت فقط حالت بدون برق شهر را می‌گوید. */
+    if ((BOOL__G__UiInputPresent == false) &&
+        (func__Changeover_PathBlocked() != false))
+    {
+        func__all_off();
+        func__Ui_ResetBatteryCriticalBeep();
+        func__Ui_ResetBatteryRunGreenBlink();
+        func__Ui_ResetChargingYellowBlink();
+        return;
+    }
+#endif
+
     if (BOOL__G__UiInputPresent == true)
     {
         if (bool__isFull == true)

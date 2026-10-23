@@ -658,6 +658,22 @@ int main(void)
         CHECK(func__Changeover_MainsFreeParked() == false);
     }
 
+    /* [EN] v1.89: the UI asks this to keep every lamp dark while the load is
+          off with no mains. It must track the real PB11 line, not the verdict.
+       [FA] نسخهٔ ۱٫۸۹: UI این را می‌پرسد تا هنگام قطع بار و نبود برق شهر همهٔ
+          چراغ‌ها خاموش بمانند. باید خودِ خط PB11 را دنبال کند، نه حکم را. */
+    {
+        func__Reset(1020000u);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+        (void)func__Step(10u, FAULT_NONE);
+        CHECK(func__Changeover_PathBlocked() == false);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+        func__CutAndVerifyTiming();
+        CHECK(func__Changeover_PathBlocked() == true);
+        CHECK(func__Changeover_WeakVerdictActive() == false);   /* [EN] cut != verdict */
+    }
+
     /* [EN] The rest floor itself: clamped on both sides, readable back.
        [FA] خودِ آستانهٔ استراحت: از دو طرف گیره می‌خورد و خوانده می‌شود. */
     {

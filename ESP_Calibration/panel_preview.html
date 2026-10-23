@@ -534,7 +534,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 3e00591</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a486610</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -735,7 +735,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </ul>
 </div>
 
-<div class="clr"><b>چه وقت پاک می‌شود؟</b> این سناریو خطای قفل‌شده نیست: به‌محض برگشتن برق ورودی، چشمک سبز و باندهای بوق همان لحظه تمام می‌شوند.</div>
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> این سناریو خطای قفل‌شده نیست: به‌محض برگشتن برق ورودی، چشمک سبز و باندهای بوق همان لحظه تمام می‌شوند.<br><b>v1.89:</b> اگر باتری زیر ۲۱٬۰۰۰ میلی‌ولت برود و مسیر باتری قطع شود، تا برگشت برق ورودی <b>همهٔ چراغ‌ها و بوق خاموش</b> می‌مانند.</div>
 <div class="sim" id="sim3"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims3" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb3" onclick="simtog(3)">توقف</button></div><div class="simb"><span class="sl r" id="sl3r"></span><span class="sl g" id="sl3g"></span><span class="sl y" id="sl3y"></span><span class="szz" id="sl3z">🔇</span><span class="simt" id="sl3t"></span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp3" min="0" max="100" value="50" oninput="simlbl(3)"><b id="simv3">50٪</b></label></div></div>
 <div class="sec">۱) حد ولتاژ باتری — نردبانی که درصد این سناریو از آن می‌آید <span class="lb">(<span class="n"></span> میلی‌ولت؛ همان ۷۴/۷۵ کارت ۴ — هر جا عوض شود، هر دو جا عوض می‌شود)</span></div>
 <div class="sx">درصد باتری مستقیم خوانده نمی‌شود؛ از یک نردبان ساده درمی‌آید:<br><br><b>حد پایین</b> = ولتاژی که ۰٪ حساب می‌شود.<br><b>حد بالا</b> = ولتاژی که ۱۰۰٪ حساب می‌شود.<br>بین این دو، درصد خطی تقسیم می‌شود.<br><b>توجه:</b> همهٔ باندهای بوق و چشمک سبز روی همین نردبان سوارند، پس تغییر آن همه را با هم جابه‌جا می‌کند.</div>
@@ -1040,13 +1040,13 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="ds c4ds"><b>این سناریو کِی می‌آید؟</b> باتری بار را تحمل نمی‌کند: بدون برق شهر وصل می‌شود و چند لحظه بعد دوباره قطع می‌شود.
 <ul>
 <li><b>تشخیص</b> — بعد از وصلِ بدون برق شهر، داخل «پنجرهٔ محافظ» دوباره قطع شد.</li>
-<li><b>واکنش</b> — قرمز چشمک‌زن + بوق؛ با تیک «جدا ماندن»، باتری روی خروجی نمی‌آید.</li>
+<li><b>واکنش</b> — قرمز چشمک‌زن + بوق؛ با تیک «جدا ماندن» باتری روی خروجی نمی‌آید.</li>
 <li><b>استراحت</b> — با ولتاژ سالم، بعد از «مدت استراحت» حکم خودش پاک می‌شود.</li>
 </ul>
 </div>
 <div class="clr"><b>چه وقت پاک می‌شود؟</b> سه راه دارد: ۱) ولتاژ سالمِ پیوسته (۲۱٬۲۰۰ میلی‌ولت یا بالاتر) به مدت «مدت استراحت» (پیش‌فرض ۱۰ دقیقه) — خودکار. ۲) تیک «حکم فعال» را بردار. ۳) دکمهٔ «ریست حکم باتری ضعیف» را بزن.</div>
 <div class="sec">۱) زمان‌بندی تشخیص و بازیابی <span class="lb">(ms)</span></div>
-<div class="sx"><b>پنجرهٔ محافظ</b> = تا کِی بعد از وصلِ بدون برق شهر، قطعِ دوباره «تلاش ناموفق» حساب شود.<br><b>مدت استراحت</b> = چقدر سالم بماند تا حکم پاک شود.<br><b>ولتاژ سالم پیوسته</b> = چند وقت ولتاژ ۲۱٫۲ ولت یا بالاتر بماند تا وصلِ بدون برق شهر اجازه بگیرد.<br><b>ولتاژ استراحت لازم برای حکم</b> = باتری پیش از وصل باید حداقل این ولتاژ را داشته باشد تا قطعِ دوباره «ضعف» حساب شود. اگر کمتر بود، یعنی فقط خالی است و حکم باتری ضعیف زده نمی‌شود.</div>
+<div class="sx"><b>پنجرهٔ محافظ</b> = تا کِی بعد از وصلِ بدون برق شهر، قطعِ دوباره «تلاش ناموفق» حساب شود.<br><b>مدت استراحت</b> = چقدر سالم بماند تا حکم پاک شود.<br><b>ولتاژ سالم پیوسته</b> = چند وقت ولتاژ ۲۱٫۲ ولت یا بالاتر بماند تا وصلِ بدون برق شهر اجازه بگیرد.<br><b>ولتاژ استراحت لازم برای حکم</b> = باتری پیش از وصل باید حداقل این ولتاژ را داشته باشد تا «ضعیف» حساب شود؛ کمتر بود یعنی فقط خالی است.</div>
 <div class="bqr">
 <label>پنجرهٔ محافظ (ms)<input type="number" id="q149" step="1000" min="1000" max="600000"><span class="lb" id="a149"></span></label>
 <label>مدت استراحت پیش از تلاش مجدد (ms)<input type="number" id="q148" step="60000" min="60000" max="3600000"><span class="lb" id="a148"></span></label>
@@ -1062,7 +1062,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="c4n" id="s8lamp"></div>
 <div class="sec">۳) بوق مستقل این سناریو <span class="lb">(دوره / الگو)</span></div>
-<div class="sx"><b>دورهٔ بوق</b> = فاصلهٔ تکرار الگو؛ ۰ یعنی بی‌صدا.<br><b>طول هر بوق</b> = مدت هر بوق. <b>تعداد</b> = چند بوق در هر الگو. <b>گپ</b> = فاصلهٔ بین بوق‌ها. این چهار عدد مال همین سناریو است.</div>
+<div class="sx"><b>دورهٔ بوق</b> = فاصلهٔ تکرار الگو (۰ = بی‌صدا).<br><b>طول هر بوق</b> = مدت هر بوق. <b>تعداد</b> = چند بوق در هر الگو. <b>گپ</b> = فاصلهٔ بین بوق‌ها.</div>
 <div class="bqr">
 <label>دورهٔ بوق (ms، ۰=خاموش)<input type="number" id="q153" step="100" min="0" max="600000"><span class="lb" id="a153"></span></label>
 <label>طول هر بوق (ms)<input type="number" id="q154" step="10" min="20" max="2000"><span class="lb" id="a154"></span></label>
@@ -1071,11 +1071,11 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="c4n" id="s8z"></div>
 <div class="sec">۴) رفتار پس از حکم</div>
-<div class="sx"><b>حکم فعال</b> = اگر خاموش باشد این سناریو هیچ کاری نمی‌کند.<br><b>جدا ماندن باتری</b> = تا پاک‌شدن حکم، باتری به خروجی وصل نمی‌شود. شارژ قطع نمی‌شود.<br><b>ریست</b> = همین حالا حکم را پاک می‌کند و سقف سه تلاش را برمی‌گرداند.<br><b>نمایش</b> = قرمز چشمک‌زن فقط وقتی برق شهر نیست دیده می‌شود؛ با برگشت برق شهر چراغ شارژ عادی است و حکم سر جایش می‌ماند.</div>
+<div class="sx"><b>حکم فعال</b> = اگر خاموش باشد این سناریو هیچ کاری نمی‌کند.<br><b>جدا ماندن باتری</b> = تا پاک‌شدن حکم، باتری به خروجی وصل نمی‌شود (شارژ قطع نمی‌شود).<br><b>ریست</b> = همین حالا حکم را پاک می‌کند و سقف سه تلاش را برمی‌گرداند.<br><b>نمایش</b> = قرمز چشمک‌زن فقط بدون برق شهر دیده می‌شود.</div>
 <div class="bqr">
 <label class="ckr"><input type="checkbox" id="cb147"><span><span class="ckt">حکم باتری ضعیف فعال باشد</span><span class="cks" id="a147"></span></span></label>
 <label class="ckr"><input type="checkbox" id="cb157"><span><span class="ckt">تا پاک‌شدن حکم، باتری از خروجی جدا بماند</span><span class="cks" id="a157"></span></span></label>
-<button class="sb sb-rst fwb" onclick="latchrst(8)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری ضعیف</button><span class="lb fwb" id="rst8">حکم را پاک می‌کند و یک بار وصل دوباره را آزاد می‌کند</span>
+<button class="sb sb-rst fwb" onclick="latchrst(8)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری ضعیف</button><span class="lb fwb" id="rst8">حکم را پاک می‌کند و سقف سه تلاش را برمی‌گرداند</span>
 </div>
 <div class="prod">وضعیت حکم: <b id="wbst"></b></div>
 <div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
