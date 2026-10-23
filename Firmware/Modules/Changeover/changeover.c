@@ -1086,15 +1086,30 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         else if ((BOOL__G__WeakVerdict == false) &&
                  (BOOL__G__MainsFreeParked == false) &&
                  (BOOL__G__HealthyActive == true) &&
+                 (UINT32_T__G__RestPeakMv >=
+                  func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV)) &&
                  ((uint32_t__nowTick - UINT32_T__G__HealthySinceTick) >=
                   uint32_t__healthyHoldTicks))
         {
-            /* [EN] No mains, but the pack has held a healthy voltage for the
-                  whole hold window: it recovered (or was replaced), so the
-                  output may come back. The 3 s filter below still applies.
-               [FA] بدون برق شهر، اما پک تمام پنجرهٔ نگهداری را سالم مانده:
-                  بازیابی (یا تعویض) شده است، پس خروجی می‌تواند برگردد.
-                  فیلتر ۳ ثانیه‌ای پایین همچنان لازم است. */
+            /* [EN] v1.90 (final user order 2026-10-23): no mains reconnect is
+                  allowed unless the pack RESTED at or above the rest floor
+                  (25.0 V by default). A pack that recovers only to 23 V after a
+                  low-battery cut is DISCHARGED, not replaced - it must stay off
+                  the load and wait for the charger, because putting it back
+                  would only repeat the same cut.
+                  Only a pack that rests at 25 V or more is put back on the
+                  output, and if it then collapses again inside the cycle-guard
+                  window the verdict says "worn battery".
+                  The hold window below and the 3 s filter still apply.
+               [FA] نسخهٔ ۱٫۹۰ (دستور نهایی کاربر ۲۰۲۶-۱۰-۲۳): وصلِ بدون برق
+                  شهر فقط وقتی مجاز است که پک در حد آستانهٔ استراحت (پیش‌فرض
+                  ۲۵٬۰۰۰ میلی‌ولت) یا بالاتر استراحت کرده باشد. پکی که بعد از
+                  قطعِ ولتاژ پایین فقط تا ۲۳ ولت برمی‌گردد «دشارژ شده» است، نه
+                  تعویض‌شده؛ باید از بار دور بماند و منتظر شارژ باشد، چون
+                  برگرداندنش فقط همان قطع را تکرار می‌کند.
+                  فقط پکی که ۲۵ ولت یا بالاتر استراحت کند روی خروجی برمی‌گردد و
+                  اگر دوباره داخل پنجرهٔ محافظ فرو بریزد، حکم «باتری فرسوده»
+                  صادر می‌شود. پنجرهٔ نگهداری و فیلتر ۳ ثانیه هم سر جایشان‌اند. */
             bool__reconnectGateOpen = true;
         }
 

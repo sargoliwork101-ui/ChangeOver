@@ -327,12 +327,16 @@ int main(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
     func__CutAndVerifyTiming();
 
-    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 24000u;
+    /* [EN] v1.90: the pack rests at 25.0 V - exactly the rest floor - because a
+          pack below it is no longer put back on the load (case 6e).
+       [FA] نسخهٔ ۱٫۹۰: پک روی ۲۵٫۰ ولت استراحت می‌کند، یعنی خودِ آستانهٔ
+          استراحت؛ پک زیر آن دیگر روی بار برنمی‌گردد (بخش ۶ه). */
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);     /* [EN] healthy window opens */
     CHECK(func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS - 2000u, FAULT_NONE) == APP_STATE_SAFE);
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 21000u;      /* [EN] one dip -> restart */
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
-    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 24000u;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(BOOL__G__ProtectLine == true);                      /* [EN] window not finished / پنجره تمام نشده */
@@ -589,22 +593,19 @@ int main(void)
         CHECK(uint32_t__applied == 0u);
     }
 
-    /* ---- 6e. an EMPTY pack is not a WEAK pack, and gets ONE attempt ---- */
-    /* [EN] Second user order 2026-10-23 (after a new battery was flagged), final
-          wording same day: a pack that rests LOW before the mains-free
-          reconnect only proves it has no charge left. It must NOT raise the
-          scenario-8 verdict, and it gets exactly ONE mains-free attempt - the
-          load is not pushed back on a pack that just proved it cannot carry
-          it. Afterwards the path stays parked until the mains returns, and the
-          mains hands the attempt back. The verdict, by contrast, is retried
-          once per quiet-rest window (covered in 6d).
-       [FA] دستور دوم کاربر ۲۰۲۶-۱۰-۲۳ (بعد از آنکه باتری نو «ضعیف» خوانده شد)
-          و متن نهایی همان روز: پکی که پیش از وصلِ بدون برق شهر استراحتِ پایین
-          دارد فقط ثابت می‌کند شارژ ندارد؛ نباید حکم سناریوی ۸ بزند و فقط
-          «یک» تلاش بدون برق شهر دارد - باری که پک ثابت کرد تحملش نمی‌کند
-          دوباره رویش گذاشته نمی‌شود. بعد از آن مسیر تا برگشت برق شهر بسته
-          می‌ماند و برق شهر تلاش را برمی‌گرداند. حکم اما در هر پنجرهٔ استراحت
-          یک بار امتحان می‌شود (بخش ۶د). */
+    /* ---- 6e. a discharged pack is NEVER put back on the load (v1.90) ---- */
+    /* [EN] Final user order 2026-10-23: after a low-battery cut, a pack that
+          only recovers to ~23 V is DISCHARGED, not replaced. It must stay off
+          the load and wait for the charger - no automatic reconnect, no
+          verdict, no attempt at all, with the scenario on or off. Only a pack
+          that rests at 25.0 V or more is put back, and that single attempt is
+          what decides "worn battery" (case 6d).
+       [FA] دستور نهایی کاربر ۲۰۲۶-۱۰-۲۳: بعد از قطعِ ولتاژ پایین، پکی که فقط
+          تا حدود ۲۳ ولت برمی‌گردد «دشارژ شده» است، نه تعویض‌شده. باید از بار
+          دور بماند و منتظر شارژ باشد - بدون وصل خودکار، بدون حکم و بدون
+          هیچ تلاشی، چه سناریو روشن باشد چه خاموش. فقط پکی که ۲۵٫۰ ولت یا
+          بالاتر استراحت کند برمی‌گردد و همان یک تلاش است که «فرسوده» را
+          مشخص می‌کند (بخش ۶د). */
     {
         func__Reset(1000000u);
         MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
@@ -612,68 +613,30 @@ int main(void)
         func__CutAndVerifyTiming();
         CHECK(func__Changeover_MainsFreeParked() == false);
 
-        for (uint8_t uint8_t__attempt = 1u; uint8_t__attempt <= CHANGEOVER_MAINS_FREE_RETRY_BUDGET; uint8_t__attempt++)
-        {
-            /* [EN] The pack rests at 22.0 V: above the reconnect threshold,
-                  far below the 25.0 V weakness floor.
-               [FA] پک روی ۲۲٫۰ ولت استراحت می‌کند: بالای آستانهٔ وصل ولی
-                  خیلی زیر آستانهٔ ۲۵٫۰ ولت ضعف. */
-            MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 22000u;
-            (void)func__Step(10u, FAULT_NONE);
-            (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS, FAULT_NONE);
-            (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
-            CHECK(BOOL__G__ProtectLine == false);
-
-            MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
-            (void)func__Step(10u, FAULT_NONE);
-            (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
-            CHECK(BOOL__G__ProtectLine == true);
-            CHECK(func__Changeover_WeakVerdictActive() == false);
-            if (uint8_t__attempt < CHANGEOVER_MAINS_FREE_RETRY_BUDGET)
-            {
-                CHECK(func__Changeover_MainsFreeParked() == false);
-            }
-        }
-
-        /* [EN] Budget spent: the path stays parked even after a long healthy
-              rest - no more relay cycling on an empty pack.
-           [FA] سقف تمام شد: مسیر حتی بعد از استراحت سالم طولانی بسته
-              می‌ماند و مسیر باتری روی پک خالی دیگر وصل/قطع نمی‌شود. */
-        CHECK(func__Changeover_MainsFreeParked() == true);
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 26000u;
+        /* [EN] Rests at 22.0 V for far longer than the hold window: still no
+              reconnect, because 22.0 V is below the 25.0 V rest floor.
+           [FA] روی ۲۲٫۰ ولت خیلی بیشتر از پنجرهٔ نگهداری استراحت می‌کند:
+              باز هم وصل نمی‌شود، چون ۲۲٫۰ ولت زیر آستانهٔ ۲۵٫۰ ولت است. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 22000u;
         (void)func__Step(10u, FAULT_NONE);
         (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS + 1000u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
         CHECK(BOOL__G__ProtectLine == true);
         CHECK(func__Changeover_WeakVerdictActive() == false);
+        CHECK(func__Changeover_MainsFreeParked() == false);
 
-        /* [EN] The same holds with the scenario switched OFF: one attempt is
-              still the limit, so the feature being off can never turn into an
-              endless reconnect loop.
-           [FA] با خاموش‌بودن سناریو هم همین‌طور است: یک تلاش سقف است، پس
-              خاموشیِ قابلیت هیچ‌وقت به حلقهٔ وصل بی‌پایان تبدیل نمی‌شود. */
+        /* [EN] Turning the scenario OFF must not change this: the floor rule is
+              battery protection, not a scenario feature.
+           [FA] خاموش‌کردن سناریو این را عوض نمی‌کند: قانون آستانهٔ استراحت
+              محافظت باتری است، نه ویژگی سناریو. */
         {
             uint32_t uint32_t__applied = 0u;
 
             CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_ENABLE, 0u,
                                             &uint32_t__applied) == true);
         }
-        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 22000u;
-        (void)func__Changeover_WeakVerdictReset();
-        CHECK(func__Changeover_MainsFreeParked() == false);
-        (void)func__Step(10u, FAULT_NONE);
-        (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS, FAULT_NONE);
-        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
-        CHECK(BOOL__G__ProtectLine == false);                    /* [EN] the single attempt */
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
-        (void)func__Step(10u, FAULT_NONE);
-        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
-        CHECK(func__Changeover_WeakVerdictActive() == false);
-        CHECK(func__Changeover_MainsFreeParked() == true);
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 26000u;
-        (void)func__Step(10u, FAULT_NONE);
         (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS + 1000u, FAULT_NONE);
-        CHECK(BOOL__G__ProtectLine == true);                     /* [EN] no second try */
+        CHECK(BOOL__G__ProtectLine == true);
         {
             uint32_t uint32_t__applied = 0u;
 
@@ -682,62 +645,33 @@ int main(void)
                                             &uint32_t__applied) == true);
         }
 
-        /* [EN] Mains returns: the budget is handed back and the path may come
-              up normally through the input-stability gate.
-           [FA] برق شهر برمی‌گردد: سقف تلاش برمی‌گردد و مسیر از گیت عادی. */
+        /* [EN] Mains returns: the normal input path brings the output back.
+           [FA] برق شهر برمی‌گردد: مسیر عادی ورودی خروجی را برمی‌گرداند. */
         MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
         MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 26000u;
         (void)func__Step(10u, FAULT_NONE);
-        CHECK(func__Changeover_MainsFreeParked() == false);
+        (void)func__Step(CHANGEOVER_INPUT_STABLE_MS - 1u, FAULT_NONE);
+        (void)func__Step(1u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE);
+        CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_INPUT);
+        CHECK(BOOL__G__ProtectLine == false);
+    }
 
-        /* [EN] The panel reset key also hands the budget back.
-           [FA] کلید ریست پنل هم سقف تلاش را برمی‌گرداند. */
+    /* [EN] The panel reset key hands the attempt back, but the rest floor still
+          decides whether the pack may come back with no mains.
+       [FA] کلید ریست پنل تلاش را برمی‌گرداند، ولی آستانهٔ استراحت همچنان
+          تعیین می‌کند پک بدون برق شهر برگردد یا نه. */
+    {
         func__Reset(1010000u);
         MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
         MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
         func__CutAndVerifyTiming();
         (void)func__Changeover_WeakVerdictReset();
         CHECK(func__Changeover_MainsFreeParked() == false);
-    }
-
-    /* [EN] v1.89: the UI asks this to keep every lamp dark while the load is
-          off with no mains. It must track the real PB11 line, not the verdict.
-       [FA] نسخهٔ ۱٫۸۹: UI این را می‌پرسد تا هنگام قطع بار و نبود برق شهر همهٔ
-          چراغ‌ها خاموش بمانند. باید خودِ خط PB11 را دنبال کند، نه حکم را. */
-    {
-        func__Reset(1020000u);
-        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 24000u;
         (void)func__Step(10u, FAULT_NONE);
-        CHECK(func__Changeover_PathBlocked() == false);
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
-        func__CutAndVerifyTiming();
-        CHECK(func__Changeover_PathBlocked() == true);
-        CHECK(func__Changeover_WeakVerdictActive() == false);   /* [EN] cut != verdict */
-    }
-
-    /* [EN] Wire cut while running with NO mains (decision 2026-10-23): the
-          reading collapses to ~0 V. The board must treat it as an empty pack -
-          cut the path, stay silent, raise NO verdict - because the battery-lost
-          alarm is deliberately input-gated. This is the documented behaviour,
-          pinned so nobody turns it into a surprise alarm later.
-       [FA] قطع سیم باتری حین کار و بدون برق ورودی (تصمیم ۲۰۲۶-۱۰-۲۳): ولتاژ
-          به حدود صفر می‌رسد. برد باید آن را «پک خالی» بداند - مسیر قطع،
-          سکوت، و هیچ حکمی - چون آلارم قطع باتری عمداً فقط با برق ورودی کار
-          می‌کند. این رفتار مستند است و همین‌جا قفل می‌شود تا بعداً به یک
-          آلارم غافلگیرکننده تبدیل نشود. */
-    {
-        func__Reset(1030000u);
-        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
-        (void)func__Step(10u, FAULT_NONE);
-        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 0u;          /* [EN] wire cut */
-        (void)func__Step(10u, FAULT_NONE);
-        CHECK(func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE) == APP_STATE_SAFE);
+        (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS + 1000u, FAULT_NONE);
         CHECK(BOOL__G__ProtectLine == true);
-        CHECK(func__Changeover_PathBlocked() == true);
-        CHECK(func__Changeover_WeakVerdictActive() == false);
-        CHECK(func__Changeover_MainsFreeParked() == false);
     }
 
     /* [EN] The rest floor itself: clamped on both sides, readable back.
