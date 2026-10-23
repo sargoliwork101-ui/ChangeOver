@@ -426,7 +426,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 3808630</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4599f27</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1803,7 +1803,6 @@ const pxt=id=>(typeof PXT!=='undefined'&&PXT[id])?[EVN[id]||((PX[id]||['',''])[0
    تنظیمات (جایی که پیش‌نمایش خط‌چینِ «تایپ‌شده ولی هنوز اعمال‌نشده» ارزش
    دیدن دارد). یک رندرکننده همهٔ محل‌ها را پر می‌کند، پس آن دو هرگز نمی‌توانند
    دو چیز متفاوت بگویند؛ افزودن یا جابه‌جاکردن یک محل فقط مارک‌آپ است. */
-let QLO=0;
 function qgraph(){const MG=document.querySelectorAll('.qgm');
  if(!MG.length||EVOPEN!=null)return;const g=MG[0];
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
@@ -1820,22 +1819,18 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     sits at its true (I, V), so one look says where it is on that path.
     ناحیه‌ها از مقدار نمایشی v می‌آیند؛ مقدار اعمال‌شده d پایهٔ خط و ‎read-back‎ است و
     درخواستِ هنوز-اعمال‌نشده با خط‌چین دیده می‌شود. */
- /* [EN] v1.87 (user order): the voltage axis used to start at a hard
-    11.5 V, so a discharged battery at 11.0 V simply fell off the picture.
-    The floor now follows the LOWEST live battery voltage (minus a small
-    margin) and the Reentry setting, never above 11.5 V. It only widens at
-    once and narrows in 500 mV steps, so the axis cannot flicker every frame.
-    [FA] نسخهٔ ۱.۸۷ (دستور کاربر): کف محور ولتاژ روی ۱۱٫۵ ولت ثابت بود و
-    باتریٔ دشارژشده در ۱۱٫۰ ولت از تصویر بیرون می‌افتاد. حالا کف از پایین‌ترین
-    ولتاژ زندهٔ باتری (منهای کمی حاشیه) و تنظیم Reentry پیروی می‌کند و هرگز
-    بالاتر از ۱۱٫۵ ولت نمی‌رود. محور فقط فوری باز می‌شود و پله‌پله (۵۰۰
-    میلی‌ولت) جمع می‌شود تا هر فریم نلرزد. */
- const _liveV=(D&&D.t)?[D.t[17],D.t[18]].filter(v=>typeof v==='number'&&v>=2000):[];
- const _wantLo=Math.max(7600,Math.round((Math.min(Number.isFinite(q.r.v)?q.r.v:12000,12000,
-   ...(_liveV.length?[_liveV[0]-300,Math.min(_liveV[0],_liveV[_liveV.length-1])-300]:[]))-500)/100)*100);
- if((!QLO)||(_wantLo<QLO))QLO=_wantLo;
- else if(_wantLo>QLO+1200)QLO=Math.min(_wantLo,QLO+500);
- const lo=QLO,hi=15060,W=760,H=420,X0=48,X1=742;
+ /* [EN] v1.91 (user order 2026-10-23): the voltage axis is pinned at a
+    FIXED 10.0 V floor - no auto-floor and no slow narrowing. The v1.87
+    auto-floor still hid a pack below 11.5 V on the user's panel, and a
+    moving axis also makes two readings impossible to compare. 10.0 V keeps
+    a fully discharged 12 V battery on the picture and the scale steady; the
+    top stays 15.06 V.
+    [FA] نسخهٔ ۱.۹۱ (دستور کاربر ۲۰۲۶-۱۰-۲۳): کف محور ولتاژ روی ۱۰٫۰ ولت
+    ثابت شد - نه کف خودکار و نه جمع‌شدن پله‌پله. کف خودکارِ نسخهٔ ۱.۸۷ هم
+    باتریِ زیر ۱۱٫۵ ولت را روی پنل کاربر نشان نمی‌داد و محورِ متحرک مقایسهٔ دو
+    خواندن را هم سخت می‌کرد. ۱۰٫۰ ولت باتریِ کاملاً خالی ۱۲ ولتی را در تصویر
+    نگه می‌دارد و مقیاس ثابت می‌ماند؛ سقف همان ۱۵٫۰۶ ولت است. */
+ const lo=10000,hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
  /* [EN] Responsive SVG: preserve the plot's natural aspect ratio while fitting
     the actual mount width. Counter-scale labels for narrow and wide screens.

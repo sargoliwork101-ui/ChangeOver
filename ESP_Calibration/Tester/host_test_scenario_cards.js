@@ -758,10 +758,15 @@ function testImbalance(win, doc) {
               clr ? clr.textContent.slice(0, 60) : 'no .clr strip');
     }
 
-    /* [EN] The charge/PID voltage axis used to be pinned at 11.5 V. */
-    check(calSrc.includes('let QLO=0') && calSrc.includes('_wantLo') &&
-          calSrc.indexOf('Math.max(7600,Math.min(q.r.v,12000)-500)') < 0,
-          'the voltage axis follows the live battery voltage, not a fixed 11.5 V');
+    /* [EN] v1.91 (user order 2026-10-23): the charge/PID voltage axis is
+          pinned at a fixed 10.0 V floor - the v1.87 auto-floor still hid a
+          pack below 11.5 V, and a moving axis cannot be compared across two
+          readings.
+       [FA] نسخهٔ ۱.۹۱: کف محور ولتاژ روی ۱۰٫۰ ولت ثابت است؛ کف خودکارِ
+          نسخهٔ ۱.۸۷ هم باتریِ زیر ۱۱٫۵ ولت را پنهان می‌کرد. */
+    check(calSrc.includes('const lo=10000,hi=15060') &&
+          calSrc.indexOf('QLO') < 0 && calSrc.indexOf('_wantLo') < 0,
+          'the voltage axis is pinned at a fixed 10.0 V floor, so a discharged pack stays visible');
 
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&
