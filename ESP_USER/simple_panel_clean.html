@@ -1083,6 +1083,7 @@ function renderLeds(){
  let isTech=(fault & FAULT_TECH)!==0;
  let isBatLost=(fault & FAULT_BAT_LOST)!==0;
  let isImbLatched=(fl2 & 0x02)!==0;
+ let isWeak=(fl2 & 0x10)!==0; /* بیت ۰x۱۰ = حکم باتری ضعیف سناریوی ۸ */
  let isDead=(deadMask!==0);
  let isCritical=(!inputPresent && stablePct<1);
  let scn='';
@@ -1091,6 +1092,7 @@ function renderLeds(){
  else if(isBatLost) scn='batlost';
  else if(isDead) scn='dead';
  else if(isImbLatched) scn='imb';
+ else if(isWeak) scn='weak';
  else if(!inputPresent){ scn=isCritical?'crit':'batt'; }
  else { if(lastData.fullActive) scn='full'; else if(thermalRest) scn='thermal'; else if(!charging) scn='inputok'; else scn='charging'; }
  resetBlinksIfScenarioChanged(scn);
@@ -1099,6 +1101,7 @@ function renderLeds(){
  else if(scn==='batlost'){ g.classList.add('on-green'); if(updRedBlink(1000,50)) r.classList.add('on-red'); }
  else if(scn==='dead'){ r.classList.add('on-red'); }
  else if(scn==='imb'){ if(updRedBlink(1000,50)) r.classList.add('on-red'); }
+ else if(scn==='weak'){ if(updRedBlink(500,50)) r.classList.add('on-red'); }
  else if(scn==='crit'){ }
  else if(scn==='batt'){ if(updGreenBlink(stablePct)) g.classList.add('on-green'); }
  else if(scn==='full' || scn==='inputok'){ g.classList.add('on-green'); }
@@ -1498,6 +1501,7 @@ function render(data){
  let fl=data.fl||0, fl2=data.fl2||0;
  let isImbLatched=((fl2 & 0x02)!==0); /* بیت دوم = قفل دائمی عدم‌توازن */
  let isImbEpisode=((fl2 & 0x01)!==0); /* بیت اول = اپیزود جاری عدم‌توازن */
+ let isWeak=((fl2 & 0x10)!==0); /* بیت ۰x۱۰ = حکم باتری ضعیف سناریوی ۸ */
  let isDead=(deadMask!==0);
  let deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
  let inpInfo=updInputState(vIn, data.inputPresent);
@@ -1577,6 +1581,7 @@ function render(data){
   let sameState=(ch1==ch2);
   if(isDead){ setTxt('imbBox','قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'); setCls(ib,'imb show err'); }
   else if(isImbLatched){ setTxt('imbBox','قفل دائمی - باتری را تعویض کنید'); setCls(ib,'imb show err'); }
+  else if(isWeak){ setTxt('imbBox','حکم باتری ضعیف - مسیر باتری بسته مانده تا باتری سالم شود'); setCls(ib,'imb show err'); }
   else if(isImbEpisode){ setTxt('imbBox','عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت'); setCls(ib,'imb show'); }
   else if(!charging && sameState && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
   else { setCls(ib,'imb'); setTxt('imbBox',''); }
@@ -1599,6 +1604,7 @@ function render(data){
  else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد ۲۸ ولت'; }
  else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; }
  else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری را تعویض کنید'; }
+ else if(isWeak){ stTxt='باتری ضعیف'; ssTxt='حکم قفل است - باتری بار را تحمل نمی‌کند'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='حکم باتری ضعیف: مسیر باتری بسته مانده؛ با شارژ و استراحت سالم خودش پاک می‌شود'; }
  else if(!inputPresent){
   let charging=(s1==1||s1==2||s2==1||s2==2);
   let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);

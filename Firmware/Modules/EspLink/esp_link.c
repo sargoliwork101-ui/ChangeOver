@@ -134,6 +134,13 @@ static bool     BOOL__G__WifiBatCutoffLatched = false;
 #define ESPLINK_TLM_FLAG2_IMBAL_LATCHED   0x02u
 #define ESPLINK_TLM_FLAG2_IMBAL_BLOCK_OUT 0x04u
 #define ESPLINK_TLM_FLAG2_IMBAL_NO_CHARGE 0x08u
+/* [EN] v1.86: the scenario-8 weak-battery verdict is latched on the board.
+ *      The panel draws its own red-blinking lamp with this bit; without it
+ *      the user could only see the face on the LEDs, never in the browser.
+ * [FA] نسخهٔ ۱٫۸۶: حکم باتری ضعیف سناریوی ۸ روی برد قفل است. پنل چراغ قرمز
+ *      چشمک‌زن خودش را با همین بیت می‌کشد؛ بدون آن کاربر چهره را فقط روی
+ *      LEDها می‌دید، نه در مرورگر. */
+#define ESPLINK_TLM_FLAG2_WEAK_LATCHED    0x10u
 
 /* ==================== Byte packing / بسته‌بندی بایت ==================== */
 
@@ -1136,6 +1143,16 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
             {
                 uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_IMBAL_NO_CHARGE;
             }
+        }
+#endif
+#if MODULE_CHANGEOVER && !defined(ESPLINK_HOST_TEST)
+        /* [EN] Scenario 8: one bit is enough for the panel - the verdict is a
+         *      latch, and its cause/route live in the scenario-8 card.
+         * [FA] سناریوی ۸: یک بیت برای پنل کافی است - حکم یک قفل است و
+         *      علت و مسیرش در کارت سناریوی ۸ است. */
+        if (func__Changeover_WeakVerdictActive() != false)
+        {
+            uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_WEAK_LATCHED;
         }
 #endif
         UINT8_T__A__Payload[uint16_t__cursor] = uint8_t__imbalanceFlags;

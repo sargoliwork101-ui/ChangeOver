@@ -523,6 +523,35 @@ function main() {
                 check(shownCard() === "7", "and that click shows card 7", shownCard());
             }
 
+            /* [EN] v1.86 scenario 8: the weak-battery verdict has its own
+                   always-mounted lamp in the same bar, and its card says in
+                   words whether the battery path is being held cut.
+               [FA] سناریوی ۸: حکم باتری ضعیف چراغ همیشه‌سوار خودش را در همان
+                   نوار دارد و کارتش با جمله می‌گوید مسیر باتری بسته مانده یا نه. */
+            w.D.fl2 = 0; w.D.p[157] = 1;
+            w.draw(w.D);
+            const weakOff = chipWith("باتری ضعیف");
+            check(!!weakOff && weakOff.className.indexOf("tgk r") < 0 &&
+                  weakOff.getAttribute("onclick") === "errjmp(8)",
+                  "a healthy board keeps the weak-battery lamp green and routed to card 8",
+                  weakOff ? weakOff.className : "no chip");
+            w.D.fl2 = 16; w.D.fl = 0;
+            w.draw(w.D);
+            const weak = chipWith("باتری ضعیف");
+            check(!!weak && weak.className.indexOf("tgk r") >= 0,
+                  "fl2 bit 0x10 turns the weak-battery lamp red",
+                  weak ? weak.className : "no chip");
+            const wbTxt = d.getElementById("wbst");
+            check(!!wbTxt && wbTxt.textContent.indexOf("قفل است") >= 0 &&
+                  wbTxt.className.indexOf("r") >= 0,
+                  "the scenario-8 card states the latch in words, not just a colour",
+                  wbTxt ? wbTxt.textContent : "no line");
+            if (weak) {
+                weak.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                check(shownCard() === "8", "and the lamp opens card 8", shownCard());
+            }
+            w.D.fl2 = 0;
+
             w.D.t[19] = 0; w.D.fl2 = 1;
             w.draw(w.D);
             const epi = chipWith("عدم‌توازن");

@@ -532,7 +532,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 71b2ddb</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 003d227</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1060,6 +1060,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <label>تعداد بوق در هر الگو<input type="number" id="q155" step="1" min="0" max="10"><span class="lb" id="a155"></span></label>
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q156" step="10" min="0" max="5000"><span class="lb" id="a156"></span></label>
 </div>
+<div class="prod">وضعیت حکم: <b id="wbst"></b></div>
 <div class="c4n" id="s8v"></div>
 <div class="bqr"><button class="sb sb2 fwb" onclick="wbdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۸</button></div>
 </div>
@@ -1196,7 +1197,7 @@ function pendRestore(){
   if(!saved||typeof saved!=='object'||Array.isArray(saved))return;
   for(const id of Object.keys(saved)){
    if(!/^\d+$/.test(id)||!Number.isFinite(+saved[id]))continue;
-   const n=+id;if(n<0||n>146)continue;PEND[n]=saved[id];
+   const n=+id;if(n<0||n>(PN-1))continue;PEND[n]=saved[id];
    const e=pctrl(n);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!saved[id];else e.value=saved[id];}
    const a=$('a'+n);if(a)a.textContent='در صف';
   }
@@ -2974,6 +2975,16 @@ function sall(){
    stxt('s7v','بوق مستقل خطای فنی: '+(bp===0?'خاموش':(bw.fits?bc+' بوق × '+bl+' میلی‌ثانیه + '+(bc>1?bg*(bc-1):0)+' میلی‌ثانیه مجموع گپ‌ها ('+bg+' بین هر بوق)، هر '+sms(bp)+' ('+bp+' میلی‌ثانیه)': '⚠ الگو در دوره جا نمی‌شود'))+
    ' · سه LED هم‌زمان: '+Math.round(lp*ld/100)+' میلی‌ثانیه روشن / '+Math.round(lp*(100-ld)/100)+' میلی‌ثانیه خاموش، هر '+lp+' میلی‌ثانیه ('+ld+'٪ duty) · q137..q142 مستقل از سناریوهای ۵ و ۶.');
  }
+ /* [EN] v1.86 scenario 8: its own face and its own recovery windows.
+    [FA] سناریوی ۸: چهره و پنجره‌های بازیابی کاملاً مستقل خودش. */
+ {const bp=c4v(153,3000),bl=c4v(154,200),bc=c4v(155,3),bg=c4v(156,100),
+       bw=swin(bp,bl,bc,bg),lp=c4v(151,500),ld=c4v(152,50);
+   stxt('s8v','حکم وقتی قفل می‌شود که بعد از وصلِ بدون برق شهر، داخل '+sms(c4v(149,60000))+' دوباره قطع شود، یا باتری '+sms(c4v(150,10000))+' پیوسته سالم نماند'+
+   ' · پاک‌شدن فقط با خاموش‌کردن حکم یا '+sms(c4v(148,600000))+' ولتاژ سالمِ پیوسته، و بعد فقط یک بار تلاش مجدد'+
+   ' · قرمز: '+Math.round(lp*ld/100)+' میلی‌ثانیه روشن / '+Math.round(lp*(100-ld)/100)+' میلی‌ثانیه خاموش، هر '+lp+' میلی‌ثانیه ('+ld+'٪ duty)'+
+   ' · بوق: '+(bp===0?'خاموش':(bw.fits?bc+' بوق × '+bl+' میلی‌ثانیه + '+(bc>1?bg*(bc-1):0)+' میلی‌ثانیه مجموع گپ‌ها ('+bg+' بین هر بوق)، هر '+sms(bp):'⚠ الگو در دوره جا نمی‌شود'))+
+   ' · تا پاک‌شدن حکم '+(c4v(157,1)?'مسیر باتری بسته می‌ماند':'فقط هشدار است')+' · q147..q157 مستقل از سناریوهای ۵، ۶ و ۷.');
+ }
 }
 /* [EN] Alarm edits use only each field's own firmware range as a hard
    gate. Cross-field messages remain advisory; they never erase or veto a
@@ -3164,12 +3175,19 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
     تنظیمات همان سناریو را باز می‌کند؛ اپیزود عدم‌توازن تا وقتی جریان دارد یک
     چراغ زرد اضافه می‌کند. */
  const deadNow=((t[28]|0)!==0), techNow=(((t[19]|0)&128)!==0);
+ /* [EN] v1.86 scenario 8: the board packs the weak-battery verdict into bit
+          0x10 of the same status byte the imbalance bits use, so the panel can
+          show the latch without a GET.
+    [FA] نسخهٔ ۱٫۸۶ سناریوی ۸: برد حکم باتری ضعیف را در بیت ۰x۱۰ همان بایت
+          وضعیت سناریوی ۵ می‌فرستد تا پنل قفل را بدون GET نشان دهد. */
+ const weakNow=(((d.fl2|0)&16)!==0);
  const epiNow=((((d.fl2|0)&1)!==0)&&(((d.fl2|0)&2)===0));
- const dash=u=>' · برای تنظیمات سناریو '+['','۱','۲','۳','۴','۵','۶','۷'][u]+' کلیک کنید';
+ const dash=u=>' · برای تنظیمات سناریو '+['','۱','۲','۳','۴','۵','۶','۷','۸'][u]+' کلیک کنید';
  const flip=(txt,on,u,tipOn,tipOff)=>'<button type="button" class="tg tgk '+(on?'r':'g')+'" title="'+(on?tipOn:tipOff)+dash(u)+'" onclick="errjmp('+u+')">'+txt+'</button>';
  $('fl').innerHTML=
   flip('باتری خراب',deadNow,6,'قفل دائمی — باتری خراب حکم شده، تعویضش کنید','باتری خرابی حکم نشده')
   +flip('خطای فنی برد',techNow,7,'خرابی طبقهٔ قدرت شارژر — تا ریست قفل است','خطای فنی ثبت نشده')
+  +flip('باتری ضعیف',weakNow,8,'حکم باتری ضعیف قفل است — مسیر باتری بسته مانده تا باتری سالم شود','حکم باتری ضعیف قفل نیست')
   +(epiNow?'<button type="button" class="tg tgk y" title="اختلاف دو نیم‌پک از حد گذشته و اپیزود در حال ثبت است'+dash(5)+'" onclick="errjmp(5)">عدم‌توازن در جریان</button>':'')
   +F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')
   +(man?'<span class="tg y">مود دستی</span>':'');
@@ -3192,6 +3210,19 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const b117=p[117]==null?1:p[117],bt=document.getElementById('ib117');
   if(!(117 in PEND)){if(bt&&document.activeElement!==bt)bt.checked=!!b117;
    if($('a117'))$('a117').textContent=b117?'الان روشن است: باتریِ قفل‌شده نه شارژ می‌شود و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژ قطع می‌شود و باتریِ قفل‌شده همچنان بار را تغذیه می‌کند (ریسکش با شماست).';}}
+ /* [EN] v1.86 scenario-8 live face: the verdict is a latch, so the card shows
+         whether the board is holding it right now and what that means for the
+         load. The LED/beep shape is summarised separately in s8v.
+   [FA] چهرهٔ زندهٔ سناریوی ۸: حکم یک قفل است، پس کارت نشان می‌دهد برد همین
+         حالا آن را نگه داشته یا نه و این برای بار چه معنایی دارد. */
+ if($('wbst')){
+  const wbOn=weakNow, wbBlock=(p[157]==null?1:p[157])!==0;
+  const wbIn=(d.fl|0)&2;   /* bit 1 = mains input present */
+  $('wbst').textContent=wbOn
+   ?('قفل است — '+(wbBlock?'مسیر باتری بسته است و بار روی باتری ضعیف نمی‌رود':'فقط هشدار است؛ مسیر باتری باز است')+(wbIn?' · برق شهر برگشته ولی حکم پاک نشده':' · تا استراحتِ سالمِ پیوسته پاک نمی‌شود'))
+   :'قفل نیست — باتری ضعیف حکم نشده';
+  $('wbst').className='tg '+(wbOn?'r':'g');
+ }
  /* ‎v1.72 scenario-6 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
  if($('dbst')){const dm=t[28]==null?0:t[28],lim=p[125]==null?86400000:p[125];
   /* v1.76: t[29] = شارژ پیوستهٔ کانال ۱ و t[30] = کانال ۲ (ثانیه) — هر باتری ساعت خودش */

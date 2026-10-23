@@ -139,7 +139,7 @@ function testStructure(win, doc) {
     check(missing.length === 0, 'every scenario id has an input', 'missing: ' + missing.join(','));
     check(duplicated.length === 0, 'no scenario id is duplicated', 'duplicated: ' + duplicated.join(','));
 
-    for (let card = 1; card <= 7; card += 1) {
+    for (let card = 1; card <= 8; card += 1) {
         doc.querySelector('#usel button[data-u="' + card + '"]').click();
         check(doc.getElementById('ucard' + card).style.display === '', 'card ' + card + ' opens');
     }
@@ -147,15 +147,21 @@ function testStructure(win, doc) {
     /* [EN] Each card must carry the "when does this come?" block and the
        numbered sections - that is the shape the user asked for.
        [FA] هر کارت باید جعبهٔ «کِی می‌آید؟» و بخش‌های شماره‌دار را داشته باشد. */
-    for (let card = 1; card <= 7; card += 1) {
+    for (let card = 1; card <= 8; card += 1) {
         const el = doc.getElementById('ucard' + card);
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
     const factoryButtons = Array.from(doc.querySelectorAll('button')).filter(b =>
         b.textContent.indexOf('بازگردانی پیش‌فرض کارخانه') >= 0);
-    check(factoryButtons.length === 9 && factoryButtons.every(b => b.classList.contains('fwb')),
-          'every settings section gives its factory-reset key the same full-width panel layout');
+    /* [EN] v1.86: one key per scenario (1..8), one for the charge profile,
+       one for the safety monitor and one for the Wi-Fi page - 11 in total.
+       [FA] نسخهٔ ۱٫۸۶: یک کلید برای هر سناریو (۱..۸) و یکی برای پروفایل
+       شارژ، یکی برای نظارت و ایمنی و یکی برای صفحهٔ وای‌فای - جمعاً ۱۱. */
+    check(factoryButtons.length === 11 && factoryButtons.every(b => b.classList.contains('fwb')),
+          'every settings section gives its factory-reset key the same full-width panel layout',
+          'found ' + factoryButtons.length + ' keys: ' +
+          factoryButtons.map(b => b.textContent.trim()).join(' | '));
     check(factoryButtons.every(b => b.classList.contains('sb2')),
           'all factory-reset keys use the panel secondary-button theme');
     /* The standalone simulator launch card was intentionally removed; the
@@ -2288,16 +2294,21 @@ function testWifiPowerSaveTab(win, doc) {
 
     /* pendRestore() must restore numeric parameter IDs from localStorage, and
        draw(D) must not clobber pending checkbox states ib117 / db127. */
-    win.localStorage.setItem('changeover-pending-params-v1', JSON.stringify({ '25': 700, '117': 0, '127': 1 }));
+    win.localStorage.setItem('changeover-panel-pending-v1', JSON.stringify({ '25': 700, '117': 0, '127': 1, '157': 0 }));
     win.pendRestore();
     const ib117 = doc.getElementById('ib117');
     const db127 = doc.getElementById('db127');
+    const cb157 = doc.getElementById('cb157');
     check(win.eval('PEND')[25] === 700 &&
           win.eval('PEND')[117] === 0 &&
           win.eval('PEND')[127] === 1 &&
+          win.eval('PEND')[157] === 0 &&
           ib117.checked === false &&
-          db127.checked === true,
-          'pendRestore() restores numeric parameter IDs and checkbox states from localStorage');
+          db127.checked === true &&
+          cb157.checked === false,
+          'pendRestore() restores numeric parameter IDs and checkbox states from localStorage',
+          'PEND=' + JSON.stringify({ 25: win.eval('PEND')[25], 117: win.eval('PEND')[117], 127: win.eval('PEND')[127] }) +
+          ' ib117=' + ib117.checked + ' db127=' + db127.checked);
     win.draw(win.D);
     check(ib117.checked === false &&
           db127.checked === true &&
