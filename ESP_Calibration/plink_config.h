@@ -114,7 +114,7 @@
          شکل بوق باند ۲، ۱۲۳..۱۲۴ cadence چراغ عدم‌توازن، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵
          سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵، ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد
          و ۱۴۳..۱۴۶ تنظیمات وای‌فای و مصرف باتری. */
-#define ESP_PARAM_COUNT            165u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; 143..146 own Wi-Fi power saving. v1.87 appends 158..164 = the per-scenario LED/beep enable ticks (scenarios 1..7). / [FA] نسخه ۱٫۸۵ با ۱۴۶ تمام می‌شد؛ نسخهٔ ۱٫۸۷ شناسه‌های ۱۵۸..۱۶۴ (تیک هشدار سناریوهای ۱..۷) را اضافه می‌کند. */
+#define ESP_PARAM_COUNT            166u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; 143..146 own Wi-Fi power saving. v1.87 appends 158..164 = the per-scenario LED/beep enable ticks (scenarios 1..7). / [FA] نسخه ۱٫۸۵ با ۱۴۶ تمام می‌شد؛ نسخهٔ ۱٫۸۷ شناسه‌های ۱۵۸..۱۶۴ (تیک هشدار سناریوهای ۱..۷) را اضافه می‌کند. */
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
 
@@ -224,7 +224,8 @@
     "#            tech_beep_count,tech_beep_gap_ms,tech_led_per_ms,tech_led_duty,\n" \
     "#            wifi_idle_low_pwr_ms,wifi_cycle_on_ms,wifi_cycle_off_ms,wifi_bat_cutoff_pct\n" \
     "#  [settings9] wb_en,wb_rest_ms,wb_guard_ms,wb_hold_ms,wb_led_per,wb_led_duty,\n" \
-    "#            wb_beep_per,wb_beep_ms,wb_beep_cnt,wb_beep_gap,wb_block_out\n" \
+    "#            wb_beep_per,wb_beep_ms,wb_beep_cnt,wb_beep_gap,wb_block_out,\n" \
+    "#            wb_rest_floor_mv\n" \
     "#  [settings10] scn1_alarm,scn2_alarm,scn3_alarm,scn4_alarm,\n" \
     "#            scn5_alarm,scn6_alarm,scn7_alarm\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \

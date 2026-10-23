@@ -2233,7 +2233,17 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
           سناریوهای عادی): باتری بار را تحمل نکرد و حالا استراحت می‌کند.
           قرمز چشمک‌زن + الگوی بوق خودش، و تا وقتی Changeover حکم را نگه دارد
           همین چهره می‌ماند. */
-    if (func__Changeover_WeakVerdictActive() != false)
+    /* [EN] v1.88 (user order 2026-10-23): the verdict is about running on the
+          BATTERY. While the mains is back and the pack is charging, the panel
+          shows the normal charge face; the verdict, the quiet-rest timer and
+          the blocked battery path all stay exactly as they are, and the face
+          returns the moment the mains drops again.
+       [FA] نسخهٔ ۱٫۸۸ (دستور کاربر ۲۰۲۶-۱۰-۲۳): حکم مربوط به کار روی
+          «باتری» است. تا وقتی برق شهر برگشته و پک شارژ می‌شود، چهرهٔ شارژ
+          عادی نشان داده می‌شود؛ حکم و تایمر استراحت و بسته‌بودن مسیر باتری
+          همان‌جا می‌مانند و به‌محض قطع برق شهر چهره برمی‌گردد. */
+    if ((func__Changeover_WeakVerdictActive() != false) &&
+        (measurement_snapshot_t__snap->input_present == false))
     {
         func__Ui_ScenarioWeakBattery_Tick();
         return;

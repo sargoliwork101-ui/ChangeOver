@@ -159,6 +159,29 @@ void func__Changeover_Init(void);
  *         [FA] ۰/۱، پیش‌فرض ۱: تا وقتی حکم برجاست مسیر باتری بسته بماند (بار روی باتری ضعیف نرود). */
 #define CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT    157u
 
+/** @brief [EN] mV, def 25000, 21200..29000: resting voltage the pack must hold before a
+ *             mains-free reconnect for a re-cut to COUNT AS WEAKNESS. A pack that
+ *             reconnects near-empty (rest 21.2..24.9 V) only proves it has no charge
+ *             left, not that it is worn; a pack that rests at 25 V or more and still
+ *             collapses under the load is the real scenario 8.
+ *         [FA] میلی‌ولت، پیش‌فرض ۲۵۰۰۰، ۲۱۲۰۰..۲۹۰۰۰: ولتاژ استراحتی که پک باید پیش از
+ *             وصلِ بدون برق شهر داشته باشد تا قطعِ دوباره «ضعف» حساب شود. پکی که
+ *             نزدیک خالی (استراحت ۲۱٫۲..۲۴٫۹ ولت) وصل می‌شود فقط ثابت می‌کند شارژ
+ *             ندارد، نه اینکه فرسوده است؛ پکی که ۲۵ ولت یا بیشتر استراحت می‌کند و باز
+ *             زیر بار فرو می‌ریزد، همان سناریوی ۸ واقعی است. */
+#define CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV   165u
+
+/* [EN] Retry budget (user decision 2026-10-23, second order): a mains-free
+ *      reconnect that ends in a cut inside the cycle-guard window is one FAILED
+ *      ATTEMPT. After three of them, with no mains in between, the battery path
+ *      stays parked until the mains returns - an empty pack must not be put back
+ *      on the load over and over.
+ *      [FA] سقف تلاش (تصمیم کاربر ۲۰۲۶-۱۰-۲۳): وصلِ بدون برق شهری که داخل پنجرهٔ
+ *      محافظ چرخه به قطع برسد یک «تلاش ناموفق» است. بعد از سه تلاش و بدون
+ *      برگشت برق شهر، مسیر باتری تا برگشت برق شهر بسته می‌ماند - پک خالی نباید
+ *      پشت سر هم روی بار گذاشته شود. */
+#define CHANGEOVER_MAINS_FREE_RETRY_BUDGET    3u
+
 /* [EN] Runtime command slot (not a user parameter): write 0 here through the
  *      link to drop the scenario-8 verdict right away, exactly like the
  *      scenario-5/6 reset keys. It is never persisted and never drawn as a
@@ -169,9 +192,13 @@ void func__Changeover_Init(void);
  */
 #define CHANGEOVER_SLOT_WEAK_RESET_ID         204u
 
+/* [EN] 0xFF marks "not a scenario-8 parameter" inside the slot mapping.
+ *      [FA] مقدار ۰xFF یعنی «شناسهٔ سناریوی ۸ نیست» در نگاشت جای جدول. */
+#define CHANGEOVER_PARAM_INDEX_INVALID        0xFFu
+
 #define CHANGEOVER_PARAM_FIRST_ID             CHANGEOVER_PARAM_WEAK_ENABLE
-#define CHANGEOVER_PARAM_LAST_ID              CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT
-#define CHANGEOVER_PARAM_COUNT                11u
+#define CHANGEOVER_PARAM_LAST_ID              CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV
+#define CHANGEOVER_PARAM_COUNT                12u
 
 /* ==================== Scenario 8 defaults / پیش‌فرض‌های سناریوی ۸ ==================== */
 
@@ -186,6 +213,7 @@ void func__Changeover_Init(void);
 #define CHANGEOVER_DEF_WEAK_BEEP_COUNT        3u
 #define CHANGEOVER_DEF_WEAK_BEEP_GAP_MS       100u
 #define CHANGEOVER_DEF_WEAK_BLOCK_OUTPUT      1u
+#define CHANGEOVER_DEF_WEAK_REST_FLOOR_MV     25000u
 
 /* ==================== Scenario 8 live parameters / پارامترهای زندهٔ سناریوی ۸ ==================== */
 
@@ -219,6 +247,13 @@ bool func__Changeover_GetParam(uint8_t uint8_t__paramId,
  * @return bool [EN] true while latched / هنگام قفل‌بودن true
  */
 bool func__Changeover_WeakVerdictActive(void);
+
+/**
+ * @brief  [EN] Is the mains-free reconnect parked because the retry budget is spent?
+ *         [FA] آیا وصلِ بدون برق شهر به‌خاطر تمام‌شدن سقف تلاش پارک شده است؟
+ * @return bool [EN] true while parked / هنگام پارک true
+ */
+bool func__Changeover_MainsFreeParked(void);
 
 /**
  * @brief  [EN] Drop the scenario-8 verdict now (panel reset key, slot 204).

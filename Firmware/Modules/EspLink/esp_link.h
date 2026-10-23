@@ -538,6 +538,7 @@
 #define ESPLINK_PARAM_WEAK_BEEP_COUNT         155u  /* u8,  count, def 3, 0..10 */
 #define ESPLINK_PARAM_WEAK_BEEP_GAP_MS        156u  /* u32, ms, def 100, 0..5000 */
 #define ESPLINK_PARAM_WEAK_BLOCK_OUTPUT       157u  /* u8,  0/1, def 1, keep the weak pack off the output */
+#define ESPLINK_PARAM_WEAK_REST_FLOOR_MV      165u  /* u32, mV, def 25000, 21200..29000, rest voltage that makes a re-cut count as weakness */
 
 /* [EN] ids 0..157 are ordinary parameters; 132/133 shape the imbalance
    beep, 134/135 shape the dead-battery beep, 136 controls the number of
@@ -565,7 +566,7 @@
 #define ESPLINK_PARAM_SCN6_ALARM               163u  /* u8, 0/1, def 1, scenario 6 LED/beep */
 #define ESPLINK_PARAM_SCN7_ALARM               164u  /* u8, 0/1, def 1, scenario 7 LED/beep */
 
-#define ESPLINK_PARAM_COUNT               165u
+#define ESPLINK_PARAM_COUNT               166u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

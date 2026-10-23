@@ -130,6 +130,22 @@ static bool BOOL__G__MainsFreeReconnectDone = false;
  */
 static bool BOOL__G__WeakVerdict = false;
 static uint32_t UINT32_T__G__WeakVerdictTick = 0u;
+/* [EN] v1.88 (second user order 2026-10-23): an empty pack is not a weak pack.
+ *      The rest peak is the highest voltage the pack held while the load was
+ *      OFF before the last mains-free reconnect; the verdict only latches when
+ *      that rest peak reached CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV. The failed
+ *      attempt counter bounds the reconnect/cut cycle for an empty pack, and
+ *      once the budget is spent the path stays parked until the mains returns.
+ *      [FA] نسخهٔ ۱٫۸۸ (دستور دوم کاربر): پک خالی با پک فرسوده یکی نیست.
+ *      «اوج استراحت» بالاترین ولتاژی است که پک هنگام خاموش‌بودن بار و پیش از
+ *      آخرین وصلِ بدون برق شهر داشته؛ حکم فقط وقتی قفل می‌شود که این اوج به
+ *      آستانهٔ استراحت رسیده باشد. شمارندهٔ تلاش‌های ناموفق هم چرخهٔ وصل/قطع
+ *      پک خالی را محدود می‌کند و با تمام‌شدن سقف، مسیر تا برگشت برق شهر بسته
+ *      می‌ماند. */
+static uint32_t UINT32_T__G__RestPeakMv = 0u;
+static uint32_t UINT32_T__G__LastRestPeakMv = 0u;
+static uint8_t UINT8_T__G__MainsFreeFailCount = 0u;
+static bool BOOL__G__MainsFreeParked = false;
 
 /* ==================== Scenario-8 parameter table / جدول پارامتر سناریوی ۸ ==================== */
 
@@ -149,7 +165,8 @@ static const uint32_t UINT32_T__G__WeakParamDefault[CHANGEOVER_PARAM_COUNT] =
     CHANGEOVER_DEF_WEAK_BEEP_LEN_MS,
     CHANGEOVER_DEF_WEAK_BEEP_COUNT,
     CHANGEOVER_DEF_WEAK_BEEP_GAP_MS,
-    CHANGEOVER_DEF_WEAK_BLOCK_OUTPUT
+    CHANGEOVER_DEF_WEAK_BLOCK_OUTPUT,
+    CHANGEOVER_DEF_WEAK_REST_FLOOR_MV
 };
 
 /**
@@ -164,6 +181,37 @@ static uint32_t UINT32_T__G__WeakParamLive[CHANGEOVER_PARAM_COUNT];
 static bool BOOL__G__WeakParamSeeded = false;
 
 /* ==================== Scenario-8 parameter plumbing / مسیر پارامتر سناریوی ۸ ==================== */
+
+/**
+ * @brief  [EN] Map a scenario-8 id to its slot in the live table.
+ *              v1.88: the ids are NOT contiguous any more - 147..157 are the
+ *              original eleven and 165 is the rest floor appended after the
+ *              v1.87 alarm ticks 158..164 - so the slot cannot be computed by
+ *              subtracting the first id any more. A wrong mapping here would
+ *              write the floor into another parameter's slot.
+ *         [FA] نگاشت شناسهٔ سناریوی ۸ به جایش در جدول زنده. از نسخهٔ ۱٫۸۸
+ *              شناسه‌ها پیوسته نیستند: ۱۴۷..۱۵۷ همان یازده تای اول و ۱۶۵
+ *              آستانهٔ استراحت است که بعد از تیک‌های ۱۵۸..۱۶۴ آمده؛ پس دیگر
+ *              نمی‌شود جای آن را با کم‌کردن شناسهٔ اول حساب کرد. نگاشت اشتباه
+ *              مقدار را در جای پارامتر دیگری می‌نوشت.
+ * @‎param  uint8_t__paramId [EN] 147..165‎ / شناسه
+ * @return uint8_t [EN] Slot index, CHANGEOVER_PARAM_INDEX_INVALID when foreign
+ */
+static uint8_t func__Changeover_ParamIndex(uint8_t uint8_t__paramId)
+{
+    if ((uint8_t__paramId >= CHANGEOVER_PARAM_WEAK_ENABLE) &&
+        (uint8_t__paramId <= CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT))
+    {
+        return (uint8_t)(uint8_t__paramId - CHANGEOVER_PARAM_WEAK_ENABLE);
+    }
+
+    if (uint8_t__paramId == CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV)
+    {
+        return 11u;
+    }
+
+    return CHANGEOVER_PARAM_INDEX_INVALID;
+}
 
 /**
  * @brief  [EN] Seed the live table from the compiled defaults on first use.
@@ -256,6 +304,16 @@ static uint32_t func__Changeover_ClampParam(uint8_t uint8_t__paramId, uint32_t u
             if (uint32_t__ret > 5000u) { uint32_t__ret = 5000u; }
             break;
 
+        case CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV:
+            /* [EN] Below the reconnect threshold the floor would be dead text
+               (every reconnect needs 21.2 V anyway), above the charge ceiling
+               no pack could ever qualify.
+               [FA] زیر آستانهٔ وصل، این عدد بی‌اثر است (هر وصل با ۲۱٫۲ ولت
+               شروع می‌شود) و بالای سقف شارژ هیچ پکی واجد شرط نمی‌شود. */
+            if (uint32_t__ret < CHANGEOVER_BAT_RECONNECT_MV) { uint32_t__ret = CHANGEOVER_BAT_RECONNECT_MV; }
+            if (uint32_t__ret > 29000u) { uint32_t__ret = 29000u; }
+            break;
+
         default:
             break;
     }
@@ -271,15 +329,17 @@ static uint32_t func__Changeover_ClampParam(uint8_t uint8_t__paramId, uint32_t u
  */
 static uint32_t func__Changeover_ParamValue(uint8_t uint8_t__paramId)
 {
+    uint8_t uint8_t__index;
+
     func__Changeover_SeedParamsOnce();
 
-    if ((uint8_t__paramId < CHANGEOVER_PARAM_FIRST_ID) ||
-        (uint8_t__paramId > CHANGEOVER_PARAM_LAST_ID))
+    uint8_t__index = func__Changeover_ParamIndex(uint8_t__paramId);
+    if (uint8_t__index == CHANGEOVER_PARAM_INDEX_INVALID)
     {
         return 0u;
     }
 
-    return UINT32_T__G__WeakParamLive[uint8_t__paramId - CHANGEOVER_PARAM_FIRST_ID];
+    return UINT32_T__G__WeakParamLive[uint8_t__index];
 }
 
 /* ==================== Changeover_SetParam ==================== */
@@ -297,21 +357,22 @@ bool func__Changeover_SetParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__appliedValue)
 {
     uint32_t uint32_t__clamped;
+    uint8_t uint8_t__index;
 
     if (uint32_t__appliedValue == NULL)
     {
         return false;
     }
 
-    if ((uint8_t__paramId < CHANGEOVER_PARAM_FIRST_ID) ||
-        (uint8_t__paramId > CHANGEOVER_PARAM_LAST_ID))
+    uint8_t__index = func__Changeover_ParamIndex(uint8_t__paramId);
+    if (uint8_t__index == CHANGEOVER_PARAM_INDEX_INVALID)
     {
         return false;
     }
 
     func__Changeover_SeedParamsOnce();
     uint32_t__clamped = func__Changeover_ClampParam(uint8_t__paramId, uint32_t__value);
-    UINT32_T__G__WeakParamLive[uint8_t__paramId - CHANGEOVER_PARAM_FIRST_ID] = uint32_t__clamped;
+    UINT32_T__G__WeakParamLive[uint8_t__index] = uint32_t__clamped;
     *uint32_t__appliedValue = uint32_t__clamped;
 
     /* [EN] Turning the scenario off must not leave a stale verdict behind.
@@ -341,8 +402,7 @@ bool func__Changeover_GetParam(uint8_t uint8_t__paramId,
         return false;
     }
 
-    if ((uint8_t__paramId < CHANGEOVER_PARAM_FIRST_ID) ||
-        (uint8_t__paramId > CHANGEOVER_PARAM_LAST_ID))
+    if (func__Changeover_ParamIndex(uint8_t__paramId) == CHANGEOVER_PARAM_INDEX_INVALID)
     {
         return false;
     }
@@ -361,6 +421,22 @@ bool func__Changeover_GetParam(uint8_t uint8_t__paramId,
 bool func__Changeover_WeakVerdictActive(void)
 {
     return BOOL__G__WeakVerdict;
+}
+
+/* ==================== Changeover_MainsFreeParked ==================== */
+
+/**
+ * @brief  [EN] Is the mains-free reconnect parked (retry budget spent)?
+ *              True means the battery path stays cut until the mains returns;
+ *              this is the empty-pack guard, NOT the weak-battery verdict.
+ *         [FA] آیا وصلِ بدون برق شهر پارک شده است (سقف تلاش تمام شده)؟ یعنی
+ *              مسیر باتری تا برگشت برق شهر بسته می‌ماند؛ این نگهبانِ پک خالی
+ *              است، نه حکم باتری ضعیف.
+ * @return bool [EN] true while parked / هنگام پارک true
+ */
+bool func__Changeover_MainsFreeParked(void)
+{
+    return BOOL__G__MainsFreeParked;
 }
 
 /* ==================== Changeover_WeakVerdictReset ==================== */
@@ -389,6 +465,14 @@ bool func__Changeover_WeakVerdictReset(void)
     UINT32_T__G__MainsFreeReconnectTick = 0u;
     BOOL__G__HealthyActive = false;
     UINT32_T__G__HealthySinceTick = 0u;
+    /* [EN] The manual reset is also the user's "try again" key: it gives the
+          full retry budget back and un-parks the path.
+       [FA] کلید ریست همان «یک بار دیگر امتحان کن» کاربر است: سقف تلاش را
+          کامل برمی‌گرداند و پارک را برمی‌دارد. */
+    UINT8_T__G__MainsFreeFailCount = 0u;
+    BOOL__G__MainsFreeParked = false;
+    UINT32_T__G__RestPeakMv = 0u;
+    UINT32_T__G__LastRestPeakMv = 0u;
 
     return bool__wasLatched;
 }
@@ -419,6 +503,10 @@ void func__Changeover_Init(void)
     BOOL__G__MainsFreeReconnectDone = false;
     BOOL__G__WeakVerdict = false;
     UINT32_T__G__WeakVerdictTick = 0u;
+    UINT32_T__G__RestPeakMv = 0u;
+    UINT32_T__G__LastRestPeakMv = 0u;
+    UINT8_T__G__MainsFreeFailCount = 0u;
+    BOOL__G__MainsFreeParked = false;
     func__Changeover_SeedParamsOnce();
 
     /* [EN] Keep the path physically cut until the first valid, non-blocked
@@ -525,6 +613,20 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         UINT32_T__G__HealthySinceTick = 0u;
     }
 
+    /* [EN] Rest peak: the highest pack voltage seen while the load was OFF.
+          That is the number a worn pack is judged by - an empty pack rests
+          low, a worn one rests high and still collapses when loaded.
+       [FA] اوج استراحت: بالاترین ولتاژ پک در حالی که بار خاموش است. پک
+          فرسوده با همین عدد سنجیده می‌شود: پک خالی استراحتِ پایین دارد و پک
+          فرسوده استراحتِ بالا ولی زیر بار فرو می‌ریزد. */
+    if (BOOL__G__ChangeoverProtectAsserted == true)
+    {
+        if (measurement_snapshot_t__snap->v_bat24_mv > UINT32_T__G__RestPeakMv)
+        {
+            UINT32_T__G__RestPeakMv = measurement_snapshot_t__snap->v_bat24_mv;
+        }
+    }
+
     /* [EN] Returning mains ends the mains-free bookkeeping, so the next
           outage starts from a clean cycle guard. The scenario-8 verdict is
           deliberately NOT cleared here: the user ordered the verdict to stay
@@ -535,6 +637,12 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     if (measurement_snapshot_t__snap->input_present == true)
     {
         BOOL__G__MainsFreeReconnectDone = false;
+        /* [EN] v1.88: mains also pays the retry budget back and un-parks the
+              battery path, so the next outage starts with three fresh attempts.
+           [FA] نسخهٔ ۱٫۸۸: برق شهر سقف تلاش را برمی‌گرداند و پارک را برمی‌دارد،
+              پس قطع بعدی با سه تلاش تازه شروع می‌شود. */
+        UINT8_T__G__MainsFreeFailCount = 0u;
+        BOOL__G__MainsFreeParked = false;
     }
 
     /* [EN] Snapshot is valid from here - use ONLY allowed fields.
@@ -753,27 +861,59 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
                     BOOL__G__ChangeoverProtectAsserted = true;
 
-                    /* [EN] Scenario 8 latch (user decision 2026-10-23): a cut
-                          that follows a mains-free reconnect inside the
-                          guard window proves the pack cannot carry the load.
-                          The verdict starts the quiet-rest timer and, while
-                          it holds, keeps the path cut and drives the red
-                          blink + beep face.
-                       [FA] قفل سناریوی ۸ (تصمیم کاربر ۲۰۲۶-۱۰-۲۳): قطعی که
-                          داخل پنجرهٔ محافظ بعد از وصلِ بدون برق شهر رخ دهد
-                          یعنی باتری بار را تحمل نمی‌کند. حکم تایمر استراحت را
-                          شروع می‌کند و تا برجا بودنش مسیر بسته می‌ماند و چهرهٔ
-                          قرمز چشمک‌زن + بوق نمایش داده می‌شود. */
+                    /* [EN] v1.88 (second user order 2026-10-23): ONE failed
+                          attempt = a cut inside the guard window after a
+                          mains-free reconnect. The attempt counter is what
+                          stops an EMPTY pack from cycling the relay: after
+                          CHANGEOVER_MAINS_FREE_RETRY_BUDGET failures with no
+                          mains in between, the path stays parked until the
+                          mains returns.
+                          The verdict is a different question and needs one
+                          more proof: the pack must have RESTED at or above
+                          CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV before this
+                          attempt. A pack that rests near empty only shows it
+                          has no charge left - that is not a worn battery and
+                          must not light the weak-battery face.
+                       [FA] نسخهٔ ۱٫۸۸ (دستور دوم کاربر ۲۰۲۶-۱۰-۲۳): یک
+                          تلاش ناموفق = قطعی داخل پنجرهٔ محافظ بعد از وصلِ
+                          بدون برق شهر. همین شمارنده جلوی چرخهٔ رله روی پک
+                          خالی را می‌گیرد: بعد از سقف تلاش و بدون برق شهر،
+                          مسیر تا برگشت برق شهر بسته می‌ماند.
+                          حکم سؤال دیگری است و یک دلیل بیشتر می‌خواهد: پک باید
+                          پیش از این تلاش در ولتاژ آستانهٔ استراحت یا بالاتر
+                          استراحت کرده باشد. پکی که نزدیک خالی استراحت می‌کند
+                          فقط نشان می‌دهد شارژ ندارد - فرسوده نیست و نباید
+                          چهرهٔ باتری ضعیف را روشن کند. */
                     if ((measurement_snapshot_t__snap->input_present == false) &&
                         (BOOL__G__MainsFreeReconnectDone == true) &&
                         ((uint32_t__nowTick - UINT32_T__G__MainsFreeReconnectTick) <
-                         uint32_t__guardTicks) &&
-                        (func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_ENABLE) != 0u) &&
-                        (BOOL__G__WeakVerdict == false))
+                         uint32_t__guardTicks))
                     {
-                        BOOL__G__WeakVerdict = true;
-                        UINT32_T__G__WeakVerdictTick = uint32_t__nowTick;
+                        if (UINT8_T__G__MainsFreeFailCount < 255u)
+                        {
+                            UINT8_T__G__MainsFreeFailCount++;
+                        }
+                        if (UINT8_T__G__MainsFreeFailCount >=
+                            CHANGEOVER_MAINS_FREE_RETRY_BUDGET)
+                        {
+                            BOOL__G__MainsFreeParked = true;
+                        }
+
+                        if ((UINT32_T__G__LastRestPeakMv >=
+                             func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV)) &&
+                            (func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_ENABLE) != 0u) &&
+                            (BOOL__G__WeakVerdict == false))
+                        {
+                            BOOL__G__WeakVerdict = true;
+                            UINT32_T__G__WeakVerdictTick = uint32_t__nowTick;
+                        }
                     }
+
+                    /* [EN] This rest peak belonged to the attempt that just
+                          ended; the next one measures its own.
+                       [FA] این اوج استراحت به تلاشی تعلق داشت که همین حالا
+                          تمام شد؛ تلاش بعدی اوج خودش را می‌سنجد. */
+                    UINT32_T__G__RestPeakMv = 0u;
                 }
                 APP_STATE_T__G__State = APP_STATE_SAFE;
             }
@@ -905,6 +1045,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         }
 
         else if ((BOOL__G__WeakVerdict == false) &&
+                 (BOOL__G__MainsFreeParked == false) &&
                  (BOOL__G__HealthyActive == true) &&
                  ((uint32_t__nowTick - UINT32_T__G__HealthySinceTick) >=
                   uint32_t__healthyHoldTicks))
@@ -964,6 +1105,12 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             {
                 if (BOOL__G__ChangeoverProtectAsserted == true)
                 {
+                    /* [EN] Remember how high the pack rested before the load
+                          came back; the verdict is judged against this.
+                       [FA] یادداشت اینکه پک پیش از برگشت بار چقدر استراحت
+                          کرده بود؛ حکم با همین سنجیده می‌شود. */
+                    UINT32_T__G__LastRestPeakMv = UINT32_T__G__RestPeakMv;
+                    UINT32_T__G__RestPeakMv = 0u;
                     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
                     BOOL__G__ChangeoverProtectAsserted = false;
 

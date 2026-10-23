@@ -589,6 +589,96 @@ int main(void)
         CHECK(uint32_t__applied == 0u);
     }
 
+    /* ---- 6e. v1.88: an EMPTY pack is not a WEAK pack ---- */
+    /* [EN] Second user order 2026-10-23 (after a new battery was flagged): a
+          pack that rests LOW before the mains-free reconnect only proves it
+          has no charge left. It must NOT raise the scenario-8 verdict; the
+          retry budget must park the path after three failed attempts instead
+          of cycling the relay, and returning mains must hand the budget back.
+       [FA] دستور دوم کاربر ۲۰۲۶-۱۰-۲۳ (بعد از آنکه باتری نو «ضعیف» خوانده شد):
+          پکی که پیش از وصلِ بدون برق شهر استراحتِ پایین دارد فقط ثابت می‌کند
+          شارژ ندارد و نباید حکم سناریوی ۸ بزند؛ در عوض سقف تلاش باید بعد از
+          سه تلاش ناموفق مسیر را پارک کند و برگشت برق شهر سقف را برگرداند. */
+    {
+        func__Reset(1000000u);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+        func__CutAndVerifyTiming();
+        CHECK(func__Changeover_MainsFreeParked() == false);
+
+        for (uint8_t uint8_t__attempt = 1u; uint8_t__attempt <= CHANGEOVER_MAINS_FREE_RETRY_BUDGET; uint8_t__attempt++)
+        {
+            /* [EN] The pack rests at 22.0 V: above the reconnect threshold,
+                  far below the 25.0 V weakness floor.
+               [FA] پک روی ۲۲٫۰ ولت استراحت می‌کند: بالای آستانهٔ وصل ولی
+                  خیلی زیر آستانهٔ ۲۵٫۰ ولت ضعف. */
+            MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 22000u;
+            (void)func__Step(10u, FAULT_NONE);
+            (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS, FAULT_NONE);
+            (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+            CHECK(BOOL__G__ProtectLine == false);
+
+            MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+            (void)func__Step(10u, FAULT_NONE);
+            (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+            CHECK(BOOL__G__ProtectLine == true);
+            CHECK(func__Changeover_WeakVerdictActive() == false);
+            if (uint8_t__attempt < CHANGEOVER_MAINS_FREE_RETRY_BUDGET)
+            {
+                CHECK(func__Changeover_MainsFreeParked() == false);
+            }
+        }
+
+        /* [EN] Budget spent: the path stays parked even after a long healthy
+              rest - no more relay cycling on an empty pack.
+           [FA] سقف تمام شد: مسیر حتی بعد از استراحت سالم طولانی بسته
+              می‌ماند و رله روی پک خالی دیگر نمی‌زند. */
+        CHECK(func__Changeover_MainsFreeParked() == true);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 26000u;
+        (void)func__Step(10u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS + 1000u, FAULT_NONE);
+        CHECK(BOOL__G__ProtectLine == true);
+        CHECK(func__Changeover_WeakVerdictActive() == false);
+
+        /* [EN] Mains returns: the budget is handed back and the path may come
+              up normally through the input-stability gate.
+           [FA] برق شهر برمی‌گردد: سقف تلاش برمی‌گردد و مسیر از گیت عادی. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 26000u;
+        (void)func__Step(10u, FAULT_NONE);
+        CHECK(func__Changeover_MainsFreeParked() == false);
+
+        /* [EN] The panel reset key also hands the budget back.
+           [FA] کلید ریست پنل هم سقف تلاش را برمی‌گرداند. */
+        func__Reset(1010000u);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+        func__CutAndVerifyTiming();
+        (void)func__Changeover_WeakVerdictReset();
+        CHECK(func__Changeover_MainsFreeParked() == false);
+    }
+
+    /* [EN] The rest floor itself: clamped on both sides, readable back.
+       [FA] خودِ آستانهٔ استراحت: از دو طرف گیره می‌خورد و خوانده می‌شود. */
+    {
+        uint32_t uint32_t__applied = 0u;
+        uint32_t uint32_t__readBack = 0u;
+
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV, 1000u,
+                                        &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == CHANGEOVER_BAT_RECONNECT_MV);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV, 40000u,
+                                        &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == 29000u);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV,
+                                        CHANGEOVER_DEF_WEAK_REST_FLOOR_MV,
+                                        &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == CHANGEOVER_DEF_WEAK_REST_FLOOR_MV);
+        CHECK(func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_REST_FLOOR_MV,
+                                        &uint32_t__readBack) == true);
+        CHECK(uint32_t__readBack == CHANGEOVER_DEF_WEAK_REST_FLOOR_MV);
+    }
+
 #if MODULE_IMBALANCE
     /* ---- 7. scenario-5 veto: a latched imbalance never reaches the output ---- */
     func__Reset(400000u);

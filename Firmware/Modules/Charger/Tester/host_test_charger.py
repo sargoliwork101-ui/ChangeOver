@@ -822,11 +822,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+165u", ino), "panel ESP_PARAM_COUNT must be 165 (143..146 Wi-Fi + 147..157 scenario 8 + 158..164 v1.87 scenario alarm ticks)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+166u", ino), "panel ESP_PARAM_COUNT must be 166 (v1.88 adds the scenario-8 rest floor 165)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 165 and len(mx.group(1).split(",")) == 165,
-          "panel min/max tables must carry 165 entries (through the v1.87 scenario-alarm tick id 164)")
+    check(mn and mx and len(mn.group(1).split(",")) == 166 and len(mx.group(1).split(",")) == 166,
+          "panel min/max tables must carry 166 entries (through the v1.88 scenario-8 rest floor id 165)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -901,8 +901,8 @@ def test_charge_profile_v112():
           "the data row must NOT repeat the 125 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 165 and "158, 159, 160, 161, 162, 163, 164 };" in ino,
-          "TxOrder must list all 165 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 166 and "164, 165 };" in ino,
+          "TxOrder must list all 166 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     # [EN] v2 NAK (user approval 2026-10-12): a refused SET_PARAM is answered with PARAM_NAK.
     esp_h = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.h").read_text(encoding="utf-8")
     esp_c = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.c").read_text(encoding="utf-8")
@@ -1024,8 +1024,8 @@ def test_charger_persistence_v114():
     check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+168u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+164u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
-          "persisted set = 0..14 + 20..164 (minus the retired 72/73 and the transient mute 76) + runtime slots 200..203 in 168 slots; v1.87 appends the scenario alarm ticks 158..164; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+165u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
+          "persisted set = 0..14 + 20..165 (minus the retired 72/73 and the transient mute 76) + runtime slots 200..203 in 168 slots; v1.87 appends the scenario alarm ticks 158..164; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
     # [EN] v1.71 bumps 10 -> 11. This one is a MEANING bump, not a layout
     #      bump: ids 57 and 122 kept their slots but changed units (critical
     #      duty % -> critical per-beep ms, band-2 gap -> band-2 repeat
@@ -1040,8 +1040,8 @@ def test_charger_persistence_v114():
           "compiled defaults - the first boot after this upgrade is a factory-default boot")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 164 and i not in (72, 73, 76)) or 200 <= i <= 203}
-    check(persisted == set(range(15)) | (set(range(20, 165)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted and 147 in persisted and 157 in persisted and 164 in persisted,
+    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 165 and i not in (72, 73, 76)) or 200 <= i <= 203}
+    check(persisted == set(range(15)) | (set(range(20, 166)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted and 147 in persisted and 157 in persisted and 164 in persisted and 165 in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1649,8 +1649,8 @@ def test_manual_test_mode_v12():
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+165u", text_esph),
-          "param 19 = manual test mode; 165 params total (147 + scenario 8 ids 147..157 "
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+166u", text_esph),
+          "param 19 = manual test mode; 166 params total (147 + scenario 8 ids 147..157 "
           "+ v1.87 scenario alarm ticks 158..164)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
@@ -1845,7 +1845,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 165, "TxOrder must carry all 165 ids")
+    check(tx and len(tx.group(1).split(",")) == 166, "TxOrder must carry all 166 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -2664,8 +2664,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+165u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 165 (scenario-8 ids 147..157 + v1.87 alarm ticks 158..164)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+166u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 166 (alarm ticks 158..164 + v1.88 rest floor 165)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -3079,7 +3079,7 @@ def test_min_select_handover_v124():
     cdef_m = re.search(r"const CDEF=\[([^\]]*)\]", ino)
     check(cdef_m, "the panel must define CDEF for the charge-side percent map")
     cdef = [x for x in cdef_m.group(1).split(",") if x.strip()]
-    check(len(cdef) == 46, f"CDEF must hold 46 ext defaults through the v1.87 scenario-alarm tick id 164 (ids 119..164), got {len(cdef)}")
+    check(len(cdef) == 47, f"CDEF must hold 47 ext defaults through the v1.88 scenario-8 rest floor id 165 (ids 119..165), got {len(cdef)}")
     top = 83 + len(pdef) - 1 + len(ldef) + len(idef) + len(cdef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be

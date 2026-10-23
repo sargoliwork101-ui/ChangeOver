@@ -870,6 +870,17 @@ def run_scenario_alarm_switch_tests():
         assert_true(forbidden not in ui_c[ui_c.find("Scenario Alarm Switches"):
                                          ui_c.find("Battery Voltage To Percent")],
                     f"the mute block must not touch {forbidden} - a face switch is not a protection")
+    # [EN] v1.88 (user order 2026-10-23): the scenario-8 face is a NO-MAINS
+    #      face. With the mains back and the pack charging, the normal charge
+    #      lamps must be shown; the verdict and the blocked battery path stay.
+    # [FA] نسخهٔ ۱٫۸۸ (دستور کاربر): چهرهٔ سناریوی ۸ فقط برای حالت بدون برق
+    #      شهر است. با برگشت برق شهر و شارژ شدن پک، چراغ شارژ عادی باید دیده
+    #      شود؛ حکم و بسته‌بودن مسیر باتری سر جایشان می‌مانند.
+    weak = re.search(r"func__Changeover_WeakVerdictActive\(\) != false\)[^\n]*\n[^\n]*input_present",
+                     ui_c)
+    assert_true(weak is not None,
+                "the scenario-8 face must be gated on input_present == false, "
+                "otherwise a charging pack still blinks the weak-battery face")
     print("Scenario alarm switches (v1.87) PASS")
 
 

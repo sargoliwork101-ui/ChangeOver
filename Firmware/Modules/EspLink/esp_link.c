@@ -262,6 +262,7 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
         case ESPLINK_PARAM_WEAK_BEEP_COUNT:
         case ESPLINK_PARAM_WEAK_BEEP_GAP_MS:
         case ESPLINK_PARAM_WEAK_BLOCK_OUTPUT:
+        case ESPLINK_PARAM_WEAK_REST_FLOOR_MV:
             return func__Changeover_SetParam(uint8_t__paramId,
                                              uint32_t__value,
                                              uint32_t__appliedValue);
@@ -604,6 +605,7 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
         case ESPLINK_PARAM_WEAK_BEEP_COUNT:
         case ESPLINK_PARAM_WEAK_BEEP_GAP_MS:
         case ESPLINK_PARAM_WEAK_BLOCK_OUTPUT:
+        case ESPLINK_PARAM_WEAK_REST_FLOOR_MV:
             return func__Changeover_GetParam(uint8_t__paramId, uint32_t__value);
 #endif
 #ifndef ESPLINK_HOST_TEST

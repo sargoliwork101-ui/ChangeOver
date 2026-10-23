@@ -233,7 +233,11 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* ‎v1.87 ids 158..164 = the‎ «فعال» ‎tick of scenario cards 1..7‎:
               1 = that scenario's LED/buzzer face on (default), 0 = silent.
               Detection, latching and the output gates are untouched. */
-           1, 1, 1, 1, 1, 1, 1];
+           1, 1, 1, 1, 1, 1, 1,
+           /* v1.88 id 165 = scenario 8's rest floor (mV): the pack must rest at
+              or above this value before a re-cut is called weakness, so an
+              empty pack never lights the weak-battery face. */
+           25000];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */

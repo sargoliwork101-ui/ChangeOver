@@ -678,6 +678,21 @@ function testImbalance(win, doc) {
        [FA] سناریوی ۸ باید همه‌جایی که پنل حکم‌های قفل‌شده را نشان می‌دهد
        دیده شود: دکمهٔ وضعیت نوار بالا، متن کادر «خطاهای قفل‌شده» و کلید
        تازه‌سازی همان کادر. */
+    /* [EN] v1.88 (user order 2026-10-23): the rest floor is the number that
+       separates an EMPTY pack from a WORN one, so it must be a real box on
+       card 8 with its own factory default and its own explanation.
+       [FA] نسخهٔ ۱٫۸۸ (دستور کاربر): آستانهٔ استراحت همان عددی است که
+       «خالی» را از «فرسوده» جدا می‌کند؛ پس باید کادر واقعی روی کارت ۸ با
+       پیش‌فرض و توضیح خودش داشته باشد. */
+    const q165 = doc.getElementById('q165');
+    check(!!q165 && q165.type === 'number' && q165.min === '21200' && q165.max === '29000',
+          'card 8 carries the rest-floor box (21200..29000 mV)',
+          q165 ? q165.outerHTML : 'missing');
+    check(win.eval('pdflt(165)') === 25000,
+          'the rest floor restores to its 25000 mV factory default');
+    check(win.eval('PX')[165] && win.eval('PX')[165][1].indexOf('خالی') >= 0,
+          'the rest floor is explained in plain Persian, including the empty-vs-worn point');
+
     const calSrc = fs.readFileSync(path.join(__dirname, '..', 'plink_panel.h'), 'utf8');
     check(calSrc.includes("flip('باتری ضعیف',weakNow,8,") &&
           calSrc.includes("if(flW&16)h.push('⚠ <b>باتری ضعیف</b>") &&
