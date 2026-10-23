@@ -686,6 +686,24 @@ function testImbalance(win, doc) {
     check(doc.getElementById('wbst') !== null,
           'card 8 has its live verdict line');
 
+    /* [EN] v1.87 (user order): every scenario card must say, in simple
+          Persian, what makes that error go away - the scenario-8 card had
+          that line and the other seven did not.
+       [FA] نسخهٔ ۱.۸۷ (دستور کاربر): هر کارت سناریو باید با فارسی ساده
+          بگوید همان خطا با چه چیزی پاک می‌شود. */
+    for (let n = 1; n <= 8; n++) {
+        const card = doc.getElementById('ucard' + n);
+        const clr = card ? card.querySelector('.clr') : null;
+        check(!!clr && clr.textContent.indexOf('پاک می‌شود') >= 0,
+              'scenario ' + n + ' says what makes its error go away',
+              clr ? clr.textContent.slice(0, 60) : 'no .clr strip');
+    }
+
+    /* [EN] The charge/PID voltage axis used to be pinned at 11.5 V. */
+    check(calSrc.includes('let QLO=0') && calSrc.includes('_wantLo') &&
+          calSrc.indexOf('Math.max(7600,Math.min(q.r.v,12000)-500)') < 0,
+          'the voltage axis follows the live battery voltage, not a fixed 11.5 V');
+
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&
           c5beep.querySelector('#q132').type === 'number' &&

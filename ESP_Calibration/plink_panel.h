@@ -201,6 +201,8 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .bxw textarea,.calcd{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 Vazirmatn;direction:ltr;margin-top:6px}.calcd{display:none;height:220px;font-size:12px}
 .sx{font-size:12.5px;line-height:1.95;color:#aab3c5;margin:2px 0 6px;padding:0 2px}.sx b{color:var(--tx);font-weight:700}
 .ds{font-size:13px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:11px 15px}.ds ul{padding-right:18px}.ds b{color:var(--tx)}
+/* [EN] v1.87: one strip per scenario card says exactly what makes that error go away. [FA] یک نوار در هر کارت سناریو می‌گوید همان خطا با چه چیزی پاک می‌شود. */
+.clr{font-size:12.5px;line-height:1.95;color:#cfe8d8;background:rgba(46,163,107,.08);border:1px solid rgba(46,163,107,.45);border-right:4px solid #2ea36b;border-radius:10px;padding:8px 12px;margin:6px 0 2px}.clr b{color:#7fd6a6}
 .qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:12px}.q input[type=number]{width:92px}.q .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.q .run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
 .eg3{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px}.eg3 label{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .pgx{display:none}.pgx.a{display:block}body:not(.br) .wstop{display:none}body.br .brun{opacity:.4;pointer-events:none}a.lnk{text-decoration:none;display:inline-block}
@@ -424,7 +426,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fefe536</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 83ac508</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -530,6 +532,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </ul>
 </div>
 
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> به‌محض این‌که ولتاژ ورودی به «آستانه − hysteresis» برسد یا پایین‌تر بیاید (پیش‌فرض ۲۷٬۰۰۰ میلی‌ولت) همان لحظه پاک می‌شود؛ نه ریست می‌خواهد نه تأخیر.</div>
 <div class="sim" id="sim1"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims1" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb1" onclick="simtog(1)">توقف</button></div><div class="simb"><span class="sl r" id="sl1r"></span><span class="sl g" id="sl1g"></span><span class="sl y" id="sl1y"></span><span class="szz" id="sl1z">🔇</span><span class="simt" id="sl1t"></span></div><div class="simc"><label>ولتاژ ورودی (mV)<input type="range" id="simp1" min="20000" max="34000" step="100" value="26000" oninput="simlbl1()"><b id="simv1">26000 میلی‌ولت</b></label> <span class="lb" id="sim1w"></span></div></div>
 <div class="sec">۱) آستانهٔ ولتاژ ورودی <span class="lb">(mV)</span></div>
 <div class="sx">این دو عدد تعیین می‌کنند «اضافه‌ولتاژ» از کجا شروع و کجا تمام می‌شود.<br><br><b>آستانه</b> = ولتاژی که بالاتر از آن سناریو روشن می‌شود.<br><b>hysteresis</b> = چقدر باید پایین‌تر از آستانه بیاید تا خاموش شود.<br><b>دلیل:</b> بدون آن، ولتاژِ دقیقاً روی مرز، سناریو را پشت‌سرهم روشن‌وخاموش می‌کند.</div>
@@ -572,6 +575,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </ul>
 </div>
 
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> وقتی هر دو نیم‌باتری به «آستانهٔ بازگشت» برسند (پیش‌فرض ۷٬۰۰۰ میلی‌ولت) و این حالت به مدت «دبانس بازیابی» (پیش‌فرض ۱٬۰۰۰ میلی‌ثانیه) پیوسته بماند. باتری را که وصل کنی، خودش پاک می‌شود.</div>
 <div class="sim" id="sim2"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims2" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb2" onclick="simtog(2)">توقف</button></div><div class="simb"><span class="sl r" id="sl2r"></span><span class="sl g" id="sl2g"></span><span class="sl y" id="sl2y"></span><span class="szz" id="sl2z">🔇</span><span class="simt" id="sl2t"></span></div></div>
 <div class="sec">۱) تشخیص قطع حین شارژ <span class="lb">(mV / ms)</span></div>
 <div class="sx">وقتی شارژر در حال کار است، باتریِ جداشده باعث می‌شود ولتاژ خروجی بپرد بالا.<br><br><b>آستانهٔ قطع</b> = ولتاژی که عبور از آن یعنی «باتری نیست».<br><b>دبانس قطع</b> = این حالت چقدر پیوسته بماند تا باور شود (ضدنویز).</div>
@@ -623,6 +627,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </ul>
 </div>
 
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> این سناریو خطای قفل‌شده نیست: به‌محض برگشتن برق ورودی، چشمک سبز و باندهای بوق همان لحظه تمام می‌شوند.</div>
 <div class="sim" id="sim3"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims3" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb3" onclick="simtog(3)">توقف</button></div><div class="simb"><span class="sl r" id="sl3r"></span><span class="sl g" id="sl3g"></span><span class="sl y" id="sl3y"></span><span class="szz" id="sl3z">🔇</span><span class="simt" id="sl3t"></span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp3" min="0" max="100" value="50" oninput="simlbl(3)"><b id="simv3">50٪</b></label></div></div>
 <div class="sec">۱) حد ولتاژ باتری — نردبانی که درصد این سناریو از آن می‌آید <span class="lb">(<span class="n"></span> میلی‌ولت؛ همان ۷۴/۷۵ کارت ۴ — هر جا عوض شود، هر دو جا عوض می‌شود)</span></div>
 <div class="sx">درصد باتری مستقیم خوانده نمی‌شود؛ از یک نردبان ساده درمی‌آید:<br><br><b>حد پایین</b> = ولتاژی که ۰٪ حساب می‌شود.<br><b>حد بالا</b> = ولتاژی که ۱۰۰٪ حساب می‌شود.<br>بین این دو، درصد خطی تقسیم می‌شود.<br><b>توجه:</b> همهٔ باندهای بوق و چشمک سبز روی همین نردبان سوارند، پس تغییر آن همه را با هم جابه‌جا می‌کند.</div>
@@ -720,6 +725,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <b>خروج فول (٪)</b> = تا وقتی «فول» روشن است، فقط با <b>افتادن درصد زیر این عدد</b> دوباره به «در حال شارژ» برمی‌گردد. این فاصله hysteresis (فاصلهٔ ضدلرزش) است و نمی‌گذارد LED روی مرز بلرزد؛ برد همیشه خروج را دست‌کم یک واحد زیر ورود گیره می‌زند.
 </div>
 
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> وقتی شارژ به «فول» برسد یا برق ورودی قطع شود، چشمک زرد و نشانگر شارژ تمام می‌شود؛ چیزی برای ریست کردن نیست.</div>
 <div class="sim" id="sim4"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims4" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb4" onclick="simtog(4)">توقف</button></div><div class="simb"><span class="sl r" id="sl4r"></span><span class="sl g" id="sl4g"></span><span class="sl y" id="sl4y"></span><span class="szz" id="sl4z">🔇</span><span class="simt" id="sl4t"></span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp4" min="0" max="100" value="50" oninput="simlbl(4)"><b id="simv4">50٪</b></label></div></div>
 <div class="sec">۱) حد ولتاژ باتری — نردبان درصدِ شارژ <span class="lb">(mV؛ مستقل از نردبان دشارژ — v1.49)</span></div>
 <div class="ds">در این بخش، نگاشت درصدِ سمت شارژ و آستانه‌های ورود و خروج «فول» جداگانه تنظیم می‌شوند.</div>
@@ -769,6 +775,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="prod">اختلاف الان: <b id="imbv"></b> <span class="lb">mV</span> · رویدادها: <b id="imbev"></b> <span id="imbmx" class="lb">از ۱۰</span> · وضعیت: <b id="imbst"></b></div>
 
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> قفل با سالم‌شدن ولتاژها پاک نمی‌شود. فقط با <b>تعویض باتری</b> (نبودِ یک کانال به مدت ۳ ثانیه) یا دکمهٔ <b>ریست قفل</b> پایین همین کارت پاک می‌شود.</div>
 <div class="sim" id="sim5"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims5" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb5" onclick="simtog(5)">توقف</button></div><div class="simb"><span class="sl r" id="sl5r"></span><span class="sl g" id="sl5g"></span><span class="sl y" id="sl5y"></span><span class="szz" id="sl5z">🔇</span><span class="simt" id="sl5t"></span></div><div class="simc"><label>حالت کاری <select id="sim5m" onchange="sim5mode()"><option value="c">در حال شارژ</option><option value="r" selected>استراحت (بعد از شارژ)</option><option value="d">دشارژ روی باتری</option></select></label> <label class="ckr"><input type="checkbox" id="sim5full" onchange="sim5mode()"><span><span class="ckt">FLOAT / Full واقعی</span></span></label> <span class="lb" id="sim5w"></span></div><div class="simc"><label>نیم‌باتری بالا (mV)<input type="range" id="simp5a" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5a">12000 میلی‌ولت</b></label></div><div class="simc"><label>نیم‌باتری پایین (mV)<input type="range" id="simp5b" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5b">12000 میلی‌ولت</b></label> <button class="sb sb2" onclick="simrst5()">شروع دوبارهٔ شمارش</button></div></div>
 <div class="sec">۱) حد اختلاف <span class="lb">(mV)</span></div>
 <div class="sx">معیارِ سنجش، قدرمطلق اختلاف ولتاژ دو نیم‌باتری است.<br><br><b>حد استراحت</b> = حدِ مجاز وقتی دستگاه در استراحت یا شارژ است (ولتاژ نشسته، پس حد سخت‌گیرانه‌تر).<br><b>حد دشارژ</b> = همان حد وقتی روی بار کار می‌کند.<br><b>دلیل:</b> چون افت روی بار طبیعی است، این عدد معمولاً بزرگ‌تر است. از نسخهٔ ۱٫۷۲ مقایسه فقط وقتی انجام می‌شود که هر دو نیم در یک حالت باشند.</div>
@@ -842,6 +849,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="prod">شارژ پیوستهٔ باتری ۱: <b id="dbel1"></b> · شارژ پیوستهٔ باتری ۲: <b id="dbel2"></b> · وضعیت: <b id="dbst"></b></div>
 <div class="sx">هر باتری ساعت خودش را دارد و این دو عدد مستقل‌اند: عددِ هر باتری فقط وقتی بالا می‌رود که همان کانال در حال شارژ باشد، و به‌محضِ کامل‌شدنِ شارژِ همان باتری (رسیدن به Float) ساعتِ همان یکی صفر می‌شود — کانال دیگر دست‌نخورده می‌ماند. وقفهٔ کوتاه‌تر از «مهلت وقفه» ساعت را نگه می‌دارد و وقفهٔ بلندتر صفرش می‌کند.</div>
 
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> حکم با شارژ خوب‌شدن پاک نمی‌شود. فقط با <b>تعویض باتری همان کانال</b> (نبودِ آن کانال به مدت ۳ ثانیه) یا دکمهٔ <b>ریست حکم</b> پایین همین کارت پاک می‌شود.</div>
 <div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims6" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t"></span></div><div class="simc"><label>حالت کانال <select id="sim6m" onchange="sim6mode()"><option value="c" selected>در حال شارژ (Bulk/Absorb)</option><option value="p">وقفهٔ شارژ</option><option value="f">رسید به Float (شارژ کامل)</option><option value="x">باتری قطع شده (absent-reset)</option></select></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
 
 <div class="sec">۱) مهلت‌ها <span class="lb">(ms)</span></div>
@@ -900,6 +908,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <li><b>واکنش ایمنی</b> — هر دو مسیر شارژ و PWM تا روشن‌بودن همین نشست برق قفل می‌مانند؛ فقط reset یا power-cycle ارزیابی را از نو باز می‌کند.</li>
 <li><b>نمایش</b> — هر سه LED با یک فاز مشترک هم‌زمان روشن و خاموش می‌شوند و بوق از چهار تنظیم مستقل همین کارت می‌خواند.</li>
 </ul></div>
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> این حکم عمداً خودکار پاک نمی‌شود؛ فقط با <b>ریست برد</b> (خاموش و روشن کردن STM32) پاک می‌شود. اگر بعد از ریست هم تکرار شد، طبقهٔ قدرت واقعاً خراب است.</div>
 <div class="sim" id="sim7"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">فقط از اعداد همین کارت استفاده می‌کند؛ از برد چیزی خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims7" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb7" onclick="simtog(7)">توقف</button></div><div class="simb"><span class="sl r" id="sl7r"></span><span class="sl g" id="sl7g"></span><span class="sl y" id="sl7y"></span><span class="szz" id="sl7z">🔇</span><span class="simt" id="sl7t"></span></div><div class="simc"><label>حالت خطا <select id="sim7m"><option value="n">بدون خطا</option><option value="s" selected>JIT + رله باز + PWM صفر</option><option value="o">PWM بیشتر از ۲۰٪ + جریان صفر</option></select></label></div></div>
 <div class="sec">۱) بوق مستقل سناریوی ۷</div>
 <div class="sx"><b>این چهار عدد عمداً جدا هستند:</b> تعداد و گپ از q132..q135 سناریوهای ۵ و ۶ قرض گرفته نمی‌شوند. دورهٔ صفر بوق را خاموش می‌کند.</div>
@@ -922,14 +931,14 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="hd"><b>سناریو ۸ — باتری ضعیف (قرمز چشمک‌زن + بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen8" checked onchange="scenarioToggle(8,this.checked)"><span>فعال</span></label></div>
 <div class="ds c4ds"><b>این سناریو کِی می‌آید؟</b> باتری بار را تحمل نمی‌کند: بدون برق شهر وصل می‌شود و چند لحظه بعد دوباره قطع می‌شود.
 <ul>
-<li><b>۱ · تشخیص</b> — بعد از وصلِ بدون برق شهر، داخل «پنجرهٔ محافظ» دوباره قطع شد.</li>
-<li><b>۲ · واکنش</b> — حکم قفل می‌شود: قرمز چشمک‌زن + بوق، و اگر تیک باشد باتری از خروجی جدا می‌ماند.</li>
-<li><b>۳ · استراحت</b> — با ولتاژ سالم و پیوسته، بعد از «مدت استراحت» حکم خودش پاک می‌شود و فقط یک بار اجازهٔ وصل دوباره می‌دهد.</li>
-<li><b>۴ · ریست</b> — دکمهٔ ریست پایین کارت همین حالا حکم را پاک می‌کند.</li>
+<li><b>تشخیص</b> — بعد از وصلِ بدون برق شهر، داخل «پنجرهٔ محافظ» دوباره قطع شد.</li>
+<li><b>واکنش</b> — قرمز چشمک‌زن + بوق؛ با تیک «جدا ماندن»، باتری روی خروجی نمی‌آید.</li>
+<li><b>استراحت</b> — با ولتاژ سالم، بعد از «مدت استراحت» حکم خودش پاک می‌شود.</li>
 </ul>
 </div>
+<div class="clr"><b>چه وقت پاک می‌شود؟</b> سه راه دارد: ۱) ولتاژ سالمِ پیوسته (۲۱٬۲۰۰ میلی‌ولت یا بالاتر) به مدت «مدت استراحت» (پیش‌فرض ۱۰ دقیقه) — خودکار. ۲) تیک «حکم فعال» را بردار. ۳) دکمهٔ «ریست حکم باتری ضعیف» را بزن.</div>
 <div class="sec">۱) زمان‌بندی تشخیص و بازیابی <span class="lb">(ms)</span></div>
-<div class="sx"><b>پنجرهٔ محافظ</b> = بعد از وصلِ بدون برق شهر، اگر داخل این مدت دوباره قطع شود، باتری ضعیف است.<br><b>مدت استراحت</b> = چقدر ولتاژ سالم و پیوسته بماند تا حکم پاک شود.<br><b>ولتاژ سالم پیوسته</b> = چقدر ولتاژ ۲۱۲۰۰ میلی‌ولت یا بالاتر بماند تا وصلِ بدون برق شهر اجازه بگیرد.</div>
+<div class="sx"><b>پنجرهٔ محافظ</b> = تا کِی بعد از وصلِ بدون برق شهر، قطعِ دوباره «ضعف باتری» حساب شود.<br><b>مدت استراحت</b> = چقدر سالم بماند تا حکم پاک شود.<br><b>ولتاژ سالم پیوسته</b> = چند وقت ولتاژ ۲۱٫۲ ولت یا بالاتر بماند تا وصلِ بدون برق شهر اجازه بگیرد. هر سه به میلی‌ثانیه‌اند.</div>
 <div class="bqr">
 <label>پنجرهٔ محافظ (ms)<input type="number" id="q149" step="1000" min="1000" max="600000"><span class="lb" id="a149"></span></label>
 <label>مدت استراحت پیش از تلاش مجدد (ms)<input type="number" id="q148" step="60000" min="60000" max="3600000"><span class="lb" id="a148"></span></label>
@@ -937,14 +946,14 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="c4n" id="s8v"></div>
 <div class="sec">۲) چراغ قرمز مستقل این سناریو <span class="lb">(دوره / سهم روشنی)</span></div>
-<div class="sx"><b>دورهٔ چشمک</b> = طول یک چرخهٔ قرمز (۰ = قرمز ثابت). <b>سهم روشنی</b> = چند درصد آن چرخه قرمز روشن است. سبز و زرد خاموش می‌مانند.</div>
+<div class="sx"><b>دورهٔ چشمک</b> = طول یک چرخهٔ قرمز؛ ۰ یعنی قرمز ثابت.<br><b>سهم روشنی</b> = چند درصد آن چرخه قرمز روشن باشد. سبز و زرد خاموش می‌مانند.</div>
 <div class="bqr">
 <label>دورهٔ چشمک قرمز (ms، ۰=ثابت)<input type="number" id="q151" step="100" min="0" max="10000"><span class="lb" id="a151"></span></label>
 <label>سهم روشنی قرمز (٪)<input type="number" id="q152" step="5" min="5" max="95"><span class="lb" id="a152"></span></label>
 </div>
 <div class="c4n" id="s8lamp"></div>
 <div class="sec">۳) بوق مستقل این سناریو <span class="lb">(دوره / الگو)</span></div>
-<div class="sx"><b>دورهٔ بوق</b> = فاصلهٔ تکرار الگو (۰ = بی‌صدا). <b>طول هر بوق</b> = مدت هر بوق. <b>تعداد</b> و <b>گپ</b> = شکل همان الگو. این چهار عدد از سناریوهای ۵، ۶ و ۷ جدا هستند.</div>
+<div class="sx"><b>دورهٔ بوق</b> = فاصلهٔ تکرار الگو؛ ۰ یعنی بی‌صدا.<br><b>طول هر بوق</b> = مدت هر بوق. <b>تعداد</b> = چند بوق در هر الگو. <b>گپ</b> = فاصلهٔ بین بوق‌ها. این چهار عدد مال همین سناریو است.</div>
 <div class="bqr">
 <label>دورهٔ بوق (ms، ۰=خاموش)<input type="number" id="q153" step="100" min="0" max="600000"><span class="lb" id="a153"></span></label>
 <label>طول هر بوق (ms)<input type="number" id="q154" step="10" min="20" max="2000"><span class="lb" id="a154"></span></label>
@@ -953,12 +962,12 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="c4n" id="s8z"></div>
 <div class="sec">۴) رفتار پس از حکم</div>
-<div class="sx"><b>حکم فعال</b> = اگر خاموش باشد این سناریو هیچ کاری نمی‌کند.<br><b>جدا ماندن باتری</b> = تا پاک‌شدن حکم، باتری به خروجی وصل نمی‌شود تا بار روی باتری ضعیف نیفتد. شارژ قطع نمی‌شود.<br><b>ریست</b> = همین حالا حکم را پاک می‌کند و یک بار وصل دوباره را آزاد می‌کند.</div>
+<div class="sx"><b>حکم فعال</b> = اگر خاموش باشد این سناریو هیچ کاری نمی‌کند.<br><b>جدا ماندن باتری</b> = تا پاک‌شدن حکم، باتری به خروجی وصل نمی‌شود. شارژ قطع نمی‌شود.<br><b>ریست</b> = همین حالا حکم را پاک می‌کند.</div>
 <div class="bqr">
 <label class="ckr"><input type="checkbox" id="cb147"><span><span class="ckt">حکم باتری ضعیف فعال باشد</span><span class="cks" id="a147"></span></span></label>
 <label class="ckr"><input type="checkbox" id="cb157"><span><span class="ckt">تا پاک‌شدن حکم، باتری از خروجی جدا بماند</span><span class="cks" id="a157"></span></span></label>
+<button class="sb sb-rst fwb" onclick="latchrst(8)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری ضعیف</button><span class="lb fwb" id="rst8">حکم را پاک می‌کند و یک بار وصل دوباره را آزاد می‌کند</span>
 </div>
-<div class="bqr"><button class="sb sb-rst fwb" onclick="latchrst(8)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری ضعیف</button><span class="lb fwb" id="rst8">حکم را پاک می‌کند و یک بار وصل دوباره را آزاد می‌کند</span></div>
 <div class="prod">وضعیت حکم: <b id="wbst"></b></div>
 <div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
 <ul>
@@ -1765,6 +1774,7 @@ const pxt=id=>(typeof PXT!=='undefined'&&PXT[id])?[EVN[id]||((PX[id]||['',''])[0
    تنظیمات (جایی که پیش‌نمایش خط‌چینِ «تایپ‌شده ولی هنوز اعمال‌نشده» ارزش
    دیدن دارد). یک رندرکننده همهٔ محل‌ها را پر می‌کند، پس آن دو هرگز نمی‌توانند
    دو چیز متفاوت بگویند؛ افزودن یا جابه‌جاکردن یک محل فقط مارک‌آپ است. */
+let QLO=0;
 function qgraph(){const MG=document.querySelectorAll('.qgm');
  if(!MG.length||EVOPEN!=null)return;const g=MG[0];
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
@@ -1781,7 +1791,22 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     sits at its true (I, V), so one look says where it is on that path.
     ناحیه‌ها از مقدار نمایشی v می‌آیند؛ مقدار اعمال‌شده d پایهٔ خط و ‎read-back‎ است و
     درخواستِ هنوز-اعمال‌نشده با خط‌چین دیده می‌شود. */
- const lo=Math.max(7600,Math.min(q.r.v,12000)-500),hi=15060,W=760,H=420,X0=48,X1=742;
+ /* [EN] v1.87 (user order): the voltage axis used to start at a hard
+    11.5 V, so a discharged battery at 11.0 V simply fell off the picture.
+    The floor now follows the LOWEST live battery voltage (minus a small
+    margin) and the Reentry setting, never above 11.5 V. It only widens at
+    once and narrows in 500 mV steps, so the axis cannot flicker every frame.
+    [FA] نسخهٔ ۱.۸۷ (دستور کاربر): کف محور ولتاژ روی ۱۱٫۵ ولت ثابت بود و
+    باتریٔ دشارژشده در ۱۱٫۰ ولت از تصویر بیرون می‌افتاد. حالا کف از پایین‌ترین
+    ولتاژ زندهٔ باتری (منهای کمی حاشیه) و تنظیم Reentry پیروی می‌کند و هرگز
+    بالاتر از ۱۱٫۵ ولت نمی‌رود. محور فقط فوری باز می‌شود و پله‌پله (۵۰۰
+    میلی‌ولت) جمع می‌شود تا هر فریم نلرزد. */
+ const _liveV=(D&&D.t)?[D.t[17],D.t[18]].filter(v=>typeof v==='number'&&v>=2000):[];
+ const _wantLo=Math.max(7600,Math.round((Math.min(Number.isFinite(q.r.v)?q.r.v:12000,12000,
+   ...(_liveV.length?[_liveV[0]-300,Math.min(_liveV[0],_liveV[_liveV.length-1])-300]:[]))-500)/100)*100);
+ if((!QLO)||(_wantLo<QLO))QLO=_wantLo;
+ else if(_wantLo>QLO+1200)QLO=Math.min(_wantLo,QLO+500);
+ const lo=QLO,hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
  /* [EN] Responsive SVG: preserve the plot's natural aspect ratio while fitting
     the actual mount width. Counter-scale labels for narrow and wide screens.
