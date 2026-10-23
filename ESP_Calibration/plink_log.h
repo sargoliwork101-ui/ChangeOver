@@ -35,6 +35,11 @@ static uint8_t  UINT8_T__G__LogPrevMains = 0u;
    [FA] نسخهٔ ۱٫۹۵: بایت عمومی برد (مود دستی، snapshot، معتبر بودن
         اندازه‌گیری) هم ثبت می‌شود تا تغییر مود یک رویداد باشد. */
 static uint8_t  UINT8_T__G__LogPrevFl = 0u;
+/* [EN] v1.95: the condemned-battery verdict is a state too, and it is
+        NOT in the fault mask - it has its own field on the wire.
+   [FA] حکم باتری خراب هم یک وضعیت است و در بیت‌های خطا نیست؛
+        فیلد خودش را روی سیم دارد. */
+static uint32_t UINT32_T__G__LogPrevDead = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg1 = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg2 = 0u;
 static uint8_t  UINT8_T__G__LogPrevFlags2 = 0u;
@@ -62,7 +67,8 @@ static uint8_t  UINT8_T__G__LogIndexCount = 0u;
 #define ESP_LOG_CHG_FLAGS   0x0020u
 #define ESP_LOG_CHG_BAND    0x0040u
 #define ESP_LOG_CHG_LINK    0x0080u
-#define ESP_LOG_CHG_MODE    0x0100u   /* [EN] hand mode / data validity / [FA] مود دستی و اعتبار داده */
+#define ESP_LOG_CHG_MODE    0x0100u
+#define ESP_LOG_CHG_DEAD    0x0200u   /* [EN] condemned-battery verdict / [FA] حکم باتری خراب */   /* [EN] hand mode / data validity / [FA] مود دستی و اعتبار داده */
 
 /* ==================== Notes / یادداشت ردیف ==================== */
 #define ESP_LOG_NOTE_NONE      0u
@@ -524,7 +530,9 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     file__day.print(",");
     file__day.print((unsigned long)UINT32_T__G__TlmField[18]);
     file__day.print(",");
-    file__day.println((unsigned long)UINT32_T__G__TlmField[25]);
+    file__day.print((unsigned long)UINT32_T__G__TlmField[25]);
+    file__day.print(",");
+    file__day.println((unsigned long)UINT32_T__G__TlmField[28]);
     file__day.close();
 
     UINT16_T__G__LogRowsToday++;
@@ -668,6 +676,7 @@ static void func__EspLog_DetectChanges(void)
     uint8_t uint8_t__flags2;
     uint8_t uint8_t__band;
     uint8_t uint8_t__fl;
+    uint32_t uint32_t__dead;
     uint32_t uint32_t__fault;
     uint16_t uint16_t__mask = 0u;
 
@@ -684,6 +693,7 @@ static void func__EspLog_DetectChanges(void)
             خودش را دارد: snapshot، معتبر بودن اندازه‌گیری، اجازهٔ هر دو
             شارژر و مود دستی. */
     uint8_t__fl = (uint8_t)(UINT8_T__G__TlmFlags & 0x3Du);
+    uint32_t__dead = UINT32_T__G__TlmField[28];
 
     if (BOOL__G__LogHasPrev == false)
     {
@@ -695,6 +705,7 @@ static void func__EspLog_DetectChanges(void)
         UINT32_T__G__LogPrevFault = uint32_t__fault;
         UINT8_T__G__LogPrevBand = uint8_t__band;
         UINT8_T__G__LogPrevFl = uint8_t__fl;
+        UINT32_T__G__LogPrevDead = uint32_t__dead;
         return;
     }
 
@@ -726,6 +737,10 @@ static void func__EspLog_DetectChanges(void)
     {
         uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_MODE);
     }
+    if (uint32_t__dead != UINT32_T__G__LogPrevDead)
+    {
+        uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_DEAD);
+    }
 
     if (uint16_t__mask != 0u)
     {
@@ -748,6 +763,7 @@ static void func__EspLog_DetectChanges(void)
     UINT32_T__G__LogPrevFault = uint32_t__fault;
     UINT8_T__G__LogPrevBand = uint8_t__band;
     UINT8_T__G__LogPrevFl = uint8_t__fl;
+    UINT32_T__G__LogPrevDead = uint32_t__dead;
 }
 
 /* ==================== Hooks / قلاب‌ها ==================== */

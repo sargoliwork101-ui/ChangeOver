@@ -1048,6 +1048,32 @@ int main(void)
                   "the column header names the general state byte");
         }
 
+        /* [EN] v1.95: the condemned-battery verdict has its own field on the
+                 wire, so it needs its own change bit AND its own column.
+           [FA] نسخهٔ ۱٫۹۵: حکم باتری خراب فیلد جدا روی سیم دارد، پس بیت
+                 تغییر و ستون جدای خودش را هم دارد. */
+        {
+            std::vector<uint8_t> dead = tlm_payload_v24(211u, 20608u);
+            const size_t o = ESP_LINK_TLM_FIELD_OFFSET + (28u * 4u);
+            /* all four bytes: the payload is pre-filled with 1000+28, so
+               writing only the low byte would leave 1025 behind */
+            dead[o] = 0x01u;
+            dead[o + 1u] = 0x00u;
+            dead[o + 2u] = 0x00u;
+            dead[o + 3u] = 0x00u;
+            G_StubMillis += 5000u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, dead));
+            check(UINT16_T__G__LogRowsToday == 5u,
+                  "a condemned-battery verdict writes a row");
+            std::string bodyDead = LittleFS.files[std::string(path)];
+            check(row_field(bodyDead, 4u, 2u) == 768u,
+                  "that row is marked as a verdict change (and a mode change: the flags byte fell)",
+                  std::to_string(row_field(bodyDead, 4u, 2u)));
+            check(row_field(bodyDead, 4u, 14u) == 1u,
+                  "and the verdict itself is saved, so the line can name the battery",
+                  std::to_string(row_field(bodyDead, 4u, 14u)));
+        }
+
         /* a burst inside the merge window becomes ONE row, not five */
         uint16_t before = UINT16_T__G__LogRowsToday;
         for (uint8_t k = 0u; k < 4u; k++) {

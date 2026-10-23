@@ -1900,6 +1900,10 @@ function evtTextFa(r){
   add('قفل و وضعیت: '+(f.join(' + ')||'همه پاک شد'),(r.flags2&18)?3:((r.flags2&(1|4|8|32|64))?2:1));
  }
  if(r.chg&64){add(r.v24<21200?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
+ if(r.chg&512){
+  const who=((r.dm&3)===3)?'هر دو باتری':(((r.dm&1)!==0)?'باتری ۱':'باتری ۲');
+  add('حکم باتری خراب: '+who,3);
+ }
  if(r.chg&256){
   let any=0;
   EVT_FL_FA.forEach(b=>{if(r.fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
@@ -1912,7 +1916,7 @@ function evtParse(line){
  const f=line.split(',');
  return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
          fl:+f[5]||0,c1:+f[6]||0,c2:+f[7]||0,fault:+f[8]||0,flags2:+f[9]||0,
-         v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0};
+         v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0};
 }
 function evtRenderFa(text,day){
  const box=document.getElementById('evtList');if(!box)return;

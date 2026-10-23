@@ -452,7 +452,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1a172b5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b531cce</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4364,6 +4364,10 @@ function evtRowText(r){
     add('قفل و وضعیت: '+(t||'همه پاک شد'),(f2&(2|16))?3:((f2&(1|4|8|32|64))?2:1));
   }
   if(chg&64){add(r.v24<21200?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
+  if(chg&512){
+    const who=((r.dm&3)===3)?'هر دو باتری':(((r.dm&1)!==0)?'باتری ۱':'باتری ۲');
+    add('حکم باتری خراب: '+who,3);
+  }
   if(chg&256){
     let any=0;
     EVT_FL.forEach(b=>{if(fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
@@ -4381,7 +4385,7 @@ function evtParse(line){
   const f=line.split(',');
   return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
           fl:+f[5]||0,c1:+f[6]||0,c2:+f[7]||0,fault:+f[8]||0,flags2:+f[9]||0,
-          v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,
+          v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0,
           band:(+f[10]||0)<21200};
 }
 function evtRender(text,code){

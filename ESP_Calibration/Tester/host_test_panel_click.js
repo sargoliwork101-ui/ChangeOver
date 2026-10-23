@@ -692,6 +692,13 @@ function main() {
                   "every charging phase has a Persian name in the log",
                   txt(0));
 
+            /* the condemned-battery verdict has its own column and its own bit */
+            w.evtRender("1792756800,12,512,0,0,0,1,3,0,0,24000,23960,24040,20,1", "");
+            check(rows()[0] && rows()[0].className.indexOf("lv3") >= 0 &&
+                  txt(0).indexOf("حکم باتری خراب: باتری ۱") >= 0,
+                  "a condemned-battery verdict is a red line that names the battery",
+                  txt(0));
+
             /* an empty day says so instead of an empty box */
             w.evtRender("", "");
             check(w.document.getElementById("evtlist").textContent.indexOf("هنوز چیزی ثبت نشده") >= 0,
