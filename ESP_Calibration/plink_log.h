@@ -64,6 +64,12 @@ static uint8_t  UINT8_T__G__LogPendingNote = 0u;
 static uint32_t UINT32_T__G__LogLastRowMs = 0u;
 static bool     BOOL__G__LogLastRowValid = false;
 static bool     BOOL__G__LogLinkDown = false;
+/* [EN] v1.98: when the last voltage-step row was written, so a load that
+        switches on and off cannot turn the step into a strobe.
+   [FA] نسخهٔ ۱٫۹۸: لحظهٔ آخرین ردیف گام ولتاژ، تا باری که روشن و خاموش
+        می‌شود گام را به چشمک‌زدن تبدیل نکند. */
+static uint32_t UINT32_T__G__LogLastStepMs = 0u;
+static bool     BOOL__G__LogLastStepValid = false;
 
 /* ==================== Day index / فهرست روزها ==================== */
 static uint32_t UINT32_T__G__LogIndexDay[ESP_LOG_MAX_DAYS + 2u];
@@ -615,6 +621,11 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     file__day.close();
 
     UINT16_T__G__LogRowsToday++;
+    if ((uint16_t__changeMask & ESP_LOG_CHG_VSTEP) != 0u)
+    {
+        UINT32_T__G__LogLastStepMs = (uint32_t)millis();
+        BOOL__G__LogLastStepValid = true;
+    }
     UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
     UINT32_T__G__LogLastRowMs = (uint32_t)millis();
     BOOL__G__LogLastRowValid = true;
@@ -776,7 +787,22 @@ static void func__EspLog_DetectChanges(void)
     uint8_t__chg2 = (uint8_t)UINT32_T__G__TlmField[13];
     uint8_t__flags2 = UINT8_T__G__TlmFlags2;
     uint32_t__fault = UINT32_T__G__TlmField[19];
-    uint8_t__band = (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
+    /* [EN] v1.98: the cut band has HYSTERESIS. It is entered below
+            21,200 mV and left only above 21,400 mV, so a pack resting on the
+            line - or a load switching on and off - cannot write a row every
+            couple of seconds and fill the flash with one repeated event.
+       [FA] نسخهٔ ۱٫۹۸: مرز قطع هیسترزیس دارد. زیر ۲۱٬۲۰۰ میلی‌ولت وارد و
+            فقط بالای ۲۱٬۴۰۰ میلی‌ولت خارج می‌شود؛ پس باتریِ خوابیده روی
+            مرز - یا باری که روشن و خاموش می‌شود - نمی‌تواند هر دو ثانیه
+            یک ردیف بنویسد و فلش را با یک اتفاق تکراری پر کند. */
+    if (UINT8_T__G__LogPrevBand != 0u)
+    {
+        uint8_t__band = (UINT32_T__G__TlmField[15] > ESP_LOG_BAND_OFF_MV) ? 0u : 1u;
+    }
+    else
+    {
+        uint8_t__band = (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
+    }
     /* [EN] every state bit of the general byte except the input-present
             bit, which already has its own change bit: snapshot, valid
             measurement, both charger enables and hand mode.
@@ -833,12 +859,26 @@ static void func__EspLog_DetectChanges(void)
     {
         uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_DEAD);
     }
-    /* [EN] a step of the pack voltage, either way.
-       [FA] یک پلهٔ ولتاژ پک، بالا یا پایین. */
+    /* [EN] v1.98: a step of the pack voltage, either way. A row that is
+            written anyway (any other change) carries the step for free - the
+            voltage is on that row regardless. Only a row whose SOLE reason is
+            the step is limited to one a minute, so a load switching on and
+            off cannot flood the log while a slow charge still draws its
+            curve.
+       [FA] نسخهٔ ۱٫۹۸: یک پلهٔ ولتاژ پک، بالا یا پایین. ردیفی که به هر حال
+            نوشته می‌شود (تغییر دیگر) گام را مجانی با خود می‌برد - ولتاژ روی
+            همان ردیف هست. فقط ردیفی که تنها دلیلش گام است به یکی در دقیقه
+            محدود می‌شود؛ پس باری که روشن و خاموش می‌شود لاگ را پر نمی‌کند و
+            شارژ آرام همچنان منحنی‌اش را می‌کشد. */
     if (func__EspLog_AbsDiff(UINT32_T__G__TlmField[15],
-                          UINT32_T__G__LogPrevV24) >= ESP_LOG_VSTEP_MV)
+                             UINT32_T__G__LogPrevV24) >= ESP_LOG_VSTEP_MV)
     {
-        uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_VSTEP);
+        if ((uint16_t__mask != 0u) ||
+            (BOOL__G__LogLastStepValid == false) ||
+            ((uint32_t)((uint32_t)millis() - UINT32_T__G__LogLastStepMs) >= ESP_LOG_VSTEP_MIN_MS))
+        {
+            uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_VSTEP);
+        }
     }
 
     if (uint16_t__mask != 0u)

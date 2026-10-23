@@ -147,7 +147,9 @@
 #define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"
 #define SIMPLE_LOG_LAST_PATH            "/evt-last.txt"
 #define SIMPLE_LOG_FILE_PREFIX          "/evt-"
-#define SIMPLE_LOG_CUT_BAND_MV          21200u   /* مرز «نزدیک قطع» باتری */
+#define SIMPLE_LOG_CUT_BAND_MV          21200u   /* مرز «نزدیک قطع» باتری: ورود از زیر */
+#define SIMPLE_LOG_BAND_OFF_MV          21400u   /* ...و خروج از مرز فقط از بالای این ولتاژ */
+#define SIMPLE_LOG_VSTEP_MIN_MS         60000u   /* حداکثر یک ردیف گام ولتاژ در دقیقه */
 #define SIMPLE_LOG_VSTEP_MV             200u     /* پلهٔ ولتاژ پک که تغییر حساب می‌شود */
 #define SIMPLE_LOG_HEARTBEAT_MS         21600000u /* هر ۶ ساعت یک ردیف «زنده‌ام» */
 #define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u   /* از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */

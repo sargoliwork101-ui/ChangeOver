@@ -533,6 +533,27 @@ function main() {
                       activeTab() + " | " + activeSub() + " | " + shownCard());
             }
 
+            /* v1.98 (user order): the weak-battery verdict is a latch like the
+               others, so it gets its own lamp in the fault row - not only a
+               line in the log. */
+            w.D.t[28] = 0; w.D.t[19] = 0; w.D.fl2 = 16;
+            w.draw(w.D); w.uview();
+            check(ledSet("asbb10"),
+                  "the weak-battery verdict lights its own lamp in the fault row");
+            check(!!lvChip("باتری ضعیف"),
+                  "and the same verdict is written in words in the fault text");
+            const weakLed = d.getElementById("asbb10");
+            if (weakLed) {
+                weakLed.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                check(activeTab() === "2" && activeSub() === "1" && shownCard() === "8",
+                      "clicking it opens Settings > scenarios on card 8",
+                      activeTab() + " | " + activeSub() + " | " + shownCard());
+            }
+            w.D.fl2 = 0;
+            w.draw(w.D); w.uview();
+            check(!ledSet("asbb10"),
+                  "and the lamp goes out when the verdict is cleared");
+
             /* the charger power stage */
             w.D.t[28] = 0; w.D.t[19] = 128;
             w.draw(w.D); w.uview();

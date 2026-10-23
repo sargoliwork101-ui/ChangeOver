@@ -1098,11 +1098,14 @@ int main(void)
             check(UINT16_T__G__LogRowsToday == rowsBefore,
                   "a pack drift smaller than the step writes nothing");
 
-            /* 200 mV more: a row, marked as a voltage step */
+            /* 200 mV more: a row, marked as a voltage step. The row before
+               this one (the band row) carried a step of its own, so the
+               one-step-a-minute window must be waited out first - that is the
+               v1.98 promise, and the test walks through it honestly. */
             std::vector<uint8_t> step = tlm_payload_v24(213u, 21007u);
             step[deadOff] = 0x01u; step[deadOff + 1u] = 0x00u;
             step[deadOff + 2u] = 0x00u; step[deadOff + 3u] = 0x00u;
-            G_StubMillis += 5000u;
+            G_StubMillis += ESP_LOG_VSTEP_MIN_MS;
             feed(build_frame(ESP_MSG_TLM_LIVE, step));
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
                   "a 200 mV step of the pack writes one row");
@@ -1126,6 +1129,64 @@ int main(void)
             check(row_field(bodyStep, stepRow, 19u) == 1005L &&
                   row_field(bodyStep, stepRow, 20u) == 1012L,
                   "and both duties");
+        }
+
+        /* [EN] v1.98 (user order: do not let the log fill itself): the cut
+                 band has hysteresis and a voltage step writes at most one row
+                 a minute. A pack that wobbles on the line, or a load that
+                 switches on and off, must not turn the history into noise.
+           [FA] نسخهٔ ۱٫۹۸ (دستور کاربر: لاگ خودش را پر نکند): مرز قطع
+                 هیسترزیس دارد و گام ولتاژ حداکثر یک ردیف در دقیقه می‌نویسد.
+                 باتری‌ای که روی مرز نوسان می‌کند یا باری که روشن و خاموش
+                 می‌شود نباید تاریخچه را شلوغ کند. */
+        {
+            const size_t deadOff2 = ESP_LINK_TLM_FIELD_OFFSET + (28u * 4u);
+            const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+
+            /* the wobble: 21,150 → 21,250 → 21,180, all inside the band */
+            const uint32_t wobble[3] = { 21150u, 21250u, 21180u };
+            for (uint8_t k = 0u; k < 3u; k++) {
+                std::vector<uint8_t> f = tlm_payload_v24((uint16_t)(230u + k), wobble[k]);
+                f[deadOff2] = 0x01u; f[deadOff2 + 1u] = 0x00u;
+                f[deadOff2 + 2u] = 0x00u; f[deadOff2 + 3u] = 0x00u;
+                G_StubMillis += 5000u;
+                feed(build_frame(ESP_MSG_TLM_LIVE, f));
+            }
+            check(UINT16_T__G__LogRowsToday == rowsBefore,
+                  "a pack wobbling on the cut line writes no row at all",
+                  std::to_string(UINT16_T__G__LogRowsToday));
+
+            /* leaving the band needs 21,400 - one row, not one per crossing */
+            std::vector<uint8_t> up = tlm_payload_v24(233u, 21500u);
+            up[deadOff2] = 0x01u; up[deadOff2 + 1u] = 0x00u;
+            up[deadOff2 + 2u] = 0x00u; up[deadOff2 + 3u] = 0x00u;
+            G_StubMillis += 5000u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, up));
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
+                  "leaving the band above 21,400 mV writes exactly one row");
+            std::string bodyUp = LittleFS.files[std::string(path)];
+            check((row_field(bodyUp, (size_t)rowsBefore, 2u) & 64L) != 0L,
+                  "and that row is marked as a band change",
+                  std::to_string(row_field(bodyUp, (size_t)rowsBefore, 2u)));
+
+            /* a step inside one minute of the last step row is suppressed */
+            const uint16_t afterUp = UINT16_T__G__LogRowsToday;
+            std::vector<uint8_t> fast = tlm_payload_v24(234u, 21800u);
+            fast[deadOff2] = 0x01u; fast[deadOff2 + 1u] = 0x00u;
+            fast[deadOff2 + 2u] = 0x00u; fast[deadOff2 + 3u] = 0x00u;
+            G_StubMillis += 10000u;             /* 10 s after the last row */
+            feed(build_frame(ESP_MSG_TLM_LIVE, fast));
+            check(UINT16_T__G__LogRowsToday == afterUp,
+                  "a second step inside the same minute is not written");
+
+            /* after the minute it is written again */
+            std::vector<uint8_t> slow = tlm_payload_v24(235u, 22100u);
+            slow[deadOff2] = 0x01u; slow[deadOff2 + 1u] = 0x00u;
+            slow[deadOff2 + 2u] = 0x00u; slow[deadOff2 + 3u] = 0x00u;
+            G_StubMillis += ESP_LOG_VSTEP_MIN_MS;
+            feed(build_frame(ESP_MSG_TLM_LIVE, slow));
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(afterUp + 1u),
+                  "once the minute has passed the step is written again");
         }
 
         /* [EN] v1.96: a quiet board still says "I am alive" once every six

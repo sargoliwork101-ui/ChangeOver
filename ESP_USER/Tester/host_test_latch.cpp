@@ -643,6 +643,8 @@ static void func__T_TestStateHistoryLog(void)
     func__T_Check(UINT16_T__G__LogRowsToday == 4u,
                   "جهش کمتر از گام ولتاژ ردیف نمی‌سازد");
 
+    /* پنجرهٔ «یک ردیف گام در دقیقه» را باز می‌کنیم تا گامِ تنها بنویسد */
+    UINT32_T__G__LogLastStepMs = (uint32_t)millis() - SIMPLE_LOG_VSTEP_MIN_MS - 10u;
     UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
     UINT32_T__G__TlmField[15] = 20608u + 200u;
     func__SimpleLog_OnFrame();
@@ -654,6 +656,48 @@ static void func__T_TestStateHistoryLog(void)
         std::string string__last(char__ptr_tail);
         func__T_Check(string__last.find(",1024,") != std::string::npos,
                       "آن ردیف با بیت «گام ولتاژ» علامت می‌خورد");
+    }
+
+    /* ---------- v1.98: لاگ نباید خودش را پر کند ---------- */
+    {
+        const uint16_t uint16_t__before = UINT16_T__G__LogRowsToday;
+
+        /* نوسان روی مرز قطع: ۲۱٬۱۵۰ ← ۲۱٬۲۵۰ ← ۲۱٬۱۸۰، همه داخل مرز */
+        const uint32_t uint32_t__wobble[3] = { 21150u, 21250u, 21180u };
+        for (uint8_t uint8_t__k = 0u; uint8_t__k < 3u; uint8_t__k++)
+        {
+            UINT32_T__G__TlmField[15] = uint32_t__wobble[uint8_t__k];
+            UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+            func__SimpleLog_OnFrame();
+        }
+        func__T_Check(UINT16_T__G__LogRowsToday == uint16_t__before,
+                      "نوسان باتری روی مرز قطع هیچ ردیفی نمی‌نویسد");
+
+        /* خروج از مرز فقط بالای ۲۱٬۴۰۰: یک ردیف، نه یکی به ازای هر عبور */
+        UINT32_T__G__TlmField[15] = 21500u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__before + 1u),
+                      "خروج از مرز بالای ۲۱٬۴۰۰ دقیقاً یک ردیف می‌نویسد");
+
+        /* بازهٔ مردهٔ هیسترزیس + گام‌های داخل یک دقیقه: بی‌صدا */
+        const uint16_t uint16_t__after = UINT16_T__G__LogRowsToday;
+        UINT32_T__G__TlmField[15] = 21300u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        UINT32_T__G__TlmField[15] = 21800u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT16_T__G__LogRowsToday == uint16_t__after,
+                      "گام‌های پشت‌سرهم داخل یک دقیقه ردیف تازه نمی‌سازند");
+
+        /* بعد از گذشتن دقیقه، گام دوباره می‌نویسد */
+        UINT32_T__G__LogLastStepMs = (uint32_t)millis() - SIMPLE_LOG_VSTEP_MIN_MS - 10u;
+        UINT32_T__G__TlmField[15] = 22100u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__after + 1u),
+                      "بعد از گذشتن یک دقیقه، گام ولتاژ دوباره می‌نویسد");
     }
 
     /* ضربان: در یک بازهٔ کامل هیچ اتفاقی نمی‌افتد، یک ردیف «زنده‌ام» نوشته می‌شود */

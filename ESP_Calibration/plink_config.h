@@ -395,7 +395,9 @@
 #define ESP_LOG_LAST_PATH           "/evt-last.txt"   /* [EN] last state, for the boot row / [FA] آخرین وضعیت */
 #define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"  /* [EN] phone clock anchor / [FA] لنگر ساعت گوشی */
 #define ESP_LOG_FILE_PREFIX         "/evt-"
-#define ESP_LOG_CUT_BAND_MV         21200u   /* [EN] battery "near the cut" line / [FA] مرز «نزدیک قطع» باتری */
+#define ESP_LOG_CUT_BAND_MV         21200u   /* [EN] battery "near the cut" line: entered below / [FA] مرز «نزدیک قطع» باتری: ورود از زیر */
+#define ESP_LOG_BAND_OFF_MV         21400u   /* [EN] ...and left only above this / [FA] ...و خروج فقط از بالای این */
+#define ESP_LOG_VSTEP_MIN_MS        60000u   /* [EN] at most one step row a minute / [FA] حداکثر یک ردیف گام در دقیقه */
 #define ESP_LOG_VSTEP_MV             200u     /* [EN] pack step that counts as a change / [FA] پلهٔ ولتاژ پک که تغییر حساب می‌شود */
 #define ESP_LOG_HEARTBEAT_MS         21600000u /* [EN] 6 h: one "still alive" row / [FA] هر ۶ ساعت یک ردیف «زنده‌ام» */
 #define ESP_LOG_TOTAL_BUDGET_BYTES     200000u   /* [EN] old days are dropped past this / [FA] از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */

@@ -560,7 +560,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d36390f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 62a7d69</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1503,7 +1503,7 @@ $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c
  +
  '<div class="sub">خطاها — قفل‌شده روی برد (کلیک روی هر چراغ، تنظیمات همان سناریو را باز می‌کند)</div>'
  +
- '<div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit ck" id="asbb6" title="باتری قطع است یا باتری نیست — تنظیمات سناریو ۲" onclick="errjmp(2)"><i></i><small>قطع‌باتری</small></span><span class="bit ck" id="asbb7" title="خرابی طبقهٔ قدرت شارژر — تنظیمات سناریو ۷" onclick="errjmp(7)"><i></i><small>فنی برد</small></span><span class="bit ck" id="asbb8" title="قفل عدم‌توازن فعال است — تنظیمات سناریو ۵" onclick="errjmp(5)"><i></i><small>خطای قفل شده</small></span><span class="bit ck" id="asbb9" title="باتری خراب حکم شده — تنظیمات سناریو ۶" onclick="errjmp(6)"><i></i><small>باتری خراب</small></span></div>'
+ '<div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit ck" id="asbb6" title="باتری قطع است یا باتری نیست — تنظیمات سناریو ۲" onclick="errjmp(2)"><i></i><small>قطع‌باتری</small></span><span class="bit ck" id="asbb7" title="خرابی طبقهٔ قدرت شارژر — تنظیمات سناریو ۷" onclick="errjmp(7)"><i></i><small>فنی برد</small></span><span class="bit ck" id="asbb8" title="قفل عدم‌توازن فعال است — تنظیمات سناریو ۵" onclick="errjmp(5)"><i></i><small>خطای قفل شده</small></span><span class="bit ck" id="asbb9" title="باتری خراب حکم شده — تنظیمات سناریو ۶" onclick="errjmp(6)"><i></i><small>باتری خراب</small></span><span class="bit ck" id="asbb10" title="حکم باتری ضعیف قفل شده است — تنظیمات سناریو ۸" onclick="errjmp(8)"><i></i><small>باتری ضعیف</small></span></div>'
  +
  '<div class="fx2" id="asf"></div>'
  +
@@ -1511,7 +1511,7 @@ $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c
  +
  '<div id="dbcnt"></div></div>';
 let ASB=null;
-ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),lat:$('asbb8'),ded:$('asbb9'),box5:$('asb5'),mask:'',live:$('aslive'),tick:false};
+ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),lat:$('asbb8'),ded:$('asbb9'),wk:$('asbb10'),box5:$('asb5'),mask:'',live:$('aslive'),tick:false};
 /* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
    [FA] کنترل median/میانگین در تنظیمات است؛ صفحهٔ اصلی فقط جدول کاربردی ولتاژ/وضعیت و نمودار کانال‌ها را نگه می‌دارد. */
 
@@ -2680,7 +2680,11 @@ function uview(){
      در فاز چشمک پررنگ می‌شود، اپیزود عدم‌توازن زردِ ثابت، و بی‌خطا خاموش. */
   const fl2u=D.fl2|0,latU=(fl2u&2)!==0,epiU=((fl2u&1)!==0)&&!latU,dmU=D.t[28]|0;
   if(ASB.lat)ASB.lat.className='bit ck'+(latU?' set':'')+((latU&&ph)?' on':'')+(epiU?' ep':'');
-  if(ASB.ded)ASB.ded.className='bit ck'+((dmU!==0)?' set':'')+(((dmU!==0)&&ph)?' on':'');}
+  if(ASB.ded)ASB.ded.className='bit ck'+((dmU!==0)?' set':'')+(((dmU!==0)&&ph)?' on':'');
+  /* v1.98 (دستور کاربر): حکم باتری ضعیف هم یک قفل است و باید در همین کادر
+     خطاها دیده شود، نه فقط در لاگ. بیتش در بایت وضعیت است. */
+  const wku=(fl2u&16)!==0;
+  if(ASB.wk)ASB.wk.className='bit ck'+(wku?' set':'')+((wku&&ph)?' on':'');}
  try{c4();sall();}catch(e){}
 }
 /* ==================== سناریو ۴ — اعداد زندهٔ کارت شارژ ==================== */

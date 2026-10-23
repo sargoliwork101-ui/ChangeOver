@@ -44,6 +44,10 @@ static uint8_t  UINT8_T__G__LogPendingNote = 0u;
 static uint32_t UINT32_T__G__LogLastRowMs = 0u;
 static bool     BOOL__G__LogLastRowValid = false;
 static bool     BOOL__G__LogLinkDown = false;
+/* لحظهٔ آخرین ردیف گام ولتاژ، تا باری که روشن و خاموش می‌شود گام را به
+   چشمک‌زدن تبدیل نکند. */
+static uint32_t UINT32_T__G__LogLastStepMs = 0u;
+static bool     BOOL__G__LogLastStepValid = false;
 
 /* ==================== فهرست روزها ==================== */
 static uint32_t UINT32_T__G__LogIndexDay[SIMPLE_LOG_MAX_DAYS + 2u];
@@ -391,6 +395,11 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     file__day.close();
 
     UINT16_T__G__LogRowsToday++;
+    if ((uint16_t__changeMask & SIMPLE_LOG_CHG_VSTEP) != 0u)
+    {
+        UINT32_T__G__LogLastStepMs = (uint32_t)millis();
+        BOOL__G__LogLastStepValid = true;
+    }
     UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
     UINT32_T__G__LogLastRowMs = (uint32_t)millis();
     BOOL__G__LogLastRowValid = true;
@@ -511,7 +520,17 @@ static void func__SimpleLog_DetectChanges(void)
     uint8_t__chg2 = (uint8_t)UINT32_T__G__TlmField[13];
     uint8_t__flags2 = UINT8_T__G__TlmFlags2;
     uint32_t__fault = UINT32_T__G__TlmField[19];
-    uint8_t__band = (UINT32_T__G__TlmField[15] < SIMPLE_LOG_CUT_BAND_MV) ? 1u : 0u;
+    /* مرز قطع هیسترزیس دارد: زیر ۲۱٬۲۰۰ وارد و فقط بالای ۲۱٬۴۰۰ خارج
+       می‌شود؛ پس باتریِ خوابیده روی مرز - یا باری که روشن و خاموش می‌شود -
+       نمی‌تواند هر دو ثانیه یک ردیف بنویسد و لاگ را پر کند. */
+    if (UINT8_T__G__LogPrevBand != 0u)
+    {
+        uint8_t__band = (UINT32_T__G__TlmField[15] > SIMPLE_LOG_BAND_OFF_MV) ? 0u : 1u;
+    }
+    else
+    {
+        uint8_t__band = (UINT32_T__G__TlmField[15] < SIMPLE_LOG_CUT_BAND_MV) ? 1u : 0u;
+    }
     /* [EN] every state bit of the general byte except the input-present
             bit, which already has its own change bit: snapshot, valid
             measurement, both charger enables and hand mode.
@@ -568,12 +587,21 @@ static void func__SimpleLog_DetectChanges(void)
     {
         uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_DEAD);
     }
-    /* [EN] a step of the pack voltage, either way.
-       [FA] یک پلهٔ ولتاژ پک، بالا یا پایین. */
+    /* [EN] a step of the pack voltage, either way. A row written anyway
+            carries the step for free; only a step-sole row is limited to one
+            a minute.
+       [FA] یک پلهٔ ولتاژ پک، بالا یا پایین. ردیفی که به هر حال نوشته می‌شود
+            گام را مجانی با خود می‌برد؛ فقط ردیفی که تنها دلیلش گام است به
+            یکی در دقیقه محدود می‌شود. */
     if (func__SimpleLog_AbsDiff(UINT32_T__G__TlmField[15],
-                          UINT32_T__G__LogPrevV24) >= SIMPLE_LOG_VSTEP_MV)
+                                UINT32_T__G__LogPrevV24) >= SIMPLE_LOG_VSTEP_MV)
     {
-        uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_VSTEP);
+        if ((uint16_t__mask != 0u) ||
+            (BOOL__G__LogLastStepValid == false) ||
+            ((uint32_t)((uint32_t)millis() - UINT32_T__G__LogLastStepMs) >= SIMPLE_LOG_VSTEP_MIN_MS))
+        {
+            uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_VSTEP);
+        }
     }
 
     if (uint16_t__mask != 0u)
