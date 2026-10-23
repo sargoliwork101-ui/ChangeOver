@@ -544,6 +544,70 @@ static void func__T_TestAuthAdminProtection(void)
                   "حذف کاربر شمارندهٔ UserCount را به تعداد واقعی کاربران فعال کاهش می‌دهد");
 }
 
+/* ==================== تاریخچهٔ وضعیت ====================
+   دستور کاربر ۲۰۲۶-۱۰-۲۳: هر پنل تاریخچهٔ وضعیت خودش را دارد. اینجا سه قول
+   قفل می‌شود: فقط تغییر واقعی ردیف می‌سازد، ردیف در فایل همان روز می‌نشیند و
+   پاک کردن، فایل‌ها را برمی‌دارد. */
+static void func__T_TestStateHistoryLog(void)
+{
+    (void)printf("\n== تاریخچهٔ وضعیت ==\n");
+
+    /* ساعت گوشی و منطقهٔ زمانی */
+    func__Simple_TimeSet(1792756800u, false);
+    INT32_T__G__LogTzSec = 12600;
+
+    /* پاک کردن وضعیت قبلی */
+    UINT8_T__G__LogIndexCount = 0u;
+    UINT32_T__G__LogDayCode = 0u;
+    UINT16_T__G__LogRowsToday = 0u;
+    BOOL__G__LogDayFull = false;
+    BOOL__G__LogHasPrev = false;
+    BOOL__G__LogBootRowPending = true;
+    BOOL__G__LogLastRowValid = false;
+    UINT16_T__G__LogPendingMask = 0u;
+
+    UINT32_T__G__TlmField[15] = 24000u;
+    UINT8_T__G__TlmFlags = 0u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 1u,
+                  "اولین فریم بعد از روشن‌شدن یک ردیف «پنل روشن شد» می‌نویسد");
+
+    const uint32_t uint32_t__day = func__SimpleLog_TodayCode();
+    char char__path[SIMPLE_LOG_PATH_MAX];
+    func__SimpleLog_PathOf(char__path, uint32_t__day);
+    func__T_Check((uint32_t__day != 0u) && LittleFS.exists(char__path),
+                  "ردیف در فایل روزِ خودِ گوشی ذخیره می‌شود");
+
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 1u,
+                  "وضعیت ثابت ردیف تازه نمی‌سازد");
+
+    /* پنجرهٔ ادغام ۲ ثانیه‌ای: بی‌آنکه تست ۲ ثانیه بخوابد، ساعت را جلو می‌بریم */
+    UINT8_T__G__TlmFlags = 0x02u;   /* برق شهر آمد */
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 2u,
+                  "آمدن برق شهر یک ردیف می‌نویسد");
+
+    UINT32_T__G__TlmField[15] = 20608u;   /* زیر مرز قطع */
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 3u,
+                  "رسیدن باتری به مرز قطع یک ردیف می‌نویسد");
+    func__T_Check(LittleFS.exists(SIMPLE_LOG_LAST_PATH),
+                  "آخرین وضعیت روی فلش می‌ماند تا ردیف بوت بداند پنل کجا خاموش شد");
+
+    char char__ptr_out[1024];
+    (void)func__SimpleLog_Tail(char__ptr_out, sizeof(char__ptr_out), 0u, 10u);
+    std::string string__tail(char__ptr_out);
+    func__T_Check(string__tail.find("20608") != std::string::npos,
+                  "خواندن تاریخچه ردیف‌های ذخیره‌شده را برمی‌گرداند");
+
+    (void)func__SimpleLog_Clear();
+    func__T_Check((UINT8_T__G__LogIndexCount == 0u) && (!LittleFS.exists(char__path)),
+                  "پاک کردن، فایل روزها را برمی‌دارد");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -556,6 +620,7 @@ int main(void)
     func__T_TestStm32TimeAndChartScheduling();
     func__T_TestDiagStatePersistenceAndClear();
     func__T_TestAuthAdminProtection();
+    func__T_TestStateHistoryLog();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

@@ -411,6 +411,19 @@ static void func__Simple_HttpTimeSync(void)
         return;
     }
 
+    /* اختلاف منطقهٔ زمانی هم از همان گوشی می‌آید تا نام فایل روزانهٔ تاریخچه
+       سرِ نیمه‌شب خودِ اپراتور عوض شود، نه نیمه‌شب UTC. */
+    String string__tz;
+    if (func__Simple_GetArg("tz", string__tz))
+    {
+        int32_t int32_t__tz = 0;
+        if (func__Simple_ParseInt(string__tz.c_str(), &int32_t__tz) &&
+            (int32_t__tz >= -50400) && (int32_t__tz <= 50400))
+        {
+            INT32_T__G__LogTzSec = int32_t__tz;
+        }
+    }
+
     /* ساعت را در پنل تنظیم، روی فایل ذخیره و به برد هم بگو؛ از این لحظه
        لنگر ساعت در پنل می‌ماند و بین فریم‌ها هم راه می‌رود */
     func__Simple_TimeSet((uint32_t)int32_t__ts, true);
@@ -864,4 +877,110 @@ static void func__Simple_HttpLatchState(void)
                    (unsigned)UINT8_T__G__SlotBusyReject,
                    (unsigned)uint8_t__pending);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__A__Out);
+}
+
+/* ==================== تاریخچهٔ وضعیت (لاگ روزانه) ====================
+   دستور کاربر ۲۰۲۶-۱۰-۲۳: پنل ساده هم مثل پنل فنی تاریخچهٔ وضعیت خودش را
+   نشان می‌دهد و دانلود می‌کند. متن ردیف‌ها اینجا ساخته می‌شود، نه روی پشته. */
+static char CHAR__G__LogTailBuffer[3600];
+
+/* GET /evt : آخرین ردیف‌های یک روز (یا جدیدترین روز) به‌صورت متن */
+static void func__Simple_HttpEventLog(void)
+{
+    uint32_t uint32_t__day = 0u;
+    String string__day;
+
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    if (func__Simple_GetArg("day", string__day))
+    {
+        uint32_t__day = (uint32_t)string__day.toInt();
+    }
+    (void)func__SimpleLog_Tail(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer),
+                               uint32_t__day, SIMPLE_LOG_TAIL_LINES);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
+}
+
+/* GET /evt/days : روزهای ذخیره‌شده، قدیمی‌تر اول */
+static void func__Simple_HttpEventDays(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)func__SimpleLog_Days(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
+}
+
+/* GET /evt/dl?day=YYYYMMDD : دانلود یک روز */
+static void func__Simple_HttpEventDownload(void)
+{
+    char char__ptr_path[SIMPLE_LOG_PATH_MAX];
+    char char__ptr_name[64];
+    uint32_t uint32_t__day = 0u;
+    String string__day;
+
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    if (func__Simple_GetArg("day", string__day))
+    {
+        uint32_t__day = (uint32_t)string__day.toInt();
+    }
+    if (uint32_t__day == 0u)
+    {
+        if (UINT8_T__G__LogIndexCount == 0u)
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
+            return;
+        }
+        uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+    }
+
+    func__SimpleLog_PathOf(char__ptr_path, uint32_t__day);
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(char__ptr_path) == false))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "missing");
+        return;
+    }
+    (void)snprintf(char__ptr_name, sizeof(char__ptr_name),
+                   "attachment; filename=evt-%08lu.csv", (unsigned long)uint32_t__day);
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition", char__ptr_name);
+
+    File file__day = LittleFS.open(char__ptr_path, "r");
+    if (!file__day)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(503, "text/plain", "fs");
+        return;
+    }
+    /* خط‌به‌خط فرستاده می‌شود: فایل روز می‌تواند بزرگ‌تر از رم آزاد باشد، پس
+       یک‌جا خوانده نمی‌شود. */
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", "");
+    while (file__day.available())
+    {
+        String string__line = file__day.readStringUntil('\n');
+        if (string__line.length() > 0u)
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(string__line);
+        }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("\n");
+    }
+    file__day.close();
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
+}
+
+/* POST /evt/clr : پاک کردن همهٔ روزها (فقط ادمین) */
+static void func__Simple_HttpEventClear(void)
+{
+    uint8_t uint8_t__removed;
+
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
+    if (BOOL__G__FsOk == false)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
+        return;
+    }
+    uint8_t__removed = func__SimpleLog_Clear();
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json",
+                                        String("{\"ok\":1,\"removed\":") +
+                                        String((unsigned int)uint8_t__removed) + "}");
 }

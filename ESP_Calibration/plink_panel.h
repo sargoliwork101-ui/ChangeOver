@@ -419,6 +419,15 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #pmod .pmb{max-width:520px;width:calc(100% - 28px);max-height:80vh;overflow:auto;background:#121a2c;border:1px solid #35507f;border-radius:16px;padding:16px;direction:rtl;text-align:right;color:#c7d3e6;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #pmt{white-space:pre-line;font-size:14px;line-height:1.9;margin-bottom:12px}
 #pmbtn{display:flex;gap:8px;flex-wrap:wrap}
+/* [‎EN] v1.93 state history rows (bottom card) / [FA]‎ ردیف‌های تاریخچهٔ وضعیت */
+.evtlist{max-height:320px;overflow:auto;border-top:1px solid var(--ln);margin-top:8px;font-size:12px;line-height:1.9}
+.evtrow{display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed var(--ln);align-items:baseline}
+.evtrow:last-child{border-bottom:none}
+.evtt{color:var(--mu);font-family:Vazirmatn;white-space:nowrap;min-width:64px}
+.evtd{flex:1}
+.evtv{color:var(--mu);white-space:nowrap;font-family:Vazirmatn}
+.evttag{display:inline-block;min-width:8px;height:8px;border-radius:2px;margin-left:6px;background:#5b6472}
+.evttag.g{background:#2f9e63}.evttag.y{background:#c9a227}.evttag.r{background:#c0392b}
 </style></head><body>
 <div id="pmod"><div class="pmb"><div id="pmt"></div><div id="pmbtn"><button class="sb" id="pmok">تأیید</button><button class="sb sb2" id="pmno">انصراف</button></div><div class="lb" style="margin-top:10px;font-size:11px;opacity:.8">Enter = تأیید · Esc = انصراف</div></div></div>
 <div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی</span>
@@ -426,7 +435,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0b9309a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 962fc56</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1063,6 +1072,19 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 
 </div>
+<div class="cd" id="logcd" style="margin-top:16px">
+<div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
+<div class="sx">این جدول می‌گوید برد از وقتی پنل باز شده چه وضعیت‌هایی را گذرانده است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، نزدیک‌شدن باتری به مرز قطع و قطع/برگشت ارتباط. <b>فقط وقتی چیزی عوض شود یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط تازه نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ همین پنل ذخیره می‌شود و ۳۰ روز نگه داشته می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.</div>
+<div class="bqr">
+<label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">جدیدترین روز</option></select></label>
+<button class="sb" type="button" onclick="evtfetch(1)">به‌روزرسانی</button>
+<button class="sb" type="button" onclick="evtdl()">دانلود این روز</button>
+<button class="sb" type="button" onclick="evtdlall()">دانلود همهٔ روزها</button>
+<button class="sb sb2" type="button" onclick="evtclr()">پاک کردن تاریخچه</button>
+</div>
+<div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
+</div>
+
 </main>
 
 <script>
@@ -4218,5 +4240,112 @@ function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
  [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(!a||!m)return;
   a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});}
 poll();
+
+/* ==================== v1.93 تاریخچهٔ وضعیت / state history ====================
+   [EN] The ESP writes one row per real change; this code only turns those rows
+        into Persian lines and keeps the phone's clock on the panel.
+   [FA] ESP برای هر تغییر واقعی یک ردیف می‌نویسد؛ این کد فقط آن ردیف‌ها را به
+        خط فارسی تبدیل می‌کند و ساعت گوشی را به پنل می‌رساند. */
+const EVT_FAULT=['ADC','اضافه‌جریان ۱','اضافه‌جریان ۲','ولتاژ باتری','JIT۱','JIT۲','قطع باتری','خطای فنی','قفل عدم‌توازن','باتری خراب'];
+const EVT_FLAG=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌توازن'],[4,'مسدودی خروجی'],[8,'قطع شارژ'],[16,'حکم باتری ضعیف'],[32,'مسیر باتری قطع'],[64,'استراحت حرارتی']];
+function evtNow(){return Math.floor(Date.now()/1000);}
+function evtClock(){
+  const tz=-new Date().getTimezoneOffset()*60;
+  req('/clock?sec='+evtNow()+'&tz='+tz,'POST').catch(()=>{});
+}
+function evtFaults(mask){
+  const out=[];
+  for(let i=0;i<EVT_FAULT.length;i++){if((mask>>i)&1)out.push(EVT_FAULT[i]);}
+  return out.join(' + ');
+}
+function evtFlags(f2){
+  const out=[];
+  EVT_FLAG.forEach(p=>{if(f2&p[0])out.push(p[1]);});
+  return out.join(' + ');
+}
+function evtTime(epoch,uptime){
+  if(!epoch)return 'بی‌ساعت';
+  const d=new Date(epoch*1000);
+  const p=n=>String(n).padStart(2,'0');
+  return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+}
+function evtRowText(r){
+  const chg=r.chg|0,mains=r.mains|0,c1=r.c1|0,c2=r.c2|0,fault=r.fault|0,f2=r.flags2|0;
+  const parts=[];let level='';
+  if(chg&1){parts.push('پنل روشن شد'+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''));level='y';}
+  if(chg&128){parts.push(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد برگشت');level='y';}
+  if(chg&2){parts.push(mains?'برق شهر وصل شد':'برق شهر قطع شد');level=mains?'g':'y';}
+  if(chg&4){parts.push('مرحلهٔ شارژ کانال ۱: '+(ST[c1]||c1));}
+  if(chg&8){parts.push('مرحلهٔ شارژ کانال ۲: '+(ST[c2]||c2));}
+  if(chg&16){parts.push('خطا: '+(evtFaults(fault)||'پاک شد'));level=fault?'r':'';}
+  if(chg&32){parts.push('قفل/وضعیت: '+(evtFlags(f2)||'هیچ'));level=(f2&(16|2))?'r':level;}
+  if(chg&64){parts.push((r.v24<21200)?'باتری به مرز قطع رسید':'باتری از مرز قطع بالا آمد');level=(r.v24<21200)?'r':'g';}
+  if(!parts.length)parts.push('تغییر وضعیت');
+  const v='پک: '+(r.v24/1000).toFixed(2)+'V · نیم‌پایین: '+(r.vlow/1000).toFixed(2)+'V · نیم‌بالا: '+(r.vhigh/1000).toFixed(2)+'V · Δ: '+r.imbal+'mV';
+  return {txt:parts.join(' · '),level:level,v:v,time:evtTime(r.epoch,r.uptime)};
+}
+function evtRender(text){
+  const box=$('evtlist');
+  if(!text||!text.trim()){box.innerHTML='<span class="lb">هنوز چیزی ثبت نشده است.</span>';return;}
+  const rows=text.trim().split('\n').filter(l=>l&&l[0]!=='#').map(l=>{
+    const f=l.split(',');
+    return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
+            c1:+f[5]||0,c2:+f[6]||0,fault:+f[7]||0,flags2:+f[8]||0,
+            v24:+f[9]||0,vlow:+f[10]||0,vhigh:+f[11]||0,imbal:+f[12]||0};
+  });
+  box.innerHTML=rows.map(r=>{
+    const t=evtRowText(r);
+    return '<div class="evtrow"><span class="evtt">'+t.time+'</span><span class="evtd">'+t.txt+
+           '<span class="evttag '+(t.level||'')+'"></span></span><span class="evtv">'+t.v+'</span></div>';
+  }).join('');
+}
+async function evtfetch(manual){
+  const day=($('evtday')&&$('evtday').value.trim())||'';
+  try{
+    const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
+    const t=await r.text();
+    evtRender(t);
+    if($('evtst')){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;
+      $('evtst').textContent=n+' خط'+(day?(' · روز '+day):' · جدیدترین روز');}
+  }catch(e){ if($('evtst'))$('evtst').textContent='خواندن نشد'; }
+}
+async function evtDays(){
+  try{
+    const r=await fetch('/evt/days',{cache:'no-store'});
+    const t=(await r.text()).trim();
+    const days=t?t.split(/\s+/):[];
+    const sel=$('evtday');
+    if(sel){
+      const keep=sel.value;
+      sel.innerHTML='<option value="">جدیدترین روز</option>'+days.slice().reverse().map(d=>'<option value="'+d+'">'+d+'</option>').join('');
+      sel.value=keep||'';
+    }
+    return days;
+  }catch(e){return [];}
+}
+function evtdl(){
+  const day=($('evtday')&&$('evtday').value.trim())||'';
+  window.location='/evt/dl'+(day?('?day='+encodeURIComponent(day)):'');
+}
+async function evtdlall(){
+  const days=await evtDays();
+  if(!days.length){alert('تاریخچه‌ای برای دانلود نیست.');return;}
+  let out='';
+  for(const d of days){
+    const r=await fetch('/evt/dl?day='+d,{cache:'no-store'});
+    out+='# day '+d+'\n'+(await r.text());
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([out],{type:'text/csv;charset=utf-8'}));
+  a.download='evt-all.csv';a.click();URL.revokeObjectURL(a.href);
+}
+async function evtclr(){
+  if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟ این کار برگشت‌پذیر نیست.'))return;
+  try{const j=await req('/evt/clr','POST');if($('evtst'))$('evtst').textContent='پاک شد';await evtfetch(1);}
+  catch(e){if($('evtst'))$('evtst').textContent='پاک نشد';}
+}
+evtClock();evtDays().then(()=>evtfetch(0));setInterval(evtClock,60000);
+setInterval(()=>{if(!document.hidden){evtDays();evtfetch(0);}},10000);
+
 setInterval(uview,250); /* v1.16: آینهٔ LED هر ۲۵۰ میلی‌ثانیه به‌روز می‌شود */
 </script></body></html>)HTML";

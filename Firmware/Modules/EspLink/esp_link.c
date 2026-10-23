@@ -141,6 +141,17 @@ static bool     BOOL__G__WifiBatCutoffLatched = false;
  *      چشمک‌زن خودش را با همین بیت می‌کشد؛ بدون آن کاربر چهره را فقط روی
  *      LEDها می‌دید، نه در مرورگر. */
 #define ESPLINK_TLM_FLAG2_WEAK_LATCHED    0x10u
+/* [EN] v1.93 (user order 2026-10-23): two spare bits of the same byte, so the
+        panels can say what the board is doing RIGHT NOW without touching the
+        128-byte payload. b5 = the battery path is cut (the load is off the
+        pack), b6 = at least one channel is in its thermal rest. Both are
+        live flags, not latches: they follow the board every frame.
+   [FA] نسخهٔ ۱٫۹۳ (دستور کاربر ۲۰۲۶-۱۰-۲۳): دو بیت خالی همان بایت، تا پنل‌ها
+        بگویند برد همین حالا چه کار می‌کند، بی‌آنکه به قاب ۱۲۸ بایتی دست بخورد.
+        b5 = مسیر باتری قطع است (بار از پک جدا است)، b6 = دست‌کم یک کانال در
+        استراحت حرارتی است. هر دو پرچم زنده‌اند نه قفل: هر فریم با برد می‌آیند. */
+#define ESPLINK_TLM_FLAG2_PATH_CUT        0x20u
+#define ESPLINK_TLM_FLAG2_THERMAL_REST    0x40u
 
 /* ==================== Byte packing / بسته‌بندی بایت ==================== */
 
@@ -1197,6 +1208,20 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
         if (func__Changeover_WeakVerdictActive() != false)
         {
             uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_WEAK_LATCHED;
+        }
+        /* [EN] v1.93: is the pack on the load right now? / [FA] آیا پک همین حالا
+           روی بار است؟ */
+        if (func__Changeover_PathBlocked() != false)
+        {
+            uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_PATH_CUT;
+        }
+#endif
+#if MODULE_CHARGER
+        /* [EN] v1.93: thermal rest is a visible state, not a hidden timer.
+           [FA] استراحت حرارتی یک وضعیت دیدنی است، نه یک تایمر پنهان. */
+        if (func__Charger_IsAnyChannelInThermalRest() != false)
+        {
+            uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_THERMAL_REST;
         }
 #endif
         UINT8_T__A__Payload[uint16_t__cursor] = uint8_t__imbalanceFlags;

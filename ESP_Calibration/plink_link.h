@@ -887,6 +887,11 @@ static void func__Esp_HandleFrame(void)
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;
         func__Esp_StatAccumulate();
+        /* [EN] v1.93: the state history watches every decoded frame and writes
+              a row only when something really changed.
+           [FA] نسخهٔ ۱٫۹۳: تاریخچهٔ وضعیت هر فریم را می‌بیند و فقط وقتی چیزی
+              واقعاً عوض شده باشد یک ردیف می‌نویسد. */
+        func__EspLog_OnFrame();
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen == ESP_LINK_PARAM_ITEM_SIZE))
     {

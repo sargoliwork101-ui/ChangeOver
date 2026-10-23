@@ -126,6 +126,37 @@ static void feed(const std::vector<uint8_t> &v)
     for (size_t i = 0; i < v.size(); i++) func__Esp_ParseByte(v[i]);
 }
 
+/* [EN] v1.93 history tests need a known pack voltage and a way to read one
+        field of one saved row, instead of substring guessing.
+   [FA] تست‌های تاریخچه به ولتاژ معلوم پک و خواندن یک خانه از یک ردیف ذخیره‌شده
+        نیاز دارند، نه حدس با زیررشته. */
+static long row_field(const std::string &body, size_t rowIndex, size_t fieldIndex)
+{
+    size_t row = 0u, k = 0u, field = 0u, start = 0u;
+    while (k <= body.size()) {
+        const bool eol = (k == body.size()) || (body[k] == '\n');
+        if (eol) {
+            if ((k > start) && (body[start] != '#')) {
+                if (row == rowIndex) {
+                    std::string line = body.substr(start, k - start);
+                    size_t from = 0u;
+                    for (field = 0u; field < fieldIndex; field++) {
+                        size_t comma = line.find(',', from);
+                        if (comma == std::string::npos) return -1;
+                        from = comma + 1u;
+                    }
+                    size_t comma = line.find(',', from);
+                    return atol(line.substr(from, comma - from).c_str());
+                }
+                row++;
+            }
+            start = k + 1u;
+        }
+        k++;
+    }
+    return -1;
+}
+
 static std::vector<uint8_t> tlm_payload(uint16_t seq)
 {
     std::vector<uint8_t> p(ESP_LINK_TLM_SIZE, 0u);
@@ -141,6 +172,18 @@ static std::vector<uint8_t> tlm_payload(uint16_t seq)
     }
     return p;
 }
+
+static std::vector<uint8_t> tlm_payload_v24(uint16_t seq, uint32_t v24)
+{
+    std::vector<uint8_t> p = tlm_payload(seq);
+    const size_t o = ESP_LINK_TLM_FIELD_OFFSET + 15u * 4u;
+    p[o] = (uint8_t)(v24 & 0xFFu);
+    p[o + 1u] = (uint8_t)((v24 >> 8) & 0xFFu);
+    p[o + 2u] = (uint8_t)((v24 >> 16) & 0xFFu);
+    p[o + 3u] = (uint8_t)((v24 >> 24) & 0xFFu);
+    return p;
+}
+
 
 /* ======================================================================== */
 int main(void)
@@ -877,6 +920,140 @@ int main(void)
         func__Esp_WifiPowerSaveTick(2000u + 1800000u + 220000u);
         check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
               "when mains input returns, Wi-Fi AP turns back ON at max TX power");
+    }
+
+    /* ---- 30. v1.93 state history (user order 2026-10-23) ----------------
+       [EN] The panel now keeps its own history: one row per REAL change, one
+            file per day, written and closed immediately so a battery cut
+            cannot lose the last row. These tests pin the three promises that
+            are easy to lose: only changes write, the clock comes from the
+            phone, and the day file list survives for the download.
+       [FA] پنل حالا تاریخچهٔ خودش را نگه می‌دارد: برای هر تغییر واقعی یک ردیف،
+            هر روز یک فایل، همان لحظه نوشته و بسته می‌شود تا قطع باتری آخرین
+            ردیف را از بین نبرد. این تست‌ها سه قول را قفل می‌کنند: فقط تغییر
+            می‌نویسد، ساعت از گوشی می‌آید و فهرست روزها برای دانلود می‌ماند. */
+    {
+        /* a clean history */
+        LittleFS.files.clear();
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0u;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+
+        check(ESP_WEB_SERVER_T__G__Server.has("/clock", HTTP_POST) &&
+              ESP_WEB_SERVER_T__G__Server.has("/evt", HTTP_GET) &&
+              ESP_WEB_SERVER_T__G__Server.has("/evt/days", HTTP_GET) &&
+              ESP_WEB_SERVER_T__G__Server.has("/evt/dl", HTTP_GET) &&
+              ESP_WEB_SERVER_T__G__Server.has("/evt/clr", HTTP_POST),
+              "setup() registers the five history routes");
+
+        /* the phone hands over its clock (2026-10-23 12:00 UTC, Tehran +3:30) */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("sec", "1792756800");
+        ESP_WEB_SERVER_T__G__Server.setArg("tz", "12600");
+        ESP_WEB_SERVER_T__G__Server.call("/clock", HTTP_POST);
+        check(BOOL__G__LogClockValid,
+              "POST /clock adopts the phone clock");
+        check(INT32_T__G__LogTzSec == 12600,
+              "the phone's UTC offset is kept, so the day file rolls over at the operator's midnight");
+        check(func__EspLog_NowSec() >= 1792756800u,
+              "now() walks forward from the phone anchor");
+
+        /* first frame after boot: exactly one boot row */
+        G_StubMillis = 100000u;
+        const std::vector<uint8_t> first = tlm_payload_v24(200u, 24000u);
+        feed(build_frame(ESP_MSG_TLM_LIVE, first));
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "the first frame after a restart writes exactly one boot row");
+
+        const uint32_t dayCode = func__EspLog_TodayCode();
+        char path[32];
+        (void)snprintf(path, sizeof path, "/evt-%08lu.csv", (unsigned long)dayCode);
+        check(dayCode != 0u && LittleFS.exists(path),
+              "the row lands in a file named after the phone's own day");
+
+        size_t rows = 0u;
+        std::string body = LittleFS.files[std::string(path)];
+        for (size_t k = 0u; k < body.size(); k++) {
+            if ((body[k] == '\n') && (k > 0u) && (body[k - 1u] != '#')) rows++;
+        }
+        check(body.find("# epoch,uptime_s") != std::string::npos,
+              "a new day file starts with its column header");
+        check(row_field(body, 0u, 2u) == 1,
+              "the first row carries the boot change bit");
+
+        /* the same state again: NOTHING is written */
+        G_StubMillis += 5000u;
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(201u, 24000u)));
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "an unchanged board writes nothing (the log is change-only)");
+
+        /* mains appears (pack still healthy): one row, mains bit set */
+        std::vector<uint8_t> withMains = tlm_payload_v24(202u, 24000u);
+        withMains[2] = 0x02u;   /* input present */
+        G_StubMillis += 5000u;
+        feed(build_frame(ESP_MSG_TLM_LIVE, withMains));
+        check(UINT16_T__G__LogRowsToday == 2u,
+              "a mains change writes one row");
+        std::string body2 = LittleFS.files[std::string(path)];
+        check(row_field(body2, 1u, 2u) == 2,
+              "the mains row carries the mains change bit");
+
+        /* battery falls under the cut band: a row, and the last-state note */
+        std::vector<uint8_t> lowPack = tlm_payload_v24(203u, 20608u);
+        lowPack[2] = 0x00u;
+        G_StubMillis += 5000u;
+        feed(build_frame(ESP_MSG_TLM_LIVE, lowPack));
+        check(UINT16_T__G__LogRowsToday == 3u,
+              "crossing the cut band writes one row");
+        check(LittleFS.exists("/evt-last.txt"),
+              "the last state is kept on flash, so a boot row can say the panel stopped at the cut line");
+
+        /* the panel reads the tail back */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("20608") != std::string::npos,
+              "GET /evt returns the saved rows as text");
+
+        ESP_WEB_SERVER_T__G__Server.call("/evt/days", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find(std::to_string(dayCode)) != std::string::npos,
+              "GET /evt/days lists the saved day for the picker");
+
+        /* a burst inside the merge window becomes ONE row, not five */
+        uint16_t before = UINT16_T__G__LogRowsToday;
+        for (uint8_t k = 0u; k < 4u; k++) {
+            std::vector<uint8_t> flap = tlm_payload((uint16_t)(210u + k));
+            flap[2] = ((k % 2u) == 0u) ? 0x02u : 0x00u;
+            G_StubMillis += 100u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, flap));
+        }
+        G_StubMillis += 3000u;
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday <= (uint16_t)(before + 2u),
+              "a fast flap inside the 2 s window is merged instead of writing every frame");
+
+        /* clearing drops the files and the list */
+        ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              UINT8_T__G__LogIndexCount == 0u &&
+              !LittleFS.exists(path),
+              "POST /evt/clr deletes the saved days");
+
+        /* and the log still works afterwards */
+        G_StubMillis += 5000u;
+        UINT32_T__G__TlmField[15] = 24000u;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(220u)));
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "the history starts again from a clean file after a clear");
     }
 
     std::cout << std::string(70, '=') << "\n";

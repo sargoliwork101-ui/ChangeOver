@@ -579,7 +579,9 @@
  *        3  u8  imbalance flags (v1.43): b0 episode in progress,
  *                      b1 latched verdict, b2 output veto engaged,
  *                      b3 charge budget spent (charging held off),
- *                      b4..b7 reserved 0
+ *                      b4 weak-battery verdict latched (v1.88),
+ *                      b5 battery path CUT right now (v1.93),
+ *                      b6 thermal rest running (v1.93), b7 reserved 0
  *        4  u32 raw1_counts        8 u32 shunt1_uv        12 u32 ma1_unfiltered
  *       16  u32 i1_filtered_ma    20 u32 iest1_ma         24 u32 duty1_permille
  *       28  u32 state1            32 u32 raw2_counts      36 u32 shunt2_uv

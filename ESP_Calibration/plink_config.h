@@ -371,7 +371,49 @@
  *      (دستور کاربر) و صفحه به ۴۵۰۴۶۵ بایت رسید؛ سقف عمداً با حاشیهٔ ~۸ کیلوبایت
  *      به ۴۵۸۷۵۲ بایت (۴۴۸ کیلوبایت) پله خورد.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    458752u
+/* ==================== Live state history log / تاریخچهٔ وضعیت ==================== */
+/* [EN] v1.93 (user order 2026-10-23): every panel keeps a state history on its
+        own flash, one small CSV per calendar day of the phone that opened it.
+        A row is written only when something really changed (mains, charger
+        step, fault mask, latch flags, battery near the cut band, link lost /
+        back, board restarted) - a steady board writes nothing, so the flash is
+        not worn out and the file stays readable. Each row is opened, written
+        and CLOSED immediately: if the panel loses power at the battery cut,
+        the last row is already on flash.
+   [FA] نسخهٔ ۱٫۹۳ (دستور کاربر ۲۰۲۶-۱۰-۲۳): هر پنل تاریخچهٔ وضعیت را روی فلش
+        خودش نگه می‌دارد، روزی یک فایل کوچک به تاریخ همان گوشی/کامپیوتری که
+        پنل را باز کرده. ردیف فقط وقتی نوشته می‌شود که واقعاً چیزی عوض شده باشد
+        (برق شهر، مرحلهٔ شارژ، خطا، قفل‌ها، نزدیک‌شدن باتری به مرز قطع، قطع و
+        برگشت ارتباط، روشن‌شدن دوبارهٔ برد) - برد آرام هیچ ردیفی نمی‌نویسد، پس
+        فلش فرسوده نمی‌شود و فایل خوانا می‌ماند. هر ردیف همان لحظه باز، نوشته و
+        بسته می‌شود: اگر پنل سر قطع باتری برق را از دست بدهد، آخرین ردیف از قبل
+        روی فلش است. */
+#define ESP_LOG_MAX_DAYS            30u      /* [EN] keep / [FA] نگه‌داری چند روز */
+#define ESP_LOG_MAX_ROWS_PER_DAY    400u     /* [EN] per day cap / [FA] سقف ردیف هر روز */
+#define ESP_LOG_TAIL_LINES          30u      /* [EN] rows the panel shows / [FA] ردیف نمایشی */
+#define ESP_LOG_INDEX_PATH          "/evt-days.txt"   /* [EN] day list + row counts / [FA] فهرست روزها */
+#define ESP_LOG_LAST_PATH           "/evt-last.txt"   /* [EN] last state, for the boot row / [FA] آخرین وضعیت */
+#define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"  /* [EN] phone clock anchor / [FA] لنگر ساعت گوشی */
+#define ESP_LOG_FILE_PREFIX         "/evt-"
+#define ESP_LOG_CUT_BAND_MV         21200u   /* [EN] battery "near the cut" line / [FA] مرز «نزدیک قطع» باتری */
+#define ESP_LOG_MIN_INTERVAL_MS     2000u    /* [EN] merges a burst into one row / [FA] ادغام چند تغییر پشت‌سرهم */
+#define ESP_LOG_LINK_TIMEOUT_MS     5000u    /* [EN] no frame = link lost / [FA] بی‌فریم یعنی قطع ارتباط */
+#define ESP_LOG_CLOCK_SAVE_MS       600000u  /* [EN] clock to flash every 10 min / [FA] ذخیرهٔ ساعت هر ۱۰ دقیقه */
+#define ESP_LOG_CLOCK_VALID_MIN     1700000000u /* [EN] below this the phone time is junk / [FA] کمتر از این یعنی زمان بی‌معنی */
+#define ESP_LOG_HEADER \
+    "# state history / تاریخچهٔ وضعیت\n" \
+    "# epoch,uptime_s,change_bits,note,mains,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv\n" \
+    "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link\n" \
+    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full\n" \
+    "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
+
+/* [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of
+        the page took the markup to 464752 bytes, so this deliberate guard is
+        stepped 448 KiB -> 464 KiB, with ~10 KiB of headroom.
+   [FA] در نسخهٔ ۱٫۹۳ کارت «تاریخچهٔ وضعیت» (لاگ روزانهٔ تغییرها با ساعت گوشی) به
+        پایین صفحه اضافه شد و مارک‌آپ به ۴۶۴۷۵۲ بایت رسید؛ سقف عمداً با
+        حاشیهٔ ~۱۰ کیلوبایت به ۴۶۴ کیلوبایت پله خورد. */
+#define ESP_PANEL_HTML_MAX_BYTES    475136u
 
 /* ==================== Parser States ==================== */
 typedef enum

@@ -107,6 +107,7 @@
 #include "plink_config.h"
 #include "plink_params.h"
 #include "plink_state.h"
+#include "plink_log.h"
 #include "plink_panel.h"
 #include "plink_font.h"
 #include "plink_link.h"
@@ -165,7 +166,19 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/benchlog", HTTP_GET, func__Esp_HttpBenchLogGet);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/add", HTTP_POST, func__Esp_HttpBenchLogAdd);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/clear", HTTP_POST, func__Esp_HttpBenchLogClear);
+    /* [EN] v1.93 state history: phone clock, tail read, day list, download, clear.
+       [FA] نسخهٔ ۱٫۹۳ تاریخچهٔ وضعیت: ساعت گوشی، خواندن آخرین ردیف‌ها، فهرست
+       روزها، دانلود و پاک کردن. */
+    ESP_WEB_SERVER_T__G__Server.on("/clock", HTTP_POST, func__Esp_HttpClockSet);
+    ESP_WEB_SERVER_T__G__Server.on("/evt", HTTP_GET, func__Esp_HttpEventLog);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Esp_HttpEventDays);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Esp_HttpEventDownload);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Esp_HttpEventClear);
     ESP_WEB_SERVER_T__G__Server.begin();
+
+    /* [EN] v1.93: restore the clock anchor and the day list for the history.
+       [FA] نسخهٔ ۱٫۹۳: بازگرداندن لنگر ساعت و فهرست روزها برای تاریخچه. */
+    func__EspLog_Begin();
 }
 
 /**
@@ -184,4 +197,5 @@ void loop(void)
     func__Esp_PumpTx();
     ESP_WEB_SERVER_T__G__Server.handleClient();
     func__Esp_WifiPowerSaveTick((uint32_t)millis());
+    func__EspLog_Tick();
 }

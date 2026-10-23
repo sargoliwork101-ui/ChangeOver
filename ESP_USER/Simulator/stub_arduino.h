@@ -172,6 +172,12 @@ public:
         return String(text.substr(unsigned_int__from, unsigned_int__to - unsigned_int__from));
     }
 
+    int lastIndexOf(char char__needle) const
+    {
+        size_t size_t__found = text.rfind(char__needle);
+        return (size_t__found == std::string::npos) ? -1 : (int)size_t__found;
+    }
+
     void trim(void)
     {
         size_t size_t__begin = text.find_first_not_of(" \t\r\n");
@@ -325,6 +331,42 @@ public:
             string__content += char__buffer;
         }
         return string__content;
+    }
+    size_t println(const char *char__ptr_text)
+    {
+        size_t size_t__written = print(char__ptr_text);
+        if ((handle != NULL) && (fputc('\n', handle) != EOF)) { size_t__written++; }
+        return size_t__written;
+    }
+    size_t println(const String &string__text) { return println(string__text.c_str()); }
+    size_t println(unsigned long unsigned_long__value)
+    {
+        size_t size_t__written = print(unsigned_long__value);
+        if ((handle != NULL) && (fputc('\n', handle) != EOF)) { size_t__written++; }
+        return size_t__written;
+    }
+    int available(void)
+    {
+        if (handle == NULL) { return 0; }
+        long long__here = ftell(handle);
+        if (long__here < 0) { return 0; }
+        if (fseek(handle, 0, SEEK_END) != 0) { return 0; }
+        long long__end = ftell(handle);
+        (void)fseek(handle, long__here, SEEK_SET);
+        if (long__end < long__here) { return 0; }
+        return (int)(long__end - long__here);
+    }
+    String readStringUntil(char char__terminator)
+    {
+        String string__line;
+        if (handle == NULL) { return string__line; }
+        int int__character = 0;
+        while ((int__character = fgetc(handle)) != EOF)
+        {
+            if ((char)int__character == char__terminator) { break; }
+            string__line += (char)int__character;
+        }
+        return string__line;
     }
     void close(void)
     {

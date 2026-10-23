@@ -1,6 +1,10 @@
 /* simple_link.h - پارسر فریم و CRC پنل ساده
    فقط فارسی - فقط خواندنی، بدون ارسال پارامتر */
 
+/* تاریخچهٔ وضعیت همین‌جا می‌آید تا پارسر بتواند بعد از هر فریم آن را صدا بزند؛
+   simple_state.h باید پیش از این فایل include شده باشد. */
+#include "simple_log.h"
+
 /* ==================== کمک بایت ==================== */
 static uint32_t func__Simple_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t uint8_t__offset)
 {
@@ -57,6 +61,8 @@ static void func__Simple_HandleFrame(void)
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;
+        /* هر فریم به تاریخچه داده می‌شود؛ فقط تغییر واقعی ردیف می‌سازد */
+        func__SimpleLog_OnFrame();
     }
     else if (UINT8_T__G__RxType == SIMPLE_MSG_DIAG_DATA)
     {

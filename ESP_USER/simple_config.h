@@ -137,6 +137,26 @@
 #define SIMPLE_TIME_RESEND_MS           600000u      /* اگر برد ساعت را نگرفت، هر ۱۰ دقیقه دوباره */
 #define SIMPLE_TIME_ADOPT_DIFF_SEC      300u         /* اختلافی که بعد از آن ساعت برد (RTC) بر پنل مقدم می‌شود */
 
+/* ==================== تاریخچهٔ وضعیت (لاگ روزانه) ====================
+   دستور کاربر ۲۰۲۶-۱۰-۲۳: هر پنل تاریخچهٔ وضعیت خودش را روی فلش نگه می‌دارد،
+   روزی یک فایل، و ردیف فقط وقتی نوشته می‌شود که چیزی واقعاً عوض شده باشد.
+   هر ردیف همان لحظه بسته می‌شود تا قطع باتری آخرین ردیف را از بین نبرد. */
+#define SIMPLE_LOG_MAX_DAYS             30u
+#define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
+#define SIMPLE_LOG_TAIL_LINES           30u
+#define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"
+#define SIMPLE_LOG_LAST_PATH            "/evt-last.txt"
+#define SIMPLE_LOG_FILE_PREFIX          "/evt-"
+#define SIMPLE_LOG_CUT_BAND_MV          21200u   /* مرز «نزدیک قطع» باتری */
+#define SIMPLE_LOG_MIN_INTERVAL_MS      2000u    /* ادغام چند تغییر پشت‌سرهم در یک ردیف */
+#define SIMPLE_LOG_LINK_TIMEOUT_MS      5000u    /* بی‌فریم یعنی قطع ارتباط */
+#define SIMPLE_LOG_HEADER \
+    "# تاریخچهٔ وضعیت / state history\n" \
+    "# epoch,uptime_s,change_bits,note,mains,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv\n" \
+    "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link\n" \
+    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full\n" \
+    "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
+
 /* ==================== پارامترهای خود برد ==================== */
 #define SIMPLE_PARAMS_FILE              "/params.json"
 

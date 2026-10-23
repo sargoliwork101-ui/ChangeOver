@@ -61,6 +61,7 @@ void setup(void)
     func__Simple_ChargeHistoryLoad();
     func__Simple_ChartsLoad();        /* هر چهار بازه از آخرین ذخیرهٔ روزانه */
     func__Simple_DiagLoad();
+    func__SimpleLog_Begin();          /* فهرست روزهای تاریخچه */
 
     // بازیابی prev counts برای تشخیص شارژ بعد از ریستارت
     UINT32_T__G__ChargeCountCh1 = UINT32_T__G__PrevChargeCountCh1;
@@ -94,6 +95,11 @@ void setup(void)
     /* ریست دستی قفل‌ها: خواندن وضعیت صف و درخواست ریست (فقط ادمین). */
     SIMPLE_WEB_SERVER_T__G__Server.on("/latch", HTTP_GET, func__Simple_HttpLatchState);
     SIMPLE_WEB_SERVER_T__G__Server.on("/latch/reset", HTTP_POST, func__Simple_HttpLatchReset);
+    /* تاریخچهٔ وضعیت (لاگ روزانه) */
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt", HTTP_GET, func__Simple_HttpEventLog);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Simple_HttpEventDays);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Simple_HttpEventDownload);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Simple_HttpEventClear);
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
 
@@ -107,6 +113,9 @@ void loop(void)
 
     /* صف ریست قفل‌ها: هر ۱۲۰ms حداکثر یک فریم SET_PARAM */
     func__Simple_SlotTick();
+
+    /* تاریخچهٔ وضعیت: نوشتن ردیف‌های در انتظار و تشخیص قطع ارتباط */
+    func__SimpleLog_Tick();
 
     // درخواست دیاگ مستقل: اولین بار به محض دریافت تله‌متری (برای همگام‌سازی فوری ساعت از STM32) و سپس هر ۱۰ ثانیه
     static uint32_t uint32_t__lastDiagReqLoopMs = 0u;

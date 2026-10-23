@@ -870,3 +870,136 @@ static void func__Esp_HttpBenchLogClear(void)
     }
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
+
+/* ==================== v1.93 state history / تاریخچهٔ وضعیت ==================== */
+
+/* [EN] The tail text is built here, not on the stack: 30 rows x ~80 bytes plus
+        the terminator, and the handler must return before anything else runs.
+   [FA] متن ردیف‌ها اینجا ساخته می‌شود نه روی پشته: ۳۰ ردیف × ~۸۰ بایت به‌علاوهٔ
+        پایان‌بند، و هندلر باید پیش از هر کار دیگری برگردد. */
+static char CHAR__G__LogTailBuffer[3600];
+
+/**
+ * @brief  [EN] POST /clock?sec=..&tz=.. : adopt the phone clock (or ask it).
+ *         [FA] مسیر ‎POST /clock‎ : گرفتن ساعت گوشی (یا پرسیدن آن).
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpClockSet(void)
+{
+    bool bool__ok = false;
+    uint32_t uint32_t__sec = 0u;
+    int32_t int32_t__tz = 0;
+
+    if (ESP_WEB_SERVER_T__G__Server.hasArg("sec"))
+    {
+        uint32_t__sec = (uint32_t)ESP_WEB_SERVER_T__G__Server.arg("sec").toInt();
+    }
+    if (ESP_WEB_SERVER_T__G__Server.hasArg("tz"))
+    {
+        int32_t__tz = (int32_t)ESP_WEB_SERVER_T__G__Server.arg("tz").toInt();
+    }
+    bool__ok = func__EspLog_TimeSet(uint32_t__sec, int32_t__tz);
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":%u,\"sec\":%lu}",
+                   (bool__ok != false) ? 1u : 0u,
+                   (unsigned long)func__EspLog_NowSec());
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
+/**
+ * @brief  [EN] GET /evt[?day=YYYYMMDD] : the last rows of one day as CSV text.
+ *         [FA] مسیر ‎GET /evt‎ : آخرین ردیف‎های یک روز به‌صورت متن CSV.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventLog(void)
+{
+    uint32_t uint32_t__day = 0u;
+
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    if (ESP_WEB_SERVER_T__G__Server.hasArg("day"))
+    {
+        uint32_t__day = (uint32_t)ESP_WEB_SERVER_T__G__Server.arg("day").toInt();
+    }
+    (void)func__EspLog_Tail(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer),
+                            uint32_t__day, ESP_LOG_TAIL_LINES);
+    ESP_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
+}
+
+/**
+ * @brief  [EN] GET /evt/days : saved days, oldest first, space separated.
+ *         [FA] مسیر ‎GET /evt/days‎ : روزهای ذخیره‌شده، قدیمی‌تر اول، جداشده با فاصله.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventDays(void)
+{
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)func__EspLog_Days(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
+    ESP_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
+}
+
+/**
+ * @brief  [EN] GET /evt/dl?day=YYYYMMDD : download one day as a CSV attachment.
+ *         [FA] مسیر ‎GET /evt/dl‎ : دانلود یک روز به‌صورت فایل CSV.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventDownload(void)
+{
+    char char__path[ESP_LOG_PATH_MAX];
+    char char__name[64];
+    File file__day;
+    uint32_t uint32_t__day = 0u;
+
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    if (ESP_WEB_SERVER_T__G__Server.hasArg("day"))
+    {
+        uint32_t__day = (uint32_t)ESP_WEB_SERVER_T__G__Server.arg("day").toInt();
+    }
+    if (uint32_t__day == 0u)
+    {
+        if (UINT8_T__G__LogIndexCount == 0u)
+        {
+            ESP_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
+            return;
+        }
+        uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+    }
+
+    func__EspLog_PathOf(char__path, uint32_t__day);
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(char__path) == false))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(404, "text/plain", "missing");
+        return;
+    }
+    (void)snprintf(char__name, sizeof(char__name), "attachment; filename=evt-%08lu.csv",
+                   (unsigned long)uint32_t__day);
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition", char__name);
+
+    file__day = LittleFS.open(char__path, "r");
+    if (!file__day)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(503, "text/plain", "fs");
+        return;
+    }
+    (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__day, "text/csv");
+    file__day.close();
+}
+
+/**
+ * @brief  [EN] POST /evt/clr : drop every saved day (the panel asks first).
+ *         [FA] مسیر ‎POST /evt/clr‎ : حذف همهٔ روزهای ذخیره‌شده (پنل اول می‌پرسد).
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventClear(void)
+{
+    uint8_t uint8_t__removed;
+
+    if (!BOOL__G__FsOk)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
+        return;
+    }
+    uint8_t__removed = func__EspLog_Clear();
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":1,\"removed\":%u}", (unsigned int)uint8_t__removed);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}

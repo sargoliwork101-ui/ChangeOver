@@ -69,12 +69,35 @@ public:
     String(const std::string &v) : s(v) {}
     String(int v) { char b[24]; snprintf(b, sizeof b, "%d", v); s = b; }
     String(unsigned long v) { char b[24]; snprintf(b, sizeof b, "%lu", v); s = b; }
+    String(long v) { char b[24]; snprintf(b, sizeof b, "%ld", v); s = b; }
+    String(unsigned int v) { char b[24]; snprintf(b, sizeof b, "%u", v); s = b; }
     const char *c_str() const { return s.c_str(); }
     size_t length() const { return s.size(); }
     int toInt() const { return atoi(s.c_str()); }
     char operator[](size_t i) const { return i < s.size() ? s[i] : '\0'; }
     bool operator==(const char *o) const { return s == (o ? o : ""); }
     String operator+(const String &o) const { return String(s + o.s); }
+    String operator+(const char *o) const { return String(s + (o ? o : "")); }
+    void trim(void) {
+        size_t a = 0, b = s.size();
+        while ((a < b) && ((s[a] == ' ') || (s[a] == '\r') || (s[a] == '\n') || (s[a] == '\t'))) a++;
+        while ((b > a) && ((s[b - 1] == ' ') || (s[b - 1] == '\r') || (s[b - 1] == '\n') || (s[b - 1] == '\t'))) b--;
+        s = s.substr(a, b - a);
+    }
+    int indexOf(char c) const {
+        size_t k = s.find(c);
+        return (k == std::string::npos) ? -1 : (int)k;
+    }
+    int lastIndexOf(char c) const {
+        size_t k = s.rfind(c);
+        return (k == std::string::npos) ? -1 : (int)k;
+    }
+    String substring(size_t a) const { return (a >= s.size()) ? String() : String(s.substr(a)); }
+    String substring(size_t a, size_t b) const {
+        if (a >= s.size() || b <= a) return String();
+        if (b > s.size()) b = s.size();
+        return String(s.substr(a, b - a));
+    }
 };
 
 /* ---------------- Serial: a queue in each direction ---------------------
@@ -207,6 +230,31 @@ struct StubFile {
     size_t print(const String &v) {       /* Arduino File::print(const String&) */
         if (buf != NULL) buf->append(v.s);
         return v.s.size();
+    }
+    size_t print(unsigned long v) { char b[24]; snprintf(b, sizeof b, "%lu", v); return print(b); }
+    size_t print(long v) { char b[24]; snprintf(b, sizeof b, "%ld", v); return print(b); }
+    size_t print(unsigned int v) { char b[24]; snprintf(b, sizeof b, "%u", v); return print(b); }
+    size_t print(int v) { char b[24]; snprintf(b, sizeof b, "%d", v); return print(b); }
+    size_t println(const char *v) { size_t n = print(v); if (buf != NULL) buf->append("\n"); return n + 1u; }
+    size_t println(const String &v) { size_t n = print(v); if (buf != NULL) buf->append("\n"); return n + 1u; }
+    size_t println(unsigned long v) { size_t n = print(v); if (buf != NULL) buf->append("\n"); return n + 1u; }
+    size_t println(void) { if (buf != NULL) buf->append("\n"); return 1u; }
+    int available(void) { return (buf != NULL && pos < buf->size()) ? (int)(buf->size() - pos) : 0; }
+    String readString(void) {
+        String r;
+        if (buf != NULL) r.s = buf->substr(pos);
+        pos = (buf != NULL) ? buf->size() : 0u;
+        return r;
+    }
+    String readStringUntil(char terminator) {
+        String r;
+        if (buf == NULL) return r;
+        while (pos < buf->size()) {
+            char c = (*buf)[pos++];
+            if (c == terminator) break;
+            r.s.push_back(c);
+        }
+        return r;
     }
     int read(void) {
         if (!buf || pos >= buf->size()) return -1;
