@@ -7,7 +7,7 @@
         19 manual test mode (v1.2), 20..26 charge profile (v1.12: outer envelope only - the STM32
         re-clamps the interdependencies, e.g. enter <= absorb-50), 27..37 alarms tab (v1.15:
         outer envelope only - the STM32 re-clamps the set, e.g. 27 in over+50..OV-100,
-        35 never above 950).
+        35 never above 3000 - the ADC chain ceiling, factory default 950).
    [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ median ۱..۱۵، ۸ پنجره میانگین ۱..۳۰۰ (نسخه ۱.۴؛ بالا رفتن در ۱.۹)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
         ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
         ۱۲۵..۱۲۷ سناریوی ۶ باتری خراب (v1.72: ۱۲۵ مهلت شارژ پیوسته تا حکم خرابی،

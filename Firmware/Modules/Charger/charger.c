@@ -3760,10 +3760,14 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 
 /* ==================== Charger_ClampAlarms ==================== */
 
-/* [EN] v1.15 alarm clamps: hard >= imax+50 (never above 950),
- *      OV >= over+150 (never above 15000), floor in 0..8000.
- * [FA] گیره‌های آلارم v1.15: خطای سخت بالای ‎imax+50 (‎هرگز بالای ۹۵۰)،
- *      قطع OV بالای ‎over+150 (‎هرگز بالای ۱۵۰۰۰)، فلور در ۰..۸۰۰۰. */
+/* [EN] v1.15 alarm clamps: hard >= imax+50 and never above
+ *      CHG_CURRENT_HARD_FAULT_MAX_MA (3000 - what the ADC chain can see;
+ *      the 950 factory default is a separate macro), OV >= over+150 (never
+ *      above 15000), floor in 0..8000.
+ * [FA] گیره‌های آلارم v1.15: خطای سخت بالای ‎imax+50‎ و هرگز بالای
+ *      ‎CHG_CURRENT_HARD_FAULT_MAX_MA‎ (۳۰۰۰ - همان اندازه‌ای که زنجیرهٔ ADC
+ *      می‌بیند؛ پیش‌فرض کارخانه ۹۵۰ ماکروی جداگانه است)، قطع OV بالای
+ *      ‎over+150‎ (هرگز بالای ۱۵۰۰۰)، فلور در ۰..۸۰۰۰. */
 static void func__Charger_ClampAlarms(void)
 {
     uint32_t uint32_t__imax =

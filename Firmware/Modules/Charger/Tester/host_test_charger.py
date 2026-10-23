@@ -921,8 +921,8 @@ def test_charge_profile_v112():
         p[22] = min(max(p[22], p[20] + 100), min(p[20] + 400, 14750))
         p[23] = min(max(p[23], 9000), p[20] - 300)
         p[24] = min(max(p[24], 8000), p[23] - 300)
-        p[25] = min(max(p[25], 100), 900)
-        p[26] = min(max(p[26], 10), min(300, p[25]))
+        p[25] = min(max(p[25], 100), 2950)
+        p[26] = min(max(p[26], 10), min(1475, p[25]))
         return p
     d = {20: 14400, 21: 14300, 22: 14600, 23: 13500, 24: 12800, 25: 650, 26: 50}
     check(clamp(d) == d, "defaults must be a fixed point of the clamp (no drift at boot)")
@@ -943,8 +943,8 @@ def test_charge_profile_v112():
         c = clamp(w)
         if not (11000 <= c[20] <= 14600 and c[20] - 500 <= c[21] <= c[20] - 50
                 and c[20] + 100 <= c[22] <= 14750 and 9000 <= c[23] <= c[20] - 300
-                and 8000 <= c[24] <= c[23] - 300 and 100 <= c[25] <= 900
-                and 10 <= c[26] <= min(300, c[25])):
+                and 8000 <= c[24] <= c[23] - 300 and 100 <= c[25] <= 2950
+                and 10 <= c[26] <= min(1475, c[25])):
             ok = False
             break
     check(ok, "2000 random writes must all land inside the invariant ranges")
@@ -1338,8 +1338,8 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
         case 22: value = clampf(value, 14500, 14750); break;
         case 23: value = clampf(value, 9000, 14300); break;
         case 24: value = clampf(value, 8000, 14000); break;  /* float-300, float max 14300 */
-        case 25: value = clampf(value, 100, 900); break;
-        case 26: value = clampf(value, 10, 300); break;
+        case 25: value = clampf(value, 100, 2950); break;
+        case 26: value = clampf(value, 10, 1475); break;
         case 27: value = clampf(value, 14000, 15000); break;
         case 28: value = clampf(value, 50, 1000); break;
         case 29: value = clampf(value, 3000, 8000); break;
@@ -1348,7 +1348,7 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
         case 32: value = clampf(value, 100, 5000); break;
         case 33: value = clampf(value, 18000, 24000); break;
         case 34: value = clampf(value, 24000, 30000); break;
-        case 35: value = clampf(value, 150, 950); break;
+        case 35: value = clampf(value, 150, 3000); break;
         case 36: value = clampf(value, 14000, 15000); break;
         case 37: value = clampf(value, 0, 8000); break;
         case 38: value = clampf(value, 100, 10000); break;
@@ -1546,17 +1546,19 @@ int main(void){
     assert(EMU_FLASH[0] == 0xFF && EMU_FLASH[2048] == 0xFF);
 
     /* T11 (v1.15): alarm ids persist round-trip; a hostile hard-current
-       replays CLAMPED to the 950 ceiling (down-only safety) */
+       replays CLAMPED to the chain ceiling (3000, down-only safety). The
+       950 factory default is a separate macro, so a legal 990 now survives -
+       the hostile value has to sit above 3000 to prove the clamp. */
     memset(EMU_FLASH, 0xFF, 4096); reboot();
     {
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
         e[0].uint16_t__id = 27; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 14700;
-        e[1].uint16_t__id = 35; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 990;
+        e[1].uint16_t__id = 35; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 9999;
         func__EspLink_NvmRecordBuild(&rec, 11, e, 2);
         assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
-        assert(g_params[27] == 14700 && g_params[35] == 950);
+        assert(g_params[27] == 14700 && g_params[35] == 3000);
     }
 
     /* T12 (v1.16b): UI ids persist round-trip; a hostile red-duty
@@ -1886,7 +1888,7 @@ def test_alarms_tab_v115():
 
     def cclamp(a, imax=650, over=14600):
         a = dict(a)
-        a[35] = min(max(a[35], imax + 50), 950)
+        a[35] = min(max(a[35], imax + 50), 3000)
         a[36] = min(max(a[36], max(14000, over + 150)), 15000)
         a[37] = min(max(a[37], 0), 8000)
         return a
@@ -1895,9 +1897,11 @@ def test_alarms_tab_v115():
     check(fclamp(fd) == fd, "fault alarm defaults must be a fixed point of the clamp")
     cd = {35: 950, 36: 15000, 37: 2000}
     check(cclamp(cd) == cd, "charger alarm defaults must be a fixed point of the clamp")
-    check(cclamp({35: 9999, 36: 99999, 37: 0})[35] == 950
+    check(cclamp({35: 9999, 36: 99999, 37: 0})[35] == 3000
           and cclamp({35: 9999, 36: 99999, 37: 0})[36] == 15000,
-          "safety ceilings are DOWN-ONLY: absurd writes collapse to 950 mA / 15000 mV, never above")
+          "safety ceilings are DOWN-ONLY: absurd writes collapse to the 3000 mA "
+          "chain ceiling / 15000 mV, never above (the 950 mA factory default is a "
+          "separate number and does not move)")
     import random
     rng = random.Random(20260926)
     ok = True
@@ -1917,7 +1921,7 @@ def test_alarms_tab_v115():
         imax = rng.randint(100, 900)
         cw = {35: rng.randint(0, 2000), 36: rng.randint(0, 20000), 37: rng.randint(0, 12000)}
         cc2 = cclamp(cw, imax, over)
-        if not (imax + 50 <= cc2[35] <= 950
+        if not (imax + 50 <= cc2[35] <= 3000
                 and max(14000, over + 150) <= cc2[36] <= 15000
                 and 0 <= cc2[37] <= 8000):
             ok = False
