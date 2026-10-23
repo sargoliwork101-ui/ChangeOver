@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 003d227</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7c5634a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -920,40 +920,55 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="ucard8" style="display:none">
 <div class="hd"><b>سناریو ۸ — باتری ضعیف (قرمز چشمک‌زن + بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen8" checked onchange="scenarioToggle(8,this.checked)"><span>فعال</span></label></div>
-<div class="ds c4ds"><b>این سناریو کِی می‌آید؟</b> باتری بار را تحمل نمی‌کند ولی با برداشتن بار ولتاژش برمی‌گردد:
+<div class="ds c4ds"><b>این سناریو کِی می‌آید؟</b> باتری بار را تحمل نمی‌کند: بدون برق شهر وصل می‌شود و چند لحظه بعد دوباره قطع می‌شود.
 <ul>
-<li><b>تشخیص</b> — خروجی بدون برق شهر روی باتری وصل شده و داخل «پنجرهٔ محافظ» دوباره قطع می‌شود: یعنی باتری ضعیف است، نه اینکه یک لحظه افت کرده باشد.</li>
-<li><b>واکنش</b> — حکم قفل می‌شود: چراغ قرمز <b>چشمک‌زن</b> + بوق دوره‌ای، و (با تیک زیر) مسیر باتری بسته می‌ماند تا بار روی باتری ضعیف نرود. شارژ قطع نمی‌شود.</li>
-<li><b>استراحت</b> — تا وقتی ولتاژ باتری سالم و پیوسته باشد، پس از «مدت استراحت» حکم خودش پاک می‌شود و <b>یک بار</b> تلاش مجدد انجام می‌شود؛ اگر همان‌جا دوباره قطع شد، حکم برمی‌گردد و استراحت از نو شروع می‌شود.</li>
-<li><b>خروجی</b> — با «مسدود کردن خروجی» تیک‌خورده، تا پاک‌شدن حکم باتری روی خروجی نمی‌آید؛ برق شهر همیشه مسیر خودش را دارد.</li>
-<li><b>تفکیک چهره</b> — قرمز با دورهٔ ۵۰۰ میلی‌ثانیه (سناریو ۵: ۱۰۰۰ میلی‌ثانیه، سناریو ۶: ثابت) و بوق کاملاً مستقل خودش.</li>
+<li><b>۱ · تشخیص</b> — بعد از وصلِ بدون برق شهر، داخل «پنجرهٔ محافظ» دوباره قطع شد.</li>
+<li><b>۲ · واکنش</b> — حکم قفل می‌شود: قرمز چشمک‌زن + بوق، و اگر تیک باشد باتری از خروجی جدا می‌ماند.</li>
+<li><b>۳ · استراحت</b> — با ولتاژ سالم و پیوسته، بعد از «مدت استراحت» حکم خودش پاک می‌شود و فقط یک بار اجازهٔ وصل دوباره می‌دهد.</li>
+<li><b>۴ · ریست</b> — دکمهٔ ریست پایین کارت همین حالا حکم را پاک می‌کند.</li>
 </ul>
 </div>
-<div class="sec">۱) زمان‌بندی تشخیص و بازیابی</div>
-<div class="sx"><b>پنجرهٔ محافظ</b> = اگر دوباره قطع شدن داخل این مدت بعد از وصلِ بدون برق شهر رخ دهد، حکم صادر می‌شود. <b>استراحت</b> = مدت ولتاژ سالمِ پیوسته تا پاک‌شدن حکم و تنها تلاش مجدد. <b>ولتاژ سالم</b> = مدت پیوستهٔ ولتاژ ۲۱۲۰۰ میلی‌ولت یا بالاتر پیش از وصلِ بدون برق شهر.</div>
+<div class="sec">۱) زمان‌بندی تشخیص و بازیابی <span class="lb">(ms)</span></div>
+<div class="sx"><b>پنجرهٔ محافظ</b> = بعد از وصلِ بدون برق شهر، اگر داخل این مدت دوباره قطع شود، باتری ضعیف است.<br><b>مدت استراحت</b> = چقدر ولتاژ سالم و پیوسته بماند تا حکم پاک شود.<br><b>ولتاژ سالم پیوسته</b> = چقدر ولتاژ ۲۱۲۰۰ میلی‌ولت یا بالاتر بماند تا وصلِ بدون برق شهر اجازه بگیرد.</div>
 <div class="bqr">
 <label>پنجرهٔ محافظ (ms)<input type="number" id="q149" step="1000" min="1000" max="600000"><span class="lb" id="a149"></span></label>
 <label>مدت استراحت پیش از تلاش مجدد (ms)<input type="number" id="q148" step="60000" min="60000" max="3600000"><span class="lb" id="a148"></span></label>
 <label>ولتاژ سالم پیوسته (ms)<input type="number" id="q150" step="1000" min="1000" max="300000"><span class="lb" id="a150"></span></label>
 </div>
-<div class="bqr"><label class="ckr"><input type="checkbox" id="cb147"><span><span class="ckt">حکم باتری ضعیف فعال باشد</span><span class="cks" id="a147"></span></span></label></div>
-<div class="bqr"><label class="ckr"><input type="checkbox" id="cb157"><span><span class="ckt">تا پاک‌شدن حکم، باتری از خروجی جدا بماند</span><span class="cks" id="a157"></span></span></label></div>
-<div class="sec">۲) چشمک قرمز مستقل سناریوی ۸</div>
-<div class="sx"><b>چهرهٔ این سناریو:</b> فقط چراغ قرمز با این دوره و این سهم روشنی چشمک می‌زند و سبز و زرد خاموش می‌مانند. دورهٔ ۵۰۰ میلی‌ثانیه آن را از سناریو ۵ (۱۰۰۰ میلی‌ثانیه) و سناریو ۶ (ثابت) جدا می‌کند؛ دورهٔ صفر یعنی قرمز ثابت.</div>
+<div class="c4n" id="s8v"></div>
+<div class="sec">۲) چراغ قرمز مستقل این سناریو <span class="lb">(دوره / سهم روشنی)</span></div>
+<div class="sx"><b>دورهٔ چشمک</b> = طول یک چرخهٔ قرمز (۰ = قرمز ثابت). <b>سهم روشنی</b> = چند درصد آن چرخه قرمز روشن است. سبز و زرد خاموش می‌مانند.</div>
 <div class="bqr">
 <label>دورهٔ چشمک قرمز (ms، ۰=ثابت)<input type="number" id="q151" step="100" min="0" max="10000"><span class="lb" id="a151"></span></label>
 <label>سهم روشنی قرمز (٪)<input type="number" id="q152" step="5" min="5" max="95"><span class="lb" id="a152"></span></label>
 </div>
-<div class="sec">۳) بوق مستقل سناریوی ۸</div>
-<div class="sx"><b>این چهار عدد عمداً جدا هستند:</b> از بوق سناریوهای ۵، ۶ و ۷ قرض گرفته نمی‌شوند. دورهٔ صفر بوق را خاموش می‌کند.</div>
+<div class="c4n" id="s8lamp"></div>
+<div class="sec">۳) بوق مستقل این سناریو <span class="lb">(دوره / الگو)</span></div>
+<div class="sx"><b>دورهٔ بوق</b> = فاصلهٔ تکرار الگو (۰ = بی‌صدا). <b>طول هر بوق</b> = مدت هر بوق. <b>تعداد</b> و <b>گپ</b> = شکل همان الگو. این چهار عدد از سناریوهای ۵، ۶ و ۷ جدا هستند.</div>
 <div class="bqr">
 <label>دورهٔ بوق (ms، ۰=خاموش)<input type="number" id="q153" step="100" min="0" max="600000"><span class="lb" id="a153"></span></label>
 <label>طول هر بوق (ms)<input type="number" id="q154" step="10" min="20" max="2000"><span class="lb" id="a154"></span></label>
 <label>تعداد بوق در هر الگو<input type="number" id="q155" step="1" min="0" max="10"><span class="lb" id="a155"></span></label>
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q156" step="10" min="0" max="5000"><span class="lb" id="a156"></span></label>
 </div>
+<div class="c4n" id="s8z"></div>
+<div class="sec">۴) رفتار پس از حکم</div>
+<div class="sx"><b>حکم فعال</b> = اگر خاموش باشد این سناریو هیچ کاری نمی‌کند.<br><b>جدا ماندن باتری</b> = تا پاک‌شدن حکم، باتری به خروجی وصل نمی‌شود تا بار روی باتری ضعیف نیفتد. شارژ قطع نمی‌شود.<br><b>ریست</b> = همین حالا حکم را پاک می‌کند و یک بار وصل دوباره را آزاد می‌کند.</div>
+<div class="bqr">
+<label class="ckr"><input type="checkbox" id="cb147"><span><span class="ckt">حکم باتری ضعیف فعال باشد</span><span class="cks" id="a147"></span></span></label>
+<label class="ckr"><input type="checkbox" id="cb157"><span><span class="ckt">تا پاک‌شدن حکم، باتری از خروجی جدا بماند</span><span class="cks" id="a157"></span></span></label>
+</div>
+<div class="bqr"><button class="sb sb-rst fwb" onclick="latchrst(8)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری ضعیف</button><span class="lb fwb" id="rst8">حکم را پاک می‌کند و یک بار وصل دوباره را آزاد می‌کند</span></div>
 <div class="prod">وضعیت حکم: <b id="wbst"></b></div>
-<div class="c4n" id="s8v"></div>
+<div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
+<ul>
+<li><b>۱ · وصل بدون برق شهر</b> — ولتاژ سالم می‌شود و برد باتری را وصل می‌کند.</li>
+<li><b>۲ · قطع دوباره</b> — داخل پنجرهٔ محافظ قطع شد: حکم قفل می‌شود.</li>
+<li><b>۳ · هشدار</b> — قرمز چشمک‌زن + بوق؛ با تیک «جدا ماندن»، باتری روی خروجی نمی‌آید.</li>
+<li><b>۴ · استراحت</b> — ولتاژ سالم و پیوسته بماند: بعد از مدت استراحت حکم پاک و فقط یک بار دوباره وصل می‌شود.</li>
+<li><b>۵ · برق شهر</b> — برگشت برق شهر حکم را پاک نمی‌کند؛ فقط مسیر ورودی برمی‌گردد.</li>
+</ul>
+</div>
 <div class="bqr"><button class="sb sb2 fwb" onclick="wbdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۸</button></div>
 </div>
 <input type="hidden" id="q76" value="">
@@ -1448,6 +1463,14 @@ addEventListener('pagehide',panelViewSave);addEventListener('beforeunload',panel
 $('mx').onclick=()=>send(19,0);
 {const b6=$('ib117');if(b6)b6.onchange=()=>{send(117,b6.checked?1:0);};}
 {const b7=$('db127');if(b7)b7.onchange=()=>{send(127,b7.checked?1:0);};}
+/* [EN] v1.86: the two scenario-8 switches were drawn but never wired - a tick
+       did nothing. They behave exactly like the scenario-5/6 switches: send the
+       new value immediately and show the board's applied state under the box.
+   [FA] نسخهٔ ۱٫۸۶: دو کلید سناریوی ۸ کشیده می‌شدند ولی وصل نبودند و تیک
+       هیچ کاری نمی‌کرد. حالا مثل کلیدهای سناریو ۵/۶ مقدار را فوری می‌فرستند
+       و وضعیت اعمال‌شدهٔ برد را زیر همان کادر نشان می‌دهند. */
+{const b8=$('cb147');if(b8)b8.onchange=()=>{send(147,b8.checked?1:0);};}
+{const b9=$('cb157');if(b9)b9.onchange=()=>{send(157,b9.checked?1:0);};}
 
 /* ---------- به‌روزرسانی: فرمول‌های بخش 2 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
@@ -2867,15 +2890,16 @@ function sall(){
    stxt('s7v','بوق مستقل خطای فنی: '+(bp===0?'خاموش':(bw.fits?bc+' بوق × '+bl+' میلی‌ثانیه + '+(bc>1?bg*(bc-1):0)+' میلی‌ثانیه مجموع گپ‌ها ('+bg+' بین هر بوق)، هر '+sms(bp)+' ('+bp+' میلی‌ثانیه)': '⚠ الگو در دوره جا نمی‌شود'))+
    ' · سه LED هم‌زمان: '+Math.round(lp*ld/100)+' میلی‌ثانیه روشن / '+Math.round(lp*(100-ld)/100)+' میلی‌ثانیه خاموش، هر '+lp+' میلی‌ثانیه ('+ld+'٪ duty) · q137..q142 مستقل از سناریوهای ۵ و ۶.');
  }
- /* [EN] v1.86 scenario 8: its own face and its own recovery windows.
-    [FA] سناریوی ۸: چهره و پنجره‌های بازیابی کاملاً مستقل خودش. */
- {const bp=c4v(153,3000),bl=c4v(154,200),bc=c4v(155,3),bg=c4v(156,100),
-       bw=swin(bp,bl,bc,bg),lp=c4v(151,500),ld=c4v(152,50);
-   stxt('s8v','حکم وقتی قفل می‌شود که بعد از وصلِ بدون برق شهر، داخل '+sms(c4v(149,60000))+' دوباره قطع شود، یا باتری '+sms(c4v(150,10000))+' پیوسته سالم نماند'+
-   ' · پاک‌شدن فقط با خاموش‌کردن حکم یا '+sms(c4v(148,600000))+' ولتاژ سالمِ پیوسته، و بعد فقط یک بار تلاش مجدد'+
-   ' · قرمز: '+Math.round(lp*ld/100)+' میلی‌ثانیه روشن / '+Math.round(lp*(100-ld)/100)+' میلی‌ثانیه خاموش، هر '+lp+' میلی‌ثانیه ('+ld+'٪ duty)'+
-   ' · بوق: '+(bp===0?'خاموش':(bw.fits?bc+' بوق × '+bl+' میلی‌ثانیه + '+(bc>1?bg*(bc-1):0)+' میلی‌ثانیه مجموع گپ‌ها ('+bg+' بین هر بوق)، هر '+sms(bp):'⚠ الگو در دوره جا نمی‌شود'))+
-   ' · تا پاک‌شدن حکم '+(c4v(157,1)?'مسیر باتری بسته می‌ماند':'فقط هشدار است')+' · q147..q157 مستقل از سناریوهای ۵، ۶ و ۷.');
+ /* [EN] v1.86 scenario 8: three short lines, one per section, built from the
+       same numbers the board will use - the pattern of cards 5, 6 and 7.
+   [FA] سناریوی ۸: سه خط کوتاه، یکی برای هر بخش، از همان اعدادی که برد
+       به‌کار می‌برد - همان الگوی کارت‌های ۵، ۶ و ۷. */
+ {const gu=c4v(149,60000),rs=c4v(148,600000),hd=c4v(150,10000);
+  stxt('s8v','قطعِ دوباره داخل <span class="n">'+sms(gu)+'</span> بعد از وصلِ بدون برق شهر = حکم · پاک‌شدن بعد از <span class="n">'+sms(rs)+'</span> ولتاژ سالمِ پیوسته، بعد فقط یک بار وصل دوباره · وصلِ بدون برق شهر فقط بعد از <span class="n">'+sms(hd)+'</span> سالمِ پیوسته');
+  const lp=c4v(151,500),ld=c4v(152,50);
+  stxt('s8lamp',lp===0?'قرمز ثابت (دوره = ۰)':'قرمز: <span class="n">'+Math.round(lp*ld/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(lp*(100-ld)/100)+'</span> میلی‌ثانیه خاموش، هر <span class="n">'+lp+'</span> میلی‌ثانیه');
+  const bp=c4v(153,3000),bl=c4v(154,200),bc=c4v(155,3),bg=c4v(156,100),bw=swin(bp,bl,bc,bg);
+  stxt('s8z',bp===0?'بوق خاموش است (دوره = ۰).':(bw.fits?bc+' بوق × '+bl+' میلی‌ثانیه + '+(bc>1?bg*(bc-1):0)+' میلی‌ثانیه مجموع گپ‌ها ('+bg+' بین هر بوق)، هر '+sms(bp):'⚠ الگو در دوره جا نمی‌شود — برد بی‌صدا می‌ماند'));
  }
 }
 /* [EN] Alarm edits use only each field's own firmware range as a hard
@@ -3115,6 +3139,15 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
    :'قفل نیست — باتری ضعیف حکم نشده';
   $('wbst').className='tg '+(wbOn?'r':'g');
  }
+ /* [EN] v1.86: keep the two scenario-8 switches in step with the board and
+         write under each one what its current position really means.
+   [FA] هم‌گام‌کردن دو کلید سناریوی ۸ با برد و نوشتن معنی وضعیت فعلی زیر هر کدام. */
+ if($('a147')){const en147=(p[147]==null?1:p[147]),bt147=document.getElementById('cb147');
+  if(!(147 in PEND)){if(bt147&&document.activeElement!==bt147)bt147.checked=!!en147;
+   $('a147').textContent=en147?'الان روشن است: حکم صادر می‌شود.':'الان خاموش است: این سناریو هیچ کاری نمی‌کند.';}}
+ if($('a157')){const bo157=(p[157]==null?1:p[157]),bt157=document.getElementById('cb157');
+  if(!(157 in PEND)){if(bt157&&document.activeElement!==bt157)bt157.checked=!!bo157;
+   $('a157').textContent=bo157?'الان روشن است: تا پاک‌شدن حکم باتری روی خروجی نمی‌آید.':'الان خاموش است: فقط هشدار است و باتری بار را تغذیه می‌کند.';}}
  /* ‎v1.72 scenario-6 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
  if($('dbst')){const dm=t[28]==null?0:t[28],lim=p[125]==null?86400000:p[125];
   /* v1.76: t[29] = شارژ پیوستهٔ کانال ۱ و t[30] = کانال ۲ (ثانیه) — هر باتری ساعت خودش */
@@ -3193,10 +3226,11 @@ async function setv(id,v){
 async function latchrst(n){
  const e=$('rst'+n),was=e?e.textContent:'';
  const q=n===5?'قفل عدم‌توازن پاک شود و شمارنده‌های رویداد و سیکل از صفر شمرده شوند؟'
-              :'حکم «باتری خراب» پاک شود و شارژ آن کانال دوباره آزاد شود؟';
+              :n===6?'حکم «باتری خراب» پاک شود و شارژ آن کانال دوباره آزاد شود؟'
+                    :'حکم «باتری ضعیف» پاک شود و یک بار وصل دوباره آزاد شود؟';
  if(!(await pmConfirm(q)))return;
  if(e)e.textContent='در حال ارسال…';
- const targetId=n===5?202:203;
+ const targetId=n===5?202:(n===6?203:204);
  const requiredEchoes=n===5?3:1;
  try{
   const before=await req('/latch');

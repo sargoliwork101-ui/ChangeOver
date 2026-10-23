@@ -363,6 +363,36 @@ bool func__Changeover_WeakVerdictActive(void)
     return BOOL__G__WeakVerdict;
 }
 
+/* ==================== Changeover_WeakVerdictReset ==================== */
+
+/**
+ * @brief  [EN] Drop the scenario-8 verdict on demand (panel reset key).
+ *              The reconnect bookkeeping is cleared too, otherwise the next
+ *              evaluation would re-latch on the same cut; the single retry
+ *              becomes available again, and the normal gates still decide
+ *              when the battery may actually come back.
+ *         [FA] پاک‌کردن فوری حکم سناریوی ۸ (کلید ریست پنل). سابقهٔ وصل هم پاک
+ *              می‌شود، وگرنه ارزیابی بعدی روی همان قطع دوباره قفل می‌کرد؛
+ *              همان تنها تلاش مجدد آزاد می‌شود و گیت‌های عادی تعیین می‌کنند
+ *              باتری کِی واقعاً برگردد.
+ * @return bool [EN] true when a verdict was latched before the call / حکم پیش از فراخوانی قفل بود
+ */
+bool func__Changeover_WeakVerdictReset(void)
+{
+    bool bool__wasLatched;
+
+    bool__wasLatched = BOOL__G__WeakVerdict;
+
+    BOOL__G__WeakVerdict = false;
+    UINT32_T__G__WeakVerdictTick = 0u;
+    BOOL__G__MainsFreeReconnectDone = false;
+    UINT32_T__G__MainsFreeReconnectTick = 0u;
+    BOOL__G__HealthyActive = false;
+    UINT32_T__G__HealthySinceTick = 0u;
+
+    return bool__wasLatched;
+}
+
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
 /**

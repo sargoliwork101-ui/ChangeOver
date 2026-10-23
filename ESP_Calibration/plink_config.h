@@ -130,8 +130,14 @@
 #define ESP_SLOT_CYCLES_ID          201u
 #define ESP_SLOT_LATCH_ID           202u
 #define ESP_SLOT_DEAD_MASK_ID       203u
+/* [EN] v1.86: scenario-8 reset key. The STM owns the weak-battery verdict in
+ *      RAM, so this slot is a command (write 0 = drop it) and nothing on the
+ *      board stores it.
+ *      [FA] نسخهٔ ۱٫۸۶: کلید ریست سناریوی ۸. حکم باتری ضعیف در RAM برد است،
+ *      پس این اسلات یک فرمان است (نوشتن صفر = پاک‌شدن) و چیزی ذخیره نمی‌شود. */
+#define ESP_SLOT_WEAK_RESET_ID      204u
 #define ESP_SLOT_FIRST_ID           ESP_SLOT_EVENTS_ID
-#define ESP_SLOT_LAST_ID            ESP_SLOT_DEAD_MASK_ID
+#define ESP_SLOT_LAST_ID            ESP_SLOT_WEAK_RESET_ID
 
 /* ==================== CAL_REFERENCE (removed from the panel in v1.7) ==================== */
 /* [EN] The v1.6 CAL card was dropped in the v1.7 simplification (user order 2026-09-25): the panel

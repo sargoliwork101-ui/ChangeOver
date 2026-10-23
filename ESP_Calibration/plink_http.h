@@ -317,11 +317,12 @@ static bool func__Esp_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value)
 }
 
 /**
- * @brief  دکمهٔ ریست کارت سناریو: ‎POST /latch/reset‎?‎n=5|6‎ را جواب می‌دهد.
+ * @brief  دکمهٔ ریست کارت سناریو: ‎POST /latch/reset‎?‎n=5|6|8‎ را جواب می‌دهد.
  *         برای سناریو ۵ ابتدا شمارنده‌های رویداد/سیکل (۲۰۰ و ۲۰۱) و در آخر
  *         پرچم قفل (۲۰۲) صفر می‌شوند تا بین فریم‌ها دوباره فعال نشود؛ برای
- *         سناریو ۶ ماسک حکم باتری خراب (۲۰۳) صفر می‌شود. مقدار صفر = پاک.
- * @param  n شمارهٔ سناریو؛ هر چیزی جز ۵ یا ۶ رد می‌شود
+ *         سناریو ۶ ماسک حکم باتری خراب (۲۰۳) صفر می‌شود و برای سناریو ۸ اسلات
+ *         ۲۰۴ به برد می‌رود تا حکم باتری ضعیف را پاک کند. مقدار صفر = پاک.
+ * @param  n شمارهٔ سناریو؛ هر چیزی جز ۵، ۶ یا ۸ رد می‌شود
  * @return JSON با ok؛ صف پر → کد ۴۰۹ با ‎e=1‎، ورودی بد → کد ۴۰۰ با ‎e=2‎
  */
 static void func__Esp_HttpLatchReset(void)
@@ -330,7 +331,7 @@ static void func__Esp_HttpLatchReset(void)
     bool bool__nOk = ESP_WEB_SERVER_T__G__Server.hasArg("n") &&
                      func__Esp_ParseInt(ESP_WEB_SERVER_T__G__Server.arg("n").c_str(), &int32_t__n);
 
-    if ((!bool__nOk) || ((int32_t__n != 5) && (int32_t__n != 6)))
+    if ((!bool__nOk) || ((int32_t__n != 5) && (int32_t__n != 6) && (int32_t__n != 8)))
     {
         ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
         return;
@@ -346,9 +347,14 @@ static void func__Esp_HttpLatchReset(void)
         bool__queued = (func__Esp_QueueSlot(ESP_SLOT_CYCLES_ID, 0u) == true) && bool__queued;
         bool__queued = (func__Esp_QueueSlot(ESP_SLOT_LATCH_ID, 0u) == true) && bool__queued;
     }
-    else
+    else if (int32_t__n == 6)
     {
         bool__queued = func__Esp_QueueSlot(ESP_SLOT_DEAD_MASK_ID, 0u);
+    }
+    else
+    {
+        /* [EN] v1.86: scenario 8 - the STM drops its weak-battery verdict. */
+        bool__queued = func__Esp_QueueSlot(ESP_SLOT_WEAK_RESET_ID, 0u);
     }
 
     char char__A__Out[48];

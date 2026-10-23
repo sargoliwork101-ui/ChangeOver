@@ -561,6 +561,34 @@ int main(void)
                                         CHANGEOVER_DEF_WEAK_ENABLE, &uint32_t__applied) == true);
     }
 
+    /* [EN] Scenario-8 reset key (slot 204, the panel button): one call drops a
+          latched verdict and restarts the mains-free reconnect bookkeeping so
+          the single retry is available again. With no verdict latched it is a
+          harmless no-op that reports false.
+       [FA] کلید ریست سناریوی ۸ (اسلات ۲۰۴، دکمهٔ پنل): یک فراخوانی حکم قفل را
+          پاک و سابقهٔ وصلِ بدون برق شهر را از نو می‌کند تا همان تنها تلاش
+          مجدد آزاد شود. بدون حکم، کار بی‌خطری است و false برمی‌گرداند. */
+    {
+        uint32_t uint32_t__applied = 0u;
+
+        func__Reset(980000u);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+        func__CutAndVerifyTiming();
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+        (void)func__Step(10u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+        (void)func__Step(10u, FAULT_NONE);
+        (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+        CHECK(func__Changeover_WeakVerdictActive() == true);
+        CHECK(func__Changeover_WeakVerdictReset() == true);
+        CHECK(func__Changeover_WeakVerdictActive() == false);
+        CHECK(func__Changeover_WeakVerdictReset() == false);
+        CHECK(uint32_t__applied == 0u);
+    }
+
 #if MODULE_IMBALANCE
     /* ---- 7. scenario-5 veto: a latched imbalance never reaches the output ---- */
     func__Reset(400000u);

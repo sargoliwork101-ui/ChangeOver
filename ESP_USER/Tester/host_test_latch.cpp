@@ -188,7 +188,7 @@ static void func__T_TestResetOrderAndHandshake(void)
     func__T_Check(size_t__baseline != std::string::npos && size_t__post > size_t__baseline &&
                   string__panelReset.find("if(!beforeResp.ok)") < size_t__post,
                   "پنل پیش از ارسال، وضعیت قبلی را با پاسخ سالم می‌خواند");
-    func__T_Check(string__panelReset.find("const targetId=n===5?202:203;") != std::string::npos &&
+    func__T_Check(string__panelReset.find("const targetId=n===5?202:(n===6?203:204);") != std::string::npos &&
                   string__panelReset.find("const requiredEchoes=n===5?3:1;") != std::string::npos &&
                   string__panelReset.find("Number(st.id)===targetId") != std::string::npos &&
                   string__panelReset.find("Number(st.val)===0") != std::string::npos,
@@ -214,8 +214,9 @@ static void func__T_TestQueue(void)
     func__T_Check(func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u) &&
                   func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) &&
                   func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u) &&
-                  func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u),
-                  "هر چهار شناسهٔ ریست در صف می‌نشینند");
+                  func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u) &&
+                  func__Simple_QueueSlot(SIMPLE_SLOT_WEAK_RESET_ID, 0u),
+                  "هر پنج شناسهٔ ریست در صف می‌نشینند");
     func__T_Check(func__T_PendingCount() == SIMPLE_SLOT_QUEUE_LEN, "صف پر شد");
     /* شناسه‌های مجاز و طول صف یکی‌اند، پس با ادغام تکراری‌ها صف پر عملاً
        غیرقابل‌رسیدن است؛ شمارندهٔ رد باید صفر بماند. */

@@ -159,6 +159,16 @@ void func__Changeover_Init(void);
  *         [FA] ۰/۱، پیش‌فرض ۱: تا وقتی حکم برجاست مسیر باتری بسته بماند (بار روی باتری ضعیف نرود). */
 #define CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT    157u
 
+/* [EN] Runtime command slot (not a user parameter): write 0 here through the
+ *      link to drop the scenario-8 verdict right away, exactly like the
+ *      scenario-5/6 reset keys. It is never persisted and never drawn as a
+ *      parameter.
+ *      [FA] اسلات فرمان زمان‌اجرا (پارامتر کاربر نیست): نوشتن صفر از راه لینک
+ *      حکم سناریوی ۸ را فوری پاک می‌کند، دقیقاً مثل کلید ریست سناریو ۵/۶.
+ *      نه ذخیره می‌شود و نه به‌عنوان پارامتر کشیده می‌شود.
+ */
+#define CHANGEOVER_SLOT_WEAK_RESET_ID         204u
+
 #define CHANGEOVER_PARAM_FIRST_ID             CHANGEOVER_PARAM_WEAK_ENABLE
 #define CHANGEOVER_PARAM_LAST_ID              CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT
 #define CHANGEOVER_PARAM_COUNT                11u
@@ -209,6 +219,17 @@ bool func__Changeover_GetParam(uint8_t uint8_t__paramId,
  * @return bool [EN] true while latched / هنگام قفل‌بودن true
  */
 bool func__Changeover_WeakVerdictActive(void);
+
+/**
+ * @brief  [EN] Drop the scenario-8 verdict now (panel reset key, slot 204).
+ *              The mains-free reconnect bookkeeping restarts too, so the
+ *              single retry the user ordered becomes available again.
+ *         [FA] حکم سناریوی ۸ را همین حالا پاک می‌کند (کلید ریست پنل، اسلات
+ *              ۲۰۴). سابقهٔ وصلِ بدون برق شهر هم از نو شروع می‌شود تا همان
+ *              تنها تلاش مجدد دوباره در دسترس باشد.
+ * @return bool [EN] true when a verdict was actually latched / حکم واقعاً قفل بود
+ */
+bool func__Changeover_WeakVerdictReset(void);
 
 /* ==================== Changeover_Evaluate / ارزیابی Changeover ==================== */
 

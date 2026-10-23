@@ -48,19 +48,20 @@
 
 /* ==================== ریست دستی قفل‌ها ====================
    اسلات‌های زمان‌اجرای STM32 (شمارندهٔ رویداد و سیکل عدم‌توازن، پرچم قفل،
-   ماسک حکم باتری خراب) شناسهٔ ۲۰۰..۲۰۳ دارند و پارامتر کاربر نیستند؛ فقط
+   ماسک حکم باتری خراب، ریست حکم باتری ضعیف) شناسهٔ ۲۰۰..۲۰۴ دارند و پارامتر کاربر نیستند؛ فقط
    از مسیر SET_PARAM نوشته می‌شوند و مقدار صفر یعنی پاک. پنل کاربر تا
    امروز هیچ نوشتنی نداشت، پس برای کارت «ریست قفل‌ها» یک صف کوچک و یک
    فرستندهٔ SET_PARAM اضافه شد. */
 #define SIMPLE_MSG_SET_PARAM            0x01u
 #define SIMPLE_MSG_PARAM_NAK            0x15u
-#define SIMPLE_SLOT_QUEUE_LEN           4u
+#define SIMPLE_SLOT_QUEUE_LEN           5u
 #define SIMPLE_SLOT_EVENTS_ID           200u
 #define SIMPLE_SLOT_CYCLES_ID           201u
 #define SIMPLE_SLOT_LATCH_ID            202u
 #define SIMPLE_SLOT_DEAD_MASK_ID        203u
+#define SIMPLE_SLOT_WEAK_RESET_ID       204u
 #define SIMPLE_SLOT_FIRST_ID            SIMPLE_SLOT_EVENTS_ID
-#define SIMPLE_SLOT_LAST_ID             SIMPLE_SLOT_DEAD_MASK_ID
+#define SIMPLE_SLOT_LAST_ID             SIMPLE_SLOT_WEAK_RESET_ID
 #define SIMPLE_SLOT_TX_GAP_MS           120u /* فاصلهٔ دو فریم ریست روی لینک */
 
 /* ==================== پارامترهای خود برد ====================

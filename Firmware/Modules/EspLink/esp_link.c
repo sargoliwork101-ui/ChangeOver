@@ -229,6 +229,21 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
         return false;
     }
 
+#if MODULE_CHANGEOVER && !defined(ESPLINK_HOST_TEST)
+    /* [EN] Scenario-8 reset key (slot 204, panel only): writing 0 drops the
+           weak-battery verdict now. It is a command like the scenario-5/6
+           slots, never a visible parameter and never persisted.
+       [FA] کلید ریست سناریوی ۸ (اسلات ۲۰۴، فقط پنل): نوشتن صفر حکم باتری
+           ضعیف را فوراً پاک می‌کند. مثل اسلات‌های سناریو ۵/۶ یک فرمان است،
+           نه پارامتر دیداری و نه ذخیره‌شونده. */
+    if (uint8_t__paramId == (uint8_t)CHANGEOVER_SLOT_WEAK_RESET_ID)
+    {
+        (void)func__Changeover_WeakVerdictReset();
+        *uint32_t__appliedValue = 0u;
+        return true;
+    }
+#endif
+
     switch (uint8_t__paramId)
     {
 #if MODULE_CHANGEOVER && !defined(ESPLINK_HOST_TEST)

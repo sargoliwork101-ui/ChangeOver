@@ -1221,11 +1221,12 @@ code,pre,.mono{font-family:Vazirmatn !important}
 
    <div class="cd" id="latchCard" style="display:none">
     <div class="ti">ریست قفل‌ها - فقط ادمین</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">قفل عدم‌توازن و حکم «باتری خراب» با حافظه کار می‌کنند و با خاموش/روشن شدن پاک نمی‌شوند. از اینجا پاکشان کنید تا خطا برود و شمارش از صفر شروع شود.</div>
+    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">قفل عدم‌توازن و حکم‌های «باتری خراب» و «باتری ضعیف» با حافظه کار می‌کنند و با خاموش/روشن شدن پاک نمی‌شوند. از اینجا پاکشان کنید تا خطا برود و شمارش از صفر شروع شود.</div>
     <div class="form">
      <div class="row2">
       <button class="btn danger" onclick="latchReset(5)">ریست قفل عدم‌توازن و شمارنده‌ها</button>
       <button class="btn danger" onclick="latchReset(6)">ریست حکم باتری خراب</button>
+      <button class="btn danger" onclick="latchReset(8)">ریست حکم باتری ضعیف</button>
      </div>
      <div id="latchMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
     </div>
@@ -2314,9 +2315,9 @@ async function delUser(){ let u=document.getElementById('delUserName').value; le
    (‎rep‎ بالاتر و مقدار صفر)؛ NAK یعنی برد نپذیرفت. فقط ادمین. */
 async function latchReset(n){
  let m=document.getElementById('latchMsg');
- if(!confirm(n===5?'قفل عدم‌توازن پاک شود و شمارنده‌ها از صفر شمرده شوند؟':'حکم «باتری خراب» پاک شود و شارژ آن کانال آزاد شود؟'))return;
+ if(!confirm(n===5?'قفل عدم‌توازن پاک شود و شمارنده‌ها از صفر شمرده شوند؟':n===6?'حکم «باتری خراب» پاک شود و شارژ آن کانال آزاد شود؟':'حکم «باتری ضعیف» پاک شود و یک بار وصل دوباره آزاد شود؟'))return;
  if(m)m.textContent='در حال ارسال…';
- const targetId=n===5?202:203;
+ const targetId=n===5?202:(n===6?203:204);
  const requiredEchoes=n===5?3:1;
  try{
   const beforeResp=await fetch('/latch',{cache:'no-store'});

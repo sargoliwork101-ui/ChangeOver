@@ -804,6 +804,10 @@ static void func__Simple_HttpLatchReset(void)
         {
             bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u);
         }
+        else if (int32_t__n == 8)
+        {
+            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_WEAK_RESET_ID, 0u);
+        }
         else
         {
             SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");

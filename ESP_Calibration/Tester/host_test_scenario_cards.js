@@ -532,7 +532,8 @@ function testLatchResetSourceContracts() {
         const valueCheck = reset.includes('Number(s.val)===0') || reset.includes('Number(st.val)===0');
         const echoCountCheck = reset.includes('Number(s.rep)>=Number(before.rep)+requiredEchoes') ||
             reset.includes('Number(st.rep)>=Number(b.rep)+requiredEchoes');
-        check(reset.includes('const targetId=n===5?202:203;') &&
+        const targetMapCheck = /const targetId=n===5\?202:\(n===6\?203:204\);/.test(reset);
+        check(targetMapCheck &&
               reset.includes('const requiredEchoes=n===5?3:1;') &&
               reset.includes(targetCheck) && valueCheck && echoCountCheck,
               name + ' requires the target id, zero value and scenario-5 echo count');
@@ -629,10 +630,48 @@ function testImbalance(win, doc) {
     const spansRow = el => !!el &&
         win.getComputedStyle(el).gridColumn.replace(/\s+/g, '') === '1/-1' &&
         win.getComputedStyle(el).width === '100%';
-    check(spansRow(rst5) && spansRow(rst6),
-          'both board-latch reset keys span the whole card width',
+    const card8 = doc.getElementById('ucard8');
+    const rst8 = card8 ? card8.querySelector('button[onclick="latchrst(8)"]') : null;
+    check(spansRow(rst5) && spansRow(rst6) && spansRow(rst8),
+          'all three board-latch reset keys span the whole card width',
           'rst5=' + (rst5 && win.getComputedStyle(rst5).gridColumn) +
-          ' rst6=' + (rst6 && win.getComputedStyle(rst6).gridColumn));
+          ' rst6=' + (rst6 && win.getComputedStyle(rst6).gridColumn) +
+          ' rst8=' + (rst8 && win.getComputedStyle(rst8).gridColumn));
+
+    /* [EN] v1.86: the two scenario-8 switches used to be drawn but never wired,
+       so a tick did nothing. They must send their own id, and draw() must put
+       the board's value back into the box and explain it under the switch.
+       [FA] نسخهٔ ۱٫۸۶: دو کلید سناریوی ۸ کشیده می‌شدند ولی وصل نبودند و تیک
+       کاری نمی‌کرد. باید شناسهٔ خودشان را بفرستند و draw هم مقدار برد را در
+       همان کادر بگذارد و معنایش را زیرش بنویسد. */
+    const cb147 = doc.getElementById('cb147');
+    const cb157 = doc.getElementById('cb157');
+    check(!!cb147 && !!cb157 && typeof cb147.onchange === 'function' &&
+          typeof cb157.onchange === 'function',
+          'both scenario-8 switches are wired, not decoration');
+    if (cb147 && cb157 && typeof cb147.onchange === 'function') {
+        const sent = [];
+        const realSend = win.send;
+        win.send = (id, v) => { sent.push([id, v]); };
+        cb157.checked = true; cb157.onchange();
+        cb147.checked = false; cb147.onchange();
+        win.send = realSend;
+        check(sent.some(x => x[0] === 157 && x[1] === 1) &&
+              sent.some(x => x[0] === 147 && x[1] === 0),
+              'a tick on each scenario-8 switch sends its own parameter id',
+              JSON.stringify(sent));
+    }
+    if (!win.D) {
+        win.D = { t: [], p: [], fl: 0, fl2: 0, on: 1, seq: 0, q: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
+    }
+    win.D.p[147] = 0; win.D.p[157] = 1;
+    win.draw(win.D);
+    check(cb147.checked === false && cb157.checked === true &&
+          doc.getElementById('a147').textContent.indexOf('خاموش') >= 0 &&
+          doc.getElementById('a157').textContent.indexOf('روشن') >= 0,
+          'draw() mirrors the board into both switches and says what each state means',
+          'cb147=' + cb147.checked + ' cb157=' + cb157.checked + ' | ' +
+          doc.getElementById('a147').textContent);
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&
           c5beep.querySelector('#q132').type === 'number' &&
