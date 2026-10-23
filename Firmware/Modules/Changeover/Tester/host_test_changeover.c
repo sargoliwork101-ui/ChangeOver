@@ -315,7 +315,7 @@ int main(void)
     /* ---- 6a. no mains, recovered pack: 10 s unbroken healthy + 3 s filter ----
        [EN] User decision 2026-10-23: the pack that recovers after the cut (or is
             replaced) must come back on its own, but only after the healthy
-            voltage has held WITHOUT A BREAK for CHANGEOVER_HEALTHY_HOLD_MS.
+            voltage has held WITHOUT A BREAK for CHANGEOVER_DEF_HEALTHY_HOLD_MS.
             One dip inside the window restarts it; the state is BATTERY because
             the mains really is absent.
        [FA] تصمیم کاربر ۲۰۲۶-۱۰-۲۳: باتری‌ای که بعد از قطع بازیابی (یا تعویض)
@@ -329,12 +329,12 @@ int main(void)
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 24000u;
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);     /* [EN] healthy window opens */
-    CHECK(func__Step(CHANGEOVER_HEALTHY_HOLD_MS - 2000u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS - 2000u, FAULT_NONE) == APP_STATE_SAFE);
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 21000u;      /* [EN] one dip -> restart */
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 24000u;
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
-    CHECK(func__Step(CHANGEOVER_HEALTHY_HOLD_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(BOOL__G__ProtectLine == true);                      /* [EN] window not finished / پنجره تمام نشده */
     CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_SAFE);      /* [EN] hold done, 3 s filter starts */
     CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
@@ -396,7 +396,7 @@ int main(void)
 
     /* ---- 6c. cycle guard: a really weak pack must not loop forever ----
        [EN] User decision 2026-10-23: the recovered pack may reconnect with no
-            mains, but if it cuts again inside CHANGEOVER_CYCLE_GUARD_MS the
+            mains, but if it cuts again inside CHANGEOVER_DEF_CYCLE_GUARD_MS the
             pack is really weak and auto-reconnect without mains latches off
             until the mains returns. Here: mains-free reconnect, a quick
             re-cut, then 40 s of healthy voltage - it must stay SAFE.
@@ -412,7 +412,7 @@ int main(void)
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);     /* [EN] healthy window opens */
-    CHECK(func__Step(CHANGEOVER_HEALTHY_HOLD_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_SAFE);      /* [EN] hold done, 3 s starts */
     CHECK(func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE) == APP_STATE_BATTERY);
     CHECK(BOOL__G__ProtectLine == false);
@@ -444,6 +444,122 @@ int main(void)
     CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_INPUT);
     CHECK(BOOL__G__ProtectLine == false);
+
+    /* ---- 6d. scenario 8: weak battery verdict, block, rest and one retry ----
+       [EN] User order 2026-10-23: a pack that reconnects with no mains and
+            then cuts again inside the guard window is weak. The verdict must
+            latch, hold the battery path cut, keep the alarm face alive, and
+            fall only after its own quiet-rest window with a healthy pack -
+            then exactly one retry is allowed. The shape parameters must be
+            reachable and clamped like every other scenario.
+       [FA] دستور کاربر ۲۰۲۶-۱۰-۲۳: باتری‌ای که بدون برق شهر وصل می‌شود و
+            داخل پنجرهٔ محافظ دوباره قطع می‌کند ضعیف است. حکم باید قفل شود،
+            مسیر باتری را بسته نگه دارد، چهرهٔ هشدار را زنده بدارد، و فقط بعد
+            از پنجرهٔ استراحتِ آرام با پک سالم پاک شود - آن‌وقت دقیقاً یک
+            تلاش مجدد مجاز است. پارامترهای شکل هم باید مثل بقیهٔ سناریوها
+            در دسترس و گیره‌خورده باشند. */
+    func__Reset(950000u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    func__CutAndVerifyTiming();
+    CHECK(func__Changeover_WeakVerdictActive() == false);
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;          /* [EN] recovers, no mains */
+    (void)func__Step(10u, FAULT_NONE);
+    (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS, FAULT_NONE);
+    (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+    CHECK(BOOL__G__ProtectLine == false);                          /* [EN] first mains-free reconnect */
+
+    /* [EN] The weak pack sags again a few seconds later -> verdict.
+       [FA] باتری ضعیف چند ثانیه بعد دوباره افت می‌کند ← حکم. */
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_BATTERY);   /* [EN] 3 s filter arms / فیلتر مسلح */
+    CHECK(func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Changeover_WeakVerdictActive() == true);
+    CHECK(BOOL__G__ProtectLine == true);
+
+    /* [EN] Healthy voltage alone must NOT reconnect while the verdict holds,
+            for the whole rest window except the last millisecond.
+       [FA] ولتاژ سالم به‌تنهایی تا آخرین میلی‌ثانیهٔ پنجرهٔ استراحت نباید وصل کند. */
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Step(CHANGEOVER_DEF_WEAK_REST_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Changeover_WeakVerdictActive() == true);
+    CHECK(BOOL__G__ProtectLine == true);
+
+    /* [EN] One millisecond later the verdict falls and the single retry runs:
+            the 3 s filter, then the pack is back on the output with no mains.
+       [FA] یک میلی‌ثانیه بعد حکم پاک می‌شود و تنها تلاش مجدد اجرا می‌شود:
+            فیلتر ۳ ثانیه، بعد باتری بدون برق شهر روی خروجی. */
+    CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Changeover_WeakVerdictActive() == false);
+    CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_BATTERY);
+    CHECK(BOOL__G__ProtectLine == false);
+
+    /* [EN] Shape parameters: clamped on write, readable back, foreign ids rejected.
+       [FA] پارامترهای شکل: هنگام نوشتن گیره، برگشت‌پذیر و شناسهٔ بیگانه رد. */
+    {
+        uint32_t uint32_t__applied = 0u;
+        uint32_t uint32_t__readBack = 0u;
+
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_LED_PERIOD_MS, 0u, &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == 0u);                            /* [EN] 0 = solid red is legal */
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_LED_DUTY_PCT, 2u, &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == 5u);                            /* [EN] floor */
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_BEEP_COUNT, 20u, &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == 10u);                           /* [EN] ceiling */
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_BEEP_LEN_MS, 5u, &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == 20u);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_REST_MS, 1000u, &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == 60000u);
+        CHECK(func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_BEEP_COUNT, &uint32_t__readBack) == true);
+        CHECK(uint32_t__readBack == 10u);
+        CHECK(func__Changeover_SetParam(1u, 0u, &uint32_t__applied) == false);
+        CHECK(func__Changeover_GetParam(1u, &uint32_t__readBack) == false);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_ENABLE, 1u, &uint32_t__applied) == true);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_BEEP_COUNT,
+                                        CHANGEOVER_DEF_WEAK_BEEP_COUNT, &uint32_t__applied) == true);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_BEEP_LEN_MS,
+                                        CHANGEOVER_DEF_WEAK_BEEP_LEN_MS, &uint32_t__applied) == true);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_LED_DUTY_PCT,
+                                        CHANGEOVER_DEF_WEAK_LED_DUTY_PCT, &uint32_t__applied) == true);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_LED_PERIOD_MS,
+                                        CHANGEOVER_DEF_WEAK_LED_PERIOD_MS, &uint32_t__applied) == true);
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_REST_MS,
+                                        CHANGEOVER_DEF_WEAK_REST_MS, &uint32_t__applied) == true);
+    }
+
+    /* [EN] Switching the scenario off releases a latched verdict immediately.
+       [FA] خاموش‌کردن سناریو، حکم قفل‌شده را فوری آزاد می‌کند. */
+    func__Reset(960000u);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    func__CutAndVerifyTiming();
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+    (void)func__Step(10u, FAULT_NONE);
+    (void)func__Step(CHANGEOVER_DEF_HEALTHY_HOLD_MS, FAULT_NONE);
+    (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
+    (void)func__Step(10u, FAULT_NONE);
+    (void)func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE);
+    CHECK(func__Changeover_WeakVerdictActive() == true);
+    {
+        uint32_t uint32_t__applied = 0u;
+
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_ENABLE, 0u, &uint32_t__applied) == true);
+        CHECK(uint32_t__applied == 0u);
+    }
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 25000u;
+    (void)func__Step(10u, FAULT_NONE);
+    CHECK(func__Changeover_WeakVerdictActive() == false);
+    {
+        uint32_t uint32_t__applied = 0u;
+
+        CHECK(func__Changeover_SetParam(CHANGEOVER_PARAM_WEAK_ENABLE,
+                                        CHANGEOVER_DEF_WEAK_ENABLE, &uint32_t__applied) == true);
+    }
 
 #if MODULE_IMBALANCE
     /* ---- 7. scenario-5 veto: a latched imbalance never reaches the output ---- */

@@ -684,8 +684,12 @@ def run_ui_alarm_tests():
     # [EN] v1.75 audit: 13 call sites + the definition = 14. The pin was one
     #      behind again (the dead-battery scenario added a site in v1.72).
     # [FA] ۱۳ محل فراخوانی + خود تعریف = ۱۴.
-    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 16,
-                 "15 scenario sites + 1 def use the mute gate")
+    # [EN] Scenario 8 (weak battery, 2026-10-23) added one more gated site:
+    #      16 scenario sites + 1 definition = 17.
+    # [FA] سناریوی ۸ (باتری ضعیف) یک محل گیت‌دار دیگر اضافه کرد: ۱۶ محل + ۱
+    #      تعریف = ۱۷.
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 17,
+                 "16 scenario sites + 1 def use the mute gate")
     assert_true("IMBAL_PARAM_LATCH_BEEP_COUNT" in ui_led_c and
                 "IMBAL_PARAM_LATCH_BEEP_GAP_MS" in ui_led_c,
                 "imbalance latch reads the independent count and gap parameters")
@@ -697,7 +701,9 @@ def run_ui_alarm_tests():
     # [EN] v1.75 audit: 8 now - the dead-battery lock turns the buzzer off
     #      explicitly like the OV-clear path does.
     # [FA] حالا ۸ مورد است.
-    assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 8,
+    # [EN] Scenario 8 also turns the buzzer off explicitly when its period is 0.
+    # [FA] سناریوی ۸ هم با دورهٔ صفر بوق را صریحاً خاموش می‌کند.
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 9,
                  "direct Tick only in Gated/all_off/OV-clear/BoardTest/lock")
     assert_true("uint32_t__pctVminMv" in ui_led_c and "uint32_t__pctVmaxMv" in ui_led_c,
                 "discharge percent map reads live 74/75")

@@ -36,6 +36,10 @@
 #if MODULE_IMBALANCE
 #include "imbalance.h"
 #endif
+
+#if MODULE_CHANGEOVER
+#include "changeover.h"
+#endif
 #if MODULE_DIAG
 #include "diag.h"
 #endif
@@ -220,6 +224,26 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 
     switch (uint8_t__paramId)
     {
+#if MODULE_CHANGEOVER && !defined(ESPLINK_HOST_TEST)
+        /* [EN] Scenario 8 (weak battery, user order 2026-10-23): the Changeover
+           module owns ids 147..157; it clamps and reports the applied value.
+           [FA] سناریوی ۸: ماژول Changeover صاحب ۱۴۷..۱۵۷ است؛ خودش گیره
+           می‌زند و مقدار اعمال‌شده را برمی‌گرداند. */
+        case ESPLINK_PARAM_WEAK_ENABLE:
+        case ESPLINK_PARAM_WEAK_REST_MS:
+        case ESPLINK_PARAM_WEAK_CYCLE_GUARD_MS:
+        case ESPLINK_PARAM_WEAK_HEALTHY_HOLD_MS:
+        case ESPLINK_PARAM_WEAK_LED_PERIOD_MS:
+        case ESPLINK_PARAM_WEAK_LED_DUTY_PCT:
+        case ESPLINK_PARAM_WEAK_BEEP_PERIOD_MS:
+        case ESPLINK_PARAM_WEAK_BEEP_LEN_MS:
+        case ESPLINK_PARAM_WEAK_BEEP_COUNT:
+        case ESPLINK_PARAM_WEAK_BEEP_GAP_MS:
+        case ESPLINK_PARAM_WEAK_BLOCK_OUTPUT:
+            return func__Changeover_SetParam(uint8_t__paramId,
+                                             uint32_t__value,
+                                             uint32_t__appliedValue);
+#endif
 #ifndef ESPLINK_HOST_TEST
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:
             *uint32_t__appliedValue =
@@ -526,6 +550,24 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 
     switch (uint8_t__paramId)
     {
+#if MODULE_CHANGEOVER && !defined(ESPLINK_HOST_TEST)
+        /* [EN] Scenario 8 live read, ids 147..157 (the NVM snapshot and the
+           report frames both read through here).
+           [FA] خواندن زندهٔ سناریوی ۸، شناسه‌های ۱۴۷..۱۵۷ (عکس‌فوری NVM و
+           فریم‌های گزارش از همین‌جا می‌خوانند). */
+        case ESPLINK_PARAM_WEAK_ENABLE:
+        case ESPLINK_PARAM_WEAK_REST_MS:
+        case ESPLINK_PARAM_WEAK_CYCLE_GUARD_MS:
+        case ESPLINK_PARAM_WEAK_HEALTHY_HOLD_MS:
+        case ESPLINK_PARAM_WEAK_LED_PERIOD_MS:
+        case ESPLINK_PARAM_WEAK_LED_DUTY_PCT:
+        case ESPLINK_PARAM_WEAK_BEEP_PERIOD_MS:
+        case ESPLINK_PARAM_WEAK_BEEP_LEN_MS:
+        case ESPLINK_PARAM_WEAK_BEEP_COUNT:
+        case ESPLINK_PARAM_WEAK_BEEP_GAP_MS:
+        case ESPLINK_PARAM_WEAK_BLOCK_OUTPUT:
+            return func__Changeover_GetParam(uint8_t__paramId, uint32_t__value);
+#endif
 #ifndef ESPLINK_HOST_TEST
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:
             *uint32_t__value = func__BspMeasurement_GetCurrentOffsetCounts(0u);

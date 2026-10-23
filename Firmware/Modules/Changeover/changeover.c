@@ -106,14 +106,262 @@ static bool BOOL__G__HealthyActive = false;
  * @brief  [EN] Mains-free reconnect bookkeeping and cycle guard: tick and flag
  *         of the last successful mains-free reconnect, plus the latch that
  *         stops repeating it when the pack cuts again inside
- *         CHANGEOVER_CYCLE_GUARD_MS. The latch clears when the mains returns.
+ *         CHANGEOVER_PARAM_CYCLE_GUARD_MS. The scenario-8 verdict, not this
+ *         bookkeeping, is what stops the retries.
  *         [FA] سابقهٔ وصل بدون برق شهر و محافظ چرخه: تیک و پرچم آخرین وصلِ
  *         موفق بدون برق شهر، به‌علاوهٔ قفلی که اگر باتری ظرف مدت محافظ دوباره
  *         قطع شود از تکرار آن جلوگیری می‌کند. با برگشت برق شهر پاک می‌شود.
  */
 static uint32_t UINT32_T__G__MainsFreeReconnectTick = 0u;
 static bool BOOL__G__MainsFreeReconnectDone = false;
-static bool BOOL__G__MainsFreeReconnectBlocked = false;
+
+/**
+ * @brief  [EN] Scenario-8 verdict: latched when a mains-free reconnect is
+ *         followed by another cut inside the guard window, i.e. the pack
+ *         cannot carry the load. While it holds, the battery path stays cut
+ *         (when id 157 is on) and the UI shows the weak-battery face. It
+ *         clears by itself after a quiet rest with a healthy pack, which is
+ *         the single retry the user ordered on 2026-10-23.
+ *         [FA] حکم سناریوی ۸: وقتی وصلِ بدون برق شهر داخل پنجرهٔ محافظ به
+ *         قطع دیگری برسد قفل می‌شود، یعنی باتری بار را تحمل نمی‌کند. تا
+ *         برجا بودنش مسیر باتری بسته می‌ماند (با شناسهٔ ۱۵۷) و UI چهرهٔ
+ *         باتری ضعیف را نشان می‌دهد. با یک استراحتِ آرام و پکِ سالم خودش پاک
+ *         می‌شود که همان تنها تلاش مجددِ دستور ۲۰۲۶-۱۰-۲۳ است.
+ */
+static bool BOOL__G__WeakVerdict = false;
+static uint32_t UINT32_T__G__WeakVerdictTick = 0u;
+
+/* ==================== Scenario-8 parameter table / جدول پارامتر سناریوی ۸ ==================== */
+
+/**
+ * @brief  [EN] Compiled defaults, indexed by (id - CHANGEOVER_PARAM_FIRST_ID).
+ *         [FA] پیش‌فرض‌های کامپایل‌شده، با نمایهٔ (شناسه منهای شناسهٔ اول).
+ */
+static const uint32_t UINT32_T__G__WeakParamDefault[CHANGEOVER_PARAM_COUNT] =
+{
+    CHANGEOVER_DEF_WEAK_ENABLE,
+    CHANGEOVER_DEF_WEAK_REST_MS,
+    CHANGEOVER_DEF_CYCLE_GUARD_MS,
+    CHANGEOVER_DEF_HEALTHY_HOLD_MS,
+    CHANGEOVER_DEF_WEAK_LED_PERIOD_MS,
+    CHANGEOVER_DEF_WEAK_LED_DUTY_PCT,
+    CHANGEOVER_DEF_WEAK_BEEP_PERIOD_MS,
+    CHANGEOVER_DEF_WEAK_BEEP_LEN_MS,
+    CHANGEOVER_DEF_WEAK_BEEP_COUNT,
+    CHANGEOVER_DEF_WEAK_BEEP_GAP_MS,
+    CHANGEOVER_DEF_WEAK_BLOCK_OUTPUT
+};
+
+/**
+ * @brief  [EN] Live values written by the panel/flash replay; seeded from the
+ *         defaults on the first touch so a module Init never undoes a stored
+ *         value (same rule as the other modules).
+ *         [FA] مقادیر زندهٔ نوشته‌شده توسط پنل/بازپخش فلش؛ در نخستین دسترسی
+ *         از پیش‌فرض‌ها پر می‌شوند تا Init ماژول هیچ‌وقت مقدار ذخیره‌شده را
+ *         برنگرداند (همان قانون بقیهٔ ماژول‌ها).
+ */
+static uint32_t UINT32_T__G__WeakParamLive[CHANGEOVER_PARAM_COUNT];
+static bool BOOL__G__WeakParamSeeded = false;
+
+/* ==================== Scenario-8 parameter plumbing / مسیر پارامتر سناریوی ۸ ==================== */
+
+/**
+ * @brief  [EN] Seed the live table from the compiled defaults on first use.
+ *         [FA] پر کردن جدول زنده از پیش‌فرض‌های کامپایل در نخستین استفاده.
+ */
+static void func__Changeover_SeedParamsOnce(void)
+{
+    if (BOOL__G__WeakParamSeeded == false)
+    {
+        uint8_t uint8_t__index;
+
+        for (uint8_t__index = 0u; uint8_t__index < CHANGEOVER_PARAM_COUNT; uint8_t__index++)
+        {
+            UINT32_T__G__WeakParamLive[uint8_t__index] =
+                UINT32_T__G__WeakParamDefault[uint8_t__index];
+        }
+        BOOL__G__WeakParamSeeded = true;
+    }
+}
+
+/**
+ * @brief  [EN] Clamp one scenario-8 value into its compiled window.
+ *         [FA] گیره‌زدن یک مقدار سناریوی ۸ داخل پنجرهٔ کامپایل‌شده.
+ * @‎param  uint8_t__paramId [EN] 147..157‎ / شناسه
+ * @param  uint32_t__value [EN] Raw value / مقدار خام
+ * @return uint32_t [EN] Clamped value / مقدار گیره‌خورده
+ */
+static uint32_t func__Changeover_ClampParam(uint8_t uint8_t__paramId, uint32_t uint32_t__value)
+{
+    uint32_t uint32_t__ret = uint32_t__value;
+
+    switch (uint8_t__paramId)
+    {
+        case CHANGEOVER_PARAM_WEAK_ENABLE:
+        case CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT:
+            if (uint32_t__ret > 1u) { uint32_t__ret = 1u; }
+            break;
+
+        case CHANGEOVER_PARAM_WEAK_REST_MS:
+            if (uint32_t__ret < 60000u)   { uint32_t__ret = 60000u; }
+            if (uint32_t__ret > 3600000u) { uint32_t__ret = 3600000u; }
+            break;
+
+        case CHANGEOVER_PARAM_CYCLE_GUARD_MS:
+            if (uint32_t__ret < 1000u)   { uint32_t__ret = 1000u; }
+            if (uint32_t__ret > 600000u) { uint32_t__ret = 600000u; }
+            break;
+
+        case CHANGEOVER_PARAM_HEALTHY_HOLD_MS:
+            if (uint32_t__ret < 1000u)   { uint32_t__ret = 1000u; }
+            if (uint32_t__ret > 300000u) { uint32_t__ret = 300000u; }
+            break;
+
+        case CHANGEOVER_PARAM_WEAK_LED_PERIOD_MS:
+            /* [EN] 0 = solid red is a legal opt-out; other values stay inside
+                  the visible-blink window.
+               [FA] صفر یعنی قرمز ثابت و مجاز است؛ بقیه داخل پنجرهٔ چشمک دیدنی. */
+            if (uint32_t__ret != 0u)
+            {
+                if (uint32_t__ret < 100u)   { uint32_t__ret = 100u; }
+                if (uint32_t__ret > 10000u) { uint32_t__ret = 10000u; }
+            }
+            break;
+
+        case CHANGEOVER_PARAM_WEAK_LED_DUTY_PCT:
+            if (uint32_t__ret < 5u)  { uint32_t__ret = 5u; }
+            if (uint32_t__ret > 95u) { uint32_t__ret = 95u; }
+            break;
+
+        case CHANGEOVER_PARAM_WEAK_BEEP_PERIOD_MS:
+            /* [EN] 0 = silent; any other value is pulled into 1 s..10 min.
+               [FA] صفر یعنی بی‌صدا؛ بقیه داخل ۱ ثانیه تا ۱۰ دقیقه. */
+            if (uint32_t__ret != 0u)
+            {
+                if (uint32_t__ret < 1000u)   { uint32_t__ret = 1000u; }
+                if (uint32_t__ret > 600000u) { uint32_t__ret = 600000u; }
+            }
+            break;
+
+        case CHANGEOVER_PARAM_WEAK_BEEP_LEN_MS:
+            if (uint32_t__ret < 20u)   { uint32_t__ret = 20u; }
+            if (uint32_t__ret > 2000u) { uint32_t__ret = 2000u; }
+            break;
+
+        case CHANGEOVER_PARAM_WEAK_BEEP_COUNT:
+            if (uint32_t__ret > 10u) { uint32_t__ret = 10u; }
+            break;
+
+        case CHANGEOVER_PARAM_WEAK_BEEP_GAP_MS:
+            if (uint32_t__ret > 5000u) { uint32_t__ret = 5000u; }
+            break;
+
+        default:
+            break;
+    }
+
+    return uint32_t__ret;
+}
+
+/**
+ * @brief  [EN] Live read of one scenario-8 value (seeds the table first).
+ *         [FA] خواندن زندهٔ یک مقدار سناریوی ۸ (اول جدول پر می‌شود).
+ * @‎param  uint8_t__paramId [EN] 147..157‎ / شناسه
+ * @return uint32_t [EN] Live value, 0 for a foreign id / مقدار زنده، صفر برای شناسهٔ دیگر
+ */
+static uint32_t func__Changeover_ParamValue(uint8_t uint8_t__paramId)
+{
+    func__Changeover_SeedParamsOnce();
+
+    if ((uint8_t__paramId < CHANGEOVER_PARAM_FIRST_ID) ||
+        (uint8_t__paramId > CHANGEOVER_PARAM_LAST_ID))
+    {
+        return 0u;
+    }
+
+    return UINT32_T__G__WeakParamLive[uint8_t__paramId - CHANGEOVER_PARAM_FIRST_ID];
+}
+
+/* ==================== Changeover_SetParam ==================== */
+
+/**
+ * @brief  [EN] Write one scenario-8 parameter through the clamp table.
+ *         [FA] نوشتن یک پارامتر سناریوی ۸ از مسیر جدول گیره.
+ * @‎param  uint8_t__paramId [EN] 147..157‎ / شناسه
+ * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
+ * @param  uint32_t__appliedValue [EN] Applied value out, NULL rejects / خروجی الزامی
+ * @return bool [EN] true when the id belongs to this module / شناسه متعلق بود
+ */
+bool func__Changeover_SetParam(uint8_t uint8_t__paramId,
+                               uint32_t uint32_t__value,
+                               uint32_t *uint32_t__appliedValue)
+{
+    uint32_t uint32_t__clamped;
+
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
+    if ((uint8_t__paramId < CHANGEOVER_PARAM_FIRST_ID) ||
+        (uint8_t__paramId > CHANGEOVER_PARAM_LAST_ID))
+    {
+        return false;
+    }
+
+    func__Changeover_SeedParamsOnce();
+    uint32_t__clamped = func__Changeover_ClampParam(uint8_t__paramId, uint32_t__value);
+    UINT32_T__G__WeakParamLive[uint8_t__paramId - CHANGEOVER_PARAM_FIRST_ID] = uint32_t__clamped;
+    *uint32_t__appliedValue = uint32_t__clamped;
+
+    /* [EN] Turning the scenario off must not leave a stale verdict behind.
+       [FA] خاموش‌کردن سناریو نباید حکم کهنه باقی بگذارد. */
+    if ((uint8_t__paramId == CHANGEOVER_PARAM_WEAK_ENABLE) && (uint32_t__clamped == 0u))
+    {
+        BOOL__G__WeakVerdict = false;
+    }
+
+    return true;
+}
+
+/* ==================== Changeover_GetParam ==================== */
+
+/**
+ * @brief  [EN] Read one live scenario-8 parameter.
+ *         [FA] خواندن یک پارامتر زندهٔ سناریوی ۸.
+ * @‎param  uint8_t__paramId [EN] 147..157‎ / شناسه
+ * @param  uint32_t__value [EN] Value out / مقدار
+ * @return bool [EN] true when the id belongs to this module / شناسه متعلق بود
+ */
+bool func__Changeover_GetParam(uint8_t uint8_t__paramId,
+                               uint32_t *uint32_t__value)
+{
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
+    if ((uint8_t__paramId < CHANGEOVER_PARAM_FIRST_ID) ||
+        (uint8_t__paramId > CHANGEOVER_PARAM_LAST_ID))
+    {
+        return false;
+    }
+
+    *uint32_t__value = func__Changeover_ParamValue(uint8_t__paramId);
+    return true;
+}
+
+/* ==================== Changeover_WeakVerdictActive ==================== */
+
+/**
+ * @brief  [EN] Is the scenario-8 weak-battery verdict latched?
+ *         [FA] آیا حکم «باتری ضعیف» سناریوی ۸ قفل است؟
+ * @return bool [EN] true while latched / هنگام قفل‌بودن true
+ */
+bool func__Changeover_WeakVerdictActive(void)
+{
+    return BOOL__G__WeakVerdict;
+}
 
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
@@ -139,7 +387,9 @@ void func__Changeover_Init(void)
     BOOL__G__HealthyActive = false;
     UINT32_T__G__MainsFreeReconnectTick = 0u;
     BOOL__G__MainsFreeReconnectDone = false;
-    BOOL__G__MainsFreeReconnectBlocked = false;
+    BOOL__G__WeakVerdict = false;
+    UINT32_T__G__WeakVerdictTick = 0u;
+    func__Changeover_SeedParamsOnce();
 
     /* [EN] Keep the path physically cut until the first valid, non-blocked
           sample confirms the pack has reached the 21.2 V hysteresis-clear
@@ -162,12 +412,19 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     uint32_t uint32_t__nowTick;
     uint32_t uint32_t__durationTicks;
     uint32_t uint32_t__healthyHoldTicks;
+    uint32_t uint32_t__restTicks;
+    uint32_t uint32_t__guardTicks;
     bool bool__cutCondition;
     bool bool__reconnectCondition;
 
     uint32_t__nowTick = osKernelGetTickCount();
     uint32_t__durationTicks = func__Rtos_MillisecondsToTicks(CHANGEOVER_DURATION_MS);
-    uint32_t__healthyHoldTicks = func__Rtos_MillisecondsToTicks(CHANGEOVER_HEALTHY_HOLD_MS);
+    uint32_t__healthyHoldTicks = func__Rtos_MillisecondsToTicks(
+        func__Changeover_ParamValue(CHANGEOVER_PARAM_HEALTHY_HOLD_MS));
+    uint32_t__restTicks = func__Rtos_MillisecondsToTicks(
+        func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_REST_MS));
+    uint32_t__guardTicks = func__Rtos_MillisecondsToTicks(
+        func__Changeover_ParamValue(CHANGEOVER_PARAM_CYCLE_GUARD_MS));
 
     /* [EN] Snapshot check FIRST before any decision: if NULL or invalid,
           preserve state and PB11, reset pending timers, fault does NOT change state,
@@ -209,7 +466,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
 
     /* [EN] Healthy-pack window for the mains-free recovery rule (user decision
           2026-10-23): the voltage must stay at or above the reconnect
-          threshold WITHOUT A BREAK for CHANGEOVER_HEALTHY_HOLD_MS before the
+          threshold WITHOUT A BREAK for CHANGEOVER_PARAM_HEALTHY_HOLD_MS before the
           module will put the battery back on the output with no mains. Any
           dip restarts the window, so a pack that only bounced for a moment
           is not accepted. The absent signal of the Fault module is NOT used
@@ -217,7 +474,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
           drive any sense input below its absent level (2026-10-23 order).
           Returning mains clears the cycle guard of the next outage.
        [FA] پنجرهٔ باتری سالم برای قانون بازیابی بدون برق شهر (تصمیم کاربر
-          ۲۰۲۶-۱۰-۲۳): ولتاژ باید بدون وقفه به‌مدت ‎CHANGEOVER_HEALTHY_HOLD_MS‎
+          ۲۰۲۶-۱۰-۲۳): ولتاژ باید بدون وقفه به‌مدت ‎CHANGEOVER_PARAM_HEALTHY_HOLD_MS‎
           در حد آستانهٔ وصل یا بالاتر بماند تا ماژول باتری را بدون برق شهر
           روی خروجی برگرداند. هر افت، پنجره را از صفر شروع می‌کند تا باتری‌ای
           که فقط یک لحظه بالا آمده پذیرفته نشود. سیگنال «نبود باتری» ماژول
@@ -238,10 +495,16 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         UINT32_T__G__HealthySinceTick = 0u;
     }
 
+    /* [EN] Returning mains ends the mains-free bookkeeping, so the next
+          outage starts from a clean cycle guard. The scenario-8 verdict is
+          deliberately NOT cleared here: the user ordered the verdict to stay
+          until the pack has rested healthy for its own window.
+       [FA] برگشت برق شهر سابقهٔ وصل بدون برق شهر را پاک می‌کند تا قطع بعدی از
+          محافظ چرخهٔ تمیز شروع شود. حکم سناریوی ۸ عمداً اینجا پاک نمی‌شود:
+          به دستور کاربر تا پایان استراحتِ سالمِ خودش می‌ماند. */
     if (measurement_snapshot_t__snap->input_present == true)
     {
         BOOL__G__MainsFreeReconnectDone = false;
-        BOOL__G__MainsFreeReconnectBlocked = false;
     }
 
     /* [EN] Snapshot is valid from here - use ONLY allowed fields.
@@ -318,8 +581,44 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     /* [EN] Guard: if Rtos tick conversion yields zero ticks (e.g., tick freq 0),
           do not perform immediate cut/reconnect; preserve state and PB11, reset timers.
        [FA] نگهبان: اگر تبدیل میلی‌ثانیه به تیک صفر شد، هیچ قطع/وصلی فوری انجام نشود. */
-    if ((uint32_t__durationTicks == 0u) || (uint32_t__healthyHoldTicks == 0u))
+    if ((uint32_t__durationTicks == 0u) || (uint32_t__healthyHoldTicks == 0u) ||
+        (uint32_t__restTicks == 0u) || (uint32_t__guardTicks == 0u))
     {
+        BOOL__G__CutTimerActive = false;
+        BOOL__G__ReconnectTimerActive = false;
+        return APP_STATE_T__G__State;
+    }
+
+    /* [EN] Scenario 8 - weak-battery verdict (user order 2026-10-23).
+          Clearing first: the verdict falls by itself when the scenario is
+          switched off, or after CHANGEOVER_PARAM_WEAK_REST_MS of a healthy,
+          unbroken pack voltage - that quiet rest is the single retry the
+          user asked for. Then, while the verdict still holds, the battery
+          path is held cut (id 157) so the weak pack is not loaded again.
+       [FA] سناریوی ۸ - حکم باتری ضعیف (دستور کاربر ۲۰۲۶-۱۰-۲۳).
+          اول پاک‌شدن: حکم با خاموش‌کردن سناریو، یا بعد از
+          ‎CHANGEOVER_PARAM_WEAK_REST_MS‎ ولتاژ سالمِ بی‌وقفه خودش پاک می‌شود -
+          همان استراحتِ آرام که تنها تلاش مجدد است. بعد، تا وقتی حکم برجاست،
+          مسیر باتری بسته نگه داشته می‌شود (شناسهٔ ۱۵۷) تا باتری ضعیف دوباره
+          بار نخورد. */
+    if ((func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_ENABLE) == 0u) ||
+        ((BOOL__G__WeakVerdict == true) &&
+         (BOOL__G__HealthyActive == true) &&
+         ((uint32_t__nowTick - UINT32_T__G__HealthySinceTick) >= uint32_t__restTicks)))
+    {
+        BOOL__G__WeakVerdict = false;
+    }
+
+    if ((BOOL__G__WeakVerdict == true) &&
+        (func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT) != 0u) &&
+        (measurement_snapshot_t__snap->input_present == false))
+    {
+        if (BOOL__G__ChangeoverProtectAsserted == false)
+        {
+            func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
+            BOOL__G__ChangeoverProtectAsserted = true;
+        }
+        APP_STATE_T__G__State = APP_STATE_SAFE;
         BOOL__G__CutTimerActive = false;
         BOOL__G__ReconnectTimerActive = false;
         return APP_STATE_T__G__State;
@@ -424,21 +723,26 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
                     BOOL__G__ChangeoverProtectAsserted = true;
 
-                    /* [EN] Cycle guard (user decision 2026-10-23): a cut that
-                          follows a mains-free reconnect inside
-                          CHANGEOVER_CYCLE_GUARD_MS proves the pack is really
-                          weak, so no further mains-free reconnect is allowed
-                          until the mains returns.
-                       [FA] محافظ چرخه (تصمیم کاربر ۲۰۲۶-۱۰-۲۳): قطعی که ظرف
-                          ‎CHANGEOVER_CYCLE_GUARD_MS‎ بعد از یک وصلِ بدون برق
-                          شهر رخ دهد یعنی باتری واقعاً ضعیف است؛ پس دیگر بدون
-                          برق شهر وصل نمی‌شود تا وقتی برق شهر برگردد. */
+                    /* [EN] Scenario 8 latch (user decision 2026-10-23): a cut
+                          that follows a mains-free reconnect inside the
+                          guard window proves the pack cannot carry the load.
+                          The verdict starts the quiet-rest timer and, while
+                          it holds, keeps the path cut and drives the red
+                          blink + beep face.
+                       [FA] قفل سناریوی ۸ (تصمیم کاربر ۲۰۲۶-۱۰-۲۳): قطعی که
+                          داخل پنجرهٔ محافظ بعد از وصلِ بدون برق شهر رخ دهد
+                          یعنی باتری بار را تحمل نمی‌کند. حکم تایمر استراحت را
+                          شروع می‌کند و تا برجا بودنش مسیر بسته می‌ماند و چهرهٔ
+                          قرمز چشمک‌زن + بوق نمایش داده می‌شود. */
                     if ((measurement_snapshot_t__snap->input_present == false) &&
                         (BOOL__G__MainsFreeReconnectDone == true) &&
                         ((uint32_t__nowTick - UINT32_T__G__MainsFreeReconnectTick) <
-                         func__Rtos_MillisecondsToTicks(CHANGEOVER_CYCLE_GUARD_MS)))
+                         uint32_t__guardTicks) &&
+                        (func__Changeover_ParamValue(CHANGEOVER_PARAM_WEAK_ENABLE) != 0u) &&
+                        (BOOL__G__WeakVerdict == false))
                     {
-                        BOOL__G__MainsFreeReconnectBlocked = true;
+                        BOOL__G__WeakVerdict = true;
+                        UINT32_T__G__WeakVerdictTick = uint32_t__nowTick;
                     }
                 }
                 APP_STATE_T__G__State = APP_STATE_SAFE;
@@ -570,7 +874,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             }
         }
 
-        else if ((BOOL__G__MainsFreeReconnectBlocked == false) &&
+        else if ((BOOL__G__WeakVerdict == false) &&
                  (BOOL__G__HealthyActive == true) &&
                  ((uint32_t__nowTick - UINT32_T__G__HealthySinceTick) >=
                   uint32_t__healthyHoldTicks))

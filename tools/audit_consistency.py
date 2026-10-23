@@ -854,10 +854,16 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 28,
-           "CDEF must cover the charge map through Wi-Fi power-save ids 143..146 "
-           "(initial low-power ON ms, cycle ON ms, cycle OFF ms, battery cutoff %)",
-           f"CDEF has {len(cdef)} entries")
+        # [EN] v1.86: the derived form replaces the hard-coded 28, which went
+        #      stale the moment scenario 8 appended eleven more ids after the
+        #      Wi-Fi power-save block. CDEF now runs from its base to COUNT-1.
+        # [FA] از نسخهٔ ۱٫۸۶ عدد ثابت ۲۸ با فرم مشتق‌شده جایش را داد: با
+        #      افزودن یازده شناسهٔ سناریوی ۸ کهنه می‌شد.
+        ok(len(cdef) == COUNT - chg_base,
+           "CDEF must cover every id from the charge map base to the last "
+           "parameter (through the scenario-8 weak-battery block)",
+           f"CDEF has {len(cdef)} entries, span {chg_base}..{COUNT - 1} needs "
+           f"{COUNT - chg_base}")
         top = chg_base + len(cdef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",
            f"AIDS stops at {hi}, the id block ends at {top}")

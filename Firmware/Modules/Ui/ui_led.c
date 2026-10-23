@@ -38,6 +38,10 @@
 #include "imbalance.h"
 #endif
 
+#if MODULE_CHANGEOVER
+#include "changeover.h"
+#endif
+
 #include <stdbool.h>
 
 /* ==================== UI Global Battery Alarm Flag / فلگ سراسری آلارم باتری UI ==================== */
@@ -1616,6 +1620,89 @@ void func__Ui_ScenarioDeadBattery_Tick(void)
 }
 #endif
 
+/* ==================== Scenario WeakBattery / سناریوی باتری ضعیف ==================== */
+
+#if MODULE_CHANGEOVER
+/* ==================== Ui_ScenarioWeakBattery_Tick ==================== */
+
+/**
+ * @brief  [EN] Scenario-8 face (user order 2026-10-23: "the weak pack that
+ *         empties fast and comes back when the load is removed must be
+ *         detectable - red blinking lamp and a beep"). RED BLINKING with its
+ *         own period/duty (ids 151/152, default 500 ms / 50%) so it is not
+ *         confused with the imbalance latch (1000 ms) or the solid-red
+ *         dead-battery verdict, and its own beep shape (ids 153..156: 3
+ *         short beeps every 3 s by default). Green and yellow stay off. The
+ *         verdict itself belongs to Changeover; this function only draws it.
+ *         [FA] چهرهٔ سناریوی ۸ (دستور کاربر ۲۰۲۶-۱۰-۲۳: «باتری ضعیفی که زود
+ *         خالی می‌شود و با برداشتن بار برمی‌گردد باید قابل تشخیص باشد - چراغ
+ *         قرمز چشمک‌زن و بوق»). قرمز چشمک‌زن با دوره/دیوتی خودش (شناسه‌های
+ *         ۱۵۱/۱۵۲، پیش‌فرض ۵۰۰ میلی‌ثانیه و ۵۰٪) تا با قفل عدم‌توازن
+ *         (۱۰۰۰ میلی‌ثانیه) و باتری خرابِ قرمز ثابت اشتباه نشود، به‌همراه شکل
+ *         بوق مستقل خودش (۱۵۳..۱۵۶: سه بوق کوتاه هر ۳ ثانیه). سبز و زرد
+ *         خاموش. خود حکم مال Changeover است و این تابع فقط آن را می‌کشد.
+ */
+void func__Ui_ScenarioWeakBattery_Tick(void)
+{
+    uint32_t uint32_t__blinkPeriodMs = CHANGEOVER_DEF_WEAK_LED_PERIOD_MS;
+    uint32_t uint32_t__blinkDutyPct  = CHANGEOVER_DEF_WEAK_LED_DUTY_PCT;
+    uint32_t uint32_t__beepPeriodMs  = CHANGEOVER_DEF_WEAK_BEEP_PERIOD_MS;
+    uint32_t uint32_t__beepLenMs     = CHANGEOVER_DEF_WEAK_BEEP_LEN_MS;
+    uint32_t uint32_t__beepCount     = CHANGEOVER_DEF_WEAK_BEEP_COUNT;
+    uint32_t uint32_t__beepGapMs     = CHANGEOVER_DEF_WEAK_BEEP_GAP_MS;
+
+    /* [EN] Stop the other scenarios' blink/beep phases first (same hygiene as
+           every other face), so nothing leaks in from a previous scenario.
+       [FA] اول فازهای چشمک/بوق سناریوهای دیگر ریست می‌شود تا چیزی از سناریوی
+           قبلی نشت نکند. */
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+
+    (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_LED_PERIOD_MS, &uint32_t__blinkPeriodMs);
+    (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_LED_DUTY_PCT,  &uint32_t__blinkDutyPct);
+
+    func__green(false);
+    func__yellow(false);
+
+    if (uint32_t__blinkPeriodMs == 0u)
+    {
+        /* [EN] Documented opt-out: solid red.
+           [FA] گزینهٔ مستند: قرمز ثابت. */
+        func__red(true);
+    }
+    else
+    {
+        uint32_t uint32_t__elapsedMs =
+            func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
+        uint32_t uint32_t__phaseMs = uint32_t__elapsedMs % uint32_t__blinkPeriodMs;
+        uint32_t uint32_t__onMs =
+            (uint32_t__blinkPeriodMs * uint32_t__blinkDutyPct) / UI_PERCENT_SCALE;
+
+        func__red(uint32_t__phaseMs < uint32_t__onMs);
+    }
+
+    (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_BEEP_PERIOD_MS, &uint32_t__beepPeriodMs);
+    if (uint32_t__beepPeriodMs != 0u)
+    {
+        (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_BEEP_LEN_MS, &uint32_t__beepLenMs);
+        (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_BEEP_COUNT,  &uint32_t__beepCount);
+        (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_BEEP_GAP_MS, &uint32_t__beepGapMs);
+
+        (void)func__Ui_Buzzer_Gated(
+            uint32_t__beepPeriodMs,
+            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs,
+                                     (uint8_t)uint32_t__beepCount, uint32_t__beepGapMs),
+            (uint8_t)uint32_t__beepCount,
+            uint32_t__beepGapMs);
+    }
+    else
+    {
+        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+}
+#endif
+
 /* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
@@ -2063,6 +2150,22 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
             func__Ui_ScenarioImbalance_Tick();
             return;
         }
+    }
+#endif
+
+#if MODULE_CHANGEOVER
+    /* [EN] Scenario 8 (priority 5, after the two condemned-battery verdicts
+          and before every normal scenario): the pack could not carry the
+          load and is now resting. Red blink + its own beep pattern, and the
+          face stays as long as Changeover keeps the verdict latched.
+       [FA] سناریوی ۸ (اولویت پنجم، بعد از دو حکم باتری محکوم و پیش از
+          سناریوهای عادی): باتری بار را تحمل نکرد و حالا استراحت می‌کند.
+          قرمز چشمک‌زن + الگوی بوق خودش، و تا وقتی Changeover حکم را نگه دارد
+          همین چهره می‌ماند. */
+    if (func__Changeover_WeakVerdictActive() != false)
+    {
+        func__Ui_ScenarioWeakBattery_Tick();
+        return;
     }
 #endif
 

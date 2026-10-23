@@ -224,7 +224,12 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            3000, 200, 3, 100, 1000, 50,
            /* v1.85 ids 143..146 = Wi-Fi battery power-saving settings:
               initial low-power ON ms, cycle ON ms, cycle OFF ms, battery cutoff %. */
-           1800000, 60000, 120000, 20];
+           1800000, 60000, 120000, 20,
+           /* v1.86 ids 147..157 = scenario 8 (weak battery, changeover.h):
+              verdict enable, rest window, cycle-guard window, healthy-hold
+              window, red blink period/duty, beep period/length/count/gap and
+              the output-disconnect checkbox. */
+           1, 600000, 60000, 10000, 500, 50, 3000, 200, 3, 100, 1];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */

@@ -70,7 +70,7 @@
 #define SIMPLE_MSG_GET_PARAMS           0x02u
 #define SIMPLE_MSG_PARAM_REPORT         0x11u
 #define SIMPLE_MSG_PARAMS_BULK          0x12u
-#define SIMPLE_PARAM_COUNT              147u
+#define SIMPLE_PARAM_COUNT              158u
 #define SIMPLE_PARAM_ITEM_SIZE          5u     /* شناسه ۱ بایت + مقدار ۴ بایت */
 #define SIMPLE_PARAMS_REQ_MS            30000u /* فاصله درخواست پارامترها */
 

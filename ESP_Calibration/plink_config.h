@@ -114,7 +114,7 @@
          شکل بوق باند ۲، ۱۲۳..۱۲۴ cadence چراغ عدم‌توازن، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵
          سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵، ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد
          و ۱۴۳..۱۴۶ تنظیمات وای‌فای و مصرف باتری. */
-#define ESP_PARAM_COUNT            147u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; ids 143..146 own Wi-Fi power saving. / [FA] نسخه ۱٫۸۵ با شناسهٔ ۱۴۶ حد قطع باتری تمام می‌شود؛ ۱۴۳..۱۴۶ متعلق به کاهش مصرف وای‌فای است. */
+#define ESP_PARAM_COUNT            158u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; ids 143..146 own Wi-Fi power saving. / [FA] نسخه ۱٫۸۵ با شناسهٔ ۱۴۶ حد قطع باتری تمام می‌شود؛ ۱۴۳..۱۴۶ متعلق به کاهش مصرف وای‌فای است. */
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
 
@@ -173,7 +173,7 @@
     "#  [id]     scenario,step,duty_pct,settle_ms,sample_ms,browser_ts\n" \
     "# NOTE: the settings below are NOT data columns. They do not change during a\n" \
     "#       sweep, so they are written ONCE as a '# settings:' line (same order,\n" \
-    "#       comma separated) instead of repeating on all 149 columns of every\n" \
+    "#       comma separated) instead of repeating on all the data columns of every\n" \
     "#       row. If any of them IS changed mid-run, a fresh '# settings:' line\n" \
     "#       is written before the next data row, so every row is still covered\n" \
     "#       by the most recent settings line above it.\n" \
@@ -217,6 +217,8 @@
     "#            imb_clean_full_cycles,tech_beep_per_ms,tech_beep_len_ms,\n" \
     "#            tech_beep_count,tech_beep_gap_ms,tech_led_per_ms,tech_led_duty,\n" \
     "#            wifi_idle_low_pwr_ms,wifi_cycle_on_ms,wifi_cycle_off_ms,wifi_bat_cutoff_pct\n" \
+    "#  [settings9] wb_en,wb_rest_ms,wb_guard_ms,wb_hold_ms,wb_led_per,wb_led_duty,\n" \
+    "#            wb_beep_per,wb_beep_ms,wb_beep_cnt,wb_beep_gap,wb_block_out\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -350,8 +352,11 @@
  *      در نسخهٔ ۱٫۸۵ تب تنظیمات «وای‌فای و مصرف باتری» (شناسه‌های ۱۴۳..۱۴۶) به
  *      دستور کاربر اضافه شد و سقف با حاشیه به ۴۳۴۱۷۶ بایت (۴۲۴ کیلوبایت)
  *      پله خورد.
+ *      در نسخهٔ ۱٫۸۶ کارت سناریوی ۸ (باتری ضعیف: یازده شناسهٔ ۱۴۷..۱۵۷،
+ *      چک‌لیست و اعتبارسنجی) به دستور کاربر اضافه شد و صفحه به ۴۳۸۹۳۶ بایت
+ *      رسید؛ سقف عمداً با حاشیه به ۴۴۲۳۶۸ بایت (۴۳۲ کیلوبایت) پله خورد.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    434176u
+#define ESP_PANEL_HTML_MAX_BYTES    442368u
 
 /* ==================== Parser States ==================== */
 typedef enum

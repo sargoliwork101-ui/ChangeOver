@@ -126,7 +126,7 @@
  * [FA] یادداشت تاریخی v1.80: انتقال از چیدمان تک‌صفحه‌ای ۱۲۶جایی به بانک
  *      دوصفحه‌ای ۱۴۴جایی برای کنترل‌های چهرهٔ سناریوی ۶ فضا ساخت؛ قالب فعلی v12
  *      همین ظرفیت را برای توسعهٔ سناریوهای ۵/۶ و شناسه‌های ۱۳۷..۱۴۲ سناریوی ۷ نگه می‌دارد. */
-#define ESP_LINK_NVM_ENTRY_MAX         148u
+#define ESP_LINK_NVM_ENTRY_MAX         160u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -159,7 +159,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   146u /* [EN] v1.85 adds Wi-Fi battery power-saving controls 143..146. / [FA] نسخهٔ ۱٫۸۵ تنظیمات کاهش مصرف وای‌فای ۱۴۳..۱۴۶ را اضافه می‌کند. */
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   157u /* [EN] v1.85 adds Wi-Fi battery power-saving controls 143..146. / [FA] نسخهٔ ۱٫۸۵ تنظیمات کاهش مصرف وای‌فای ۱۴۳..۱۴۶ را اضافه می‌کند. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

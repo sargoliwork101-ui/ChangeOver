@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2623013</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 71b2ddb</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -517,7 +517,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="hd" style="margin-top:10px"><b>سناریوهای LED و بازر</b></div>
 <div id="aw2" style="margin:2px 0 0"></div>
-<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · عدم‌توازن</button><button data-u="6">۶ · باتری خراب</button><button data-u="7">۷ · خطای فنی برد</button></div>
+<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · عدم‌توازن</button><button data-u="6">۶ · باتری خراب</button><button data-u="7">۷ · خطای فنی برد</button><button data-u="8">۸ · باتری ضعیف</button></div>
 <div class="cd" id="ucard1">
 <div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی (قرمز + بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen1" checked onchange="scenarioToggle(1,this.checked)"><span>فعال</span></label></div>
 
@@ -910,12 +910,50 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q140" step="10" min="0" max="5000"><span class="lb" id="a140"></span></label>
 </div>
 <div class="sec">۲) چشمک هم‌زمان سه LED</div>
+<div class="sx"><b>یک فاز مشترک برای هر سه چراغ:</b> قرمز، سبز و زرد با همین دوره و همین سهم روشنی هم‌زمان روشن و خاموش می‌شوند؛ دورهٔ صفر یعنی هر سه ثابت روشن. این اعداد از چشمک سناریوهای ۱ و ۲ مستقل‌اند.</div>
 <div class="bqr">
 <label>دورهٔ چشمک سه LED (ms)<input type="number" id="q141" step="100" min="100" max="10000"><span class="lb" id="a141"></span></label>
 <label>سهم روشنی سه LED (٪)<input type="number" id="q142" step="5" min="0" max="100"><span class="lb" id="a142"></span></label>
 </div>
 <div class="c4n" id="s7v"></div>
 <div class="bqr"><button class="sb sb2 fwb" onclick="tdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۷</button></div>
+</div>
+<div class="cd" id="ucard8" style="display:none">
+<div class="hd"><b>سناریو ۸ — باتری ضعیف (قرمز چشمک‌زن + بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen8" checked onchange="scenarioToggle(8,this.checked)"><span>فعال</span></label></div>
+<div class="ds c4ds"><b>این سناریو کِی می‌آید؟</b> باتری بار را تحمل نمی‌کند ولی با برداشتن بار ولتاژش برمی‌گردد:
+<ul>
+<li><b>تشخیص</b> — خروجی بدون برق شهر روی باتری وصل شده و داخل «پنجرهٔ محافظ» دوباره قطع می‌شود: یعنی باتری ضعیف است، نه اینکه یک لحظه افت کرده باشد.</li>
+<li><b>واکنش</b> — حکم قفل می‌شود: چراغ قرمز <b>چشمک‌زن</b> + بوق دوره‌ای، و (با تیک زیر) مسیر باتری بسته می‌ماند تا بار روی باتری ضعیف نرود. شارژ قطع نمی‌شود.</li>
+<li><b>استراحت</b> — تا وقتی ولتاژ باتری سالم و پیوسته باشد، پس از «مدت استراحت» حکم خودش پاک می‌شود و <b>یک بار</b> تلاش مجدد انجام می‌شود؛ اگر همان‌جا دوباره قطع شد، حکم برمی‌گردد و استراحت از نو شروع می‌شود.</li>
+<li><b>خروجی</b> — با «مسدود کردن خروجی» تیک‌خورده، تا پاک‌شدن حکم باتری روی خروجی نمی‌آید؛ برق شهر همیشه مسیر خودش را دارد.</li>
+<li><b>تفکیک چهره</b> — قرمز با دورهٔ ۵۰۰ میلی‌ثانیه (سناریو ۵: ۱۰۰۰ میلی‌ثانیه، سناریو ۶: ثابت) و بوق کاملاً مستقل خودش.</li>
+</ul>
+</div>
+<div class="sec">۱) زمان‌بندی تشخیص و بازیابی</div>
+<div class="sx"><b>پنجرهٔ محافظ</b> = اگر دوباره قطع شدن داخل این مدت بعد از وصلِ بدون برق شهر رخ دهد، حکم صادر می‌شود. <b>استراحت</b> = مدت ولتاژ سالمِ پیوسته تا پاک‌شدن حکم و تنها تلاش مجدد. <b>ولتاژ سالم</b> = مدت پیوستهٔ ولتاژ ۲۱۲۰۰ میلی‌ولت یا بالاتر پیش از وصلِ بدون برق شهر.</div>
+<div class="bqr">
+<label>پنجرهٔ محافظ (ms)<input type="number" id="q149" step="1000" min="1000" max="600000"><span class="lb" id="a149"></span></label>
+<label>مدت استراحت پیش از تلاش مجدد (ms)<input type="number" id="q148" step="60000" min="60000" max="3600000"><span class="lb" id="a148"></span></label>
+<label>ولتاژ سالم پیوسته (ms)<input type="number" id="q150" step="1000" min="1000" max="300000"><span class="lb" id="a150"></span></label>
+</div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="cb147"><span><span class="ckt">حکم باتری ضعیف فعال باشد</span><span class="cks" id="a147"></span></span></label></div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="cb157"><span><span class="ckt">تا پاک‌شدن حکم، باتری از خروجی جدا بماند</span><span class="cks" id="a157"></span></span></label></div>
+<div class="sec">۲) چشمک قرمز مستقل سناریوی ۸</div>
+<div class="sx"><b>چهرهٔ این سناریو:</b> فقط چراغ قرمز با این دوره و این سهم روشنی چشمک می‌زند و سبز و زرد خاموش می‌مانند. دورهٔ ۵۰۰ میلی‌ثانیه آن را از سناریو ۵ (۱۰۰۰ میلی‌ثانیه) و سناریو ۶ (ثابت) جدا می‌کند؛ دورهٔ صفر یعنی قرمز ثابت.</div>
+<div class="bqr">
+<label>دورهٔ چشمک قرمز (ms، ۰=ثابت)<input type="number" id="q151" step="100" min="0" max="10000"><span class="lb" id="a151"></span></label>
+<label>سهم روشنی قرمز (٪)<input type="number" id="q152" step="5" min="5" max="95"><span class="lb" id="a152"></span></label>
+</div>
+<div class="sec">۳) بوق مستقل سناریوی ۸</div>
+<div class="sx"><b>این چهار عدد عمداً جدا هستند:</b> از بوق سناریوهای ۵، ۶ و ۷ قرض گرفته نمی‌شوند. دورهٔ صفر بوق را خاموش می‌کند.</div>
+<div class="bqr">
+<label>دورهٔ بوق (ms، ۰=خاموش)<input type="number" id="q153" step="100" min="0" max="600000"><span class="lb" id="a153"></span></label>
+<label>طول هر بوق (ms)<input type="number" id="q154" step="10" min="20" max="2000"><span class="lb" id="a154"></span></label>
+<label>تعداد بوق در هر الگو<input type="number" id="q155" step="1" min="0" max="10"><span class="lb" id="a155"></span></label>
+<label>گپ بین بوق‌ها (ms)<input type="number" id="q156" step="10" min="0" max="5000"><span class="lb" id="a156"></span></label>
+</div>
+<div class="c4n" id="s8v"></div>
+<div class="bqr"><button class="sb sb2 fwb" onclick="wbdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۸</button></div>
 </div>
 <input type="hidden" id="q76" value="">
 </div>
@@ -1043,7 +1081,7 @@ function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
    same pending queue and must receive the same yellow affordance.
    [‎FA] q117/q127‎ واقعاً checkbox هستند نه ‎q-input‎؛ اما آن‌ها هم عضو همین صف
    معلق‌اند و باید همان نشانهٔ زرد را بگیرند. */
-function pctrl(id){const e=$('q'+id);if(e)return e;return id===117?$('ib117'):id===127?$('db127'):null;}
+function pctrl(id){const e=$('q'+id);if(e)return e;return id===117?$('ib117'):id===127?$('db127'):id===147?$('cb147'):id===157?$('cb157'):null;}
 function pendRestore(){
  try{
   const saved=JSON.parse(localStorage.getItem(PEND_KEY)||'{}');
@@ -1100,7 +1138,7 @@ function fixrules(v){
 /* [EN] Snapshot of every id the rules touch: the staged value if there is
    one, else the box, else what the board reported.
    [FA] عکس لحظه‌ای هر شناسه: مقدار صف‌شده، وگرنه کادر، وگرنه مقدار برد. */
-const RIDS=[40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,74,75,77,78,119,120,121,122,137,138,139,140,141,142];
+const RIDS=[40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,74,75,77,78,119,120,121,122,137,138,139,140,141,142,147,148,149,150,151,152,153,154,155,156,157];
 /* [EN] v1.75 audit finding: an id nobody has touched - no pending edit, no
    board frame, an empty box - used to read as ZERO here. The joint rules then
    "repaired" that zero and sendall() shipped parameters the user never typed
@@ -1342,7 +1380,7 @@ addEventListener('resize',panelResize);addEventListener('load',panelResize);
 let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));stickfit();panelViewSave();if(D)draw(D);});
 /* v1.15b: زیرتب داخل تنظیمات — v1.42 (دستور کاربر: پشتیبان‌گیری آخرین زیرتب): ۰=شارژ و PID، ۱=سناریوها، ۲=نظارت و ایمنی، ۳=کالیبراسیون و فیلتر جریان، ۴=پشتیبان‌گیری */
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
-let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=7;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
+let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=8;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
 /* چراغ‌های خطای نوار صفحهٔ اول: کلیک، کاربر را به تنظیمات همان خطا می‌برد
    — تب تنظیمات، تب سناریوها، کارت همان سناریو. عدد ورودی، شمارهٔ کارت است
@@ -1384,7 +1422,7 @@ function scenarioToggle(n,on,save=true){
  if(save)try{const a=JSON.parse(localStorage.getItem(SCENARIO_KEY)||'{}');a[n]=on;localStorage.setItem(SCENARIO_KEY,JSON.stringify(a));}catch(e){}
 }
 function scenarioInit(){let a={};try{a=JSON.parse(localStorage.getItem(SCENARIO_KEY)||'{}');}catch(e){}
- for(let n=1;n<=7;n++)scenarioToggle(n,typeof a[n]==='boolean'?a[n]:true,false);
+ for(let n=1;n<=8;n++)scenarioToggle(n,typeof a[n]==='boolean'?a[n]:true,false);
 }
 scenarioInit();
 /* [EN] v1.84: keep the user's place across a browser refresh. The panel is a
@@ -1395,7 +1433,7 @@ function panelViewSave(){try{localStorage.setItem(PANEL_VIEW_KEY,JSON.stringify(
 function panelViewRestore(){let s={};try{s=JSON.parse(localStorage.getItem(PANEL_VIEW_KEY)||'{}');}catch(e){}
  if(Number.isInteger(s.tab)&&s.tab>=0&&s.tab<3)TAB=s.tab;
  if(Number.isInteger(s.stab)&&s.stab>=0&&s.stab<6)STAB=s.stab;
- if(Number.isInteger(s.ucard)&&s.ucard>=1&&s.ucard<=7)UCARD=s.ucard;
+ if(Number.isInteger(s.ucard)&&s.ucard>=1&&s.ucard<=8)UCARD=s.ucard;
  document.querySelectorAll('nav button').forEach((x,i)=>x.classList.toggle('a',i===TAB));
  document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i===TAB));
  document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',+x.dataset.s===STAB));
@@ -1617,7 +1655,18 @@ const PX={
  143:['زمان روشن ماندن اولیه روی باتری','مدت زمانی که پس از قطع برق ورودی و نبود کاربر، وای‌فای با قدرت آنتن پایین یکسره روشن می‌ماند (ms)؛ پیش‌فرض ۳۰ دقیقه (۱۸۰۰۰۰۰).'],
  144:['زمان روشن بودن در چرخهٔ متناوب','مدت روشن ماندن وای‌فای در هر سیکل متناوب پس از پایان ۳۰ دقیقهٔ اول (ms)؛ پیش‌فرض ۱ دقیقه (۶۰۰۰۰).'],
  145:['زمان خاموش بودن در چرخهٔ متناوب','مدت خاموش ماندن کامل ESP در هر سیکل متناوب روی باتری (ms)؛ ۰ = بدون خاموشی متناوب؛ پیش‌فرض ۲ دقیقه (۱۲۰۰۰۰).'],
- 146:['حد قطع کامل وای‌فای در باتری ضعیف','وقتی برق ورودی قطع است و درصد شارژ باتری زیر این عدد بیاید، ESP کاملاً خاموش می‌شود و دیگر اصلاً روشن نمی‌شود (٪)؛ پیش‌فرض ۲۰٪.']};
+ 146:['حد قطع کامل وای‌فای در باتری ضعیف','وقتی برق ورودی قطع است و درصد شارژ باتری زیر این عدد بیاید، ESP کاملاً خاموش می‌شود و دیگر اصلاً روشن نمی‌شود (٪)؛ پیش‌فرض ۲۰٪.'],
+ 147:['فعال بودن حکم باتری ضعیف','۱ = تشخیص و نمایش سناریوی ۸ روشن، ۰ = خاموش؛ پیش‌فرض ۱.'],
+ 148:['مدت استراحت پیش از تلاش مجدد','مدت ولتاژ سالمِ پیوسته که پس از آن حکم پاک و یک بار تلاش مجدد انجام می‌شود (ms)؛ پیش‌فرض ۶۰۰۰۰۰ (۱۰ دقیقه).'],
+ 149:['پنجرهٔ محافظ چرخه','اگر دوباره قطع شدن داخل این مدت بعد از وصلِ بدون برق شهر رخ دهد، حکم باتری ضعیف صادر می‌شود (ms)؛ پیش‌فرض ۶۰۰۰۰.'],
+ 150:['ولتاژ سالم پیوسته برای وصل بدون برق شهر','ولتاژ باید این مدت بدون هیچ افت در آستانهٔ وصل یا بالاتر بماند تا وصل بدون برق شهر مجاز شود (ms)؛ پیش‌فرض ۱۰۰۰۰.'],
+ 151:['دورهٔ چشمک قرمز باتری ضعیف','طول چرخهٔ روشن/خاموش قرمز سناریوی ۸ (ms)؛ صفر یعنی قرمز ثابت؛ پیش‌فرض ۵۰۰.'],
+ 152:['سهم روشنی قرمز باتری ضعیف','درصد روشن‌بودن قرمز در چرخهٔ سناریوی ۸؛ پیش‌فرض ۵۰.'],
+ 153:['دورهٔ بوق باتری ضعیف','فاصلهٔ تکرار بوق سناریوی ۸ (ms)؛ صفر یعنی بی‌صدا؛ پیش‌فرض ۳۰۰۰.'],
+ 154:['طول هر بوق باتری ضعیف','مدت هر بوق سناریوی ۸ (ms)؛ پیش‌فرض ۲۰۰.'],
+ 155:['تعداد بوق باتری ضعیف','تعداد بوق در هر الگوی سناریوی ۸؛ پیش‌فرض ۳.'],
+ 156:['گپ بوق باتری ضعیف','فاصلهٔ بین بوق‌های الگوی سناریوی ۸ (ms)؛ پیش‌فرض ۱۰۰.'],
+ 157:['جدا نگه‌داشتن باتری ضعیف از خروجی','۱ = تا پاک‌شدن حکم، مسیر باتری بسته بماند؛ ۰ = فقط هشدار؛ پیش‌فرض ۱.']};
 
 // [EN] v1.36 (user order: the chip tooltips must be EXPLICIT - plain
 //   language, real units, and what bigger vs smaller actually does. The
@@ -1933,7 +1982,7 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
 /* v1.49: ۱۱۹/۱۲۰ (نردبان سمت شارژ) هم مثل بقیه خوانده و نوشته می‌شود */
-const AIDS=[];for(let _i=27;_i<=146;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=157;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 
@@ -1947,7 +1996,7 @@ const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 /* v1.82: ۱۲۸..۱۳۱ چراغ/بوق و ۱۳۴..۱۳۵ تعداد/گپ بوقِ خودِ سناریو ۶ */
 /* v1.81: ۱۳۲..۱۳۳ شکل بوق قفل عدم‌توازن، v1.82: ۱۳۴..۱۳۵ شکل بوق باتری خراب،
    v1.83: ۱۳۶ تعداد سیکل کامل پاک برای شمارندهٔ عدم‌توازن، v1.85: ۱۴۳..۱۴۶ وای‌فای و مصرف باتری. */
-const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20];
+const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20,1,600000,60000,10000,500,50,3000,200,3,100,1];
 /* v1.71: شناسهٔ ۵۷ دیگر درصد نیست؛ مدت هر بوق بحرانی بر حسب ms است (۱۰۰۰۰ = همان صدای قبلی) */
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,10000,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
@@ -2045,6 +2094,20 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u144,5000,3600000))w.push({ids:[144],msg:'زمان روشن در چرخه باید ۵۰۰۰..۳۶۰۰۰۰۰ باشد'});
  if(bad(a.u145,0,3600000))w.push({ids:[145],msg:'زمان خاموش در چرخه باید ۰..۳۶۰۰۰۰۰ باشد'});
  if(bad(a.u146,0,100))w.push({ids:[146],msg:'حد قطع وای‌فای در باتری ضعیف باید ۰..۱۰۰ باشد'});
+ /* سناریوی ۸: زمان‌بندی تشخیص/بازیابی و چشمک و بوق کاملاً مستقل */
+ if(bad(a.u147,0,1))w.push({ids:[147],msg:'کلید حکم باتری ضعیف باید ۰ یا ۱ باشد'});
+ if(bad(a.u148,60000,3600000))w.push({ids:[148],msg:'مدت استراحت پیش از تلاش مجدد باید ۶۰۰۰۰..۳۶۰۰۰۰۰ باشد'});
+ if(bad(a.u149,1000,600000))w.push({ids:[149],msg:'پنجرهٔ محافظ چرخه باید ۱۰۰۰..۶۰۰۰۰۰ باشد'});
+ if(bad(a.u150,1000,300000))w.push({ids:[150],msg:'ولتاژ سالم پیوسته باید ۱۰۰۰..۳۰۰۰۰۰ باشد'});
+ if(bad(a.u151,0,10000))w.push({ids:[151],msg:'دورهٔ چشمک قرمز باید ۰..۱۰۰۰۰ باشد'});
+ if(bad(a.u152,5,95))w.push({ids:[152],msg:'سهم روشنی قرمز باید ۵..۹۵ باشد'});
+ if(bad(a.u153,0,600000))w.push({ids:[153],msg:'دورهٔ بوق باتری ضعیف باید ۰..۶۰۰۰۰۰ باشد'});
+ if(bad(a.u154,20,2000))w.push({ids:[154],msg:'طول هر بوق باتری ضعیف باید ۲۰..۲۰۰۰ باشد'});
+ if(bad(a.u155,0,10))w.push({ids:[155],msg:'تعداد بوق باتری ضعیف باید ۰..۱۰ باشد'});
+ if(bad(a.u156,0,5000))w.push({ids:[156],msg:'گپ بوق باتری ضعیف باید ۰..۵۰۰۰ باشد'});
+ else if(a.u155>1&&a.u153!==0&&a.u156<100)w.push({ids:[156],msg:'گپ بوق باتری ضعیف با چند بوق باید دست‌کم ۱۰۰ باشد'});
+ if(a.u153!==0&&!fit(a.u154,a.u153,a.u155,a.u156))w.push({ids:[153,154,155,156],msg:'الگوی بوق باتری ضعیف در دوره جا نمی‌شود'});
+ if(bad(a.u157,0,1))w.push({ids:[157],msg:'کلید جدا نگه‌داشتن باتری ضعیف باید ۰ یا ۱ باشد'});
  return w.map(x=>Object.assign({advisory:x.ids.length>1},x));}
 function afresh(){const w=achk();
  /* v1.77: گپ‌ها بلافاصله پس از هر تغییر/پرشدن مقدار، نه فقط در فریم شبیه‌ساز */
@@ -2107,7 +2170,8 @@ const UDEF={
  4:[68,69,77,78,79],
  5:[108,109,110,111,112,113,114,115,116,117,118,123,124,132,133,136],
  6:[125,126,127,128,129,130,131,134,135],
- 7:[137,138,139,140,141,142]};
+ 7:[137,138,139,140,141,142],
+ 8:[147,148,149,150,151,152,153,154,155,156,157]};
 function ovdef(){odef(UDEF[1]);}
 function bdef(){odef(UDEF[2]);}
 function dsdef(){odef(UDEF[3]);}
@@ -2117,6 +2181,9 @@ function ibdef(){odef(UDEF[5]);}
    [FA] پیش‌فرض کارخانهٔ سناریو ۶. */
 function dbdef(){odef(UDEF[6]);}
 function tdef(){odef(UDEF[7]);}
+/* [EN] Scenario-8 factory defaults (weak battery, 2026-10-23).
+   [FA] پیش‌فرض کارخانهٔ سناریو ۸ (باتری ضعیف). */
+function wbdef(){odef(UDEF[8]);}
 function wdef(){odef([143,144,145,146]);}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
@@ -2458,7 +2525,7 @@ function simblink(ph,per,duty){const on=Math.floor(per*duty/100);return (ph%per)
    باندهای دشارژ مشترک است و ‎q133/q135‎ همین قانون را برای الگوی عدم‌توازن و
    باتری خراب اجرا می‌کنند. */
 
-const GAPOF=[[43,[42],1],[49,[48],1],[65,[62,63,64,58],1],[133,[132],1],[135,[134],1],[140,[139],1]];
+const GAPOF=[[43,[42],1],[49,[48],1],[65,[62,63,64,58],1],[133,[132],1],[135,[134],1],[140,[139],1],[156,[155],1]];
 function gapen(){GAPOF.forEach(g=>{const e=$('q'+g[0]);if(!e)return;
  const independent=g[2]===0;
  const need=independent||g[1].some(id=>c4v(id,1)>1);
@@ -2688,7 +2755,7 @@ function pdflt(id){
  id=+id;
  /* v1.75 audit: CDEF grew to 119..127 with scenario 6 (ids 125..127) but this
     window still said 124, so the dead-battery fields printed no factory default. */
- if(id>=119&&id<=146)return CDEF[id-119];
+ if(id>=119&&id<=157)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -3170,7 +3237,7 @@ function wmeas(m,act){
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=147;
+const PN=158;
 /* [EN] Bench CSV column contract. [FA] قرارداد ستون‌های CSV بنچ. */
 function wset(){const P=[];for(let k=0;k<PN;k++)P.push(D.p[k]==null?'-':D.p[k]);return P.join(',');}
 let WSIG=null;

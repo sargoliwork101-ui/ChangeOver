@@ -9,8 +9,9 @@
  *              flag, plus (MODULE_CHARGER) func__Charger_DeadBlocksOutput()
  *              for the condemned-pack veto - both vetos assert the battery
  *              protect line and sit in SAFE. A recovered pack may reconnect
- *              with no mains after CHANGEOVER_HEALTHY_HOLD_MS of unbroken
- *              healthy voltage, guarded by CHANGEOVER_CYCLE_GUARD_MS.
+ *              with no mains after CHANGEOVER_PARAM_HEALTHY_HOLD_MS of
+ *              unbroken healthy voltage, and owns the scenario-8 weak-battery
+ *              verdict (ids 147..157) that guards it.
  *              Time conversion uses rtos_time.h only, tick=1ms
  *              assumption is forbidden.
  *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
@@ -69,7 +70,7 @@ void func__Changeover_Init(void);
 /**
  * @brief  [EN] Battery voltage at or above which a reconnect is allowed, in millivolts.
  *         Range 0..40000 mV; effect: (input_present true with 30 s stable input, or a
- *         healthy hold of CHANGEOVER_HEALTHY_HOLD_MS with mains absent) and
+ *         healthy hold of CHANGEOVER_PARAM_HEALTHY_HOLD_MS with mains absent) and
  *         v_bat24_mv >= 21200 for 3000 ms -> reconnect.
  *         [FA] ولتاژ باتری که در آن یا بالاتر از آن وصل مجدد مجاز است، بر حسب میلی‌ولت.
  */
@@ -92,27 +93,122 @@ void func__Changeover_Init(void);
  */
 #define CHANGEOVER_INPUT_STABLE_MS        30000u
 
-/**
- * @brief  [EN] Unbroken healthy-voltage time that allows a reconnect with no mains, in milliseconds.
- *         Range 1..600000 ms; effect: v_bat24_mv must stay at or above
- *         CHANGEOVER_BAT_RECONNECT_MV without any dip for this long; then the
- *         normal 3 s reconnect filter runs. One dip restarts the window.
- *         [FA] مدت پیوستهٔ ولتاژ سالم که وصل مجدد بدون برق شهر را مجاز می‌کند، بر حسب میلی‌ثانیه.
- *         ولتاژ باید این مدت بدون هیچ افت در آستانهٔ وصل یا بالاتر بماند؛ بعد
- *         فیلتر ۳ ثانیه‌ای وصل اجرا می‌شود. هر افت پنجره را از صفر شروع می‌کند.
- */
-#define CHANGEOVER_HEALTHY_HOLD_MS        10000u
+/* [EN] The healthy-hold window and the cycle-guard window are no longer
+   compile-time constants: scenario 8 owns them as panel parameters
+   (ids 150 and 149, defaults 10000 ms and 60000 ms) so a bench can tune the
+   "several seconds in a stable state" test without a rebuild.
+   [FA] پنجرهٔ ولتاژ سالم و پنجرهٔ محافظ چرخه دیگر ثابت کامپایل نیستند:
+   سناریوی ۸ آن‌ها را به‌عنوان پارامتر پنل دارد (شناسه‌های ۱۵۰ و ۱۴۹،
+   پیش‌فرض ۱۰۰۰۰ و ۶۰۰۰۰ میلی‌ثانیه) تا میز تست بتواند آزمون «چند ثانیه در
+   وضعیت پایدار» را بدون بیلد دوباره تنظیم کند. */
+
+/* ==================== Scenario 8: weak battery / سناریوی ۸: باتری ضعیف ==================== */
+
+/* [EN] Scenario 8 (user order 2026-10-23): "the weak pack that empties fast and
+ *      comes back when the load is removed must be detectable". The Changeover
+ *      module is the only place that sees the mains-free reconnect and the cut
+ *      that follows it, so the verdict lives here and the UI only draws it.
+ *      A cut that happens inside CHANGEOVER_PARAM_CYCLE_GUARD_MS after a
+ *      mains-free reconnect proves the pack cannot carry the load: the verdict
+ *      latches, the battery path is held cut (id 157), red blink + beep are
+ *      shown, and one retry is allowed after a quiet rest (id 148) with the
+ *      pack resting above the reconnect threshold.
+ *      Every id is independent, exactly like scenarios 5/6/7 - the LED shape
+ *      and the beep shape never borrow from another scenario.
+ *      [FA] سناریوی ۸ (دستور کاربر ۲۰۲۶-۱۰-۲۳): «باتری ضعیفی که زود خالی
+ *      می‌شود و با برداشتن بار برمی‌گردد باید قابل تشخیص باشد». فقط همین ماژول
+ *      وصلِ بدون برق شهر و قطعِ بعد از آن را می‌بیند، پس حکم اینجاست و UI فقط
+ *      آن را نمایش می‌دهد. قطعی که داخل ‎CHANGEOVER_PARAM_CYCLE_GUARD_MS‎ بعد
+ *      از وصلِ بدون برق شهر رخ دهد یعنی باتری بار را تحمل نمی‌کند: حکم قفل
+ *      می‌شود، مسیر باتری بسته می‌ماند (شناسهٔ ۱۵۷)، قرمز چشمک‌زن + بوق نمایش
+ *      داده می‌شود، و بعد از یک استراحتِ آرام (شناسهٔ ۱۴۸) با ولتاژ سالمِ پک
+ *      یک بار تلاش مجدد مجاز است. هر شناسه مستقل است، دقیقاً مثل سناریوهای
+ *      ۵/۶/۷ - شکل LED و شکل بوق از هیچ سناریوی دیگری قرض نمی‌گیرند. */
+
+/** @brief [EN] 0/1, def 1: the scenario-8 verdict is enabled.
+ *         [FA] ۰/۱، پیش‌فرض ۱: حکم سناریوی ۸ فعال است. */
+#define CHANGEOVER_PARAM_WEAK_ENABLE          147u
+/** @brief [EN] ms, def 600000 (10 min), 60000..3600000: quiet rest with a healthy pack before one retry.
+ *         [FA] میلی‌ثانیه، پیش‌فرض ۶۰۰۰۰۰ (۱۰ دقیقه)، ۶۰۰۰۰..۳۶۰۰۰۰۰: استراحت آرام با پک سالم پیش از یک تلاش مجدد. */
+#define CHANGEOVER_PARAM_WEAK_REST_MS         148u
+/** @brief [EN] ms, def 60000, 1000..600000: a re-cut inside this window after a mains-free reconnect proves weakness.
+ *         [FA] میلی‌ثانیه، پیش‌فرض ۶۰۰۰۰، ۱۰۰۰..۶۰۰۰۰۰: قطعِ دوباره داخل این پنجره بعد از وصل بدون برق شهر، ضعف را ثابت می‌کند. */
+#define CHANGEOVER_PARAM_CYCLE_GUARD_MS       149u
+/** @brief [EN] ms, def 10000, 1000..300000: unbroken healthy voltage needed before a mains-free reconnect.
+ *         [FA] میلی‌ثانیه، پیش‌فرض ۱۰۰۰۰، ۱۰۰۰..۳۰۰۰۰۰: ولتاژ سالمِ بی‌وقفه لازم پیش از وصل بدون برق شهر. */
+#define CHANGEOVER_PARAM_HEALTHY_HOLD_MS      150u
+/** @brief [EN] ms, def 500, 0 = solid red else 100..10000: red blink period of scenario 8.
+ *         [FA] میلی‌ثانیه، پیش‌فرض ۵۰۰، صفر = قرمز ثابت وگرنه ۱۰۰..۱۰۰۰۰: دورهٔ چشمک قرمز سناریوی ۸. */
+#define CHANGEOVER_PARAM_WEAK_LED_PERIOD_MS   151u
+/** @brief [EN] %, def 50, 5..95: red LED on-fraction of scenario 8.
+ *         [FA] درصد، پیش‌فرض ۵۰، ۵..۹۵: سهم روشنی LED قرمز سناریوی ۸. */
+#define CHANGEOVER_PARAM_WEAK_LED_DUTY_PCT    152u
+/** @brief [EN] ms, def 3000, 0 = silent else 1000..600000: beep repeat period of scenario 8.
+ *         [FA] میلی‌ثانیه، پیش‌فرض ۳۰۰۰، صفر = بی‌صدا وگرنه ۱۰۰۰..۶۰۰۰۰۰: دورهٔ تکرار بوق سناریوی ۸. */
+#define CHANGEOVER_PARAM_WEAK_BEEP_PERIOD_MS  153u
+/** @brief [EN] ms, def 200, 20..2000: length of one beep of scenario 8.
+ *         [FA] میلی‌ثانیه، پیش‌فرض ۲۰۰، ۲۰..۲۰۰۰: طول یک بوق سناریوی ۸. */
+#define CHANGEOVER_PARAM_WEAK_BEEP_LEN_MS     154u
+/** @brief [EN] count, def 3, 0..10: beeps per pattern of scenario 8.
+ *         [FA] تعداد، پیش‌فرض ۳، ۰..۱۰: تعداد بوق در هر الگوی سناریوی ۸. */
+#define CHANGEOVER_PARAM_WEAK_BEEP_COUNT      155u
+/** @brief [EN] ms, def 100, 0..5000: gap between beeps of scenario 8.
+ *         [FA] میلی‌ثانیه، پیش‌فرض ۱۰۰، ۰..۵۰۰۰: گپ بین بوق‌های سناریوی ۸. */
+#define CHANGEOVER_PARAM_WEAK_BEEP_GAP_MS     156u
+/** @brief [EN] 0/1, def 1: while the verdict holds, keep the battery path cut (no load on a weak pack).
+ *         [FA] ۰/۱، پیش‌فرض ۱: تا وقتی حکم برجاست مسیر باتری بسته بماند (بار روی باتری ضعیف نرود). */
+#define CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT    157u
+
+#define CHANGEOVER_PARAM_FIRST_ID             CHANGEOVER_PARAM_WEAK_ENABLE
+#define CHANGEOVER_PARAM_LAST_ID              CHANGEOVER_PARAM_WEAK_BLOCK_OUTPUT
+#define CHANGEOVER_PARAM_COUNT                11u
+
+/* ==================== Scenario 8 defaults / پیش‌فرض‌های سناریوی ۸ ==================== */
+
+#define CHANGEOVER_DEF_WEAK_ENABLE            1u
+#define CHANGEOVER_DEF_WEAK_REST_MS           600000u
+#define CHANGEOVER_DEF_CYCLE_GUARD_MS         60000u
+#define CHANGEOVER_DEF_HEALTHY_HOLD_MS        10000u
+#define CHANGEOVER_DEF_WEAK_LED_PERIOD_MS     500u
+#define CHANGEOVER_DEF_WEAK_LED_DUTY_PCT      50u
+#define CHANGEOVER_DEF_WEAK_BEEP_PERIOD_MS    3000u
+#define CHANGEOVER_DEF_WEAK_BEEP_LEN_MS       200u
+#define CHANGEOVER_DEF_WEAK_BEEP_COUNT        3u
+#define CHANGEOVER_DEF_WEAK_BEEP_GAP_MS       100u
+#define CHANGEOVER_DEF_WEAK_BLOCK_OUTPUT      1u
+
+/* ==================== Scenario 8 live parameters / پارامترهای زندهٔ سناریوی ۸ ==================== */
 
 /**
- * @brief  [EN] Cycle-guard window after a mains-free reconnect, in milliseconds.
- *         Range 1..3600000 ms; effect: if the pack cuts again inside this
- *         window, mains-free auto-reconnect is latched off until the mains
- *         returns (a really weak pack must not reconnect every few seconds).
- *         [FA] پنجرهٔ محافظ چرخه بعد از وصل بدون برق شهر، بر حسب میلی‌ثانیه.
- *         اگر باتری داخل این پنجره دوباره قطع شود، وصل خودکار بدون برق شهر
- *         قفل می‌شود تا برگشت برق شهر (باتری واقعاً ضعیف نباید هر چند ثانیه وصل شود).
+ * @brief  [EN] Write one scenario-8 parameter (147..157) through the clamp table
+ *              and report the applied value.
+ *         [FA] نوشتن یک پارامتر سناریوی ۸ (۱۴۷..۱۵۷) از مسیر گیره و گزارش
+ *              مقدار اعمال‌شده.
+ * @‎param  uint8_t__paramId [EN] 147..157‎ / شناسه
+ * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
+ * @param  uint32_t__appliedValue [EN] Applied value out, NULL rejects / خروجی الزامی، NULL رد می‌کند
+ * @return bool [EN] true when the id belongs to this module / شناسه متعلق به این ماژول بود
  */
-#define CHANGEOVER_CYCLE_GUARD_MS         60000u
+bool func__Changeover_SetParam(uint8_t uint8_t__paramId,
+                               uint32_t uint32_t__value,
+                               uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one live scenario-8 parameter (147..157).
+ *         [FA] خواندن یک پارامتر زندهٔ سناریوی ۸ (۱۴۷..۱۵۷).
+ * @‎param  uint8_t__paramId [EN] 147..157‎ / شناسه
+ * @param  uint32_t__value [EN] Value out / مقدار
+ * @return bool [EN] true when the id belongs to this module / شناسه متعلق به این ماژول بود
+ */
+bool func__Changeover_GetParam(uint8_t uint8_t__paramId,
+                               uint32_t *uint32_t__value);
+
+/**
+ * @brief  [EN] Is the scenario-8 weak-battery verdict latched right now?
+ *         [FA] آیا حکم «باتری ضعیف» سناریوی ۸ همین حالا قفل است؟
+ * @return bool [EN] true while latched / هنگام قفل‌بودن true
+ */
+bool func__Changeover_WeakVerdictActive(void);
 
 /* ==================== Changeover_Evaluate / ارزیابی Changeover ==================== */
 

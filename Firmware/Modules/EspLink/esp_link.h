@@ -522,16 +522,34 @@
 #define ESPLINK_PARAM_WIFI_CYCLE_OFF_MS       145u  /* u32, ms, def 120000, 0..3600000 */
 #define ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT     146u  /* u8, %, def 20, 0..100 */
 
-/* [EN] ids 0..146 are ordinary parameters; 132/133 shape the imbalance
+/* ==================== Scenario 8: weak battery ==================== */
+/* [EN] The Changeover module owns the scenario-8 verdict and its own eleven
+ *      controls; nothing is shared with scenarios 5, 6 or 7.
+ * [FA] ماژول Changeover صاحب حکم سناریوی ۸ و یازده کنترل مستقل خودش است؛
+ *      هیچ‌چیز با سناریوهای ۵، ۶ و ۷ مشترک نیست. */
+#define ESPLINK_PARAM_WEAK_ENABLE             147u  /* u8,  0/1, def 1, scenario-8 verdict on */
+#define ESPLINK_PARAM_WEAK_REST_MS            148u  /* u32, ms, def 600000 (10 min), 60000..3600000 */
+#define ESPLINK_PARAM_WEAK_CYCLE_GUARD_MS     149u  /* u32, ms, def 60000, 1000..600000 */
+#define ESPLINK_PARAM_WEAK_HEALTHY_HOLD_MS    150u  /* u32, ms, def 10000, 1000..300000 */
+#define ESPLINK_PARAM_WEAK_LED_PERIOD_MS      151u  /* u32, ms, def 500, 0 = solid red else 100..10000 */
+#define ESPLINK_PARAM_WEAK_LED_DUTY_PCT       152u  /* u8,  %,  def 50, 5..95 */
+#define ESPLINK_PARAM_WEAK_BEEP_PERIOD_MS     153u  /* u32, ms, def 3000, 0 = silent else 1000..600000 */
+#define ESPLINK_PARAM_WEAK_BEEP_LEN_MS        154u  /* u32, ms, def 200, 20..2000 */
+#define ESPLINK_PARAM_WEAK_BEEP_COUNT         155u  /* u8,  count, def 3, 0..10 */
+#define ESPLINK_PARAM_WEAK_BEEP_GAP_MS        156u  /* u32, ms, def 100, 0..5000 */
+#define ESPLINK_PARAM_WEAK_BLOCK_OUTPUT       157u  /* u8,  0/1, def 1, keep the weak pack off the output */
+
+/* [EN] ids 0..157 are ordinary parameters; 132/133 shape the imbalance
    beep, 134/135 shape the dead-battery beep, 136 controls the number of
    clean FLOAT-qualified cycles before the imbalance event counter is cleared,
    137..142 configure scenario 7, and 143..146 configure Wi-Fi power saving.
+   147..157 configure scenario 8 (weak battery) and belong to Changeover.
    Runtime slots stay outside.
-   [FA] شناسه‌های ۰..۱۴۶ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن،
+   [FA] شناسه‌های ۰..۱۵۷ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن،
    ۱۳۴/۱۳۵ شکل بوق باتری خراب، ۱۳۶ تعداد سیکل‌های کامل پاک، ۱۳۷..۱۴۲
-   سناریوی ۷ و ۱۴۳..۱۴۶ تنظیمات کاهش مصرف وای‌فای را می‌سازند؛ اسلات‌های
-   زمان‌اجرا بیرون‌اند. */
-#define ESPLINK_PARAM_COUNT               147u
+   سناریوی ۷، ۱۴۳..۱۴۶ کاهش مصرف وای‌فای و ۱۴۷..۱۵۷ سناریوی ۸ (باتری
+   ضعیف، متعلق به Changeover) را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
+#define ESPLINK_PARAM_COUNT               158u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

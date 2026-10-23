@@ -537,6 +537,19 @@ void func__Ui_Init(void);
  */
 void func__Ui_BoardTest_Start(void);
 
+/* ==================== Scenario WeakBattery / سناریوی باتری ضعیف ==================== */
+
+/**
+ * @brief  [EN] Scenario-8 face: red blink (ids 151/152) plus its own beep
+ *              pattern (ids 153..156), drawn only while the Changeover
+ *              weak-battery verdict is latched. Must be called every Ui pass
+ *              while the verdict holds.
+ *         [FA] چهرهٔ سناریوی ۸: قرمز چشمک‌زن (۱۵۱/۱۵۲) به‌همراه الگوی بوق
+ *              خودش (۱۵۳..۱۵۶)، فقط تا وقتی حکم باتری ضعیف در Changeover
+ *              قفل است. هر پاس UI باید صدا زده شود.
+ */
+void func__Ui_ScenarioWeakBattery_Tick(void);
+
 /* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
