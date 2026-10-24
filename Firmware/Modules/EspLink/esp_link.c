@@ -529,6 +529,18 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                                   uint32_t__value,
                                                   uint32_t__appliedValue);
             }
+            /* [EN] v1.102 thermal-rest tuning, ids 166..168 (user order
+                    2026-10-24): range-dispatched like the limit block; the
+                    setter owns the clamp window table.
+               [FA] نسخهٔ ۱۱۰۲ تنظیم استراحت حرارتی، ۱۶۶..۱۶۸ (دستور
+                    کاربر ۲۰۲۶-۱۰-۲۴): دیسپچ بازه‌ای مثل بلوک حدود؛
+                    جدول پنجرهٔ گیره مال ستر است. */
+            if (CHG_THERMAL_PARAM_OWNS(uint8_t__paramId))
+            {
+                return func__Charger_SetThermalParam(uint8_t__paramId,
+                                                     uint32_t__value,
+                                                     uint32_t__appliedValue);
+            }
 #endif
 #endif /* ESPLINK_HOST_TEST */
             if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS)
@@ -801,6 +813,13 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                 return func__Charger_GetDeadParam(uint8_t__paramId,
                                                   uint32_t__value);
             }
+            /* [EN] v1.102 thermal-rest live read, ids 166..168.
+               [FA] خواندن زندهٔ استراحت حرارتی، ۱۶۶..۱۶۸. */
+            if (CHG_THERMAL_PARAM_OWNS(uint8_t__paramId))
+            {
+                return func__Charger_GetThermalParam(uint8_t__paramId,
+                                                     uint32_t__value);
+            }
 #endif
 #endif /* ESPLINK_HOST_TEST */
             if (uint8_t__paramId == (uint8_t)ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS)
@@ -1041,6 +1060,11 @@ _Static_assert(ESPLINK_PARAM_COUNT > CHG_LIMIT_PARAM_LAST_ID,
 _Static_assert(CHG_LIMIT_PARAM_FIRST_ID + CHG_LIMIT_COUNT - 1u
                == CHG_LIMIT_PARAM_LAST_ID,
                "the charger limit block has a hole in its wire-id range");
+_Static_assert(CHG_THERMAL_PARAM_LAST_ID < ESPLINK_PARAM_COUNT,
+               "ESPLINK_PARAM_COUNT must cover the whole thermal block");
+_Static_assert(CHG_THERMAL_PARAM_FIRST_ID + CHG_THERMAL_PARAM_COUNT - 1u
+               == CHG_THERMAL_PARAM_LAST_ID,
+               "the thermal block has a hole in its wire-id range");
 #endif /* MODULE_CHARGER */
 
 #define ESPLINK_BULK_ITEM_SIZE   5u

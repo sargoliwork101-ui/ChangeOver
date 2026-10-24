@@ -2867,6 +2867,106 @@ bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
     return true;
 }
 
+/* ==================== Thermal-rest parameters (v1.102) ==================== */
+
+/* [EN] One X-macro row per thermal-rest wire id 166..168 (user order
+ *      2026-10-24): window and factory default live in ONE list, the same
+ *      pattern as the scenario-6 table above, so the clamp table and the
+ *      boot defaults cannot drift apart.
+ * [FA] یک ردیف ماکروی X برای هر شناسهٔ سیمی استراحت حرارتی ۱۶۶..۱۶۸ (دستور
+ *      کاربر ۲۰۲۶-۱۰-۲۴): پنجره و پیش‌فرض در یک فهرست واحد، همان
+ *      الگوی جدول سناریوی ۶، تا جدول گیره و پیش‌فرض‌های بوت از هم جدا
+ *      نیفتند. */
+#define CHG_THERMAL_ROWS(X)                                                     \
+    X(TRIGGER_MA,        0u,    3000u,        0u)  /* 166, 0 = auto band-50  */ \
+    X(CONTINUOUS_MS,     0u, 21600000u,  3600000u)  /* 167, 0 = rest off     */ \
+    X(REST_MS,           0u,  3600000u,   600000u)  /* 168, 0 = rest off     */
+
+#define CHG_THERMAL_ROW_VAL(name, lo, hi, def)  (def),
+#define CHG_THERMAL_ROW_LO(name, lo, hi, def)   (lo),
+#define CHG_THERMAL_ROW_HI(name, lo, hi, def)   (hi),
+
+static volatile uint32_t UINT32_T__G__ThermalParam[CHG_THERMAL_PARAM_COUNT] =
+{
+    CHG_THERMAL_ROWS(CHG_THERMAL_ROW_VAL)
+};
+static const uint32_t UINT32_T__A__ThermalLo[CHG_THERMAL_PARAM_COUNT] =
+{
+    CHG_THERMAL_ROWS(CHG_THERMAL_ROW_LO)
+};
+static const uint32_t UINT32_T__A__ThermalHi[CHG_THERMAL_PARAM_COUNT] =
+{
+    CHG_THERMAL_ROWS(CHG_THERMAL_ROW_HI)
+};
+
+_Static_assert((sizeof(UINT32_T__G__ThermalParam) /
+                sizeof(UINT32_T__G__ThermalParam[0])) == CHG_THERMAL_PARAM_COUNT,
+               "thermal param table size drifted from the id block");
+
+bool func__Charger_SetThermalParam(uint8_t uint8_t__paramId,
+                                   uint32_t uint32_t__value,
+                                   uint32_t *uint32_t__appliedValue)
+{
+    uint8_t  uint8_t__index;
+    uint32_t uint32_t__applied;
+    int32_t  int32_t__savedKernelLock;
+
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
+    if (CHG_THERMAL_PARAM_OWNS(uint8_t__paramId) == false)
+    {
+        return false;
+    }
+
+    uint8_t__index   = CHG_THERMAL_PARAM_INDEX(uint8_t__paramId);
+    uint32_t__applied = uint32_t__value;
+
+    if (uint32_t__applied < UINT32_T__A__ThermalLo[uint8_t__index])
+    {
+        uint32_t__applied = UINT32_T__A__ThermalLo[uint8_t__index];
+    }
+    if (uint32_t__applied > UINT32_T__A__ThermalHi[uint8_t__index])
+    {
+        uint32_t__applied = UINT32_T__A__ThermalHi[uint8_t__index];
+    }
+
+    /* [EN] Writer-side scheduler lock, same torn-set closure as the profile
+     *      path; the read sites run in the control tick.
+     * [FA] قفل زمان‌بندی سمت نویسنده، همان بستن پارگی مسیر پروفایل؛
+     *      جاهای خواندن در چرخهٔ کنترل‌اند. */
+    int32_t__savedKernelLock = osKernelLock();
+    UINT32_T__G__ThermalParam[uint8_t__index] = uint32_t__applied;
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+
+    *uint32_t__appliedValue = uint32_t__applied;
+    return true;
+}
+
+bool func__Charger_GetThermalParam(uint8_t uint8_t__paramId,
+                                   uint32_t *uint32_t__value)
+{
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
+    if (CHG_THERMAL_PARAM_OWNS(uint8_t__paramId) == false)
+    {
+        return false;
+    }
+
+    *uint32_t__value =
+        UINT32_T__G__ThermalParam[CHG_THERMAL_PARAM_INDEX(uint8_t__paramId)];
+
+    return true;
+}
+
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
                             app_state_t app_state_t__state)
 {
@@ -3351,7 +3451,12 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                [FA] سناریوی ۶ قبل از درایو همین پاس اجرا می‌شود. */
             func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
 
-            /* [EN] Thermal rest: 1h continuous at max current -> 10min rest.
+            /* [EN] Thermal rest, panel-tuned (ids 166..168): a continuous charge
+               stretch at/above the trigger current for the configured time
+               (default 1 h) -> the configured rest (default 10 min). A zero
+               duration or zero rest keeps the whole feature off; a zero
+               trigger means the original automatic rule (bulk band minus the
+               margin).
                [FA] استراحت حرارتی: ۱ ساعت مداوم با بیشترین جریان -> ۱۰ دقیقه استراحت. */
             {
                 uint32_t uint32_t__now = uint32_t__nowTick;
@@ -3391,16 +3496,40 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                                                        uint8_t__channelIndex);
                     uint32_t uint32_t__bulkMax =
                         CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
-                    uint32_t uint32_t__threshold = 0u;
+                    uint32_t uint32_t__continuousMs =
+                        UINT32_T__G__ThermalParam[CHG_THERMAL_PARAM_INDEX(
+                            CHG_THERMAL_PARAM_CONTINUOUS_MS)];
+                    uint32_t uint32_t__restMs =
+                        UINT32_T__G__ThermalParam[CHG_THERMAL_PARAM_INDEX(
+                            CHG_THERMAL_PARAM_REST_MS)];
+                    uint32_t uint32_t__threshold =
+                        UINT32_T__G__ThermalParam[CHG_THERMAL_PARAM_INDEX(
+                            CHG_THERMAL_PARAM_TRIGGER_MA)];
                     bool bool__atMax = false;
 
-                    if (uint32_t__bulkMax > CHG_THERMAL_CURRENT_MARGIN_MA)
+                    if (uint32_t__threshold == 0u)
                     {
-                        uint32_t__threshold = uint32_t__bulkMax - CHG_THERMAL_CURRENT_MARGIN_MA;
+                        /* [EN] 0 = automatic: the original band-edge rule.
+                         * [FA] صفر = خودکار: همان قانون لبهٔ باند. */
+                        if (uint32_t__bulkMax > CHG_THERMAL_CURRENT_MARGIN_MA)
+                        {
+                            uint32_t__threshold =
+                                uint32_t__bulkMax - CHG_THERMAL_CURRENT_MARGIN_MA;
+                        }
+                        else
+                        {
+                            uint32_t__threshold = uint32_t__bulkMax;
+                        }
                     }
-                    else
+
+                    if ((uint32_t__continuousMs == 0u) || (uint32_t__restMs == 0u))
                     {
-                        uint32_t__threshold = uint32_t__bulkMax;
+                        /* [EN] Feature off: never arm, and drop a stale arm so
+                         *      a later re-enable cannot fire instantly.
+                         * [FA] قابلیت خاموش است: هرگز فعال نمی‌شود، و آرم
+                         *      کهنده هم ریشته می‌شود تا فعال‌کردن دوباره سریع راه نیاندازد. */
+                        UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                        continue;
                     }
 
                     bool__atMax =
@@ -3420,11 +3549,11 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                                 uint32_t__now -
                                 UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex];
                             uint32_t uint32_t__needTicks =
-                                func__Charger_DurationTicks(CHG_THERMAL_CONTINUOUS_MS);
+                                func__Charger_DurationTicks(uint32_t__continuousMs);
                             if (uint32_t__elapsed >= uint32_t__needTicks)
                             {
                                 UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] =
-                                    uint32_t__now + func__Charger_DurationTicks(CHG_THERMAL_REST_MS);
+                                    uint32_t__now + func__Charger_DurationTicks(uint32_t__restMs);
                                 UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
                                 UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
                                 BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
@@ -3815,11 +3944,12 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
  *      (the hard-fault trip, CHG_MAX_VALID_BATTERY_MV 15000, the
  *      15.0 V hardware cutoff) can NEVER be raised above the compile maxima
  *      from the panel (v1.15: ids 35..37 lower them only) - ABSORB tops
- *      out at 14.6 V and the current band at 900 mA (limit = band+25).
+ *      out at 14.6 V and the current band stops 50 mA below the
+ *      hard-fault ceiling (2950 mA; limit = band+25).
  * [FA] گیره‌های وابستگی: بعد از هر نوشتن، کل مجموعه دوباره گیره می‌خورد تا
  *      فیزیکیِ سازنده بماند. پشتهٔ ایمنی سخت از پنل هرگز بالای سقف کامپایل
  *      نمی‌رود (v1.15: شناسه‌های ۳۵..۳۷ فقط پایین می‌برند) - ابزورب حداکثر
- *      ۱۴٫۶V و باند جریان حداکثر ۹۰۰mA (سقف = باند + ۲۵). */
+ *      ۱۴٫۶V و باند جریان حداکثر ۲۹۵۰mA (سقف = باند + ۲۵). */
 
 /* ==================== Charger_ClampAlarms ==================== */
 

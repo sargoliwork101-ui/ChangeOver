@@ -298,15 +298,11 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .wclose:hover{opacity:1;background:rgba(255,255,255,.08)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
 /* [EN] v1.79 (user: "what is this? there used to be a LED behind it"): the
-   .bit class had markup (<i> dot + <small> label) but NO stylesheet rule at
-   all, so the dots were invisible and the labels ran together as
-   "ADCOC1OC2باتری...". ‎The LEDs are needed - they are the only per-bit view‎
-   of the latched fault mask - so they are drawn properly instead of removed.
-   A latched bit stays dim red at all times and brightens on the blink phase,
-   so a fault is never invisible between blinks.
-   [FA] کلاس .bit هیچ استایلی نداشت؛ پس نقطه‌ها دیده نمی‌شدند و برچسب‌ها به هم
-   چسبیده بودند. حالا هر بیت یک LED واقعی با برچسب زیرش دارد: بیتِ قفل‌شده
-   همیشه قرمزِ کم‌رنگ است و در فاز چشمک پررنگ می‌شود. */
+   .bit LEDs had markup but no CSS and were invisible; they are the only
+   per-bit view of the latched fault mask, so they are drawn properly. A
+   latched bit stays dim red and brightens on the blink phase.
+   [FA] کلاس .bit استایل نداشت و نقطه‌ها دیده نمی‌شدند؛ حالا هر بیت یک LED با
+   برچسب دارد: قفل‌شده همیشه قرمز کم‌رنگ است و در چشمک پررنگ می‌شود. */
 .bit{display:inline-flex;flex-direction:column;align-items:center;gap:5px;min-width:54px}
 .bit i{width:14px;height:14px;border-radius:50%;background:#28303f;border:1px solid var(--ln);box-shadow:inset 0 1px 2px #0009;transition:background .12s,box-shadow .12s}
 .bit small{font-size:11px;line-height:1;color:var(--mu);white-space:nowrap}
@@ -456,7 +452,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 86d1a14</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4741c09</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -487,11 +483,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>نمودار مراحل شارژ</b></div>
-<div class="sx"><b>نمودار فقط ولتاژ و جریان را نشان می‌دهد</b> — هر عددی که روی محورها جای واقعی دارد، روی خود نمودار زیرخط‌دار و کلیک‌پذیر است. سیزده عددِ زیر نمودار (تراشه‌ها) نه ولتاژند نه جریان، پس آنجا آمده‌اند و با یک کلیک ویرایش می‌شوند؛ در سه دسته:
-<br><b>۱ · رسیدن نرم به هدف</b> — <b>duty step</b> سقفِ سرعت حرکت duty به‌سمت هدفِ PID، <b>hyst</b> نادیده‌گرفتن جنبش‌های ریزِ خروجی PID تا PWM نلرزد، <b>V filter</b> نرم‌کردن عدد ولتاژ پیش از PID.
-<br><b>۲ · ترمز اضطراری و حاشیهٔ امن</b> — <b>Backstop gain I</b> و <b>Backstop gain V</b> برشِ تناسبیِ سقف duty هنگام تجاوز از حد جریان یا ولتاژ (صفر = خاموش؛ این‌ها PID نیستند، بالای آن می‌ایستند) و <b>margin</b> فاصلهٔ ایمن از لبهٔ سقف جریان.
-<br><b>۳ · تصمیم‌های زمانی</b> — <b>Absorb max</b> سقف زمان Absorb (ورود اجباری به Float / شارژ کامل)، <b>Absorb hold</b> حداقل ماندن در Absorb، <b>Taper sustain</b> مدتی که جریان باید زیر Taper بماند تا با جریان «شارژ کامل» اعلام شود، <b>settle</b> صبر بعد از وصل باتری، <b>JIT lockout</b> خاموشی اجباری بعد از هر تریپ، <b>manual deadman</b> انقضای duty دستی با سکوت پنل، <b>ramp down</b> فاصلهٔ پله‌های خاموشی نرم.
-<br><b>قاعدهٔ تنظیم:</b> هر بار یک عدد را عوض کنید و یک چرخهٔ کامل را ببینید؛ برای آرام‌کردن حلقه اول duty step، بعد hyst و در آخر V filter.<br><b>ماندگاری:</b> هر مقداری که ثبت کنید روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند؛ برد هر عدد را به بازهٔ مجازش گیره می‌زند و اگر نتیجه با آنچه تایپ کردید فرق داشت، برچسبش زرد می‌شود.</div>
+<div class="sx"><b>نمودار فقط ولتاژ و جریان را نشان می‌دهد</b> — اعداد روی محورها روی خود نمودار زیرخط‌دار و کلیک‌پذیرند. سیزده عدد زیر نمودار (تراشه‌ها) ولتاژ/جریان نیستند و با یک کلیک ویرایش می‌شوند؛ در سه دسته:<br><b>۱ · رسیدن نرم به هدف</b> — <b>duty step</b> سقف سرعت duty به‌سمت هدف PID، <b>hyst</b> نادیده‌گرفتن جنبش‌های ریز خروجی PID تا PWM نلرزد، <b>V filter</b> نرم‌کردن ولتاژ پیش از PID.<br><b>۲ · ترمز اضطراری و حاشیهٔ امن</b> — <b>Backstop gain I</b> و <b>Backstop gain V</b> برش تناسبی سقف duty هنگام تجاوز از حد جریان یا ولتاژ (صفر = خاموش؛ این‌ها PID نیستند) و <b>margin</b> فاصله امن از لبه سقف جریان.<br><b>۳ · تصمیم‌های زمانی</b> — <b>Absorb max</b> سقف زمان Absorb (ورود اجباری به Float / شارژ کامل)، <b>Absorb hold</b> حداقل ماندن در Absorb، <b>Taper sustain</b> مدت زیر Taper برای اعلام «شارژ کامل»، <b>settle</b> صبر بعد از وصل باتری، <b>JIT lockout</b> خاموشی اجباری بعد از هر تریپ، <b>manual deadman</b> انقضای duty دستی با سکوت پنل، <b>ramp down</b> فاصله پله‌های خاموشی نرم.<br><b>قاعدهٔ تنظیم:</b> هر بار یک عدد را عوض کنید و یک چرخه کامل ببینید؛ برای آرام‌کردن حلقه اول duty step، بعد hyst و در آخر V filter.<br><b>ماندگاری:</b> هر مقدار ثبت‌شده روی فلش برد می‌ماند؛ برد عدد را به بازه مجازش گیره می‌زند و اگر نتیجه با آنچه تایپ کردید فرق داشت، برچسبش زرد می‌شود.</div>
 <div class="qwm" style="margin:2px 0 0"></div>
 <div class="qgm" style="direction:ltr;overflow-x:auto"></div>
 <div class="qglg lb"></div>
@@ -524,6 +516,15 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>نرخ نزول (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92"></span></label>
 </div>
 <div id="pw" style="margin:6px 0 0"></div>
+</div>
+<div class="cd">
+<div class="hd"><b>استراحت حرارتی</b><span class="lb">· شناسه‌های ۱۶۶..۱۶۸ · روی فلش برد ذخیره می‌شود</span></div>
+<div class="sx">شارژر بعد از شارژِ پیوستهٔ سنگین چند دقیقه استراحت می‌کند تا خنک شود و از ابتدا ادامه می‌دهد. سه عدد زیر همان را تنظیم می‌کنند:<br><br><b>آستانهٔ جریان</b> = وقتی جریان شارژ سریع به این مقدار برسد یا بیشتر شود، ساعت استراحت جلو می‌رود.<br><b>مدت شارژ تا استراحت</b> = چقدر شارژ پیوسته لازم است تا استراحت فعال شود.<br><b>مدت استراحت</b> = طول هر استراحت.<br><br><b>صفر = خاموش:</b> صفر در هر دو زمان، استراحت حرارتی را کلاً غیرفعال می‌کند؛ صفر در آستانه یعنی خودکار (۵۰ میلی‌آمپر زیر سقف جریان Bulk، همان رفتار همیشگی).<br><b>با «سقف زمان Absorb» زیر نمودار اشتباه نشود:</b> آن سقف مرحلهٔ کامل‌کننده و شارژ کامل است؛ این‌ها فقط استراحتِ خنک‌شدن‌اند.</div>
+<div class="bqr">
+<label>آستانهٔ جریان استراحت (mA)<input type="number" id="q166" step="50" min="0" max="3000"><span class="lb" id="a166"></span></label>
+<label>مدت شارژ تا استراحت (ms)<input type="number" id="q167" step="60000" min="0" max="21600000"><span class="lb" id="a167"></span></label>
+<label>مدت استراحت حرارتی (ms)<input type="number" id="q168" step="60000" min="0" max="3600000"><span class="lb" id="a168"></span></label>
+</div>
 </div>
 <div class="cd">
 <!-- [EN] v1.38 (user order: \"why two factory-restore keys on the charge
@@ -909,12 +910,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s6z"></div>
 
 <div class="sec">۴) رفتار پس از حکم خرابی</div>
-<div class="sx"><b>«جداسازی باتری از خروجی» یعنی چه؟</b> هر باتری دو مسیر دارد: مسیرِ <b>شارژ</b> (برق به باتری می‌رود) و مسیرِ <b>خروجی</b> (باتری به بار برق می‌دهد). وقتی حکم «باتری خراب» صادر شد، مسیر شارژِ آن کانال در هر حالت و برای همیشه قطع است — این قابل انتخاب نیست. تنها چیزی که این چک‌باکس تعیین می‌کند، تکلیفِ مسیر <b>خروجی</b> است:
-<ul>
-<li><b>تیک‌دار (پیش‌فرض خاموش است، خودتان روشن می‌کنید)</b> — باتریِ محکوم از خروجی هم برداشته می‌شود: نه شارژ می‌گیرد و نه به بار برق می‌دهد. انگار از مدار درآمده و فقط منتظر تعویض است. امن‌ترین حالت برای باتریِ مشکوک به اتصالیِ داخلی، ولی اگر همان یک باتری تنها منبع بار باشد، بار از دست می‌رود.</li>
-<li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار در هر دو حالت یکسان است: چراغ از q130/q131 و بوق مستقل از q128/q129/q134/q135 می‌آید.</li>
-</ul>
-این تیک روی فلش برد ذخیره می‌شود و دقیقاً همتای «مسدودی خروجی» در سناریو ۵ است.</div>
+<div class="sx"><b>«جداسازی باتری از خروجی» یعنی چه؟</b> هر باتری دو مسیر دارد: <b>شارژ</b> (برق به باتری) و <b>خروجی</b> (باتری به بار). با حکم «باتری خراب»، مسیر شارژِ آن کانال همیشه و در هر حالت قطع است — انتخابی نیست. این چک‌باکس فقط تکلیف مسیر <b>خروجی</b> را روشن می‌کند:<ul><li><b>تیک‌دار (پیش‌فرض خاموش است، خودتان روشن می‌کنید)</b> — باتری محکوم از خروجی هم برداشته می‌شود: نه شارژ می‌گیرد و نه به بار می‌دهد. انگار از مدار درآمده و منتظر تعویض است. امن‌ترین حالت برای باتری مشکوک به اتصالی داخلی؛ ولی اگر همان یک باتری تنها منبع بار باشد، بار از دست می‌رود.</li><li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سر جایش می‌ماند و تا وقتی ولتاژ دارد به بار می‌دهد و بعد خالی می‌شود. هشدار در هر دو حالت یکسان است: چراغ از q130/q131 و بوق مستقل از q128/q129/q134/q135.</li></ul>این تیک روی فلش برد ذخیره می‌شود و همتای «مسدودی خروجی» در سناریو ۵ است.</div>
 <div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label><button class="sb sb-rst fwb" onclick="latchrst(6)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری خراب</button><span class="lb fwb" id="rst6">حکم را پاک می‌کند تا شارژ آن کانال آزاد شود</span></div>
 <div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
 <ul>
@@ -1026,7 +1022,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd">
 <div class="hd"><b>سقف‌های ایمنی شارژر</b></div>
-<div class="sx"><b>Hard fault جریان</b> = بالای این مقدار کانال فوراً متوقف می‌شود (همیشه بالای جریان Bulk+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند؛ سقف ۳۰۰۰ است، یعنی اندازه‌ای که زنجیرهٔ اندازه‌گیری واقعاً می‌تواند ببیند — پیش‌فرض کارخانه همان ۹۵۰ می‌ماند).<br><b>قطع OV</b> = بالای این ولتاژ، باتری نامعتبر و سوئیچینگ متوقف می‌شود.<br><b>کف اعتبار</b> = زیر این ولتاژ، عدد باتری اصلاً معتبر شمرده نمی‌شود.<br><b>قانون مشترک:</b> هر سه فقط پایین‌بردنی‌اند و هرگز از سقف کارخانه بالاتر نمی‌روند.</div>
+<div class="sx"><b>Hard fault جریان</b> = بالای این مقدار کانال فوراً متوقف می‌شود (همیشه بالای جریان Bulk+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند؛ سقف ۳۰۰۰ است، یعنی اندازه‌ای که زنجیرهٔ اندازه‌گیری واقعاً می‌تواند ببیند — پیش‌فرض کارخانه همان ۹۵۰ می‌ماند).<br><b>قطع OV</b> = بالای این ولتاژ، باتری نامعتبر و سوئیچینگ متوقف می‌شود.<br><b>کف اعتبار</b> = زیر این ولتاژ، عدد باتری اصلاً معتبر شمرده نمی‌شود.<br><b>قانون مشترک:</b> هیچ‌کدام از سقف کارخانه بالاتر نمی‌روند (Hard fault تا ۳۰۰۰، قطع OV تا ۱۵۰۰۰، کف اعتبار تا ۸۰۰۰)، ولی پایین‌تر از آن‌ها آزادانه تنظیم می‌شوند؛ Hard fault همیشه دست‌کم ۵۰ میلی‌آمپر بالای سقف جریان Bulk می‌ماند.</div>
 <div class="bqr">
 <label>Hard fault جریان (mA)<input type="number" id="q35" step="10" min="150" max="3000"><span class="lb" id="a35"></span></label>
 <label>قطع اضافه‌ولتاژ OV (mV)<input type="number" id="q36" step="50" min="14000" max="15000"><span class="lb" id="a36"></span></label>
@@ -1095,8 +1091,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="logcd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل ذخیره و تا ۳۰ روز نگه داشته می‌شود؛ از حدی که بگذرد، اول قدیمی‌ترین روز حذف می‌شود. ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای» نوشته می‌شود.
-<br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
+<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل ذخیره و تا ۳۰ روز نگه داشته می‌شود؛ از حدی که بگذرد، اول قدیمی‌ترین روز حذف می‌شود. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای» نوشته می‌شود.<br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">امروز</option></select></label>
 <button class="sb" type="button" onclick="evtfetch(1)">به‌روزرسانی</button>
@@ -1135,16 +1130,11 @@ const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
 function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
 
 /* ==================== صف ارسال سراسری / Global send queue ==================== */
-/* [EN] v1.52 (user order 2026-10-05): a typed box no longer posts itself the
-   moment it loses focus. Edits are staged locally, the page marks them, and
-   ONE button ships the whole batch; after the POSTs the panel waits for the
-   next telemetry frame and compares what the board reports back with what was
-   sent, so the user gets a real handshake answer - "accepted and stored" or
-   "the board clamped these".
-   [FA] هر کادر دیگر به‌تنهایی ارسال نمی‌شود: تغییرات محلی صف می‌شوند و یک
-   دکمه همه را با هم می‌فرستد؛ بعد از ارسال، پنل منتظر فریم بعدی برد می‌ماند و
-   مقدار برگشتی را با مقدار فرستاده‌شده مقایسه می‌کند تا بگوید «نشست» یا
-   «برد گیره زد». */
+/* [EN] v1.52 (user order 2026-10-05): edits are staged locally and ONE
+   button ships the batch; the panel then compares the board read-back and
+   answers "accepted and stored" or "the board clamped these".
+   [FA] تغییرات محلی صف می‌شوند و یک دکمه همه را می‌فرستد؛ پنل مقدار برگشتی برد
+   را مقایسه می‌کند و می‌گوید «نشست» یا «برد گیره زد». */
 var PEND={};
 const PEND_KEY='changeover-panel-pending-v1';
 function pendSave(){try{localStorage.setItem(PEND_KEY,JSON.stringify(PEND));}catch(e){}}
@@ -1189,15 +1179,11 @@ function pundo(){for(const id of Object.keys(PEND)){const e=pctrl(+id);
 pendRestore();
 
 /* ==================== قوانین بین‌فیلدی / Cross-field rules ==================== */
-/* [EN] Cross-field relationships are displayed as advisory guidance only.
-   The browser never repairs or vetoes them: each owning Firmware setter is
-   allowed to clamp its own dependent fields, and the applied/read-back value
-   is authoritative. Per-field HTML/EVB ranges remain the only pre-POST hard
-   validation.
-   [FA] رابطه‌های بین‌فیلدی فقط به‌صورت توصیه نمایش داده می‌شوند. مرورگر آن‌ها
-   را اصلاح یا وتو نمی‌کند: setter ماژول مالک اجازه دارد وابسته‌های خودش را
-   clamp کند و مقدار اعمال‌شده/بازخوانی‌شده مرجع است. فقط بازهٔ مستقل ‎HTML/EVB‎
-   پیش از POST اعتبارسنجی سخت است. */
+/* [EN] Cross-field advice only: the browser never repairs or vetoes; the
+   owning Firmware setter clamps its dependents and the read-back is
+   authoritative. Per-field HTML/EVB ranges are the only pre-POST hard check.
+   [FA] رابطه‌های بین‌فیلدی فقط توصیه‌اند؛ مرورگر اصلاح یا وتو نمی‌کند و مقدار
+   بازخوانی‌شده مرجع است. */
 const MINGAP=100;
 /* [EN] v: id->value map of the WHOLE picture (boxes + board). Returns the
    list of fixes as [id, from, to]. [FA] فهرست اصلاح‌ها را برمی‌گرداند. */
@@ -1606,8 +1592,8 @@ function qchk(){const w=[],a=qv(20).v,e=qv(21).v,o=qv(22).v,f=qv(23).v,r=qv(24).
   if(bad(f,9000,a-300))w.push({ids:[23,20],msg:'Float باید ۹۰۰۰..Absorb−۳۰۰ باشد (≤ '+(a-300)+')'});
   else if(bad(r,8000,f-300))w.push({ids:[24,23],msg:'Reentry باید ۸۰۰۰..Float−۳۰۰ باشد (≤ '+(f-300)+')'});
  }
- if(bad(im,100,900))w.push({ids:[25],msg:'جریان Bulk باید ۱۰۰..۹۰۰ باشد'});
- if(bad(tp,10,Math.min(300,im)))w.push({ids:[26,25],msg:'Taper باید ۱۰..Bulk max باشد (≤ '+Math.min(300,im)+')'});
+ if(bad(im,100,2950))w.push({ids:[25],msg:'جریان Bulk باید ۱۰۰..۲۹۵۰ باشد (۵۰ کمتر از سقف Hard fault)'});
+ if(bad(tp,10,Math.min(1475,im)))w.push({ids:[26,25],msg:'Taper باید ۱۰..Bulk max باشد (≤ '+Math.min(1475,im)+')'});
  return w.map(x=>Object.assign({advisory:x.ids.length>1},x));}
 /* ===== v1.25 (دستور کاربر ۲۰۲۶-۰۹-۲۹): در «!» هر بخش، خودِ پارامترها هم
    توضیح داده شوند — هرکدام چیست و چه کار می‌کند.
@@ -1682,7 +1668,7 @@ const PX={
  22:['سقف تجاوز Absorb','اگر ولتاژ از این رد شد، duty سریع پایین کشیده می‌شود.'],
  23:['ولتاژ Float','ولتاژ نگه‌داری بعد از پر شدن؛ کمتر از Absorb تا باتری نجوشد.'],
  24:['ولتاژ بازگشت به Bulk','اگر باتری تا این حد افت کرد، دوباره از Bulk شروع می‌شود.'],
- 25:['جریان Bulk','سقف جریان فاز Bulk؛ هدف حلقهٔ جریان. حد سخت ۹۵۰ میلی‌آمپر جداست.'],
+ 25:['جریان Bulk','سقف جریان فاز Bulk؛ هدف حلقهٔ جریان. حد سخت (Hard fault) جدا تنظیم می‌شود: پیش‌فرضش ۹۵۰ و باید همیشه دست‌کم ۵۰ بالای همین سقف بماند.'],
  26:['جریان Taper','زیر این جریان در Absorb، شارژ تمام‌شده حساب می‌شود.'],
  27:['ولتاژ قطع باتری','بالاتر از این و بدون جریان یعنی باتری جدا شده.'],
  28:['دیبانس قطع','چند میلی‌ثانیه شرط بالا باید برقرار بماند تا آلارم بزند؛ کوتاه یعنی آلارم فیک.'],
@@ -1783,7 +1769,10 @@ const PX={
  161:['تیک هشدار سناریو 4 (شارژ عادی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
  162:['تیک هشدار سناریو 5 (عدم‌توازن)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
  163:['تیک هشدار سناریو 6 (باتری خراب)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
- 164:['تیک هشدار سناریو 7 (خطای فنی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.']};
+ 164:['تیک هشدار سناریو 7 (خطای فنی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
+ 166:['آستانهٔ جریان استراحت','هر وقت جریان شارژ سریع به این مقدار برسد یا بیشتر شود، ساعت استراحت حرارتی جلو می‌رود. صفر = خودکار: ۵۰ میلی‌آمپر زیر سقف جریان Bulk (همان رفتار همیشگی).'],
+ 167:['مدت شارژ تا استراحت','بعد از این مدت شارژ پیوسته با جریان بالای آستانه، کانال به استراحت حرارتی می‌رود. صفر = استراحت حرارتی خاموش.'],
+ 168:['مدت استراحت حرارتی','هر استراحت این مدت طول می‌کشد و بعد شارژ از ابتدا (خاموش، بعد شارژ سریع) ادامه می‌یابد. صفر = خاموش.']};
 
 // [EN] v1.36 (user order: the chip tooltips must be EXPLICIT - plain
 //   language, real units, and what bigger vs smaller actually does. The
@@ -2075,7 +2064,7 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
    [FA] نسخهٔ ۱٫۸۷: سقف دوباره بالاترین شناسهٔ واقعی است (۱۶۴). هفت شناسهٔ
    آخر فیلد عددی ندارند و تیک «فعال» کارت ویرایششان می‌کند، ولی پشتیبان‌گیری
    و اعتبارسنجی روی همین فهرست می‌گردند. */
-const AIDS=[];for(let _i=27;_i<=165;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=168;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 
@@ -2094,7 +2083,7 @@ const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
    field, the card's «فعال» tick is their only editor.
    [FA] نسخهٔ ۱٫۸۷: شناسه‌های ۱۵۸..۱۶۴ تیک هشدار سناریوهای ۱..۷ هستند و
    پیش‌فرض همه «روشن» است؛ فیلد عددی ندارند و تنها ویرایشگرشان تیک «فعال» کارت است. */
-const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20,1,600000,60000,10000,500,50,3000,200,3,100,1,1,1,1,1,1,1,1,25000];
+const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20,1,600000,60000,10000,500,50,3000,200,3,100,1,1,1,1,1,1,1,1,25000,0,3600000,600000];
 /* v1.71: شناسهٔ ۵۷ دیگر درصد نیست؛ مدت هر بوق بحرانی بر حسب ms است (۱۰۰۰۰ = همان صدای قبلی) */
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,10000,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
@@ -2295,15 +2284,10 @@ const FEXP=[
  ['خطای فنی برد / ترانزیستور شارژر','رله، PWM و جریان یکی از امضاهای خرابی طبقهٔ قدرت را نشان داده‌اند. شارژ و PWM تا reset قفل است؛ ترانزیستور و مسیر رله را بررسی کنید.']];
 /* [EN] Operating table and chart ownership; click to edit contract. [FA] قرارداد جایگاه نمودار و جدول و ویرایش با کلیک. */
 
-/* [EN] id -> [min, max, step, unit]. Hand-written here because the browser
-   cannot see the firmware's tables - so audit_consistency.py pins every row
-   of this against ParamMin/ParamMax and fails the build-check on drift. A
-   hand-copied table is allowed in this repo only when something mechanical
-   is watching it.
-   [FA] شناسه -> [کمینه، بیشینه، گام، واحد]. دستی است چون مرورگر جدول‌های
-   فرم‌ور را نمی‌بیند - پس audit_consistency.py تک‌تک ردیف‌هایش را به
-   ‎ParamMin/ParamMax‎ میخ می‌کند و سر اختلاف، بررسی را رد می‌کند. جدول دستی در
-   این مخزن فقط وقتی مجاز است که چیزی ماشینی مراقبش باشد. */
+/* [EN] id -> [min, max, step, unit]. Hand-written because the browser cannot
+   see the firmware tables - audit_consistency.py pins every row against
+   ‎ParamMin/ParamMax and fails on drift. [FA]‎ شناسه -> [کمینه، بیشینه، گام، واحد].
+   دستی است، پس audit_consistency.py تک‌تک ردیف‌ها را به بازه‌های فرم‌ور میخ می‌کند. */
 const EVB={
  20:[11000,14600,50,'mv'], 21:[10500,14550,50,'mv'], 22:[11100,14750,50,'mv'],
  23:[9000,14300,50,'mv'],  24:[8000,14000,50,'mv'],  25:[100,2950,10,'ma'],
@@ -3156,15 +3140,10 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();livedraw(d);
           وضعیت سناریوی ۵ می‌فرستد تا پنل قفل را بدون GET نشان دهد. */
  const weakNow=(((d.fl2|0)&16)!==0);
  /* [EN] v1.94 (user order 2026-10-23): the always-on chips above the table
-           were repeating the locked-fault box, so they are gone. Everything
-           that is true RIGHT NOW is drawn in that box instead, under
-           «وضعیت‌ها — همین حالا»: mains, each channel's phase, the battery
-           path, thermal rest, every verdict, manual mode and whether the
-           board's data is complete.
-    [FA] نسخهٔ ۱٫۹۴ (دستور کاربر ۲۰۲۶-۱۰-۲۳): چراغ‌های همیشه‌روشن بالای جدول
-          تکرار کادر خطاهای قفل‌شده بودند و برداشته شدند. هر چیزی که همین
-          حالا درست است، داخل همان کادر زیر عنوان «وضعیت‌ها — همین حالا»
-          کشیده می‌شود. */
+   repeated the locked-fault box and are gone; everything true RIGHT NOW is
+   drawn under «وضعیت‌ها — همین حالا».
+   [FA] نسخهٔ ۱٫۹۴: چراغ‌های همیشه‌روشن بالای جدول تکرار کادر خطا بودند و برداشته
+   شدند؛ هر چیزی که همین حالا درست است داخل همان کادر است. */
  function liveCls(sv){return ((sv>=1)&&(sv<=6))?'y':(((sv===7)||(sv===8))?'r':'');}
  function livedraw(dd){
   const box=$('lv');if(!box||!dd||!dd.t||!dd.p)return;
@@ -3363,15 +3342,12 @@ function wlist(){const a=$('wL').value.split(/[,، ]+/).filter(x=>x!=='').map(Nu
 async function wopen(){const j=await req('/m','POST');if(j._s!=200)throw 'پنجرهٔ آمار ESP پاسخ نداد';W.winMs=Date.now();}
 async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<25)throw 'در این بازه TLM نرسید';j.a=i=>j.s[i]/j.n;return j;}
 /* خانه‌های زندهٔ ردیف فعال از آخرین /t — فقط نمایش؛ ردیف فایل از /m لحظهٔ ثبت ساخته می‌شود */
-/* [EN] v1.65 (user order: "during the test do not show me the extra stuff -
-   only the duty, the voltages and currents the board reads, and the numbers
-   I have to type; keep everything else behind the scenes"). The table now
-   shows exactly those columns. The CSV behind it is unchanged: raw counts,
-   filtered and estimated currents, min/max of every field, flags and the
-   whole settings block still go to the file.
-   [FA] جدول فقط duty، ولتاژها و جریان‌هایی که برد می‌خواند و عددهایی که شما
-   وارد می‌کنید را نشان می‌دهد. فایل CSV پشت صحنه بدون تغییر همه‌چیز را
-   ثبت می‌کند: شمارش خام، جریان فیلترشده و تخمینی، کمینه/بیشینه و تنظیمات. */
+/* [EN] v1.65 (user order: "during the test show only the duty, the voltages
+   and currents the board reads, and the numbers I type"): the table shows
+   exactly those columns; the CSV behind it still keeps everything (raw
+   counts, filtered/estimated currents, min/max, flags, settings).
+   [FA] جدول فقط duty، ولتاژها و جریان‌های برد و عددهای واردشده را نشان می‌دهد؛
+   فایل CSV پشت صحنه همه‌چیز را ثبت می‌کند. */
 function wlive(act){
  if(!D||D.on!=1)return['-','-','-','-','-'];
  const cur=n=>act.includes(n)?D.t[n===1?3:10]:'قطع';
@@ -3380,18 +3356,15 @@ function wmeas(m,act){
  const cur=n=>act.includes(n)?r0(m.a(n===1?3:10)):'قطع';
  return [cur(1),cur(2)];}
 
-/* ردیف CSV (۱۴۹ ستون، ترتیب دقیق بخش 4، مولتی‌متر نسخه ۴).
-   v1.25 رفع باگ: شمارندهٔ پارامترها روی ۹۹ (تعداد v1.22) جا مانده بود در حالی که
-   تعداد واقعی ۹۳ است، پس هر ردیف ۶ ستون اضافه می‌نوشت و همهٔ ستون‌های بعد از بلوک
-   پارامتر زیر عنوان اشتباه می‌افتادند. حالا از PN که از تعداد واقعی می‌آید استفاده
-   می‌شود تا دوباره کهنه نشود. v1.25: +۵ ستون شمارش خام برای کالیبراسیون.
-   CSV row, exact 5.6 column order (DMM v4). v1.25 BUGFIX: the parameter loop was
-   stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
-   extra columns and everything after the parameter block landed under the wrong
-   heading. It now derives the bound so it cannot go stale again. */
+/* [EN] CSV row, exact 5.6 column order (DMM v4). v1.25 BUGFIX: the parameter
+   loop was stuck at 99 while the real count is 93, so every row wrote 6 extra
+   columns under shifted headings; the bound now comes from PN and cannot go
+   stale. +5 raw counters for calibration.
+   [FA] ردیف CSV با ترتیب دقیق ستون‌های بخش ۴ (مولتی‌متر نسخه ۴). رفع باگ v1.25:
+   شمارنده روی ۹۹ جا مانده بود و ستون‌ها جابه‌جا می‌شدند؛ حالا از تعداد واقعی می‌آید. */
 /* [EN] v1.87: must equal ESP_PARAM_COUNT; the CSV column count and every
    ‎per-id array are sized from it. [FA]‎ باید برابر تعداد پارامتر باشد. */
-const PN=166;
+const PN=169;
 /* [EN] Bench CSV column contract. [FA] قرارداد ستون‌های CSV بنچ. */
 function wset(){const P=[];for(let k=0;k<PN;k++)P.push(D.p[k]==null?'-':D.p[k]);return P.join(',');}
 let WSIG=null;
@@ -3828,14 +3801,12 @@ async function calmodalApply(){
 }
 
 
-/* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
-   [FA] جدول بنچ در یک بلوک فلش جدا (دو صفحهٔ ۱ کیلوبایتی، پینگ‌پنگ، CRC مخصوص)
-   می‌نشیند؛ مسیر «ساخت کد برای میکرو» دست‌نخورده است. سه مرحله: چیدن
-   (‎BEGIN+CHUNK)‎ ← کامیت با CRC32 ← دست‌دادن؛ و فقط بعد از دست‌دادنِ موفق،
-   دکمهٔ ریست برد فعال می‌شود.
-   [EN] The bench table lands in its own flash block (ping-pong, own CRC32);
-   the code-export path stays. The push is content-addressed: the commit is
-   refused unless the browser and board CRC32s match. */
+/* ---------- v1.66 (user order 2026-10-05): the bench table lands in its own flash
+   block (ping-pong, own CRC32); the code-export path stays. The push is
+   content-addressed: the commit is refused unless browser and board CRC32s
+   match, and only after the handshake the reset key unlocks.
+   [FA] جدول بنچ در بلوک فلش جدا (پینگ‌پنگ، CRC32 مخصوص) می‌نشیند؛ سه مرحله:
+   چیدن ← کامیت با CRC ← دست‌دادن؛ فقط بعد از دست‌دادن موفق، ریست فعال می‌شود. */
 const LUTMAX=24;
 const LUTST={0:'موفق',1:'برد مرحلهٔ شروع را ندیده بود',2:'تعداد نقاط برای برد نامعتبر بود',
  3:'یکی از تکه‌های جدول به برد نرسید',4:'محور جریان روی برد صعودی نبود',

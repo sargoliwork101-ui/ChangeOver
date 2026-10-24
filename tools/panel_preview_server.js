@@ -237,7 +237,11 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.88 id 165 = scenario 8's rest floor (mV): the pack must rest at
               or above this value before a re-cut is called weakness, so an
               empty pack never lights the weak-battery face. */
-           25000];
+           25000,
+           /* v1.102 ids 166..168 = CHG_THERMAL_ROWS boot defaults (mA / ms /
+              ms): 0 trigger = auto band-50, and the two durations are the
+              1 h / 10 min the employer set; 0 duration = off. */
+           0, 3600000, 600000];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -411,6 +415,14 @@ function clampParam(id, v) {
         /* v1.24 ids 83..92: mirror of func__Charger_ClampPid - every gain is
            0..20000 and every slew rate is 10..20000 m permille/s. The row
            layout is (Kp, Ki, Kd, up, down), so (id - 83) % 5 >= 3 is a rate. */
+        /* [EN] v1.102 ids 166..168: plain mirror of CHG_THERMAL_ROWS in
+           charger.c (trigger mA, charge time before rest, rest length). 0 is
+           a real value on all three (auto / off / off), so there is no floor.
+           [FA] آینهٔ سادهٔ CHG_THERMAL_ROWS در charger.c؛ صفر روی هر سه مقدار
+           واقعی است (خودکار / خاموش / خاموش) و کفی در کار نیست. */
+        case 166: return clampW(v, 0, 3000);
+        case 167: return clampW(v, 0, 21600000);
+        case 168: return clampW(v, 0, 3600000);
         default:
             if (id >= 83 && id <= 92) {
                 return ((id - 83) % 5) >= 3 ? clampW(v, 10, 20000) : clampW(v, 0, 20000);

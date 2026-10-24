@@ -166,7 +166,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   165u /* [EN] v1.87 appends the per-scenario LED/beep ticks 158..164; v1.88 adds the scenario-8 rest floor 165. / [FA] نسخهٔ ۱٫۸۷ تیک‌های هشدار سناریو ۱۵۸..۱۶۴ و نسخهٔ ۱٫۸۸ آستانهٔ استراحت ۱۶۵ را اضافه می‌کنند. */
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   168u /* [EN] v1.87 appends the per-scenario LED/beep ticks 158..164; v1.88 adds the scenario-8 rest floor 165; v1.102 appends the thermal-rest trio 166..168. / [FA] نسخهٔ ۱٫۸۷ تیک‌های هشدار سناریو ۱۵۸..۱۶۴ و نسخهٔ ۱٫۸۸ آستانهٔ استراحت ۱۶۵ و نسخهٔ ۱٫۱۰۲ مثلث استراحت حرارتی ۱۶۶..۱۶۸ را اضافه می‌کنند. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

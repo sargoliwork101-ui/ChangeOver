@@ -566,7 +566,19 @@
 #define ESPLINK_PARAM_SCN6_ALARM               163u  /* u8, 0/1, def 1, scenario 6 LED/beep */
 #define ESPLINK_PARAM_SCN7_ALARM               164u  /* u8, 0/1, def 1, scenario 7 LED/beep */
 
-#define ESPLINK_PARAM_COUNT               166u
+/* [EN] Thermal-rest tuning (v1.102, user order 2026-10-24: "the current we
+   go to rest at and the 1 h / 10 min pair must be adjustable"): ids 166..168
+   belong to the charger module; zero in any duration disables the feature,
+   zero trigger keeps the original automatic rule (bulk band minus 50 mA).
+   [FA] تنظیم استراحت حرارتی (نسخهٔ ۱۰۲، دستور کاربر ۲۰۲۶-۱۰-۲۴: «جریانی که
+   برای استراحت می‌رویم و آن دو زمان ۱ ساعته/۱۰ دقیقه‌ای باید قابل تنظیم باشند»):
+   ۱۶۶..۱۶۸ متعلق به ماژول شارژر استند؛ صفر در هر زمان قابلیت را خاموش می‌کند،
+   صفر در آستانه همان قانون خودکار قدیمی را نگه می‌دارد (سقف به‌دوره‌ای پایین منهای ۵۰ میلی‌آمپر). */
+#define ESPLINK_PARAM_CHG_THERMAL_TRIGGER_MA     166u  /* u32, mA, def 0, 0..3000 (0 = auto: bulk band minus 50) */
+#define ESPLINK_PARAM_CHG_THERMAL_CONTINUOUS_MS  167u  /* u32, ms, def 3600000, 0..21600000 (0 = rest off) */
+#define ESPLINK_PARAM_CHG_THERMAL_REST_MS        168u  /* u32, ms, def 600000, 0..3600000 (0 = rest off) */
+
+#define ESPLINK_PARAM_COUNT               169u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

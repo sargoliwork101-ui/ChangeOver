@@ -320,6 +320,41 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
 #define CHG_THERMAL_CONTINUOUS_MS    3600000u
 #define CHG_THERMAL_REST_MS           600000u
 #define CHG_THERMAL_CURRENT_MARGIN_MA    50u
+/* [EN] Thermal-rest tuning, wire ids 166..168 (user order 2026-10-24: the
+ *      current we go to rest at and the 1 h / 10 min pair must be adjustable
+ *      from the panel). The three compile-time numbers above stay as the
+ *      factory defaults, so a board that is flashed and never touched
+ *      behaves exactly as before.
+ * [FA] تنظیم استراحت حرارتی، شناسه‌های سیمی ۱۶۶..۱۶۸ (دستور کاربر ۲۰۲۶-۱۰-۲۴:
+ *      جریانی که برای استراحت می‌رویم و دو زمان ۱ ساعته/۱۰ دقیقه‌ای باید قابل تنظیم
+ *      باشند). سه عدد کامپایل‌زمانی بالا پیش‌فرض کارخانه می‌مانند،
+ *      پس بردی که فقط فلش شود مو‌به‌مو قبل رفتار می‌کند. */
+
+/** [EN] Current threshold that starts the continuous-charge clock (mA).
+ *      0 = automatic: bulk band minus CHG_THERMAL_CURRENT_MARGIN_MA (the
+ *      original rule); any other value pins the threshold.
+ *      [FA] آستانهٔ جریان شروع ساعت شارژ پیوسته (میلی‌آمپر). صفر =
+ *      خودکار: سقف جریان به‌دوره‌ای پایین منهای حاشیه (همان قانون قدیمی)؛
+ *      هر عدد دیگر آستانه را ثابت می‌کند. */
+#define CHG_THERMAL_PARAM_TRIGGER_MA       166u
+
+/** [EN] Continuous charge time before the rest (ms, 0 = rest disabled),
+ *      default CHG_THERMAL_CONTINUOUS_MS = 1 h.
+ *      [FA] مدت شارژ پیوسته پیش از استراحت (میلی‌ثانیه، صفر = استراحت
+ *      خاموش، پیش‌فرض ۱ ساعت). */
+#define CHG_THERMAL_PARAM_CONTINUOUS_MS    167u
+
+/** [EN] Rest length (ms, 0 = rest disabled), default CHG_THERMAL_REST_MS
+ *      = 10 min.
+ *      [FA] مدت استراحت (میلی‌ثانیه، صفر = استراحت خاموش، پیش‌فرض ۱۰ دقیقه). */
+#define CHG_THERMAL_PARAM_REST_MS          168u
+
+#define CHG_THERMAL_PARAM_FIRST_ID         CHG_THERMAL_PARAM_TRIGGER_MA
+#define CHG_THERMAL_PARAM_LAST_ID          CHG_THERMAL_PARAM_REST_MS
+#define CHG_THERMAL_PARAM_COUNT            3u
+#define CHG_THERMAL_PARAM_INDEX(id) ((uint8_t)((id) - CHG_THERMAL_PARAM_FIRST_ID))
+#define CHG_THERMAL_PARAM_OWNS(id)  (((id) >= CHG_THERMAL_PARAM_FIRST_ID) && \
+                                     ((id) <= CHG_THERMAL_PARAM_LAST_ID))
 #define CHG_THERMAL_YELLOW_PERIOD_MS   1000u
 #define CHG_THERMAL_YELLOW_DUTY_PCT      50u
 #define CHG_DUTY_START_PERMILLE        10u
@@ -1340,7 +1375,7 @@ bool func__Charger_IsChargeComplete(void);
 #define CHG_PROFILE_PARAM_ABSORB_OVER_MV      22u  /* [EN] mV, absorb+100..min(absorb+400,14750) / mV */
 #define CHG_PROFILE_PARAM_FLOAT_MV            23u  /* [EN] mV, 9000..absorb-300 / mV */
 #define CHG_PROFILE_PARAM_REENTRY_MV          24u  /* [EN] mV, 8000..float-300 / mV */
-#define CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA 25u  /* [EN] mA, 100..900 / mA */
+#define CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA 25u  /* [EN] mA, 100..2950 (50 below hard fault) / mA, ۱۰۰..۲۹۵۰ */
 #define CHG_PROFILE_PARAM_TAPER_CURRENT_MA    26u  /* [EN] mA, 10..min(300,imax) / mA */
 
 /* ==================== Charge Profile (user order 2026-09-25) ====================
@@ -1734,6 +1769,30 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
  */
 bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__value);
+
+/**
+ * @brief  [EN] Set one thermal-rest parameter (ids 166..168), clamped to its
+ *         factory window; the APPLIED value is reported back.
+ *         [FA] تنظیم یک پارامتر استراحت حرارتی (۱۶۶..۱۶۸) با گیرهٔ پنجره‌ی
+ *         کارخانه؛ مقدار اعمال‌شده پاس داده می‌شود.
+ * @‎param  uint8_t__paramId [EN] 166..168‎ / شناسه
+ * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
+ * @param  uint32_t__appliedValue [EN] Clamped value out / مقدار گیره‌خورده
+ * @return bool [EN] true when the id belongs here / شناسه متعلق است
+ */
+bool func__Charger_SetThermalParam(uint8_t uint8_t__paramId,
+                                   uint32_t uint32_t__value,
+                                   uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one thermal-rest parameter (ids 166..168).
+ *         [FA] خواندن یک پارامتر استراحت حرارتی (۱۶۶..۱۶۸).
+ * @‎param  uint8_t__paramId [EN] 166..168‎ / شناسه
+ * @param  uint32_t__value [EN] Live value out / مقدار زنده
+ * @return bool [EN] true when the id belongs here / شناسه متعلق است
+ */
+bool func__Charger_GetThermalParam(uint8_t uint8_t__paramId,
+                                   uint32_t *uint32_t__value);
 
 /**
  * @brief  [EN] Latched dead-battery verdict, bit 0 = charger 1, bit 1 = charger 2.

@@ -2005,6 +2005,33 @@ def sec_simulator_mirror():
            f"simulator clamp window for id {wire_id} does not match charger.c",
            f"firmware {lo}..{hi}, simulator {m.group(1)}..{m.group(2)}")
 
+    # [EN] v1.102 (user order 2026-10-24): the thermal-rest trio 166..168 is
+    #      owned by charger.c (CHG_THERMAL_ROWS) exactly like the scenario-6
+    #      rows, so the simulator must copy those windows too. 0 is a real
+    #      value on all three (auto trigger / off / off), hence a plain window.
+    # [FA] سه‌گانهٔ استراحت حرارتی ۱۶۶..۱۶۸ هم مال charger.c است و شبیه‌ساز باید
+    #      همان پنجره‌ها را عیناً کپی کند؛ صفر مقدار واقعی است (خودکار/خاموش).
+    thermal_ids = {"TRIGGER_MA": 166, "CONTINUOUS_MS": 167, "REST_MS": 168}
+    twindows = {}
+    for name, lo, hi in rows:
+        if name in thermal_ids:
+            twindows[thermal_ids[name]] = (int(lo), int(hi))
+
+    ok(len(twindows) == len(thermal_ids),
+       "could not parse the thermal-rest window table (CHG_THERMAL_ROWS) from charger.c",
+       str(sorted(twindows)))
+
+    for wire_id, (lo, hi) in sorted(twindows.items()):
+        m = re.search(r"case %d: return clampW\(v, (\d+), (\d+)\);" % wire_id, sim)
+        if m is None:
+            ok(False,
+               f"simulator has no plain clampW mirror for thermal-rest id {wire_id}",
+               "the preview must copy the board window, not invent a rule")
+            continue
+        ok((int(m.group(1)) == lo) and (int(m.group(2)) == hi),
+           f"simulator clamp window for id {wire_id} does not match charger.c",
+           f"firmware {lo}..{hi}, simulator {m.group(1)}..{m.group(2)}")
+
     # [EN] Imbalance side: the blink pair 123/124 DOES carry a 0-or-window
     #      rule in the firmware, so the mirror must keep it - the point is
     #      that each block is copied as it really is.
