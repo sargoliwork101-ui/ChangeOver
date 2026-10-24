@@ -155,15 +155,50 @@ function testStructure(win, doc) {
     const factoryButtons = Array.from(doc.querySelectorAll('button')).filter(b =>
         b.textContent.indexOf('بازگردانی پیش‌فرض کارخانه') >= 0);
     /* [EN] v1.86: one key per scenario (1..8), one for the charge profile,
-       one for the safety monitor and one for the Wi-Fi page - 11 in total.
+       one for the safety monitor and one for the Wi-Fi page.
+       v1.106 (user order 2026-10-24): the current-filter and current-
+       calibration cards got their own keys too - 13 in total.
        [FA] نسخهٔ ۱٫۸۶: یک کلید برای هر سناریو (۱..۸) و یکی برای پروفایل
-       شارژ، یکی برای نظارت و ایمنی و یکی برای صفحهٔ وای‌فای - جمعاً ۱۱. */
-    check(factoryButtons.length === 11 && factoryButtons.every(b => b.classList.contains('fwb')),
+       شارژ، یکی برای نظارت و ایمنی و یکی برای صفحهٔ وای‌فای.
+       v1.106: کارت‌های فیلتر و کالیبراسیون جریان هم کلید خودشان را گرفتند -
+       جمعاً ۱۳. */
+    check(factoryButtons.length === 13 && factoryButtons.every(b => b.classList.contains('fwb')),
           'every settings section gives its factory-reset key the same full-width panel layout',
           'found ' + factoryButtons.length + ' keys: ' +
           factoryButtons.map(b => b.textContent.trim()).join(' | '));
     check(factoryButtons.every(b => b.classList.contains('sb2')),
           'all factory-reset keys use the panel secondary-button theme');
+
+    /* [EN] v1.106 (user order 2026-10-24): factory restore must cover EVERY
+       adjustable setting - the thermal trio joins the charger key, scenario 4
+       owns its percent-map pair, every scenario key owns its own «فعال» tick,
+       and the filter/calibration cards can return to factory too. A key that
+       skips a field of its own card is the drift this block exists to catch.
+       [FA] v1.106 (دستور ۲۰۲۶-۱۰-۲۴): بازگردانی کارخانه باید همهٔ تنظیمات را
+       پوشش دهد - سه‌گانهٔ استراحت حرارتی با کلید شارژر، جفتِ نگاشت درصد با
+       سناریوی ۴، تیک «فعال» هر سناریو با کلید خودش، و فیلتر/کالیبراسیون جریان
+       هم کلید کارخانه دارند. */
+    check(win.eval('qdef.toString().indexOf("odef([166,167,168])")>=0'),
+          'the charger factory key must also restore the thermal trio 166..168');
+    check(win.pdflt(166) === 600 && win.pdflt(167) === 3600000 && win.pdflt(168) === 600000,
+          'the thermal trio must print factory defaults (the pdflt window has to reach 168)',
+          [win.pdflt(166), win.pdflt(167), win.pdflt(168)].join(','));
+    check(win.pdflt(0) === 0 && win.pdflt(1) === 0 && win.pdflt(2) === 3000 &&
+          win.pdflt(3) === 3000 && win.pdflt(7) === 3 && win.pdflt(8) === 10,
+          'the measurement boxes must know their factory defaults (offsets 0, gains 3000, windows 3/10)');
+    check(win.eval('UDEF[4].indexOf(119)>=0') && win.eval('UDEF[4].indexOf(120)>=0'),
+          'scenario 4 must restore its own percent-map fields 119,120');
+    for (let n = 1; n <= 7; n += 1) {
+        check(win.eval('UDEF[' + n + '].indexOf(' + (157 + n) + ')>=0'),
+              'scenario ' + n + ' must restore its own «فعال» alarm tick id ' + (157 + n));
+    }
+    check(win.eval('odef.toString().indexOf("scenarioToggle")>=0'),
+          'a scenario factory key must sync the «فعال» tick UI with the restored value');
+    check(typeof win.fdef === 'function' && typeof win.caldef === 'function',
+          'the filter and calibration cards must expose their own factory keys');
+    check(win.eval('fdef.toString().indexOf("[7,8]")>=0') &&
+          win.eval('caldef.toString().indexOf("[0,1,2,3]")>=0'),
+          'the new keys must restore exactly their own card ids');
     /* The standalone simulator launch card was intentionally removed; the
        operating page must not advertise a dead route. */
     check(!doc.getElementById('simopen') && typeof win.opensim !== 'function',

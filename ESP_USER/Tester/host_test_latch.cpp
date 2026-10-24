@@ -579,13 +579,17 @@ static void func__T_TestStateHistoryLog(void)
     BOOL__G__LogHasPrev = false;
     BOOL__G__LogBootRowPending = true;
     BOOL__G__LogLastRowValid = false;
+    BOOL__G__LogLinkDown = false;
+    BOOL__G__TlmSeen = false;
+    UINT32_T__G__LastTlmMs = (uint32_t)millis();
     UINT16_T__G__LogPendingMask = 0u;
 
     UINT32_T__G__TlmField[15] = 24000u;
     UINT8_T__G__TlmFlags = 0u;
-    func__SimpleLog_OnFrame();
+    /* v1.106: ردیف بوت دیگر منتظر برد نمی‌ماند - خودِ Tick در شروع می‌نویسد */
+    func__SimpleLog_Tick();
     func__T_Check(UINT16_T__G__LogRowsToday == 1u,
-                  "اولین فریم بعد از روشن‌شدن یک ردیف «پنل روشن شد» می‌نویسد");
+                  "با روشن‌شدن پنل - حتی بدون هیچ فریمی از برد - یک ردیف «پنل روشن شد» نوشته می‌شود");
 
     const uint32_t uint32_t__day = func__SimpleLog_TodayCode();
     char char__path[SIMPLE_LOG_PATH_MAX];
@@ -593,6 +597,7 @@ static void func__T_TestStateHistoryLog(void)
     func__T_Check((uint32_t__day != 0u) && LittleFS.exists(char__path),
                   "ردیف در فایل روزِ خودِ گوشی ذخیره می‌شود");
 
+    func__SimpleLog_OnFrame();   /* اولین فریم فقط وضعیت قبلی را می‌کارد */
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 1u,
                   "وضعیت ثابت ردیف تازه نمی‌سازد");
@@ -700,6 +705,48 @@ static void func__T_TestStateHistoryLog(void)
                       "بعد از گذشتن یک دقیقه، گام ولتاژ دوباره می‌نویسد");
     }
 
+    /* ---- v1.106 (دستور ۲۰۲۶-۱۰-۲۴): لاگ با وصل‌نبودن برد هم می‌نویسد ----
+       پنل شاهدِ خودش است: بوت، «برد نیست»، ضربان و «برد آمد» - همه بدون فریم. */
+    {
+        (void)func__SimpleLog_Clear();
+        BOOL__G__TlmSeen = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        UINT16_T__G__LogPendingMask = 0u;
+
+        func__SimpleLog_Tick();
+        func__T_Check(UINT16_T__G__LogRowsToday == 1u,
+                      "با بردِ هرگز وصل‌نشده، ردیف بوت نوشته می‌شود");
+
+        /* سکوت از شروع نشست: یک ردیف «اتصال قطع است» */
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        UINT32_T__G__LogSessionStartMs = (uint32_t)millis() - SIMPLE_LOG_LINK_TIMEOUT_MS - 10u;
+        func__SimpleLog_Tick();
+        func__T_Check(UINT16_T__G__LogRowsToday == 2u,
+                      "با سکوتِ برد از همان شروع، ردیف «اتصال قطع است» نوشته می‌شود");
+        func__T_Check(BOOL__G__LogLinkDown != false,
+                      "وضعیت قطع ثبت می‌ماند تا با اولین فریم جفت شود");
+
+        /* ضربان هم بدون برد ادامه می‌یابد */
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_HEARTBEAT_MS;
+        func__SimpleLog_Tick();
+        func__T_Check(UINT16_T__G__LogRowsToday == 3u,
+                      "ضربان «زنده‌ام» هم بدون برد ادامه می‌یابد");
+
+        /* اولین فریمِ دیررسیده: جفتِ همان قطع، «اتصال برقرار شد» */
+        UINT32_T__G__TlmField[15] = 24000u;
+        UINT8_T__G__TlmFlags = 0x02u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT16_T__G__LogRowsToday == 4u,
+                      "اولین فریم، ردیف «اتصال برقرار شد» را جفتِ قطع می‌نویسد");
+    }
+
     /* ضربان: در یک بازهٔ کامل هیچ اتفاقی نمی‌افتد، یک ردیف «زنده‌ام» نوشته می‌شود */
     {
         const uint16_t uint16_t__before = UINT16_T__G__LogRowsToday;
@@ -762,9 +809,10 @@ static void func__T_TestStateHistoryLog(void)
         UINT8_T__G__TlmFlags = 0x02u;
         UINT32_T__G__TlmField[15] = 23800u;
 
-        func__SimpleLog_OnFrame();
+        func__SimpleLog_Tick();
         func__T_Check(LittleFS.exists("/evt-00000000.csv"),
                       "بدون ساعت هم اولین ردیف در فایل روزِ «بدون ساعت» ذخیره می‌شود");
+        func__SimpleLog_OnFrame();   /* کاشتن وضعیت قبلی برای تشخیص تغییر */
 
         func__Simple_TimeSet(1792756800u, false);
         UINT8_T__G__TlmFlags = 0x00u;

@@ -1022,6 +1022,37 @@ def sec_panel(ids):
             ok(card in set(seen.values()),
                f"scenario {card} has no factory key of its own")
 
+    # [EN] v1.106 (user order 2026-10-24: "check the rest too and fix the
+    #      factory-restore gaps"): the default-print window must cover the
+    #      whole CDEF table (it stopped at 165 while CDEF reached 168, so the
+    #      thermal trio printed no default and no key could restore it), the
+    #      charger key must restore 166..168, every scenario key must own its
+    #      «فعال» alarm tick 157+n, scenario 4 must own its percent-map pair
+    #      119/120, and the filter/calibration cards need their own keys.
+    # [FA] v1.106 (دستور ۲۰۲۶-۱۰-۲۴): پنجرهٔ پیش‌فرض باید کل CDEF را بپوشاند،
+    #      کلید شارژر ۱۶۶..۱۶۸ را برگرداند، هر سناریو تیک «فعال» خودش (۱۵۷+n)
+    #      را داشته باشد، سناریوی ۴ جفتِ ۱۱۹/۱۲۰ خودش را، و فیلتر/کالیبراسیون
+    #      جریان کلید کارخانهٔ خودشان را.
+    ok("id>=119&&id<=168" in P_PAN.replace(" ", ""),
+       "the pdflt default window no longer covers the whole CDEF table",
+       "a default-less id can be neither shown nor factory-restored")
+    ok("odef([166,167,168])" in P_PAN and
+       re.search(r"function qdef\(\)\{.*?odef\(\[166,167,168\]\)", P_PAN),
+       "the charger factory key does not restore the thermal trio 166..168")
+    if udef:
+        lists = {card: [int(x) for x in re.findall(r"\d+", body)]
+                 for card, body in re.findall(r"(\d+):\[([0-9,\s]*)\]", udef.group(1))}
+        for n in range(1, 8):
+            ok((157 + n) in lists.get(str(n), []),
+               f"scenario {n} factory key does not restore its own alarm tick {157 + n}")
+        ok(119 in lists.get("4", []) and 120 in lists.get("4", []),
+           "scenario 4 factory key skips its own percent-map fields 119/120")
+    ok("function fdef(){odef([7,8]);}" in P_PAN and
+       "function caldef(){odef([0,1,2,3]);}" in P_PAN,
+       "the filter/calibration cards lost their own factory keys")
+    ok("scenarioToggle" in P_PAN.split("function odef(ids)", 1)[1].split("function fdef", 1)[0],
+       "odef must sync the «فعال» tick UI when it restores a scenario")
+
 
 # ================================================== 5. calibration mirrors
 def sec_calibration():

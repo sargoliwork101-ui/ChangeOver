@@ -43,14 +43,10 @@ section{margin-top:12px}
 .evi{width:12ch;background:var(--in);color:var(--tx);border:1px solid var(--ac);border-radius:5px;
      padding:4px 7px;font:inherit;font-size:13px;text-align:left}
 .evu{color:var(--mu);font-size:11px}
-/* [EN] v1.30 (user order): the CHART is the editor and the table only reports.
-   An SVG <text> cannot host an <input>, so the editor is a small floating
-   panel anchored to whatever was clicked - one mechanism for the plot labels
-   and for the chips under it, instead of two that can disagree.
-   [FA] نمودار ویرایشگر است و جدول فقط گزارش می‌دهد. متن SVG نمی‌تواند input
-   داشته باشد، پس ویرایشگر یک پنل کوچک Float است که به هر چیزی که کلیک شده
-   لنگر می‌اندازد - یک ساز و کار برای برچسب‌های نمودار و تراشه‌های زیرش، نه دو
-   تا که بتوانند با هم اختلاف پیدا کنند. */
+/* [EN] v1.30 (user order): the CHART is the editor; the table only reports.
+   One floating editor anchors to whatever was clicked - labels and chips.
+   [FA] نمودار ویرایشگر است، جدول فقط گزارش؛ یک ویرایشگرِ شناور به هر چیز
+   کلیک‌شده لنگر می‌اندازد. */
 .evs{cursor:pointer;text-decoration:underline dotted}
 /* [EN] Chips under the chart. The times and gains were drawn ON the plane
    until the user said the picture had got too crowded; they are neither a
@@ -210,14 +206,10 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .eg3{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px}.eg3 label{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .pgx{display:none}.pgx.a{display:block}body:not(.br) .wstop{display:none}body.br .brun{opacity:.4;pointer-events:none}a.lnk{text-decoration:none;display:inline-block}
 .bq{background:var(--in);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:11px;margin-top:10px}
-/* [EN] v1.47 (user order "they jump up and down"): the fields were a wrap
-   flex row, so a two-line caption pushed its own input below its neighbours
-   and the row lost its baseline. A grid with stretched cells and a caption
-   that grows into the free space puts every input on the same line and
-   leaves room under it for the factory default.
-   [FA] فیلدها ردیف flex بودند، پس عنوان دوخطی ورودی خودش را پایین می‌انداخت و
-   ردیف از خط مبنا می‌افتاد. گرید با خانه‌های کشیده و عنوانی که فضای خالی را
-   پر می‌کند، همهٔ ورودی‌ها را هم‌تراز می‌کند و زیرش جا برای پیش‌فرض می‌ماند. */
+/* [EN] v1.47 (user order "they jump up and down"): a grid with stretched
+   cells keeps every input on one baseline and leaves room for the default.
+   [FA] گرید با خانه‌های کشیده همهٔ ورودی‌ها را هم‌تراز نگه می‌دارد و زیرش
+   جای پیش‌فرض می‌ماند. */
 .bqr{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px 14px;align-items:stretch;margin-top:10px}
 .bqr label{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:600}
 .bqr label .t{flex:1 0 auto}
@@ -452,7 +444,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f4c3949</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b4c9c7e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -548,7 +540,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
      was deleted) and the caption says exactly that.
      [FA] v1.38 (دستور کاربر: «چرا دو تا کلید؟») - کلید جداگانهٔ PID رفت؛
      همین یکی کل محدودهٔ شارژر را برمی‌گرداند. -->
-<div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· مقادیر پروفایل شارژ (۲۰-۲۶)، ضرایب PID (۸۳-۹۲) و حدهای شارژر (۹۳-۱۰۷) را به کارخانه برمی‌گرداند؛ به آلارم‌ها، فیلترها و سناریوها دست نمی‌زند</span></div>
+<div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· مقادیر پروفایل شارژ (۲۰-۲۶)، ضرایب PID (۸۳-۹۲)، حدهای شارژر (۹۳-۱۰۷) و استراحت حرارتی (۱۶۶-۱۶۸) را به کارخانه برمی‌گرداند؛ به آلارم‌ها، فیلترها و سناریوها دست نمی‌زند</span></div>
 <div class="bqr"><button class="sb sb2 fwb" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
 </div>
@@ -1063,6 +1055,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>پنجرهٔ median<input type="number" id="q7" step="1" min="1" max="15"><span class="lb" id="a7"></span></label>
 <label>پنجرهٔ میانگین (average)<input type="number" id="q8" step="1" min="1" max="300"><span class="lb" id="a8"></span></label>
 </div>
+<div class="bqr"><button class="sb sb2 fwb" onclick="fdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 
 </div>
 <div class="cd">
@@ -1074,6 +1067,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>گین کانال ۱ (‰)<input type="number" id="q2" step="1" min="100" max="3000"><span class="lb" id="a2"></span></label>
 <label>گین کانال ۲ (‰)<input type="number" id="q3" step="1" min="100" max="3000"><span class="lb" id="a3"></span></label>
 </div>
+<div class="bqr"><button class="sb sb2 fwb" onclick="caldef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
 </div>
 <div class="sgx" id="s4">
@@ -1200,14 +1194,11 @@ function fixrules(v){
    one, else the box, else what the board reported.
    [FA] عکس لحظه‌ای هر شناسه: مقدار صف‌شده، وگرنه کادر، وگرنه مقدار برد. */
 const RIDS=[40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,74,75,77,78,119,120,121,122,137,138,139,140,141,142,147,148,149,150,151,152,153,154,155,156,157];
-/* [EN] v1.75 audit finding: an id nobody has touched - no pending edit, no
-   board frame, an empty box - used to read as ZERO here. The joint rules then
-   "repaired" that zero and sendall() shipped parameters the user never typed
-   (one of them as -1). The fallback is the factory default now, and sendall()
-   only applies a repair to an id it actually knows something about.
-   [FA] شناسه‌ای که هیچ خبری از آن نداریم قبلاً صفر خوانده می‌شد و قانون‌های
-   مشترک همان صفر را «درست» می‌کردند و ارسال می‌شد؛ حالا پیش‌فرض کارخانه
-   خوانده می‌شود و فقط شناسه‌های معلوم اصلاح و ارسال می‌شوند. */
+/* [EN] v1.75 audit finding: an untouched id (no pending, no frame, empty
+   box) used to read as ZERO and the joint rules "repaired" it into a send.
+   The fallback is the factory default now.
+   [FA] شناسه‌ای که هیچ خبری از آن نیست قبلاً صفر خوانده و «درست» می‌شد؛
+   حالا پیش‌فرض کارخانه خوانده می‌شود. */
 function rknown(id){
  if(id in PEND)return true;
  if(D&&D.p&&D.p[id]!=null)return true;
@@ -1565,7 +1556,7 @@ function formulas(t,p){
 }
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&!(id in PEND)&&D.p[id]!=null)e.value=D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'':D.p[id];}}
-function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];qput(x[0],x[1]);});pdef();ldef();qgraph();}
+function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];qput(x[0],x[1]);});pdef();ldef();odef([166,167,168]);qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
 /* [EN] v1.33: q20..q26 write straight to the board; qv() returns the applied
@@ -2020,14 +2011,10 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
   (evcl(id)?' style="color:#f7c13c"':'')+'>'+evtxt(id)+'</span></span>';};
  const grp=(t,ids)=>'<div class="evcg"><span class="evct">'+t+'</span>'+ids.map(chip).join('')+'</div>';
  document.querySelectorAll('.qgcm').forEach(m=>{
-  /* [EN] v1.42 (user order): show the 13 chips in the THREE groups the
-     user himself named - 1) reaching the target softly, 2) emergency
-     brakes that stand ABOVE the PID on purpose, 3) the state machine's
-     timing decisions. EVCT and EVCG stay two flat id lists because the
-     consistency audit and the charger tester derive from exactly those
-     two names; only the DISPLAY regroups them.
-     [FA] v1.42 (دستور کاربر): نمایش تراشه‌ها در سه دستهٔ خودِ کاربر.
-     دو فهرست ‎EVCT/EVCG‎ برای ممیزی دست‌نخورده می‌ماند؛ فقط نمایش گروهی شده. */
+  /* [EN] v1.42 (user order): the 13 chips display in the user's THREE named
+     groups; EVCT/EVCG stay flat id lists for the audit tools - display only.
+     [FA] v1.42: نمایش تراشه‌ها در سه دستهٔ کاربر؛ دو فهرست ‎EVCT/EVCG‎ برای
+     ممیزی دست‌نخورده می‌ماند. */
   m.innerHTML=grp('۱ · رسیدن نرم به هدف — با چه شتاب و سلایقی به هدف PID برسیم',EVCG.slice(0,3))+
    grp('۲ · ترمز اضطراری و حاشیهٔ امن — نگهبان‌هایی بالای PID، عمداً از او جدا',EVCG.slice(3))+
    grp('۳ · تصمیم‌های زمانی — چه زمانی چه اتفاقی بیفتد',EVCT);});
@@ -2250,15 +2237,22 @@ function ldef(){LDEF.forEach((v,k)=>{const id=93+k;delete EVWANT[id];qput(id,v);
    سناریو را برمی‌گرداند؛ کلیدِ همه‌باهم حذف شد. همه از همان جدولی می‌خوانند
    که زیر هر کادر چاپ می‌شود. */
 function odef(ids){ids.forEach(id=>{const v=pdflt(id);if(v==null)return;
- const e=$('q'+id);if(e)e.value=v;qput(id,v);});afresh();}
+ const e=$('q'+id);if(e)e.value=v;qput(id,v);});
+ /* [‎EN] ids 158..164 are the cards‎' «فعال» ticks: restore the tick and its
+    UI together so the key can never leave a muted card behind.
+   [FA] شناسه‌های ۱۵۸..۱۶۴ تیک «فعال» کارت‌اند: تیک و ظاهرش با هم برمی‌گردند. */
+ ids.forEach(id=>{if(id>=158&&id<=164)scenarioToggle(id-157,pdflt(id)!==0);});
+ afresh();}
+function fdef(){odef([7,8]);}
+function caldef(){odef([0,1,2,3]);}
 const UDEF={
- 1:[38,39,40,41,42,43,70,71],
- 2:[27,28,29,30,31,32,44,45,46,47,48,49],
- 3:[50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,74,75,80,81,82,121,122],
- 4:[68,69,77,78,79],
- 5:[108,109,110,111,112,113,114,115,116,117,118,123,124,132,133,136],
- 6:[125,126,127,128,129,130,131,134,135],
- 7:[137,138,139,140,141,142],
+ 1:[38,39,40,41,42,43,70,71,158],
+ 2:[27,28,29,30,31,32,44,45,46,47,48,49,159],
+ 3:[50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,74,75,80,81,82,121,122,160],
+ 4:[68,69,77,78,79,119,120,161],
+ 5:[108,109,110,111,112,113,114,115,116,117,118,123,124,132,133,136,162],
+ 6:[125,126,127,128,129,130,131,134,135,163],
+ 7:[137,138,139,140,141,142,164],
  8:[147,148,149,150,151,152,153,154,155,156,157,165]};
 function ovdef(){odef(UDEF[1]);}
 function bdef(){odef(UDEF[2]);}
@@ -2827,11 +2821,15 @@ function qmfill(){
    buttons use - one source, so a default can never drift from its button.
    [FA] پیش‌فرض کارخانهٔ هر شناسه، از همان جدولی که دکمه‌های بازگردانی
    می‌خوانند - یک منبع، پس پیش‌فرض از دکمه‌اش جدا نمی‌افتد. */
+/* [EN] ids 0..8: current offsets/gains, voltage offsets, filter windows /
+   [FA] شناسه‌های ۰..۸: آفست/گین جریان، آفست ولتاژها، پنجره‌های فیلتر */
+const MDEF=[0,0,3000,3000,0,0,0,3,10];
 function pdflt(id){
  id=+id;
- /* v1.75 audit: CDEF grew to 119..127 with scenario 6 (ids 125..127) but this
-    window still said 124, so the dead-battery fields printed no factory default. */
- if(id>=119&&id<=165)return CDEF[id-119];
+ /* v1.75: the window must always cover the whole CDEF table (v1.102 grew it
+    to 168 and 166..168 had no default until this line caught up). */
+ if(id<=8)return MDEF[id];
+ if(id>=119&&id<=168)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];

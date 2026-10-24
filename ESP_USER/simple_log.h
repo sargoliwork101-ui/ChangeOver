@@ -44,6 +44,9 @@ static uint8_t  UINT8_T__G__LogPendingNote = 0u;
 static uint32_t UINT32_T__G__LogLastRowMs = 0u;
 static bool     BOOL__G__LogLastRowValid = false;
 static bool     BOOL__G__LogLinkDown = false;
+/* لحظهٔ نوشتن ردیف بوتِ همین نشست؛ تایمرِ «برد ساکت است» از همین لحظه
+   می‌شمارد، حتی اگر هیچ فریمی از برد نرسیده باشد. */
+static uint32_t UINT32_T__G__LogSessionStartMs = 0u;
 /* لحظهٔ آخرین ردیف گام ولتاژ، تا باری که روشن و خاموش می‌شود گام را به
    چشمک‌زدن تبدیل نکند. */
 static uint32_t UINT32_T__G__LogLastStepMs = 0u;
@@ -634,24 +637,21 @@ static void func__SimpleLog_DetectChanges(void)
 
 static void func__SimpleLog_OnFrame(void)
 {
+    /* قطع/وصل فقط با خودِ قطع/وصل جفت می‌شود: هر «اتصال برقرار شد» پاسخِ
+       یک «اتصال قطع شد» است که قبلاً نوشته شده. */
     if (BOOL__G__LogLinkDown != false)
     {
         BOOL__G__LogLinkDown = false;
-        if (BOOL__G__LogHasPrev != false)
-        {
-            func__SimpleLog_Queue(SIMPLE_LOG_CHG_LINK, SIMPLE_LOG_NOTE_LINK_BACK);
-        }
+        func__SimpleLog_Queue(SIMPLE_LOG_CHG_LINK, SIMPLE_LOG_NOTE_LINK_BACK);
     }
 
-    if ((BOOL__G__LogBootRowPending != false) && (BOOL__G__LogHasPrev == false))
-    {
-        UINT8_T__G__LogPrevNote = func__SimpleLog_LoadLastDanger();
-        (void)func__SimpleLog_WriteRow(SIMPLE_LOG_CHG_BOOT,
-                                       (UINT8_T__G__LogPrevNote != 0u) ?
-                                       SIMPLE_LOG_NOTE_LOW_STOP : SIMPLE_LOG_NOTE_NONE);
-        BOOL__G__LogBootRowPending = false;
-    }
-
+    /* [EN] The boot row no longer waits for a board frame (user order
+          2026-10-24: "if the board was not connected it logged nothing -
+          it must log"). It is written by Tick() at start-up; here only the
+          state-change detection runs.
+       [FA] ردیف بوت دیگر منتظر فریم برد نمی‌ماند (دستور ۲۰۲۶-۱۰-۲۴: «اگر برد
+          وصل نبود لاگ نمی‌گرفت - باید بگیرد»). ردیف را Tick() در شروع
+          می‌نویسد؛ اینجا فقط تشخیص تغییر وضعیت اجرا می‌شود. */
     func__SimpleLog_DetectChanges();
 }
 
@@ -659,12 +659,46 @@ static void func__SimpleLog_Tick(void)
 {
     uint32_t uint32_t__nowMs;
 
+    /* [EN] Boot row FIRST and with no board at all: the panel log is the
+          witness of the panel itself, so a session with a silent board still
+          starts its own record (user order 2026-10-24).
+       [FA] اول ردیف بوت، آن هم بدون هیچ بردی: لاگِ پنل شاهدِ خودِ پنل است،
+          پس نشستِ بدون برد هم تاریخچهٔ خودش را شروع می‌کند (۲۰۲۶-۱۰-۲۴). */
+    if (BOOL__G__LogBootRowPending != false)
+    {
+        BOOL__G__LogBootRowPending = false;
+        UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
+        UINT8_T__G__LogPrevNote = func__SimpleLog_LoadLastDanger();
+        (void)func__SimpleLog_WriteRow(SIMPLE_LOG_CHG_BOOT,
+                                       (UINT8_T__G__LogPrevNote != 0u) ?
+                                       SIMPLE_LOG_NOTE_LOW_STOP : SIMPLE_LOG_NOTE_NONE);
+    }
+
     func__SimpleLog_FlushPending();
 
     uint32_t__nowMs = (uint32_t)millis();
-    if ((BOOL__G__TlmSeen != false) && (BOOL__G__LogLinkDown == false))
+    /* [EN] Link-silence row: after LINK_TIMEOUT_MS with no frame. If the
+          board has never spoken, the clock runs from the session start, so
+          "no board" is written too - not only "board left".
+       [FA] ردیف سکوت ارتباط: پس از چند میلی‌ثانیه بدون فریم. اگر برد هرگز
+          حرفی نزده باشد، ساعت از شروع نشست می‌شمارد تا «برد نیست» هم ثبت
+          شود، نه فقط «برد رفت». */
+    if (BOOL__G__LogLinkDown == false)
     {
-        if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastTlmMs) > SIMPLE_LOG_LINK_TIMEOUT_MS)
+        bool bool__silent;
+
+        if (BOOL__G__TlmSeen != false)
+        {
+            bool__silent = ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastTlmMs) >
+                            SIMPLE_LOG_LINK_TIMEOUT_MS);
+        }
+        else
+        {
+            bool__silent = (BOOL__G__LogLastRowValid != false) &&
+                           ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogSessionStartMs) >
+                            SIMPLE_LOG_LINK_TIMEOUT_MS);
+        }
+        if (bool__silent != false)
         {
             BOOL__G__LogLinkDown = true;
             func__SimpleLog_Queue(SIMPLE_LOG_CHG_LINK, SIMPLE_LOG_NOTE_LINK_LOST);

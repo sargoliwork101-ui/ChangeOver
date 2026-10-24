@@ -64,6 +64,11 @@ static uint8_t  UINT8_T__G__LogPendingNote = 0u;
 static uint32_t UINT32_T__G__LogLastRowMs = 0u;
 static bool     BOOL__G__LogLastRowValid = false;
 static bool     BOOL__G__LogLinkDown = false;
+/* [EN] when the boot row of this session was written; the "board silent"
+        clock runs from here even if no frame ever arrived.
+   [FA] لحظهٔ نوشتن ردیف بوتِ همین نشست؛ تایمرِ «برد ساکت است» از همین لحظه
+        می‌شمارد، حتی اگر هیچ فریمی نرسیده باشد. */
+static uint32_t UINT32_T__G__LogSessionStartMs = 0u;
 /* [EN] v1.98: when the last voltage-step row was written, so a load that
         switches on and off cannot turn the step into a strobe.
    [FA] نسخهٔ ۱٫۹۸: لحظهٔ آخرین ردیف گام ولتاژ، تا باری که روشن و خاموش
@@ -919,34 +924,22 @@ static void func__EspLog_DetectChanges(void)
  */
 static void func__EspLog_OnFrame(void)
 {
+    /* [EN] Link back always pairs a link-lost row that was written before.
+       [FA] «اتصال برقرار شد» همیشه جفتِ همان «اتصال قطع شد»ی است که قبلاً
+            نوشته شده. */
     if (BOOL__G__LogLinkDown != false)
     {
         BOOL__G__LogLinkDown = false;
-        if (BOOL__G__LogHasPrev != false)
-        {
-            func__EspLog_Queue(ESP_LOG_CHG_LINK, ESP_LOG_NOTE_LINK_BACK);
-        }
+        func__EspLog_Queue(ESP_LOG_CHG_LINK, ESP_LOG_NOTE_LINK_BACK);
     }
 
-    if ((BOOL__G__LogBootRowPending != false) && (BOOL__G__LogHasPrev == false))
-    {
-        /* [EN] First frame after a restart: one boot row, carrying the state
-              the panel saw last time, and whether that run was in the danger
-              band. Written exactly once per boot - if nothing is different the
-              state fields simply repeat, but the row itself is the evidence
-              that the panel restarted.
-           [FA] اولین فریم بعد از روشن‌شدن: یک ردیف بوت که وضعیتی را می‌برد که
-              پنل آخرین بار دیده بود، به‌همراه اینکه آن اجرا در ناحیهٔ خطر بود یا
-              نه. دقیقاً یک بار در هر بوت نوشته می‌شود؛ اگر چیزی فرق نداشته
-              باشد خانه‌های وضعیت همان را تکرار می‌کنند، ولی خودِ ردیف شاهد
-              روشن‌شدن دوبارهٔ پنل است. */
-        UINT8_T__G__LogPrevNote = func__EspLog_LoadLastDanger();
-        (void)func__EspLog_WriteRow(ESP_LOG_CHG_BOOT,
-                                    (UINT8_T__G__LogPrevNote != 0u) ?
-                                    ESP_LOG_NOTE_LOW_STOP : ESP_LOG_NOTE_NONE);
-        BOOL__G__LogBootRowPending = false;
-    }
-
+    /* [EN] The boot row no longer waits for a board frame (user order
+          2026-10-24: "if the board was not connected it logged nothing -
+          it must log"). Tick() writes it at start-up; here only the
+          state-change detection runs.
+       [FA] ردیف بوت دیگر منتظر فریم برد نمی‌ماند (دستور ۲۰۲۶-۱۰-۲۴: «اگر برد
+          وصل نبود لاگ نمی‌گرفت - باید بگیرد»). ردیف را Tick() در شروع
+          می‌نویسد؛ اینجا فقط تشخیص تغییر وضعیت اجرا می‌شود. */
     func__EspLog_DetectChanges();
 }
 
@@ -961,6 +954,23 @@ static void func__EspLog_Tick(void)
 {
     uint32_t uint32_t__nowMs;
 
+    /* [EN] Boot row FIRST and with no board at all: the panel log is the
+          witness of the panel itself, so a session with a silent board still
+          starts its own record (user order 2026-10-24). It carries the state
+          the panel saw last time and whether that run was in the danger band.
+       [FA] اول ردیف بوت، آن هم بدون هیچ بردی: لاگِ پنل شاهدِ خودِ پنل است،
+          پس نشستِ بدون برد هم تاریخچهٔ خودش را شروع می‌کند (۲۰۲۶-۱۰-۲۴).
+          این ردیف وضعیتِ آخرین اجرا و خطرناک‌بودن آن را هم می‌برد. */
+    if (BOOL__G__LogBootRowPending != false)
+    {
+        BOOL__G__LogBootRowPending = false;
+        UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
+        UINT8_T__G__LogPrevNote = func__EspLog_LoadLastDanger();
+        (void)func__EspLog_WriteRow(ESP_LOG_CHG_BOOT,
+                                    (UINT8_T__G__LogPrevNote != 0u) ?
+                                    ESP_LOG_NOTE_LOW_STOP : ESP_LOG_NOTE_NONE);
+    }
+
     func__EspLog_FlushPending();
 
     uint32_t__nowMs = (uint32_t)millis();
@@ -972,9 +982,28 @@ static void func__EspLog_Tick(void)
         }
     }
 
-    if ((BOOL__G__TlmSeen != false) && (BOOL__G__LogLinkDown == false))
+    /* [EN] Link-silence row: after LINK_TIMEOUT_MS with no frame. If the
+          board has never spoken, the clock runs from the session start, so
+          "no board" is written too - not only "board left".
+       [FA] ردیف سکوت ارتباط: پس از چند میلی‌ثانیه بدون فریم. اگر برد هرگز
+          حرفی نزده باشد، ساعت از شروع نشست می‌شمارد تا «برد نیست» هم ثبت
+          شود، نه فقط «برد رفت». */
+    if (BOOL__G__LogLinkDown == false)
     {
-        if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastTlmMs) > ESP_LOG_LINK_TIMEOUT_MS)
+        bool bool__silent;
+
+        if (BOOL__G__TlmSeen != false)
+        {
+            bool__silent = ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastTlmMs) >
+                            ESP_LOG_LINK_TIMEOUT_MS);
+        }
+        else
+        {
+            bool__silent = (BOOL__G__LogLastRowValid != false) &&
+                           ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogSessionStartMs) >
+                            ESP_LOG_LINK_TIMEOUT_MS);
+        }
+        if (bool__silent != false)
         {
             BOOL__G__LogLinkDown = true;
             func__EspLog_Queue(ESP_LOG_CHG_LINK, ESP_LOG_NOTE_LINK_LOST);

@@ -943,6 +943,8 @@ int main(void)
         BOOL__G__LogBootRowPending = true;
         BOOL__G__LogLastRowValid = false;
         BOOL__G__LogLinkDown = false;
+        BOOL__G__TlmSeen = false;
+        UINT32_T__G__LastTlmMs = 0u;
         UINT16_T__G__LogPendingMask = 0u;
 
         check(ESP_WEB_SERVER_T__G__Server.has("/clock", HTTP_POST) &&
@@ -964,12 +966,16 @@ int main(void)
         check(func__EspLog_NowSec() >= 1792756800u,
               "now() walks forward from the phone anchor");
 
-        /* first frame after boot: exactly one boot row */
+        /* v1.106: the boot row needs NO board frame - Tick writes it at
+           start-up so a session with a silent board still logs. */
         G_StubMillis = 100000u;
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "start-up writes exactly one boot row even with the board never connected");
         const std::vector<uint8_t> first = tlm_payload_v24(200u, 24000u);
         feed(build_frame(ESP_MSG_TLM_LIVE, first));
         check(UINT16_T__G__LogRowsToday == 1u,
-              "the first frame after a restart writes exactly one boot row");
+              "the first frame only seeds the state compare - it adds no row");
 
         const uint32_t dayCode = func__EspLog_TodayCode();
         char path[32];
@@ -1211,6 +1217,51 @@ int main(void)
                   "and claims no change - nothing happened");
         }
 
+        /* [EN] v1.106 (user order 2026-10-24: "if the board was not connected
+                 it logged nothing - it must log"): a session with a board that
+                 never speaks still writes boot, link-silence and heartbeat rows.
+           [FA] v1.106 (دستور ۲۰۲۶-۱۰-۲۴): نشستِ بدون برد هم بوت، «برد نیست» و
+                 ضربان را می‌نویسد. */
+        {
+            (void)ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+            LittleFS.files.clear();
+            BOOL__G__FsOk = true;
+            BOOL__G__TlmSeen = false;
+            BOOL__G__LogHasPrev = false;
+            BOOL__G__LogBootRowPending = true;
+            BOOL__G__LogLastRowValid = false;
+            BOOL__G__LogLinkDown = false;
+            BOOL__G__LogDayFull = false;
+            UINT8_T__G__LogIndexCount = 0u;
+            UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+            UINT16_T__G__LogRowsToday = 0u;
+            UINT16_T__G__LogPendingMask = 0u;
+            G_StubMillis += 5000u;
+
+            func__EspLog_Tick();
+            check(UINT16_T__G__LogRowsToday == 1u,
+                  "with a board that never connected, the boot row is still written");
+
+            G_StubMillis += ESP_LOG_LINK_TIMEOUT_MS + 10u;
+            func__EspLog_Tick();
+            check(UINT16_T__G__LogRowsToday == 2u,
+                  "after the silence timeout a link-silence row says the board is not there");
+            check(BOOL__G__LogLinkDown,
+                  "the silence stays latched so the first frame can pair it with link-back");
+
+            /* backdate the last row instead of jumping 6 h forward - a real
+               jump can roll the operator's day and reset the per-day count */
+            UINT32_T__G__LogLastRowMs = (uint32_t)millis() - ESP_LOG_HEARTBEAT_MS;
+            func__EspLog_Tick();
+            check(UINT16_T__G__LogRowsToday == 3u,
+                  "the heartbeat keeps the offline log alive too");
+
+            G_StubMillis += 5000u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(219u, 24000u)));
+            check(UINT16_T__G__LogRowsToday == 4u,
+                  "the first late frame pairs the silence with a link-back row");
+        }
+
         /* a burst inside the merge window becomes ONE row, not five */
         uint16_t before = UINT16_T__G__LogRowsToday;
         for (uint8_t k = 0u; k < 4u; k++) {
@@ -1236,6 +1287,7 @@ int main(void)
         UINT32_T__G__TlmField[15] = 24000u;
         BOOL__G__LogHasPrev = false;
         BOOL__G__LogBootRowPending = true;
+        func__EspLog_Tick();
         feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(220u)));
         check(UINT16_T__G__LogRowsToday == 1u,
               "the history starts again from a clean file after a clear");
@@ -1302,6 +1354,7 @@ int main(void)
 
         G_StubMillis += 5000u;
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__EspLog_Tick();
         feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(240u, 23800u)));
 
         check(LittleFS.exists("/evt-00000000.csv"),

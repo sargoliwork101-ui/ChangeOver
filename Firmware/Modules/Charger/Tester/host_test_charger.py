@@ -4366,6 +4366,19 @@ def test_v1102_thermal_rest_panel_adjustable():
           "مدت استراحت حرارتی" in panel,
           "the panel must name the three thermal values in plain Persian")
 
+    # 7) Factory restore (user order 2026-10-24): the thermal trio belongs to
+    #    the one charger key, and every default must be printable - a pdflt
+    #    window that stops at 165 leaves 166..168 with no default at all.
+    check("odef([166,167,168])" in panel and re.search(r"function qdef\(\)\{.*?odef\(\[166,167,168\]\)", panel),
+          "the charger factory key must restore the thermal trio 166..168")
+    check("id>=119&&id<=168" in panel.replace(" ", ""),
+          "the pdflt default window must cover the whole CDEF table (through 168)")
+    mdef = re.search(r"const MDEF=\[([^\]]*)\]", panel)
+    check(mdef and [int(x) for x in mdef.group(1).split(",")] == [0, 0, 3000, 3000, 0, 0, 0, 3, 10],
+          "MDEF must hold the real firmware defaults of ids 0..8 (offsets 0, gains 3000, windows 3/10)")
+    check("id<=8" in panel.replace(" ", "") and "MDEF[id]" in panel.replace(" ", ""),
+          "pdflt must answer for the measurement ids 0..8 from MDEF")
+
 
 def test_v1102_item3_stale_limits_fixed():
     """[EN] v1.102 (user 2026-10-24, "fix the wrong items"): the advisory
