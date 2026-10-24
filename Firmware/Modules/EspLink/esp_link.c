@@ -116,6 +116,19 @@ static uint32_t UINT32_T__G__WifiBatCutoffPct = ESPLINK_WIFI_BAT_CUTOFF_PCT;
 static uint8_t  UINT8_T__G__BatteryPercent = 100u;
 static bool     BOOL__G__LastInputPresent = true;
 static bool     BOOL__G__WifiBatCutoffLatched = false;
+/* [EN] CH_PD grace after a logical power-off: the pin drops ESPLINK_POWER_OFF_GRACE_MS
+        later so the LAST telemetry frame (the mains cut) still reaches the panel
+        and its state log writes the row before the chip dies (user order
+        2026-10-24: "the log must be complete"). The battery-saver policy is
+        unchanged - the ESP is still switched off, only a moment later.
+   [FA] مهلت CH_PD پس از خاموشی منطقی: پایه دیرتر (به اندازهٔ همین مهلت) پایین
+        می‌رود تا آخرین فریم تله‌متری (قطع برق) به پنل برسد و تاریخچهٔ وضعیتش
+        ردیف را پیش از مرگ چیپ بنویسد (دستور کاربر ۲۰۲۶-۱۰-۲۴: «لاگ باید کامل
+        باشد»). سیاست صرفه‌جویی عوض نشده - فقط یک لحظه دیرتر. */
+#define ESPLINK_POWER_OFF_GRACE_MS      400u
+static bool     BOOL__G__EspPinUp = true;
+static bool     BOOL__G__EspPowerOffPending = false;
+static uint32_t UINT32_T__G__EspPowerOffElapsedMs = 0u;
 
 /* [EN] TLM_LIVE flag bits (payload offset 2). / [FA] بیت‌های پرچم TLM_LIVE. */
 #define ESPLINK_TLM_FLAG_SNAP_VALID     0x01u
@@ -2230,6 +2243,9 @@ void func__EspLink_HostTest_Reset(void)
     UINT8_T__G__LutStageN1 = 0u;
     UINT8_T__G__LutStageN2 = 0u;
     BOOL__G__EspPowerOn = true;
+    BOOL__G__EspPinUp = true;
+    BOOL__G__EspPowerOffPending = false;
+    UINT32_T__G__EspPowerOffElapsedMs = 0u;
     BOOL__G__WifiClientConnected = false;
     UINT32_T__G__ClientActiveHoldMs = 0u;
     UINT32_T__G__BatteryIdleElapsedMs = 0u;
@@ -2340,14 +2356,38 @@ void func__EspLink_Init(void)
  */
 void func__EspLink_Power(bool bool__on)
 {
-    if ((bool__on != false) && (BOOL__G__EspPowerOn == false))
+    if (bool__on != false)
     {
-        ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
-    }
-    BOOL__G__EspPowerOn = bool__on;
+        BOOL__G__EspPowerOffPending = false;
+        UINT32_T__G__EspPowerOffElapsedMs = 0u;
+        if (BOOL__G__EspPowerOn == false)
+        {
+            ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+        }
+        BOOL__G__EspPowerOn = true;
+        if (BOOL__G__EspPinUp == false)
+        {
+            BOOL__G__EspPinUp = true;
 #ifndef ESPLINK_HOST_TEST
-    func__BspGpio_Write(BSP_GPIO_ESP_CHPD, bool__on);
+            func__BspGpio_Write(BSP_GPIO_ESP_CHPD, true);
 #endif
+        }
+        return;
+    }
+    if (BOOL__G__EspPowerOn == false)
+    {
+        return;
+    }
+    BOOL__G__EspPowerOn = false;
+    /* [EN] The pin is NOT dropped here: a pending grace keeps the chip alive
+            for the last telemetry frames (see ESPLINK_POWER_OFF_GRACE_MS).
+       [FA] پایه اینجا پایین نمی‌رود: مهلتِ در جریان، چیپ را برای آخرین فریم‌های
+            تله‌متری زنده نگه می‌دارد (به ‎ESPLINK_POWER_OFF_GRACE_MS‎ نگاه کنید). */
+    if ((BOOL__G__EspPinUp != false) && (BOOL__G__EspPowerOffPending == false))
+    {
+        BOOL__G__EspPowerOffPending = true;
+        UINT32_T__G__EspPowerOffElapsedMs = 0u;
+    }
 }
 
 /* ==================== EspLink_IsPowerOn ==================== */
@@ -2361,6 +2401,21 @@ void func__EspLink_Power(bool bool__on)
 bool func__EspLink_IsPowerOn(void)
 {
     return BOOL__G__EspPowerOn;
+}
+
+/* ==================== EspLink_IsPinPowered ==================== */
+
+/**
+ * @brief  [EN] Query the PHYSICAL CH_PD state: it can still be high for
+ *              ESPLINK_POWER_OFF_GRACE_MS after the logical off, so the last
+ *              telemetry frame reaches the panel.
+ *         [FA] وضعیت فیزیکی CH_PD: ممکن است تا مهلتِ خاموشی، پس از خاموشی
+ *              منطقی هنوز بالا باشد تا آخرین فریم تله‌متری به پنل برسد.
+ * @‎return [EN] true if the pin is still up / [FA]‎ اگر پایه هنوز بالاست true
+ */
+bool func__EspLink_IsPinPowered(void)
+{
+    return BOOL__G__EspPinUp;
 }
 
 /* ==================== EspLink_IsWifiClientConnected ==================== */
@@ -2501,6 +2556,24 @@ void func__EspLink_PowerSaveTick(bool bool__inputPresent,
     bool bool__clientActive;
 
     BOOL__G__LastInputPresent = bool__inputPresent;
+
+    /* [EN] Apply a pending power-off once the grace has elapsed. During the
+            grace the pin is still up, so EspLink_Run keeps sending telemetry.
+       [FA] اعمالِ خاموشیِ در جریان پس از پایان مهلت. در مهلت، پایه هنوز بالاست
+            پس ارسال تله‌متری ادامه دارد. */
+    if (BOOL__G__EspPowerOffPending != false)
+    {
+        UINT32_T__G__EspPowerOffElapsedMs += uint32_t__stepMs;
+        if (UINT32_T__G__EspPowerOffElapsedMs >= ESPLINK_POWER_OFF_GRACE_MS)
+        {
+            BOOL__G__EspPowerOffPending = false;
+            UINT32_T__G__EspPowerOffElapsedMs = 0u;
+            BOOL__G__EspPinUp = false;
+#ifndef ESPLINK_HOST_TEST
+            func__BspGpio_Write(BSP_GPIO_ESP_CHPD, false);
+#endif
+        }
+    }
 
 #if MODULE_CHARGER && !defined(ESPLINK_HOST_TEST)
     bool__manualActive = func__Charger_IsManualTestModeActive();
@@ -2659,7 +2732,11 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
 
     func__EspLink_PowerSaveTick(bool__inputPresent, APP_CONFIG.comm_period_ms);
 
-    if (BOOL__G__EspPowerOn != false)
+    /* [EN] Gated on the PHYSICAL pin: during the power-off grace the last
+            frames still go out so the panel can log the mains cut.
+       [FA] گیت روی پایهٔ فیزیکی: در مهلتِ خاموشی، آخرین فریم‌ها هنوز می‌روند
+            تا پنل بتواند قطع برق را ثبت کند. */
+    if (BOOL__G__EspPinUp != false)
     {
         func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
                                     fault_mask_t__faults);

@@ -61,6 +61,8 @@ static uint8_t  UINT8_T__G__LogPrevNote = 0u;   /* [EN] danger before the last r
 /* ==================== Pending change / تغییر در انتظار ==================== */
 static uint16_t UINT16_T__G__LogPendingMask = 0u;
 static uint8_t  UINT8_T__G__LogPendingNote = 0u;
+static bool     BOOL__G__LogMainsQueuedValid = false;
+static uint32_t UINT32_T__G__LogMainsQueuedMs = 0u;
 static uint32_t UINT32_T__G__LogLastRowMs = 0u;
 static bool     BOOL__G__LogLastRowValid = false;
 static bool     BOOL__G__LogLinkDown = false;
@@ -636,6 +638,7 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     BOOL__G__LogLastRowValid = true;
     UINT16_T__G__LogPendingMask = 0u;
     UINT8_T__G__LogPendingNote = 0u;
+    BOOL__G__LogMainsQueuedValid = false;
     return true;
 }
 
@@ -740,8 +743,16 @@ static void func__EspLog_Queue(uint16_t uint16_t__mask, uint8_t uint8_t__note)
     }
 
     uint32_t__nowMs = (uint32_t)millis();
+    if (((uint16_t__mask & ESP_LOG_CHG_MAINS) != 0u) &&
+        (BOOL__G__LogMainsQueuedValid == false))
+    {
+        BOOL__G__LogMainsQueuedValid = true;
+        UINT32_T__G__LogMainsQueuedMs = uint32_t__nowMs;
+    }
     if ((BOOL__G__LogLastRowValid == false) ||
-        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >= ESP_LOG_MIN_INTERVAL_MS))
+        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >= ESP_LOG_MIN_INTERVAL_MS) ||
+        ((BOOL__G__LogMainsQueuedValid != false) &&
+         ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogMainsQueuedMs) >= ESP_LOG_MAINS_FLUSH_MS)))
     {
         (void)func__EspLog_WriteRow(UINT16_T__G__LogPendingMask, UINT8_T__G__LogPendingNote);
     }
@@ -762,7 +773,9 @@ static void func__EspLog_FlushPending(void)
     }
     uint32_t__nowMs = (uint32_t)millis();
     if ((BOOL__G__LogLastRowValid == false) ||
-        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >= ESP_LOG_MIN_INTERVAL_MS))
+        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >= ESP_LOG_MIN_INTERVAL_MS) ||
+        ((BOOL__G__LogMainsQueuedValid != false) &&
+         ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogMainsQueuedMs) >= ESP_LOG_MAINS_FLUSH_MS)))
     {
         (void)func__EspLog_WriteRow(UINT16_T__G__LogPendingMask, UINT8_T__G__LogPendingNote);
     }

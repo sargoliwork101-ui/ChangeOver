@@ -583,6 +583,7 @@ static void func__T_TestStateHistoryLog(void)
     BOOL__G__TlmSeen = false;
     UINT32_T__G__LastTlmMs = (uint32_t)millis();
     UINT16_T__G__LogPendingMask = 0u;
+    BOOL__G__LogMainsQueuedValid = false;
 
     UINT32_T__G__TlmField[15] = 24000u;
     UINT8_T__G__TlmFlags = 0u;
@@ -705,6 +706,25 @@ static void func__T_TestStateHistoryLog(void)
                       "بعد از گذشتن یک دقیقه، گام ولتاژ دوباره می‌نویسد");
     }
 
+    /* ---- v1.108 (دستور ۲۰۲۶-۱۰-۲۴: «لاگ باید کامل باشد»): قطع/وصل برق شهر
+       هرگز پشت پنجرهٔ ادغام نمی‌ماند. برد ممکن است همان لحظهٔ قطع، برق پنل را
+       ببرد؛ پس ردیف باید بی‌درنگ به فلش برسد - تست عمداً پنجره را باز نمی‌کند. */
+    {
+        const uint16_t uint16_t__before = UINT16_T__G__LogRowsToday;
+        UINT8_T__G__TlmFlags = 0x00u;   /* برق شهر قطع شد */
+        func__SimpleLog_OnFrame();      /* داخل پنجرهٔ ادغام، نگه داشته می‌شود */
+        UINT32_T__G__LogMainsQueuedMs = (uint32_t)millis() - SIMPLE_LOG_MAINS_FLUSH_MS - 10u;
+        func__SimpleLog_Tick();
+        func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__before + 1u),
+                      "قطع برق شهر در پنجرهٔ کوتاه برق شهر می‌نشیند، نه پنجرهٔ ۲ثانیه‌ای");
+        UINT8_T__G__TlmFlags = 0x02u;   /* برق شهر وصل شد */
+        func__SimpleLog_OnFrame();
+        UINT32_T__G__LogMainsQueuedMs = (uint32_t)millis() - SIMPLE_LOG_MAINS_FLUSH_MS - 10u;
+        func__SimpleLog_Tick();
+        func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__before + 2u),
+                      "وصل برق شهر هم به همان سرعت ردیف می‌نویسد");
+    }
+
     /* ---- v1.106 (دستور ۲۰۲۶-۱۰-۲۴): لاگ با وصل‌نبودن برد هم می‌نویسد ----
        پنل شاهدِ خودش است: بوت، «برد نیست»، ضربان و «برد آمد» - همه بدون فریم. */
     {
@@ -718,6 +738,7 @@ static void func__T_TestStateHistoryLog(void)
         UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
         UINT16_T__G__LogRowsToday = 0u;
         UINT16_T__G__LogPendingMask = 0u;
+        BOOL__G__LogMainsQueuedValid = false;
 
         func__SimpleLog_Tick();
         func__T_Check(UINT16_T__G__LogRowsToday == 1u,

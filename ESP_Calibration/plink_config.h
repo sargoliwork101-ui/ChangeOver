@@ -403,6 +403,16 @@
 #define ESP_LOG_HEARTBEAT_MS         21600000u /* [EN] 6 h: one "still alive" row / [FA] هر ۶ ساعت یک ردیف «زنده‌ام» */
 #define ESP_LOG_TOTAL_BUDGET_BYTES     200000u   /* [EN] old days are dropped past this / [FA] از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
 #define ESP_LOG_MIN_INTERVAL_MS     2000u    /* [EN] merges a burst into one row / [FA] ادغام چند تغییر پشت‌سرهم */
+/* [EN] A queued mains cut/return is written after this short coalescing
+        window (not the full merge window): the board may cut the panel's
+        power the same instant (battery saver) and the row must reach the
+        flash first (user order 2026-10-24: "the log must be complete").
+        Repeat flips inside the window still ride along in ONE row.
+   [FA] ردیفِ قطع/وصل برق شهر پس از همین پنجرهٔ کوتاه نوشته می‌شود (نه کل
+        پنجرهٔ ادغام): برد ممکن است همان لحظه (صرفه‌جویی باتری) برق پنل را
+        ببرد و ردیف باید اول به فلش برسد (دستور کاربر ۲۰۲۶-۱۰-۲۴: «لاگ باید
+        کامل باشد»). پرش‌های تند داخل همین پنجره هنوز در یک ردیف ادغام می‌شوند. */
+#define ESP_LOG_MAINS_FLUSH_MS       250u    /* سقف انتظار ردیف برق شهر */
 #define ESP_LOG_LINK_TIMEOUT_MS     5000u    /* [EN] no frame = link lost / [FA] بی‌فریم یعنی قطع ارتباط */
 #define ESP_LOG_CLOCK_SAVE_MS       600000u  /* [EN] clock to flash every 10 min / [FA] ذخیرهٔ ساعت هر ۱۰ دقیقه */
 #define ESP_LOG_CLOCK_VALID_MIN     1700000000u /* [EN] below this the phone time is junk / [FA] کمتر از این یعنی زمان بی‌معنی */

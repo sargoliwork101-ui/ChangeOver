@@ -481,9 +481,137 @@ code,pre,.mono{font-family:Vazirmatn !important}
     return { flags: flags, t: t };
   }
 
+  /* ---------- مدل کوچک «تاریخچهٔ وضعیت» (آینهٔ simple_log.h) ----------
+     همان قواعد فرم‌ور: ردیف فقط با تغییر واقعی، ادغام ۲ثانیه‌ای، گام ۲۰۰ میلی‌ولت
+     حداکثر یکی در دقیقه، قطع/وصل ارتباط پس از ۵ ثانیه، ضربان ۶ساعته. ردیف بوت
+     بی‌نیاز از برد نوشته می‌شود (v1.106). ردیف‌ها در حافظهٔ مرورگر می‌مانند تا
+     بعداً قابل استفاده باشند و از همان جا CSV می‌گیرند. */
+  var EVT_CHG_BOOT=1, EVT_CHG_MAINS=2, EVT_CHG_CHG1=4, EVT_CHG_CHG2=8,
+      EVT_CHG_FAULT=16, EVT_CHG_FLAGS=32, EVT_CHG_BAND=64, EVT_CHG_LINK=128,
+      EVT_CHG_MODE=256, EVT_CHG_DEAD=512, EVT_CHG_VSTEP=1024;
+  var EVT_NOTE_NONE=0, EVT_NOTE_LOW_STOP=1, EVT_NOTE_LINK_LOST=2,
+      EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5;
+  var EVT_MIN_MS=2000, EVT_VSTEP_MV=200, EVT_VSTEP_MIN_MS=60000,
+      EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=21600000, EVT_MAX_ROWS=2000;
+  var evtRows=[], evtPendingMask=0, evtPendingNote=0, evtLastRowMs=0, evtLastRowOk=false,
+      evtLastStepMs=0, evtLastStepOk=false, evtHasPrev=false, evtPrev=null,
+      evtPrevV24=0, evtLinkDown=false, evtLastFrameMs=0, evtSeen=false,
+      evtSessionMs=Date.now(), evtBooted=false;
+  try {
+    var evtSaved = window.localStorage && localStorage.getItem('co_evt_rows_v1');
+    if (evtSaved) { evtRows = JSON.parse(evtSaved) || []; if (evtRows.length) evtLastRowOk = true; }
+  } catch (e) { evtRows = []; }
+  function evtPersist() {
+    try { if (window.localStorage) localStorage.setItem('co_evt_rows_v1', JSON.stringify(evtRows)); } catch (e) {}
+  }
+  function evtNowSec() { return Math.floor(Date.now() / 1000); }
+  function evtDayCode(sec) {
+    var d = new Date((sec || evtNowSec()) * 1000);
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
+  function evtWrite(mask, note, flags, fl2, t) {
+    if (evtRows.length >= EVT_MAX_ROWS) { return; }
+    var row = [evtNowSec(), Math.floor((Date.now() - counters.t0) / 1000), mask, note,
+               (flags & 0x02) ? 1 : 0, flags,
+               t[IDX.state1], t[IDX.state2], t[IDX.fault_mask], fl2,
+               t[IDX.v_bat24_mv], t[IDX.v_bat_low_mv], t[IDX.v_bat_high_mv],
+               t[IDX.imb_mv], t[IDX.dead_mask],
+               t[IDX.v_in_mv], t[IDX.v_bat12_mv],
+               t[IDX.i1_filtered_ma], t[IDX.i2_filtered_ma],
+               t[IDX.duty1_permille], t[IDX.duty2_permille]];
+    evtRows.push(row);
+    evtLastRowMs = Date.now(); evtLastRowOk = true;
+    if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
+    evtPrevV24 = t[IDX.v_bat24_mv];
+    evtPendingMask = 0; evtPendingNote = EVT_NOTE_NONE;
+    evtPersist();
+  }
+  function evtFlush() {
+    if (!evtPendingMask && evtPendingNote === EVT_NOTE_NONE) { return; }
+    if (!evtLastRowOk || (Date.now() - evtLastRowMs) >= EVT_MIN_MS) {
+      evtWrite(evtPendingMask, evtPendingNote, evtLastFlags, evtLastFl2, evtLastT);
+    }
+  }
+  function evtQueue(mask, note) {
+    evtPendingMask |= mask;
+    if (note !== EVT_NOTE_NONE) { evtPendingNote = note; }
+    evtFlush();
+  }
+  var evtLastFlags = 0, evtLastFl2 = 0, evtLastT = null;
+  function evtFrame(linkUp, flags, fl2, t) {
+    evtLastFlags = flags; evtLastFl2 = fl2; evtLastT = t;
+    if (!evtBooted) {
+      evtBooted = true;
+      evtWrite(EVT_CHG_BOOT, EVT_NOTE_NONE, flags, fl2, t);
+    }
+    if (linkUp) {
+      evtLastFrameMs = Date.now(); evtSeen = true;
+      if (evtLinkDown) {
+        evtLinkDown = false;
+        evtQueue(EVT_CHG_LINK, EVT_NOTE_LINK_BACK);
+      }
+      var mains = (flags & 0x02) ? 1 : 0;
+      var chg1 = t[IDX.state1], chg2 = t[IDX.state2];
+      var fault = t[IDX.fault_mask], dead = t[IDX.dead_mask];
+      var fl = flags & 0x3D;
+      var band = (evtPrev && evtPrev.band) ? (t[IDX.v_bat24_mv] > 21400 ? 0 : 1)
+                                           : (t[IDX.v_bat24_mv] < 21200 ? 1 : 0);
+      if (!evtHasPrev) {
+        evtHasPrev = true;
+        evtPrev = { mains: mains, chg1: chg1, chg2: chg2, fl2: fl2, fault: fault, band: band, fl: fl, dead: dead };
+        evtPrevV24 = t[IDX.v_bat24_mv];
+        return;
+      }
+      var mask = 0;
+      if (mains !== evtPrev.mains) mask |= EVT_CHG_MAINS;
+      if (chg1 !== evtPrev.chg1) mask |= EVT_CHG_CHG1;
+      if (chg2 !== evtPrev.chg2) mask |= EVT_CHG_CHG2;
+      if (fault !== evtPrev.fault) mask |= EVT_CHG_FAULT;
+      if (fl2 !== evtPrev.fl2) mask |= EVT_CHG_FLAGS;
+      if (band !== evtPrev.band) mask |= EVT_CHG_BAND;
+      if (fl !== evtPrev.fl) mask |= EVT_CHG_MODE;
+      if (dead !== evtPrev.dead) mask |= EVT_CHG_DEAD;
+      if (Math.abs(t[IDX.v_bat24_mv] - evtPrevV24) >= EVT_VSTEP_MV) {
+        if (mask || !evtLastStepOk || (Date.now() - evtLastStepMs) >= EVT_VSTEP_MIN_MS) mask |= EVT_CHG_VSTEP;
+      }
+      if (mask) { evtQueue(mask, EVT_NOTE_NONE); }
+      else { evtFlush(); }
+      evtPrev = { mains: mains, chg1: chg1, chg2: chg2, fl2: fl2, fault: fault, band: band, fl: fl, dead: dead };
+      return;
+    }
+    if (!evtLinkDown && evtLastRowOk &&
+        (Date.now() - (evtSeen ? evtLastFrameMs : evtSessionMs)) > EVT_LINK_TIMEOUT_MS) {
+      evtLinkDown = true;
+      evtQueue(EVT_CHG_LINK, EVT_NOTE_LINK_LOST);
+    }
+    evtFlush();
+  }
+  if (window.setInterval) {
+    setInterval(function () {
+      if (evtLastRowOk && (Date.now() - evtLastRowMs) >= EVT_HEARTBEAT_MS) {
+        evtQueue(0, EVT_NOTE_HEARTBEAT);
+      }
+    }, 60000);
+  }
+  function evtCsvText(rows) {
+    var head = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,v24,vlow,vhigh,imb,dm,vin,v12,i1,i2,d1,d2';
+    var lines = rows.map(function (r) { return r.join(','); });
+    return [head].concat(lines).join('\n');
+  }
+  function evtDaysList() {
+    var days = [];
+    for (var i = 0; i < evtRows.length; i++) {
+      var d = String(evtDayCode(evtRows[i][0]));
+      if (days.indexOf(d) < 0) { days.push(d); }
+    }
+    days.sort();
+    return days;
+  }
+
   function telemetryJson() {
     var built = buildTelemetry();
     counters.frames++;
+    evtFrame(sim.linkUp, built.flags, 0, built.t);
     var body = '{"on":' + (sim.linkUp ? 1 : 0) + ',"age":' + (sim.linkUp ? 40 : 9999) +
       ',"seq":' + (counters.frames % 65536) + ',"fl":' + built.flags + ',"fl2":0' +
       ',"n":' + counters.frames + ',"ce":' + sim.ce + ',"vm":' + sim.vm +
@@ -562,6 +690,24 @@ code,pre,.mono{font-family:Vazirmatn !important}
     if (path === 't') { return jsonResponse(telemetryJson()); }
     if (path === 'charts') { return jsonResponse(chartJson(query(url, 'range') || '1d')); }
     if (path === 'diag') { return jsonResponse(diagJson()); }
+    if (path === 'evt') {
+      var evDay = query(url, 'day');
+      var evDays = evtDaysList();
+      var evChosen = evDay || (evDays.length ? evDays[evDays.length - 1] : '');
+      var evRows = evtRows.filter(function (r) { return String(evtDayCode(r[0])) === evChosen; });
+      return jsonResponse(evtCsvText(evRows.slice(-30)), 200);
+    }
+    if (path === 'evt/days') { return jsonResponse(evtDaysList().join(' '), 200); }
+    if (path === 'evt/dl') {
+      var dlDay = query(url, 'day');
+      var dlRows = evtRows.filter(function (r) { return String(evtDayCode(r[0])) === dlDay; });
+      return jsonResponse(evtCsvText(dlRows), 200);
+    }
+    if (path === 'evt/clr') {
+      evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
+      evtPersist();
+      return jsonResponse('{"ok":1}', 200);
+    }
     if (path === 'theme') { return jsonResponse('{"theme":' + mock.theme + '}'); }
     if (path === 'settheme') {
       mock.theme = (parseInt(query(url, 'theme') || '0', 10) === 1) ? 1 : 0;   /* فقط تیره/روشن */
@@ -675,9 +821,19 @@ code,pre,.mono{font-family:Vazirmatn !important}
     if (!noMock && Date.now() < mockUntil) {   /* سرور چند لحظه پیش جواب نداده بود */
       return Promise.resolve(mockFetch(String(url), options));
     }
-    return originalFetch(url, options).catch(function (error) {
+    return originalFetch(url, options).then(function (response) {
+      /* جوابِ ۴۰۴ یعنی سرور آن مسیر را ندارد (مثلاً سرور ایستای پیش‌نمایش)؛
+         مثلِ بی‌جواب‌ماندن، چند ثانیه شبیه‌ساز جواب می‌دهد تا صفحه زنده بماند. */
       var path = routeName(String(url));
-      if (path === 't' || path === 'charts' || path === 'diag') {
+      if (!noMock && response && response.status === 404 &&
+          (path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0)) {
+        mockUntil = Date.now() + 10000;
+        return mockFetch(String(url), options);
+      }
+      return response;
+    }).catch(function (error) {
+      var path = routeName(String(url));
+      if (path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0) {
         /* یک بار جواب نداد - فقط چند ثانیه حالت شبیه‌ساز تا داده جعلی
            جای داده واقعی را برای همیشه نگیرد؛ دفعه بعد دوباره سرور امتحان می‌شود */
         mockUntil = Date.now() + 10000;
@@ -686,6 +842,47 @@ code,pre,.mono{font-family:Vazirmatn !important}
       throw error;
     });
   };
+
+  /* دانلود تاریخچه در حالت آفلاین: اگر سرور واقعی فایل را داد همان؛ وگرنه
+     از ردیف‌های ذخیره‌شده در حافظهٔ مرورگر. دانلود یک‌جا و پاک‌سازی هم همین‌طور. */
+  function evtDownloadFromRows(name, text) {
+    var blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  var evtOriginalDl = window.evtDl, evtOriginalDlAll = window.evtDlAll, evtOriginalClear = window.evtClear;
+  if (evtOriginalDl) {
+    window.evtDl = function () {
+      var day = '';
+      var sel = document.getElementById('evtDay');
+      if (sel && sel.value) { day = sel.value; }
+      fetch('/evt/dl?day=' + encodeURIComponent(day), { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) { throw new Error('missing'); }
+        return r.text();
+      }).then(function (text) {
+        evtDownloadFromRows('history-' + (day || 'today') + '.csv', text);
+      }).catch(function () {
+        var rows = evtRows.filter(function (x) { return !day || String(evtDayCode(x[0])) === day; });
+        if (rows.length) { evtDownloadFromRows('history-' + (day || 'today') + '.csv', evtCsvText(rows)); }
+        else if (evtOriginalDl) { evtOriginalDl(); }
+      });
+    };
+  }
+  if (evtOriginalDlAll) {
+    window.evtDlAll = function () {
+      if (evtRows.length) { evtDownloadFromRows('history-all.csv', evtCsvText(evtRows)); return; }
+      evtOriginalDlAll();
+    };
+  }
+  if (evtOriginalClear) {
+    window.evtClear = function () {
+      evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false; evtPersist();
+      if (evtOriginalClear) { evtOriginalClear(); }
+    };
+  }
 
   /* ==================== تب چهارم: کنترل دستی برد ==================== */
   function el(tag, attrs, text) {

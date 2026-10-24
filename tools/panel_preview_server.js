@@ -774,6 +774,7 @@ function telemetry() {
     t[28] = latch.deadMask;
 
     seq += 1; frames += 1; ms += SIM_MS;
+    evtFrame(7, imbFl2, t);
     return {
         on: 1, age: 40, seq, fl: 7, fl2: imbFl2, n: frames,
         q: 0, q2: 0, q3: 0, q4: 0, ka: 800,
@@ -789,6 +790,110 @@ function telemetry() {
         t, p: P.slice()
     };
 }
+
+/* ---------- مدل کوچک «تاریخچهٔ وضعیت» (آینهٔ plink_log.h) ----------
+   دقیقاً قواعد فرم‌ور: ردیف فقط با تغییر واقعی، ادغام ۲ثانیه‌ای، گام ۲۰۰ میلی‌ولت
+   حداکثر یکی در دقیقه، ردیف بوت بدون نیاز به برد، ضربان ۶ساعته. خروجی همان
+   CSV بیست‌ویک‌ستونه است که کارت «تاریخچهٔ وضعیت» پنل می‌خواند. */
+const EVT_CHG_BOOT = 1, EVT_CHG_MAINS = 2, EVT_CHG_CHG1 = 4, EVT_CHG_CHG2 = 8,
+      EVT_CHG_FAULT = 16, EVT_CHG_FLAGS = 32, EVT_CHG_BAND = 64, EVT_CHG_LINK = 128,
+      EVT_CHG_MODE = 256, EVT_CHG_DEAD = 512, EVT_CHG_VSTEP = 1024;
+const EVT_NOTE_NONE = 0, EVT_NOTE_LINK_LOST = 2, EVT_NOTE_LINK_BACK = 3, EVT_NOTE_HEARTBEAT = 5;
+const EVT_MIN_MS = 2000, EVT_VSTEP_MV = 200, EVT_VSTEP_MIN_MS = 60000, EVT_MAX_ROWS = 2000;
+const EVT_HEADER = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,v24,vlow,vhigh,imb,dm,vin,v12,i1,i2,d1,d2';
+let evtRows = [];
+let evtPendingMask = 0, evtPendingNote = 0;
+let evtLastRowMs = 0, evtLastRowOk = false, evtLastStepMs = 0, evtLastStepOk = false;
+let evtHasPrev = false, evtPrev = null, evtPrevV24 = 0;
+let evtBooted = false, evtLastFlags = 0, evtLastFl2 = 0, evtLastT = null;
+
+function evtWrite(mask, note, flags, fl2, t) {
+    if (evtRows.length >= EVT_MAX_ROWS) return;
+    const nowSec = Math.floor(Date.now() / 1000);
+    evtRows.push([nowSec, Math.floor(nowSec - (evtStartSec)), mask, note,
+                  (flags & 0x02) ? 1 : 0, flags,
+                  t[6], t[13], t[19], fl2,
+                  t[15], t[17], t[18], t[25], t[28],
+                  t[14], t[16], t[3], t[10], t[5], t[12]].join(','));
+    evtLastRowMs = Date.now();
+    evtLastRowOk = true;
+    if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
+    evtPrevV24 = t[15];
+    evtPendingMask = 0;
+    evtPendingNote = EVT_NOTE_NONE;
+}
+function evtFlush() {
+    if (!evtPendingMask && evtPendingNote === EVT_NOTE_NONE) return;
+    if (!evtLastRowOk || (Date.now() - evtLastRowMs) >= EVT_MIN_MS) {
+        evtWrite(evtPendingMask, evtPendingNote, evtLastFlags, evtLastFl2, evtLastT);
+    }
+}
+function evtQueue(mask, note) {
+    evtPendingMask |= mask;
+    if (note !== EVT_NOTE_NONE) evtPendingNote = note;
+    evtFlush();
+}
+function evtFrame(flags, fl2, t) {
+    evtLastFlags = flags;
+    evtLastFl2 = fl2;
+    evtLastT = t;
+    if (!evtBooted) {
+        evtBooted = true;
+        evtWrite(EVT_CHG_BOOT, EVT_NOTE_NONE, flags, fl2, t);
+    }
+    const mains = (flags & 0x02) ? 1 : 0;
+    const chg1 = t[6], chg2 = t[13];
+    const fault = t[19], dead = t[28];
+    const fl = flags & 0x3D;
+    const band = (evtPrev && evtPrev.band) ? (t[15] > 21400 ? 0 : 1)
+                                           : (t[15] < 21200 ? 1 : 0);
+    if (!evtHasPrev) {
+        evtHasPrev = true;
+        evtPrev = { mains, chg1, chg2, fl2, fault, band, fl, dead };
+        evtPrevV24 = t[15];
+        return;
+    }
+    let mask = 0;
+    if (mains !== evtPrev.mains) mask |= EVT_CHG_MAINS;
+    if (chg1 !== evtPrev.chg1) mask |= EVT_CHG_CHG1;
+    if (chg2 !== evtPrev.chg2) mask |= EVT_CHG_CHG2;
+    if (fault !== evtPrev.fault) mask |= EVT_CHG_FAULT;
+    if (fl2 !== evtPrev.fl2) mask |= EVT_CHG_FLAGS;
+    if (band !== evtPrev.band) mask |= EVT_CHG_BAND;
+    if (fl !== evtPrev.fl) mask |= EVT_CHG_MODE;
+    if (dead !== evtPrev.dead) mask |= EVT_CHG_DEAD;
+    if (Math.abs(t[15] - evtPrevV24) >= EVT_VSTEP_MV) {
+        if (mask || !evtLastStepOk || (Date.now() - evtLastStepMs) >= EVT_VSTEP_MIN_MS) {
+            mask |= EVT_CHG_VSTEP;
+        }
+    }
+    if (mask) evtQueue(mask, EVT_NOTE_NONE);
+    else evtFlush();
+    evtPrev = { mains, chg1, chg2, fl2, fault, band, fl, dead };
+}
+function evtDayOf(epochSec) {
+    const d = new Date((epochSec || Math.floor(Date.now() / 1000)) * 1000);
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+function evtDaysList() {
+    const days = [];
+    for (const line of evtRows) {
+        const day = String(evtDayOf(Number(line.split(',')[0])));
+        if (!days.includes(day)) days.push(day);
+    }
+    days.sort();
+    return days;
+}
+function evtTailText(day) {
+    const days = evtDaysList();
+    const chosen = day || (days.length ? days[days.length - 1] : '');
+    const rows = evtRows.filter((line) => String(evtDayOf(Number(line.split(',')[0]))) === chosen);
+    return [EVT_HEADER].concat(rows.slice(-30)).join('\n');
+}
+const evtStartSec = Math.floor(Date.now() / 1000);
+setInterval(() => {
+    if (evtLastRowOk && (Date.now() - evtLastRowMs) >= 21600000) evtQueue(0, EVT_NOTE_HEARTBEAT);
+}, 60000);
 
 /* [EN] LUT handshake state of the simulated board, and the point window
  *      DERIVED from cal_lut.h - the same rule the telemetry width follows:
@@ -987,6 +1092,35 @@ const server = http.createServer((req, res) => {
         return send(200, "application/json", '{"ok":1}');
     }
     /* v1.87: simulate battery disconnect/reconnect for scenario 6 */
+    if (req.method === "GET" && url.pathname === "/evt") {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(evtTailText(url.searchParams.get("day") || ""));
+        return;
+    }
+    if (req.method === "GET" && url.pathname === "/evt/days") {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(evtDaysList().join(" "));
+        return;
+    }
+    if (req.method === "GET" && url.pathname === "/evt/dl") {
+        const day = url.searchParams.get("day") || "";
+        const days = evtDaysList();
+        const chosen = day || (days.length ? days[days.length - 1] : "");
+        const rows = evtRows.filter((line) => String(evtDayOf(Number(line.split(',')[0]))) === chosen);
+        res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Cache-Control": "no-store",
+                             "Content-Disposition": 'attachment; filename=evt-' + (chosen || "today") + '.csv' });
+        res.end([EVT_HEADER].concat(rows).join("\n"));
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/clr") {
+        evtRows = [];
+        evtHasPrev = false;
+        evtLastRowOk = false;
+        evtBooted = false;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end('{"ok":1}');
+        return;
+    }
     if (req.method === "POST" && url.pathname === "/sim/battery") {
         const n = Number(url.searchParams.get("n"));
         const cut = Number(url.searchParams.get("cut"));

@@ -688,12 +688,26 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
 void func__EspLink_Power(bool bool__on);
 
 /**
- * @brief  [EN] Query whether the ESP power rail (CH_PD) is currently enabled.
- *         [FA] بررسی روشن بودن تغذیهٔ ESP (پایهٔ CH_PD).
- * @return [EN] true if CH_PD is high, false if powered down /
- *         [FA] در صورت روشن بودن true و در غیر این صورت false
+ * @brief  [EN] Query the LOGICAL power state the policy wants. The physical
+ *              pin can still be up for a short grace after this returns false
+ *              (see func__EspLink_IsPinPowered).
+ *         [FA] بررسی وضعیت منطقی تغذیه که سیاست می‌خواهد. پایهٔ فیزیکی ممکن
+ *              است پس از false شدن این، تا مهلتِ کوتاهی هنوز بالا باشد
+ *              (به ‎func__EspLink_IsPinPowered‎ نگاه کنید).
+ * @‎return [EN] true if the policy keeps the ESP on / [FA]‎ اگر سیاست ESP را
+ *              روشن نگه دارد true
  */
 bool func__EspLink_IsPowerOn(void);
+
+/**
+ * @brief  [EN] Query the PHYSICAL CH_PD state: it stays high for
+ *              ESPLINK_POWER_OFF_GRACE_MS after the logical off so the last
+ *              telemetry frame reaches the panel.
+ *         [FA] وضعیت فیزیکی CH_PD: پس از خاموشی منطقی تا مهلتِ خاموشی بالا
+ *              می‌ماند تا آخرین فریم تله‌متری به پنل برسد.
+ * @‎return [EN] true if the pin is still up / [FA]‎ اگر پایه هنوز بالاست true
+ */
+bool func__EspLink_IsPinPowered(void);
 
 /**
  * @brief  [EN] Query whether a Wi-Fi client is currently considered connected.

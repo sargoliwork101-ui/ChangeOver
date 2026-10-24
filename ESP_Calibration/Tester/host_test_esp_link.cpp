@@ -1195,6 +1195,44 @@ int main(void)
                   "once the minute has passed the step is written again");
         }
 
+        /* [EN] v1.108 (user order 2026-10-24: "the log must be complete"): a
+                 mains cut/return never waits behind the 2 s merge window. The
+                 board may cut the panel's power the same instant (battery
+                 saver), so the row must reach the flash at once - the test
+                 deliberately does NOT open the window first.
+           [FA] نسخهٔ ۱٫۱۰۸ (دستور کاربر ۲۰۲۶-۱۰-۲۴: «لاگ باید کامل باشد»):
+                 قطع/وصل برق شهر هرگز پشت پنجرهٔ ادغام ۲ثانیه‌ای نمی‌ماند. برد
+                 ممکن است همان لحظه (صرفه‌جویی باتری) برق پنل را ببرد، پس ردیف
+                 باید بی‌درنگ به فلش برسد - تست عمداً پنجره را باز نمی‌کند. */
+        {
+            const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+            /* every earlier frame carried mains OFF - establish mains ON
+               first, so the CUT below is a real mains change */
+            std::vector<uint8_t> on = tlm_payload_v24(236u, 22100u);
+            on[2u] = 0x02u;
+            G_StubMillis += 100u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, on));
+            G_StubMillis += ESP_LOG_MAINS_FLUSH_MS + 10u;
+            func__EspLog_Tick();
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
+                  "the mains return lands inside the short coalescing window",
+                  std::to_string(UINT16_T__G__LogRowsToday));
+
+            /* the CUT: the row must reach the flash before the panel dies */
+            std::vector<uint8_t> cut = tlm_payload_v24(237u, 22100u);
+            G_StubMillis += 100u;
+            feed(build_frame(ESP_MSG_TLM_LIVE, cut));
+            G_StubMillis += ESP_LOG_MAINS_FLUSH_MS + 10u;
+            func__EspLog_Tick();
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 2u),
+                  "a mains cut lands inside the short coalescing window, not the 2 s merge",
+                  std::to_string(UINT16_T__G__LogRowsToday));
+            std::string bodyCut = LittleFS.files[std::string(path)];
+            check((row_field(bodyCut, (size_t)(rowsBefore + 1u), 2u) & 2L) != 0L,
+                  "and that row carries the mains change bit",
+                  std::to_string(row_field(bodyCut, (size_t)(rowsBefore + 1u), 2u)));
+        }
+
         /* [EN] v1.96: a quiet board still says "I am alive" once every six
                  hours. Without that row a silent log cannot be told apart from
                  a dead panel - which is the whole point of keeping the log.
@@ -1236,6 +1274,7 @@ int main(void)
             UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
             UINT16_T__G__LogRowsToday = 0u;
             UINT16_T__G__LogPendingMask = 0u;
+            BOOL__G__LogMainsQueuedValid = false;
             G_StubMillis += 5000u;
 
             func__EspLog_Tick();

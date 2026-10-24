@@ -154,6 +154,16 @@
 #define SIMPLE_LOG_HEARTBEAT_MS         21600000u /* هر ۶ ساعت یک ردیف «زنده‌ام» */
 #define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u   /* از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
 #define SIMPLE_LOG_MIN_INTERVAL_MS      2000u    /* ادغام چند تغییر پشت‌سرهم در یک ردیف */
+/* [EN] A queued mains cut/return is written after this short coalescing
+        window (not the full merge window): the board may cut the panel's
+        power the same instant (battery saver) and the row must reach the
+        flash first (user order 2026-10-24: "the log must be complete").
+        Repeat flips inside the window still ride along in ONE row.
+   [FA] ردیفِ قطع/وصل برق شهر پس از همین پنجرهٔ کوتاه نوشته می‌شود (نه کل
+        پنجرهٔ ادغام): برد ممکن است همان لحظه (صرفه‌جویی باتری) برق پنل را
+        ببرد و ردیف باید اول به فلش برسد (دستور کاربر ۲۰۲۶-۱۰-۲۴: «لاگ باید
+        کامل باشد»). پرش‌های تند داخل همین پنجره هنوز در یک ردیف ادغام می‌شوند. */
+#define SIMPLE_LOG_MAINS_FLUSH_MS       250u    /* سقف انتظار ردیف برق شهر */
 #define SIMPLE_LOG_LINK_TIMEOUT_MS      5000u    /* بی‌فریم یعنی قطع ارتباط */
 #define SIMPLE_LOG_HEADER \
     "# تاریخچهٔ وضعیت / state history\n" \

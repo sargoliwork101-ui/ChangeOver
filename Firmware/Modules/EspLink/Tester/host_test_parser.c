@@ -256,6 +256,17 @@ int main(void)
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == false);
 
+    /* v1.108: the LOGICAL off is immediate (the policy is unchanged), but the
+       physical CH_PD stays up for ESPLINK_POWER_OFF_GRACE_MS so the last
+       telemetry frame (the mains cut) reaches the panel and its state log can
+       write the row before the chip dies (user order 2026-10-24: "the log must
+       be complete"). */
+    CHECK(func__EspLink_IsPinPowered() == true);
+    func__EspLink_PowerSaveTick(false, 200u);
+    CHECK(func__EspLink_IsPinPowered() == true);
+    func__EspLink_PowerSaveTick(false, 250u);
+    CHECK(func__EspLink_IsPinPowered() == false);
+
     /* +2% hysteresis: rebounding to 20% or 21% on battery stays OFF until 22% */
     func__EspLink_SetBatteryPercent(20u);
     func__EspLink_PowerSaveTick(false, 100u);
