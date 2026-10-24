@@ -3524,49 +3524,57 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
                     if ((uint32_t__continuousMs == 0u) || (uint32_t__restMs == 0u))
                     {
-                        /* [EN] Feature off: never arm, and drop a stale arm so
-                         *      a later re-enable cannot fire instantly.
-                         * [FA] قابلیت خاموش است: هرگز فعال نمی‌شود، و آرم
-                         *      کهنده هم ریشته می‌شود تا فعال‌کردن دوباره سریع راه نیاندازد. */
+                        /* [EN] Feature off: drop a stale arm so a later
+                         *      re-enable cannot fire instantly - and FALL
+                         *      THROUGH to the normal drive below. (Full-program
+                         *      audit 2026-10-24: a `continue` here skipped the
+                         *      drive entirely and froze duty at its last value,
+                         *      silently stopping charge when the user set a
+                         *      duration to zero.)
+                         * [FA] قابلیت خاموش است: آرم کهنده ریخته می‌شود و کنترل
+                         *      به درایو عادی می‌رسد؛ کانال مثل قبل شارژ می‌کند
+                         *      (ممیزی ۲۰۲۶-۱۰-۲۴: continue اینجا درایو را هم رد
+                         *      می‌کرد و با صفرِ زمان، شارژ می‌ایستاد). */
                         UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
-                        continue;
-                    }
-
-                    bool__atMax =
-                        ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
-                          CHG_STATE_BULK) &&
-                         (uint32_t__currentMa >= uint32_t__threshold));
-
-                    if (bool__atMax == true)
-                    {
-                        if (UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] == 0u)
-                        {
-                            UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = uint32_t__now;
-                        }
-                        else
-                        {
-                            uint32_t uint32_t__elapsed =
-                                uint32_t__now -
-                                UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex];
-                            uint32_t uint32_t__needTicks =
-                                func__Charger_DurationTicks(uint32_t__continuousMs);
-                            if (uint32_t__elapsed >= uint32_t__needTicks)
-                            {
-                                UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] =
-                                    uint32_t__now + func__Charger_DurationTicks(uint32_t__restMs);
-                                UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
-                                UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
-                                BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
-                                func__Charger_StopOneChannel(uint8_t__channelIndex);
-                                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
-                                    CHG_STATE_THERMAL_REST;
-                                continue;
-                            }
-                        }
                     }
                     else
                     {
-                        UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                        bool__atMax =
+                            ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+                              CHG_STATE_BULK) &&
+                             (uint32_t__currentMa >= uint32_t__threshold));
+
+                        if (bool__atMax == true)
+                        {
+                            if (UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] == 0u)
+                            {
+                                UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = uint32_t__now;
+                            }
+                            else
+                            {
+                                uint32_t uint32_t__elapsed =
+                                    uint32_t__now -
+                                    UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex];
+                                uint32_t uint32_t__needTicks =
+                                    func__Charger_DurationTicks(uint32_t__continuousMs);
+                                if (uint32_t__elapsed >= uint32_t__needTicks)
+                                {
+                                    UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] =
+                                        uint32_t__now + func__Charger_DurationTicks(uint32_t__restMs);
+                                    UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                                    UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
+                                    BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
+                                    func__Charger_StopOneChannel(uint8_t__channelIndex);
+                                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                                        CHG_STATE_THERMAL_REST;
+                                    continue;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                        }
                     }
                 }
             }

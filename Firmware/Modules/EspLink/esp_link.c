@@ -451,7 +451,7 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                     user order): same range dispatch; the setter owns the
                     clamp window table.
                [FA] حدها و گین‌های پشتیبان شارژر، ۹۳..۱۰۷ (دستور کاربر):
-                    همان دیسپچ بازه‌ای؛ جدول پنجرهٔ گیره مال ستر است. */
+                    همان دیسپچ بازه‌ای؛ جدول پنجرهٔ گیره مالِ setter است. */
             if ((uint8_t__paramId >= CHG_LIMIT_PARAM_FIRST_ID) &&
                 (uint8_t__paramId <= CHG_LIMIT_PARAM_LAST_ID))
             {
@@ -534,7 +534,7 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                     setter owns the clamp window table.
                [FA] نسخهٔ ۱۱۰۲ تنظیم استراحت حرارتی، ۱۶۶..۱۶۸ (دستور
                     کاربر ۲۰۲۶-۱۰-۲۴): دیسپچ بازه‌ای مثل بلوک حدود؛
-                    جدول پنجرهٔ گیره مال ستر است. */
+                    جدول پنجرهٔ گیره مالِ setter است. */
             if (CHG_THERMAL_PARAM_OWNS(uint8_t__paramId))
             {
                 return func__Charger_SetThermalParam(uint8_t__paramId,

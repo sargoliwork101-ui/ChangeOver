@@ -4293,11 +4293,17 @@ def test_v1102_thermal_rest_panel_adjustable():
           "uint32_t__bulkMax - CHG_THERMAL_CURRENT_MARGIN_MA" in th and
           "uint32_t__threshold = uint32_t__bulkMax;" in th,
           "trigger 0 must mean automatic: the original band-edge rule (bulk - 50)")
-    check("(uint32_t__continuousMs == 0u) || (uint32_t__restMs == 0u)" in th and
-          "UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;" in th and
-          "continue;" in th,
-          "either duration 0 must disable the feature and drop a stale arm so a "
-          "re-enable cannot fire instantly")
+    off_gate = th.split("(uint32_t__continuousMs == 0u) || (uint32_t__restMs == 0u)", 1)[1].split("else", 1)[0]
+    check("UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;" in th and
+          "continue;" not in off_gate,
+          "either duration 0 must disable the feature and drop a stale arm - "
+          "and must FALL THROUGH to the normal drive (a continue there froze "
+          "duty and silently stopped charging)")
+    check("else\n                    {\n                        bool__atMax =" in th,
+          "the arming must sit in the else of the off-gate so a disabled "
+          "feature never blocks the drive")
+    check("FALL" in th and "THROUGH" in th,
+          "the off-gate must document the fall-through contract")
     check("func__Charger_DurationTicks(uint32_t__continuousMs)" in th and
           "func__Charger_DurationTicks(uint32_t__restMs)" in th,
           "the fire must use the two panel durations, not the hard-coded constants")
