@@ -2525,30 +2525,19 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
         BOOL__G__DeadAbsentTiming[uint8_t__channelIndex] = false;
     }
 
-    /* [EN] v1.100 (user order 2026-10-24): the 1-hour thermal rest FREEZES
-           the dead-battery clock instead of clearing it. Clearing here made
-           the 24-hour verdict unreachable - every hour of max-current bulk was
-           wiped by its own 10-minute rest. The rest is part of charging, not
-           an interruption: the pause clock is not fed either, so the gap rule
-           cannot wipe it mid-rest.
-       [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): استراحت حرارتیِ ۱ ساعته ساعتِ
-           باتری فرسوده را «فریز» می‌کند نه پاک. پاک‌کردن، قضاوتِ ۲۴ ساعته را
-           غیرقابل‌دسترس کرده بود - هر ساعت شارژ با حداکثر جریان با استراحتِ
-           ۱۰ دقیقه‌ای خودش پاک می‌شد. استراحت بخشی از شارژ است نه وقفه: ساعتِ
-           مکث هم تغذیه نمی‌شود تا قاعدهٔ وقفه وسطش پاک نکند. */
-    if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
-        (UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] != 0u))
-    {
-        BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
-        return;
-    }
-
     /* [EN] Step 2: scenario off, or the channel reached FLOAT (including via
-           the 1-hour absorb ceiling). Clock back to zero.
+       the 1-hour absorb ceiling), or the channel is in its 1-hour thermal
+       rest (user order 2026-10-22: reset dead-battery timer on thermal
+       rest so larger parallel battery banks are not falsely condemned).
+       Clock back to zero.
        [FA] گام ۲: سناریو خاموش است، یا کانال به FLOAT رسیده (شامل ورود اجباری
-           با سقف ۱ ساعتهٔ ابزورب)؛ ساعت صفر می‌شود. */
+       با سقف ۱ ساعتهٔ ابزورب)، یا وارد استراحت حرارتی ۱ ساعته شده (دستور
+       کاربر ۲۰۲۶-۱۰-۲۲: ریست تایمر در استراحت ۱ ساعته برای پشتیبانی از
+       افزایش ظرفیت باتری‌ها)؛ ساعت صفر می‌شود. */
     if ((uint32_t__timeoutMs == 0u) ||
-        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT))
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) ||
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
+        (UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] != 0u))
     {
         UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
         BOOL__G__DeadWasCharging[uint8_t__channelIndex]  = false;

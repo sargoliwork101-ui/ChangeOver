@@ -564,7 +564,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a18333a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 86d1a14</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4338,9 +4338,10 @@ async function qzero(n){if(W.run)return await pmAlert('داده‌برداری �
  try{if(!man&&!fx)await setv(19,1);await setv(14+2*n,0);}catch(e){await pmAlert(e);}}
 /* [EN] v1.100 (user 2026-10-24): the manual-mode preconditions, live. Each
    one is a green tick or a named reason why the mode will not start; the same
-   list gates the button. [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): پیش‌شرط‌های
+   list gates the button, and it is shown ONLY while manual mode is on (user
+   ‎2026-10-24: not in auto). [FA] v1.100 (‎دستور کاربر ۲۰۲۶-۱۰-۲۴): پیش‌شرط‌های
    مود تست دستی، زنده. هر کدام یا تیک سبز است یا دلیلِ نرفتن؛ همان فهرست
-   جلوی دکمه را هم می‌گیرد. */
+   جلوی دکمه را هم می‌گیرد؛ فقط در حالت دستی دیده می‌شود، در خودکار نه. */
 function mpre(d){const t=(d&&d.t)||[],p=(d&&d.p)||[],f=(d&&d.fl)|0,c1=p[11],c2=p[12],m=[];
  m.push({ok:!!(d&&d.on==1),t:'لینک',why:'داده‌ای از برد نمی‌آید؛ ارتباط برقرار نیست'});
  m.push({ok:(f&2)!=0,t:'ورودی',why:'برق ورودی وصل نیست؛ بدون ورودی فرمانی روی خروجی نمی‌نشیند'});
@@ -4361,7 +4362,7 @@ async function mset(v){if(W.run)return await pmAlert('داده‌برداری و
 function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
  [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(!a||!m)return;
   a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});
- [1,2].forEach(n=>{const b=document.getElementById('mp'+n);if(b)b.innerHTML=mchk(d);});}
+ [1,2].forEach(n=>{const b=document.getElementById('mp'+n);if(b)b.innerHTML=man?mchk(d):'';});}
 poll();
 
 /* ==================== v1.93 تاریخچهٔ وضعیت / state history ====================

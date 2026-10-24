@@ -826,6 +826,18 @@ function main() {
                 check(w.mchk(tTech).indexOf("وارد نمی") >= 0 &&
                       w.mchk(tTech).indexOf("خرابی فنی") >= 0,
                       "the checklist line lists the blocking reason");
+                [...d.querySelectorAll('[id="mp1"],[id="mp2"]')].forEach(e => e.remove());
+                const box1 = d.createElement("div"); box1.id = "mp1";
+                const box2 = d.createElement("div"); box2.id = "mp2";
+                d.body.appendChild(box1); d.body.appendChild(box2);
+                w.mview({ on: 1, fl: 32, p: [] });
+                check(box1.innerHTML.indexOf("mpre") < 0 &&
+                      box1.innerHTML.length > 50 &&
+                      box2.innerHTML.length > 50,
+                      "in manual mode both channel cards show the checklist");
+                w.mview({ on: 1, fl: 2, p: [] });
+                check(box1.innerHTML === "" && box2.innerHTML === "",
+                      "in auto mode the checklist is not shown");
             }
 
             return;

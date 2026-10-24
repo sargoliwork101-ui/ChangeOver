@@ -4201,12 +4201,11 @@ def test_median_param_saturates():
 
 def test_v1100_channel_independence_and_heal():
     """[EN] v1.100 (user 2026-10-24): a battery event on one half stops only
-    its own channel; 10 healthy minutes heal the JIT strike budget; the
-    thermal rest freezes (not clears) the dead-battery clock. Source
+    its own channel; 10 healthy minutes heal the JIT strike budget. Source
     contracts; the board itself is still the only proof.
     [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): رویداد باتریِ هر نیم فقط کانال
     خودش را نگه می‌دارد؛ ۱۰ دقیقه کار سالم شمارندهٔ ضربه‌ها را صفر می‌کند؛
-    استراحت حرارتی ساعتِ باتری فرسوده را فریز می‌کند نه پاک. قرارداد کد؛
+    قرارداد کد؛
     اثبات نهایی فقط روی برد."""
     charger_c = CHARGER_C.read_text()
     charger_h = CHARGER_H.read_text()
@@ -4244,11 +4243,10 @@ def test_v1100_channel_independence_and_heal():
 
     dead_body = charger_c.split("static void func__Charger_DeadBatteryTick", 1)[1].split("\n}", 1)[0]
     zero_block = dead_body.split("Step 2:", 1)[1].split("bool__charging", 1)[0]
-    check("CHG_STATE_THERMAL_REST" not in zero_block,
-          "the thermal rest must not zero the dead-battery clock any more")
-    check("CHG_STATE_THERMAL_REST" in dead_body.split("Step 2:", 1)[0] and
-          "BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;" in dead_body.split("Step 2:", 1)[0],
-          "the thermal rest must freeze the clock without feeding the pause gap")
+    check("CHG_STATE_THERMAL_REST" in zero_block and
+          "UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;" in zero_block,
+          "until the user decides otherwise, the 2026-10-22 rule stands: the "
+          "thermal rest resets the dead-battery clock")
 
 
 
