@@ -795,6 +795,39 @@ function main() {
                 }
                 process.exit(failures === 0 ? 0 : 1);
             });
+            /* [EN] v1.100: the manual-mode precondition checklist - green
+                     ticks when every condition holds, named reasons when not,
+                     and the same list gates the mode.
+               [FA] v1.100: چک‌لیست پیش‌شرط‌های مود دستی - تیک سبز وقتی همه درست،
+                     دلیلِ نام‌دار وقتی غلط، و همان فهرست جلوی ورود. */
+            {
+                const all = w.mpre({ on: 1, fl: 2, t: [], p: [] });
+                check(all.length === 6 && all.every(x => x.ok),
+                      "a healthy board shows six green manual-mode conditions",
+                      JSON.stringify(all));
+                const noLink = w.mpre({ on: 0, fl: 2, t: [], p: [] });
+                check(!noLink[0].ok && noLink[0].why.indexOf("ارتباط") >= 0,
+                      "a dead link names its reason", noLink[0].why);
+                const tTech = { on: 1, fl: 2, p: [] }; tTech.t = []; tTech.t[19] = 128;
+                const rTech = w.mpre(tTech);
+                check(!rTech[3].ok && !rTech[5].ok,
+                      "the technical lockout lights its own tick and the no-fault tick",
+                      JSON.stringify(rTech));
+                const tFin = { on: 1, fl: 2, p: [] }; tFin.t = []; tFin.t[6] = 7;
+                const rFin = w.mpre(tFin);
+                check(!rFin[4].ok && rFin[4].why.indexOf("نهایی") >= 0,
+                      "a final-fault channel names the third-strike reason", rFin[4].why);
+                const tCut = { on: 1, fl: 2, t: [] }; tCut.p = []; tCut.p[11] = 0;
+                const rCut = w.mpre(tCut);
+                check(!rCut[2].ok && rCut[2].why.indexOf("قطع") >= 0,
+                      "a panel-disabled channel names it", rCut[2].why);
+                check(w.mchk({ on: 1, fl: 2, t: [], p: [] }).indexOf("همه سبز") >= 0,
+                      "the checklist line says ready when all green");
+                check(w.mchk(tTech).indexOf("وارد نمی") >= 0 &&
+                      w.mchk(tTech).indexOf("خرابی فنی") >= 0,
+                      "the checklist line lists the blocking reason");
+            }
+
             return;
         }
         console.log("=".repeat(68));

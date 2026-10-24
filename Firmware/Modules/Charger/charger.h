@@ -311,6 +311,12 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
                "calibrated edge must sit below the default trip");
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_INPUT_VALID_MAX_MV       28000u
+/* [EN] v1.100 (user 2026-10-24): 10 healthy minutes with no hardware trip
+   heal the JIT strike budget; the FINAL_FAULT latch stays boot-only.
+   [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): ۱۰ دقیقه کارِ سالم بدون تریپ
+   سخت‌افزاری، شمارندهٔ ضربه‌های JIT را صفر می‌کند؛ قفل خطای نهایی همچنان فقط
+   با ری‌استارت آزاد می‌شود. */
+#define CHG_JIT_TRIP_CLEAR_MS        600000u
 #define CHG_THERMAL_CONTINUOUS_MS    3600000u
 #define CHG_THERMAL_REST_MS           600000u
 #define CHG_THERMAL_CURRENT_MARGIN_MA    50u

@@ -446,6 +446,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evtt{color:var(--mu);font-family:Vazirmatn;white-space:nowrap;min-width:64px}
 .evtd{flex:1}
 .evtv{color:var(--mu);font-family:Vazirmatn}
+.mok{color:#2f9e63;font-weight:700}.mbad{color:#e5484d;font-weight:700}
 .evttag{display:inline-block;min-width:8px;height:8px;border-radius:2px;margin-left:6px;background:#5b6472}
 .evttag.g{background:#2f9e63}.evttag.y{background:#c9a227}.evttag.r{background:#c0392b}
 </style></head><body>
@@ -455,7 +456,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ecb89fa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a18333a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1416,7 +1417,7 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 <div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (کالیبره)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span dir="ltr"><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
 <div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s onkeydown="qmkey(${n},event)"></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
-<div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
+<div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div><div class=\"lb\" id=\"mp${n}\"></div>\n
 <table>${[['ADC خام','count',0],['ولتاژ شنت',' میکروولت',1],['جریان بدون فیلتر',' میلی‌آمپر',2],['جریان فیلترشده',' میلی‌آمپر',3],['جریان باتری (iest = فیلترشده)',' میلی‌آمپر',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}"></b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰ میلی‌ولت، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
 <canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#78849f"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}"></b> mA</span><span><i style="background:#63a2ff"></i>فیلترشده · نوسان <b class="n" id="pf${n}"></b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
@@ -1580,15 +1581,10 @@ function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$
 function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];qput(x[0],x[1]);});pdef();ldef();qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
-/* [EN] v1.33: the q20..q26 input boxes went when the duplicate profile form
-   did, so there is no longer a "typed but not yet applied" state for these
-   seven - the chart writes straight to the board. qv() is now just "the
-   applied value, or the factory default before the first frame arrives",
-   and the .p preview flag it used to return had no readers left.
-   [FA] کادرهای ‎q20..q26‎ همراه فرم تکراری profile رفتند، پس دیگر حالت «تایپ
-   شده ولی هنوز اعمال نشده» برای این هفت تا وجود ندارد - نمودار مستقیم روی
-   برد می‌نویسد. qv() حالا فقط «مقدار اعمال‌شده، یا پیش‌فرض کارخانه پیش از
-   رسیدن اولین فریم» است و پرچم پیش‌نمایشی که برمی‌گرداند هیچ خواننده‌ای نداشت. */
+/* [EN] v1.33: q20..q26 write straight to the board; qv() returns the applied
+   value (or the factory default before the first frame). No preview state.
+   [FA] v1.33: کادرهای ‎q20..q26‎ مستقیم روی برد می‌نویسند؛ qv() مقدار اعمال‌شده
+   (یا پیش‌فرض کارخانه) را می‌دهد. حالت پیش‌نمایش نیست. */
 /* [EN] Chart profile state: d is the last applied board value, while v is
    the local requested value when it is pending. The renderer uses v for the
    setpoint and zone geometry immediately, then drops back to d when the
@@ -2003,16 +1999,10 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
    [FA] v1.32: اعداد حلقه و زمان‌بندی روی خود نمودار، کنار همان خطی که رویش اثر
    می‌گذارند می‌آیند؛ هر tspan مثل برچسب محور ‎data-i‎ دارد، پس همان ویرایشگر Float
    سرویسشان می‌دهد. عمداً کم‌صدا: ریز و محو تا هاور. */
- /* [EN] The timers and gains used to be drawn here, as <tspan> runs floating
-    over the plane. They are gone from the picture and live in chips under it
-    now (user order 2026-10-03: "write those times underneath so the charts do
-    not get so crowded - do the same for the gains"). Nothing became
-    read-only: the chips carry the same data-i and the same editor.
-    [FA] زمان‌ها و گین‌ها قبلاً همین‌جا روی صفحه رسم می‌شدند. حالا از تصویر
-    بیرون آمده‌اند و زیر نمودار به‌صورت تراشه نشسته‌اند (دستور کاربر: «اون
-    زمان‌ها رو همون زیرش بنویس که انقدر شلوغ نشه نمودارها؛ گین هم همین کار رو
-    براش بکن»). هیچ‌چیز فقط‌خواندنی نشد: تراشه‌ها همان ‎data-i‎ و همان ویرایشگر
-    را دارند. */
+ /* [EN] The timers and gains live in chips under the chart now (user order
+    2026-10-03), same data-i and the same editor - nothing is read-only.
+    [FA] زمان‌ها و گین‌ها حالا زیر نمودار روی تراشه‌اند (دستور کاربر ۲۰۲۶-۱۰-۰۳)،
+    همان ‎data-i‎ و همان ویرایشگر؛ چیزی فقط‌خواندنی نشد. */
  s+=put(PL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
  /* عددهای شارژ زنده - دقیقاً روی همهٔ خط‌ها و نوشته‌ها (آخرین لایهٔ رسم)،
     با جداکنندهٔ عمودی ساده تا در هم نروند و هالهٔ تیره برای خوانایی. */
@@ -2415,16 +2405,10 @@ function evedit(el){
  const close=save=>{if(done)return;done=true;
   if(save){const n=parseInt(inp.value,10);
    if(!isNaN(n)&&n!==v){EVWANT[id]=n;
-    /* [EN] Some of these ids also have a classic input in the settings tab.
-       Leaving it stale makes qv() see "typed value != applied value" and the
-       chart then labels the line "preview", dashed - announcing a pending
-       change that does not exist. Two representations of one number, so both
-       move together or neither is trustworthy.
-       [FA] بعضی از این شناسه‌ها در تب تنظیمات ورودی کلاسیک هم دارند. کهنه
-       گذاشتنش باعث می‌شود qv() ببیند «مقدار تایپ‌شده با اعمال‌شده فرق دارد» و
-       نمودار آن خط را خط‌چین و «پیش‌نمایش» برچسب بزند - اعلام تغییری معلق که
-       اصلاً وجود ندارد. دو نمایش از یک عدد: یا با هم حرکت می‌کنند یا هیچ‌کدام
-       قابل اعتماد نیست. */
+    /* [EN] Two representations of one number move together, or qv() fakes a
+       pending "preview" that does not exist.
+       [FA] دو نمایش از یک عدد باید با هم حرکت کنند، وگرنه qv() تغییرِ معلقِ
+       ناموجود می‌سازد. */
     const qe=$('q'+id);if(qe)qe.value=n;
     qput(id,n);}}
   evclose();qgraph();};
@@ -2473,16 +2457,10 @@ document.addEventListener('click',e=>{
  if(!EVB[+t.dataset.i])return;
  evedit(t);});
 
-/* [EN] No EVOPEN guard here, deliberately. The chart freezes while you type
-   because you are aiming at a label on it; the table is a read-only report
-   and a report that stops reporting is just stale. Mutation testing is what
-   settled this: removing the guard broke nothing, which meant the guard was
-   defending nothing - so it went, rather than gaining a test to justify it.
-   [FA] اینجا عمداً گاردِ EVOPEN نیست. نمودار موقع تایپ فریز می‌شود چون شما
-   به برچسبی روی آن نشانه رفته‌اید؛ ولی جدول یک گزارش فقط‌خواندنی است و
-   گزارشی که گزارش ندهد فقط کهنه است. موتیشن‌تست این را حل کرد: برداشتن گارد
-   هیچ‌چیزی را نشکست، یعنی گارد از هیچ‌چیز دفاع نمی‌کرد - پس خودش رفت، نه
-   اینکه تستی برای توجیهش اضافه شود. */
+/* [EN] No EVOPEN guard here, deliberately: the table is a read-only report,
+   and mutation testing showed the guard defended nothing.
+   [FA] اینجا عمداً گاردِ EVOPEN نیست: جدول گزارشِ فقط‌خواندنی است و موتیشن‌تست
+   نشان داد گارد از هیچ‌چیز دفاع نمی‌کرد. */
 
 
 
@@ -4250,14 +4228,32 @@ async function qzero(n){if(W.run)return await pmAlert('داده‌برداری �
  if(!D||D.on!=1)return await pmAlert('لینک STM32 برقرار نیست.');
  const man=manOn(),fx=D&&D.p[13+2*n]===1;if(!man&&!fx&&!await pmConfirm('مود دستی خاموش است؛ روشن شود و duty صفر گردد؟'))return;
  try{if(!man&&!fx)await setv(19,1);await setv(14+2*n,0);}catch(e){await pmAlert(e);}}
+/* [EN] v1.100 (user 2026-10-24): the manual-mode preconditions, live. Each
+   one is a green tick or a named reason why the mode will not start; the same
+   list gates the button. [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): پیش‌شرط‌های
+   مود تست دستی، زنده. هر کدام یا تیک سبز است یا دلیلِ نرفتن؛ همان فهرست
+   جلوی دکمه را هم می‌گیرد. */
+function mpre(d){const t=(d&&d.t)||[],p=(d&&d.p)||[],f=(d&&d.fl)|0,c1=p[11],c2=p[12],m=[];
+ m.push({ok:!!(d&&d.on==1),t:'لینک',why:'داده‌ای از برد نمی‌آید؛ ارتباط برقرار نیست'});
+ m.push({ok:(f&2)!=0,t:'ورودی',why:'برق ورودی وصل نیست؛ بدون ورودی فرمانی روی خروجی نمی‌نشیند'});
+ m.push({ok:(c1==null||+c1!=0)&&(c2==null||+c2!=0),t:'کانال‌ها',why:'کانالی از پنل قطع است (فعال‌بودن شارژر ۱ یا ۲)'});
+ m.push({ok:((+t[19]|0)&128)==0,t:'فنی',why:'قفل خرابی فنی برد روشن است و فقط با ری‌استارت آزاد می‌شود'});
+ m.push({ok:((+t[6]|0)!=7)&&((+t[13]|0)!=7),t:'نهایی',why:'کانالی در خطای نهایی (ضربهٔ سوم) است'});
+ m.push({ok:(+t[19]|0)==0,t:'بدون خطا',why:'خطای قفل‌شده‌ای هست؛ اول ریشهٔ خطا را برطرف کنید'});
+ return m;}
+function mchk(d){const m=mpre(d),bad=m.filter(x=>!x.ok);
+ return 'پیش‌شرط‌های مود دستی: '+m.map(x=>'<span class="'+(x.ok?'mok':'mbad')+'" title="'+esc(x.ok?'درست است':x.why)+'">'+(x.ok?'✓':'✗')+' '+x.t+'</span>').join(' · ')+
+ (bad.length?'<br>تا سبزشدن همه، مود دستی وارد نمی‌شود: '+bad.map(x=>x.why).join('؛ '):'<br>همه سبز است — مود دستی آماده است.');}
 async function mset(v){if(W.run)return await pmAlert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
  if(!D||D.on!=1)return await pmAlert('لینک STM32 برقرار نیست.');const man=manOn();if((man?1:0)===v)return;
+ if(v){const bad=mpre(D).filter(x=>!x.ok);if(bad.length)return await pmAlert('مود دستی وارد نشد؛ این شرط‌ها سبز نیستند:\n• '+bad.map(x=>x.why).join('\n• ')+'\nوقتی همه سبز شدند، دوباره بزنید.');}
  if(v&&!man&&!await pmConfirm('شارژر خودکار و محافظت‌های باتری متوقف می‌شوند و duty را خودتان تعیین می‌کنید. ادامه؟'))return;
  try{await setv(19,v);}catch(e){await pmAlert(e);}}
 [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(a)a.onclick=()=>mset(0);if(m)m.onclick=()=>mset(1);});
 function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
  [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(!a||!m)return;
-  a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});}
+  a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});
+ [1,2].forEach(n=>{const b=document.getElementById('mp'+n);if(b)b.innerHTML=mchk(d);});}
 poll();
 
 /* ==================== v1.93 تاریخچهٔ وضعیت / state history ====================

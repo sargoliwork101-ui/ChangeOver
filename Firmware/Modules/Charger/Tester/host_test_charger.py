@@ -4199,10 +4199,64 @@ def test_median_param_saturates():
           "esp_link.c: FILTER_MEDIAN_SIZE must saturate before the 8-bit cast")
 
 
+def test_v1100_channel_independence_and_heal():
+    """[EN] v1.100 (user 2026-10-24): a battery event on one half stops only
+    its own channel; 10 healthy minutes heal the JIT strike budget; the
+    thermal rest freezes (not clears) the dead-battery clock. Source
+    contracts; the board itself is still the only proof.
+    [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): رویداد باتریِ هر نیم فقط کانال
+    خودش را نگه می‌دارد؛ ۱۰ دقیقه کار سالم شمارندهٔ ضربه‌ها را صفر می‌کند؛
+    استراحت حرارتی ساعتِ باتری فرسوده را فریز می‌کند نه پاک. قرارداد کد؛
+    اثبات نهایی فقط روی برد."""
+    charger_c = CHARGER_C.read_text()
+    charger_h = CHARGER_H.read_text()
+
+    check(re.search(r"#define CHG_JIT_TRIP_CLEAR_MS\s+600000u", charger_h),
+          "the strike budget must heal after 10 healthy minutes (600000 ms)")
+
+    jit_body = charger_c.split("static void func__Charger_HandleJitTrip", 1)[1].split(
+        "static uint16_t func__Charger_RetryDuty", 1)[0]
+    check("uint32_t__jitLastTripTick = uint32_t__nowTick;" in jit_body,
+          "every hardware trip must stamp its time for the heal clock")
+
+    heal_pos = charger_c.find("CHG_JIT_TRIP_CLEAR_MS")
+    check(heal_pos > 0,
+          "the heal must use the named 10-minute constant, not a magic number")
+    heal_body = charger_c[heal_pos - 1500:heal_pos + 400]
+    check("CHG_STATE_FINAL_FAULT" in heal_body and "CHG_STATE_JIT_RETRY_WAIT" in heal_body,
+          "the heal must never run while a final fault or a pending retry is active")
+
+    mirror_body = charger_c.split("Battery-lost mirror", 1)[1].split("#endif", 1)[0]
+    check("func__Fault_IsChannelBatteryAbsent(uint8_t__channelIndex)" in mirror_body,
+          "the bat-lost mirror must name the owner per channel, not stop both")
+
+    gate_pos = charger_c.find("v1.100 (user order 2026-10-24): a battery-presence episode alone")
+    check(gate_pos > 0,
+          "the global gate must document the battery-only carve-out")
+    gate_body = charger_c[gate_pos:gate_pos + 1800]
+    check("FAULT_CHARGER_BAT_LOST" in gate_body and "bool__faultBlocking" in gate_body,
+          "a battery-only episode must be carved out of the blanket stop")
+    check("bool__batteryFaultOnly" in gate_body and "APP_STATE_FAULT" in gate_body,
+          "an APP FAULT that is not the battery episode must keep the blanket stop")
+    check("(func__Fault_Get() != FAULT_NONE)" not in charger_c.split(
+        "func__Charger_CaptureDiag", 1)[1].split("bool__controlAllowed = false;", 1)[0],
+          "the old any-fault blanket stop must be gone from the main gate")
+
+    dead_body = charger_c.split("static void func__Charger_DeadBatteryTick", 1)[1].split("\n}", 1)[0]
+    zero_block = dead_body.split("Step 2:", 1)[1].split("bool__charging", 1)[0]
+    check("CHG_STATE_THERMAL_REST" not in zero_block,
+          "the thermal rest must not zero the dead-battery clock any more")
+    check("CHG_STATE_THERMAL_REST" in dead_body.split("Step 2:", 1)[0] and
+          "BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;" in dead_body.split("Step 2:", 1)[0],
+          "the thermal rest must freeze the clock without feeding the pause gap")
+
+
+
 def main():
     tests = [
         test_modules_enabled_build,
         test_median_param_saturates,
+        test_v1100_channel_independence_and_heal,
         test_master_enable_constant_is_single_gate,
         test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off,
         test_transformer_known_not_bypassable_bringup_only_when_zero,

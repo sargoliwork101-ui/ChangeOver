@@ -65,6 +65,12 @@ typedef struct
     uint16_t uint16_t__dutyPermille;
     uint16_t uint16_t__dutyBeforeTripPermille;
     uint8_t uint8_t__jitTripCount;
+    /* [EN] v1.100: tick of the last hardware trip; 10 healthy minutes later
+       the strike budget heals (user order 2026-10-24). The FINAL_FAULT latch
+       ‎itself stays boot-only. / [FA] v1.100‎: تیک آخرین تریپ سخت‌افزاری؛ ۱۰
+       دقیقه کارِ سالم بعد، شمارندهٔ ضربه‌ها صفر می‌شود (دستور کاربر ۲۰۲۶-۱۰-۲۴).
+       خود قفلِ خطای نهایی همچنان فقط با ری‌استارت آزاد می‌شود. */
+    uint32_t uint32_t__jitLastTripTick;
     charger_state_t charger_state_t__state;
     uint32_t uint32_t__absorbAccumTicks; /* [EN] accumulated time inside the 14.4..14.5 V window, ticks / زمان جمع‌شده داخل پنجره ۱۴٫۴ تا ۱۴٫۵ ولت */
     uint32_t uint32_t__absorbLastTick;   /* [EN] previous-pass tick while in ABSORB, for the accumulation delta / تیک پاس قبلی در ابزورب برای دلتای جمع */
@@ -715,6 +721,7 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
     }
 
     charger_channel_state_t__channel->uint8_t__jitTripCount++;
+    charger_channel_state_t__channel->uint32_t__jitLastTripTick = uint32_t__nowTick;
 
     if (charger_channel_state_t__channel->uint8_t__jitTripCount >= 3u)
     {
@@ -2518,19 +2525,30 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
         BOOL__G__DeadAbsentTiming[uint8_t__channelIndex] = false;
     }
 
-    /* [EN] Step 2: scenario off, or the channel reached FLOAT (including via
-           the 1-hour absorb ceiling), or the channel is in its 1-hour thermal
-           rest (user order 2026-10-22: reset dead-battery timer on thermal
-           rest so larger parallel battery banks are not falsely condemned).
-           Clock back to zero.
-       [FA] گام ۲: سناریو خاموش است، یا کانال به FLOAT رسیده (شامل ورود اجباری
-           با سقف ۱ ساعتهٔ ابزورب)، یا وارد استراحت حرارتی ۱ ساعته شده (دستور
-           کاربر ۲۰۲۶-۱۰-۲۲: ریست تایمر در استراحت ۱ ساعته برای پشتیبانی از
-           افزایش ظرفیت باتری‌ها)؛ ساعت صفر می‌شود. */
-    if ((uint32_t__timeoutMs == 0u) ||
-        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) ||
-        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
+    /* [EN] v1.100 (user order 2026-10-24): the 1-hour thermal rest FREEZES
+           the dead-battery clock instead of clearing it. Clearing here made
+           the 24-hour verdict unreachable - every hour of max-current bulk was
+           wiped by its own 10-minute rest. The rest is part of charging, not
+           an interruption: the pause clock is not fed either, so the gap rule
+           cannot wipe it mid-rest.
+       [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): استراحت حرارتیِ ۱ ساعته ساعتِ
+           باتری فرسوده را «فریز» می‌کند نه پاک. پاک‌کردن، قضاوتِ ۲۴ ساعته را
+           غیرقابل‌دسترس کرده بود - هر ساعت شارژ با حداکثر جریان با استراحتِ
+           ۱۰ دقیقه‌ای خودش پاک می‌شد. استراحت بخشی از شارژ است نه وقفه: ساعتِ
+           مکث هم تغذیه نمی‌شود تا قاعدهٔ وقفه وسطش پاک نکند. */
+    if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_THERMAL_REST) ||
         (UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] != 0u))
+    {
+        BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
+        return;
+    }
+
+    /* [EN] Step 2: scenario off, or the channel reached FLOAT (including via
+           the 1-hour absorb ceiling). Clock back to zero.
+       [FA] گام ۲: سناریو خاموش است، یا کانال به FLOAT رسیده (شامل ورود اجباری
+           با سقف ۱ ساعتهٔ ابزورب)؛ ساعت صفر می‌شود. */
+    if ((uint32_t__timeoutMs == 0u) ||
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT))
     {
         UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
         BOOL__G__DeadWasCharging[uint8_t__channelIndex]  = false;
@@ -2959,6 +2977,15 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         bool__batLostLatched =
             ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE);
 
+        /* [EN] v1.100 (user order 2026-10-24): the two chargers are
+           independent - a battery event on one half stops only its own
+           channel. The live per-channel absence signal names the owner;
+           a channel already held keeps its BAT_LOST until the episode ends.
+           [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): دو شارژر مستقل‌اند - رویداد
+           باتریِ هر نیم فقط کانال خودش را نگه می‌دارد. نشانهٔ زندهٔ هر کانال
+           صاحب را معرفی می‌کند؛ کانالِ نگه‌داشته‌شده تا پایان اپیزود در
+           BAT_LOST می‌ماند. */
+
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
         {
             /* [EN] A FINAL_FAULT latch is never overwritten by the mirror
@@ -2973,6 +3000,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                بیت خطا همچنان FAULT و SafeIdle را می‌آورد، پس با ردشدن چیزی
                گم نمی‌شود - رفتار رله/PWM یکسان است. */
             if ((bool__batLostLatched == true) &&
+                (func__Fault_IsChannelBatteryAbsent(uint8_t__channelIndex) != false) &&
                 (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
                  CHG_STATE_BAT_LOST) &&
                 (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
@@ -3022,30 +3050,54 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
        قطع شده است؛ در صورت حضور برق ورودی، شارژر باید فعال بماند تا باتریِ
        ضعیف به ۲۱٫۲ ولت برسد، سهمیهٔ ۲۰ بار شارژ سناریوی ۵ کار کند و در
        سناریوی ۶ فقط کانال خراب متوقف شود. */
-    if ((measurement_snapshot_t__snap == NULL) ||
-        (measurement_snapshot_t__snap->valid == false) ||
-        (CHG_INSTALLED_CHANNEL_MASK == 0u) ||
-#if MODULE_FAULT
-        (func__Fault_Get() != FAULT_NONE) ||
-#endif
-        (app_state_t__state == APP_STATE_FAULT))
+    /* [EN] v1.100 (user order 2026-10-24): a battery-presence episode alone
+       no longer stops BOTH channels - the mirror above stops only the owning
+       channel and the healthy twin keeps charging. Every other fault keeps
+       the blanket stop; an APP FAULT with no battery episode keeps it too.
+       [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): یک اپیزودِ صرفِ باتری دیگر هر دو
+       کانال را نمی‌ایستاند - آینهٔ بالا فقط صاحب را نگه می‌دارد و قلوهٔ سالم
+       به شارژ ادامه می‌دهد. هر خطای دیگر همچنان هر دو را می‌ایستاند. */
     {
-        func__Charger_SafeIdle();
-        if ((measurement_snapshot_t__snap != NULL) &&
-            (measurement_snapshot_t__snap->valid == true) &&
-            (CHG_INSTALLED_CHANNEL_MASK != 0u))
+        bool bool__faultBlocking;
+        bool bool__batteryFaultOnly;
+
+        bool__faultBlocking = false;
+        bool__batteryFaultOnly = false;
+#if MODULE_FAULT
         {
-            for (uint8_t__channelIndex = 0u;
-                 uint8_t__channelIndex < CHG_CHANNEL_COUNT;
-                 uint8_t__channelIndex++)
+            uint32_t uint32_t__faultNow = (uint32_t)func__Fault_Get();
+
+            bool__batteryFaultOnly =
+                (uint32_t__faultNow == (uint32_t)FAULT_CHARGER_BAT_LOST);
+            bool__faultBlocking =
+                ((uint32_t__faultNow &
+                  ~(uint32_t)FAULT_CHARGER_BAT_LOST) != 0u);
+        }
+#endif
+        if ((measurement_snapshot_t__snap == NULL) ||
+            (measurement_snapshot_t__snap->valid == false) ||
+            (CHG_INSTALLED_CHANNEL_MASK == 0u) ||
+            (bool__faultBlocking != false) ||
+            ((app_state_t__state == APP_STATE_FAULT) &&
+             (bool__batteryFaultOnly == false)))
+        {
+            func__Charger_SafeIdle();
+            if ((measurement_snapshot_t__snap != NULL) &&
+                (measurement_snapshot_t__snap->valid == true) &&
+                (CHG_INSTALLED_CHANNEL_MASK != 0u))
             {
-                if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true)
+                for (uint8_t__channelIndex = 0u;
+                     uint8_t__channelIndex < CHG_CHANNEL_COUNT;
+                     uint8_t__channelIndex++)
                 {
-                    func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
+                    if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true)
+                    {
+                        func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
+                    }
                 }
             }
+            return;
         }
-        return;
     }
 
     bool__controlAllowed = false;
@@ -3121,6 +3173,28 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             else
             {
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick = 0u;
+            }
+
+            /* [EN] v1.100 (user order 2026-10-24): 10 minutes of healthy
+               running with no new hardware trip heals the strike budget - a
+               later incident starts from strike one again. The FINAL_FAULT
+               latch is untouched (boot-only release).
+               [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): ۱۰ دقیقه کارِ سالم بدون
+               تریپِ تازه، شمارندهٔ ضربه‌ها را صفر می‌کند - حادثهٔ بعدی دوباره
+               از ضربهٔ اول شروع می‌شود. قفل خطای نهایی دست نمی‌خورد. */
+            if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount > 0u) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__jitLastTripTick != 0u) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+ CHG_STATE_FINAL_FAULT) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+                 CHG_STATE_JIT_RETRY_WAIT) &&
+                (func__Charger_DeadlineElapsed(
+                     uint32_t__nowTick,
+                     CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__jitLastTripTick +
+                         func__Charger_DurationTicks(CHG_JIT_TRIP_CLEAR_MS)) != false))
+            {
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__jitLastTripTick = 0u;
             }
         }
     }
