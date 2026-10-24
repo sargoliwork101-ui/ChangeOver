@@ -444,7 +444,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b4c9c7e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f821a7f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4339,7 +4339,21 @@ function evtRowText(r){
      [FA] ضربان: هیچ اتفاقی نیفتاد و پنل زنده است. */
   if(r.note===5){add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);}
   if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
-  const v='ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
+  /* [EN] v1.109: every row also speaks the battery state - percent (stored
+          on the row since v1.109, or recomputed for older files), the side it
+          is on (discharge / which charge phase / input with no charge) and the
+          battery power in watts (V x A2).
+     [FA] نسخهٔ ۱٫۱۰۹: هر ردیف وضعیت باتری را هم می‌گوید - درصد (از نسخهٔ
+          ۱٫۱۰۹ روی خود ردیف است و برای فایل قدیمی دوباره حساب می‌شود)،
+          سمتی که هست (دشارژ / کدام مرحلهٔ شارژ / برق وصل بدون شارژ) و توان
+          باتری بر حسب وات (ولتاژ × جریان ۲). */
+  const bpct=((r.pct!==null&&r.pct!==undefined)?r.pct:(function(){
+    const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
+          vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
+    if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
+    return Math.round((r.v24-vmin)*100/(vmax-vmin));})());
+  const bmode=(!mains)?'دشارژ':(((c1>0)||(c2>0))?('شارژ — '+stName(c1>=c2?c1:c2)):'برق وصل — شارژ خاموش');
+  const v='باتری '+bpct+'٪ · حالت: '+bmode+' · ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
   /* [EN] v1.96: rails, currents and duties; old files just skip them.
      [FA] ولتاژها، جریان‌ها و duty؛ فایل قدیمی این ستون‌ها را ندارد. */
   const extra=[];
@@ -4349,6 +4363,7 @@ function evtRowText(r){
   if(r.i2!==null)extra.push('جریان کانال ۲ '+(r.i2/1000).toFixed(2)+'A');
   if(r.d1!==null)extra.push('فرمان کانال ۱ '+(r.d1/10).toFixed(0)+'٪');
   if(r.d2!==null)extra.push('فرمان کانال ۲ '+(r.d2/10).toFixed(0)+'٪');
+  if(r.i2!==null)extra.push('توان باتری '+(r.v24*(r.i2||0)/1e6).toFixed(0)+'W');
   return {txt:parts.join(' · '),lv:lv,v:v+(extra.length?' · '+extra.join(' · '):''),time:evtTime(r.epoch)};
 }
 function evtParse(line){
@@ -4359,6 +4374,7 @@ function evtParse(line){
           vin:(f.length>15)?+f[15]:null,v12:(f.length>16)?+f[16]:null,
           i1:(f.length>17)?+f[17]:null,i2:(f.length>18)?+f[18]:null,
           d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
+          pct:(f.length>21)?+f[21]:null,
           band:(+f[10]||0)<21200};
 }
 /* [EN] v1.99: every piece of a line sits in its own span and every number or

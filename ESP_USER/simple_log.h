@@ -327,6 +327,48 @@ static bool func__SimpleLog_OpenDay(void)
 
 static void func__SimpleLog_SaveLast(void);
 
+/**
+ * @brief  [EN] Battery percent from the DISCHARGE map (param 74/75, factory
+ *              21,000..29,000 mV), stored with every row so later analysis
+ *              keeps the same scale even if the map is retuned. Unknown params
+ *              fall back to the factory map.
+ *         [FA] درصد باتری از نگاشت «دشارژ» (پارامتر ۷۴/۷۵، کارخانه
+ *              ۲۱٬۰۰۰..۲۹٬۰۰۰ میلی‌ولت) که با هر ردیف ذخیره می‌شود تا تحلیل
+ *              بعدی همان مقیاس را نگه دارد، حتی اگر نگاشت بعدا تنظیم شود.
+ *              اگر پارامتر هنوز نرسیده باشد، نگاشت کارخانه به کار می‌رود.
+ * @param  uint32_t__batteryMv [EN] Pack voltage in mV / ولتاژ پک
+ * @return uint8_t [EN] Percent 0..100‎ / درصد
+ */
+static uint8_t func__SimpleLog_Pct(uint32_t uint32_t__batteryMv)
+{
+    uint32_t uint32_t__vminMv = 21000u;
+    uint32_t uint32_t__vmaxMv = 29000u;
+    uint32_t uint32_t__rangeMv;
+
+    if (BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMIN_MV] != false)
+    {
+        uint32_t__vminMv = UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMIN_MV];
+    }
+    if (BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMAX_MV] != false)
+    {
+        uint32_t__vmaxMv = UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMAX_MV];
+    }
+    if (uint32_t__batteryMv <= uint32_t__vminMv)
+    {
+        return 0u;
+    }
+    if (uint32_t__batteryMv >= uint32_t__vmaxMv)
+    {
+        return 100u;
+    }
+    uint32_t__rangeMv = uint32_t__vmaxMv - uint32_t__vminMv;
+    if (uint32_t__rangeMv == 0u)
+    {
+        return 0u;
+    }
+    return (uint8_t)(((uint32_t__batteryMv - uint32_t__vminMv) * 100u) / uint32_t__rangeMv);
+}
+
 static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -396,7 +438,13 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     file__day.print(",");
     file__day.print((unsigned long)UINT32_T__G__TlmField[5]);    /* duty ۱ */
     file__day.print(",");
-    file__day.println((unsigned long)UINT32_T__G__TlmField[12]); /* duty ۲ */
+    file__day.print((unsigned long)UINT32_T__G__TlmField[12]); /* duty ۲ */
+    /* [EN] v1.109: battery percent is the LAST column (col 22), so old files
+            stay valid and new files carry the state of charge of their row.
+       [FA] نسخهٔ ۱٫۱۰۹: درصد باتری آخرین ستون (ستون ۲۲) است؛ پس فایل قدیمی
+            معتبر می‌ماند و فایل تازه وضعیت شارژ همان ردیف را دارد. */
+    file__day.print(",");
+    file__day.println((unsigned long)func__SimpleLog_Pct(UINT32_T__G__TlmField[15]));
     file__day.close();
 
     UINT16_T__G__LogRowsToday++;
@@ -612,7 +660,16 @@ static void func__SimpleLog_DetectChanges(void)
     if (func__SimpleLog_AbsDiff(UINT32_T__G__TlmField[15],
                                 UINT32_T__G__LogPrevV24) >= SIMPLE_LOG_VSTEP_MV)
     {
+        /* [EN] v1.109 user order: while the mains are OFF (discharge) every
+                RISE of the pack is recorded as its own row - the one-a-minute
+                throttle stays only for falls and for charging.
+           [FA] دستور کاربر نسخهٔ ۱٫۱۰۹: وقتی برق شهر قطع است (دشارژ) هر
+                «بالا آمدن» پک در ردیف خودش ثبت می‌شود؛ محدودیتِ یکی در دقیقه
+                فقط برای پایین‌رفتن و برای شارژ می‌ماند. */
+        bool bool__riseInDischarge = ((uint8_t__mains == 0u) &&
+                                      (UINT32_T__G__TlmField[15] > UINT32_T__G__LogPrevV24));
         if ((uint16_t__mask != 0u) ||
+            (bool__riseInDischarge != false) ||
             (BOOL__G__LogLastStepValid == false) ||
             ((uint32_t)((uint32_t)millis() - UINT32_T__G__LogLastStepMs) >= SIMPLE_LOG_VSTEP_MIN_MS))
         {

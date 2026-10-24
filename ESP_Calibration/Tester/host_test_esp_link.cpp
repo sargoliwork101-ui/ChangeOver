@@ -1144,13 +1144,21 @@ int main(void)
            [FA] نسخهٔ ۱٫۹۸ (دستور کاربر: لاگ خودش را پر نکند): مرز قطع
                  هیسترزیس دارد و گام ولتاژ حداکثر یک ردیف در دقیقه می‌نویسد.
                  باتری‌ای که روی مرز نوسان می‌کند یا باری که روشن و خاموش
-                 می‌شود نباید تاریخچه را شلوغ کند. */
+                 می‌شود نباید تاریخچه را شلوغ کند.
+           [EN] v1.109 user order: while the mains are OFF every RISE of the
+                 pack is its own row - the throttle stays only for falls and
+                 for charging.
+           [FA] نسخهٔ ۱٫۱۰۹ دستور کاربر: وقتی برق شهر قطع است هر بالا آمدن
+                 پک ردیف خودش را دارد - محدودیت فقط برای پایین‌رفتن و شارژ
+                 می‌ماند. */
         {
             const size_t deadOff2 = ESP_LINK_TLM_FIELD_OFFSET + (28u * 4u);
             const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
 
-            /* the wobble: 21,150 → 21,250 → 21,180, all inside the band */
-            const uint32_t wobble[3] = { 21150u, 21250u, 21180u };
+            /* the wobble: 21,150 → 21,180 → 21,140 - every move stays under
+               the 200 mV step from the last ROW (21,007), so no rise worth a
+               record happens and the log stays quiet */
+            const uint32_t wobble[3] = { 21150u, 21180u, 21140u };
             for (uint8_t k = 0u; k < 3u; k++) {
                 std::vector<uint8_t> f = tlm_payload_v24((uint16_t)(230u + k), wobble[k]);
                 f[deadOff2] = 0x01u; f[deadOff2 + 1u] = 0x00u;
@@ -1175,24 +1183,42 @@ int main(void)
                   "and that row is marked as a band change",
                   std::to_string(row_field(bodyUp, (size_t)rowsBefore, 2u)));
 
-            /* a step inside one minute of the last step row is suppressed */
+            /* v1.109: a RISE in discharge is written even inside the same
+               minute - the user wants a record for every time it came up */
             const uint16_t afterUp = UINT16_T__G__LogRowsToday;
             std::vector<uint8_t> fast = tlm_payload_v24(234u, 21800u);
             fast[deadOff2] = 0x01u; fast[deadOff2 + 1u] = 0x00u;
             fast[deadOff2 + 2u] = 0x00u; fast[deadOff2 + 3u] = 0x00u;
             G_StubMillis += 10000u;             /* 10 s after the last row */
             feed(build_frame(ESP_MSG_TLM_LIVE, fast));
-            check(UINT16_T__G__LogRowsToday == afterUp,
-                  "a second step inside the same minute is not written");
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(afterUp + 1u),
+                  "a rise in discharge is written even inside the same minute");
 
-            /* after the minute it is written again */
-            std::vector<uint8_t> slow = tlm_payload_v24(235u, 22100u);
+            /* a FALL inside the same minute is still suppressed */
+            const uint16_t afterFast = UINT16_T__G__LogRowsToday;
+            std::vector<uint8_t> down = tlm_payload_v24(235u, 21500u);
+            down[deadOff2] = 0x01u; down[deadOff2 + 1u] = 0x00u;
+            down[deadOff2 + 2u] = 0x00u; down[deadOff2 + 3u] = 0x00u;
+            G_StubMillis += 5000u;              /* still inside the minute */
+            feed(build_frame(ESP_MSG_TLM_LIVE, down));
+            check(UINT16_T__G__LogRowsToday == afterFast,
+                  "a fall in discharge inside the same minute is not written");
+
+            /* after the minute the next rise is written again */
+            std::vector<uint8_t> slow = tlm_payload_v24(236u, 22100u);
             slow[deadOff2] = 0x01u; slow[deadOff2 + 1u] = 0x00u;
             slow[deadOff2 + 2u] = 0x00u; slow[deadOff2 + 3u] = 0x00u;
             G_StubMillis += ESP_LOG_VSTEP_MIN_MS;
             feed(build_frame(ESP_MSG_TLM_LIVE, slow));
-            check(UINT16_T__G__LogRowsToday == (uint16_t)(afterUp + 1u),
+            check(UINT16_T__G__LogRowsToday == (uint16_t)(afterFast + 1u),
                   "once the minute has passed the step is written again");
+
+            /* v1.109: the row carries the battery percent as its last column */
+            std::string bodyPct = LittleFS.files[std::string(path)];
+            /* the "fast" row (21,800 mV, factory map 21,000..29,000) = 10% */
+            check(row_field(bodyPct, (size_t)afterUp, 21u) == 10L,
+                  "the row's last column is the battery percent of its voltage",
+                  std::to_string(row_field(bodyPct, (size_t)afterUp, 21u)));
         }
 
         /* [EN] v1.108 (user order 2026-10-24: "the log must be complete"): a

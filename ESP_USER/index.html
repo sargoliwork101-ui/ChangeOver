@@ -1951,7 +1951,8 @@ function evtParse(line){
          v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0,
          vin:(f.length>15)?+f[15]:null,v12:(f.length>16)?+f[16]:null,
          i1:(f.length>17)?+f[17]:null,i2:(f.length>18)?+f[18]:null,
-         d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null};
+         d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
+         pct:(f.length>21)?+f[21]:null};
 }
 /* v1.99: هر تکه از خط در span خودش می‌نشیند؛ عدد و واژهٔ انگلیسی جدا نگه داشته
    می‌شوند تا متن راست‌به‌چپ قاطی نشود. [EN] every piece in its own span, bidi-isolated. */
@@ -1974,7 +1975,20 @@ function evtRenderFa(text,day){
   '<span style="padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)">مجموع: '+rows.length+' خط</span>';
  box.innerHTML=rows.slice().reverse().map(r=>{
   const t=evtTextFa(r);
-  let v='ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
+  /* v1.109: هر ردیف وضعیت باتری را هم می‌گوید - درصد (از نسخهٔ ۱٫۱۰۹ روی
+     خود ردیف است و برای فایل قدیمی دوباره حساب می‌شود)، سمتی که هست
+     (دشارژ / کدام مرحلهٔ شارژ / برق وصل بدون شارژ) و توان باتری بر حسب وات.
+     [EN] v1.109: every row also speaks the battery state - percent (stored on
+     the row since v1.109, or recomputed for older files), the side it is on,
+     and the battery power in watts (V x A2). */
+  const bpct=((r.pct!==null&&r.pct!==undefined)?r.pct:(function(){
+   const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
+         vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
+   if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
+   return Math.round((r.v24-vmin)*100/(vmax-vmin));})());
+  const phn=x=>((typeof EVT_CHG_FA!=='undefined')&&EVT_CHG_FA[x])?EVT_CHG_FA[x]:('#'+x);
+  const bmode=(!r.mains)?'دشارژ':(((r.c1>0)||(r.c2>0))?('شارژ — '+phn(r.c1>=r.c2?r.c1:r.c2)):'برق وصل — شارژ خاموش');
+  let v='باتری '+bpct+'٪ · حالت: '+bmode+' · ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
   /* ولتاژ ورودی و نود، جریان و duty هر دو کانال؛ فایل‌های قدیمی این ستون‌ها
      را ندارند و فقط ولتاژها را نشان می‌دهند. */
   const extra=[];
@@ -1984,6 +1998,7 @@ function evtRenderFa(text,day){
   if(r.i2!==null)extra.push('جریان کانال ۲ '+(r.i2/1000).toFixed(2)+'A');
   if(r.d1!==null)extra.push('فرمان کانال ۱ '+(r.d1/10).toFixed(0)+'٪');
   if(r.d2!==null)extra.push('فرمان کانال ۲ '+(r.d2/10).toFixed(0)+'٪');
+  if(r.i2!==null)extra.push('توان باتری '+(r.v24*(r.i2||0)/1e6).toFixed(0)+'W');
   if(extra.length)v+=' · '+extra.join(' · ');
   return '<div class="evtrow" style="border-inline-start:3px solid '+EVT_LVC[t.lv]+';background:'+EVT_LVB[t.lv]+'">'+
    '<span class="evtt">'+evtIso(evtTimeFa(r.epoch))+'</span>'+

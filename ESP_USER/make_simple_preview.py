@@ -399,6 +399,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var d = new Date((sec || evtNowSec()) * 1000);
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   }
+  function evtPct(v) {
+    /* v1.109 mirror: discharge map 74/75, factory 21,000..29,000 mV */
+    var P0 = (typeof P !== 'undefined') ? P : {};
+    var vmin = (P0[74] != null) ? P0[74] : 21000, vmax = (P0[75] != null) ? P0[75] : 29000;
+    if (v <= vmin) return 0;
+    if (v >= vmax) return 100;
+    return Math.floor(((v - vmin) * 100) / (vmax - vmin));
+  }
   function evtWrite(mask, note, flags, fl2, t) {
     if (evtRows.length >= EVT_MAX_ROWS) { return; }
     var row = [evtNowSec(), Math.floor((Date.now() - counters.t0) / 1000), mask, note,
@@ -408,7 +416,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                t[IDX.imb_mv], t[IDX.dead_mask],
                t[IDX.v_in_mv], t[IDX.v_bat12_mv],
                t[IDX.i1_filtered_ma], t[IDX.i2_filtered_ma],
-               t[IDX.duty1_permille], t[IDX.duty2_permille]];
+               t[IDX.duty1_permille], t[IDX.duty2_permille], evtPct(t[IDX.v_bat24_mv])];
     evtRows.push(row);
     evtLastRowMs = Date.now(); evtLastRowOk = true;
     if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
@@ -462,7 +470,9 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       if (fl !== evtPrev.fl) mask |= EVT_CHG_MODE;
       if (dead !== evtPrev.dead) mask |= EVT_CHG_DEAD;
       if (Math.abs(t[IDX.v_bat24_mv] - evtPrevV24) >= EVT_VSTEP_MV) {
-        if (mask || !evtLastStepOk || (Date.now() - evtLastStepMs) >= EVT_VSTEP_MIN_MS) mask |= EVT_CHG_VSTEP;
+        /* v1.109 mirror: while the mains are OFF every RISE is its own row */
+        var riseInDischarge = (!mains) && (t[IDX.v_bat24_mv] > evtPrevV24);
+        if (mask || riseInDischarge || !evtLastStepOk || (Date.now() - evtLastStepMs) >= EVT_VSTEP_MIN_MS) mask |= EVT_CHG_VSTEP;
       }
       if (mask) { evtQueue(mask, EVT_NOTE_NONE); }
       else { evtFlush(); }

@@ -706,6 +706,79 @@ static void func__T_TestStateHistoryLog(void)
                       "بعد از گذشتن یک دقیقه، گام ولتاژ دوباره می‌نویسد");
     }
 
+    /* ---- v1.109 (دستور کاربر: «توی دشارژ هر وقت اومد بالا باید یک رکورد
+       ذخیره بشه»): در دشارژ هر بالا آمدنِ پک، حتی داخل یک دقیقه، ردیف خودش را
+       می‌نویسد؛ پایین‌رفتن هنوز داخل دقیقه بی‌صداست. درصد باتری هم ستون آخر
+       هر ردیف است و از نگاشت ۲۱٬۰۰۰..۲۹٬۰۰۰ حساب می‌شود. ---- */
+    {
+        /* نگاشت را صریح می‌کنیم: تستِ پارامترها قبلاً سقف نگاشت را جابه‌جا کرده */
+        UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMIN_MV] = 21000u;
+        BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMIN_MV] = true;
+        UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMAX_MV] = 29000u;
+        BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMAX_MV] = true;
+        func__T_Check((func__SimpleLog_Pct(21000u) == 0u) &&
+                      (func__SimpleLog_Pct(25000u) == 50u) &&
+                      (func__SimpleLog_Pct(29000u) == 100u),
+                      "درصد باتری از نگاشت ۲۱٬۰۰۰..۲۹٬۰۰۰ حساب می‌شود");
+
+        const uint16_t uint16_t__before = UINT16_T__G__LogRowsToday;
+        UINT8_T__G__TlmFlags = 0x00u;   /* برق شهر قطع = دشارژ */
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__before + 1u),
+                      "قطع برق شهر برای شروع دشارژ یک ردیف می‌نویسد");
+
+        /* بالا آمدنِ ۳۰۰ میلی‌ولتی، هنوز داخل همان دقیقهٔ گام قبلی */
+        const uint16_t uint16_t__mid = UINT16_T__G__LogRowsToday;
+        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] + 300u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__mid + 1u),
+                      "هر بالا آمدن در دشارژ، حتی داخل یک دقیقه، ردیف خودش را می‌نویسد");
+
+        const uint32_t uint32_t__riseV = UINT32_T__G__TlmField[15];
+
+        /* پایین‌رفتنِ همان اندازه، هنوز داخل دقیقه، بی‌صدا می‌ماند */
+        const uint16_t uint16_t__mid2 = UINT16_T__G__LogRowsToday;
+        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] - 300u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT16_T__G__LogRowsToday == uint16_t__mid2,
+                      "پایین‌رفتن در دشارژ هنوز داخل یک دقیقه ردیف نمی‌سازد");
+
+        /* ستون آخر هر ردیف، درصد باتریِ همان لحظه است */
+        std::string string__day;
+        {
+            File file__day = LittleFS.open(char__path, "r");
+            while (file__day.available() > 0) {
+                string__day += file__day.readStringUntil('\n').c_str();
+                string__day += "\n";
+            }
+            file__day.close();
+        }
+        std::string string__last;
+        {
+            size_t size_t__cut = string__day.rfind('\n', string__day.size() - 2u);
+            if (size_t__cut != std::string::npos) {
+                string__last = string__day.substr(size_t__cut + 1u);
+            }
+        }
+        while ((string__last.empty() == false) &&
+               ((string__last.back() == '\n') || (string__last.back() == '\r')))
+        {
+            string__last.pop_back();
+        }
+        std::string string__want = "," + std::to_string(func__SimpleLog_Pct(uint32_t__riseV));
+        func__T_Check((string__last.size() >= string__want.size()) &&
+                      (string__last.rfind(string__want) == (string__last.size() - string__want.size())),
+                      "ردیف با درصد باتریِ همان لحظه تمام می‌شود");
+
+        /* برق شهر را برمی‌گردانیم تا وضعیت برای ادامهٔ تست‌ها مثل قبل بماند */
+        UINT8_T__G__TlmFlags = 0x02u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+    }
+
     /* ---- v1.108 (دستور ۲۰۲۶-۱۰-۲۴: «لاگ باید کامل باشد»): قطع/وصل برق شهر
        هرگز پشت پنجرهٔ ادغام نمی‌ماند. برد ممکن است همان لحظهٔ قطع، برق پنل را
        ببرد؛ پس ردیف باید بی‌درنگ به فلش برسد - تست عمداً پنجره را باز نمی‌کند. */

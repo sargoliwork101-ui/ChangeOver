@@ -807,6 +807,13 @@ let evtLastRowMs = 0, evtLastRowOk = false, evtLastStepMs = 0, evtLastStepOk = f
 let evtHasPrev = false, evtPrev = null, evtPrevV24 = 0;
 let evtBooted = false, evtLastFlags = 0, evtLastFl2 = 0, evtLastT = null;
 
+function evtPct(v) {
+    /* v1.109 mirror: discharge map 74/75, factory 21,000..29,000 mV */
+    const vmin = (P[74] != null) ? P[74] : 21000, vmax = (P[75] != null) ? P[75] : 29000;
+    if (v <= vmin) return 0;
+    if (v >= vmax) return 100;
+    return Math.floor(((v - vmin) * 100) / (vmax - vmin));
+}
 function evtWrite(mask, note, flags, fl2, t) {
     if (evtRows.length >= EVT_MAX_ROWS) return;
     const nowSec = Math.floor(Date.now() / 1000);
@@ -814,7 +821,8 @@ function evtWrite(mask, note, flags, fl2, t) {
                   (flags & 0x02) ? 1 : 0, flags,
                   t[6], t[13], t[19], fl2,
                   t[15], t[17], t[18], t[25], t[28],
-                  t[14], t[16], t[3], t[10], t[5], t[12]].join(','));
+                  t[14], t[16], t[3], t[10], t[5], t[12],
+                  evtPct(t[15])].join(','));
     evtLastRowMs = Date.now();
     evtLastRowOk = true;
     if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
@@ -863,7 +871,9 @@ function evtFrame(flags, fl2, t) {
     if (fl !== evtPrev.fl) mask |= EVT_CHG_MODE;
     if (dead !== evtPrev.dead) mask |= EVT_CHG_DEAD;
     if (Math.abs(t[15] - evtPrevV24) >= EVT_VSTEP_MV) {
-        if (mask || !evtLastStepOk || (Date.now() - evtLastStepMs) >= EVT_VSTEP_MIN_MS) {
+        /* v1.109 mirror: while the mains are OFF every RISE is its own row */
+        const riseInDischarge = (!mains) && (t[15] > evtPrevV24);
+        if (mask || riseInDischarge || !evtLastStepOk || (Date.now() - evtLastStepMs) >= EVT_VSTEP_MIN_MS) {
             mask |= EVT_CHG_VSTEP;
         }
     }
@@ -891,9 +901,17 @@ function evtTailText(day) {
     return [EVT_HEADER].concat(rows.slice(-30)).join('\n');
 }
 const evtStartSec = Math.floor(Date.now() / 1000);
-setInterval(() => {
-    if (evtLastRowOk && (Date.now() - evtLastRowMs) >= 21600000) evtQueue(0, EVT_NOTE_HEARTBEAT);
-}, 60000);
+/* [EN] v1.109: the heartbeat timer runs only while the server serves. In
+ *      --self-test mode it used to keep the process alive forever, hanging the
+ *      whole host syntax gate after its PASS line.
+ * [FA] نسخهٔ ۱٫۱۰۹: شمارندهٔ ضربان فقط هنگام خدمت‌رسانی سرور می‌دود. در حالت
+ *      خودآزمای قبلاً پروسه را برای همیشه زنده نگه می‌داشت و دروازهٔ نحویِ هاست
+ *      را پس از خطِ «قبول» قفل می‌کرد. */
+function evtHeartbeatStart() {
+    setInterval(() => {
+        if (evtLastRowOk && (Date.now() - evtLastRowMs) >= 21600000) evtQueue(0, EVT_NOTE_HEARTBEAT);
+    }, 60000);
+}
 
 /* [EN] LUT handshake state of the simulated board, and the point window
  *      DERIVED from cal_lut.h - the same rule the telemetry width follows:
@@ -1245,10 +1263,16 @@ function runPreviewSelfTests() {
 if (process.argv.includes("--self-test")) {
     runPreviewSelfTests();
     console.log("ALL PANEL PREVIEW SCENARIO-5/6 SELF-TESTS PASSED");
+    /* [EN] v1.109: nothing must keep the process alive after the verdict, so
+     *      the gate that shells out to this file can finish.
+     * [FA] نسخهٔ ۱٫۱۰۹: پس از رأیِ خودآزمایی هیچ چیز نباید پروسه را زنده نگه
+     *      دارد تا دروازه‌ای که این فایل را صدا می‌زند بتواند تمام شود. */
+    process.exit(0);
 } else {
     /* [EN] Keep state advancing independently of browser polling.
      * [FA] وضعیت شبیه‌سازی مستقل از درخواست‌های پنل جلو می‌رود. */
     setInterval(() => { SNAP = telemetry(); }, SIM_MS);
+    evtHeartbeatStart();
     server.listen(PORT, "0.0.0.0", () => {
         console.log(`panel preview: http://0.0.0.0:${PORT}  (charge tab: BULK->ABSORB->FLOAT->reentry cycle, ~1 min loop)`);
     });
