@@ -4271,7 +4271,7 @@ def test_v1102_thermal_rest_panel_adjustable():
 
     # 1) One table owns window + factory default - same pattern as CHG_DEAD_ROWS.
     rows = re.findall(r"X\((TRIGGER_MA|CONTINUOUS_MS|REST_MS),\s*(\d+)u,\s*(\d+)u,\s*(\d+)u\)", charger_c)
-    want = {("TRIGGER_MA", "0", "3000", "0"),
+    want = {("TRIGGER_MA", "0", "3000", "600"),
             ("CONTINUOUS_MS", "0", "21600000", "3600000"),
             ("REST_MS", "0", "3600000", "600000")}
     check(set(rows) == want,
@@ -4279,6 +4279,11 @@ def test_v1102_thermal_rest_panel_adjustable():
     check("CHG_THERMAL_ROWS(X)" in charger_c and
           charger_c.count("CHG_THERMAL_ROWS(X)") == 1,
           "the thermal rows must expand exactly once (factory defaults + clamp)")
+    # [EN] user order 2026-10-24: the factory default is the REAL old value
+    #      (600 mA = the factory ceiling 650 minus the 50 mA gap), never the
+    #      placeholder 0. [FA] پیش‌فرض کارخانه همان عدد واقعی قبلی است (۶۰۰).
+    check(("TRIGGER_MA", "0", "3000", "600") in set(rows),
+          "the trigger default must be 600 mA = 650 - 50 (the old effective value)")
     check(re.search(r"#define CHG_THERMAL_CURRENT_MARGIN_MA\s+50u", charger_h),
           "the auto band edge keeps the 50 mA margin")
 
@@ -4332,7 +4337,7 @@ def test_v1102_thermal_rest_panel_adjustable():
 
     # 5) esp_link.h def values = factory defaults, ranges = the panel arrays.
     for name, dflt, lo, hi in (
-            ("CHG_THERMAL_TRIGGER_MA", 0, 0, 3000),
+            ("CHG_THERMAL_TRIGGER_MA", 600, 0, 3000),
             ("CHG_THERMAL_CONTINUOUS_MS", 3600000, 0, 21600000),
             ("CHG_THERMAL_REST_MS", 600000, 0, 3600000)):
         m = re.search(r"#define ESPLINK_PARAM_%s\s+\d+u\s*/\*(.*?)\*/" % name, esp_h, re.S)

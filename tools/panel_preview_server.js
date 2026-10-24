@@ -239,9 +239,10 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               empty pack never lights the weak-battery face. */
            25000,
            /* v1.102 ids 166..168 = CHG_THERMAL_ROWS boot defaults (mA / ms /
-              ms): 0 trigger = auto band-50, and the two durations are the
-              1 h / 10 min the employer set; 0 duration = off. */
-           0, 3600000, 600000];
+              ms): trigger 600 = the old rule at the factory ceiling 650
+              (0 = auto band-50), and the two durations are the 1 h / 10 min
+              the employer set; 0 duration = off. */
+           600, 3600000, 600000];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */

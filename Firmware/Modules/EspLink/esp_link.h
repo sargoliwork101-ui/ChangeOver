@@ -574,7 +574,7 @@
    برای استراحت می‌رویم و آن دو زمان ۱ ساعته/۱۰ دقیقه‌ای باید قابل تنظیم باشند»):
    ۱۶۶..۱۶۸ متعلق به ماژول شارژر استند؛ صفر در هر زمان قابلیت را خاموش می‌کند،
    صفر در آستانه همان قانون خودکار قدیمی را نگه می‌دارد (سقف به‌دوره‌ای پایین منهای ۵۰ میلی‌آمپر). */
-#define ESPLINK_PARAM_CHG_THERMAL_TRIGGER_MA     166u  /* u32, mA, def 0, 0..3000 (0 = auto: bulk band minus 50) */
+#define ESPLINK_PARAM_CHG_THERMAL_TRIGGER_MA     166u  /* u32, mA, def 600, 0..3000 (600 = old rule at factory ceiling 650; 0 = auto: bulk band minus 50) */
 #define ESPLINK_PARAM_CHG_THERMAL_CONTINUOUS_MS  167u  /* u32, ms, def 3600000, 0..21600000 (0 = rest off) */
 #define ESPLINK_PARAM_CHG_THERMAL_REST_MS        168u  /* u32, ms, def 600000, 0..3600000 (0 = rest off) */
 

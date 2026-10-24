@@ -4,7 +4,8 @@
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
 /* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..300 (v1.4, raised in v1.9), 9..10 reserved (ETA formula removed 2026-10-11; rejected),
         11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,
-        166..168 thermal rest (v1.102: trigger mA, 0 = auto band-50 / charge
+        166..168 thermal rest (v1.102: trigger mA, def 600 = ceiling 650-50,
+        0 = auto band-50 / charge
         time before rest, 0 = off / rest length, 0 = off),
         19 manual test mode (v1.2), 20..26 charge profile (v1.12: outer envelope only - the STM32
         re-clamps the interdependencies, e.g. enter <= absorb-50), 27..37 alarms tab (v1.15:

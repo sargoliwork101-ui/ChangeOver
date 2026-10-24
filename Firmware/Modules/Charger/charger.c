@@ -2878,7 +2878,7 @@ bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
  *      الگوی جدول سناریوی ۶، تا جدول گیره و پیش‌فرض‌های بوت از هم جدا
  *      نیفتند. */
 #define CHG_THERMAL_ROWS(X)                                                     \
-    X(TRIGGER_MA,        0u,    3000u,        0u)  /* 166, 0 = auto band-50  */ \
+    X(TRIGGER_MA,        0u,    3000u,      600u)  /* 166, 600 = 650-50, 0 = auto */ \
     X(CONTINUOUS_MS,     0u, 21600000u,  3600000u)  /* 167, 0 = rest off     */ \
     X(REST_MS,           0u,  3600000u,   600000u)  /* 168, 0 = rest off     */
 
