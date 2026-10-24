@@ -18,11 +18,11 @@ must be corrected. Older version history was removed; it lives in `git log`.
 
 Authoritative endpoint contract for the current firmware/panel pair:
 
-- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 147`; ordinary wire ids are `0..146`.
+- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 169`; ordinary wire ids are `0..168`.
 - `PARAMS_BULK` is chunked at the 512-byte payload ceiling: at most 102
   `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
-- NVM format is version `12`, with capacity `148` entries. Persisted settings are
-  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..146` except retired `72/73` and transient session mute `76`,
+- NVM format is version `12`, with capacity `168` entries. Persisted settings are
+  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..168` except retired `72/73` and transient session mute `76`,
   plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
   and is not an NVM setting.
 - Scenario 7 is the technical board/power-stage fault face, and ids `143..146` configure Wi-Fi battery power saving:
@@ -46,6 +46,30 @@ measured channel current 0 mA + channel battery >= 6000 mV (not BAT_LOST)`. The 
 condition keeps an unplugged battery from latching the lockout during the 1 s absent debounce. After detection the Charger keeps both PWM paths
 stopped and the relay open until reset/power-cycle; only the three-LED face and
 its six settings are exposed to the panel. This is the single current contract.
+
+Ids `147..157` configure scenario 8 (weak-battery verdict), `158..164` are the
+per-scenario alarm on/off ticks (the «فعال» tick of scenario cards 1..7), `165`
+sets the rest-voltage floor that makes a re-cut count as weakness, and
+`166..168` configure the charging thermal rest:
+
+| ID | Name | Type | Unit | Default | Range | Meaning |
+|---:|---|---|---|---:|---|---|
+| 147 | `WEAK_ENABLE` | u8 | 0/1 | 1 | 0..1 | Scenario-8 verdict on |
+| 148 | `WEAK_REST_MS` | u32 | ms | 600000 | 60000..3600000 | Continuous healthy rest until the verdict clears and one retry is allowed |
+| 149 | `WEAK_CYCLE_GUARD_MS` | u32 | ms | 60000 | 1000..600000 | A repeat cut inside this window after a mains-free reconnect = weak pack |
+| 150 | `WEAK_HEALTHY_HOLD_MS` | u32 | ms | 10000 | 1000..300000 | Unbroken healthy voltage needed before a mains-free reconnect |
+| 151 | `WEAK_LED_PERIOD_MS` | u32 | ms | 500 | 0 or 100..10000 | Scenario-8 red blink period; 0 = solid red |
+| 152 | `WEAK_LED_DUTY_PCT` | u8 | % | 50 | 5..95 | Scenario-8 red ON share |
+| 153 | `WEAK_BEEP_PERIOD_MS` | u32 | ms | 3000 | 0 or 1000..600000 | Scenario-8 beep pattern period; 0 = silent |
+| 154 | `WEAK_BEEP_LEN_MS` | u32 | ms | 200 | 20..2000 | Length of each beep |
+| 155 | `WEAK_BEEP_COUNT` | u8 | count | 3 | 0..10 | Beeps per pattern |
+| 156 | `WEAK_BEEP_GAP_MS` | u32 | ms | 100 | 0..5000 | Gap between beeps |
+| 157 | `WEAK_BLOCK_OUTPUT` | u8 | 0/1 | 1 | 0..1 | Keep the weak pack off the output until the verdict clears |
+| 158..164 | `SCN1_ALARM`..`SCN7_ALARM` | u8 | 0/1 | 1 | 0..1 | Per-scenario LED/beep tick (silences that scenario face; detection unchanged) |
+| 165 | `WEAK_REST_FLOOR_MV` | u32 | mV | 25000 | 21200..29000 | Rest voltage that makes a re-cut count as weakness; below it the pack is discharged and never attempted |
+| 166 | `CHG_THERMAL_TRIGGER_MA` | u32 | mA | 600 | 0..3000 | Thermal-rest current threshold; 0 = auto (bulkMax - 50) |
+| 167 | `CHG_THERMAL_CONTINUOUS_MS` | u32 | ms | 3600000 | 0..21600000 | Continuous charge at/above the threshold that triggers the rest; 0 = rest off |
+| 168 | `CHG_THERMAL_REST_MS` | u32 | ms | 600000 | 0..3600000 | Thermal rest length; 0 = rest off |
 
 
 ## 2. Battery-current chain (current)
@@ -281,8 +305,10 @@ User order: "I want to send the constants from the panel to the board and,
 once sent, they must stay there and survive power loss." Scope: EVERY
 settable parameter EXCEPT the transient test modes - that is ids 0..14
 (offsets, gains, filters, charger enables, duty ceilings), 20..26
-(charge profile), 27..37 (alarms, since v1.15) and 38..75 (UI cadence,
-since v1.16). The fixed-duty ids
+(charge profile), 27..37 (alarms, since v1.15), 38..75 (UI cadence,
+since v1.16) and every later settable block through 168 (PID/limits,
+imbalance, dead/weak battery, scenario ticks, Wi-Fi policy and the
+charging thermal rest). The fixed-duty ids
 15..18, manual test id 19 and the panel-session mute 76 (since v1.16b)
 are NEVER persisted: after any reboot the charger is guaranteed to be in
 its automatic mode and the buzzer unmuted.

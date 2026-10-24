@@ -101,16 +101,14 @@
  *      می‌ماند؛ پس از ارتقا تنظیم‌های مطلوب باید دوباره فرستاده شوند. */
 #define ESP_LINK_NVM_VERSION            12u
 
-/* [EN] Current capacity: ESP_LINK_NVM_ENTRY_MAX is 144 entries. The active
- *      persisted set is ids 0..14, 20..142 except retired 72/73 and transient
- *      76, plus runtime slots 200..203. The current record has 144 slots (12 + 144 x 8 + 4 = 1168 B)
- *      and fits inside the two-page 2 KiB ping-pong bank; the
- *      static assertions in esp_link_nvm.c prove the size and entry count.
- * [FA] ظرفیت فعلی: ESP_LINK_NVM_ENTRY_MAX برابر ۱۴۴ جای است. مجموعهٔ فعال
- *      شناسه‌های ۰..۱۴ و ۲۰..۱۴۲ است، به‌جز ۷۲/۷۳ بازنشسته و ۷۶ گذرا، به‌علاوهٔ
- *      اسلات‌های زمان‌اجرا ۲۰۰..۲۰۳. رکورد ۱۲ + ۱۴۴×۸ + ۴ = ۱۱۶۸ بایت است و
- *      داخل بانک پینگ‌پنگ دوصفحه‌ای ۲KB جا می‌شود؛ static assertهای فایل c اندازه
- *      و تعداد را اثبات می‌کنند. */
+/* [EN] v1.80 capacity then: 144 entries (12 + 144 x 8 + 4 = 1168 B) inside the
+ *      two-page 2 KiB ping-pong bank; the persisted set was ids 0..14, 20..142
+ *      except retired 72/73 and transient 76, plus runtime slots 200..203.
+ *      The static assertions in esp_link_nvm.c prove the size and entry count.
+ * [FA] ظرفیت در v1.80: ۱۴۴ جا (۱۲ + ۱۴۴×۸ + ۴ = ۱۱۶۸ بایت) داخل بانک
+ *      پینگ‌پنگ دوصفحه‌ای ۲KB؛ مجموعهٔ فعال آن زمان شناسه‌های ۰..۱۴ و ۲۰..۱۴۲
+ *      بود، به‌جز ۷۲/۷۳ بازنشسته و ۷۶ گذرا، به‌علاوهٔ اسلات‌های زمان‌اجرا ۲۰۰..۲۰۳.
+ *      static assertهای فایل c اندازه و تعداد را اثبات می‌کنند. */
 /* [EN] v1.50: 126 slots (12 + 126 x 8 + 4 = 1024 B = exactly one 1 KiB page).
  *      v1.72 spends the last of that headroom: the three scenario-6 ids
  *      (125..127) and slot 203 bring the persisted set to exactly 126, so
@@ -129,10 +127,16 @@
 /* [EN] v1.87: 168 entries (12 + 168 x 8 + 4 = 1360 B) - still inside the
  *      2 KiB two-page bank. The seven scenario ticks take the persisted set
  *      to 163, so the old 160 cap had to grow; no version bump, the record
- *      still stores its own entry count.
+ *      still stores its own entry count. The active persisted set is now ids
+ *      0..14, 20..168 except 72/73 and 76, plus runtime slots 200..203; the
+ *      thermal ids 166..168 raised the high-water mark and the 168-entry cap
+ *      already covered them (v1.102).
  *      [FA] نسخهٔ ۱٫۸۷: ۱۶۸ جا (۱۳۶۰ بایت) که هنوز در بانک ۲KB جا می‌شود.
  *      هفت تیک سناریو مجموعه را به ۱۶۳ رساند و سقف ۱۶۰ باید بزرگ می‌شد؛
- *      نسخهٔ قالب عوض نمی‌شود چون رکورد تعداد خودش را ذخیره می‌کند. */
+ *      نسخهٔ قالب عوض نمی‌شود چون رکورد تعداد خودش را ذخیره می‌کند. مجموعهٔ فعال
+ *      حالا شناسه‌های ۰..۱۴ و ۲۰..۱۶۸ است، به‌جز ۷۲/۷۳ و ۷۶، به‌علاوهٔ ۲۰۰..۲۰۳؛
+ *      شناسه‌های حرارتی ۱۶۶..۱۶۸ (v1.102) سقف ماندگار را بالا بردند و سقف ۱۶۸جایی
+ *      از قبل جا داشت. */
 #define ESP_LINK_NVM_ENTRY_MAX         168u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last

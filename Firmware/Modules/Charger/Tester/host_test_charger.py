@@ -2435,8 +2435,8 @@ def test_audit_batch_v116b():
           "bulk payload must be static (comm stack is 1 KiB) and sized to one chunk")
     check("NVM record too small for the persisted id set" in nvmc,
           "NVM must statically assert the record fits the WHOLE persisted id set (params + runtime slots)")
-    check("144 slots (12 + 144 x 8 + 4 = 1168 B)" in nvmh,
-          "NVM record comment must state the true record capacity for the expanded scenario-7 set")
+    check("168 entries (12 + 168 x 8 + 4 = 1360 B)" in nvmh,
+          "NVM record comment must state the true record capacity for the full persisted id set")
 
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__span == 0u" in meas,
