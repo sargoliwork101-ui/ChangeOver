@@ -2236,14 +2236,13 @@ def test_ui_mirror_v117():
 
     # --- the board keeps only per-field windows; cross-field relationships are
     #     advisory in the panel and the firmware/read-back owns any clamp.
-    check("uint32_t__chgFullEnterPct, 1u, 100u" in text_uic
-          and "uint32_t__chgFullExitPct, 0u, 100u" in text_uic
+    check("UI_CLAMP_RULE_T__A__Rules" in text_uic
+          and "{    100u,     1u, 0u, 0u }" in text_uic
+          and "{    100u,     0u, 0u, 0u }" in text_uic
+          and "{     50u,     0u, 0u, 0u }" in text_uic
+          and "14u, 1u, 15u, 15u, 14u, 1u" in text_uic
           and "uint32_t__chgFullEnterPct - 1u" not in text_uic
-          and "function fixrules(v)" in ino and "return [];" in ino
-          and "uint32_t__chgHystPct, 0u, 50u" in text_uic
-          and "uint32_t__runHystPct, 0u, 50u" in text_uic
-          and "uint32_t__runZeroExit, 1u, 100u" in text_uic
-          and "uint32_t__runOneExit, 0u, 100u" in text_uic,
+          and "function fixrules(v)" in ino and "return [];" in ino,
           "ClampAlarms keeps the real per-field windows and the panel does not mutate dependent fields")
 
     # --- panel: ADEF tail + the 150 fallback for 69 ---

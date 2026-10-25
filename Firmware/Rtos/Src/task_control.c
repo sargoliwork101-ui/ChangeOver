@@ -207,7 +207,7 @@ void func__TaskControl(void *void_ptr__argument)
             {
                 imbalance_inputs_t  imbalance_inputs_t__imbalanceInputs;
                 imbalance_outputs_t imbalance_outputs_t__imbalanceOutputs;
-                uint64_t            uint64_t__nowMs64;
+                uint32_t            uint32_t__nowMs;
                 uint32_t            uint32_t__tickFrequency;
                 bool                bool__timeValid;
 
@@ -220,15 +220,18 @@ void func__TaskControl(void *void_ptr__argument)
                        clock on a later pass.
                        [FA] ساعت کرنل خراب نباید تقسیم بر صفر بسازد؛ زمان را
                        صفر نگه دار تا پاس بعدی با ساعت معتبر ادامه دهد. */
-                    uint64_t__nowMs64 = 0u;
+                    uint32_t__nowMs = 0u;
                     bool__timeValid = false;
                 }
                 else
                 {
+                    /* [EN] Flash diet: convert ticks via rtos_time.c (32-bit
+                       split math) so libgcc __aeabi_uldivmod (~1 KiB) stays out.
+                       [FA] رژیم فلش: تبدیل تیک از مسیر ۳۲بیتی rtos_time تا
+                       کمک‌تابع تقسیم ۶۴بیتی libgcc وارد ایمیج نشود. */
                     bool__timeValid = true;
-                    uint64_t__nowMs64 = ((uint64_t)osKernelGetTickCount() *
-                                        (uint64_t)1000u) /
-                                       (uint64_t)uint32_t__tickFrequency;
+                    uint32_t__nowMs =
+                        func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
                 }
 
                 imbalance_inputs_t__imbalanceInputs.uint32_t__vHighMv = measurement_snapshot_t__snap.v_bat_high_mv;
@@ -286,7 +289,7 @@ void func__TaskControl(void *void_ptr__argument)
 
                 if ((bool__timeValid != false) &&
                     (func__Imbalance_Evaluate(&imbalance_inputs_t__imbalanceInputs,
-                                             (uint32_t)uint64_t__nowMs64,
+                                             uint32_t__nowMs,
                                              &imbalance_outputs_t__imbalanceOutputs) != false))
                 {
 #if MODULE_ESP

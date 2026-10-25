@@ -598,16 +598,15 @@ def run_ui_alarm_tests():
     #      floor must no longer answer to band 2's count.
     # [FA] باند ۲ با مدت و گپ خودش پخش می‌شود و کف گپ مشترک دیگر به تعداد
     #      باند ۲ پاسخ نمی‌دهد.
-    # [EN] v1.56: the clamp is one line per field now, so band 2's duration
-    #      appears exactly three times: init, clamp, tick.
-    # [FA] از v1.56 گیره تک‌خطی است، پس مدت باند ۲ سه بار می‌آید.
-    assert_equal(ui_led_c.count("uint32_t__runDoubleDurMs"), 3,
-                 "band 2 duration: init + clamp + tick")
-    # [EN] clamp writes it twice (target + argument) and the tick reads it
-    #      twice (period + duty derivation); the init uses the macro.
-    # [FA] گیره دو بار و تیک دو بار آن را می‌آورد.
-    assert_equal(ui_led_c.count("uint32_t__runDoubleIntervalMs"), 4,
-                 "band 2 interval: clamp x2 + tick x2")
+    # [EN] Table-driven ClampAlarms clamps by word index (verified in compiled C
+    #      harness across all 53 wire IDs); band 2's duration appears once in tick
+    #      and its interval appears twice in tick (period + duty derivation).
+    # [FA] گیره اکنون جدولی و در هارنس C تست می‌شود؛ مدت باند ۲ یک‌بار و فاصلهٔ
+    #      تکرار آن دوبار در تیک خوانده می‌شود.
+    assert_equal(ui_led_c.count("uint32_t__runDoubleDurMs"), 1,
+                 "band 2 duration: read in tick (clamp is table-driven)")
+    assert_equal(ui_led_c.count("uint32_t__runDoubleIntervalMs"), 2,
+                 "band 2 interval: tick x2 (clamp is table-driven)")
     # [EN] v1.71: every discharge band is shaped identically - count,
     #      per-beep duration, own repeat interval - and the duty handed to
     #      the buzzer is always DERIVED. No band may pass a typed duty.
@@ -794,8 +793,10 @@ def run_ui_alarm_tests():
                     f"cross-field rule '{gone}' must no longer live in ui_led.c")
     assert_true("uint32_t__runBeepDoublePct =\n            UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct"
                 not in ui_led_c, "band ordering must no longer be forced by the MCU")
-    assert_true(ui_led_c.count("func__Ui_ClampWindow(") >= 40
-                and "func__Ui_ClampPeriod(" in ui_led_c,
+    assert_true("UINT8_T__A__ClampFieldRule" in ui_led_c
+                and "func__Ui_ClampWindow(" in ui_led_c
+                and "func__Ui_ClampPeriod(" in ui_led_c
+                and "_Static_assert((sizeof(ui_alarm_t) / sizeof(uint32_t)) == 55u" in ui_led_c,
                 "the per-field guard stays: a bad NVM record must not reach the ticks")
     print("Cross-field rules moved to the panel (v1.56) PASS")
 
@@ -1006,6 +1007,63 @@ int main(void)
     if (gap > max_gap) { max_gap = gap; }
     if (max_gap > UI_BOARDTEST_IWDG_SLICE_MS) { return 17; }
     if (max_gap >= BSP_IWDG_STALE_MS) { return 18; }
+
+    /* Verify table-driven func__Ui_ClampAlarms across all 53 active wire IDs. */
+    {
+        typedef struct { uint8_t id; uint32_t lo; uint32_t hi; uint8_t is_per; } exp_t;
+        static const exp_t EXP[] = {
+            { 38u, 100u, 10000u, 0u }, { 39u, 0u, 100u, 0u },
+            { 40u, 1000u, 600000u, 1u }, { 41u, 0u, 600000u, 0u },
+            { 42u, 0u, 10u, 0u }, { 43u, 0u, 5000u, 0u },
+            { 44u, 100u, 10000u, 0u }, { 45u, 0u, 100u, 0u },
+            { 46u, 1000u, 600000u, 1u }, { 47u, 0u, 600000u, 0u },
+            { 48u, 0u, 10u, 0u }, { 49u, 0u, 5000u, 0u },
+            { 50u, 0u, 100u, 0u }, { 51u, 0u, 100u, 0u },
+            { 52u, 0u, 100u, 0u }, { 53u, 0u, 100u, 0u },
+            { 54u, 1000u, 600000u, 1u }, { 55u, 1000u, 600000u, 1u },
+            { 56u, 1000u, 600000u, 1u }, { 57u, 0u, 600000u, 0u },
+            { 58u, 0u, 10u, 0u }, { 59u, 0u, 600000u, 0u },
+            { 60u, 0u, 600000u, 0u }, { 61u, 0u, 120000u, 0u },
+            { 62u, 0u, 10u, 0u }, { 63u, 0u, 10u, 0u },
+            { 64u, 0u, 10u, 0u }, { 65u, 0u, 5000u, 0u },
+            { 66u, 100u, 10000u, 0u }, { 67u, 0u, 10000u, 0u },
+            { 68u, 100u, 10000u, 0u }, { 69u, 0u, 10000u, 0u },
+            { 70u, 24000u, 32000u, 0u }, { 71u, 0u, 2000u, 0u },
+            { 74u, 15000u, 25000u, 0u }, { 75u, 25000u, 32000u, 0u },
+            { 76u, 0u, 1u, 0u },
+            { 77u, 1u, 100u, 0u }, { 78u, 0u, 100u, 0u },
+            { 79u, 0u, 50u, 0u }, { 80u, 0u, 50u, 0u },
+            { 81u, 1u, 100u, 0u }, { 82u, 0u, 100u, 0u },
+            { 119u, 15000u, 25000u, 0u }, { 120u, 25000u, 32000u, 0u },
+            { 121u, 0u, 600000u, 0u }, { 122u, 1000u, 600000u, 1u },
+            { 137u, 1000u, 600000u, 1u }, { 138u, 0u, 600000u, 0u },
+            { 139u, 0u, 10u, 0u }, { 140u, 0u, 5000u, 0u },
+            { 141u, 100u, 10000u, 0u }, { 142u, 0u, 100u, 0u }
+        };
+        static const uint32_t PROBES[] = {
+            0u, 1u, 50u, 99u, 100u, 101u, 999u, 1000u, 5000u,
+            10001u, 14999u, 23999u, 25000u, 32001u, 120001u, 600001u, 0xFFFFFFFFu
+        };
+        uint32_t k, p;
+        for (k = 0u; k < (sizeof(EXP) / sizeof(EXP[0])); k++)
+        {
+            for (p = 0u; p < (sizeof(PROBES) / sizeof(PROBES[0])); p++)
+            {
+                uint32_t v = PROBES[p];
+                uint32_t want = (EXP[k].is_per != 0u && v == 0u)
+                    ? 0u
+                    : (v < EXP[k].lo ? EXP[k].lo : (v > EXP[k].hi ? EXP[k].hi : v));
+                uint32_t got = 0xDEADBEEFu, rd = 0xDEADBEEFu;
+                if (!func__Ui_SetAlarmParam(EXP[k].id, v, &got)) { return 19; }
+                if (!func__Ui_GetAlarmParam(EXP[k].id, &rd)) { return 20; }
+                if (got != want || rd != want) { return 21; }
+            }
+        }
+        if (func__Ui_SetAlarmParam(72u, 100u, &prev) || func__Ui_SetAlarmParam(73u, 100u, &prev))
+        {
+            return 22;
+        }
+    }
     return 0;
 }
 '''

@@ -672,21 +672,13 @@ bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
  */
 static bool func__BspAdc_ConfigureRegularScan(void)
 {
-    static const uint32_t UINT32_T__A__Channels[BSP_ADC_CHANNEL_COUNT] = {
-        ADC_CHANNEL_1,
-        ADC_CHANNEL_2,
-        ADC_CHANNEL_3,
-        ADC_CHANNEL_5,
-        ADC_CHANNEL_7,
-        ADC_CHANNEL_VREFINT
-    };
-    static const uint32_t UINT32_T__A__Ranks[BSP_ADC_CHANNEL_COUNT] = {
-        ADC_REGULAR_RANK_1,
-        ADC_REGULAR_RANK_2,
-        ADC_REGULAR_RANK_3,
-        ADC_REGULAR_RANK_4,
-        ADC_REGULAR_RANK_5,
-        ADC_REGULAR_RANK_6
+    static const uint8_t UINT8_T__A__Channels[BSP_ADC_CHANNEL_COUNT] = {
+        (uint8_t)ADC_CHANNEL_1,
+        (uint8_t)ADC_CHANNEL_2,
+        (uint8_t)ADC_CHANNEL_3,
+        (uint8_t)ADC_CHANNEL_5,
+        (uint8_t)ADC_CHANNEL_7,
+        (uint8_t)ADC_CHANNEL_VREFINT
     };
     ADC_ChannelConfTypeDef adc_channel_conf_t__cfg = {0};
     uint32_t uint32_t__idx;
@@ -710,8 +702,8 @@ static bool func__BspAdc_ConfigureRegularScan(void)
 
     for (uint32_t__idx = 0u; uint32_t__idx < BSP_ADC_CHANNEL_COUNT; uint32_t__idx++)
     {
-        adc_channel_conf_t__cfg.Channel = UINT32_T__A__Channels[uint32_t__idx];
-        adc_channel_conf_t__cfg.Rank = UINT32_T__A__Ranks[uint32_t__idx];
+        adc_channel_conf_t__cfg.Channel = (uint32_t)UINT8_T__A__Channels[uint32_t__idx];
+        adc_channel_conf_t__cfg.Rank = uint32_t__idx + 1u;
         if (uint32_t__idx == BSP_ADC_CHANNEL_VREFINT)
         {
             adc_channel_conf_t__cfg.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
@@ -756,9 +748,9 @@ bool func__BspAdc_Recover(void)
 
     DMA_HANDLETYPEDEF__dmaHandle = ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle;
 
-    (void)HAL_ADC_Stop_DMA(ADC_HANDLETYPEDEF__G__Hadc);
-    DMA_HANDLETYPEDEF__dmaHandle->Lock = HAL_UNLOCKED;
-    (void)HAL_DMA_Abort(DMA_HANDLETYPEDEF__dmaHandle);
+    CLEAR_BIT(ADC_HANDLETYPEDEF__G__Hadc->Instance->CR2, (ADC_CR2_ADON | ADC_CR2_DMA));
+    CLEAR_BIT(DMA_HANDLETYPEDEF__dmaHandle->Instance->CCR, DMA_CCR_EN);
+    DMA_HANDLETYPEDEF__dmaHandle->State = HAL_DMA_STATE_READY;
 
     __HAL_RCC_ADC1_FORCE_RESET();
     __HAL_RCC_ADC1_RELEASE_RESET();

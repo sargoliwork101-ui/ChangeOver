@@ -195,148 +195,84 @@ static uint32_t func__Ui_ClampPeriod(uint32_t uint32_t__value)
  */
 static void func__Ui_ClampAlarms(void)
 {
-    /* [EN] v1.56 (user order 2026-10-05: "take these checks out of the MCU
-       and put them in the panel - why should the micro check them?").
-       What is LEFT here is one independent min/max per field, and nothing
-       else. Every CROSS-FIELD rule that used to silently move a second
-       value - band ordering, beep duration fitted into its window, the
-       100 ms gap floor, min-off/min-on pulled under the period, the
-       low-battery clear pulled up to the threshold, the percent-map 100 mV
-       span, the full exit pulled under the full entry, and the critical
-       count shrunk until the pattern fit - now lives in the panel, which
-       fixes the numbers BEFORE they are sent and says what it changed.
-       The per-field guard stays because the panel is not the only writer:
-       an NVM record from an older build or a corrupted frame must never
-       reach the ticks as an out-of-range word.
-       [FA] فقط «کمینه/بیشینهٔ هر فیلد به‌تنهایی» اینجا می‌ماند. تمام
-       قوانین بین‌فیلدی که بی‌صدا عدد دومی را جابه‌جا می‌کردند به پنل
-       منتقل شدند؛ پنل پیش از ارسال اصلاح می‌کند و می‌گوید چه چیزی را
-       عوض کرده. گیرهٔ تک‌فیلدی می‌ماند چون نویسندهٔ دیگری هم هست:
-       رکورد NVM نسخهٔ قدیمی یا فریم خراب نباید عددِ خارج از بازه را به
-       تیک‌ها برساند. */
-    UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs, 100u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs =
-        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs);
-    UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount, 0u, 10u);
-    UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs, 0u, 5000u);
-    UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs, 100u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs =
-        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs);
-    UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__blBeepCount =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepCount, 0u, 10u);
-    UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs, 0u, 5000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs =
-        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs);
-    UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs =
-        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs);
-    UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs =
-        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs);
-    UI_ALARM_T__G__Alarm.uint32_t__runCritBeepDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritBeepDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runCritCount =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritCount, 0u, 10u);
-    UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs, 0u, 120000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runStdCount =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdCount, 0u, 10u);
-    UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount, 0u, 10u);
-    UI_ALARM_T__G__Alarm.uint32_t__runTriCount =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriCount, 0u, 10u);
-    UI_ALARM_T__G__Alarm.uint32_t__runGapMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runGapMs, 0u, 5000u);
-    UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs, 100u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs, 0u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs, 100u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs, 0u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv, 24000u, 32000u);
-    UI_ALARM_T__G__Alarm.uint32_t__ovHystMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovHystMv, 0u, 2000u);
-    UI_ALARM_T__G__Alarm.uint32_t__pctVminMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__pctVminMv, 15000u, 25000u);
-    UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv, 25000u, 32000u);
-    UI_ALARM_T__G__Alarm.uint32_t__buzzerMute =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__buzzerMute, 0u, 1u);
-    UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct, 1u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__chgHystPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgHystPct, 0u, 50u);
-    UI_ALARM_T__G__Alarm.uint32_t__runHystPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runHystPct, 0u, 50u);
-    /* [EN] v1.92 audit 2026-10-23: the zero-exit floor of 0 made the
-       condition "raw >= 0" ALWAYS true, so a pack sitting at a raw 0% jumped
-       to 1% and fell straight back to 0% on the next pass - the percent
-       toggled every pass, the critical band re-armed its one-shot 10 s beep
-       each time, and the face flickered between "all LEDs off" and the
-       3-beep band. Leaving 0% is a real decision, so its threshold must be
-       at least 1%; 0 is reported back as 1 and the panel shows that.
-       [FA] ممیزی v1.92 (۲۰۲۶-۱۰-۲۳): کف صفر برای «خروج از ۰٪» شرط
-       «‎raw >= 0‎» را همیشه درست می‌کرد؛ پکی که واقعاً روی ۰٪ بود به ۱٪
-       می‌پرید و پاس بعد به ۰٪ برمی‌گشت - درصد هر پاس وارونه می‌شد، باند
-       بحرانی هر بار بوق یک‌بارهٔ ۱۰ ثانیه‌ای را از نو مسلح می‌کرد و چهره بین
-       «همه خاموش» و باند سه‌بوقی چشمک می‌زد. خروج از ۰٪ یک تصمیم واقعی است،
-       پس آستانه‌اش دست‌کم ۱٪ است؛ صفر به‌صورت ۱ گزارش می‌شود و پنل همان را
-       نشان می‌دهد. */
-    UI_ALARM_T__G__Alarm.uint32_t__runZeroExit =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runZeroExit, 1u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__runOneExit =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runOneExit, 0u, 100u);
-    UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv, 15000u, 25000u);
-    UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv, 25000u, 32000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs =
-        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs);
-    /* [EN] Scenario 7 has no dependency on ids 132..135: its four buzzer
-       words are clamped independently and its LED cadence is independent.
-       [FA] چهار عدد بوق سناریوی ۷ و cadence سه LED کاملاً مستقل گیره می‌خورند. */
-    UI_ALARM_T__G__Alarm.uint32_t__techBeepPeriodMs =
-        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__techBeepPeriodMs);
-    UI_ALARM_T__G__Alarm.uint32_t__techBeepDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techBeepDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__techBeepCount =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techBeepCount, 0u, 10u);
-    UI_ALARM_T__G__Alarm.uint32_t__techBeepGapMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techBeepGapMs, 0u, 5000u);
-    UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs, 100u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__techLedDutyPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techLedDutyPct, 0u, 100u);
+    typedef struct
+    {
+        uint32_t uint32_t__hi;
+        uint16_t uint16_t__lo;
+        uint8_t  uint8_t__isPeriod;
+        uint8_t  uint8_t__skip;
+    } ui_clamp_rule_t;
+
+    /* [EN] v1.56 + Flash diet: per-field min/max rules indexed over the 55
+       contiguous words of ui_alarm_t (same indexing contract as Set/Get).
+       Cross-field rules remain solely in the panel.
+       [FA] نسخهٔ ۱٫۵۶ و رژیم فلش: جدول گیرهٔ تک‌فیلدی روی ۵۵ واژهٔ پیوستهٔ
+       ui_alarm_t (هم‌تراز با ‎Set/Get)‎؛ قوانین بین‌فیلدی در پنل مانده‌اند. */
+    static const ui_clamp_rule_t UI_CLAMP_RULE_T__A__Rules[] = {
+        {  10000u,   100u, 0u, 0u }, /* [EN] 0: LED period 100..10000 / [FA] ۰: دورهٔ LED */
+        {    100u,     0u, 0u, 0u }, /* [EN] 1: 0..100 % / [FA] ۱: ۰..۱۰۰ درصد */
+        { 600000u,  1000u, 1u, 0u }, /* [EN] 2: beep period (0 or 1000..600000) / [FA] ۲: دورهٔ بوق */
+        { 600000u,     0u, 0u, 0u }, /* [EN] 3: beep duration 0..600000 / [FA] ۳: مدت بوق */
+        {     10u,     0u, 0u, 0u }, /* [EN] 4: beep count 0..10 / [FA] ۴: تعداد بوق */
+        {   5000u,     0u, 0u, 0u }, /* [EN] 5: beep gap 0..5000 / [FA] ۵: گپ بوق */
+        { 120000u,     0u, 0u, 0u }, /* [EN] 6: crit total dur 0..120000 / [FA] ۶: مدت بحرانی */
+        {  10000u,     0u, 0u, 0u }, /* [EN] 7: min on/off 0..10000 / [FA] ۷: کف روشن/خاموش */
+        {  32000u, 24000u, 0u, 0u }, /* [EN] 8: ovThreshMv 24000..32000 / [FA] ۸: آستانه اضافه‌ولتاژ */
+        {   2000u,     0u, 0u, 0u }, /* [EN] 9: ovHystMv 0..2000 / [FA] ۹: هیسترزیس اضافه‌ولتاژ */
+        {      0u,     0u, 0u, 1u }, /* [EN] 10: retired padding / [FA] ۱۰: واژهٔ بازنشسته */
+        {  25000u, 15000u, 0u, 0u }, /* [EN] 11: pct Vmin 15000..25000 / [FA] ۱۱: کف نگاشت درصد */
+        {  32000u, 25000u, 0u, 0u }, /* [EN] 12: pct Vmax 25000..32000 / [FA] ۱۲: سقف نگاشت درصد */
+        {      1u,     0u, 0u, 0u }, /* [EN] 13: boolean 0..1 / [FA] ۱۳: سوئیچ ۰..۱ */
+        {    100u,     1u, 0u, 0u }, /* [EN] 14: 1..100 % (chgFullEnter, runZeroExit) / [FA] ۱۴: ۱..۱۰۰ درصد */
+        {     50u,     0u, 0u, 0u }  /* [EN] 15: hysteresis 0..50 % / [FA] ۱۵: هیسترزیس ۰..۵۰ درصد */
+    };
+    static const uint8_t UINT8_T__A__ClampFieldRule[sizeof(ui_alarm_t) / sizeof(uint32_t)] = {
+        0u, 1u, 2u, 3u, 4u, 5u,     /* ovLedPeriod..ovBeepGap (38..43) */
+        0u, 1u, 2u, 3u, 4u, 5u,     /* blLedPeriod..blBeepGap (44..49) */
+        1u, 1u, 1u, 1u,             /* runBeepStart..CritPct (50..53) */
+        2u, 2u, 2u,                 /* runStd/Tri/CritInterval (54..56) */
+        3u, 4u, 3u, 3u, 6u,         /* runCritBeepDur..runCritDur (57..61) */
+        4u, 4u, 4u, 5u,             /* runStd/Double/TriCount, runGap (62..65) */
+        0u, 7u, 0u, 7u,             /* green/yellow period & min (66..69) */
+        8u, 9u,                     /* ovThreshMv, ovHystMv (70..71) */
+        10u, 10u,                   /* retired low-bat slots (72..73) */
+        11u, 12u,                   /* pctVminMv, pctVmaxMv (74..75) */
+        13u,                        /* buzzerMute (76) */
+        14u, 1u, 15u, 15u, 14u, 1u, /* chgFullEnter..runOneExit (77..82) */
+        11u, 12u, 3u, 2u,           /* chgPctVmin..runDoubleInterval (119..122) */
+        2u, 3u, 4u, 5u, 0u, 1u      /* techBeepPeriod..techLedDuty (137..142) */
+    };
+
+    _Static_assert((sizeof(ui_alarm_t) / sizeof(uint32_t)) == 55u,
+                   "UINT8_T__A__ClampFieldRule must match ui_alarm_t word count");
+
+    volatile uint32_t *uint32_t__words = &UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs;
+    uint32_t uint32_t__idx;
+
+    for (uint32_t__idx = 0u;
+         uint32_t__idx < (uint32_t)(sizeof(ui_alarm_t) / sizeof(uint32_t));
+         uint32_t__idx++)
+    {
+        const ui_clamp_rule_t *ui_clamp_rule_t__rule =
+            &UI_CLAMP_RULE_T__A__Rules[UINT8_T__A__ClampFieldRule[uint32_t__idx]];
+
+        if (ui_clamp_rule_t__rule->uint8_t__skip != 0u)
+        {
+            continue;
+        }
+        if (ui_clamp_rule_t__rule->uint8_t__isPeriod != 0u)
+        {
+            uint32_t__words[uint32_t__idx] =
+                func__Ui_ClampPeriod(uint32_t__words[uint32_t__idx]);
+        }
+        else
+        {
+            uint32_t__words[uint32_t__idx] =
+                func__Ui_ClampWindow(uint32_t__words[uint32_t__idx],
+                                     (uint32_t)ui_clamp_rule_t__rule->uint16_t__lo,
+                                     ui_clamp_rule_t__rule->uint32_t__hi);
+        }
+    }
 }
 
 /**
@@ -1199,6 +1135,56 @@ static void func__Ui_ResetChargingYellowBlink(void)
     UINT32_T__G__UiChargingYellowOffMs = 0u;
 }
 
+/* ==================== Ui_ResetForeignScenarioState ==================== */
+
+/**
+ * @brief  [EN] Reset non-blocking BatteryRun/Charging blink and critical beep
+ *         phases together via one non-inlined helper so 14 scenario entry/exit
+ *         paths share a single code copy instead of duplicating inline stores.
+ *         [FA] بازنشانی یک‌جای فازهای بوق بحرانی و چشمک سبز/زرد در یک کمک‌تابع
+ *         غیر inline تا ۱۴ مسیر ورود/خروج سناریو یک نسخهٔ مشترک داشته باشند.
+ */
+static __attribute__((noinline)) void func__Ui_ResetForeignScenarioState(void)
+{
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+}
+
+/* ==================== Ui_BlinkOnFromTick ==================== */
+
+/**
+ * @brief  [EN] Compute absolute-tick blink state: first duty% of each period is
+ *         ON; period 0 returns true (documented solid-lamp opt-out).
+ *         [FA] محاسبهٔ وضعیت چشمک روی تیک مطلق: duty٪ ابتدای هر دوره روشن است
+ *         و دورهٔ صفر معادل روشنِ ثابت برمی‌گردد.
+ * @param  uint32_t__startTick [EN] Phase anchor tick (0 for absolute tick) / تیک مبنا
+ * @‎param  uint32_t__periodMs  [EN] Blink period in ms (0 = solid ON)‎ / دورهٔ چشمک
+ * @‎param  uint32_t__dutyPct   [EN] ON duty percentage 0..100‎ / درصد روشن‌ماندن
+ * @return [EN] true when the lamp should be ON / در صورت روشن‌بودن true
+ */
+static __attribute__((noinline)) bool func__Ui_BlinkOnFromTick(uint32_t uint32_t__startTick,
+                                                               uint32_t uint32_t__periodMs,
+                                                               uint32_t uint32_t__dutyPct)
+{
+    uint32_t uint32_t__elapsedMs;
+    uint32_t uint32_t__phaseMs;
+    uint32_t uint32_t__dutyProduct;
+    uint32_t uint32_t__onMs;
+
+    if (uint32_t__periodMs == 0u)
+    {
+        return true;
+    }
+
+    uint32_t__elapsedMs =
+        func__Rtos_TicksToMilliseconds(osKernelGetTickCount() - uint32_t__startTick);
+    uint32_t__phaseMs = uint32_t__elapsedMs % uint32_t__periodMs;
+    uint32_t__dutyProduct = uint32_t__periodMs * uint32_t__dutyPct;
+    uint32_t__onMs = uint32_t__dutyProduct / UI_PERCENT_SCALE;
+    return (uint32_t__phaseMs < uint32_t__onMs);
+}
+
 /* ==================== Ui_UpdateChargingYellowBlink ==================== */
 
 /**
@@ -1385,28 +1371,12 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
  */
 static void func__Ui_ScenarioInputOverVoltage_Tick(void)
 {
-    uint32_t uint32_t__nowTick;
-    uint32_t uint32_t__elapsedMs;
-    uint32_t uint32_t__phaseMs;
-    uint32_t uint32_t__redOnMs;
-    uint32_t uint32_t__redDutyProduct;
     bool bool__redOn;
 
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
-
-    uint32_t__nowTick = osKernelGetTickCount();
-    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - UINT32_T__G__UiInputOverVoltageStartTick);
-    uint32_t__phaseMs = uint32_t__elapsedMs % UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs;
-
-    /* [EN] Flash diet 2026-09-27: u32 is exact - period <= 10000 x duty
-       <= 100 = 1,000,000 < 2^32 (both clamped). No uldivmod.
-       [FA] رژیم فلش: ۳۲بیتی دقیق است (هر دو گیره‌خورده‌اند). */
-    uint32_t__redDutyProduct = UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs *
-                               UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct;
-    uint32_t__redOnMs = uint32_t__redDutyProduct / UI_PERCENT_SCALE;
-    bool__redOn = (uint32_t__phaseMs < uint32_t__redOnMs);
+    func__Ui_ResetForeignScenarioState();
+    bool__redOn = func__Ui_BlinkOnFromTick(UINT32_T__G__UiInputOverVoltageStartTick,
+                                           UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs,
+                                           UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct);
 
     func__green(true);
     func__yellow(false);
@@ -1441,30 +1411,16 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
  */
 void func__Ui_ScenarioBatLost_Tick(void)
 {
-    uint32_t uint32_t__nowTick;
-    uint32_t uint32_t__elapsedMs;
-    uint32_t uint32_t__phaseMs;
-    bool     bool__redOn;
+    bool bool__redOn;
 
     /* [EN] Foreign blink/beep states belong to other scenarios; stop them so
        nothing from BatteryRun/Charging bleeds into this pattern.
        [FA] وضعیت‌های چشمک/بوق سناریوهای دیگر ریست شود تا اثری از آن‌ها در
        این الگو نیفتد. */
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
-
-    uint32_t__nowTick   = osKernelGetTickCount();
-    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick);
-    uint32_t__phaseMs   = uint32_t__elapsedMs % UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs;
-
-    /* [EN] First duty% of the period = ON (default 0..50% -> 500/500 ms
-       fast blink); v1.16 reads the live period/duty (ids 44/45).
-       [FA] duty٪ اول دوره روشن؛ نسخه ۱.۱۶ دوره/دیوتی زنده (۴۴/۴۵). */
-    bool__redOn = (uint32_t__phaseMs <
-                   ((UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs *
-                     UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct) /
-                    UI_PERCENT_SCALE));
+    func__Ui_ResetForeignScenarioState();
+    bool__redOn = func__Ui_BlinkOnFromTick(0u,
+                                           UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs,
+                                           UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct);
 
     /* [EN] Green reflects whether mains input is still present; if mains drops
        while FAULT_CHARGER_BAT_LOST remains latched, turn green off so the face
@@ -1500,23 +1456,12 @@ void func__Ui_ScenarioBatLost_Tick(void)
  */
 static void func__Ui_ScenarioTechnicalFault_Tick(void)
 {
-    uint32_t uint32_t__elapsedMs;
-    uint32_t uint32_t__phaseMs;
-    uint32_t uint32_t__onMs;
     bool bool__on;
 
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
-
-    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
-    uint32_t__phaseMs = uint32_t__elapsedMs %
-                        UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs;
-    uint32_t__onMs =
-        (UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs *
-         UI_ALARM_T__G__Alarm.uint32_t__techLedDutyPct) /
-        UI_PERCENT_SCALE;
-    bool__on = (uint32_t__phaseMs < uint32_t__onMs);
+    func__Ui_ResetForeignScenarioState();
+    bool__on = func__Ui_BlinkOnFromTick(0u,
+                                        UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs,
+                                        UI_ALARM_T__G__Alarm.uint32_t__techLedDutyPct);
 
     /* [EN] One boolean drives all outputs: simultaneous LED blink is a
        contract, not three independent approximations. [FA] یک bool هر سه
@@ -1572,9 +1517,7 @@ void func__Ui_ScenarioImbalance_Tick(void)
 
     /* [EN] Stop foreign blink/beep states first (same hygiene as BatLost).
        [FA] اول وضعیت‌های چشمک/بوق سناریوهای دیگر ریست شود. */
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetForeignScenarioState();
 
     /* [EN] Blink the red lamp on the absolute tick, exactly like every other
        scenario cadence: the first duty% of each period is ON. Period 0 is
@@ -1583,21 +1526,7 @@ void func__Ui_ScenarioImbalance_Tick(void)
        دوره روشن. دورهٔ صفر یعنی همان قرمز ثابت. */
     func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BLINK_PERIOD_MS, &uint32_t__blinkPeriodMs);
     func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BLINK_DUTY_PCT, &uint32_t__blinkDutyPct);
-
-    if (uint32_t__blinkPeriodMs == 0u)
-    {
-        bool__redOn = true;
-    }
-    else
-    {
-        uint32_t uint32_t__elapsedMs =
-            func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
-        uint32_t uint32_t__phaseMs = uint32_t__elapsedMs % uint32_t__blinkPeriodMs;
-        uint32_t uint32_t__onMs =
-            (uint32_t__blinkPeriodMs * uint32_t__blinkDutyPct) / UI_PERCENT_SCALE;
-
-        bool__redOn = (uint32_t__phaseMs < uint32_t__onMs);
-    }
+    bool__redOn = func__Ui_BlinkOnFromTick(0u, uint32_t__blinkPeriodMs, uint32_t__blinkDutyPct);
 
     func__green(false);
     func__yellow(false);
@@ -1651,9 +1580,7 @@ void func__Ui_ScenarioDeadBattery_Tick(void)
     uint32_t uint32_t__blinkPeriodMs = 0u;
     uint32_t uint32_t__blinkDutyPct  = 0u;
 
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetForeignScenarioState();
 
     /* [EN] Scenario 6 uses its own six shape parameters; period 0 keeps the
            historical solid-red option.
@@ -1667,22 +1594,7 @@ void func__Ui_ScenarioDeadBattery_Tick(void)
                                 &uint32_t__blinkPeriodMs,
                                 &uint32_t__blinkDutyPct);
     func__Charger_DeadBeepPattern(&uint32_t__beepCount, &uint32_t__beepGapMs);
-
-    if (uint32_t__blinkPeriodMs == 0u)
-    {
-        func__red(true);
-    }
-    else
-    {
-        uint32_t uint32_t__onMs =
-            (uint32_t__blinkPeriodMs * uint32_t__blinkDutyPct) / UI_PERCENT_SCALE;
-        uint32_t uint32_t__elapsedMs =
-            func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
-        uint32_t uint32_t__phaseMs =
-            uint32_t__elapsedMs % uint32_t__blinkPeriodMs;
-
-        func__red(uint32_t__phaseMs < uint32_t__onMs);
-    }
+    func__red(func__Ui_BlinkOnFromTick(0u, uint32_t__blinkPeriodMs, uint32_t__blinkDutyPct));
 
     if (uint32_t__beepPeriodMs != 0u)
     {
@@ -1735,32 +1647,14 @@ void func__Ui_ScenarioWeakBattery_Tick(void)
            every other face), so nothing leaks in from a previous scenario.
        [FA] اول فازهای چشمک/بوق سناریوهای دیگر ریست می‌شود تا چیزی از سناریوی
            قبلی نشت نکند. */
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetForeignScenarioState();
 
     (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_LED_PERIOD_MS, &uint32_t__blinkPeriodMs);
     (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_LED_DUTY_PCT,  &uint32_t__blinkDutyPct);
 
     func__green(false);
     func__yellow(false);
-
-    if (uint32_t__blinkPeriodMs == 0u)
-    {
-        /* [EN] Documented opt-out: solid red.
-           [FA] گزینهٔ مستند: قرمز ثابت. */
-        func__red(true);
-    }
-    else
-    {
-        uint32_t uint32_t__elapsedMs =
-            func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
-        uint32_t uint32_t__phaseMs = uint32_t__elapsedMs % uint32_t__blinkPeriodMs;
-        uint32_t uint32_t__onMs =
-            (uint32_t__blinkPeriodMs * uint32_t__blinkDutyPct) / UI_PERCENT_SCALE;
-
-        func__red(uint32_t__phaseMs < uint32_t__onMs);
-    }
+    func__red(func__Ui_BlinkOnFromTick(0u, uint32_t__blinkPeriodMs, uint32_t__blinkDutyPct));
 
     (void)func__Changeover_GetParam(CHANGEOVER_PARAM_WEAK_BEEP_PERIOD_MS, &uint32_t__beepPeriodMs);
     if (uint32_t__beepPeriodMs != 0u)
@@ -1791,9 +1685,7 @@ void func__Ui_ScenarioWeakBattery_Tick(void)
  */
 void func__Ui_ScenarioInputOk(void)
 {
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetForeignScenarioState();
 
     func__green(true);
     func__red(false);
@@ -2126,9 +2018,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         BOOL__G__UiInputPresent = false;
         BOOL__G__UiInputOverVoltage = false;
         UINT32_T__G__UiInputOverVoltageStartTick = 0u;
-        func__Ui_ResetBatteryCriticalBeep();
-        func__Ui_ResetBatteryRunGreenBlink();
-        func__Ui_ResetChargingYellowBlink();
+        func__Ui_ResetForeignScenarioState();
         func__Ui_ResetBatteryStablePercent();
         func__Ui_ResetChargingStablePercent();
         func__Ui_ResetChargingFullHysteresis();
@@ -2142,9 +2032,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         BOOL__G__UiInputPresent = false;
         BOOL__G__UiInputOverVoltage = false;
         UINT32_T__G__UiInputOverVoltageStartTick = 0u;
-        func__Ui_ResetBatteryCriticalBeep();
-        func__Ui_ResetBatteryRunGreenBlink();
-        func__Ui_ResetChargingYellowBlink();
+        func__Ui_ResetForeignScenarioState();
 #if MODULE_FAULT
         /* [EN] When persistent ADC failure latches FAULT_ADC (or charger
            technical fault is latched), show the Scenario 7 technical-fault
@@ -2342,9 +2230,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         (func__Changeover_PathBlocked() != false))
     {
         func__all_off();
-        func__Ui_ResetBatteryCriticalBeep();
-        func__Ui_ResetBatteryRunGreenBlink();
-        func__Ui_ResetChargingYellowBlink();
+        func__Ui_ResetForeignScenarioState();
         return;
     }
 #endif
@@ -2391,9 +2277,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
                [FA] چهرهٔ سناریوی ۴ از پنل خاموش شده: چراغ و بوق خاموش
                می‌مانند ولی شارژر عادی کار می‌کند. */
             func__all_off();
-            func__Ui_ResetBatteryCriticalBeep();
-            func__Ui_ResetBatteryRunGreenBlink();
-            func__Ui_ResetChargingYellowBlink();
+            func__Ui_ResetForeignScenarioState();
         }
     }
     else if (func__Ui_ScenarioAlarmOn(3u) != false)
@@ -2407,9 +2291,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         /* [EN] Scenario 3's face is switched off in the panel.
            [FA] چهرهٔ سناریوی ۳ از پنل خاموش شده است. */
         func__all_off();
-        func__Ui_ResetBatteryCriticalBeep();
-        func__Ui_ResetBatteryRunGreenBlink();
-        func__Ui_ResetChargingYellowBlink();
+        func__Ui_ResetForeignScenarioState();
     }
 }
 
@@ -2425,9 +2307,7 @@ void func__Ui_Init(void)
     BOOL__G__UiInputPresent = false;
     BOOL__G__UiInputOverVoltage = false;
     UINT32_T__G__UiInputOverVoltageStartTick = 0u;
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetForeignScenarioState();
     func__Ui_ResetBatteryStablePercent();
     func__Ui_ResetChargingStablePercent();
     func__Ui_ResetChargingFullHysteresis();
@@ -2485,9 +2365,7 @@ void func__Ui_BoardTest_Start(void)
     int32_t int32_t__buzzerResult;
 
     func__all_off();
-    func__Ui_ResetBatteryCriticalBeep();
-    func__Ui_ResetBatteryRunGreenBlink();
-    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetForeignScenarioState();
     func__Ui_ResetBatteryStablePercent();
     func__Ui_ResetChargingStablePercent();
     func__Ui_ResetChargingFullHysteresis();
