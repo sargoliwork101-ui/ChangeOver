@@ -324,6 +324,22 @@ int main(void)
         CHECK(func__EspLink_IsPowerOn() == false);
     }
 
+    /* v1.110 boot contract (user symptom 2026-10-25: "board on, ESP dead, no
+       Wi-Fi at all"). The board port starts with CH_PD LOW, so the module must
+       really DRIVE the pin high once when the link comes up - before this
+       check the power-on branch believed the pin was already up, skipped the
+       write, and the ESP8266 stayed switched off for the whole run.
+       In the host build every physical write is counted instead of executed. */
+    func__EspLink_HostTest_Reset();
+    CHECK(func__EspLink_HostTest_ChPdHighWrites() == 0u);
+    func__EspLink_Init();
+    CHECK(func__EspLink_HostTest_ChPdHighWrites() == 1u);
+    CHECK(func__EspLink_IsPinPowered() == true);
+    CHECK(func__EspLink_IsPowerOn() == true);
+    /* A second Init must be harmless and must not count as another boot. */
+    func__EspLink_Init();
+    CHECK(func__EspLink_HostTest_ChPdHighWrites() == 2u);
+
     printf("checks: %u, failures: %u\n", g_checks, g_failures);
     return (g_failures == 0u) ? 0 : 1;
 }

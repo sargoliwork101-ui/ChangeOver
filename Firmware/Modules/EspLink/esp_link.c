@@ -103,9 +103,33 @@ static uint8_t UINT8_T__G__LutStageN1 = 0u;
 static uint8_t UINT8_T__G__LutStageN2 = 0u;
 #ifdef ESPLINK_HOST_TEST
 static uint32_t UINT32_T__G__HostAcceptedFrames = 0u;
+/* [EN] v1.110: counts physical CH_PD HIGH requests so a host test can prove
+ *      the ESP is really switched on at boot (see EspLink_DriveChPd).
+ * [FA] نسخهٔ ۱٫۱۱۰: درخواست‌های بالا بردن ‎CH_PD‎ را می‌شمارد تا تست هاست
+ *      ثابت کند ESP در بوت واقعاً روشن می‌شود. */
+static uint32_t UINT32_T__G__HostChPdHighWrites = 0u;
 #endif
 static uint16_t UINT16_T__G__TelemetrySeq = 0u;
-static bool     BOOL__G__EspPowerOn = true;
+/* [EN] v1.110 BOOT CONTRACT (user symptom 2026-10-25: "board on, ESP dead,
+ *      no Wi-Fi at all"). The board port leaves CH_PD LOW at boot (safe
+ *      level) and only func__EspLink_Init followed by Power(true) may raise
+ *      it. Both flags therefore start FALSE: they must describe the pin's
+ *      real state, not a hoped-for one. With them starting TRUE the
+ *      power-on branch saw "pin already up", skipped the only CH_PD write in
+ *      the whole program, and the ESP8266 never received its enable - the
+ *      UART kept sending telemetry into a chip that was never switched on.
+ *      Proven on the host: after Init plus a mains-present power-save tick
+ *      the CH_PD write counter stayed at 0.
+ * [FA] قرارداد بوت - شکایت کاربر: برد روشن است ولی ESP خاموش می‌ماند و
+ *      هیچ وای‌فایی نمی‌آید. پورت برد در بوت ‎CH_PD‎ را پایین نگه می‌دارد و
+ *      تنها ‎Init‎ و بعد ‎Power(true)‎ اجازهٔ بالا بردنش را دارند. پس هر دو
+ *      پرچم باید از ‎false‎ شروع شوند: باید وضعیت واقعی پایه را بگویند نه
+ *      وضعیت آرزو‌شده را. با شروعِ ‎true‎، شاخهٔ روشن‌کردن فکر می‌کرد پایه
+ *      بالاست و تنها نوشتنِ ‎CH_PD‎ در کل برنامه را رد می‌کرد؛ ESP هرگز
+ *      فعال نمی‌شد و UART تله‌متری را برای چیپی می‌فرستاد که روشن نشده بود.
+ *      روی هاست اندازه‌گیری شد: پس از ‎Init‎ و یک گام با برق ورودی، شمارندهٔ
+ *      نوشتنِ ‎CH_PD‎ صفر ماند. */
+static bool     BOOL__G__EspPowerOn = false;
 static bool     BOOL__G__WifiClientConnected = false;
 static uint32_t UINT32_T__G__ClientActiveHoldMs = 0u;
 static uint32_t UINT32_T__G__BatteryIdleElapsedMs = 0u;
@@ -126,7 +150,15 @@ static bool     BOOL__G__WifiBatCutoffLatched = false;
         ردیف را پیش از مرگ چیپ بنویسد (دستور کاربر ۲۰۲۶-۱۰-۲۴: «لاگ باید کامل
         باشد»). سیاست صرفه‌جویی عوض نشده - فقط یک لحظه دیرتر. */
 #define ESPLINK_POWER_OFF_GRACE_MS      400u
-static bool     BOOL__G__EspPinUp = true;
+/* [EN] Physical CH_PD level the module BELIEVES is on the pin. FALSE at boot
+ *      because the board port drives the pin low before the scheduler; see
+ *      the boot-contract note next to EspPowerOn. Starting it true was the
+ *      v1.110 defect: the first Power(true) then skipped the GPIO write.
+ * [FA] سطح فیزیکی ‎CH_PD‎ که ماژول باور دارد روی پایه است. در بوت ‎false‎
+ *      است چون پورت برد پیش از زمان‌بند پایه را پایین می‌گذارد؛ ‎true‎ بودنش
+ *      همان ایراد نسخهٔ ۱٫۱۱۰ بود: اولین ‎Power(true)‎ نوشتن GPIO را رد
+ *      می‌کرد. */
+static bool     BOOL__G__EspPinUp = false;
 static bool     BOOL__G__EspPowerOffPending = false;
 static uint32_t UINT32_T__G__EspPowerOffElapsedMs = 0u;
 
@@ -2239,6 +2271,7 @@ void func__EspLink_HostTest_Reset(void)
     UINT32_T__G__RxCrcError = 0u;
     UINT32_T__G__RxVersionMismatch = 0u;
     UINT32_T__G__HostAcceptedFrames = 0u;
+    UINT32_T__G__HostChPdHighWrites = 0u;
     BOOL__G__LutResetAuthorized = false;
     UINT8_T__G__LutStageN1 = 0u;
     UINT8_T__G__LutStageN2 = 0u;
@@ -2284,6 +2317,20 @@ uint32_t func__EspLink_HostTest_VersionErrors(void)
 uint32_t func__EspLink_HostTest_AcceptedFrames(void)
 {
     return UINT32_T__G__HostAcceptedFrames;
+}
+
+/* ==================== EspLink_HostTest_ChPdHighWrites ==================== */
+
+/**
+ * @brief  [EN] Number of HIGH requests sent to the physical CH_PD line since
+ *              the last host reset. The v1.110 boot regression showed zero.
+ *         [FA] تعداد درخواست‌های بالا برای خط فیزیکی CH_PD از آخرین ریست
+ *              هاست. ایراد بوت نسخهٔ ۱٫۱۱۰ صفر بودن همین عدد بود.
+ * @‎return uint32_t [EN] HIGH-request count / [FA]‎ تعداد درخواست بالا
+ */
+uint32_t func__EspLink_HostTest_ChPdHighWrites(void)
+{
+    return UINT32_T__G__HostChPdHighWrites;
 }
 
 /* ==================== EspLink_HostTest_RecordCommitAck ==================== */
@@ -2335,7 +2382,20 @@ void func__EspLink_Init(void)
     UINT8_T__G__LutStageN1 = 0u;
     UINT8_T__G__LutStageN2 = 0u;
     UINT16_T__G__TelemetrySeq = 0u;
+    /* [EN] v1.110: the board port left CH_PD LOW (boot safe level), so the
+     *      flags are reset to match BEFORE the power-on call below - that is
+     *      what makes Power(true) actually drive the pin high. Resetting only
+     *      the logical flag was the defect: the physical flag stayed true, the
+     *      write was skipped and the ESP never started.
+     * [FA] نسخهٔ ۱٫۱۱۰: پورت برد ‎CH_PD‎ را (سطح امن بوت) پایین گذاشته است، پس
+     *      هر دو پرچم پیش از فراخوانی روشن‌کردن پایین آورده می‌شوند تا
+     *      ‎Power(true)‎ واقعاً پایه را بالا ببرد. قبلاً فقط پرچم منطقی ریست
+     *      می‌شد، پرچم فیزیکی ‎true‎ می‌ماند، نوشتن رد می‌شد و ESP هرگز
+     *      روشن نمی‌شد. */
     BOOL__G__EspPowerOn = false;
+    BOOL__G__EspPinUp = false;
+    BOOL__G__EspPowerOffPending = false;
+    UINT32_T__G__EspPowerOffElapsedMs = 0u;
     BOOL__G__WifiClientConnected = false;
     UINT32_T__G__ClientActiveHoldMs = 0u;
     UINT32_T__G__BatteryIdleElapsedMs = 0u;
@@ -2343,6 +2403,32 @@ void func__EspLink_Init(void)
     BOOL__G__LastInputPresent = true;
     BOOL__G__WifiBatCutoffLatched = false;
     func__EspLink_Power(true);
+}
+
+/* ==================== EspLink_DriveChPd ==================== */
+
+/**
+ * @brief  [EN] Put one level on the physical CH_PD line. This is the ONLY
+ *              place in the program that touches that pin, so the host build
+ *              can count the HIGH requests and prove the ESP is switched on
+ *              at boot (v1.110 regression guard).
+ *         [FA] یک سطح روی خط فیزیکی CH_PD می‌گذارد. تنها جای برنامه که این
+ *              پایه را لمس می‌کند، پس بیلد هاست می‌تواند درخواست‌های بالا را
+ *              بشمارد و ثابت کند ESP در بوت روشن می‌شود (نگهبان رگرسیون
+ *              نسخهٔ ۱٫۱۱۰).
+ * @param  bool__level [EN] true = high (ESP enabled), false = off /
+ *                     [FA] درست یعنی بالا (ESP فعال)، نادرست یعنی خاموش
+ */
+static void func__EspLink_DriveChPd(bool bool__level)
+{
+#ifndef ESPLINK_HOST_TEST
+    func__BspGpio_Write(BSP_GPIO_ESP_CHPD, bool__level);
+#else
+    if (bool__level != false)
+    {
+        UINT32_T__G__HostChPdHighWrites++;
+    }
+#endif
 }
 
 /* ==================== EspLink_Power ==================== */
@@ -2368,9 +2454,7 @@ void func__EspLink_Power(bool bool__on)
         if (BOOL__G__EspPinUp == false)
         {
             BOOL__G__EspPinUp = true;
-#ifndef ESPLINK_HOST_TEST
-            func__BspGpio_Write(BSP_GPIO_ESP_CHPD, true);
-#endif
+            func__EspLink_DriveChPd(true);
         }
         return;
     }
@@ -2569,9 +2653,7 @@ void func__EspLink_PowerSaveTick(bool bool__inputPresent,
             BOOL__G__EspPowerOffPending = false;
             UINT32_T__G__EspPowerOffElapsedMs = 0u;
             BOOL__G__EspPinUp = false;
-#ifndef ESPLINK_HOST_TEST
-            func__BspGpio_Write(BSP_GPIO_ESP_CHPD, false);
-#endif
+            func__EspLink_DriveChPd(false);
         }
     }
 

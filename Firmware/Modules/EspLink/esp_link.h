@@ -792,6 +792,7 @@ void func__EspLink_HostTest_FeedByte(uint8_t uint8_t__byte);
 uint32_t func__EspLink_HostTest_CrcErrors(void);
 uint32_t func__EspLink_HostTest_VersionErrors(void);
 uint32_t func__EspLink_HostTest_AcceptedFrames(void);
+uint32_t func__EspLink_HostTest_ChPdHighWrites(void);
 void func__EspLink_HostTest_RecordCommitAck(bool bool__success);
 bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
                                      bool bool__tableActive);
