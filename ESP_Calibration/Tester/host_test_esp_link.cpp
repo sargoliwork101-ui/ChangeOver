@@ -1490,6 +1490,19 @@ int main(void)
         ESP_WEB_SERVER_T__G__Server.setArg("tz", "12600");
         ESP_WEB_SERVER_T__G__Server.call("/clock", HTTP_POST);
 
+        /* بلافاصله پس از رسیدن ساعت (پیش از ساخته‌شدن فایل امروز)، خواندن و دانلود خودکار نباید خالی برگردد */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              !ESP_WEB_SERVER_T__G__Server.lastBody.empty() &&
+              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              "پیش از ساخته‌شدن فایل امروز، خواندن خودکار آخرین فایل موجود (روز بدون ساعت) را نشان می‌دهد");
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/dl", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("23800") == std::string::npos,
+              "دانلود خودکار پیش از ساخته‌شدن فایل امروز همان فایل موجود را تحویل می‌دهد");
+
         std::vector<uint8_t> mainsNow = tlm_payload_v24(241u, 23800u);
         mainsNow[2] = 0x02u;
         G_StubMillis += 5000u;
@@ -1503,6 +1516,52 @@ int main(void)
               "and the board now knows the real day");
         check(LittleFS.exists("/evt-00000000.csv"),
               "the no-clock file is kept, not thrown away");
+
+        /* پس از ساخته‌شدن فایل امروز هم انتخاب صریح 00000000 باید همان فایل بدون ساعت را باز و دانلود کند */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("day", "00000000");
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 0u) == 0L &&
+              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              "انتخاب صریح 00000000 حتی پس از ساخته‌شدن فایل امروز دقیقاً فایل روز بدون ساعت را برمی‌گرداند");
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("day", "00000000");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/dl", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastHeaderVal.find("evt-00000000.csv") != std::string::npos,
+              "دانلود صریح 00000000 فایل روز بدون ساعت را دانلود می‌کند");
+
+        /* وقتی فایل‌سیستم فلش غیرفعال است، حلقهٔ موقت رم رویدادهای زنده را نگه می‌دارد */
+        BOOL__G__FsOk = false;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogDayFull = false;
+        UINT16_T__G__LogRowsToday = 0u;
+        UINT16_T__G__LogPendingMask = 0u;
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__EspLog_Tick();
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              !ESP_WEB_SERVER_T__G__Server.lastBody.empty() &&
+              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              "حتی در صورت غیرفعال بودن فایل‌سیستم فلش، ردیف زنده در حلقهٔ رم ثبت و خوانده می‌شود");
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/dl", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("evt") == std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastHeaderVal.find("evt-ram.csv") != std::string::npos,
+              "دانلود در حالت بدون فایل‌سیستم فایل رم را تحویل می‌دهد");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              UINT8_T__G__LogRamCount == 0u,
+              "پاک کردن تاریخچه حلقهٔ موقت رم را هم خالی می‌کند");
+        BOOL__G__FsOk = true;
     }
 
     /* ---- two-sided handshake (v1.111) -----------------------------------

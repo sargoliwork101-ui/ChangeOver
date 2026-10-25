@@ -174,6 +174,10 @@
 #define SIMPLE_LOG_MAX_DAYS             30u
 #define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
 #define SIMPLE_LOG_TAIL_LINES           30u
+#define SIMPLE_LOG_DAY_AUTO             0xFFFFFFFFu
+#define SIMPLE_LOG_DAY_ZERO             0xFFFFFFFEu
+#define SIMPLE_LOG_RAM_ROWS             16u
+#define SIMPLE_LOG_RAM_ROW_MAX          160u
 #define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"
 #define SIMPLE_LOG_LAST_PATH            "/evt-last.txt"
 #define SIMPLE_LOG_FILE_PREFIX          "/evt-"

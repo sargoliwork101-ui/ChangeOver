@@ -425,6 +425,10 @@
 #define ESP_LOG_MAX_DAYS            30u      /* [EN] keep / [FA] نگه‌داری چند روز */
 #define ESP_LOG_MAX_ROWS_PER_DAY    400u     /* [EN] per day cap / [FA] سقف ردیف هر روز */
 #define ESP_LOG_TAIL_LINES          30u      /* [EN] rows the panel shows / [FA] ردیف نمایشی */
+#define ESP_LOG_DAY_AUTO            0xFFFFFFFFu /* انتخاب خودکار روز جاری یا آخرین روز موجود */
+#define ESP_LOG_DAY_ZERO            0xFFFFFFFEu /* انتخاب صریح فایل روز بدون ساعت (00000000) */
+#define ESP_LOG_RAM_ROWS            16u      /* حلقهٔ موقت در رم وقتی فایل‌سیستم فلش غیرفعال باشد */
+#define ESP_LOG_RAM_ROW_MAX         160u     /* سقف طول یک ردیف در حلقهٔ رم */
 #define ESP_LOG_INDEX_PATH          "/evt-days.txt"   /* [EN] day list + row counts / [FA] فهرست روزها */
 #define ESP_LOG_LAST_PATH           "/evt-last.txt"   /* [EN] last state, for the boot row / [FA] آخرین وضعیت */
 #define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"  /* [EN] phone clock anchor / [FA] لنگر ساعت گوشی */

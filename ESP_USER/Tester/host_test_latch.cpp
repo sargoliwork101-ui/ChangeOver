@@ -52,6 +52,7 @@ static std::string func__T_FsPath(const char *char__ptr_path)
     return std::string("/tmp/changeover_simple_test_") + std::string(char__ptr_name);
 }
 bool SimLittleFS::begin(bool bool__formatOnFail) { (void)bool__formatOnFail; return true; }
+bool SimLittleFS::format(void) { return true; }
 File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
 {
     return File(func__T_FsPath(char__ptr_path), char__ptr_mode);
@@ -982,6 +983,31 @@ static void func__T_TestStateHistoryLog(void)
                       "بعد از رسیدن ساعت، فایل روزِ امروز هم به فهرست اضافه می‌شود");
         func__T_Check(LittleFS.exists("/evt-00000000.csv"),
                       "فایل «بدون ساعت» دور ریخته نمی‌شود");
+        {
+            char char__zeroTail[512];
+            (void)func__SimpleLog_Tail(char__zeroTail, sizeof(char__zeroTail), SIMPLE_LOG_DAY_ZERO, 10u);
+            std::string string__zero(char__zeroTail);
+            func__T_Check(string__zero.rfind("0,", 0u) == 0u,
+                          "خواندن صریح روز صفر (00000000) حتی پس از ساخته‌شدن فایل امروز همان فایل بدون ساعت را برمی‌گرداند");
+        }
+        {
+            BOOL__G__FsOk = false;
+            UINT8_T__G__LogRamHead = 0u;
+            UINT8_T__G__LogRamCount = 0u;
+            BOOL__G__LogHasPrev = false;
+            BOOL__G__LogBootRowPending = true;
+            BOOL__G__LogLastRowValid = false;
+            BOOL__G__LogDayFull = false;
+            UINT16_T__G__LogRowsToday = 0u;
+            UINT16_T__G__LogPendingMask = 0u;
+            func__SimpleLog_Tick();
+            char char__ramTail[512];
+            (void)func__SimpleLog_Tail(char__ramTail, sizeof(char__ramTail), SIMPLE_LOG_DAY_AUTO, 10u);
+            func__T_Check(strlen(char__ramTail) > 0u,
+                          "در صورت غیرفعال بودن فایل‌سیستم فلش هم رویدادها در حلقهٔ رم ثبت و خوانده می‌شوند");
+            (void)func__SimpleLog_Clear();
+            BOOL__G__FsOk = true;
+        }
     }
     }
 }

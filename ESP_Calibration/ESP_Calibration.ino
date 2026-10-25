@@ -138,10 +138,14 @@ void setup(void)
     BOOL__G__WifiApActive = true;
     BOOL__G__WifiHighPower = true;
 
-    /* [EN] Mount the file system for the bench log; format once if it has never been used.
-       [FA] سوار کردن فایل‌سیستم برای فایل ثبت بنچ؛ اگر هرگز استفاده نشده یک‌بار فرمت می‌شود. */
+    /* سوار کردن فایل‌سیستم برای ثبت بنچ و تاریخچه؛ اگر فرمت نشده باشد یک‌بار فرمت و دوباره سوار می‌شود. */
 #if defined(ESP8266)
     BOOL__G__FsOk = LittleFS.begin();
+    if (BOOL__G__FsOk == false)
+    {
+        (void)LittleFS.format();
+        BOOL__G__FsOk = LittleFS.begin();
+    }
 #else
     BOOL__G__FsOk = LittleFS.begin(true);
 #endif

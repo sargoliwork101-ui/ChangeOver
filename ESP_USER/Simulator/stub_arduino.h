@@ -407,6 +407,7 @@ class SimLittleFS
 {
 public:
     bool begin(bool bool__formatOnFail = false);
+    bool format(void);
     File open(const char *char__ptr_path, const char *char__ptr_mode);
     bool remove(const char *char__ptr_path);
     bool exists(const char *char__ptr_path);

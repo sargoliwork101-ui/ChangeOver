@@ -1916,13 +1916,13 @@ function evtJal(c){
  return [yy,7+evtDv(k,30),evtMd(k,30)+1];
 }
 function evtDayFa(code){
- if(code===0||code==='0')return 'بدون ساعت';
+ if(code!==''&&code!=null&&+code===0)return 'بدون ساعت';
  const c=String(code||evtToday()),j=evtJal(c);
  const y=+c.slice(0,4),m=+c.slice(4,6),d=+c.slice(6,8);
  const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(y,m-1,d).getDay()];
  return wd+' '+evtFaNum(j[2])+' '+EVT_JF[j[1]-1]+' '+evtFaNum(j[0]);
 }
-function evtDaySh(code){const j=evtJal(String(code||evtToday()));return evtFaNum(j[0])+'-'+evtFaNum(evtPad(j[1]))+'-'+evtFaNum(evtPad(j[2]));}
+function evtDaySh(code){if(code!==''&&code!=null&&+code===0)return 'بدون-ساعت';const j=evtJal(String(code||evtToday()));return evtFaNum(j[0])+'-'+evtFaNum(evtPad(j[1]))+'-'+evtFaNum(evtPad(j[2]));}
 function evtTimeFa(epoch){
  if(!epoch)return 'بی‌ساعت';
  const d=new Date(epoch*1000);
@@ -1976,18 +1976,23 @@ function evtParse(line){
    می‌شوند تا متن راست‌به‌چپ قاطی نشود. [EN] every piece in its own span, bidi-isolated. */
 const evtIso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
-function evtRenderFa(text,day){
+function evtClock(){
+ const sec=Math.floor(Date.now()/1000),tz=-new Date().getTimezoneOffset()*60;
+ return fetch('/clock?sec='+sec+'&tz='+tz,{method:'POST'}).catch(()=>{});
+}
+function evtRenderFa(text,day,ram){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
- if(sum)sum.innerHTML='';
+ const fsWarn=ram?'<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">حافظهٔ موقت رم — چیدمان فلش دارای FS انتخاب شود</span>':'';
+ if(sum)sum.innerHTML=fsWarn;
  if(!rows.length){
   box.innerHTML='<span style="color:var(--mu)">'+(day?'برای این روز هنوز چیزی ثبت نشده است.':'امروز هنوز چیزی ثبت نشده است؛ به‌محض اولین تغییر خط اول همین‌جا نوشته می‌شود.')+'</span>';
   return;
  }
  let nf=0,nw=0,ng=0;
  rows.forEach(r=>{const l=evtTextFa(r).lv;if(l===3)nf++;else if(l===2)nw++;else if(l===1)ng++;});
- if(sum)sum.innerHTML='<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">خطا و قفل: '+nf+'</span>'+
+ if(sum)sum.innerHTML=fsWarn+'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">خطا و قفل: '+nf+'</span>'+
   '<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">هشدار: '+nw+'</span>'+
   '<span style="padding:2px 8px;border-radius:999px;background:rgba(47,158,99,.16);color:#9ff0c0">برگشت به سلامتی: '+ng+'</span>'+
   '<span style="padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)">مجموع: '+rows.length+' خط</span>';
@@ -2026,13 +2031,14 @@ function evtRenderFa(text,day){
 }
 async function evtFetch(manual){
  const sel=document.getElementById('evtDay');
- const day=sel?sel.value:'';
+ const day=sel?sel.value.trim():'';
  try{
   const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
+  const ram=!!(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs')==='0');
   const t=await r.text();
-  evtRenderFa(t,day);
+  evtRenderFa(t,day,ram);
   const st=document.getElementById('evtSt');
-  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=evtDayFa(day||evtToday())+' · '+n+' خط';}
+  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=(ram?'حافظهٔ موقت · ':'')+evtDayFa(day||evtToday())+' · '+n+' خط';}
  }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='خواندن نشد';}
 }
 async function evtDays(){
@@ -2053,10 +2059,10 @@ async function evtDays(){
 }
 function evtDl(){
  const sel=document.getElementById('evtDay');
- const day=(sel&&sel.value)||evtToday();
+ const raw=(sel&&sel.value.trim())||'';
  const a=document.createElement('a');
- a.href='/evt/dl?day='+encodeURIComponent(day);
- a.download='تاریخچه-'+evtDaySh(day)+'.csv';a.click();
+ a.href='/evt/dl'+(raw?'?day='+encodeURIComponent(raw):'');
+ a.download='تاریخچه-'+evtDaySh(raw||evtToday())+'.csv';a.click();
 }
 async function evtDlAll(){
  const days=await evtDays();
@@ -2074,7 +2080,7 @@ async function evtClear(){
  if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟'))return;
  try{await fetch('/evt/clr',{method:'POST'});await evtDays();evtFetch(1);}catch(e){}
 }
-evtDays().then(()=>evtFetch(0));
+evtClock().then(()=>evtDays()).then(()=>evtFetch(0));setInterval(evtClock,60000);
 setInterval(()=>{if(!document.hidden){evtDays();evtFetch(0);}},10000);
 
 function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); setInterval(tickDiagClocks,1000); }

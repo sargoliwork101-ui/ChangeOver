@@ -290,9 +290,11 @@ static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToB
 }
 
 static uint32_t UINT32_T__G__LastSavedTimeSec = 0u; /* آخرین ساعت ذخیره‌شده روی فلش */
+static int32_t  INT32_T__G__LogTzSec = 0;           /* اختلاف افق زمانی گوشی (ثانیه) */
+static int32_t  INT32_T__G__LastSavedTzSec = 0;     /* آخرین اختلاف افق زمانی ذخیره‌شده */
 static uint32_t UINT32_T__G__LastChartSaveSec = 0u; /* آخرین زمان ذخیرهٔ روزانهٔ نمودارها (ثانیهٔ یونیکس) */
 
-/* ==================== ذخیره ساعت روی فایل (فقط در صورت اختلاف >= ۵ دقیقه) ==================== */
+/* ==================== ذخیره ساعت روی فایل (فقط در صورت اختلاف >= ۵ دقیقه یا تغییر افق زمانی) ==================== */
 static void func__Simple_TimeSave(void)
 {
     uint32_t uint32_t__nowSec;
@@ -304,14 +306,19 @@ static void func__Simple_TimeSave(void)
     uint32_t__diff = (uint32_t__nowSec >= UINT32_T__G__LastSavedTimeSec)
         ? (uint32_t__nowSec - UINT32_T__G__LastSavedTimeSec)
         : (UINT32_T__G__LastSavedTimeSec - uint32_t__nowSec);
-    if ((UINT32_T__G__LastSavedTimeSec != 0u) && (uint32_t__diff < SIMPLE_TIME_ADOPT_DIFF_SEC)) return;
+    if ((UINT32_T__G__LastSavedTimeSec != 0u) &&
+        (uint32_t__diff < SIMPLE_TIME_ADOPT_DIFF_SEC) &&
+        (INT32_T__G__LogTzSec == INT32_T__G__LastSavedTzSec)) return;
     File file__f = LittleFS.open(SIMPLE_TIME_FILE, "w");
     if (!file__f) return;
     file__f.print("{\"ts\":");
     file__f.print((unsigned long)uint32_t__nowSec);
+    file__f.print(",\"tz\":");
+    file__f.print((long)INT32_T__G__LogTzSec);
     file__f.print("}");
     file__f.close();
     UINT32_T__G__LastSavedTimeSec = uint32_t__nowSec;
+    INT32_T__G__LastSavedTzSec = INT32_T__G__LogTzSec;
 }
 
 /* ==================== خواندن ساعت از فایل (بعد از هر بوت) ==================== */
@@ -320,6 +327,8 @@ static void func__Simple_TimeLoad(void)
     uint32_t uint32_t__savedSec;
     int32_t int32_t__tsPos;
     int32_t int32_t__tsEnd;
+    int32_t int32_t__commaPos;
+    int32_t int32_t__tzPos;
 
     if (!BOOL__G__FsOk) return;
     if (!LittleFS.exists(SIMPLE_TIME_FILE)) return;
@@ -333,9 +342,38 @@ static void func__Simple_TimeLoad(void)
     if (int32_t__tsPos < 0) return;
     int32_t__tsPos += 5;
     int32_t__tsEnd = string__content.indexOf("}", int32_t__tsPos);
+    int32_t__commaPos = string__content.indexOf(",", int32_t__tsPos);
+    if ((int32_t__commaPos > int32_t__tsPos) &&
+        ((int32_t__tsEnd < 0) || (int32_t__commaPos < int32_t__tsEnd)))
+    {
+        int32_t__tsEnd = int32_t__commaPos;
+    }
     if (int32_t__tsEnd <= int32_t__tsPos) return;
     String string__value = string__content.substring(int32_t__tsPos, int32_t__tsEnd);
     string__value.trim();
+
+    int32_t__tzPos = string__content.indexOf("\"tz\":");
+    if (int32_t__tzPos >= 0)
+    {
+        int32_t int32_t__tzEnd = string__content.indexOf("}", int32_t__tzPos + 5);
+        int32_t int32_t__tzComma = string__content.indexOf(",", int32_t__tzPos + 5);
+        if ((int32_t__tzComma > (int32_t__tzPos + 5)) &&
+            ((int32_t__tzEnd < 0) || (int32_t__tzComma < int32_t__tzEnd)))
+        {
+            int32_t__tzEnd = int32_t__tzComma;
+        }
+        if (int32_t__tzEnd > (int32_t__tzPos + 5))
+        {
+            String string__tzVal = string__content.substring(int32_t__tzPos + 5, int32_t__tzEnd);
+            string__tzVal.trim();
+            int32_t int32_t__tzParsed = (int32_t)string__tzVal.toInt();
+            if ((int32_t__tzParsed >= -50400) && (int32_t__tzParsed <= 50400))
+            {
+                INT32_T__G__LogTzSec = int32_t__tzParsed;
+                INT32_T__G__LastSavedTzSec = int32_t__tzParsed;
+            }
+        }
+    }
 
     uint32_t__savedSec = (uint32_t)string__value.toInt();
     UINT32_T__G__LastSavedTimeSec = uint32_t__savedSec;

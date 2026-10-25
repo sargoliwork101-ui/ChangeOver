@@ -901,16 +901,72 @@ static void func__Simple_HttpLatchState(void)
    نشان می‌دهد و دانلود می‌کند. متن ردیف‌ها اینجا ساخته می‌شود، نه روی پشته. */
 static char CHAR__G__LogTailBuffer[3600];
 
+static void func__Simple_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t__ptr_day)
+{
+    String string__day;
+
+    *bool__ptr_hasDay = false;
+    *uint32_t__ptr_day = SIMPLE_LOG_DAY_AUTO;
+    if (func__Simple_GetArg("day", string__day))
+    {
+        string__day.trim();
+        if (string__day.length() > 0u)
+        {
+            *bool__ptr_hasDay = true;
+            *uint32_t__ptr_day = (uint32_t)strtoul(string__day.c_str(), NULL, 10);
+        }
+    }
+}
+
+/* POST /clock : همگام‌سازی خودکار ساعت و افق زمانی گوشی برای تاریخچهٔ وضعیت */
+static void func__Simple_HttpClockSet(void)
+{
+    String string__sec;
+    String string__tz;
+    int32_t int32_t__sec = 0;
+    int32_t int32_t__tz = 0;
+    bool bool__ok = false;
+
+    if (func__Simple_GetArg("tz", string__tz))
+    {
+        if (func__Simple_ParseInt(string__tz.c_str(), &int32_t__tz) &&
+            (int32_t__tz >= -50400) && (int32_t__tz <= 50400))
+        {
+            INT32_T__G__LogTzSec = int32_t__tz;
+        }
+    }
+    if (func__Simple_GetArg("sec", string__sec))
+    {
+        if (func__Simple_ParseInt(string__sec.c_str(), &int32_t__sec) &&
+            ((uint32_t)int32_t__sec >= SIMPLE_TIME_VALID_MIN))
+        {
+            if ((BOOL__G__TimeValid == false) || func__Simple_SessionValid())
+            {
+                func__Simple_TimeSet((uint32_t)int32_t__sec, false);
+            }
+            func__Simple_TimeSave();
+            bool__ok = true;
+        }
+    }
+    (void)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
+                   "{\"ok\":%u,\"sec\":%lu}",
+                   bool__ok ? 1u : 0u,
+                   (unsigned long)func__Simple_NowSec());
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
 /* GET /evt : آخرین ردیف‌های یک روز (یا جدیدترین روز) به‌صورت متن */
 static void func__Simple_HttpEventLog(void)
 {
-    uint32_t uint32_t__day = 0u;
-    String string__day;
+    bool bool__hasDay = false;
+    uint32_t uint32_t__day = SIMPLE_LOG_DAY_AUTO;
 
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs", BOOL__G__FsOk ? "1" : "0");
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    if (func__Simple_GetArg("day", string__day))
+    func__Simple_ParseDayArg(&bool__hasDay, &uint32_t__day);
+    if ((bool__hasDay != false) && (uint32_t__day == 0u))
     {
-        uint32_t__day = (uint32_t)string__day.toInt();
+        uint32_t__day = SIMPLE_LOG_DAY_ZERO;
     }
     (void)func__SimpleLog_Tail(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer),
                                uint32_t__day, SIMPLE_LOG_TAIL_LINES);
@@ -930,26 +986,55 @@ static void func__Simple_HttpEventDownload(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     char char__ptr_name[64];
-    uint32_t uint32_t__day = 0u;
-    String string__day;
+    bool bool__hasDay = false;
+    uint32_t uint32_t__day = SIMPLE_LOG_DAY_AUTO;
 
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    if (func__Simple_GetArg("day", string__day))
+    func__Simple_ParseDayArg(&bool__hasDay, &uint32_t__day);
+
+    if (BOOL__G__FsOk == false)
     {
-        uint32_t__day = (uint32_t)string__day.toInt();
-    }
-    if (uint32_t__day == 0u)
-    {
-        if (UINT8_T__G__LogIndexCount == 0u)
+        size_t size_t__hdrLen;
+        if (UINT8_T__G__LogRamCount == 0u)
         {
             SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
             return;
         }
-        uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+        size_t__hdrLen = strlen(SIMPLE_LOG_HEADER);
+        if (size_t__hdrLen >= sizeof(CHAR__G__LogTailBuffer))
+        {
+            size_t__hdrLen = 0u;
+        }
+        else
+        {
+            (void)memcpy(CHAR__G__LogTailBuffer, SIMPLE_LOG_HEADER, size_t__hdrLen);
+        }
+        (void)func__SimpleLog_Tail(&CHAR__G__LogTailBuffer[size_t__hdrLen],
+                                   sizeof(CHAR__G__LogTailBuffer) - size_t__hdrLen,
+                                   SIMPLE_LOG_DAY_AUTO, SIMPLE_LOG_RAM_ROWS);
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition",
+                                                  "attachment; filename=evt-ram.csv");
+        SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", CHAR__G__LogTailBuffer);
+        return;
+    }
+
+    if (bool__hasDay == false)
+    {
+        uint32_t__day = func__SimpleLog_TodayCode();
+        func__SimpleLog_PathOf(char__ptr_path, uint32_t__day);
+        if (LittleFS.exists(char__ptr_path) == false)
+        {
+            if (UINT8_T__G__LogIndexCount == 0u)
+            {
+                SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
+                return;
+            }
+            uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+        }
     }
 
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__day);
-    if ((BOOL__G__FsOk == false) || (LittleFS.exists(char__ptr_path) == false))
+    if (LittleFS.exists(char__ptr_path) == false)
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "missing");
         return;
@@ -989,11 +1074,6 @@ static void func__Simple_HttpEventClear(void)
     if (!func__Simple_IsAdmin())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    if (BOOL__G__FsOk == false)
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
         return;
     }
     uint8_t__removed = func__SimpleLog_Clear();

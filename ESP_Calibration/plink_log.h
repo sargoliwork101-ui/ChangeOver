@@ -81,6 +81,10 @@ static bool     BOOL__G__LogLastStepValid = false;
 /* ==================== Day index / فهرست روزها ==================== */
 static uint32_t UINT32_T__G__LogIndexDay[ESP_LOG_MAX_DAYS + 2u];
 static uint8_t  UINT8_T__G__LogIndexCount = 0u;
+/* حلقهٔ موقت در حافظهٔ رم تا اگر فایل‌سیستم فلش غیرفعال بود باز هم رویدادها زنده ثبت شوند */
+static char     CHAR__G__LogRamRow[ESP_LOG_RAM_ROWS][ESP_LOG_RAM_ROW_MAX];
+static uint8_t  UINT8_T__G__LogRamHead = 0u;
+static uint8_t  UINT8_T__G__LogRamCount = 0u;
 
 /* ==================== Change bits / بیت‌های تغییر ==================== */
 #define ESP_LOG_CHG_BOOT    0x0001u
@@ -520,7 +524,6 @@ static bool func__EspLog_OpenDay(void)
     UINT16_T__G__LogRowsToday = func__EspLog_CountRows(char__path);
     BOOL__G__LogDayFull = (UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY);
 
-    if (bool__isNew)
     {
         bool bool__alreadyIndexed = false;
 
@@ -531,7 +534,8 @@ static bool func__EspLog_OpenDay(void)
                 bool__alreadyIndexed = true;
             }
         }
-        if (bool__alreadyIndexed == false)
+        if ((bool__alreadyIndexed == false) &&
+            (UINT8_T__G__LogIndexCount < (ESP_LOG_MAX_DAYS + 2u)))
         {
             UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = uint32_t__dayCode;
             UINT8_T__G__LogIndexCount++;
@@ -599,15 +603,12 @@ static uint8_t func__EspLog_Pct(uint32_t uint32_t__batteryMv)
 static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
 {
     char char__path[ESP_LOG_PATH_MAX];
+    char char__row[256];
     File file__day;
     uint32_t uint32_t__nowSec;
     uint32_t uint32_t__uptimeSec;
     uint8_t uint8_t__mains;
 
-    if (func__EspLog_OpenDay() == false)
-    {
-        return false;
-    }
     if ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
         (BOOL__G__LogDayFull != false))
     {
@@ -615,65 +616,69 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         return false;
     }
 
-    func__EspLog_PathOf(char__path, UINT32_T__G__LogDayCode);
-    file__day = LittleFS.open(char__path, "a");
-    if (!file__day)
-    {
-        return false;
-    }
-
     uint32_t__nowSec = func__EspLog_NowSec();
     uint32_t__uptimeSec = (uint32_t)(millis() / 1000u);
     uint8_t__mains = ((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u;
 
-    file__day.print((unsigned long)uint32_t__nowSec);
-    file__day.print(",");
-    file__day.print((unsigned long)uint32_t__uptimeSec);
-    file__day.print(",");
-    file__day.print((unsigned int)uint16_t__changeMask);
-    file__day.print(",");
-    file__day.print((unsigned int)uint8_t__note);
-    file__day.print(",");
-    file__day.print((unsigned int)uint8_t__mains);
-    file__day.print(",");
-    file__day.print((unsigned int)UINT8_T__G__TlmFlags);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[6]);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[13]);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[19]);
-    file__day.print(",");
-    file__day.print((unsigned int)UINT8_T__G__TlmFlags2);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[15]);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[17]);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[18]);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[25]);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[28]);
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[14]);   /* input V  */
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[16]);   /* 12 V node */
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[3]);    /* battery A1 */
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[10]);   /* battery A2 */
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[5]);    /* duty 1 */
-    file__day.print(",");
-    file__day.print((unsigned long)UINT32_T__G__TlmField[12]); /* duty 2 */
-    /* [EN] v1.109: battery percent is the LAST column (col 22), so old files
-            stay valid and new files carry the state of charge of their row.
-       [FA] نسخهٔ ۱٫۱۰۹: درصد باتری آخرین ستون (ستون ۲۲) است؛ پس فایل قدیمی
-            معتبر می‌ماند و فایل تازه وضعیت شارژ همان ردیف را دارد. */
-    file__day.print(",");
-    file__day.println((unsigned long)func__EspLog_Pct(UINT32_T__G__TlmField[15]));
-    file__day.close();
+    /* ساخت یک‌جای ردیف در بافر تا هم نوشتن فلش یک‌مرحله‌ای باشد و هم در صورت نبود فایل‌سیستم در رم بماند */
+    (void)snprintf(char__row, sizeof(char__row),
+                   "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
+                   (unsigned long)uint32_t__nowSec,
+                   (unsigned long)uint32_t__uptimeSec,
+                   (unsigned int)uint16_t__changeMask,
+                   (unsigned int)uint8_t__note,
+                   (unsigned int)uint8_t__mains,
+                   (unsigned int)UINT8_T__G__TlmFlags,
+                   (unsigned long)UINT32_T__G__TlmField[6],
+                   (unsigned long)UINT32_T__G__TlmField[13],
+                   (unsigned long)UINT32_T__G__TlmField[19],
+                   (unsigned int)UINT8_T__G__TlmFlags2,
+                   (unsigned long)UINT32_T__G__TlmField[15],
+                   (unsigned long)UINT32_T__G__TlmField[17],
+                   (unsigned long)UINT32_T__G__TlmField[18],
+                   (unsigned long)UINT32_T__G__TlmField[25],
+                   (unsigned long)UINT32_T__G__TlmField[28],
+                   (unsigned long)UINT32_T__G__TlmField[14],
+                   (unsigned long)UINT32_T__G__TlmField[16],
+                   (unsigned long)UINT32_T__G__TlmField[3],
+                   (unsigned long)UINT32_T__G__TlmField[10],
+                   (unsigned long)UINT32_T__G__TlmField[5],
+                   (unsigned long)UINT32_T__G__TlmField[12],
+                   (unsigned long)func__EspLog_Pct(UINT32_T__G__TlmField[15]));
+
+    if (BOOL__G__FsOk != false)
+    {
+        if (func__EspLog_OpenDay() == false)
+        {
+            return false;
+        }
+        if ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
+            (BOOL__G__LogDayFull != false))
+        {
+            BOOL__G__LogDayFull = true;
+            return false;
+        }
+        func__EspLog_PathOf(char__path, UINT32_T__G__LogDayCode);
+        file__day = LittleFS.open(char__path, "a");
+        if (!file__day)
+        {
+            return false;
+        }
+        file__day.println(char__row);
+        file__day.close();
+    }
+    else
+    {
+        (void)strncpy(CHAR__G__LogRamRow[UINT8_T__G__LogRamHead],
+                      char__row,
+                      ESP_LOG_RAM_ROW_MAX - 1u);
+        CHAR__G__LogRamRow[UINT8_T__G__LogRamHead][ESP_LOG_RAM_ROW_MAX - 1u] = '\0';
+        UINT8_T__G__LogRamHead = (uint8_t)((UINT8_T__G__LogRamHead + 1u) % ESP_LOG_RAM_ROWS);
+        if (UINT8_T__G__LogRamCount < ESP_LOG_RAM_ROWS)
+        {
+            UINT8_T__G__LogRamCount++;
+        }
+    }
 
     UINT16_T__G__LogRowsToday++;
     if ((uint16_t__changeMask & ESP_LOG_CHG_VSTEP) != 0u)
@@ -1166,19 +1171,62 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     uint16_t uint16_t__index = 0u;
     uint32_t uint32_t__chosen = uint32_t__dayCode;
 
-    if ((char__out == NULL) || (size_t__outSize < 2u) || (BOOL__G__FsOk == false))
+    if ((char__out == NULL) || (size_t__outSize < 2u))
     {
         return 0u;
     }
     char__out[0] = '\0';
 
-    if (uint32_t__chosen == 0u)
+    if (BOOL__G__FsOk == false)
     {
-        if (UINT8_T__G__LogIndexCount == 0u)
+        uint8_t uint8_t__start;
+        uint8_t uint8_t__count = UINT8_T__G__LogRamCount;
+        uint8_t uint8_t__item;
+
+        if (uint8_t__count == 0u)
         {
             return 0u;
         }
-        uint32_t__chosen = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+        uint8_t__start = (uint8_t)((UINT8_T__G__LogRamHead + ESP_LOG_RAM_ROWS - uint8_t__count) % ESP_LOG_RAM_ROWS);
+        if ((uint16_t)uint8_t__count > uint16_t__maxLines)
+        {
+            uint8_t uint8_t__drop = (uint8_t)((uint16_t)uint8_t__count - uint16_t__maxLines);
+            uint8_t__start = (uint8_t)((uint8_t__start + uint8_t__drop) % ESP_LOG_RAM_ROWS);
+            uint8_t__count = (uint8_t)uint16_t__maxLines;
+        }
+        for (uint8_t__item = 0u; uint8_t__item < uint8_t__count; uint8_t__item++)
+        {
+            uint8_t uint8_t__slot = (uint8_t)((uint8_t__start + uint8_t__item) % ESP_LOG_RAM_ROWS);
+            size_t size_t__len = strlen(CHAR__G__LogRamRow[uint8_t__slot]);
+            if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
+            {
+                break;
+            }
+            (void)memcpy(&char__out[size_t__used], CHAR__G__LogRamRow[uint8_t__slot], size_t__len);
+            size_t__used += size_t__len;
+            char__out[size_t__used] = '\n';
+            size_t__used++;
+            char__out[size_t__used] = '\0';
+        }
+        return size_t__used;
+    }
+
+    if ((uint32_t__chosen == ESP_LOG_DAY_AUTO) || (uint32_t__chosen == 0u))
+    {
+        uint32_t__chosen = func__EspLog_TodayCode();
+        func__EspLog_PathOf(char__path, uint32_t__chosen);
+        if (LittleFS.exists(char__path) == false)
+        {
+            if (UINT8_T__G__LogIndexCount == 0u)
+            {
+                return 0u;
+            }
+            uint32_t__chosen = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+        }
+    }
+    else if (uint32_t__chosen == ESP_LOG_DAY_ZERO)
+    {
+        uint32_t__chosen = 0u;
     }
 
     func__EspLog_PathOf(char__path, uint32_t__chosen);
@@ -1234,8 +1282,12 @@ static uint8_t func__EspLog_Clear(void)
     uint8_t uint8_t__slot;
     uint8_t uint8_t__removed = 0u;
 
+    UINT8_T__G__LogRamHead = 0u;
+    UINT8_T__G__LogRamCount = 0u;
     if (BOOL__G__FsOk == false)
     {
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
         return 0u;
     }
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
@@ -1272,6 +1324,16 @@ static size_t func__EspLog_Days(char *char__out, size_t size_t__outSize)
         return 0u;
     }
     char__out[0] = '\0';
+    if (BOOL__G__FsOk == false)
+    {
+        if ((UINT8_T__G__LogRamCount > 0u) && (size_t__outSize >= 12u))
+        {
+            int int__ramWritten = snprintf(char__out, size_t__outSize, "%08lu",
+                                           (unsigned long)func__EspLog_TodayCode());
+            return (int__ramWritten > 0) ? (size_t)int__ramWritten : 0u;
+        }
+        return 0u;
+    }
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
         int int__written = snprintf(&char__out[size_t__used],

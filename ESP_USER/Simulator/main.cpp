@@ -71,6 +71,11 @@ bool SimLittleFS::begin(bool bool__formatOnFail)
     return true;
 }
 
+bool SimLittleFS::format(void)
+{
+    return true;
+}
+
 File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
 {
     return File(func__Sim_FsPath(char__ptr_path), char__ptr_mode);

@@ -45,6 +45,11 @@ void setup(void)
 #if defined(ESP8266)
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     BOOL__G__FsOk = LittleFS.begin();
+    if (BOOL__G__FsOk == false)
+    {
+        (void)LittleFS.format();
+        BOOL__G__FsOk = LittleFS.begin();
+    }
 #else
     WiFi.setSleep(false);
     BOOL__G__FsOk = LittleFS.begin(true);
@@ -96,6 +101,7 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/latch", HTTP_GET, func__Simple_HttpLatchState);
     SIMPLE_WEB_SERVER_T__G__Server.on("/latch/reset", HTTP_POST, func__Simple_HttpLatchReset);
     /* تاریخچهٔ وضعیت (لاگ روزانه) */
+    SIMPLE_WEB_SERVER_T__G__Server.on("/clock", HTTP_POST, func__Simple_HttpClockSet);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt", HTTP_GET, func__Simple_HttpEventLog);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Simple_HttpEventDays);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Simple_HttpEventDownload);

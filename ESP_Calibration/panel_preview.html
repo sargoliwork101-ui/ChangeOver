@@ -554,7 +554,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8c7c8ad</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b4b8e81</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4382,7 +4382,7 @@ const EVT_FL=[[1,'دادهٔ لحظه‌ای رسید','دادهٔ لحظه‌ا
 function evtNow(){return Math.floor(Date.now()/1000);}
 function evtClock(){
   const tz=-new Date().getTimezoneOffset()*60;
-  req('/clock?sec='+evtNow()+'&tz='+tz,'POST').catch(()=>{});
+  return req('/clock?sec='+evtNow()+'&tz='+tz,'POST').catch(()=>{});
 }
 function evtDayCode(d){
   const p=n=>String(n).padStart(2,'0');
@@ -4412,13 +4412,13 @@ function jal(c){
 }
 function evtFa(x){return String(x).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
 function evtDayFa(code){
-  /* [‎EN] day 0 = no phone yet. / [FA]‎ روز صفر = هنوز گوشی نیامده. */
-  if(code===0||code==='0')return 'بدون ساعت';
+  /* روز صفر (از جمله 00000000) یعنی هنوز ساعت گوشی نرسیده است. */
+  if(code!==''&&code!=null&&+code===0)return 'بدون ساعت';
   const c=String(code||evtToday()),j=jal(c);
   const wd=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][new Date(+c.slice(0,4),+c.slice(4,6)-1,+c.slice(6,8)).getDay()];
   return wd+' '+evtFa(j[2])+' '+JF[j[1]-1]+' '+evtFa(j[0]);
 }
-function evtDaySh(code){const j=jal(String(code||evtToday())),p=n=>String(n).padStart(2,'0');return evtFa(j[0])+'-'+evtFa(p(j[1]))+'-'+evtFa(p(j[2]));}
+function evtDaySh(code){if(code!==''&&code!=null&&+code===0)return 'بدون-ساعت';const j=jal(String(code||evtToday())),p=n=>String(n).padStart(2,'0');return evtFa(j[0])+'-'+evtFa(p(j[1]))+'-'+evtFa(p(j[2]));}
 function evtFaults(mask){
   const out=[];
   for(let i=0;i<EVT_FAULT.length;i++){if((mask>>i)&1)out.push(EVT_FAULT[i]);}
@@ -4521,21 +4521,20 @@ function evtParse(line){
    جدا نگه داشته می‌شود تا متن قاطی نشود. */
 const xiso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
 const xspr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+xiso(x)+'</span>').join('');
-function evtRender(text,code){
+function evtRender(text,code,ram){
   const box=$('evtlist'),sum=$('evtsum');
   const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
+  const fsWarn=ram?'<span class="y">حافظهٔ موقت رم — برای ماندگاری پس از قطع برق، چیدمان فلش دارای فایل‌سیستم انتخاب شود</span>':'';
   rows.forEach(r=>{r.band=r.v24<21200;});
-  if(sum)sum.innerHTML='';
+  if(sum)sum.innerHTML=fsWarn;
   if(!rows.length){
     box.innerHTML='<span class="lb">'+(code?'برای این روز هنوز چیزی ثبت نشده است.':'امروز هنوز چیزی ثبت نشده است؛ به‌محض اولین تغییر، خط اول همین‌جا نوشته می‌شود.')+'</span>';
     return;
   }
   let nf=0,nw=0,ng=0;
   rows.forEach(r=>{const t=evtRowText(r);if(t.lv===3)nf++;else if(t.lv===2)nw++;else if(t.lv===1)ng++;});
-  if(sum)sum.innerHTML='<span class="r">خطا و قفل: '+nf+'</span><span class="y">هشدار: '+nw+'</span><span class="g">برگشت به سلامتی: '+ng+'</span><span>مجموع: '+rows.length+' خط</span>';
-  /* [EN] newest first: the last thing that happened is the first line the eye
-          meets when the card is opened.
-     [FA] جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
+  if(sum)sum.innerHTML=fsWarn+'<span class="r">خطا و قفل: '+nf+'</span><span class="y">هشدار: '+nw+'</span><span class="g">برگشت به سلامتی: '+ng+'</span><span>مجموع: '+rows.length+' خط</span>';
+  /* جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
   box.innerHTML=rows.slice().reverse().map(r=>{
     const t=evtRowText(r);
     return '<div class="evtrow lv'+t.lv+'"><span class="evtt">'+xiso(t.time)+'</span><span class="evtd">'+xspr(t.txt,'ep')+
@@ -4546,11 +4545,12 @@ async function evtfetch(manual){
   const day=($('evtday')&&$('evtday').value.trim())||'';
   try{
     const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
+    const ram=!!(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs')==='0');
     const t=await r.text();
-    evtRender(t,day);
+    evtRender(t,day,ram);
     if($('evtst')){
       const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;
-      $('evtst').textContent=evtDayFa(day||evtToday())+' · '+n+' خط';
+      $('evtst').textContent=(ram?'حافظهٔ موقت · ':'')+evtDayFa(day||evtToday())+' · '+n+' خط';
     }
   }catch(e){ if($('evtst'))$('evtst').textContent='خواندن نشد'; }
 }
@@ -4575,10 +4575,10 @@ async function evtDays(){
   }catch(e){return [];}
 }
 function evtdl(){
-  const day=($('evtday')&&$('evtday').value.trim())||evtToday();
+  const raw=($('evtday')&&$('evtday').value.trim())||'';
   const a=document.createElement('a');
-  a.href='/evt/dl?day='+encodeURIComponent(day);
-  a.download='تاریخچه-'+evtDaySh(day)+'.csv';a.click();
+  a.href='/evt/dl'+(raw?'?day='+encodeURIComponent(raw):'');
+  a.download='تاریخچه-'+evtDaySh(raw||evtToday())+'.csv';a.click();
 }
 async function evtdlall(){
   const days=await evtDays();
@@ -4597,7 +4597,7 @@ async function evtclr(){
   try{await req('/evt/clr','POST');if($('evtst'))$('evtst').textContent='پاک شد';await evtDays();await evtfetch(1);}
   catch(e){if($('evtst'))$('evtst').textContent='پاک نشد';}
 }
-evtClock();evtDays().then(()=>evtfetch(0));setInterval(evtClock,60000);
+evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
 setInterval(()=>{if(!document.hidden){evtDays();evtfetch(0);}},10000);
 
 setInterval(uview,250); /* v1.16: آینهٔ LED هر ۲۵۰ میلی‌ثانیه به‌روز می‌شود */
