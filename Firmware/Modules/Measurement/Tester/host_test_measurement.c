@@ -626,6 +626,36 @@ int main(void)
         CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
     }
 
+    /* ---- 11. missing ADC frame flushes current/voltage filter history ----
+       [EN] Saturate the moving-average current filter at 600 mA and voltage
+            median at 14400 mV, stall one frame, then recover with 3 warm-up
+            frames at 0 mA / 13200 mV: the first valid post-recovery snapshot
+            must reflect 0 mA and 13200 mV with zero pre-stall bleed-through.
+       [FA] پس از پر شدن فیلتر جریان روی ۶۰۰ میلی‌آمپر و میانهٔ ولتاژ روی
+            ۱۴۴۰۰ میلی‌ولت، یک فریم از دست رفته باید تاریخچهٔ فیلترها را پاک کند
+            تا پس از ۳ فریم گرم‌شدن، snapshot اول دقیقاً ۰ میلی‌آمپر و ۱۳۲۰۰ میلی‌ولت باشد. */
+    func__Measurement_Init();
+    func__SetFrame(2400u, 2880u, 1440u, 600u, 600u);
+    BOOL__G__FrameReady = true;
+    func__RunFrames(50u);
+    CHECK(func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) == true);
+    CHECK(measurement_snapshot_t__snap.i_ch1_ma == 600u);
+    CHECK(measurement_snapshot_t__snap.i_ch2_ma == 600u);
+    CHECK(measurement_snapshot_t__snap.v_bat_low_mv == 14400u);
+
+    BOOL__G__FrameReady = false;
+    func__Measurement_Run();
+    CHECK(func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) == false);
+
+    func__SetFrame(2400u, 2640u, 1320u, 0u, 0u);
+    BOOL__G__FrameReady = true;
+    func__RunFrames(3u);
+    CHECK(func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) == true);
+    CHECK(measurement_snapshot_t__snap.i_ch1_ma == 0u);
+    CHECK(measurement_snapshot_t__snap.i_ch2_ma == 0u);
+    CHECK(measurement_snapshot_t__snap.v_bat_low_mv == 13200u);
+    CHECK(measurement_snapshot_t__snap.v_bat_high_mv == 13200u);
+
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;
 }

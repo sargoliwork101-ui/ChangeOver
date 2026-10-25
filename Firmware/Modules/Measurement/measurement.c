@@ -1015,11 +1015,15 @@ void func__Measurement_Run(void)
 
     if (bool__frameCopied == false)
     {
-        /* [EN] A missing stable frame restarts warm-up and invalidates the
-           ADC result; input presence is not evaluated in this path.
-           [FA] نبود فریم پایدار ‎warm-up‎ را از نو شروع و نتیجهٔ ADC را
-           نامعتبر می‌کند؛ در این مسیر حضور ورودی ارزیابی نمی‌شود. */
+        /* [EN] A missing stable frame restarts warm-up, clears the voltage and
+           current filter histories so pre-outage samples cannot bleed into
+           recovered readings, and invalidates the ADC snapshot.
+           [FA] نبود فریم پایدار ‎warm-up‎ و بافر فیلترهای ولتاژ و جریان را از نو
+           پاک می‌کند تا نمونه‌های پیش از قطعی با مقادیر پس از بازیابی مخلوط نشوند. */
         UINT8_T__G__MeasurementWarmupFrameCount = 0u;
+        BOOL__G__BatVoltageMedianSeeded[0u] = false;
+        BOOL__G__BatVoltageMedianSeeded[1u] = false;
+        func__Measurement_ResetCurrentFilters();
 
         int32_t__savedKernelLock = osKernelLock();
         if (int32_t__savedKernelLock >= 0)

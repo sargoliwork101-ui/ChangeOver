@@ -311,6 +311,8 @@ static uint8_t UINT8_T__G__RetryChannel;
    وقفه و آخرین ولتاژ ورودیِ معتبر را نگه می‌دارد در حالی که ‎PWM‎ صفر است. */
 static bool BOOL__G__BlindPaused = false;
 static uint16_t UINT16_T__G__BlindSavedDutyPermille[CHG_CHANNEL_COUNT] = {0u, 0u};
+static uint16_t UINT16_T__G__BlindAbsorbTargetDutyPermille[CHG_CHANNEL_COUNT] = {0u, 0u};
+static uint32_t UINT32_T__G__BlindAbsorbGraceUntilTick[CHG_CHANNEL_COUNT] = {0u, 0u};
 static uint32_t UINT32_T__G__BlindLastValidVinMv = 0u;
 static uint32_t UINT32_T__G__BlindSavedVinMv = 0u;
 
@@ -414,6 +416,8 @@ static void func__Charger_SafeIdle(void)
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
+        UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+        UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyBeforeTripPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
@@ -693,6 +697,8 @@ static void func__Charger_StopOneChannel(uint8_t uint8_t__channelIndex)
     }
 
     UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
+    UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+    UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
     CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
     func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
 }
@@ -730,6 +736,9 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
     }
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
+    UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
+    UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+    UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
     func__Charger_ClearAbsorbWindow(
         charger_channel_state_t__channel);
@@ -1555,6 +1564,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t uint32_t__absorbTicks;
     uint16_t uint16_t__nextDuty;
     uint32_t uint32_t__downIntervalTicks;
+    bool bool__inBlindAbsorbGrace;
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
 
@@ -1652,6 +1662,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     if (BOOL__G__ChargerDutyFixedEnable[uint8_t__channelIndex] != false)
     {
         UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
+        UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+        UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
         uint32_t__batteryMv =
             func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
                                            uint8_t__channelIndex);
@@ -1804,7 +1816,9 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         {
             uint32_t uint32_t__scaledDuty;
             uint32_t uint32_t__resumeDuty;
+            uint32_t uint32_t__equivPrePauseDuty;
 
+            uint32_t__equivPrePauseDuty = (uint32_t)uint16_t__savedDuty;
             uint32_t__scaledDuty =
                 (uint32_t)uint16_t__savedDuty * (uint32_t)CHG_BLIND_RESUME_PERCENT;
             uint32_t__resumeDuty = uint32_t__scaledDuty / 100u;
@@ -1813,15 +1827,24 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 (measurement_snapshot_t__snap->v_in_mv > UINT32_T__G__BlindSavedVinMv))
             {
                 uint32_t uint32_t__vinProduct;
+                uint32_t uint32_t__equivProduct;
 
                 uint32_t__vinProduct = uint32_t__resumeDuty * UINT32_T__G__BlindSavedVinMv;
                 uint32_t__resumeDuty =
                     uint32_t__vinProduct / measurement_snapshot_t__snap->v_in_mv;
+                uint32_t__equivProduct =
+                    uint32_t__equivPrePauseDuty * UINT32_T__G__BlindSavedVinMv;
+                uint32_t__equivPrePauseDuty =
+                    uint32_t__equivProduct / measurement_snapshot_t__snap->v_in_mv;
             }
 
             if (uint32_t__resumeDuty < (uint32_t)CHG_DUTY_START_PERMILLE)
             {
                 uint32_t__resumeDuty = (uint32_t)CHG_DUTY_START_PERMILLE;
+            }
+            if (uint32_t__equivPrePauseDuty > (uint32_t)func__Charger_MaxDutyPermille())
+            {
+                uint32_t__equivPrePauseDuty = (uint32_t)func__Charger_MaxDutyPermille();
             }
 
             func__Charger_PidInvalidate(charger_channel_state_t__channel);
@@ -1831,7 +1854,28 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             {
                 charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+                if ((uint16_t)uint32_t__equivPrePauseDuty >
+                    UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex])
+                {
+                    UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] =
+                        (uint16_t)uint32_t__equivPrePauseDuty;
+                }
+                UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] =
+                    uint32_t__nowTick + func__Charger_DurationTicks(CHG_BLIND_ABSORB_GRACE_MS);
             }
+            else
+            {
+                UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+                UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
+            }
+            /* [EN] Return immediately: the snapshot on this recovery pass was
+               captured while PWM was still 0% (0 mA, relaxed terminal voltage),
+               so regulation and ABSORB window checks must wait for the next
+               powered pass.
+               [FA] بازگشت فوری: نمونهٔ این پاس زمانی برداشته شده که ‎PWM‎ هنوز
+               صفر بوده (جریان صفر و ولتاژ استراحت)، پس حلقهٔ کنترل و شروط
+               ‎ABSORB‎ باید در پاس برق‌دار بعدی اجرا شوند. */
+            return;
         }
         else if (charger_channel_state_t__channel->charger_state_t__state != CHG_STATE_FLOAT)
         {
@@ -1842,6 +1886,26 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         else
         {
             /* [EN] FLOAT keeps its parked completion state. / [FA] حالت شارژ کامل حفظ می‌شود. */
+        }
+    }
+
+    bool__inBlindAbsorbGrace = false;
+    if (UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] != 0u)
+    {
+        if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB) &&
+            (charger_channel_state_t__channel->uint16_t__dutyPermille <
+             UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex]) &&
+            (uint32_t__batteryMv < CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv) &&
+            (func__Charger_DeadlineElapsed(
+                 uint32_t__nowTick,
+                 UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex]) == false))
+        {
+            bool__inBlindAbsorbGrace = true;
+        }
+        else
+        {
+            UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+            UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
         }
     }
 
@@ -1967,13 +2031,16 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                که باعث می‌شد تا زیر ۱۲٫۸ بیفتد و از نو شروع کند. عمداً برای کل
                اپیزود قفل می‌شود، چون زنجیرهٔ حس ±۱۰ تا ۲۰ میلی‌آمپر نوسان دارد. */
             if ((charger_channel_state_t__channel->uint32_t__absorbMaxArmTick == 0u) &&
+                (bool__inBlindAbsorbGrace == false) &&
                 (uint32_t__currentMa < (uint32_t)CHG_LIM(CHG_LIMIT_PARAM_ABSORB_MAX_ARM_MA)))
             {
                 charger_channel_state_t__channel->uint32_t__absorbMaxArmTick =
                     uint32_t__nowTick;
             }
 
-            bool__taperNow = (uint32_t__currentMa < CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa);
+            bool__taperNow =
+                ((bool__inBlindAbsorbGrace == false) &&
+                 (uint32_t__currentMa < CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa));
             if (bool__taperNow == false)
             {
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
@@ -2012,6 +2079,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
+                UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+                UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
 #if MODULE_DIAG
                 if (charger_channel_state_t__channel->charger_state_t__state != CHG_STATE_FLOAT)
                 {
@@ -2038,6 +2107,19 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                else بی‌قید قبلی بلافاصله پس از اتمام شستشو به بالک پس می‌زد
                و شستشو را از صفر راه می‌انداخت. */
             uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
+        }
+        else if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB) &&
+                 (bool__inBlindAbsorbGrace != false))
+        {
+            /* [EN] Post-blind-resume ramp: hold ABSORB and preserve the
+               accumulated soak without counting below-14.3V time while PID
+               climbs from 70% back toward its pre-pause duty.
+               [FA] رمپ پس از بازیابی وقفهٔ ‎ADC‎: حفظ حالت ‎ABSORB‎ و اندوختهٔ
+               شستشو (بدون شمارش زمان زیر ۱۴٫۳ ولت) تا ‎PID‎ از ۷۰٪ به دیوتی
+               پیش از وقفه برگردد. */
+            uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
+            charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
+            charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
         }
         else
         {
@@ -2199,6 +2281,10 @@ static void func__Charger_EnterManualTestMode(uint32_t uint32_t__nowTick)
     BOOL__G__BlindPaused = false;
     UINT16_T__G__BlindSavedDutyPermille[0u] = 0u;
     UINT16_T__G__BlindSavedDutyPermille[1u] = 0u;
+    UINT16_T__G__BlindAbsorbTargetDutyPermille[0u] = 0u;
+    UINT16_T__G__BlindAbsorbTargetDutyPermille[1u] = 0u;
+    UINT32_T__G__BlindAbsorbGraceUntilTick[0u] = 0u;
+    UINT32_T__G__BlindAbsorbGraceUntilTick[1u] = 0u;
 
 #if MODULE_FAULT
     func__Fault_Clear(FAULT_CHARGER_BAT_LOST);
@@ -2809,6 +2895,11 @@ static void func__Charger_PauseOnBlindSnapshot(uint32_t uint32_t__nowTick)
         {
             charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
             charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+        }
+        else
+        {
+            UINT16_T__G__BlindAbsorbTargetDutyPermille[uint8_t__channelIndex] = 0u;
+            UINT32_T__G__BlindAbsorbGraceUntilTick[uint8_t__channelIndex] = 0u;
         }
         if (BOOL__G__DeadWasCharging[uint8_t__channelIndex] != false)
         {

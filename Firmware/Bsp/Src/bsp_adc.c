@@ -307,11 +307,15 @@ void func__BspAdc_Init(void)
 
     BOOL__G__RecoveryResetDetected = (bool__cookieValid && bool__softResetOnly);
 
-    /* [EN] Always consume the .noinit cookie on boot so a second software reset
-       can never loop automatically.
-       [FA] کوکی ‎.noinit‎ در هر بوت بلافاصله پاک می‌شود تا هرگز حلقهٔ ریست دوم نسازد. */
+    /* [EN] Always consume the .noinit cookie and clear sticky RCC->CSR reset
+       flags (especially PORRSTF latched at power-on) so a later single
+       software recovery reset sees SFTRSTF=1 with PORRSTF=0 on real silicon.
+       [FA] کوکی ‎.noinit‎ و پرچم‌های چسبندهٔ ‎RCC->CSR‎ (به‌ویژه ‎PORRSTF‎ زمان
+       وصل برق) در هر بوت پاک می‌شوند تا ریست نرم‌افزاری بعدی روی برد واقعی
+       به‌درستی با ‎SFTRSTF=1‎ و ‎PORRSTF=0‎ تشخیص داده شود. */
     UINT32_T__G__AdcRecoveryCookie[0] = 0u;
     UINT32_T__G__AdcRecoveryCookie[1] = 0u;
+    SET_BIT(RCC->CSR, RCC_CSR_RMVF);
 
     for (uint32_t__i = 0u; uint32_t__i < BSP_ADC_DMA_SAMPLE_COUNT; uint32_t__i++)
     {

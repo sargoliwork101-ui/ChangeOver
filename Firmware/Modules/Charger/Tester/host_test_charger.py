@@ -4871,6 +4871,126 @@ int main(void)
     func__Charger_Evaluate(&snap, APP_STATE_FAULT);
     assert(func__Charger_IsChannelActive(0u) == false);
 
+    /* 6) ABSORB blind-resume: 0 mA PWM-off snapshot + below-knee ramp must NOT
+          falsely arm the 1-hour absorbMaxArmTick while real current >= 300 mA */
+    g_fault_mask = FAULT_NONE;
+    func__Charger_Init();
+    snap.valid = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat_high_mv = 13200u;
+    snap.v_bat_low_mv = 13200u;
+    snap.i_ch1_ma = 300u;
+    snap.i_ch2_ma = 300u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    for (int step = 0; step < 3000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    /* Enter ABSORB at 14.35 V with 300 mA (> 150 mA arm threshold) */
+    snap.v_bat_high_mv = 14350u;
+    snap.v_bat_low_mv = 14350u;
+    snap.i_ch1_ma = 300u;
+    snap.i_ch2_ma = 300u;
+    for (int step = 0; step < 600; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == false);
+
+    /* Blind pause for 3 s, then recover with a 0 mA / 13.6 V PWM-off snapshot
+       followed by a 25 s below-knee ramp before returning to 14.35 V / 300 mA */
+    snap.valid = false;
+    g_tick += 3000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] == 0u);
+
+    snap.valid = true;
+    snap.v_bat_high_mv = 13600u;
+    snap.v_bat_low_mv = 13600u;
+    snap.i_ch1_ma = 0u;
+    snap.i_ch2_ma = 0u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] > 0u);
+    for (int step = 0; step < 250; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    snap.v_bat_high_mv = 14350u;
+    snap.v_bat_low_mv = 14350u;
+    snap.i_ch1_ma = 300u;
+    snap.i_ch2_ma = 300u;
+    /* Run 62 minutes at 300 mA: must NOT prematurely enter FLOAT! */
+    for (int step = 0; step < 37200; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == false);
+
+    /* 7) ABSORB blind-resume: 8 minutes of accumulated soak is preserved across
+          a temporary 13.6 V post-pause dip so 2.5 more minutes completes FLOAT */
+    func__Charger_Init();
+    snap.valid = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat_high_mv = 13200u;
+    snap.v_bat_low_mv = 13200u;
+    snap.i_ch1_ma = 200u;
+    snap.i_ch2_ma = 200u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    for (int step = 0; step < 2500; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    /* Accumulate 8 minutes (480 s) of ABSORB at 14.35 V, 200 mA */
+    snap.v_bat_high_mv = 14350u;
+    snap.v_bat_low_mv = 14350u;
+    for (int step = 0; step < 4800; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == false);
+
+    /* Blind pause 2 s -> resume with 13.6 V / 0 mA for 15 s while ramping up */
+    snap.valid = false;
+    g_tick += 2000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+
+    snap.valid = true;
+    snap.v_bat_high_mv = 13600u;
+    snap.v_bat_low_mv = 13600u;
+    snap.i_ch1_ma = 0u;
+    snap.i_ch2_ma = 0u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    for (int step = 0; step < 150; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+
+    /* Return to 14.4 V with 25 mA tail current: only 2.5 more minutes (150 s,
+       not a fresh 10 minutes!) must complete the preserved 8-min soak + 60s taper */
+    snap.v_bat_high_mv = 14400u;
+    snap.v_bat_low_mv = 14400u;
+    snap.i_ch1_ma = 25u;
+    snap.i_ch2_ma = 25u;
+    for (int step = 0; step < 1500; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == true);
+
     printf("BLIND RESUME HARNESS OK\n");
     return 0;
 }
