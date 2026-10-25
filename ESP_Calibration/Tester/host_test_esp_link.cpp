@@ -476,6 +476,9 @@ int main(void)
               "the chart is off the chargers page, as ordered");
         check(page0.find("id=\"ctb\"") == std::string::npos,
               "the operating table is GONE, as ordered - it must not reappear");
+        check(html.find("id=\"vb${n}\"></b> <span class=\"unit\">V</span><span class=\"bpct\" id=\"vp${n}\"></span>") != std::string::npos &&
+              html.find("function batDisPct(") != std::string::npos,
+              "page 0 renders the per-battery discharge percentage badge right beside vb1/vb2");
 
         ESP_WEB_SERVER_T__G__Server.call("/f.css", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&

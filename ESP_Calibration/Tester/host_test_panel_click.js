@@ -839,6 +839,50 @@ function main() {
                 check(box1.innerHTML === "" && box2.innerHTML === "",
                       "in auto mode the checklist is not shown");
             }
+            /* درصد پر بودن هر باتری کنار ولتاژ همان باتری در صفحهٔ اول:
+               موقع شارژ یا حضور برق ورودی پنهان و موقع دشارژ با نردبان ۷۴ و ۷۵ و هیسترزیس ۸۰ و ۸۱ و ۸۲ نمایش داده می‌شود. */
+            {
+                const pDis = (w.D && Array.isArray(w.D.p)) ? w.D.p.slice() : [];
+                pDis[29] = 6000; pDis[33] = 21000; pDis[50] = 50; pDis[53] = 15;
+                pDis[74] = 21000; pDis[75] = 29000; pDis[80] = 2; pDis[81] = 2; pDis[82] = 3;
+                const tChg = new Array(32).fill(0);
+                tChg[6] = 1; tChg[13] = 2; tChg[14] = 24100; tChg[15] = 26600;
+                tChg[16] = 13200; tChg[17] = 13200; tChg[18] = 13400;
+                w.draw({ on: 1, seq: 901, fl: 7, fl2: 0, t: tChg, p: pDis });
+                const vp1 = d.getElementById("vp1"), vp2 = d.getElementById("vp2");
+                check(vp1 && vp2 && vp1.textContent === "" && vp1.className === "bpct" &&
+                      vp2.textContent === "" && vp2.className === "bpct",
+                      "battery percentage stays hidden next to vb1/vb2 while charging on mains",
+                      (vp1 ? vp1.className + ":" + vp1.textContent : "no-vp1"));
+
+                const tDis = tChg.slice();
+                tDis[6] = 6; tDis[13] = 6; tDis[14] = 0;
+                tDis[18] = 12500; /* upper: (12500-10500)/4000 = 50% -> green */
+                tDis[17] = 11500; /* lower: (11500-10500)/4000 = 25% -> yellow */
+                tDis[16] = 11500; tDis[15] = 24000;
+                w.draw({ on: 1, seq: 902, fl: 5, fl2: 0, t: tDis, p: pDis });
+                check(vp1.textContent === "50%" && vp1.className === "bpct on" &&
+                      vp2.textContent === "25%" && vp2.className === "bpct on y",
+                      "on discharge each battery shows its own fullness % right beside its voltage",
+                      vp1.textContent + "/" + vp1.className + " , " + vp2.textContent + "/" + vp2.className);
+
+                /* 1% jitter must be held steady by the 2% discharge hysteresis (q80=2) */
+                const tJit = tDis.slice();
+                tJit[18] = 12540; /* raw 51% -> within 2% of 50%, stays 50% */
+                tJit[17] = 10900; /* raw 10% -> >=2% move and <15% crit -> red 10% */
+                w.draw({ on: 1, seq: 903, fl: 5, fl2: 0, t: tJit, p: pDis });
+                check(vp1.textContent === "50%" && vp2.textContent === "10%" && vp2.className === "bpct on r",
+                      "discharge % applies 2% hysteresis and critical red styling below q53",
+                      vp1.textContent + " , " + vp2.textContent + "/" + vp2.className);
+
+                /* Missing battery (<6V or BAT_LOST=8) must not claim 0% */
+                const tLost = tDis.slice();
+                tLost[6] = 8; tLost[18] = 1200;
+                w.draw({ on: 1, seq: 904, fl: 5, fl2: 0, t: tLost, p: pDis });
+                check(vp1.textContent === "" && vp1.className === "bpct" && vp2.textContent === "10%",
+                      "a disconnected battery channel hides % while the connected battery keeps showing its %",
+                      vp1.textContent + "/" + vp1.className + " , " + vp2.textContent);
+            }
 
             return;
         }

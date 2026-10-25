@@ -96,6 +96,8 @@ section{margin-top:12px}
    دقیقاً همان فونت را گرفت تا هر سه هم‌خانواده خوانده شوند. */
 .ch .big b,.ch .big .biglabel{font-size:17.92px}
 .bmetric{min-width:0}.bsub{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 8px;padding:3px 0 5px;border-bottom:1px solid var(--ln);color:var(--mu);font-size:17.92px}.bsub b{color:var(--tx);font-size:17.92px;font-variant-numeric:tabular-nums}.bsub .unit{font-size:12px;color:var(--mu);white-space:nowrap}
+.bpct{display:none;margin-left:8px;padding:1px 8px;border-radius:999px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;background:rgba(52,211,153,.13);color:var(--ok);border:1px solid rgba(52,211,153,.28)}
+.bpct.on{display:inline-block}.bpct.y{background:rgba(251,191,36,.13);color:var(--wa);border-color:rgba(251,191,36,.3)}.bpct.r{background:rgba(251,94,106,.13);color:var(--er);border-color:rgba(251,94,106,.32)}
 /* [EN] Scenario switch stays usable while the scenario body is disabled.
    [FA] کلید سناریو هنگام غیرفعال‌بودن بدنه همچنان فعال می‌ماند. */
 .scenctl{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--ln);border-radius:999px;background:var(--in);color:var(--mu);font-size:11px;white-space:nowrap;cursor:pointer}.scenctl input{accent-color:var(--ac2);width:15px;height:15px;margin:0}.scenario-off>.hd>b,.scenario-off>:not(.hd){opacity:.34;filter:grayscale(1)}.scenario-off>:not(.hd){pointer-events:none;user-select:none}.scenario-off .scenctl{opacity:1;filter:none;pointer-events:auto;user-select:auto}.scenario-off .scenctl input{cursor:pointer}.scenario-off{border-style:dashed}
@@ -552,7 +554,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 90d0431</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8c7c8ad</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1500,7 +1502,7 @@ ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}"></span></div>
 
-<div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (کالیبره)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span dir="ltr"><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
+<div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (کالیبره)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span dir="ltr"><b class="n" id="vb${n}"></b> <span class="unit">V</span><span class="bpct" id="vp${n}"></span></span></div></div>
 <div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s onkeydown="qmkey(${n},event)"></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div><div class=\"lb\" id=\"mp${n}\"></div>\n
@@ -3229,6 +3231,27 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
  LINK_WARN_KEY=key;
  if(LINK_WARN_DISMISS===key){e.className='wbx';e.innerHTML='';return;}
  e.className='wbx '+kind;e.innerHTML='<button class="wclose" type="button" aria-label="بستن پیام" title="بستن" onclick="lnkDismiss()">×</button>'+body;}
+/* درصد پر بودن هر باتری روی دشارژ از نردبان ۷۴ و ۷۵ نصف‌شده و پایداری ۸۰ و ۸۱ و ۸۲ برد */
+var DIS_ST=[{v:0,ok:0},{v:0,ok:0}];
+function batDisPct(idx,bv,s,d){
+ const st=DIS_ST[idx],t=d&&d.t,p=(d&&d.p)||[],fl=d&&d.fl;
+ const mn=p[33]!=null?p[33]:21000,absMv=p[29]!=null?p[29]:6000;
+ const dataOk=fl==null?bv!=null:((fl&5)===5);
+ const relayCut=!!(t&&((t[6]|0)===7||(t[13]|0)===7||((t[19]|0)&128)!==0));
+ const mainsOff=relayCut||(fl!=null&&((fl&2)===0))||(t&&t[14]!=null&&t[14]<mn);
+ const chgOn=(s===1||s===2||s===3||s===4||s===9)||((fl!=null)&&((fl&32)!==0));
+ if(!dataOk||!mainsOff||chgOn||bv==null||s===8||bv<absMv){if(st)st.ok=0;return null;}
+ const vmin=p[74]>0?p[74]:21000,vmax=p[75]>vmin?p[75]:29000;
+ const hMin=Math.floor(vmin/2),hMax=Math.floor(vmax/2);
+ if(hMax<=hMin){if(st)st.ok=0;return null;}
+ const raw=bv<=hMin?0:(bv>=hMax?100:Math.floor(((bv-hMin)*100)/(hMax-hMin)));
+ const rHyst=p[80]!=null?p[80]:2,rZero=p[81]!=null?p[81]:2,rOne=p[82]!=null?p[82]:3;
+ if(!st.ok){st.v=raw;st.ok=1;}
+ else if(st.v===0){if(raw>=rZero)st.v=1;}
+ else if(st.v===1){if(raw===0)st.v=0;else if(raw>=rOne)st.v=2;}
+ else if(Math.abs(raw-st.v)>=rHyst){st.v=raw;}
+ return st.v;
+}
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();scenFill();afill();
 /* [EN] Chart mount and render ownership. [FA] محل mount و مالکیت رندر نمودار. */
 if(TAB==2&&STAB==0)qgraph();
@@ -3284,6 +3307,13 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();livedraw(d);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
   $('ie'+n).innerHTML=t[b+3]+' <span class="lb">mA</span>';
   const bv=n==1?t[18]:t[17];$('vb'+n).textContent=bv==null?'--':v2(bv);
+  const vp=$('vp'+n);if(vp){const dp=batDisPct(n-1,bv,s,d);
+   if(dp==null){vp.textContent='';vp.className='bpct';vp.title='';}
+   else{const b1=p[50]!=null?p[50]:50,b4=p[53]!=null?p[53]:15,
+    vmin=p[74]>0?p[74]:21000,vmax=p[75]>vmin?p[75]:29000;
+    vp.textContent=dp+'%';
+    vp.className='bpct on'+(dp<b4?' r':(dp<b1?' y':''));
+    vp.title='درصد پر بودن روی دشارژ (۰٪='+v2(Math.floor(vmin/2))+'V · ۱۰۰٪='+v2(Math.floor(vmax/2))+'V)';}}
   $('du'+n).textContent=pc(t[b+5]);$('dc'+n).textContent=ce==null?'':'· سقف '+pc(ce);
   $('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';$('cl'+n).style.left=(100-Math.min(100,(ce==null?1000:ce)/10))+'%';
   [0,1,2,3,4].forEach(k=>$('c'+n+k).textContent=t[b+k]);
