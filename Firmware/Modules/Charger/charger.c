@@ -126,7 +126,7 @@ typedef struct
 {
     uint32_t uint32_t__absorbMv;        /* [EN] absorb hold setpoint / تثبیت ابزورب */
     uint32_t uint32_t__absorbEnterMv;   /* [EN] absorb entry threshold / آستانهٔ ورود ابزورب */
-    uint32_t uint32_t__absorbOverMv;    /* [EN] coarse down-step ceiling / سقف کاهش سریع */
+    uint32_t uint32_t__absorbOverMv;    /* [EN] over-voltage cut-off floor / کف قطع اضافه‌ولتاژ */
     uint32_t uint32_t__floatMv;         /* [EN] float hold setpoint / تثبیت شناور */
     uint32_t uint32_t__reentryMv;       /* [EN] float->bulk reentry / بازگشت شناور به بالک */
     uint32_t uint32_t__bulkCurrentMaxMa;/* [EN] current-regulation top of band / سقف باند جریان */
@@ -1727,16 +1727,23 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
     }
 
-    /* [EN] Absorb is a VOLTAGE-HOLD window now (user directive 2026-09-19):
-       entered at 14.3 V, duty steps shrink to 0.1% so the 14.4 V setpoint
-       holds steady without the old boundary hunting, the 10-minute soak
-       counts only while 14.4..14.5 V, dipping below 14.3 V returns to BULK
-       and RESETS the soak (his requirement until the offset case is solved),
-       overshoot above 14.6 V gets coarse 0.5% down-steps to come back fast.
-       [FA] ابزورب = پنجره تثبیت ولتاژ: ورود ۱۴٫۳V، پله ۰٫۱٪ برای نگه‌داشت
-       ۱۴٫۴V بدون تلاطم مرز؛ شستشوی ۱۰ دقیقه فقط در ۱۴٫۴..۱۴٫۵V جمع می‌شود؛
-       افت زیر ۱۴٫۳V برگشت به بالک + ریست شستشو؛ عبور از ۱۴٫۶V کاهش سریع
-       ۰٫۵٪. */
+    /* [EN] Absorb is a VOLTAGE-HOLD window (user directive 2026-09-19):
+       entered at 14.3 V, the 14.4 V setpoint is held by the CC/CV PID - one
+       update per CHG_PID_PERIOD_MS (100 ms), at most
+       CHG_PID_MAX_STEP_PERMILLE (8 permille) per update - so there is no
+       fine/coarse step table left here (deleted in v1.23). The 10-minute
+       soak counts for the whole ABSORB stay; dipping below 14.3 V returns
+       to BULK and RESETS the soak; an overshoot is walked back by the PID's
+       down-gain. Profile value 22 (absorbOver) is NOT read here - it only
+       floors the over-voltage cut-off in func__Charger_ClampAlarms().
+       [FA] ابزورب = پنجره تثبیت ولتاژ: ورود ‎۱۴٫۳V‎ و نگه‌داشت ‎۱۴٫۴V‎ کار
+       PID دوحلقه‌ای است - هر ‎CHG_PID_PERIOD_MS‎ (۱۰۰ms) یک به‌روز و حداکثر
+       ‎CHG_PID_MAX_STEP_PERMILLE‎ (۸ در هزار) در هر به‌روز - پس دیگر هیچ جدول
+       پلهٔ ریز/زبری اینجا نیست (در v1.23 حذف شد). شستشوی ۱۰ دقیقه‌ای کل مدتِ
+       ابزورب جمع می‌شود؛ افت زیر ‎۱۴٫۳V‎ برگشت به بالک + ریست شستشو؛ تجاوز با
+       بهرهٔ کاهشِ PID برگردانده می‌شود. مقدار ۲۲ پروفایل (‎absorbOver‎) اینجا
+       خوانده نمی‌شود - فقط کف قطع اضافه‌ولتاژ را در ‎func__Charger_ClampAlarms()‎
+       تعیین می‌کند. */
     if (uint32_t__batteryMv >= CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv)
     {
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BULK)

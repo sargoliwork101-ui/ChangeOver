@@ -444,7 +444,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f821a7f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 90d0431</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1657,7 +1657,7 @@ const PX={
  8:['پنجرهٔ میانگین','چند نمونه میانگین گرفته شود؛ بزرگ‌تر یعنی آرام‌تر ولی کندتر.'],
  20:['حداکثر ولتاژ باتری (Absorb)','ولتاژی که شارژر در فاز Absorb روی آن نگه می‌دارد. هدف اصلی حلقهٔ ولتاژ.'],
  21:['آستانهٔ ورود به Absorb','از این ولتاژ به بالا از Bulk وارد Absorb می‌شود.'],
- 22:['سقف تجاوز Absorb','اگر ولتاژ از این رد شد، duty سریع پایین کشیده می‌شود.'],
+ 22:['کف قطع اضافه‌ولتاژ','این عدد دیگر شکلِ شارژ را عوض نمی‌کند. فقط کفِ قطع اضافه‌ولتاژ را تعیین می‌کند: قطعِ قطعی باتری دست‌کم ۱۵۰mV بالاتر از این عدد تنظیم می‌شود. برگرداندن ولتاژ کار حلقهٔ PID است، نه این تنظیم.'],
  23:['ولتاژ Float','ولتاژ نگه‌داری بعد از پر شدن؛ کمتر از Absorb تا باتری نجوشد.'],
  24:['ولتاژ بازگشت به Bulk','اگر باتری تا این حد افت کرد، دوباره از Bulk شروع می‌شود.'],
  25:['جریان Bulk','سقف جریان فاز Bulk؛ هدف حلقهٔ جریان. حد سخت (Hard fault) جدا تنظیم می‌شود: پیش‌فرضش ۹۵۰ و باید همیشه دست‌کم ۵۰ بالای همین سقف بماند.'],
@@ -1875,7 +1875,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     نمودار مثل راهنما). یک فهرست واحد هم باندها را رنگ می‌کند هم راهنما را
     می‌سازد تا رنگ و معنا هیچ‌وقت از هم کپی نشوند. */
  const ZONES=[[()=>hi,()=>15000,'rgba(251,94,106,.16)','بالای ۱۵ ولت — ناحیهٔ خطر'],
-  [()=>15000,()=>q.o.v,'rgba(251,94,106,.09)','ناحیهٔ Over — کاهش سریع duty'],
+  [()=>15000,()=>q.o.v,'rgba(251,94,106,.09)','ناحیهٔ Over — بالای تنظیم ۲۲ (کف قطع اضافه‌ولتاژ)'],
   [()=>q.o.v,()=>q.e.v,'rgba(251,191,36,.08)','ناحیهٔ Absorb'],
   [()=>q.e.v,()=>q.f.v,'HATCH','ناحیهٔ Bulk — شارژ با جریان ثابت'],
   [()=>q.f.v,()=>q.r.v,'rgba(52,211,153,.09)','ناحیهٔ Float'],

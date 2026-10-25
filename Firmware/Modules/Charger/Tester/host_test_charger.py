@@ -492,7 +492,16 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_ABSORB_ENTER_MV\s+14300u", text_h), "absorb voltage-hold window must start at 14.3 V (user directive)")
     check("CHG_ABSORB_TIMED_MAX_MV" not in text_h, "soak has no sub-window anymore: it counts during the whole ABSORB stay")
     check(re.search(r"#define CHG_ABSORB_OVER_MV\s+14600u", text_h), "overshoot fast-down threshold must be 14.6 V (user directive)")
-    check(re.search(r"#define CHG_DUTY_STEP_FINE_PERMILLE\s+1u", text_h), "voltage-hold duty steps must be 0.1% (user directive)")
+    check("CHG_DUTY_STEP_FINE_PERMILLE" not in text_h, "the fine/coarse step table was deleted in v1.23; a leftover macro advertises a regulator that no longer exists")
+    check("CHG_PID_MAX_STEP_PERMILLE (8 permille)" in text_h,
+          "the header must state the real absorb duty-shaping limit: the PID, 8 permille per 100 ms update")
+    check("drives NO duty step" in CHARGER_H.read_text(),
+          "profile id 22 must be documented as the OV-cutoff floor, not as a duty step")
+    text_md = (ROOT / "Firmware/Modules/Charger/README.md").read_text()
+    check("22000..30000mV" not in text_md,
+          "the module sheet must not claim the 22000..30000 input window (code: 21000..28000 default)")
+    check("21000..28000mV" in text_md,
+          "the module sheet must state the real default input window 21000..28000 mV")
     check("uint32_t__absorbAccumTicks" in text_c, "soak must accumulate with pause outside the window")
     check("do NOT fall back to BULK" in text_c, "FLOAT must survive descending below the 14.3 V window (bench bug: fresh soak restarted right after every soak completed)")
     check("PARK THE PUMP AT ZERO" in text_c, "FLOAT must ramp the duty to 0 and park it (user: 'why is the charger not off? duty stuck 4-5%')")

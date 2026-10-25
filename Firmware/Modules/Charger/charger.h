@@ -124,20 +124,34 @@
 #define CHG_PWM_AUTO_RELOAD           1439u
 #define CHG_ABSORB_MV                 14400u
 /* [EN] Absorb as a voltage-hold window (user directive 2026-09-19): enter the
- *      window at CHG_ABSORB_ENTER_MV, hold the 14.4 V setpoint with fine
- *      0.1% duty steps (CHG_DUTY_STEP_FINE_PERMILLE) instead of the coarse
- *      0.5% steps so the voltage stays put; the 10-minute soak counts while
- *      the WHOLE ABSORB state lasts (his final directive), a dip below 14.3 V
- *      returns to BULK and RESETS the soak, and overshoot above
- *      CHG_ABSORB_OVER_MV (14.6 V) gets coarse 0.5% down-steps to come back
- *      fast. Still safely below FAULT_BAT_DISCONNECT_MV (14.8 V).
- * [FA] ابزورب به‌صورت پنجره تثبیت ولتاژ: ورود ۱۴٫۳V، تثبیت ۱۴٫۴V با پلهٔ
- *      ریز ۰٫۱٪ به‌جای ۰٫۵٪؛ شستشوی ۱۰ دقیقه‌ای کل مدتِ حالت ابزورب
- *      جمع می‌شود (دستور نهایی)، زیر ۱۴٫۳V برگشت به بالک + ریست، بالای
- *      ۱۴٫۶V کاهش سریع ۰٫۵٪. */
+ *      window at CHG_ABSORB_ENTER_MV, hold the 14.4 V setpoint; the
+ *      10-minute soak counts while the WHOLE ABSORB state lasts (his final
+ *      directive) and a dip below 14.3 V returns to BULK and RESETS the soak.
+ *      DUTY SHAPING IS THE PID, NOT A STEP TABLE (v1.23, 2026-09-29): the
+ *      fine/coarse step chain was deleted, so there is no 0.1% or 0.5% step
+ *      anywhere in the absorber. func__Charger_PidStep() updates once per
+ *      CHG_PID_PERIOD_MS (100 ms) and moves duty by at most
+ *      CHG_PID_MAX_STEP_PERMILLE (8 permille) per update, so an overshoot is
+ *      walked back by the PID's own down-gain, not by a special coarse step.
+ *      CHG_ABSORB_OVER_MV is therefore ONLY the factory default of profile
+ *      parameter 22; the live value is read in func__Charger_ClampAlarms()
+ *      as the floor of the over-voltage cut-off (ov >= over + 150 mV) and by
+ *      nothing in the regulator. Still safely below
+ *      FAULT_BAT_DISCONNECT_MV (14.8 V).
+ * [FA] ابزورب به‌صورت پنجره تثبیت ولتاژ: ورود ‎۱۴٫۳V‎، تثبیت ‎۱۴٫۴V‎؛
+ *      شستشوی ۱۰ دقیقه‌ای کل مدتِ حالت ابزورب جمع می‌شود (دستور نهایی) و زیر
+ *      ‎۱۴٫۳V‎ برگشت به بالک + ریست.
+ *      شکل‌دهی دیوتی کار PID است نه جدول پله (v1.23، ۲۰۲۶-۰۹-۲۹): زنجیرهٔ
+ *      پلهٔ ریز/زبر حذف شد، پس در ابزورب هیچ پلهٔ ‎۰٫۱٪‎ یا ‎۰٫۵٪‎ وجود ندارد.
+ *      ‎func__Charger_PidStep()‎ هر ‎CHG_PID_PERIOD_MS‎ (۱۰۰ms) یک‌بار به‌روز
+ *      می‌شود و حداکثر ‎CHG_PID_MAX_STEP_PERMILLE‎ (۸ در هزار) در هر به‌روز
+ *      جابه‌جا می‌شود؛ پس تجاوز ولتاژ با بهرهٔ کاهشِ خود PID برگردانده
+ *      می‌شود، نه با پلهٔ زبر ویژه.
+ *      ‎CHG_ABSORB_OVER_MV‎ تنها پیش‌فرض کارخانهٔ پارامتر ۲۲ است؛ مقدار زندهٔ
+ *      آن در ‎func__Charger_ClampAlarms()‎ فقط کفِ قطع اضافه‌ولتاژ را تعیین
+ *      می‌کند (‎ov >= over + ۱۵۰mV‎) و در تنظیم‌کننده هیچ نقشی ندارد. */
 #define CHG_ABSORB_ENTER_MV           14300u
 #define CHG_ABSORB_OVER_MV            14600u
-#define CHG_DUTY_STEP_FINE_PERMILLE       1u
 #define CHG_FLOAT_MV                  13500u
 #define CHG_REENTRY_MV               12800u
 /* [EN] How long a channel must CONTINUOUSLY SEE battery voltage before
@@ -1372,6 +1386,12 @@ bool func__Charger_IsChargeComplete(void);
  *      در esp_link.h باشند؛ تست هاست همین را قفل می‌کند). */
 #define CHG_PROFILE_PARAM_ABSORB_MV           20u  /* [EN] mV, 11000..14600 / mV */
 #define CHG_PROFILE_PARAM_ABSORB_ENTER_MV     21u  /* [EN] mV, absorb-500..absorb-50 / mV */
+/* [EN] Profile id 22 is the FLOOR of the over-voltage cut-off (the cut-off
+ *      is always at least 150 mV above it) and it drives NO duty step any
+ *      more - the PID shapes duty since v1.23.
+ * [FA] شناسهٔ ۲۲ کفِ قطع اضافه‌ولتاژ است (قطع همیشه دست‌کم ۱۵۰ میلی‌ولت
+ *      بالاتر از آن تنظیم می‌شود) و دیگر هیچ پله‌ای در دیوتی نمی‌سازد؛
+ *      از v1.23 شکل‌دهی کار PID است. */
 #define CHG_PROFILE_PARAM_ABSORB_OVER_MV      22u  /* [EN] mV, absorb+100..min(absorb+400,14750) / mV */
 #define CHG_PROFILE_PARAM_FLOAT_MV            23u  /* [EN] mV, 9000..absorb-300 / mV */
 #define CHG_PROFILE_PARAM_REENTRY_MV          24u  /* [EN] mV, 8000..float-300 / mV */
@@ -1406,7 +1426,7 @@ bool func__Charger_IsChargeComplete(void);
  *              FLOAT-300, TAPER <= BULK_CURRENT_MAX). Returns the APPLIED
  *              value (SET_PARAM reports it back).
  *         [FA] نوشتن یک پارامتر پروفایل شارژ (لینک ESP، شناسه‌های ۲۰..۲۶:
- *              ۲۰=ولتاژ ابزورب، ۲۱=آستانهٔ ورود، ۲۲=سقف تجاوز، ۲۳=ولتاژ
+ *              ۲۰=ولتاژ ابزورب، ۲۱=آستانهٔ ورود، ۲۲=کف قطع اضافه‌ولتاژ، ۲۳=ولتاژ
  *              شناور، ۲۴=ولتاژ بازگشت، ۲۵=جریان حداکثر بالک، ۲۶=جریان
  *              تیپر/شناوری). مقدار گیره می‌خورد و همهٔ وابسته‌ها دوباره
  *              گیره می‌شوند تا مجموعه سازنده بماند. مقدار «اعمال‌شده» را
