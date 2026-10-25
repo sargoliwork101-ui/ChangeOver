@@ -214,7 +214,7 @@ BoardTest → یک‌بار قرمز/زرد/سبز + بوق
 | `UpdateChargingYellowBlink` | زرد فاز-حفاظ |
 | `Buzzer_Tick` | API بوق |
 | `Init` | خاموش+reset stable/phase/full |
-| `BoardTest_Start` | تست یک‌بار |
+| `BoardTest_Start` | تست یک‌بار با اعلام حضور واچ‌داگ `BSP_IWDG_SLOT_UI` بین مراحل ۵۰۰ms |
 | `ScenarioInputOk` | non-blocking سبز ثابت |
 | `ScenarioCharging_Tick` | سبز+زرد 5% non-blocking |
 | `ScenarioBatteryRun_Tick` | سبز 2%+0/1 + بوق |

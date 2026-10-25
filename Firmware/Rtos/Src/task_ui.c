@@ -41,6 +41,10 @@ void func__TaskUi(void *void_ptr__argument)
     (void)void_ptr__argument;
 
     func__Ui_Init();
+#if MODULE_UI
+    func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI,
+                          func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
+#endif
     func__Ui_BoardTest_Start();
 
     for (;;)

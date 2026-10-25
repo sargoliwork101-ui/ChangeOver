@@ -220,6 +220,12 @@
 #define UI_SELFTEST_LED_MS              500u
 
 /**
+ * @brief  [EN] Maximum delay slice between UI watchdog check-ins during BoardTest.
+ *         [FA] بیشترین گام تأخیر بین دو اعلام حضور واچ‌داگ در تست یک‌باره برد.
+ */
+#define UI_BOARDTEST_IWDG_SLICE_MS      500u
+
+/**
  * @brief  [EN] Complete green blink period used by BatteryRun, in milliseconds.
  *         [FA] دوره کامل چشمک سبز در BatteryRun، بر حسب میلی‌ثانیه.
  */

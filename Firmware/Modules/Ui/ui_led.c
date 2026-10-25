@@ -20,6 +20,7 @@
 #include "ui_buzzer.h"
 #include "app_config.h"
 #include "bsp_gpio.h"
+#include "bsp_iwdg.h"
 #include "cmsis_os2.h"
 #include "rtos_time.h"
 #include "modules_enable.h"
@@ -2432,13 +2433,49 @@ void func__Ui_Init(void)
     func__Ui_ResetChargingFullHysteresis();
 }
 
+/* ==================== Board Test Delay With Watchdog / تأخیر تست برد با واچ‌داگ ==================== */
+
+/**
+ * @brief  [EN] Delay helper for BoardTest that refreshes BSP_IWDG_SLOT_UI between slices
+ *         without changing total LED or buzzer duration.
+ *         [FA] تابع کمکی تأخیر تست برد که اسلات واچ‌داگ UI را بین گام‌ها تازه می‌کند
+ *         بدون آن‌که زمان روشن‌ماندن LED یا بوق تغییر کند.
+ * @param  uint32_t__delayMs [EN] Requested delay in milliseconds. / [FA] زمان تأخیر درخواستی به میلی‌ثانیه.
+ */
+static void func__Ui_BoardTest_DelayWithWatchdog(uint32_t uint32_t__delayMs)
+{
+    uint32_t uint32_t__remainingMs;
+    uint32_t uint32_t__sliceMs;
+
+    uint32_t__remainingMs = uint32_t__delayMs;
+#if MODULE_UI
+    func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI,
+                          func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
+#endif
+    while (uint32_t__remainingMs > 0u)
+    {
+        uint32_t__sliceMs = uint32_t__remainingMs;
+        if (uint32_t__sliceMs > UI_BOARDTEST_IWDG_SLICE_MS)
+        {
+            uint32_t__sliceMs = UI_BOARDTEST_IWDG_SLICE_MS;
+        }
+        func__Rtos_DelayMilliseconds(uint32_t__sliceMs);
+        uint32_t__remainingMs -= uint32_t__sliceMs;
+#if MODULE_UI
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI,
+                              func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
+#endif
+    }
+}
+
 /* ==================== Board Test Start / شروع تست برد ==================== */
 
 /**
  * @brief  [EN] One-shot wiring check: red, yellow, green and the previous 150ms-style buzzer check.
  *         The buzzer uses the new periodic API with a safe period and then is explicitly turned off.
+ *         Each delay step refreshes BSP_IWDG_SLOT_UI so the 1650 ms sequence stays inside BSP_IWDG_STALE_MS.
  *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز و بوق کوتاه قبلی.
- *         بوق با API دوره‌ای جدید و دوره امن اجرا و سپس صریحاً خاموش می‌شود.
+ *         بوق با API دوره‌ای جدید و دوره امن اجرا و سپس صریحاً خاموش می‌شود و بین گام‌ها واچ‌داگ UI تازه می‌گردد.
  */
 void func__Ui_BoardTest_Start(void)
 {
@@ -2456,15 +2493,15 @@ void func__Ui_BoardTest_Start(void)
     func__Ui_ResetChargingFullHysteresis();
 
     func__red(true);
-    func__Rtos_DelayMilliseconds(APP_CONFIG.ui_selftest_led_ms);
+    func__Ui_BoardTest_DelayWithWatchdog(APP_CONFIG.ui_selftest_led_ms);
     func__red(false);
 
     func__yellow(true);
-    func__Rtos_DelayMilliseconds(APP_CONFIG.ui_selftest_led_ms);
+    func__Ui_BoardTest_DelayWithWatchdog(APP_CONFIG.ui_selftest_led_ms);
     func__yellow(false);
 
     func__green(true);
-    func__Rtos_DelayMilliseconds(APP_CONFIG.ui_selftest_led_ms);
+    func__Ui_BoardTest_DelayWithWatchdog(APP_CONFIG.ui_selftest_led_ms);
     func__green(false);
 
     if (APP_CONFIG.ui_boot_beep_ms == 0u)
@@ -2505,7 +2542,7 @@ void func__Ui_BoardTest_Start(void)
 
     if (int32_t__buzzerResult != UI_BUZZER_INVALID_RESULT)
     {
-        func__Rtos_DelayMilliseconds(APP_CONFIG.ui_boot_beep_ms);
+        func__Ui_BoardTest_DelayWithWatchdog(APP_CONFIG.ui_boot_beep_ms);
     }
 
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);

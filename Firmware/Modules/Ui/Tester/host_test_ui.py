@@ -3,7 +3,7 @@
 # @brief   [EN] Host tests for UI buzzer, BatteryRun 2%+0/1, Charging 5%, InputOk 100/95 and phase preserve.
 #          [FA] تست هاست بوق، هیسترزیس ۲٪ BatteryRun + ۵٪ Charging و ۱۰۰/۹۵ فول.
 
-import os, re
+import os, re, subprocess, tempfile
 
 # [EN] v1.25: this script now lives in the module's Tester/ folder, so the
 #      headers it reads are one level UP, in the module root.
@@ -896,6 +896,193 @@ def run_scenario_alarm_switch_tests():
     print("Scenario alarm switches (v1.87) PASS")
 
 
+def run_boardtest_watchdog_tests():
+    """[EN] Verify TaskUi + func__Ui_BoardTest_Start refresh BSP_IWDG_SLOT_UI
+       between steps so the 1650 ms boot self-test never exceeds
+       BSP_IWDG_STALE_MS (1500 ms), while preserving exact LED/buzzer durations.
+       [FA] بررسی اعلام حضور واچ‌داگ اسلات UI در تست اولیهٔ برد بدون تغییر زمان‌بندی."""
+    repo_root = os.path.dirname(os.path.dirname(BASE_DIR))
+    repo_root = os.path.dirname(repo_root)
+    task_ui_path = os.path.join(repo_root, "Firmware", "Rtos", "Src", "task_ui.c")
+    task_ui_c = open(task_ui_path, "r", encoding="utf-8", errors="ignore").read()
+    init_idx = task_ui_c.find("func__Ui_Init();")
+    pre_checkin_idx = task_ui_c.find("func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI", init_idx)
+    bt_idx = task_ui_c.find("func__Ui_BoardTest_Start();", init_idx)
+    assert_true(init_idx != -1 and pre_checkin_idx != -1 and bt_idx != -1 and
+                init_idx < pre_checkin_idx < bt_idx,
+                "TaskUi must check in BSP_IWDG_SLOT_UI right before func__Ui_BoardTest_Start()")
+
+    harness_c = r'''
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include "app_config.h"
+#include "bsp_gpio.h"
+#include "bsp_iwdg.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+#include "ui_buzzer.h"
+#include "ui_led.h"
+
+#ifndef TEST_LED_MS
+#define TEST_LED_MS UI_SELFTEST_LED_MS
+#endif
+
+const app_config_t APP_CONFIG = {
+    .ui_selftest_led_ms   = TEST_LED_MS,
+    .ui_boot_beep_ms      = 150u,
+    .control_period_ms    = 10u,
+    .protection_period_ms = 10u,
+    .comm_period_ms       = 20u,
+};
+
+static uint32_t g_now_ms = 0u;
+static bool g_red = false, g_yellow = false, g_green = false, g_buz = false;
+static uint32_t g_red_ms = 0u, g_yellow_ms = 0u, g_green_ms = 0u, g_buz_ms = 0u;
+static uint32_t g_checkins[64];
+static uint32_t g_checkin_slots[64];
+static uint32_t g_checkin_count = 0u;
+
+void func__BspGpio_Write(bsp_gpio_id_t id, bool on)
+{
+    if (id == BSP_GPIO_LED_RED)    { g_red = on; }
+    if (id == BSP_GPIO_LED_YELLOW) { g_yellow = on; }
+    if (id == BSP_GPIO_LED_GREEN)  { g_green = on; }
+    if (id == BSP_GPIO_BUZZER)     { g_buz = on; }
+}
+
+void func__BspIwdg_CheckIn(uint32_t slot, uint32_t nowMs)
+{
+    if (g_checkin_count < 64u)
+    {
+        g_checkin_slots[g_checkin_count] = slot;
+        g_checkins[g_checkin_count] = nowMs;
+        g_checkin_count++;
+    }
+}
+
+uint32_t osKernelGetTickCount(void) { return g_now_ms; }
+int32_t osKernelLock(void) { return 0; }
+int32_t osKernelRestoreLock(int32_t lock) { (void)lock; return 0; }
+uint32_t func__Rtos_TicksToMilliseconds(uint32_t ticks) { return ticks; }
+
+void func__Rtos_DelayMilliseconds(uint32_t ms)
+{
+    if (g_red)    { g_red_ms += ms; }
+    if (g_yellow) { g_yellow_ms += ms; }
+    if (g_green)  { g_green_ms += ms; }
+    if (g_buz)    { g_buz_ms += ms; }
+    g_now_ms += ms;
+}
+
+int main(void)
+{
+    uint32_t i;
+    uint32_t prev = 0u;
+    uint32_t gap;
+    uint32_t max_gap = 0u;
+    uint32_t led_ms = APP_CONFIG.ui_selftest_led_ms;
+    uint32_t beep_ms = APP_CONFIG.ui_boot_beep_ms;
+
+    func__Ui_Init();
+    func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI, g_now_ms);
+    func__Ui_BoardTest_Start();
+
+    if (g_red || g_yellow || g_green || g_buz) { return 10; }
+    if (g_red_ms != led_ms || g_yellow_ms != led_ms || g_green_ms != led_ms) { return 11; }
+    if (g_buz_ms != beep_ms) { return 12; }
+    if (g_now_ms != (3u * led_ms + beep_ms)) { return 13; }
+    if (g_checkin_count < 5u) { return 14; }
+
+    for (i = 0u; i < g_checkin_count; i++)
+    {
+        if (g_checkin_slots[i] != BSP_IWDG_SLOT_UI) { return 15; }
+        if (g_checkins[i] < prev) { return 16; }
+        gap = g_checkins[i] - prev;
+        if (gap > max_gap) { max_gap = gap; }
+        prev = g_checkins[i];
+    }
+    gap = g_now_ms - prev;
+    if (gap > max_gap) { max_gap = gap; }
+    if (max_gap > UI_BOARDTEST_IWDG_SLICE_MS) { return 17; }
+    if (max_gap >= BSP_IWDG_STALE_MS) { return 18; }
+    return 0;
+}
+'''
+    mod_hdr = '''#ifndef MODULES_ENABLE_H
+#define MODULES_ENABLE_H
+#define MODULE_UI             1
+#define MODULE_FAULT          0
+#define MODULE_MEASUREMENT    0
+#define MODULE_PROTECTION     0
+#define MODULE_CHANGEOVER     0
+#define MODULE_MCU_POWER_PATH 0
+#define MODULE_CHARGER        0
+#define MODULE_JITTER         0
+#define MODULE_ESP            0
+#define MODULE_IMBALANCE      0
+#define MODULE_DIAG           0
+#define MODULE_FLASH_LOCK     0
+#endif
+'''
+    inc_dirs = [
+        "CubeIDE/Core/Inc",
+        "CubeIDE/Drivers/CMSIS/Include",
+        "CubeIDE/Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+        "CubeIDE/Drivers/STM32F1xx_HAL_Driver/Inc",
+        "CubeIDE/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
+        "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/include",
+        "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
+        "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3",
+        "Firmware/App/Inc",
+        "Firmware/Bsp/Inc",
+        "Firmware/Config/Inc",
+        "Firmware/Rtos/Inc",
+        "Firmware/Modules/Ui",
+        "Firmware/Modules/Measurement",
+        "Firmware/Modules/Protection",
+        "Firmware/Modules/Changeover",
+        "Firmware/Modules/Charger",
+        "Firmware/Modules/Jitter",
+        "Firmware/Modules/Fault",
+        "Firmware/Modules/EspLink",
+        "Firmware/Modules/McuPowerPath",
+        "Firmware/Modules/Imbalance",
+        "Firmware/Modules/CalLut",
+        "Firmware/Modules/Diag",
+        "Firmware/Modules/FlashLock",
+    ]
+    with tempfile.TemporaryDirectory() as tmpd:
+        src_path = os.path.join(tmpd, "test_boardtest_iwdg.c")
+        with open(src_path, "w", encoding="utf-8") as f:
+            f.write(harness_c)
+        with open(os.path.join(tmpd, "modules_enable.h"), "w", encoding="utf-8") as f:
+            f.write(mod_hdr)
+        for idx, led_ms in enumerate((500, 2200)):
+            bin_path = os.path.join(tmpd, f"test_boardtest_iwdg_{idx}")
+            cmd = [
+                "gcc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror",
+                "-DSTM32F103xB", "-DUSE_HAL_DRIVER",
+                f"-DTEST_LED_MS={led_ms}u",
+                "-I", tmpd,
+            ]
+            for d in inc_dirs:
+                cmd.extend(["-I", os.path.join(repo_root, d)])
+            cmd.extend([
+                src_path,
+                os.path.join(BASE_DIR, "ui_led.c"),
+                os.path.join(BASE_DIR, "ui_buzzer.c"),
+                "-o", bin_path,
+            ])
+            res_compile = subprocess.run(cmd, capture_output=True, text=True)
+            assert_true(res_compile.returncode == 0,
+                        f"BoardTest watchdog C harness compile failed ({led_ms}ms): {res_compile.stderr}")
+            res_run = subprocess.run([bin_path], capture_output=True, text=True)
+            assert_true(res_run.returncode == 0,
+                        f"BoardTest watchdog C harness failed ({led_ms}ms, rc={res_run.returncode}): {res_run.stdout} {res_run.stderr}")
+    print("BoardTest IWDG check-in (1650 ms total, <=500 ms slice < 1500 ms stale) PASS")
+
+
 def main():
     print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")
     run_assertions()
@@ -906,6 +1093,7 @@ def main():
     run_charging_hysteresis_tests()
     run_full_hysteresis_tests()
     run_scenario_alarm_switch_tests()
+    run_boardtest_watchdog_tests()
     print("\n=== Additional checks ===")
     assert_equal(battery_voltage_to_percent(21000),0,"21000->0%")
     assert_equal(battery_voltage_to_percent(29000),100,"29000->100% (charging yellow blink ceiling raised 28->29 V, user order 2026-09-20)")
