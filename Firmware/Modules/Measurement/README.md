@@ -40,11 +40,13 @@
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
 | `func__Measurement_V12CountsToMv` | خام استاندارد → mV منبع ۱۲، با تقسیم برد در BSP |
 | `func__Measurement_Current1CountsToMa` / `Current2CountsToMa` | شمارش خام هر کانال → mA باتری: جدول جریان بنچ همان کانال روی محور شمارش (اگر جدول در فلش باشد)؛ در غیر این صورت خط گین و آفست پر-کانال در BSP (پیش‌فرض گین ۳۰۰۰‰ و آفست ۰) در `calibration.h` (۱۷ انکر ch1 از v1.19، ۱۴ انکر ch2 از v1.18). **جفت‌شدگی:** هر جدول فقط با آفست/گینِ بنچ خودش معتبر است — تغییر گین = بازفیت جدول |
-| `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر `MEASUREMENT_PERIOD_MS` (۱ms) یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
-| `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
+| `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر `MEASUREMENT_PERIOD_MS` (۱ms) اجرای `Run` و `SuperviseAdc` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
+| `func__Measurement_SuperviseAdc` | ناظر خودترمیمی دومرحله‌ای ADC+DMA: ۶۰ ثانیه تلاش بی‌صدای درجا (`func__BspAdc_Recover` هر ۵۰۰ms)، حداکثر یک ریست نرم‌افزاری میکرو، ۶۰ ثانیه تلاش دیگر پس از ریست، و در صورت عدم بهبود ثبت قطعی `FAULT_ADC` |
+| `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد، خواندن و پاک‌کردن کوکی تک‌مصرف ریست بازیابی در `.noinit` و صفر کردن بافر DMA |
 | `func__BspAdc_Start` (Bsp) | شروع backend ADC+DMA برد؛ جزئیات peripheral و منابع وقفه در پورت برد خصوصی است |
 | `func__BspAdc_IsFrameReady` (Bsp) | true بعد از کالیبراسیون و Start موفق |
-| `func__BspAdc_GetRaw` (Bsp) | انتخاب نیمهٔ کامل با CNDTR و کپی پایدار ۵ کانال با بررسی قبل/بعد شمارنده؛ سپس جایگذاری نمونهٔ سنکرون وسط ON در جایگاه‌های CURRENT1/CURRENT2 (فقط پورت برد) |
+| `func__BspAdc_GetRaw` (Bsp) | پایش پیشروی واقعی پرچم‌های سخت‌افزاری DMA (`HTIF1/TCIF1/TEIF1`) برای رد دادهٔ یخ‌زده، انتخاب نیمهٔ کامل با CNDTR و کپی پایدار ۶ کانال با بررسی قبل/بعد شمارنده؛ سپس جایگذاری نمونهٔ سنکرون وسط ON در جایگاه‌های CURRENT1/CURRENT2 |
+| `func__BspAdc_Recover` (Bsp) | ریست، بازپیکربندی، کالیبراسیون و شروع مجدد بی‌صدای درجا برای ADC1 و DMA1_Channel1 |
 
 ## مقدارهای گلوبال (مشترک)
 

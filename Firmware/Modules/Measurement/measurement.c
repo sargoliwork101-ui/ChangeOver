@@ -24,11 +24,15 @@
  */
 
 #include "measurement.h"
+#include "modules_enable.h"
 #include "calibration.h"
 #include "cal_lut.h"
 #include "bsp_adc.h"
 #include "bsp_measurement.h"
 #include "bsp_gpio.h"
+#if MODULE_FAULT
+#include "fault.h"
+#endif
 #include "cmsis_os2.h"
 #include <stddef.h>
 
@@ -62,6 +66,19 @@ static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
    فریم تأخیر عبور می‌کند. */
 static uint32_t UINT32_T__G__BatVoltageMedianHistoryCounts[2][5];
 static bool BOOL__G__BatVoltageMedianSeeded[2];
+
+/* [EN] Two-stage ADC1+DMA self-healing supervisor state (60 s pre-reset +
+ *      1 software reset + 60 s post-reset -> latched FAULT_ADC).
+ * [FA] وضعیت ناظر خودترمیمی دومرحله‌ای ‎ADC1+DMA‎ (۶۰ ثانیه پیش از ریست +
+ *      یک ریست نرم‌افزاری + ۶۰ ثانیه پس از ریست ← ثبت قطعی ‎FAULT_ADC‎). */
+static bool BOOL__G__AdcStallActive = false;
+static bool BOOL__G__AdcFirstRetryDone = false;
+static uint32_t UINT32_T__G__AdcStallStartMs = 0u;
+static uint32_t UINT32_T__G__AdcLastRecoverMs = 0u;
+static bool BOOL__G__AdcHealthyActive = false;
+static uint32_t UINT32_T__G__AdcHealthyStartMs = 0u;
+static bool BOOL__G__AdcPostResetUsed = false;
+static bool BOOL__G__AdcFaultLatched = false;
 
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
 /* [EN] Median history per current channel (0=Current1, 1=Current2), window
@@ -585,6 +602,15 @@ void func__Measurement_Init(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+
+    BOOL__G__AdcStallActive = false;
+    BOOL__G__AdcFirstRetryDone = false;
+    UINT32_T__G__AdcStallStartMs = 0u;
+    UINT32_T__G__AdcLastRecoverMs = 0u;
+    BOOL__G__AdcHealthyActive = false;
+    UINT32_T__G__AdcHealthyStartMs = 0u;
+    BOOL__G__AdcPostResetUsed = func__BspAdc_WasRecoveryReset();
+    BOOL__G__AdcFaultLatched = false;
 }
 
 /* ==================== Counts To Mv ==================== */
@@ -967,6 +993,19 @@ void func__Measurement_Run(void)
     bool bool__frameCopied;
     bool bool__inputPresent;
     int32_t int32_t__savedKernelLock;
+
+    /* [EN] Once both 60 s recovery windows (pre-reset and post-reset) have
+       failed and FAULT_ADC is latched, never publish sporadic frames again in
+       this power session.
+       [FA] پس از شکست هر دو پنجرهٔ ۶۰ ثانیه‌ای و قفل‌شدن ‎FAULT_ADC‎، تا ریست
+       دستی اپراتور دیگر فریم پراکنده‌ای معتبر اعلام نمی‌شود. */
+    if (BOOL__G__AdcFaultLatched != false)
+    {
+        UINT8_T__G__MeasurementWarmupFrameCount = 0u;
+        BOOL__G__MeasDataValid = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+        return;
+    }
 
     /* [EN] GetRaw copies only a completed DMA half-frame; no ADC register
        polling is performed here.
@@ -1441,3 +1480,108 @@ int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)
 
     return INT32_T__G__Voltage12OffsetMv;
 }
+
+/* ==================== Measurement_SuperviseAdc ==================== */
+
+/**
+ * @brief  [EN] Supervise ADC1+DMA liveness on every measurement pass: silently
+ *              retry in-place hardware recovery for 60 s, perform at most one
+ *              MCU software reset, retry silently for another 60 s after that
+ *              reset, and latch FAULT_ADC only if still unrecovered.
+ *         [FA] نظارت بر زنده‌بودن ‎ADC1+DMA‎ در هر پاس اندازه‌گیری: تلاش بی‌صدای
+ *              بازیابی درجا به مدت ۶۰ ثانیه، حداکثر یک ریست برد، تلاش ۶۰ ثانیهٔ
+ *              دیگر پس از ریست، و ثبت خطای ‎FAULT_ADC‎ فقط در صورت عدم بهبود.
+ * @param  uint32_t__nowMs [EN] Monotonic kernel time in milliseconds / زمان یکنواخت کرنل بر حسب میلی‌ثانیه
+ */
+void func__Measurement_SuperviseAdc(uint32_t uint32_t__nowMs)
+{
+    uint32_t uint32_t__stallElapsedMs;
+    uint32_t uint32_t__healthyElapsedMs;
+    uint32_t uint32_t__retryElapsedMs;
+
+    if (BOOL__G__AdcFaultLatched != false)
+    {
+#if MODULE_FAULT
+        func__Fault_Set(FAULT_ADC);
+#endif
+        return;
+    }
+
+    if (BOOL__G__MeasDataValid != false)
+    {
+        BOOL__G__AdcStallActive = false;
+        BOOL__G__AdcFirstRetryDone = false;
+
+        /* [EN] Re-arm the single-reset budget only after 60 s of continuous
+           healthy operation so an intermittent short-lived boot can never loop.
+           [FA] سهمیهٔ یک ریست فقط پس از ۶۰ ثانیه کار سالمِ پیوسته بازمی‌گردد تا
+           خرابی متناوبِ کوتاه‌مدت هرگز حلقهٔ ریست نسازد. */
+        if (BOOL__G__AdcPostResetUsed != false)
+        {
+            if (BOOL__G__AdcHealthyActive == false)
+            {
+                BOOL__G__AdcHealthyActive = true;
+                UINT32_T__G__AdcHealthyStartMs = uint32_t__nowMs;
+            }
+            else
+            {
+                uint32_t__healthyElapsedMs =
+                    uint32_t__nowMs - UINT32_T__G__AdcHealthyStartMs;
+                if (uint32_t__healthyElapsedMs >= MEASUREMENT_ADC_RECOVER_WINDOW_MS)
+                {
+                    BOOL__G__AdcPostResetUsed = false;
+                    BOOL__G__AdcHealthyActive = false;
+                }
+            }
+        }
+        return;
+    }
+
+    BOOL__G__AdcHealthyActive = false;
+
+    if (BOOL__G__AdcStallActive == false)
+    {
+        BOOL__G__AdcStallActive = true;
+        BOOL__G__AdcFirstRetryDone = false;
+        UINT32_T__G__AdcStallStartMs = uint32_t__nowMs;
+        UINT32_T__G__AdcLastRecoverMs = uint32_t__nowMs;
+    }
+
+    uint32_t__stallElapsedMs = uint32_t__nowMs - UINT32_T__G__AdcStallStartMs;
+
+    if (uint32_t__stallElapsedMs >= MEASUREMENT_ADC_RECOVER_WINDOW_MS)
+    {
+        if (BOOL__G__AdcPostResetUsed == false)
+        {
+            BOOL__G__AdcPostResetUsed = true;
+            BOOL__G__AdcStallActive = false;
+            BOOL__G__AdcFirstRetryDone = false;
+            func__BspAdc_TriggerRecoveryReset();
+            return;
+        }
+
+        BOOL__G__AdcFaultLatched = true;
+#if MODULE_FAULT
+        func__Fault_Set(FAULT_ADC);
+#endif
+        return;
+    }
+
+    /* [EN] While warm-up frames are actively arriving (1..2 frames after boot
+       or after a successful Recover), let warm-up finish without resetting ADC.
+       [FA] وقتی فریم‌های گرم‌شدن در حال رسیدن‌اند، اجازه بده گرم‌شدن کامل شود. */
+    if (UINT8_T__G__MeasurementWarmupFrameCount > 0u)
+    {
+        return;
+    }
+
+    uint32_t__retryElapsedMs = uint32_t__nowMs - UINT32_T__G__AdcLastRecoverMs;
+    if ((BOOL__G__AdcFirstRetryDone == false) ||
+        (uint32_t__retryElapsedMs >= MEASUREMENT_ADC_RECOVER_RETRY_MS))
+    {
+        BOOL__G__AdcFirstRetryDone = true;
+        UINT32_T__G__AdcLastRecoverMs = uint32_t__nowMs;
+        (void)func__BspAdc_Recover();
+    }
+}
+

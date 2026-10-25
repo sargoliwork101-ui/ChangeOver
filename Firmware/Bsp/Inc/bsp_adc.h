@@ -112,4 +112,36 @@ bool func__BspAdc_IsFrameReady(void);
  */
 bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT]);
 
+/* ==================== BspAdc_Recover ==================== */
+
+/**
+ * @brief  [EN] Silently reset, reconfigure, recalibrate and restart ADC1+DMA
+ *              in place without touching GPIO pins or blocking RTOS tasks.
+ *         [FA] ریست، پیکربندی دوباره، کالیبراسیون و راه‌اندازی مجدد بی‌صدای
+ *              ‎ADC1+DMA‎ درجا بدون دست‌زدن به پایه‌های GPIO یا قفل تسک‌ها.
+ * @‎return bool [EN] true when ADC1+DMA resumed producing frames‎ / اگر شروع مجدد موفق بود true
+ */
+bool func__BspAdc_Recover(void);
+
+/* ==================== BspAdc_WasRecoveryReset ==================== */
+
+/**
+ * @brief  [EN] Report whether the current boot followed the single software
+ *              MCU reset triggered by ADC recovery supervision.
+ *         [FA] اعلام می‌کند آیا بوت فعلی بلافاصله پس از ریست نرم‌افزاریِ
+ *              تک‌بارهٔ بازیابی ADC رخ داده است یا نه.
+ * @‎return bool [EN] true if this boot is the post-reset recovery window‎ / اگر بوت پس از ریست بازیابی باشد true
+ */
+bool func__BspAdc_WasRecoveryReset(void);
+
+/* ==================== BspAdc_TriggerRecoveryReset ==================== */
+
+/**
+ * @brief  [EN] Arm the single-use recovery marker, stop all PWM outputs, and
+ *              issue a software MCU reset for one fresh post-reset ADC window.
+ *         [FA] نشانگر تک‌مصرف بازیابی را می‌نویسد، همهٔ خروجی‌های PWM را متوقف
+ *              می‌کند و یک ریست نرم‌افزاری میکرو برای پنجرهٔ تلاش دوم می‌زند.
+ */
+void func__BspAdc_TriggerRecoveryReset(void);
+
 #endif /* BSP_ADC_H */

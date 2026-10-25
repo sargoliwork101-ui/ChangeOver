@@ -2138,13 +2138,26 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 
     if (bool__snapshotValid == false)
     {
-        func__all_off();
         BOOL__G__UiInputPresent = false;
         BOOL__G__UiInputOverVoltage = false;
         UINT32_T__G__UiInputOverVoltageStartTick = 0u;
         func__Ui_ResetBatteryCriticalBeep();
         func__Ui_ResetBatteryRunGreenBlink();
         func__Ui_ResetChargingYellowBlink();
+#if MODULE_FAULT
+        /* [EN] When persistent ADC failure latches FAULT_ADC (or charger
+           technical fault is latched), show the Scenario 7 technical-fault
+           alarm even while the snapshot is invalid instead of sitting dark.
+           [FA] هنگام ثبت قطعی خطای ‎FAULT_ADC‎ (یا خطای فنی شارژر)، چهرهٔ
+           خطای فنی برد حتی با snapshot نامعتبر نمایش داده می‌شود تا برد خاموش و بی‌هشدار نماند. */
+        if (((func__Fault_Get() & (FAULT_CHARGER_TECHNICAL | FAULT_ADC)) != FAULT_NONE) &&
+            (func__Ui_ScenarioAlarmOn(7u) != false))
+        {
+            func__Ui_ScenarioTechnicalFault_Tick();
+            return;
+        }
+#endif
+        func__all_off();
         /* [EN] BatteryRun and Charging stable percents keep previous values on invalid but phases reset; full hysteresis keeps state to avoid flicker on noisy valid->invalid.
            Battery voltage source is PA3 / v_bat24_mv only; do not use v_in here.
            [FA] درصدهای پایدار مقدار قبلی را نگه می‌دارند اما فازها ریست می‌شوند. */
@@ -2167,13 +2180,11 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 
 #if MODULE_FAULT
     /* [EN] Scenario 7 is the highest-priority visible fault face: when the
-       technical latch is active, all three LEDs must show its synchronized
-       phase even if input overvoltage is also present. The bit is latched by
-       the control task and cleared only by reset. [FA] سناریوی ۷ بالاترین
-       اولویت نمایشی خطا است؛ وقتی قفل فنی فعال است هر سه LED باید فاز مشترک
-       خودش را نشان دهند، حتی اگر اضافه‌ولتاژ ورودی هم حاضر باشد. بیت فقط با
-       ریست پاک می‌شود. */
-    if (((func__Fault_Get() & FAULT_CHARGER_TECHNICAL) != FAULT_NONE) &&
+       technical latch or persistent FAULT_ADC is active, all three LEDs must
+       show its synchronized phase even if input overvoltage is also present.
+       [FA] سناریوی ۷ بالاترین اولویت نمایشی خطا است؛ وقتی قفل فنی یا خطای
+       قطعی ‎FAULT_ADC‎ فعال است هر سه LED باید فاز مشترک خودش را نشان دهند. */
+    if (((func__Fault_Get() & (FAULT_CHARGER_TECHNICAL | FAULT_ADC)) != FAULT_NONE) &&
         (func__Ui_ScenarioAlarmOn(7u) != false))
     {
         func__Ui_ScenarioTechnicalFault_Tick();

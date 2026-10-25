@@ -26,6 +26,7 @@
 #include "bsp_adc.h"
 #include "bsp_gpio.h"
 #include "cal_lut.h"
+#include "fault.h"
 
 /* ==================== Check helper / کمک‌کنندهٔ بررسی ==================== */
 
@@ -44,6 +45,11 @@ static uint16_t UINT16_T__G__A__Frame[BSP_ADC_CHANNEL_COUNT];
 static bool     BOOL__G__FrameReady     = true;
 static bool     BOOL__G__InputPin       = true;
 static uint32_t UINT32_T__G__GetRawCalls = 0u;
+static uint32_t UINT32_T__G__RecoverCalls = 0u;
+static bool     BOOL__G__RecoverAutoHeals = false;
+static bool     BOOL__G__WasRecoveryResetStub = false;
+static uint32_t UINT32_T__G__TriggerResetCalls = 0u;
+static fault_mask_t FAULT_MASK_T__G__LatchedFaults = FAULT_NONE;
 
 bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
 {
@@ -62,6 +68,33 @@ bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
     }
 
     return true;
+}
+
+bool func__BspAdc_Recover(void)
+{
+    UINT32_T__G__RecoverCalls++;
+    if (BOOL__G__RecoverAutoHeals != false)
+    {
+        BOOL__G__FrameReady = true;
+        return true;
+    }
+    return false;
+}
+
+bool func__BspAdc_WasRecoveryReset(void)
+{
+    return BOOL__G__WasRecoveryResetStub;
+}
+
+void func__BspAdc_TriggerRecoveryReset(void)
+{
+    UINT32_T__G__TriggerResetCalls++;
+}
+
+void func__Fault_Set(fault_mask_t fault_mask_t__bits)
+{
+    FAULT_MASK_T__G__LatchedFaults =
+        (fault_mask_t)(FAULT_MASK_T__G__LatchedFaults | fault_mask_t__bits);
 }
 
 bool func__BspGpio_Read(bsp_gpio_id_t bsp_gpio_id_t__id)
@@ -440,6 +473,158 @@ int main(void)
     CHECK(func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) == false);
     CHECK(measurement_snapshot_t__snap.valid == false);
     CHECK(UINT32_T__G__GetRawCalls > 0u);
+
+    /* ---- 11. two-stage ADC self-healing (60 s + 1 reset + 60 s -> FAULT_ADC) ---- */
+    {
+        uint32_t uint32_t__tMs;
+
+        /* 11a. Healthy boot warm-up never calls Recover, Reset, or FAULT_ADC */
+        BOOL__G__FrameReady = true;
+        BOOL__G__RecoverAutoHeals = false;
+        BOOL__G__WasRecoveryResetStub = false;
+        UINT32_T__G__RecoverCalls = 0u;
+        UINT32_T__G__TriggerResetCalls = 0u;
+        FAULT_MASK_T__G__LatchedFaults = FAULT_NONE;
+        func__Measurement_Init();
+
+        for (uint32_t__tMs = 1u; uint32_t__tMs <= 10u; uint32_t__tMs++)
+        {
+            func__Measurement_Run();
+            func__Measurement_SuperviseAdc(uint32_t__tMs);
+        }
+        CHECK(BOOL__G__MeasDataValid == true);
+        CHECK(UINT32_T__G__RecoverCalls == 0u);
+        CHECK(UINT32_T__G__TriggerResetCalls == 0u);
+        CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+
+        /* 11b. Transient stall heals immediately on first silent Recover pass */
+        BOOL__G__FrameReady = false;
+        BOOL__G__RecoverAutoHeals = true;
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(100u);
+        CHECK(UINT32_T__G__RecoverCalls == 1u);
+        CHECK(BOOL__G__FrameReady == true);
+        for (uint32_t__tMs = 101u; uint32_t__tMs <= 105u; uint32_t__tMs++)
+        {
+            func__Measurement_Run();
+            func__Measurement_SuperviseAdc(uint32_t__tMs);
+        }
+        CHECK(BOOL__G__MeasDataValid == true);
+        CHECK(UINT32_T__G__TriggerResetCalls == 0u);
+        CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+
+        /* 11c. Persistent stall: 60 s silent retries -> exactly 1 MCU reset, no FAULT_ADC yet */
+        BOOL__G__FrameReady = false;
+        BOOL__G__RecoverAutoHeals = false;
+        UINT32_T__G__RecoverCalls = 0u;
+        UINT32_T__G__TriggerResetCalls = 0u;
+        FAULT_MASK_T__G__LatchedFaults = FAULT_NONE;
+
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(1000u);
+        CHECK(UINT32_T__G__RecoverCalls == 1u);
+
+        for (uint32_t__tMs = 1500u; uint32_t__tMs < 61000u; uint32_t__tMs += 500u)
+        {
+            func__Measurement_Run();
+            func__Measurement_SuperviseAdc(uint32_t__tMs);
+            CHECK(UINT32_T__G__TriggerResetCalls == 0u);
+            CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+        }
+        CHECK(UINT32_T__G__RecoverCalls == 120u);
+
+        /* At exactly 60,000 ms elapsed (t = 61000 ms): triggers single MCU reset */
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(61000u);
+        CHECK(UINT32_T__G__TriggerResetCalls == 1u);
+        CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+
+        /* 11d. Simulate post-reset boot: recovers at 45 s -> NO FAULT_ADC */
+        BOOL__G__WasRecoveryResetStub = true;
+        BOOL__G__FrameReady = false;
+        BOOL__G__RecoverAutoHeals = false;
+        UINT32_T__G__RecoverCalls = 0u;
+        UINT32_T__G__TriggerResetCalls = 0u;
+        func__Measurement_Init();
+
+        for (uint32_t__tMs = 0u; uint32_t__tMs < 45000u; uint32_t__tMs += 500u)
+        {
+            func__Measurement_Run();
+            func__Measurement_SuperviseAdc(uint32_t__tMs);
+        }
+        CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+        CHECK(UINT32_T__G__TriggerResetCalls == 0u);
+
+        /* Recovers at 45 s post-reset */
+        BOOL__G__FrameReady = true;
+        for (uint32_t__tMs = 45001u; uint32_t__tMs <= 45010u; uint32_t__tMs++)
+        {
+            func__Measurement_Run();
+            func__Measurement_SuperviseAdc(uint32_t__tMs);
+        }
+        CHECK(BOOL__G__MeasDataValid == true);
+        CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+
+        /* 11e. Flaky die-again after only 10 ms (< 60 s healthy): must NOT reset a 2nd time,
+                instead tries 60 s more and latches FAULT_ADC */
+        BOOL__G__FrameReady = false;
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(45020u);
+        for (uint32_t__tMs = 45520u; uint32_t__tMs < 105020u; uint32_t__tMs += 500u)
+        {
+            func__Measurement_Run();
+            func__Measurement_SuperviseAdc(uint32_t__tMs);
+            CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+            CHECK(UINT32_T__G__TriggerResetCalls == 0u);
+        }
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(105020u);
+        CHECK(UINT32_T__G__TriggerResetCalls == 0u);
+        CHECK((FAULT_MASK_T__G__LatchedFaults & FAULT_ADC) == FAULT_ADC);
+
+        /* Once FAULT_ADC is latched, sporadic late frames stay rejected until reboot */
+        BOOL__G__FrameReady = true;
+        for (uint32_t__tMs = 105021u; uint32_t__tMs <= 105030u; uint32_t__tMs++)
+        {
+            func__Measurement_Run();
+            func__Measurement_SuperviseAdc(uint32_t__tMs);
+        }
+        CHECK(BOOL__G__MeasDataValid == false);
+        CHECK(func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) == false);
+
+        /* 11f. Post-reset recovery followed by >= 60 s continuous healthy run
+                re-arms the single-reset budget, including across 32-bit wrap */
+        BOOL__G__WasRecoveryResetStub = true;
+        BOOL__G__FrameReady = true;
+        UINT32_T__G__TriggerResetCalls = 0u;
+        FAULT_MASK_T__G__LatchedFaults = FAULT_NONE;
+        func__Measurement_Init();
+
+        uint32_t__tMs = 0xFFFF0000u;
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(uint32_t__tMs);
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(uint32_t__tMs + 1u);
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(uint32_t__tMs + 2u);
+        CHECK(BOOL__G__MeasDataValid == true);
+
+        /* Sustain continuous healthy measurement for 60,000 ms across 0xFFFFFFFF wrap */
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(uint32_t__tMs + 2u + 60000u);
+
+        /* Now stall across wrap: after 60,000 ms it gets a fresh single reset */
+        BOOL__G__FrameReady = false;
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(uint32_t__tMs + 70000u);
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(uint32_t__tMs + 70000u + 59999u);
+        CHECK(UINT32_T__G__TriggerResetCalls == 0u);
+        func__Measurement_Run();
+        func__Measurement_SuperviseAdc(uint32_t__tMs + 70000u + 60000u);
+        CHECK(UINT32_T__G__TriggerResetCalls == 1u);
+        CHECK(FAULT_MASK_T__G__LatchedFaults == FAULT_NONE);
+    }
 
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;

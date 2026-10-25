@@ -45,39 +45,22 @@ void func__TaskMeasurement(void *void_ptr__argument)
 {
 #if MODULE_MEASUREMENT
     uint32_t UINT32_T__lastWakeTime;
+    uint32_t uint32_t__nowMs;
 #endif
 
     (void)void_ptr__argument;
 
 #if MODULE_MEASUREMENT
-    /* [EN] One-time bring-up is delegated to the board BSP. The task does not
-       know the MCU ADC handle or its peripheral name.
-       [FA] راه‌اندازی یک‌بار به BSP برد سپرده می‌شود. این تسک هندل ADC
-       یا نام پریفرال میکرو را نمی‌شناسد. */
+    /* [EN] One-time bring-up is delegated to the board BSP. Init captures any
+       single-use post-reset marker before Measurement_Init reads it; if the
+       initial Start fails, Measurement_SuperviseAdc handles silent 60 s retry,
+       one software reset, a second 60 s retry, and FAULT_ADC escalation.
+       [FA] راه‌اندازی اولیه به BSP برد سپرده می‌شود. Init نشانگر تک‌مصرف ریست
+       را پیش از Measurement_Init می‌خواند؛ در صورت شکست Start اولیه یا توقف
+       بعدی، ناظر دو پنجرهٔ ۶۰ ثانیه‌ای، یک ریست و ثبت ‎FAULT_ADC‎ را مدیریت می‌کند. */
     func__BspAdc_Init();
     func__Measurement_Init();
-
-    /* [EN] Retry the ADC start once per second until it succeeds
-       (full-program audit 2026-09-26): a single transient calibration/DMA
-       failure used to brick the measurement task forever (and with it the
-       charger, which safe-idles on an invalid snapshot). The start call
-       is idempotent-safe (calibration + DMA restart), so retrying is free.
-       [FA] شروع ADC را هر ثانیه تا موفقیت تکرار کن (ممیزی کل برنامه): یک
-       خطای گذرا قبلاً تسک اندازه‌گیری را برای همیشه می‌کشت (و با آن
-       شارژر را که روی snapshot نامعتبر ‎safe-idle‎ می‌شود). فراخوان شروع
-       برای تکرار امن است (کالیبراسیون + شروع دوبارهٔ DMA). */
-    while (func__BspAdc_Start() == false)
-    {
-        /* [EN] The task is alive, only the ADC hardware is not answering -
-           check in so the watchdog tracks TASK liveness, not hardware
-           health (a dead ADC keeps safe-idling the charger, it must not
-           reboot-loop the board). 1 s cadence is inside BSP_IWDG_STALE_MS.
-           [FA] تسک زنده است فقط سخت‌افزار ADC جواب نمی‌دهد - اعلام حضور کن
-           تا واچ‌داگ زنده‌بودن تسک را بپاید نه سلامت سخت‌افزار را. */
-        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT,
-                                  func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
-        func__Rtos_DelayMilliseconds(1000u);
-    }
+    (void)func__BspAdc_Start();
 
     /* [EN] Fixed-period loop (MEASUREMENT_PERIOD_MS, top of measurement.h).
        Only this task sleeps here; the MCU keeps running the other tasks.
@@ -90,8 +73,9 @@ void func__TaskMeasurement(void *void_ptr__argument)
         UINT32_T__lastWakeTime += func__Rtos_MillisecondsToTicks(MEASUREMENT_PERIOD_MS);
         (void)osDelayUntil(UINT32_T__lastWakeTime);
         func__Measurement_Run();
-        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT,
-                                  func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
+        uint32_t__nowMs = func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
+        func__Measurement_SuperviseAdc(uint32_t__nowMs);
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT, uint32_t__nowMs);
     }
 #else
     /* [EN] Flag off: task body is a plain 1 s sleep.

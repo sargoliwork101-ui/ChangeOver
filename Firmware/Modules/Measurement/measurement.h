@@ -106,6 +106,16 @@
         در BSP اصلاح شده؛ بازهٔ پهن‌تر برای جبران رانش‌های آینده از پنل است. */
 #define MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV  5000u
 
+/* [EN] Silent ADC1+DMA self-healing cadence and two-stage escalation window
+ *      (user order 2026-10-25): attempt in-place recovery for 60 s before
+ *      issuing one MCU software reset, then attempt in-place recovery for
+ *      another 60 s after that reset before latching FAULT_ADC.
+ * [FA] دورهٔ تلاش خودترمیمی بی‌صدای ‎ADC1+DMA‎ و پنجرهٔ دو مرحله‌ای (دستور
+ *      کاربر ۲۰۲۶-۱۰-۲۵): حداقل ۱ دقیقه تلاش درجا پیش از یک ریست نرم‌افزاری
+ *      برد، و ۱ دقیقه تلاش دیگر پس از ریست پیش از ثبت قطعی خطای ‎FAULT_ADC‎. */
+#define MEASUREMENT_ADC_RECOVER_RETRY_MS     500u
+#define MEASUREMENT_ADC_RECOVER_WINDOW_MS    60000u
+
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
  *      (Run). Any module/task can read them (#include "measurement.h");
@@ -345,5 +355,20 @@ int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
  * @return int32_t [EN] Live offset, mV / آفست زنده
  */
 int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex);
+
+/* ==================== Measurement_SuperviseAdc ==================== */
+
+/**
+ * @brief  [EN] Supervise ADC1+DMA liveness on every measurement pass: silently
+ *              retry in-place hardware recovery for 60 s, perform at most one
+ *              MCU software reset, retry silently for another 60 s after that
+ *              reset, and latch FAULT_ADC only if still unrecovered.
+ *         [FA] نظارت بر زنده‌بودن ‎ADC1+DMA‎ در هر پاس اندازه‌گیری: تلاش بی‌صدای
+ *              بازیابی سخت‌افزاری درجا به مدت ۶۰ ثانیه، حداکثر یک ریست برد،
+ *              تلاش بی‌صدای ۶۰ ثانیهٔ دیگر پس از ریست، و ثبت خطای ‎FAULT_ADC‎
+ *              فقط در صورت عدم بهبود.
+ * @param  uint32_t__nowMs [EN] Monotonic kernel time in milliseconds / زمان یکنواخت کرنل بر حسب میلی‌ثانیه
+ */
+void func__Measurement_SuperviseAdc(uint32_t uint32_t__nowMs);
 
 #endif /* MEASUREMENT_H */

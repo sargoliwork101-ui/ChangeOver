@@ -34,6 +34,19 @@
  *      [FA] timeout مخصوص پورت برد برای نخستین نیم‌فریم کامل DMA. */
 #define BSP_ADC_START_TIMEOUT_MS 2u
 
+/* [EN] Maximum interval without DMA half/full-transfer hardware flags before
+ *      declaring ADC1+DMA stalled (one half-frame is 49.33 us, so 5 ms spans
+ *      over 100 half-frames and never trips on healthy hardware).
+ * [FA] بیشترین زمان بدون پرچم سخت‌افزاری نیم/کامل DMA پیش از تشخیص توقف
+ *      ‎ADC1+DMA‎ (هر نیم‌فریم حدود ۴۹ میکروثانیه است و در ۵ms بیش از ۱۰۰
+ *      نیم‌فریم کامل می‌شود). */
+#define BSP_ADC_STALL_DETECT_MS  5u
+
+/* [EN] Dual-word .noinit cookie identifying a single ADC-recovery software reset.
+ * [FA] جفت‌کلمهٔ جادویی در ‎.noinit‎ برای تشخیص ریست نرم‌افزاری تک‌بارهٔ بازیابی ADC. */
+#define BSP_ADC_RECOVERY_MAGIC_0 0xADC15A5Au
+#define BSP_ADC_RECOVERY_MAGIC_1 0x523EA5A5u
+
 /* ==================== Synchronized current sampling / نمونه‌برداری سنکرون جریان ==================== */
 
 /* [EN] Bounded wait between arming the ADC2 external trigger and its
@@ -105,6 +118,21 @@ static volatile uint16_t UINT16_T__G__DmaBuffer[BSP_ADC_DMA_SAMPLE_COUNT];
 /* [EN] Set when calibration and DMA start succeed.
  *      [FA] وقتی کالیبراسیون و شروع DMA موفق باشد true می‌شود. */
 static bool BOOL__G__Running = false;
+
+/* [EN] Tick of the most recent observed DMA half/full-transfer hardware flag.
+ * [FA] تیک آخرین مشاهدهٔ پرچم سخت‌افزاری نیم/کامل انتقال DMA. */
+static uint32_t UINT32_T__G__LastDmaProgressTick = 0u;
+
+/* [EN] Captured once at Init when .noinit cookie + SFTRSTF confirm an ADC reset.
+ * [FA] در Init یک‌بار ثبت می‌شود اگر کوکی ‎.noinit‎ و SFTRSTF ریست ADC را تأیید کنند. */
+static bool BOOL__G__RecoveryResetDetected = false;
+
+/* [EN] Single-use software-reset marker placed in .noinit so Reset_Handler
+ *      leaves it untouched across NVIC_SystemReset().
+ * [FA] نشانگر تک‌مصرف ریست نرم‌افزاری در ‎.noinit‎ تا Reset_Handler هنگام
+ *      ‎NVIC_SystemReset()‎ آن را پاک نکند. */
+static volatile uint32_t UINT32_T__G__AdcRecoveryCookie[2]
+    __attribute__((section(".noinit")));
 
 /* ==================== BspAdc_EnableCycleCounter ==================== */
 /**
@@ -260,10 +288,30 @@ static bool func__BspAdc_SampleCurrentSync(bsp_pwm_channel_t bsp_pwm_channel_t__
 void func__BspAdc_Init(void)
 {
     uint32_t uint32_t__i;
+    uint32_t uint32_t__csr;
+    bool bool__cookieValid;
+    bool bool__softResetOnly;
 
     ADC_HANDLETYPEDEF__G__Hadc = &hadc1;
     BOOL__G__Running = false;
     BOOL__G__SyncReady = false;
+    UINT32_T__G__LastDmaProgressTick = 0u;
+
+    uint32_t__csr = RCC->CSR;
+    bool__cookieValid =
+        ((UINT32_T__G__AdcRecoveryCookie[0] == BSP_ADC_RECOVERY_MAGIC_0) &&
+         (UINT32_T__G__AdcRecoveryCookie[1] == BSP_ADC_RECOVERY_MAGIC_1));
+    bool__softResetOnly =
+        (((uint32_t__csr & RCC_CSR_SFTRSTF) != 0u) &&
+         ((uint32_t__csr & RCC_CSR_PORRSTF) == 0u));
+
+    BOOL__G__RecoveryResetDetected = (bool__cookieValid && bool__softResetOnly);
+
+    /* [EN] Always consume the .noinit cookie on boot so a second software reset
+       can never loop automatically.
+       [FA] کوکی ‎.noinit‎ در هر بوت بلافاصله پاک می‌شود تا هرگز حلقهٔ ریست دوم نسازد. */
+    UINT32_T__G__AdcRecoveryCookie[0] = 0u;
+    UINT32_T__G__AdcRecoveryCookie[1] = 0u;
 
     for (uint32_t__i = 0u; uint32_t__i < BSP_ADC_DMA_SAMPLE_COUNT; uint32_t__i++)
     {
@@ -424,6 +472,8 @@ bool func__BspAdc_Start(void)
         BOOL__G__SyncReady = true;
     }
 
+    __HAL_DMA_CLEAR_FLAG(ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle, DMA_FLAG_TE1);
+    UINT32_T__G__LastDmaProgressTick = HAL_GetTick();
     BOOL__G__Running = true;
     return true;
 }
@@ -487,6 +537,48 @@ bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
     }
 
     DMA_HANDLETYPEDEF__dmaHandle = ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle;
+
+    /* [EN] Reject immediately if DMA1 Channel1 hit a bus transfer error or if
+       EMI cleared ADC1 ADON/DMA enable bits; mark backend stopped so recovery takes over.
+       [FA] در صورت خطای انتقال DMA یا پاک‌شدن بیت‌های ‎ADON/DMA‎ در اثر نویز،
+       فوراً فریم را رد کن تا مسیر بازیابی درجا وارد عمل شود. */
+    if ((__HAL_DMA_GET_FLAG(DMA_HANDLETYPEDEF__dmaHandle, DMA_FLAG_TE1) != 0u) ||
+        ((ADC_HANDLETYPEDEF__G__Hadc->Instance->CR2 & (ADC_CR2_ADON | ADC_CR2_DMA)) !=
+         (ADC_CR2_ADON | ADC_CR2_DMA)))
+    {
+        BOOL__G__Running = false;
+        return false;
+    }
+
+    /* [EN] DMA1->ISR sets HTIF1/TCIF1 every 49.33 us / 98.67 us in hardware even
+       with NVIC interrupts disabled. Clearing them on sight proves real DMA
+       movement; 5 ms without either flag means >100 missed half-frames (stalled).
+       [FA] سخت‌افزار پرچم‌های ‎HTIF1/TCIF1‎ را هر ۴۹ و ۹۸ میکروثانیه ست می‌کند؛
+       نبود هر دو به مدت ۵ms یعنی بیش از ۱۰۰ نیم‌فریم از دست رفته و توقف واقعی است. */
+    {
+        uint32_t uint32_t__nowTick;
+
+        uint32_t__nowTick = HAL_GetTick();
+
+        if (__HAL_DMA_GET_FLAG(DMA_HANDLETYPEDEF__dmaHandle,
+                               (DMA_FLAG_HT1 | DMA_FLAG_TC1)) != 0u)
+        {
+            __HAL_DMA_CLEAR_FLAG(DMA_HANDLETYPEDEF__dmaHandle,
+                                 (DMA_FLAG_HT1 | DMA_FLAG_TC1));
+            UINT32_T__G__LastDmaProgressTick = uint32_t__nowTick;
+        }
+        else if ((uint32_t)(uint32_t__nowTick - UINT32_T__G__LastDmaProgressTick) >=
+                 BSP_ADC_STALL_DETECT_MS)
+        {
+            BOOL__G__Running = false;
+            return false;
+        }
+        else
+        {
+            /* [EN] Sub-5 ms repeat read in same tick window: still fresh.
+               [FA] خواندن تکرار زیر ۵ms در همان پنجرهٔ تیک: هنوز تازه است. */
+        }
+    }
 
     for (uint32_t__attempt = 0u;
          uint32_t__attempt < BSP_ADC_DMA_RETRY_COUNT;
@@ -568,3 +660,159 @@ bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
 
     return false;
 }
+
+/* ==================== BspAdc_ConfigureRegularScan ==================== */
+
+/**
+ * @brief  [EN] Re-apply the 6-rank regular scan table on ADC1 after a
+ *              peripheral-level reset without invoking CubeMX Error_Handler().
+ *         [FA] جدول اسکن ۶کانالهٔ ‎ADC1‎ را پس از ریست سطح جانبی دوباره تنظیم
+ *              می‌کند، بدون فراخوانی ‎Error_Handler()‎.
+ * @return bool [EN] true when ADC1 init and all 6 ranks succeed / در صورت موفقیت true
+ */
+static bool func__BspAdc_ConfigureRegularScan(void)
+{
+    static const uint32_t UINT32_T__A__Channels[BSP_ADC_CHANNEL_COUNT] = {
+        ADC_CHANNEL_1,
+        ADC_CHANNEL_2,
+        ADC_CHANNEL_3,
+        ADC_CHANNEL_5,
+        ADC_CHANNEL_7,
+        ADC_CHANNEL_VREFINT
+    };
+    static const uint32_t UINT32_T__A__Ranks[BSP_ADC_CHANNEL_COUNT] = {
+        ADC_REGULAR_RANK_1,
+        ADC_REGULAR_RANK_2,
+        ADC_REGULAR_RANK_3,
+        ADC_REGULAR_RANK_4,
+        ADC_REGULAR_RANK_5,
+        ADC_REGULAR_RANK_6
+    };
+    ADC_ChannelConfTypeDef adc_channel_conf_t__cfg = {0};
+    uint32_t uint32_t__idx;
+
+    if (ADC_HANDLETYPEDEF__G__Hadc == NULL)
+    {
+        return false;
+    }
+
+    /* [EN] Keep State != RESET so HAL_ADC_Init skips HAL_ADC_MspInit (GPIOA is
+       already analog and MspInit contains CubeMX Error_Handler calls).
+       [FA] وضعیت غیر از RESET می‌ماند تا ‎HAL_ADC_Init‎ وارد ‎MspInit‎ نشود. */
+    ADC_HANDLETYPEDEF__G__Hadc->Lock = HAL_UNLOCKED;
+    ADC_HANDLETYPEDEF__G__Hadc->ErrorCode = HAL_ADC_ERROR_NONE;
+    ADC_HANDLETYPEDEF__G__Hadc->State = HAL_ADC_STATE_READY;
+
+    if (HAL_ADC_Init(ADC_HANDLETYPEDEF__G__Hadc) != HAL_OK)
+    {
+        return false;
+    }
+
+    for (uint32_t__idx = 0u; uint32_t__idx < BSP_ADC_CHANNEL_COUNT; uint32_t__idx++)
+    {
+        adc_channel_conf_t__cfg.Channel = UINT32_T__A__Channels[uint32_t__idx];
+        adc_channel_conf_t__cfg.Rank = UINT32_T__A__Ranks[uint32_t__idx];
+        if (uint32_t__idx == BSP_ADC_CHANNEL_VREFINT)
+        {
+            adc_channel_conf_t__cfg.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
+        }
+        else
+        {
+            adc_channel_conf_t__cfg.SamplingTime = ADC_SAMPLETIME_55CYCLES_5;
+        }
+
+        if (HAL_ADC_ConfigChannel(ADC_HANDLETYPEDEF__G__Hadc,
+                                  &adc_channel_conf_t__cfg) != HAL_OK)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/* ==================== BspAdc_Recover ==================== */
+
+/**
+ * @brief  [EN] Silently reset ADC1 silicon and DMA1 Channel1 in place, restore
+ *              all scan ranks, recalibrate and restart circular acquisition.
+ *         [FA] ریست بی‌صدای سیلیکون ‎ADC1‎ و کانال DMA درجا، بازگردانی جدول
+ *              اسکن، کالیبراسیون مجدد و راه‌اندازی دوبارهٔ دریافت چرخشی.
+ * @‎return bool [EN] true when ADC1+DMA resumed producing frames‎ / اگر شروع مجدد موفق بود true
+ */
+bool func__BspAdc_Recover(void)
+{
+    DMA_HandleTypeDef *DMA_HANDLETYPEDEF__dmaHandle;
+    uint32_t uint32_t__i;
+
+    BOOL__G__Running = false;
+    BOOL__G__SyncReady = false;
+
+    if ((ADC_HANDLETYPEDEF__G__Hadc == NULL) ||
+        (ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle == NULL))
+    {
+        return false;
+    }
+
+    DMA_HANDLETYPEDEF__dmaHandle = ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle;
+
+    (void)HAL_ADC_Stop_DMA(ADC_HANDLETYPEDEF__G__Hadc);
+    DMA_HANDLETYPEDEF__dmaHandle->Lock = HAL_UNLOCKED;
+    (void)HAL_DMA_Abort(DMA_HANDLETYPEDEF__dmaHandle);
+
+    __HAL_RCC_ADC1_FORCE_RESET();
+    __HAL_RCC_ADC1_RELEASE_RESET();
+    __HAL_RCC_ADC1_CLK_ENABLE();
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+    DMA_HANDLETYPEDEF__dmaHandle->Lock = HAL_UNLOCKED;
+    DMA_HANDLETYPEDEF__dmaHandle->ErrorCode = HAL_DMA_ERROR_NONE;
+    if (HAL_DMA_Init(DMA_HANDLETYPEDEF__dmaHandle) != HAL_OK)
+    {
+        return false;
+    }
+    __HAL_DMA_CLEAR_FLAG(DMA_HANDLETYPEDEF__dmaHandle, DMA_FLAG_GL1);
+
+    for (uint32_t__i = 0u; uint32_t__i < BSP_ADC_DMA_SAMPLE_COUNT; uint32_t__i++)
+    {
+        UINT16_T__G__DmaBuffer[uint32_t__i] = 0u;
+    }
+
+    if (func__BspAdc_ConfigureRegularScan() == false)
+    {
+        return false;
+    }
+
+    return func__BspAdc_Start();
+}
+
+/* ==================== BspAdc_WasRecoveryReset ==================== */
+
+/**
+ * @brief  [EN] Report whether the current boot followed the single software
+ *              MCU reset triggered by ADC recovery supervision.
+ *         [FA] اعلام می‌کند آیا بوت فعلی پس از ریست نرم‌افزاری تک‌بارهٔ بازیابی ADC است یا نه.
+ * @‎return bool [EN] true if this boot is the post-reset recovery window‎ / اگر بوت پس از ریست بازیابی باشد true
+ */
+bool func__BspAdc_WasRecoveryReset(void)
+{
+    return BOOL__G__RecoveryResetDetected;
+}
+
+/* ==================== BspAdc_TriggerRecoveryReset ==================== */
+
+/**
+ * @brief  [EN] Arm the single-use .noinit recovery cookie, stop all PWM
+ *              outputs so no power switch stays gated during reset, and reboot.
+ *         [FA] کوکی تک‌مصرف ‎.noinit‎ را می‌نویسد، همهٔ خروجی‌های PWM را خاموش
+ *              می‌کند تا کلیدی حین ریست روشن نماند، و میکرو را ریست می‌کند.
+ */
+void func__BspAdc_TriggerRecoveryReset(void)
+{
+    func__BspPwm_StopAll();
+    UINT32_T__G__AdcRecoveryCookie[0] = BSP_ADC_RECOVERY_MAGIC_0;
+    UINT32_T__G__AdcRecoveryCookie[1] = BSP_ADC_RECOVERY_MAGIC_1;
+    __DSB();
+    NVIC_SystemReset();
+}
+

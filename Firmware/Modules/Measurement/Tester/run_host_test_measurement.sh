@@ -18,6 +18,7 @@ gcc -std=c11 -Wall -Wextra -Wpedantic -Werror -O0 \
     -I "${ROOT}/Firmware/Modules/Measurement" \
     -I "${ROOT}/Firmware/Modules/CalLut" \
     -I "${ROOT}/Firmware/Modules/Charger" \
+    -I "${ROOT}/Firmware/Modules/Fault" \
     -I "${ROOT}/Firmware/Modules/Imbalance" \
     -I "${ROOT}/Firmware/Modules/Measurement" \
     -I "${ROOT}/Firmware/Modules/CalLut" \
