@@ -418,6 +418,72 @@ static void func__T_TestWifiPowerSave(void)
                   "با وصل شدن مجدد برق ورودی، وای‌فای با بیشترین قدرت آنتن روشن می‌شود");
 }
 
+/* ==================== توان آنتن روی باتری: فقط وقتی کسی تماشا می‌کند (v1.112) ====================
+   دستور کاربر ۲۰۲۶-۱۰-۲۵: «می‌توانی توان وای‌فای را کم کنی».
+   چرا این تست: ایراد واقعی این بود که گوشیِ وصل‌شده به شبکه (حتی با پنل بسته)
+   تا بی‌نهایت «کاربر» حساب می‌شد و توان آنتن روی بیشینه می‌ماند. اکنون توان
+   بیشینه فقط تا وقتی است که درخواست HTTP تازه بیاید یا کاربر تازه وصل شده باشد. */
+static void func__T_TestWifiViewerPower(void)
+{
+    uint32_t uint32_t__t = 5000000u;
+
+    (void)printf("\n== توان آنتن روی باتری: فقط با تماشاگر (v1.112) ==\n");
+
+    /* آماده‌سازی: روی باتری، باتری ۵۰٪، یک گوشی به شبکه وصل، هیچ درخواستی نیامده */
+    BOOL__G__TlmSeen = true;
+    UINT8_T__G__TlmFlags = 0u;
+    UINT32_T__G__TlmField[15] = 25000u;
+    WiFi.setStationNum(1);
+    (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
+    WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
+    BOOL__G__WifiApActive = true;
+    BOOL__G__WifiHighPower = true;
+    BOOL__G__WifiBatCutoffLatched = false;
+    BOOL__G__WifiBatteryIdleTracking = false;
+    BOOL__G__WifiLastReportedConnected = false;
+    BOOL__G__BrowserSeen = false;
+    UINT32_T__G__WifiStationSinceMs = 0u;
+
+    /* ۱. کاربر تازه وصل شده: تا ۱۰ دقیقه فرصت دارد پنل را باز کند */
+    func__Simple_WifiPowerSaveTick(uint32_t__t);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() > 20.0f),
+                  "کاربری که تازه به شبکه وصل شد، ۱۰ دقیقه توان بیشینه دارد");
+
+    /* ۲. ۱۱ دقیقه گذشت و هیچ درخواستی نیامد: وای‌فای روشن می‌ماند ولی توان کم */
+    uint32_t__t += 660000u;
+    func__Simple_WifiPowerSaveTick(uint32_t__t);
+    func__T_Check(WiFi.isApActive() && (WiFi.outputPowerDbm() < 0.1f),
+                  "گوشیِ وصل ولی بدون باز کردن پنل: وای‌فای روشن، توان کم");
+
+    /* ۳. کاربر پنل را باز کرد (درخواست HTTP): توان فوراً بیشینه */
+    BOOL__G__BrowserSeen = true;
+    UINT32_T__G__LastBrowserPollMs = uint32_t__t;
+    func__Simple_WifiPowerSaveTick(uint32_t__t + 1000u);
+    func__T_Check(WiFi.outputPowerDbm() > 20.0f,
+                  "با باز شدن پنل: توان آنتن فوراً بیشینه می‌شود");
+
+    /* ۴. پنل بسته شد و ۱۱ دقیقه خبری نشد: دوباره کم */
+    uint32_t__t += 1000u + 660000u;
+    func__Simple_WifiPowerSaveTick(uint32_t__t);
+    func__T_Check(WiFi.outputPowerDbm() < 0.1f,
+                  "۱۰ دقیقه پس از بستن پنل: توان دوباره کم می‌شود");
+
+    /* ۵. با برق شهر همیشه بیشینه، حتی بدون تماشاگر */
+    UINT8_T__G__TlmFlags = SIMPLE_TLM_FLAG_INPUT_PRESENT;
+    func__Simple_WifiPowerSaveTick(uint32_t__t + 1000u);
+    func__T_Check(WiFi.outputPowerDbm() > 20.0f,
+                  "با برق شهر: توان همیشه بیشینه است (هزینهٔ باتری ندارد)");
+
+    /* ۶. بازگشت به باتری و تازه‌واردِ جدید: باز هم بیشینه */
+    UINT8_T__G__TlmFlags = 0u;
+    WiFi.setStationNum(0);
+    func__Simple_WifiPowerSaveTick(uint32_t__t + 2000u);
+    WiFi.setStationNum(1);
+    func__Simple_WifiPowerSaveTick(uint32_t__t + 3000u);
+    func__T_Check(WiFi.outputPowerDbm() > 20.0f,
+                  "اتصال دوبارهٔ گوشی روی باتری: باز هم ۱۰ دقیقه بیشینه");
+}
+
 /* ==================== همگام‌سازی ساعت از میکرو STM32 و ثبت نمودار با ثانیهٔ واقعی ==================== */
 static void func__T_TestStm32TimeAndChartScheduling(void)
 {
@@ -1029,6 +1095,7 @@ int main(void)
     func__T_TestSender();
     func__T_TestEchoAndNak();
     func__T_TestWifiPowerSave();
+    func__T_TestWifiViewerPower();
     func__T_TestStm32TimeAndChartScheduling();
     func__T_TestDiagStatePersistenceAndClear();
     func__T_TestAuthAdminProtection();

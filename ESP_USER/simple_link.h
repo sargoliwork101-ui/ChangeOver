@@ -709,6 +709,23 @@ static bool func__Simple_IsWifiClientConnected(uint32_t uint32_t__nowMs)
     return bool__stationConnected || bool__browserActive;
 }
 
+/* ==================== اعمال توان آنتن ====================
+   یک جا، با یک پرچم آینه‌ای که همیشه وضعیت واقعاً اعمال‌شده را می‌گوید.
+   چرا تابع جدا: هنگام ساخت/بازسازی اکسس‌پوینت باید توان دوباره نوشته شود
+   (مقدار قبلی روی چیپ می‌ماند)؛ با پرچم آینه‌ای بدون this force، نوشتن جا
+   می‌افتاد و توان اشتباه می‌ماند. */
+static void func__Simple_ApplyTxPower(bool bool__high, bool bool__force)
+{
+    if ((bool__force == false) && (BOOL__G__WifiHighPower == bool__high))
+    {
+        return;
+    }
+#if defined(ESP8266)
+    WiFi.setOutputPower(bool__high ? SIMPLE_WIFI_TX_MAX_DBM : SIMPLE_WIFI_TX_LOW_DBM);
+#endif
+    BOOL__G__WifiHighPower = bool__high;
+}
+
 /* ==================== محاسبهٔ درصد شارژ باتری برای حد قطع وای‌فای ==================== */
 static uint32_t func__Simple_ComputeBatteryPercent(void)
 {
@@ -736,6 +753,7 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 {
     bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
         ((UINT8_T__G__TlmFlags & SIMPLE_TLM_FLAG_INPUT_PRESENT) != 0u);
+    bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
     bool bool__clientConnected = func__Simple_IsWifiClientConnected(uint32_t__nowMs);
     uint32_t uint32_t__idleLowPowerMs = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_IDLE_LOW_POWER_MS);
     uint32_t uint32_t__cycleOnMs = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_CYCLE_ON_MS);
@@ -793,8 +811,26 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
     }
 
+    /* v1.112: از چه لحظه‌ای یک دستگاه به شبکه وصل شده است (۰ = وصل نیست). */
+    if (bool__stationConnected)
+    {
+        if (UINT32_T__G__WifiStationSinceMs == 0u)
+        {
+            UINT32_T__G__WifiStationSinceMs = uint32_t__nowMs;
+        }
+    }
+    else
+    {
+        UINT32_T__G__WifiStationSinceMs = 0u;
+    }
+
     if (bool__inputPresent || bool__clientConnected)
     {
+        bool bool__apJustCreated = false;
+        bool bool__viewerActive;
+        bool bool__newcomer;
+        bool bool__wantHighPower;
+
         BOOL__G__WifiBatteryIdleTracking = false;
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
         if (!BOOL__G__WifiApActive)
@@ -802,15 +838,27 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             WiFi.mode(WIFI_AP);
             (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
             BOOL__G__WifiApActive = true;
-            BOOL__G__WifiHighPower = false;
+            bool__apJustCreated = true;
         }
-        if (!BOOL__G__WifiHighPower)
-        {
-#if defined(ESP8266)
-            WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
-#endif
-            BOOL__G__WifiHighPower = true;
-        }
+
+        /* دستور کاربر ۲۰۲۶-۱۰-۲۵: توان بیشینه تنها وقتی هزینه‌اش می‌ارزد که
+           کسی واقعاً پنل را ببیند. سه حالت:
+             - برق شهر: همیشه بیشینه (هزینهٔ باتری ندارد).
+             - بیننده: درخواست HTTP تازه در ۱۰ دقیقهٔ اخیر.
+             - تازه‌وارد: دستگاهی در ۱۰ دقیقهٔ اخیر به شبکه وصل شده
+               (تا فرصت باز کردن پنل داشته باشد).
+           غیر از این، اکسس‌پوینت روشن می‌ماند ولی با توان کم؛ پس گوشی‌ای که
+           فقط به شبکه وصل مانده دیگر باتری را با پرتوانی نمی‌سوزاند. */
+        bool__viewerActive = BOOL__G__BrowserSeen &&
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) <
+             (uint32_t)SIMPLE_WIFI_VIEWER_HOLD_MS);
+        bool__newcomer = bool__stationConnected &&
+            (UINT32_T__G__WifiStationSinceMs != 0u) &&
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__WifiStationSinceMs) <
+             (uint32_t)SIMPLE_WIFI_VIEWER_HOLD_MS);
+        bool__wantHighPower = bool__inputPresent || bool__viewerActive || bool__newcomer;
+
+        func__Simple_ApplyTxPower(bool__wantHighPower, bool__apJustCreated);
         return;
     }
 
@@ -836,20 +884,17 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 
     if (bool__shouldApBeOn)
     {
+        bool bool__apJustCreated = false;
+
         if (!BOOL__G__WifiApActive)
         {
             WiFi.mode(WIFI_AP);
             (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
             BOOL__G__WifiApActive = true;
-            BOOL__G__WifiHighPower = true;
+            bool__apJustCreated = true;
         }
-        if (BOOL__G__WifiHighPower)
-        {
-#if defined(ESP8266)
-            WiFi.setOutputPower(SIMPLE_WIFI_TX_LOW_DBM);
-#endif
-            BOOL__G__WifiHighPower = false;
-        }
+        /* در چرخهٔ باتری هیچ بیننده‌ای نیست: همیشه توان کم. */
+        func__Simple_ApplyTxPower(false, bool__apJustCreated);
     }
     else
     {

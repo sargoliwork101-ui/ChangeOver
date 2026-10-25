@@ -419,3 +419,7 @@ static uint32_t UINT32_T__G__WifiLastReportMs = 0u;
 static uint32_t UINT32_T__G__WifiBatteryIdleStartMs = 0u;
 static bool BOOL__G__WifiBatteryIdleTracking = false;
 static bool BOOL__G__WifiBatCutoffLatched = false;
+/* v1.112: لحظه‌ای که یک دستگاه به اکسس‌پوینت وصل شد (۰ = هیچ دستگاهی وصل نیست).
+   برای این‌که کاربری که تازه وصل شده فرصت باز کردن پنل را داشته باشد، تا
+   ‎SIMPLE_WIFI_VIEWER_HOLD_MS‎ توان آنتن روی بیشینه می‌ماند. */
+static uint32_t UINT32_T__G__WifiStationSinceMs = 0u;

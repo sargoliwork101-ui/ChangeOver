@@ -111,6 +111,19 @@
 #define ESP_WIFI_CYCLE_PERIOD_MS    180000u
 #define ESP_WIFI_BAT_CUTOFF_PCT     20u
 #define ESP_WIFI_CLIENT_REPORT_MS   1000u
+/* [EN] v1.112 (user order 2026-10-25: "you may lower the Wi-Fi power"): on
+         battery the antenna stays at maximum only while somebody is really
+         watching the panel (a fresh HTTP request) or a device has just joined
+         the AP. After that the AP stays ON at low TX power. Before this, an
+         associated-but-idle phone kept the radio at 20.5 dBm forever and ate
+         the battery the power schedule was meant to save. Mains: always max.
+   [FA] نسخهٔ ۱٫۱۱۲ (دستور کاربر ۲۰۲۶-۱۰-۲۵: «می‌توانی توان وای‌فای را کم کنی»):
+         روی باتری، توان آنتن تنها وقتی بیشینه است که کسی واقعاً پنل را ببیند
+         (درخواست تازهٔ HTTP) یا دستگاهی همین حالا به شبکه وصل شده باشد. پس از
+         آن، اکسس‌پوینت روشن می‌ماند ولی با توان کم. پیش از این، گوشیِ وصل ولی
+         بی‌کار رادیو را تا بی‌نهایت روی ‎20.5 dBm‎ نگه می‌داشت و همان باتری‌ای
+         را می‌خورد که برنامهٔ کاهش مصرف می‌خواست نجات دهد. با برق شهر همیشه بیشینه. */
+#define ESP_WIFI_VIEWER_HOLD_MS     600000u   /* 10 minutes / ۱۰ دقیقه */
 #define ESP_WIFI_TX_MAX_DBM         20.5f
 #define ESP_WIFI_TX_LOW_DBM         0.0f
 

@@ -1313,6 +1313,29 @@ static uint32_t func__Esp_ComputeBatteryPercent(void)
 }
 
 /**
+ * @brief  [EN] Apply one antenna level, once, through a mirror flag that always
+ *              states what is really on the chip. AP creation forces a write
+ *              because the previous level survives softAP().
+ *         [FA] یک سطح توان آنتن را یک‌بار و از یک جا اعمال می‌کند، با پرچمی
+ *              آینه‌ای که همیشه وضعیت واقعی چیپ را می‌گوید. ساخت دوبارهٔ
+ *              اکسس‌پوینت نوشتن را اجبار می‌کند، چون سطح قبلی روی چیپ می‌ماند.
+ * @param  bool__high  [EN] true = maximum TX power / [FA]‎ درست = توان بیشینه
+ * @param  bool__force [EN] true = write even if the flag agrees / [FA]‎ درست = نوشتن حتی با موافقت پرچم
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_ApplyTxPower(bool bool__high, bool bool__force)
+{
+    if ((bool__force == false) && (BOOL__G__WifiHighPower == bool__high))
+    {
+        return;
+    }
+#if defined(ESP8266)
+    WiFi.setOutputPower(bool__high ? ESP_WIFI_TX_MAX_DBM : ESP_WIFI_TX_LOW_DBM);
+#endif
+    BOOL__G__WifiHighPower = bool__high;
+}
+
+/**
  * @brief  [EN] Hybrid Wi-Fi TX power and battery duty-cycling tick:
  *              - Mains input present: AP stays ON at maximum TX power (20.5 dBm).
  *              - On battery with battery percentage below the configured
@@ -1341,6 +1364,7 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 {
     bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
         ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_INPUT_PRESENT) != 0u);
+    bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
     bool bool__clientConnected = func__Esp_IsWifiClientConnected(uint32_t__nowMs);
     uint32_t uint32_t__idleLowPowerMs = func__Esp_GetWifiParam(
         ESP_PARAM_WIFI_IDLE_LOW_POWER_MS, ESP_WIFI_IDLE_LOW_POWER_MS);
@@ -1405,8 +1429,26 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
     }
 
+    /* [‎EN] v1.112: remember when a device joined (0 = none). / [FA]‎ نسخهٔ ۱٫۱۱۲: زمان وصل شدن دستگاه. */
+    if (bool__stationConnected)
+    {
+        if (UINT32_T__G__WifiStationSinceMs == 0u)
+        {
+            UINT32_T__G__WifiStationSinceMs = uint32_t__nowMs;
+        }
+    }
+    else
+    {
+        UINT32_T__G__WifiStationSinceMs = 0u;
+    }
+
     if (bool__inputPresent || bool__clientConnected)
     {
+        bool bool__apJustCreated = false;
+        bool bool__viewerActive;
+        bool bool__newcomer;
+        bool bool__wantHighPower;
+
         BOOL__G__WifiBatteryIdleTracking = false;
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
         if (!BOOL__G__WifiApActive)
@@ -1414,15 +1456,25 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             WiFi.mode(WIFI_AP);
             (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
             BOOL__G__WifiApActive = true;
-            BOOL__G__WifiHighPower = false;
+            bool__apJustCreated = true;
         }
-        if (!BOOL__G__WifiHighPower)
-        {
-#if defined(ESP8266)
-            WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
-#endif
-            BOOL__G__WifiHighPower = true;
-        }
+
+        /* [EN] Maximum TX only when it is worth the battery: mains present, a
+           fresh HTTP request (someone is watching), or a device that joined
+           inside the viewer window. Otherwise the AP stays on at low power.
+           [FA] توان بیشینه فقط وقتی می‌ارزد: برق شهر، درخواست تازهٔ HTTP
+           (کسی تماشا می‌کند)، یا دستگاهی که داخل بازهٔ تماشاگر وصل شده است.
+           در غیر این صورت اکسس‌پوینت روشن می‌ماند ولی با توان کم. */
+        bool__viewerActive = BOOL__G__BrowserSeen &&
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) <
+             (uint32_t)ESP_WIFI_VIEWER_HOLD_MS);
+        bool__newcomer = bool__stationConnected &&
+            (UINT32_T__G__WifiStationSinceMs != 0u) &&
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__WifiStationSinceMs) <
+             (uint32_t)ESP_WIFI_VIEWER_HOLD_MS);
+        bool__wantHighPower = bool__inputPresent || bool__viewerActive || bool__newcomer;
+
+        func__Esp_ApplyTxPower(bool__wantHighPower, bool__apJustCreated);
         return;
     }
 
@@ -1448,20 +1500,18 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 
     if (bool__shouldApBeOn)
     {
+        bool bool__apJustCreated = false;
+
         if (!BOOL__G__WifiApActive)
         {
             WiFi.mode(WIFI_AP);
             (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
             BOOL__G__WifiApActive = true;
-            BOOL__G__WifiHighPower = true;
+            bool__apJustCreated = true;
         }
-        if (BOOL__G__WifiHighPower)
-        {
-#if defined(ESP8266)
-            WiFi.setOutputPower(ESP_WIFI_TX_LOW_DBM);
-#endif
-            BOOL__G__WifiHighPower = false;
-        }
+        /* [EN] Nobody is watching inside the duty cycle: low power only.
+           [FA] در چرخهٔ باتری کسی تماشا نمی‌کند: فقط توان کم. */
+        func__Esp_ApplyTxPower(false, bool__apJustCreated);
     }
     else
     {

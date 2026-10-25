@@ -54,6 +54,12 @@ static uint32_t UINT32_T__G__WifiLastReportMs = 0u;
 static uint32_t UINT32_T__G__WifiBatteryIdleStartMs = 0u;
 static bool     BOOL__G__WifiBatteryIdleTracking = false;
 static bool     BOOL__G__WifiBatCutoffLatched = false;
+/* [EN] v1.112: when a device joined the AP (0 = none). Gives a newcomer the
+        viewer window to open the page before the antenna drops to low power.
+   [FA] نسخهٔ ۱٫۱۱۲: لحظهٔ وصل شدن دستگاه به اکسس‌پوینت (۰ = هیچ دستگاهی).
+        به تازه‌وارد فرصت بازهٔ تماشاگر را می‌دهد تا پیش از کم شدن توان، پنل
+        را باز کند. */
+static uint32_t UINT32_T__G__WifiStationSinceMs = 0u;
 
 /* [‎EN] Bench statistics window (see ESP_BENCHLOG_HEADER in plink_config.h) / [FA]‎ پنجرهٔ آمار بنچ (بخش 4 نسخه ۲) */
 static bool     BOOL__G__FsOk = false;   /* [EN] LittleFS mounted / [FA] LittleFS سوار شده */

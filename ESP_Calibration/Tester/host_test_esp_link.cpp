@@ -908,6 +908,53 @@ int main(void)
               Serial.tx[6] == 0u,
               "disconnecting sends ESPLINK_MSG_WIFI_CLIENT_STATE (0x33, payload=0) to STM32");
 
+        /* 5b) v1.112 (user order 2026-10-25: "you may lower the Wi-Fi power"):
+           an associated-but-idle phone must not hold the radio at 20.5 dBm
+           forever. Max TX only while someone really watches the panel, or a
+           device just joined; mains always max. */
+        {
+            const uint32_t base = 3000000u;
+
+            /* fresh join on battery -> max, for the viewer window */
+            UINT8_T__G__TlmFlags = 0u;
+            UINT32_T__G__TlmField[15] = 25000u;   /* 50 % battery */
+            BOOL__G__WifiBatCutoffLatched = false;
+            BOOL__G__BrowserSeen = false;
+            UINT32_T__G__WifiStationSinceMs = 0u;
+            WiFi.stationNum = 1;
+            func__Esp_WifiPowerSaveTick(base);
+            check(WiFi.apActive && (WiFi.outputPowerDbm > 20.0f),
+                  "handshake/power: a device that just joined gets maximum TX power");
+
+            /* 11 minutes pass with no HTTP request -> AP on, low power */
+            func__Esp_WifiPowerSaveTick(base + ESP_WIFI_VIEWER_HOLD_MS + 60000u);
+            check(WiFi.apActive && (WiFi.outputPowerDbm < 0.1f),
+                  "handshake/power: an idle associated phone leaves the AP on at LOW power");
+
+            /* somebody opens the panel -> immediately back to max */
+            BOOL__G__BrowserSeen = true;
+            UINT32_T__G__LastBrowserPollMs = base + ESP_WIFI_VIEWER_HOLD_MS + 60000u;
+            func__Esp_WifiPowerSaveTick(base + ESP_WIFI_VIEWER_HOLD_MS + 61000u);
+            check(WiFi.outputPowerDbm > 20.0f,
+                  "handshake/power: a fresh panel request raises the antenna at once");
+
+            /* panel closed again for the whole window -> low again */
+            func__Esp_WifiPowerSaveTick(base + (2u * ESP_WIFI_VIEWER_HOLD_MS) + 120000u);
+            check(WiFi.outputPowerDbm < 0.1f,
+                  "handshake/power: once nobody watches, the antenna drops back to low");
+
+            /* mains present -> always max, no battery cost */
+            UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT;
+            func__Esp_WifiPowerSaveTick(base + (2u * ESP_WIFI_VIEWER_HOLD_MS) + 121000u);
+            check(WiFi.outputPowerDbm > 20.0f,
+                  "handshake/power: with mains present the antenna is always at maximum");
+
+            /* back to the earlier scenario state for the checks below */
+            UINT8_T__G__TlmFlags = 0u;
+            UINT32_T__G__WifiBatteryIdleStartMs = 0u;
+            BOOL__G__WifiBatteryIdleTracking = false;
+        }
+
         /* 6) Battery < 20% on battery power -> AP turns completely OFF even if a client is present */
         WiFi.stationNum = 1;
         UINT32_T__G__TlmField[15] = 22000u; /* 12% (< 20% default cutoff) */
