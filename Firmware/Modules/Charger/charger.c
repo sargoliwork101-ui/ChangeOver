@@ -304,6 +304,16 @@ static uint32_t UINT32_T__G__ThermalRestUntilTick[CHG_CHANNEL_COUNT] = {0u, 0u};
 #define CHG_NO_CHANNEL 0xFFu
 static uint8_t UINT8_T__G__RetryChannel;
 
+/* [EN] Temporary blind-snapshot (ADC self-healing) pause memory: preserves
+   each active channel's pre-pause duty and last valid input voltage while
+   PWM is forced to 0%, so recovery resumes from CHG_BLIND_RESUME_PERCENT.
+   [FA] حافظهٔ مکث در زمان نامعتبرشدن موقت ‎ADC‎ (خودترمیمی): دیوتیِ پیش از
+   وقفه و آخرین ولتاژ ورودیِ معتبر را نگه می‌دارد در حالی که ‎PWM‎ صفر است. */
+static bool BOOL__G__BlindPaused = false;
+static uint16_t UINT16_T__G__BlindSavedDutyPermille[CHG_CHANNEL_COUNT] = {0u, 0u};
+static uint32_t UINT32_T__G__BlindLastValidVinMv = 0u;
+static uint32_t UINT32_T__G__BlindSavedVinMv = 0u;
+
 /* ==================== Forward declarations / اعلان پیش‌موضع ==================== */
 static bsp_pwm_channel_t func__Charger_PwmChannel(uint8_t uint8_t__channelIndex);
 static void func__Charger_ClearAbsorbWindow(
@@ -317,6 +327,7 @@ static void func__Charger_PidInvalidate(
 static uint32_t func__Charger_Limit(uint8_t uint8_t__index);
 static bool func__Charger_IsInputPresentForRelay(
     const measurement_snapshot_t *measurement_snapshot_t__snap);
+static void func__Charger_PauseOnBlindSnapshot(uint32_t uint32_t__nowTick);
 
 /* [EN] Read a panel-settable limit by its WIRE ID (ids 93..107, user order
  *      2026-10-03). Spelling the wire id at every use site keeps the call
@@ -397,9 +408,12 @@ static void func__Charger_SafeIdle(void)
     BOOL__G__RelayOpen = false;
     UINT32_T__G__RelaySettleDeadline = 0u;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+    BOOL__G__BlindPaused = false;
+    UINT32_T__G__BlindSavedVinMv = 0u;
 
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
+        UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyBeforeTripPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
@@ -678,6 +692,7 @@ static void func__Charger_StopOneChannel(uint8_t uint8_t__channelIndex)
         return;
     }
 
+    UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
     CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
     func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
 }
@@ -1636,6 +1651,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
        زمان اجرا گیره می‌زند. */
     if (BOOL__G__ChargerDutyFixedEnable[uint8_t__channelIndex] != false)
     {
+        UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
         uint32_t__batteryMv =
             func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
                                            uint8_t__channelIndex);
@@ -1758,6 +1774,75 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_DUTY_START_PERMILLE);
         charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
         return;
+    }
+
+    /* [EN] Blind-snapshot recovery (ADC self-heal): when a channel was actively
+       charging (BULK/ABSORB) before a temporary invalid snapshot, resume from
+       CHG_BLIND_RESUME_PERCENT (70%) of its pre-pause duty instead of falling
+       back to 1%, scaled down proportionally if input voltage rose while blind.
+       [FA] بازیابی پس از نامعتبرشدن موقت ‎ADC‎: اگر کانال پیش از وقفه در حال
+       شارژ (‎BULK/ABSORB‎) بود، از ۷۰٪ دیوتی قبلی ادامه می‌دهد (و اگر ولتاژ
+       ورودی در طول وقفه بالا رفته باشد به همان نسبت تعدیل می‌شود). */
+    if (UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] != 0u)
+    {
+        uint16_t uint16_t__savedDuty;
+        bool bool__canResume;
+
+        uint16_t__savedDuty = UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex];
+        UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
+
+        bool__canResume =
+            ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BULK) ||
+             (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB));
+#if MODULE_FAULT
+        if (func__Fault_IsChannelBatteryAbsent(uint8_t__channelIndex) != false)
+        {
+            bool__canResume = false;
+        }
+#endif
+        if (bool__canResume != false)
+        {
+            uint32_t uint32_t__scaledDuty;
+            uint32_t uint32_t__resumeDuty;
+
+            uint32_t__scaledDuty =
+                (uint32_t)uint16_t__savedDuty * (uint32_t)CHG_BLIND_RESUME_PERCENT;
+            uint32_t__resumeDuty = uint32_t__scaledDuty / 100u;
+
+            if ((UINT32_T__G__BlindSavedVinMv > 0u) &&
+                (measurement_snapshot_t__snap->v_in_mv > UINT32_T__G__BlindSavedVinMv))
+            {
+                uint32_t uint32_t__vinProduct;
+
+                uint32_t__vinProduct = uint32_t__resumeDuty * UINT32_T__G__BlindSavedVinMv;
+                uint32_t__resumeDuty =
+                    uint32_t__vinProduct / measurement_snapshot_t__snap->v_in_mv;
+            }
+
+            if (uint32_t__resumeDuty < (uint32_t)CHG_DUTY_START_PERMILLE)
+            {
+                uint32_t__resumeDuty = (uint32_t)CHG_DUTY_START_PERMILLE;
+            }
+
+            func__Charger_PidInvalidate(charger_channel_state_t__channel);
+            func__Charger_ApplyDuty(uint8_t__channelIndex, (uint16_t)uint32_t__resumeDuty);
+            charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+            if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
+            {
+                charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
+                charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+            }
+        }
+        else if (charger_channel_state_t__channel->charger_state_t__state != CHG_STATE_FLOAT)
+        {
+            func__Charger_ResetChannelToOff(uint8_t__channelIndex);
+            func__Charger_StopOneChannel(uint8_t__channelIndex);
+            return;
+        }
+        else
+        {
+            /* [EN] FLOAT keeps its parked completion state. / [FA] حالت شارژ کامل حفظ می‌شود. */
+        }
     }
 
     uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
@@ -2088,6 +2173,7 @@ void func__Charger_Init(void)
     UINT32_T__G__ThermalContinuousSinceTick[1u] = 0u;
     UINT32_T__G__ThermalRestUntilTick[0u] = 0u;
     UINT32_T__G__ThermalRestUntilTick[1u] = 0u;
+    UINT32_T__G__BlindLastValidVinMv = 0u;
 
     func__Charger_SafeIdle();
 }
@@ -2110,6 +2196,9 @@ static void func__Charger_EnterManualTestMode(uint32_t uint32_t__nowTick)
 {
     BOOL__G__ChargerManualModeActive = true;
     UINT32_T__G__ManualLastLinkTick = uint32_t__nowTick;
+    BOOL__G__BlindPaused = false;
+    UINT16_T__G__BlindSavedDutyPermille[0u] = 0u;
+    UINT16_T__G__BlindSavedDutyPermille[1u] = 0u;
 
 #if MODULE_FAULT
     func__Fault_Clear(FAULT_CHARGER_BAT_LOST);
@@ -2663,6 +2752,71 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
             BOOL__G__DeadPersist   = true;
         }
     }
+}
+
+/* ==================== Charger_PauseOnBlindSnapshot ==================== */
+
+/**
+ * @brief  [EN] Hold hardware PWM safely at 0% during a temporary invalid ADC
+ *              snapshot (self-healing window) while preserving each channel's
+ *              charging state, Absorb/Scenario-6 timers and pre-pause duty so
+ *              recovery resumes from CHG_BLIND_RESUME_PERCENT (70%).
+ *         [FA] نگه‌داشتن امن ‎PWM‎ روی صفر هنگام نامعتبرشدن موقت نمونهٔ ‎ADC‎
+ *              (پنجرهٔ خودترمیمی) با حفظ حالت شارژ، تایمرها و دیوتی قبلی هر
+ *              کانال تا پس از احیا از ۷۰٪ دیوتی قبل ادامه یابد.
+ * @param  uint32_t__nowTick [EN] Current kernel tick / تیک فعلی هسته
+ */
+static void func__Charger_PauseOnBlindSnapshot(uint32_t uint32_t__nowTick)
+{
+    uint8_t uint8_t__channelIndex;
+
+    func__BspPwm_StopAll();
+    func__BspGpio_Write(BSP_GPIO_RELAY, false);
+
+    if (BOOL__G__BlindPaused == false)
+    {
+        UINT32_T__G__BlindSavedVinMv = UINT32_T__G__BlindLastValidVinMv;
+    }
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
+    {
+        charger_channel_state_t *charger_channel_state_t__channel =
+            &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
+
+        if (BOOL__G__BlindPaused == false)
+        {
+            if ((charger_channel_state_t__channel->bool__installed == true) &&
+                (BOOL__G__ChargerEspEnableCh[uint8_t__channelIndex] != false) &&
+                (BOOL__G__ChargerManualModeActive == false) &&
+                ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BULK) ||
+                 (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)) &&
+                (charger_channel_state_t__channel->uint16_t__dutyPermille > 0u))
+            {
+                UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] =
+                    charger_channel_state_t__channel->uint16_t__dutyPermille;
+            }
+            else
+            {
+                UINT16_T__G__BlindSavedDutyPermille[uint8_t__channelIndex] = 0u;
+            }
+        }
+
+        charger_channel_state_t__channel->uint16_t__dutyPermille = 0u;
+        func__Charger_PidInvalidate(charger_channel_state_t__channel);
+        func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
+
+        if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
+        {
+            charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
+            charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+        }
+        if (BOOL__G__DeadWasCharging[uint8_t__channelIndex] != false)
+        {
+            UINT32_T__G__DeadLastTick[uint8_t__channelIndex] = uint32_t__nowTick;
+        }
+    }
+
+    BOOL__G__BlindPaused = true;
 }
 
 /* ==================== Charger_DeadMask ==================== */
@@ -3251,7 +3405,6 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         }
 #endif
         if ((measurement_snapshot_t__snap == NULL) ||
-            (measurement_snapshot_t__snap->valid == false) ||
             (CHG_INSTALLED_CHANNEL_MASK == 0u) ||
             (bool__faultBlocking != false) ||
             ((app_state_t__state == APP_STATE_FAULT) &&
@@ -3274,6 +3427,31 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             }
             return;
         }
+
+        if (measurement_snapshot_t__snap->valid == false)
+        {
+            func__Charger_PauseOnBlindSnapshot(uint32_t__nowTick);
+            return;
+        }
+    }
+
+    if (BOOL__G__BlindPaused != false)
+    {
+        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
+        {
+            if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+                CHG_STATE_ABSORB)
+            {
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick =
+                    uint32_t__nowTick;
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__taperSinceTick = 0u;
+            }
+            if (BOOL__G__DeadWasCharging[uint8_t__channelIndex] != false)
+            {
+                UINT32_T__G__DeadLastTick[uint8_t__channelIndex] = uint32_t__nowTick;
+            }
+        }
+        BOOL__G__BlindPaused = false;
     }
 
     bool__controlAllowed = false;
@@ -3693,6 +3871,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
         }
     }
+
+    UINT32_T__G__BlindLastValidVinMv = measurement_snapshot_t__snap->v_in_mv;
 }
 
 /* ==================== Charger_IsAnyChannelActive ==================== */

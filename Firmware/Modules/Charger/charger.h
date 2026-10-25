@@ -373,6 +373,13 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
 #define CHG_THERMAL_YELLOW_DUTY_PCT      50u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
+/* [EN] Resume scale after a temporary invalid/blind ADC snapshot (self-heal):
+ *      restart active BULK/ABSORB channels from 70% of their pre-pause duty
+ *      (compensated down if Vin rose during the blind pause) instead of 1%.
+ * [FA] ضریب بازیابی پس از قطع موقت نمونهٔ ‎ADC‎ (خودترمیمی): شروع دوبارهٔ
+ *      کانال‌های فعال از ۷۰٪ دیوتی قبل از وقفه (با جبران افزایش ولتاژ ورودی)
+ *      به‌جای بازگشت به ۱٪. */
+#define CHG_BLIND_RESUME_PERCENT       70u
 /* [EN] The only fixed-step cadence left after v1.23. The BULK/ABSORB step
  *      chain and its four other intervals were deleted with the legacy
  *      regulator (user order 2026-09-29: "remove the previous logic, the

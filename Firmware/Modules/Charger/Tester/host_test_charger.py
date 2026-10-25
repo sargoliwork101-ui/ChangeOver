@@ -4656,6 +4656,254 @@ int main(void)
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_blind_snapshot_resumes_from_70_percent():
+    """Compile charger.c and verify temporary blind ADC snapshot pauses PWM at 0%
+    while preserving FLOAT and resuming BULK/ABSORB at 70% duty (with Vin rise
+    compensation), whereas real faults or input loss still reset cleanly."""
+    import shutil, subprocess, tempfile
+    gcc = shutil.which("gcc") or shutil.which("cc")
+    assert gcc, "host C compiler required"
+    tmp = tempfile.mkdtemp(prefix="chg_blind_test_")
+    try:
+        harness = Path(tmp) / "harness.c"
+        harness.write_text(r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include "charger.h"
+#include "bsp_gpio.h"
+#include "bsp_pwm.h"
+#include "fault.h"
+#include "jitter.h"
+#include "diag.h"
+#include "imbalance.h"
+#include "cmsis_os2.h"
+
+static uint32_t g_tick = 1000u;
+static bool g_relay_coil = false;
+static bool g_input_pin = true;
+static uint16_t g_pwm_duty[2] = {0u, 0u};
+static bool g_jit_tripped[2] = {false, false};
+static fault_mask_t g_fault_mask = FAULT_NONE;
+
+uint32_t osKernelGetTickCount(void) { return g_tick; }
+uint32_t osKernelGetTickFreq(void) { return 1000u; }
+int32_t osKernelLock(void) { return 0; }
+int32_t osKernelRestoreLock(int32_t lock) { (void)lock; return 0; }
+osStatus_t osDelay(uint32_t ticks) { (void)ticks; return osOK; }
+
+void func__BspGpio_Write(bsp_gpio_id_t id, bool active)
+{
+    if (id == BSP_GPIO_RELAY) { g_relay_coil = active; }
+}
+bool func__BspGpio_Read(bsp_gpio_id_t id)
+{
+    if (id == BSP_GPIO_INPUT_24V_PRESENT) { return g_input_pin; }
+    return false;
+}
+void func__BspPwm_StopAll(void)
+{
+    g_pwm_duty[0] = 0u;
+    g_pwm_duty[1] = 0u;
+}
+void func__BspPwm_Stop(bsp_pwm_channel_t ch)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = 0u; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = 0u; }
+}
+void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t ch, uint16_t duty)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = duty; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = duty; }
+}
+uint16_t func__BspPwm_GetAppliedDutyPermille(bsp_pwm_channel_t ch)
+{
+    return (ch == BSP_PWM_CHARGER_1) ? g_pwm_duty[0] : g_pwm_duty[1];
+}
+
+bool func__Jitter_ChannelTripped(uint8_t ch)
+{
+    return (ch >= 1u && ch <= 2u) ? g_jit_tripped[ch - 1u] : false;
+}
+void func__Jitter_ClearChannel(uint8_t ch)
+{
+    if (ch >= 1u && ch <= 2u) { g_jit_tripped[ch - 1u] = false; }
+}
+
+void func__Fault_Set(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask | m); }
+void func__Fault_Clear(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask & ~m); }
+fault_mask_t func__Fault_Get(void) { return g_fault_mask; }
+bool func__Fault_IsBatteryAbsent(void) { return false; }
+bool func__Fault_IsChannelBatteryAbsent(uint8_t ch) { (void)ch; return false; }
+bool func__Fault_GetAlarmParam(uint8_t id, uint32_t *val)
+{
+    if (id == FAULT_ALARM_PARAM_INPUT_MIN_MV) { *val = 21000u; return true; }
+    if (id == FAULT_ALARM_PARAM_INPUT_MAX_MV) { *val = 28000u; return true; }
+    if (id == FAULT_ALARM_PARAM_DISCONNECT_DEB_MS) { *val = 150u; return true; }
+    return false;
+}
+
+bool func__Imbalance_ChargerGateClosed(void) { return false; }
+void func__Imbalance_NotifyThermalRest(void) {}
+void func__Imbalance_GetOutputs(imbalance_outputs_t *out)
+{
+    if (out != NULL)
+    {
+        *out = (imbalance_outputs_t){0};
+        out->bool__chargingAllowed = true;
+    }
+}
+void func__Fault_OnSupervisionChange(void) {}
+void func__Diag_RecordChargeComplete(uint8_t ch) { (void)ch; }
+
+int main(void)
+{
+    measurement_snapshot_t snap = {0};
+    snap.valid = true;
+    snap.input_present = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat24_mv = 25000u;
+    snap.v_bat12_mv = 12500u;
+    snap.v_bat_low_mv = 12500u;
+    snap.v_bat_high_mv = 12500u;
+    snap.i_ch1_ma = 200u;
+    snap.i_ch2_ma = 200u;
+
+    func__Charger_Init();
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] == CHG_DUTY_START_PERMILLE);
+
+    /* Ramp BULK up into ~300 permille range */
+    snap.i_ch1_ma = 0u;
+    snap.i_ch2_ma = 0u;
+    for (int step = 0; step < 3000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    uint16_t duty_before = g_pwm_duty[0];
+    assert(duty_before >= 250u);
+
+    /* 1) Temporary blind ADC snapshot for 10 seconds -> PWM=0 while blind */
+    snap.valid = false;
+    for (int step = 0; step < 20; step++)
+    {
+        g_tick += 500u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+        assert(g_pwm_duty[0] == 0u);
+        assert(g_pwm_duty[1] == 0u);
+        assert(func__Charger_IsChannelActive(0u) == true);
+    }
+
+    /* 2) ADC recovers at same Vin (24 V) -> resumes at exact 70% of duty_before */
+    snap.valid = true;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    uint16_t expected_70 = (uint16_t)(((uint32_t)duty_before * CHG_BLIND_RESUME_PERCENT) / 100u);
+    assert(g_pwm_duty[0] == expected_70);
+    assert(g_pwm_duty[1] == expected_70);
+
+    /* 3) Vin rises during blind pause (22 V -> 27.5 V) -> scaled down proportionally */
+    snap.v_in_mv = 22000u;
+    g_tick += 100u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    duty_before = g_pwm_duty[0];
+    assert(duty_before >= 150u);
+
+    snap.valid = false;
+    g_tick += 1000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] == 0u);
+
+    snap.valid = true;
+    snap.v_in_mv = 27500u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    uint32_t base_resume = ((uint32_t)duty_before * CHG_BLIND_RESUME_PERCENT) / 100u;
+    uint16_t expected_vin_comp = (uint16_t)((base_resume * 22000u) / 27500u);
+    assert(g_pwm_duty[0] == expected_vin_comp);
+
+    /* 4) Reach FLOAT on both channels and verify blind snapshot preserves FLOAT */
+    snap.v_in_mv = 24000u;
+    snap.v_bat_high_mv = 14400u;
+    snap.v_bat_low_mv = 14400u;
+    snap.i_ch1_ma = 20u;
+    snap.i_ch2_ma = 20u;
+    for (int step = 0; step < 7000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == true);
+
+    snap.valid = false;
+    g_tick += 5000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(func__Charger_IsChargeComplete() == true);
+    assert(g_pwm_duty[0] == 0u);
+
+    snap.valid = true;
+    snap.v_bat_high_mv = 13200u;
+    snap.v_bat_low_mv = 13200u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(func__Charger_IsChargeComplete() == true);
+    assert(g_pwm_duty[0] == 0u);
+
+    /* 5) Persistent FAULT_ADC clears saved blind state via SafeIdle */
+    snap.v_bat_high_mv = 12400u;
+    snap.v_bat_low_mv = 12400u;
+    snap.i_ch1_ma = 200u;
+    snap.i_ch2_ma = 200u;
+    for (int step = 0; step < 1000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(g_pwm_duty[0] > 50u);
+    snap.valid = false;
+    g_tick += 100u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_fault_mask = FAULT_ADC;
+    g_tick += 100u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(func__Charger_IsChannelActive(0u) == false);
+
+    printf("BLIND RESUME HARNESS OK\n");
+    return 0;
+}
+''', encoding="utf-8")
+        binary = str(Path(tmp) / "harness_blind")
+        inc = [
+            "-I", str(ROOT / "Firmware/Config/Inc"),
+            "-I", str(ROOT / "Firmware/Bsp/Inc"),
+            "-I", str(ROOT / "Firmware/Rtos/Inc"),
+            "-I", str(ROOT / "Firmware/Rtos/HostStub"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2"),
+            "-I", str(ROOT / "Firmware/Modules/Charger"),
+            "-I", str(ROOT / "Firmware/Modules/Measurement"),
+            "-I", str(ROOT / "Firmware/Modules/Fault"),
+            "-I", str(ROOT / "Firmware/Modules/Jitter"),
+            "-I", str(ROOT / "Firmware/Modules/Imbalance"),
+            "-I", str(ROOT / "Firmware/Modules/Diag"),
+        ]
+        r = subprocess.run(
+            [gcc, "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
+             "-DSTM32F103xB", "-DUSE_HAL_DRIVER", *inc,
+             str(CHARGER_C), str(ROOT / "Firmware/Rtos/Src/rtos_time.c"),
+             str(harness), "-o", binary],
+            capture_output=True, text=True)
+        check(r.returncode == 0, "blind resume harness must compile:\n" + r.stderr)
+        r = subprocess.run([binary], capture_output=True, text=True)
+        check(r.returncode == 0 and "BLIND RESUME HARNESS OK" in r.stdout,
+              "blind resume harness runtime assertions must pass:\n" + r.stdout + r.stderr)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -4715,6 +4963,7 @@ def main():
         test_panel_calibration_requires_readback_v127,
         test_boundary_concurrency_hardening_v126,
         test_relay_coil_gated_on_input_presence,
+        test_blind_snapshot_resumes_from_70_percent,
     ]
     for test in tests:
         test()
