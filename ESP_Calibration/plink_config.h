@@ -66,6 +66,26 @@
 #define ESP_MSG_LUT_ACK             0x13u
 #define ESP_MSG_LUT_DATA            0x14u
 #define ESP_MSG_WIFI_CLIENT_STATE   0x33u
+/* [EN] Two-sided handshake (v1.111, user order 2026-10-25): this panel sends
+   HELLO every ESP_HELLO_INTERVAL_MS; the board answers HELLO_ACK carrying its
+   own receive health, so "frames arrive" and "the pair really talks both ways"
+   are no longer the same indicator. ESP_HELLO_TIMEOUT_MS is how long a fresh
+   answer keeps the link counted as confirmed.
+   [FA] دست‌دادن دوطرفه (v1.111، دستور کاربر ۲۰۲۶-۱۰-۲۵): این پنل هر
+   ESP_HELLO_INTERVAL_MS یک HELLO می‌فرستد و برد با HELLO_ACK جواب می‌دهد و
+   سلامت دریافت خودش را می‌گوید؛ پس «فریم می‌آید» و «دوطرفه حرف می‌زنیم» دو
+   نشانگر جدا می‌شوند. ESP_HELLO_TIMEOUT_MS مدت اعتبار پاسخ تازه است. */
+#define ESP_MSG_HELLO               0x40u
+#define ESP_MSG_HELLO_ACK           0x41u
+#define ESP_HELLO_LEN               8u
+#define ESP_HELLO_ACK_LEN           24u
+#define ESP_HELLO_INTERVAL_MS       2000u
+#define ESP_HELLO_TIMEOUT_MS        6000u
+#define ESP_ESP_ROLE_CALIBRATION    2u
+#define ESP_ESP_FW_VERSION          111u
+/* [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
+   [FA] بیت ۶ بایت پرچم تله‌متری: برد تأیید می‌کند دست‌دادن انجام شده است. */
+#define ESP_TLM_FLAG_LINK_OK        0x40u
 /* [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
    [FA] سقف نقاط هر کانال، برابر CAL_LUT_POINTS_MAX روی برد. */
 #define ESP_LUT_POINTS_MAX          24u

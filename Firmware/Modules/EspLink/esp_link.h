@@ -211,6 +211,51 @@
 #define ESPLINK_WIFI_BAT_CUTOFF_MAX_PCT         100u
 #define ESPLINK_WIFI_CLIENT_HOLD_MS           15000u
 
+/* ==================== Handshake / دست‌دادن دوطرفه (v1.111) ====================
+ * [EN] User order 2026-10-25: "the board and the ESP must shake hands so I can
+ *      see that they connected AND that the connection is correct". Three
+ *      separate facts have to be visible, and only a handshake carries all
+ *      three:
+ *        1. The ESP is talking to the board (ESP -> board direction). Telemetry
+ *           alone cannot show this: the board talks, the ESP may never answer.
+ *        2. The BOARD is hearing it correctly - the ACK carries the board's own
+ *           accepted-frame count and its CRC / version-mismatch counters, so a
+ *           noisy or half-flashed pair is visible instead of "kind of works".
+ *        3. Both sides agree on the wire format: the ACK returns the protocol
+ *           version, the board firmware version, the number of parameters the
+ *           board knows and its telemetry period.
+ *      HELLO (ESP -> STM, every 2 s) / HELLO_ACK (STM -> ESP, answered at once).
+ *      The board marks the link OK only while a HELLO keeps arriving inside
+ *      ESPLINK_HANDSHAKE_TIMEOUT_MS; the ESP marks it OK only while an ACK keeps
+ *      arriving inside the same window, so neither side can claim a link the
+ *      other one does not see.
+ * [FA] دستور کاربر ۲۰۲۶-۱۰-۲۵: برد و ESP باید با هم دست بدهند تا دیده شود که
+ *      وصل شده‌اند و ارتباط درست است. سه واقعیت جدا باید دیده شود و فقط
+ *      دست‌دادن هر سه را حمل می‌کند: (۱) ESP با برد حرف می‌زند، (۲) برد آن را
+ *      درست می‌شنود - چون پاسخ، شمارندهٔ فریم‌های سالم و خطاهای CRC و نسخهٔ
+ *      خودِ برد را می‌آورد، (۳) دو طرف روی قالب سیم توافق دارند - نسخه،
+ *      نسخهٔ فرم‌ور برد، تعداد پارامترها و دورهٔ تله‌متری.
+ *      HELLO از ESP هر ۲ ثانیه و پاسخ فوری برد. هر طرف تنها وقتی «سالم»
+ *      می‌گوید که پیام طرف مقابل داخل همین پنجره برسد. */
+#define ESPLINK_MSG_HELLO                   0x40u
+#define ESPLINK_MSG_HELLO_ACK               0x41u
+#define ESPLINK_HELLO_LEN                    8u   /* proto, espFw, role, flags, uptime u32 */
+#define ESPLINK_HELLO_ACK_LEN               24u
+#define ESPLINK_HELLO_INTERVAL_MS         2000u   /* ESP side / سمت ESP */
+#define ESPLINK_HANDSHAKE_TIMEOUT_MS      6000u   /* three HELLOs / سه بار HELLO */
+/* [EN] ESP role byte of HELLO: which program is on the other end. Bump the
+ *      board firmware version with every release so the panel can show what it
+ *      is actually talking to.
+ * [FA] بایت نقش ESP: کدام برنامهٔ سمت دیگر است. نسخهٔ فرم‌ور برد را با هر
+ *      انتشار بالا ببرید تا پنل نشان دهد واقعاً با چه چیزی حرف می‌زند. */
+#define ESPLINK_ESP_ROLE_USER                1u
+#define ESPLINK_ESP_ROLE_CALIBRATION         2u
+#define ESPLINK_BOARD_FW_VERSION           111u
+#define ESPLINK_BOARD_FLAG_NVM_LOADED     0x01u
+#define ESPLINK_BOARD_FLAG_CHARGER        0x02u
+#define ESPLINK_BOARD_FLAG_IMBALANCE      0x04u
+#define ESPLINK_BOARD_FLAG_DIAG           0x08u
+
 /* ==================== Parameter IDs / شناسهٔ پارامترها ==================== */
 
 /* [EN] SET_PARAM payload = [id:u8][value:u32 LE]. Every value is clamped
@@ -718,6 +763,27 @@ bool func__EspLink_IsPinPowered(void);
 bool func__EspLink_IsWifiClientConnected(void);
 
 /**
+ * @brief  [EN] Handshake verdict (v1.111): TRUE only while the ESP keeps
+ *              sending HELLO inside ESPLINK_HANDSHAKE_TIMEOUT_MS, i.e. the
+ *              ESP -> board direction is proven, not just assumed.
+ *         [FA] حکم دست‌دادن (نسخهٔ ۱٫۱۱۱): تنها تا وقتی ESP داخل پنجرهٔ
+ *              مهلت HELLO می‌فرستد درست است، یعنی مسیر ESP به برد اثبات
+ *              شده است نه فرض.
+ * @‎return [EN] true when the two sides shook hands recently / [FA]‎ اگر
+ *              دست‌دادن تازه باشد true
+ */
+bool func__EspLink_IsHandshakeOk(void);
+
+/**
+ * @brief  [EN] Total HELLOs accepted since boot (the panel shows it as proof
+ *              that the pair keeps talking, not that it once did).
+ *         [FA] تعداد کل HELLOهای پذیرفته‌شده از بوت (پنل آن را نشان می‌دهد تا
+ *              معلوم شود دو طرف همچنان حرف می‌زنند، نه اینکه یک‌بار زده‌اند).
+ * @‎return [EN] HELLO count / [FA]‎ تعداد HELLO
+ */
+uint32_t func__EspLink_HandshakeCount(void);
+
+/**
  * @brief  [EN] Return the elapsed battery idle time (ms) without a connected
  *              Wi-Fi user.
  *         [FA] زمان سپری‌شدهٔ بی‌کاری روی باتری بدون اتصال کاربر (میلی‌ثانیه)
@@ -799,6 +865,18 @@ bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
 bool func__EspLink_HostTest_HandleLutFrame(uint8_t uint8_t__messageType,
                                            const uint8_t *uint8_t__payload,
                                            uint16_t uint16_t__payloadLength);
+/* [EN] v1.111 handshake probes: run the real HELLO path and the real timeout
+ *      without the whole dispatch graph (which needs every module linked).
+ * [FA] کاوش‌های دست‌دادن نسخهٔ ۱٫۱۱۱: مسیر واقعی HELLO و مهلت واقعی بدون کل
+ *      گراف دیسپچ (که به لینک همهٔ ماژول‌ها نیاز دارد). */
+bool func__EspLink_HostTest_HandleHello(const uint8_t *uint8_t__payload,
+                                        uint16_t uint16_t__payloadLength);
+void func__EspLink_HostTest_AdvanceHandshake(uint32_t uint32_t__stepMs);
+uint32_t func__EspLink_HostTest_RxFrameOk(void);
+void func__EspLink_HostTest_HandleHelloFrame(const uint8_t *uint8_t__payload,
+                                             uint16_t uint16_t__length);
+uint32_t func__EspLink_HostTest_ClientHoldMs(void);
+bool func__EspLink_HostTest_WifiClientConnected(void);
 #endif
 
 #endif /* ESP_LINK_H */

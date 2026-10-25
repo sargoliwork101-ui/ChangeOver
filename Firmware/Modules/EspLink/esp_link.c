@@ -162,6 +162,25 @@ static bool     BOOL__G__EspPinUp = false;
 static bool     BOOL__G__EspPowerOffPending = false;
 static uint32_t UINT32_T__G__EspPowerOffElapsedMs = 0u;
 
+/* [EN] v1.111 handshake state. HandshakeOk is the verdict the telemetry flag
+ *      and the panel show; HandshakeAgeMs is how long it has been since the
+ *      last accepted HELLO (advanced once per comm period, no RTOS call, so
+ *      the host test drives it too). RxFrameOkCount is what the ACK reports,
+ *      which is how the panel proves the board is hearing the ESP cleanly.
+ * [FA] وضعیت دست‌دادن نسخهٔ ۱٫۱۱۱. ‎HandshakeOk‎ همان حکمی است که پرچم
+ *      تله‌متری و پنل نشان می‌دهند؛ ‎HandshakeAgeMs‎ فاصلهٔ آخرین HELLO
+ *      پذیرفته‌شده است (هر دورهٔ ارتباط جلو می‌رود، بدون فراخوانی RTOS، پس
+ *      تست هاست هم آن را می‌گرداند). ‎RxFrameOkCount‎ همان چیزی است که در
+ *      پاسخ می‌رود و پنل با آن ثابت می‌کند برد ESP را تمیز می‌شنود. */
+static bool     BOOL__G__HandshakeOk = false;
+static uint32_t UINT32_T__G__HandshakeAgeMs = 0u;
+static uint32_t UINT32_T__G__HandshakeCount = 0u;
+static uint32_t UINT32_T__G__HandshakeLostCount = 0u;
+static uint32_t UINT32_T__G__RxFrameOkCount = 0u;
+static uint8_t  UINT8_T__G__EspFwVersion = 0u;
+static uint8_t  UINT8_T__G__EspRole = 0u;
+static uint32_t UINT32_T__G__EspUptimeSec = 0u;
+
 /* [EN] TLM_LIVE flag bits (payload offset 2). / [FA] بیت‌های پرچم TLM_LIVE. */
 #define ESPLINK_TLM_FLAG_SNAP_VALID     0x01u
 #define ESPLINK_TLM_FLAG_INPUT_PRESENT  0x02u
@@ -197,6 +216,17 @@ static uint32_t UINT32_T__G__EspPowerOffElapsedMs = 0u;
         استراحت حرارتی است. هر دو پرچم زنده‌اند نه قفل: هر فریم با برد می‌آیند. */
 #define ESPLINK_TLM_FLAG2_PATH_CUT        0x20u
 #define ESPLINK_TLM_FLAG2_THERMAL_REST    0x40u
+
+/* [EN] v1.111: the last spare bit of the flag byte says "the ESP and this
+ *      board shook hands inside the timeout". The panel needs it to tell
+ *      "telemetry is flowing" (board -> ESP only) from "the link is proven
+ *      both ways". No payload layout change, so both ESP programs keep
+ *      parsing the same 128-byte frame.
+ * [FA] نسخهٔ ۱٫۱۱۱: آخرین بیت خالی بایت پرچم می‌گوید «ESP و این برد داخل
+ *      مهلت با هم دست داده‌اند». پنل با آن «تله‌متری می‌آید» (فقط برد به ESP)
+ *      را از «لینک دوطرفه اثبات شده» جدا می‌بیند. چیدمان payload عوض
+ *      نمی‌شود، پس هر دو برنامهٔ ESP همان قاب ۱۲۸ بایتی را می‌خوانند. */
+#define ESPLINK_TLM_FLAG_LINK_OK        0x40u
 
 /* ==================== Byte packing / بسته‌بندی بایت ==================== */
 
@@ -1187,6 +1217,175 @@ static void func__EspLink_SendParamsBulk(void)
     }
 }
 
+/* ==================== Handshake / دست‌دادن دوطرفه (v1.111) ==================== */
+
+/* [EN] Board side flags reported in HELLO_ACK: what this firmware actually has
+ *      compiled in, so the panel can show what it is talking to instead of
+ *      guessing from a behaviour difference.
+ * [FA] پرچم‌های سمت برد در پاسخ: این فرم‌ور واقعاً چه چیزی کامپایل کرده، تا
+ *      پنل نشان دهد با چه چیزی حرف می‌زند نه اینکه از تفاوت رفتار حدس بزند. */
+static uint8_t func__EspLink_BoardFlags(void)
+{
+    uint8_t uint8_t__flags = 0u;
+
+    uint8_t__flags |= (uint8_t)ESPLINK_BOARD_FLAG_NVM_LOADED;
+#if MODULE_CHARGER
+    uint8_t__flags |= (uint8_t)ESPLINK_BOARD_FLAG_CHARGER;
+#endif
+#if MODULE_IMBALANCE
+    uint8_t__flags |= (uint8_t)ESPLINK_BOARD_FLAG_IMBALANCE;
+#endif
+#if MODULE_DIAG
+    uint8_t__flags |= (uint8_t)ESPLINK_BOARD_FLAG_DIAG;
+#endif
+    return uint8_t__flags;
+}
+
+/* [EN] One counter narrowed to u16 for the wire. The ACK has a fixed size, and
+ *      a wrapped counter is honest enough for a health readout - the panel only
+ *      asks "is it zero or not".
+ * [FA] یک شمارنده به u16 برای سیم کوچک می‌شود. پاسخ اندازهٔ ثابت دارد و
+ *      شمارندهٔ برگشته برای خواندن سلامت کافی است - پنل فقط می‌پرسد صفر است
+ *      یا نه. */
+static uint16_t func__EspLink_ClampCounter(uint32_t uint32_t__value)
+{
+    if (uint32_t__value > 0xFFFFu)
+    {
+        return (uint16_t)0xFFFFu;
+    }
+    return (uint16_t)uint32_t__value;
+}
+
+/**
+ * @brief  [EN] Answer one HELLO with HELLO_ACK: protocol version, board
+ *              firmware version, compiled-in flags, board uptime, the board's
+ *              own receive health (accepted frames, CRC errors, version
+ *              mismatches), the parameter count and telemetry period, and an
+ *              echo of the ESP uptime so the sender can match the answer to
+ *              its own request.
+ *         [FA] پاسخ یک HELLO با HELLO_ACK: نسخهٔ پروتکل، نسخهٔ فرم‌ور برد،
+ *              پرچم‌های کامپایل‌شده، آپتایم برد، سلامت دریافت خودِ برد
+ *              (فریم سالم، خطای CRC، ناهم‌نسخگی)، تعداد پارامترها و دورهٔ
+ *              تله‌متری، و بازپس آپتایم ESP تا فرستنده پاسخ را با درخواست
+ *              خودش تطبیق دهد.
+ * @param  uint32_t__espUptimeSec [EN] ESP uptime echoed back, seconds /
+ *                                [FA] آپتایم ESP که بازپس داده می‌شود (ثانیه)
+ */
+static void func__EspLink_SendHelloAck(uint32_t uint32_t__espUptimeSec)
+{
+    uint8_t UINT8_T__A__Payload[ESPLINK_HELLO_ACK_LEN];
+    uint16_t uint16_t__cursor = 0u;
+    uint32_t uint32_t__boardUptimeSec = 0u;
+
+#if MODULE_DIAG && !defined(ESPLINK_HOST_TEST)
+    {
+        const diag_record_t *diag_record_t__record = func__Diag_GetRecord();
+
+        if (diag_record_t__record != NULL)
+        {
+            uint32_t__boardUptimeSec = diag_record_t__record->uint32_t__uptimeSec;
+        }
+    }
+#endif
+
+    UINT8_T__A__Payload[uint16_t__cursor] = (uint8_t)ESPLINK_PROTOCOL_VERSION;
+    uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
+    UINT8_T__A__Payload[uint16_t__cursor] = (uint8_t)ESPLINK_BOARD_FW_VERSION;
+    uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
+    UINT8_T__A__Payload[uint16_t__cursor] = func__EspLink_BoardFlags();
+    uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
+    UINT8_T__A__Payload[uint16_t__cursor] = 0u;
+    uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
+
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, uint32_t__boardUptimeSec);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, UINT32_T__G__RxFrameOkCount);
+    func__EspLink_PutU16(UINT8_T__A__Payload, &uint16_t__cursor,
+                         func__EspLink_ClampCounter(UINT32_T__G__RxCrcError));
+    func__EspLink_PutU16(UINT8_T__A__Payload, &uint16_t__cursor,
+                         func__EspLink_ClampCounter(UINT32_T__G__RxVersionMismatch));
+    func__EspLink_PutU16(UINT8_T__A__Payload, &uint16_t__cursor,
+                         (uint16_t)ESPLINK_PARAM_COUNT);
+    func__EspLink_PutU16(UINT8_T__A__Payload, &uint16_t__cursor,
+                         (uint16_t)APP_CONFIG.comm_period_ms);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, uint32_t__espUptimeSec);
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_HELLO_ACK,
+                            UINT8_T__A__Payload, (uint16_t)ESPLINK_HELLO_ACK_LEN);
+}
+
+/**
+ * @brief  [EN] Take one HELLO from the ESP: remember who is on the other end,
+ *              restart the timeout, count it and answer with HELLO_ACK.
+ *              A short or foreign-protocol HELLO is refused and changes
+ *              nothing, so a corrupted frame can never fake a link.
+ *         [FA] یک HELLO از ESP را می‌پذیرد: طرف مقابل را ثبت، مهلت را از نو
+ *              شروع، می‌شمارد و با HELLO_ACK پاسخ می‌دهد. HELLO کوتاه یا با
+ *              نسخهٔ بیگانه رد می‌شود و هیچ چیز را عوض نمی‌کند، تا فریم خراب
+ *              هرگز نتواند لینک قلابی بسازد.
+ * @param  uint8_t__payload [EN] Payload / payload
+ * @param  uint16_t__payloadLength [EN] Length / طول
+ * @‎return bool [EN] true when accepted / [FA]‎ اگر پذیرفته شد true
+ */
+static bool func__EspLink_HandleHello(const uint8_t *uint8_t__payload,
+                                      uint16_t uint16_t__payloadLength)
+{
+    uint32_t uint32_t__espUptimeSec;
+
+    if (uint16_t__payloadLength < (uint16_t)ESPLINK_HELLO_LEN)
+    {
+        return false;
+    }
+    if (uint8_t__payload[0] != (uint8_t)ESPLINK_PROTOCOL_VERSION)
+    {
+        return false;
+    }
+
+    UINT8_T__G__EspFwVersion = uint8_t__payload[1];
+    UINT8_T__G__EspRole = uint8_t__payload[2];
+    uint32_t__espUptimeSec = func__EspLink_GetU32(uint8_t__payload, 4u);
+    UINT32_T__G__EspUptimeSec = uint32_t__espUptimeSec;
+
+    BOOL__G__HandshakeOk = true;
+    UINT32_T__G__HandshakeAgeMs = 0u;
+    UINT32_T__G__HandshakeCount++;
+
+    func__EspLink_SendHelloAck(uint32_t__espUptimeSec);
+    return true;
+}
+
+/**
+ * @brief  [EN] Advance the handshake timeout by one comm period; a silent ESP
+ *              loses the verdict and counts one loss (edge only, so the
+ *              counter measures outages, not periods).
+ *         [FA] مهلت دست‌دادن را یک دورهٔ ارتباط جلو می‌برد؛ ESP ساکت حکم را
+ *              از دست می‌دهد و یک «قطع» شمرده می‌شود (فقط در لبه، تا شمارنده
+ *              تعداد قطعی‌ها را بشمارد نه تعداد دوره‌ها).
+ * @‎param  uint32_t__stepMs [EN] Elapsed step, ms / [FA]‎ گام سپری‌شده (ms)
+ */
+static void func__EspLink_HandshakeTick(uint32_t uint32_t__stepMs)
+{
+    if (BOOL__G__HandshakeOk == false)
+    {
+        return;
+    }
+
+    if ((UINT32_MAX - UINT32_T__G__HandshakeAgeMs) > uint32_t__stepMs)
+    {
+        UINT32_T__G__HandshakeAgeMs += uint32_t__stepMs;
+    }
+    else
+    {
+        UINT32_T__G__HandshakeAgeMs = UINT32_MAX;
+    }
+
+    if (UINT32_T__G__HandshakeAgeMs >= (uint32_t)ESPLINK_HANDSHAKE_TIMEOUT_MS)
+    {
+        BOOL__G__HandshakeOk = false;
+        UINT32_T__G__HandshakeAgeMs = (uint32_t)ESPLINK_HANDSHAKE_TIMEOUT_MS;
+        UINT32_T__G__HandshakeLostCount++;
+    }
+}
+
 /**
  * @brief  [EN] Build and send one TLM_LIVE frame from the live globals.
  *         [FA] یک فریم TLM_LIVE از گلوبال‌های زنده می‌سازد و می‌فرستد.
@@ -1234,6 +1433,15 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
         uint8_t__flags = (uint8_t)(uint8_t__flags | ESPLINK_TLM_FLAG_MANUAL_MODE);
     }
 #endif
+
+    /* [EN] v1.111: the link bit rides the flag byte, so a panel can tell
+     *      "frames are arriving" from "the board confirms the handshake".
+     * [FA] نسخهٔ ۱٫۱۱۱: بیت لینک روی بایت پرچم می‌نشیند تا پنل «فریم می‌رسد»
+     *      را از «برد دست‌دادن را تأیید می‌کند» جدا ببیند. */
+    if (BOOL__G__HandshakeOk != false)
+    {
+        uint8_t__flags = (uint8_t)(uint8_t__flags | ESPLINK_TLM_FLAG_LINK_OK);
+    }
 
     func__EspLink_PutU16(UINT8_T__A__Payload, &uint16_t__cursor,
                          UINT16_T__G__TelemetrySeq);
@@ -1957,6 +2165,23 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
     return false;
 }
 
+/**
+ * @brief  [EN] Handle one HELLO frame: answer it and nothing else. Kept as its
+ *              own function so the "no side effect" rule is testable on the
+ *              very code the dispatcher runs.
+ *         [FA] پردازش یک فریم HELLO: پاسخ دادن و هیچ کار دیگر. جدا نگه داشته
+ *              شده تا قانون «بدون عارضه» روی همان کدی که دیسپچر می‌راند تست‌شدنی
+ *              باشد.
+ * @param  uint8_t__payload [EN] HELLO payload / [FA]‎ payload پیام HELLO
+ * @param  uint16_t__payloadLength [EN] Payload length, bytes / [FA]‎ طول payload (بایت)
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLink_HandleHelloFrame(const uint8_t *uint8_t__payload,
+                                           uint16_t uint16_t__payloadLength)
+{
+    (void)func__EspLink_HandleHello(uint8_t__payload, uint16_t__payloadLength);
+}
+
 static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
                                       uint16_t uint16_t__payloadLength,
                                       const uint8_t *uint8_t__payload)
@@ -1964,7 +2189,35 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     uint32_t uint32_t__value;
     uint32_t uint32_t__appliedValue;
 
-    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_SET_PARAM)
+    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_HELLO)
+    {
+        /* [EN] v1.111 handshake: answered here, first in the chain, so nothing
+         *      else can delay the answer the panel is waiting for.
+         *      Audited 2026-10-25: a HELLO must have NO side effect beyond the
+         *      handshake state. It is not a user interaction. Routing it into
+         *      NotifyWifiClientState(true) would hold the ESP awake forever on
+         *      battery (a 2 s cadence against a 15 s client hold resets the
+         *      30-minute idle timer every time, killing the whole power-saving
+         *      schedule), and refreshing the charger's manual-mode dead-man on
+         *      a HELLO would keep manual PWM alive for a panel that never sent
+         *      a single SET_PARAM. Only real frames refresh those.
+         * [FA] دست‌دادن نسخهٔ ۱٫۱۱۱: همان‌جا و اول زنجیره پاسخ داده می‌شود تا
+         *      هیچ شاخهٔ دیگری پاسخِ منتظرِ پنل را عقب نیندازد.
+         *      ممیزی ۲۰۲۶-۱۰-۲۵: HELLO جز وضعیت دست‌دادن هیچ عارضه‌ای نباید
+         *      داشته باشد؛ یک تعامل کاربر نیست. اگر به
+         *      ‎NotifyWifiClientState(true)‎ وصل شود، روی باتری ESP را همیشه
+         *      بیدار نگه می‌دارد (دورهٔ ۲ ثانیه در برابر مهلت ۱۵ ثانیه‌ای
+         *      مشتری، هر بار تایمر بی‌کاری ۳۰ دقیقه‌ای را صفر می‌کند و کل برنامهٔ
+         *      کاهش مصرف را از بین می‌برد) و تازه‌کردن ددمنِ مود دستی روی HELLO
+         *      یعنی PWM دستی برای پنلی که هیچ SET_PARAM نفرستاده زنده می‌ماند.
+         *      فقط فریم‌های واقعی این دو را تازه می‌کنند. */
+        /* [EN] Kept to ONE call on purpose: the host test drives this exact
+         *      function, so any relation smuggled in here is caught.
+         * [FA] عمداً فقط یک فراخوان: تست هاست همین تابع را می‌راند، پس هر
+         *      عارضه‌ای که این‌جا قاچاق شود گرفته می‌شود. */
+        func__EspLink_HandleHelloFrame(uint8_t__payload, uint16_t__payloadLength);
+    }
+    else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_SET_PARAM)
     {
         if (uint16_t__payloadLength == 5u)
         {
@@ -2223,6 +2476,17 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             if (((uint16_t)(((uint16_t)uint8_t__byte << 8) |
                             (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__Crc)
             {
+                /* [EN] v1.111: every CRC-good frame is counted here, in BOTH
+                 *      builds, because the handshake answer reports this number
+                 *      to the panel: it is how the user sees that the board
+                 *      really hears the ESP (a dead RX direction shows 0 even
+                 *      while telemetry pours out of the board).
+                 * [FA] نسخهٔ ۱٫۱۱۱: هر فریم سالمِ CRC همین‌جا و در هر دو بیلد
+                 *      شمرده می‌شود، چون پاسخ دست‌دادن همین عدد را به پنل
+                 *      می‌گوید: کاربر با آن می‌بیند برد واقعاً ESP را می‌شنود
+                 *      (اگر مسیر دریافت مرده باشد، این عدد صفر می‌ماند حتی
+                 *      وقتی تله‌متری از برد سرازیر است). */
+                UINT32_T__G__RxFrameOkCount++;
 #ifdef ESPLINK_HOST_TEST
                 /* [EN] Host parser tests deliberately avoid the product
                    dispatch graph; acceptance itself is the observable.
@@ -2272,6 +2536,14 @@ void func__EspLink_HostTest_Reset(void)
     UINT32_T__G__RxVersionMismatch = 0u;
     UINT32_T__G__HostAcceptedFrames = 0u;
     UINT32_T__G__HostChPdHighWrites = 0u;
+    BOOL__G__HandshakeOk = false;
+    UINT32_T__G__HandshakeAgeMs = 0u;
+    UINT32_T__G__HandshakeCount = 0u;
+    UINT32_T__G__HandshakeLostCount = 0u;
+    UINT32_T__G__RxFrameOkCount = 0u;
+    UINT8_T__G__EspFwVersion = 0u;
+    UINT8_T__G__EspRole = 0u;
+    UINT32_T__G__EspUptimeSec = 0u;
     BOOL__G__LutResetAuthorized = false;
     UINT8_T__G__LutStageN1 = 0u;
     UINT8_T__G__LutStageN2 = 0u;
@@ -2331,6 +2603,93 @@ uint32_t func__EspLink_HostTest_AcceptedFrames(void)
 uint32_t func__EspLink_HostTest_ChPdHighWrites(void)
 {
     return UINT32_T__G__HostChPdHighWrites;
+}
+
+/* ==================== EspLink_HostTest_HandleHello ==================== */
+
+/**
+ * @brief  [EN] Run the production HELLO path (state, counters, HELLO_ACK) from
+ *              a host test without the whole module dispatch graph.
+ *         [FA] مسیر واقعی HELLO (وضعیت، شمارنده‌ها، پاسخ) را از تست هاست
+ *              اجرا می‌کند، بدون کل گراف دیسپچ ماژول‌ها.
+ * @‎param  uint8_t__payload [EN] HELLO payload / payload‎ پیام HELLO
+ * @param  uint16_t__payloadLength [EN] Length / طول
+ * @‎return bool [EN] true when accepted / [FA]‎ اگر پذیرفته شد true
+ */
+bool func__EspLink_HostTest_HandleHello(const uint8_t *uint8_t__payload,
+                                        uint16_t uint16_t__payloadLength)
+{
+    return func__EspLink_HandleHello(uint8_t__payload, uint16_t__payloadLength);
+}
+
+/* ==================== EspLink_HostTest_AdvanceHandshake ==================== */
+
+/**
+ * @brief  [EN] Advance the handshake timeout exactly like the comm task does.
+ *         [FA] مهلت دست‌دادن را دقیقاً مثل تسک ارتباط جلو می‌برد.
+ * @param  uint32_t__stepMs [EN] Step in ms / گام بر حسب ms
+ */
+void func__EspLink_HostTest_AdvanceHandshake(uint32_t uint32_t__stepMs)
+{
+    func__EspLink_HandshakeTick(uint32_t__stepMs);
+}
+
+/* ==================== EspLink_HostTest_RxFrameOk ==================== */
+
+/**
+ * @brief  [EN] Accepted-frame counter the ACK reports.
+ *         [FA] شمارندهٔ فریم سالم که در پاسخ گزارش می‌شود.
+ * @‎return [EN] Count / [FA]‎ تعداد
+ */
+uint32_t func__EspLink_HostTest_RxFrameOk(void)
+{
+    return UINT32_T__G__RxFrameOkCount;
+}
+
+/* ==================== EspLink_HostTest_HandleHelloFrame ==================== */
+
+/**
+ * @brief  [EN] Host probe: the production HELLO-frame handler the dispatcher
+ *              calls. The host parser build stops before the product dispatch
+ *              graph, so this is how the test proves a HELLO changes nothing
+ *              except the handshake state.
+ *         [FA] پروب هاست: همان هندلر واقعیِ فریم HELLO که دیسپچر صدا می‌زند.
+ *              بیلد هاستِ پارسر پیش از گراف دیسپچ محصول متوقف می‌شود؛ با این
+ *              پروب تست ثابت می‌کند HELLO جز وضعیت دست‌دادن چیزی را عوض نمی‌کند.
+ * @param  uint8_t__payload [EN] HELLO payload / [FA]‎ payload پیام HELLO
+ * @param  uint16_t__length [EN] Payload length, bytes / [FA]‎ طول payload (بایت)
+ * @return [EN] None / [FA]‎ ندارد
+ */
+void func__EspLink_HostTest_HandleHelloFrame(const uint8_t *uint8_t__payload,
+                                             uint16_t uint16_t__length)
+{
+    func__EspLink_HandleHelloFrame(uint8_t__payload, uint16_t__length);
+}
+
+/* ==================== EspLink_HostTest_ClientHoldMs ==================== */
+
+/**
+ * @brief  [EN] Host probe: the Wi-Fi client hold left on the battery timer.
+ *         [FA] پروب هاست: مهلت مشتری وای‌فای که روی تایمر باتری مانده است.
+ * @‎return uint32_t [EN] Remaining hold, ms / [FA]‎ مهلت باقی‌مانده (ms)
+ */
+uint32_t func__EspLink_HostTest_ClientHoldMs(void)
+{
+    return UINT32_T__G__ClientActiveHoldMs;
+}
+
+/* ==================== EspLink_HostTest_WifiClientConnected ==================== */
+
+/**
+ * @brief  [EN] Host probe: does the power policy currently believe a user is
+ *              connected (the flag that keeps the ESP awake on battery)?
+ *         [FA] پروب هاست: آیا سیاست توان فعلاً کاربر را متصل می‌داند (همان
+ *              پرچمی که روی باتری ESP را بیدار نگه می‌دارد)؟
+ * @‎return bool [EN] true when connected / [FA]‎ اگر متصل باشد true
+ */
+bool func__EspLink_HostTest_WifiClientConnected(void)
+{
+    return BOOL__G__WifiClientConnected;
 }
 
 /* ==================== EspLink_HostTest_RecordCommitAck ==================== */
@@ -2396,6 +2755,14 @@ void func__EspLink_Init(void)
     BOOL__G__EspPinUp = false;
     BOOL__G__EspPowerOffPending = false;
     UINT32_T__G__EspPowerOffElapsedMs = 0u;
+    BOOL__G__HandshakeOk = false;
+    UINT32_T__G__HandshakeAgeMs = 0u;
+    UINT32_T__G__HandshakeCount = 0u;
+    UINT32_T__G__HandshakeLostCount = 0u;
+    UINT32_T__G__RxFrameOkCount = 0u;
+    UINT8_T__G__EspFwVersion = 0u;
+    UINT8_T__G__EspRole = 0u;
+    UINT32_T__G__EspUptimeSec = 0u;
     BOOL__G__WifiClientConnected = false;
     UINT32_T__G__ClientActiveHoldMs = 0u;
     UINT32_T__G__BatteryIdleElapsedMs = 0u;
@@ -2515,6 +2882,31 @@ bool func__EspLink_IsWifiClientConnected(void)
     bool bool__active = (BOOL__G__WifiClientConnected != false) ||
                         (UINT32_T__G__ClientActiveHoldMs > 0u);
     return bool__active;
+}
+
+/* ==================== EspLink_IsHandshakeOk ==================== */
+
+/**
+ * @brief  [EN] Handshake verdict for the rest of the firmware (v1.111).
+ *         [FA] حکم دست‌دادن برای بقیهٔ فرم‌ور (نسخهٔ ۱٫۱۱۱).
+ * @‎return [EN] true while the ESP keeps answering / [FA]‎ تا وقتی ESP پاسخ
+ *              می‌دهد true
+ */
+bool func__EspLink_IsHandshakeOk(void)
+{
+    return BOOL__G__HandshakeOk;
+}
+
+/* ==================== EspLink_HandshakeCount ==================== */
+
+/**
+ * @brief  [EN] Accepted HELLO count since boot.
+ *         [FA] تعداد HELLOهای پذیرفته‌شده از بوت.
+ * @‎return [EN] Count / [FA]‎ تعداد
+ */
+uint32_t func__EspLink_HandshakeCount(void)
+{
+    return UINT32_T__G__HandshakeCount;
 }
 
 /* ==================== EspLink_GetBatteryIdleElapsedMs ==================== */
@@ -2813,6 +3205,12 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
     }
 
     func__EspLink_PowerSaveTick(bool__inputPresent, APP_CONFIG.comm_period_ms);
+    /* [EN] v1.111: the handshake timeout is advanced on the same fixed comm
+     *      cadence as the power policy - no RTOS clock call, so the host test
+     *      drives exactly the same code path.
+     * [FA] نسخهٔ ۱٫۱۱۱: مهلت دست‌دادن با همان آهنگ ثابت ارتباط جلو می‌رود -
+     *      بدون فراخوانی ساعت RTOS، پس تست هاست دقیقاً همین مسیر را می‌راند. */
+    func__EspLink_HandshakeTick(APP_CONFIG.comm_period_ms);
 
     /* [EN] Gated on the PHYSICAL pin: during the power-off grace the last
             frames still go out so the panel can log the mains cut.

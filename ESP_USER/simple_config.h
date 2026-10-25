@@ -21,6 +21,27 @@
 #define SIMPLE_LINK_TIMEOUT_MS          1500u
 
 /* ==================== انواع پیام ==================== */
+/* دست‌دادن دوطرفه (v1.111، دستور کاربر ۲۰۲۶-۱۰-۲۵)
+   دستور: «باید برد با ESP یک هندشیک داشته باشد که بفهمم با هم ارتباط گرفته‌اند
+   و آن ارتباط درست بوده».
+   - ESP هر SIMPLE_HELLO_INTERVAL_MS یک فریم HELLO می‌فرستد.
+   - برد فوراً HELLO_ACK می‌دهد و در آن می‌گوید: نسخهٔ سیم، نسخهٔ فرم‌ور خودش،
+     چند فریم سالم از ESP شنیده، چند خطای CRC و چند ناهم‌نسخگی داشته، چند
+     پارامتر می‌شناسد و دورهٔ تله‌متری‌اش چقدر است.
+   - پنل تنها وقتی «ارتباط دوطرفه سالم» نشان می‌دهد که پاسخِ تازه رسیده باشد
+     (SIMPLE_HELLO_TIMEOUT_MS). این‌طور «تله‌متری می‌آید» با «حرف‌زدن دوطرفه»
+     اشتباه گرفته نمی‌شود و خرابیِ مسیر ESP→برد از خرابیِ وای‌فای جدا دیده
+     می‌شود. */
+#define SIMPLE_MSG_HELLO                0x40u
+#define SIMPLE_MSG_HELLO_ACK            0x41u
+#define SIMPLE_HELLO_LEN                8u
+#define SIMPLE_HELLO_ACK_LEN            24u
+#define SIMPLE_HELLO_INTERVAL_MS        2000u
+#define SIMPLE_HELLO_TIMEOUT_MS         6000u
+#define SIMPLE_ESP_ROLE_USER            1u
+#define SIMPLE_ESP_FW_VERSION           111u
+#define SIMPLE_TLM_FLAG_LINK_OK         0x40u
+
 #define SIMPLE_MSG_TLM_LIVE             0x10u
 #define SIMPLE_MSG_TIME_SYNC            0x30u
 #define SIMPLE_MSG_DIAG_REQ             0x31u

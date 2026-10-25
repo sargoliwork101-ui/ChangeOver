@@ -410,6 +410,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
      <div class="hero-sub" id="statusSub">برق شهر وصل</div>
      <div class="hero-badges">
       <span class="bdg ok" id="bdgInput"><i></i>برق شهر: وصل</span>
+      <span class="bdg" id="bdgLink"><i></i>ارتباط دوطرفه: --</span>
       <span class="bdg ac" id="bdgTime"><span id="boardTime">--</span></span>
      </div>
      <div id="heroFault" class="hero-fault"></div>
@@ -738,6 +739,7 @@ async function loadTheme(){
 }
 loadTheme();
 
+const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
 const INPUT_CONN_THR=21000, INPUT_DISC_THR=20000, INPUT_OV_THR=28000, INPUT_OV_CLEAR=27000;
@@ -1628,6 +1630,19 @@ function render(data){
   if(inputOV){ setHtml('bdgInput','<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg err'); }
   else if(!inputPresent){ setHtml('bdgInput','<i></i>برق ورودی قطع - حالت باتری'); setCls(bIn,'bdg warn'); }
   else { setHtml('bdgInput','<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg ok'); }
+ }
+ /* ارتباط دوطرفه (v1.111): تله‌متری آمدن با «برد جواب ما را می‌دهد» یکی نیست.
+    برد در پاسخ دست‌دادن می‌گوید چند فریم سالم از ما شنیده و چند خطای CRC/نسخه
+    داشته. اگر تعداد پارامترهای برد با پنل یکی نباشد، فرم‌ورها هم‌خوان نیستند. */
+ let bLk=document.getElementById('bdgLink');
+ if(bLk){
+  let lko=(data.lko===1);
+  let bce=data.bce||0, bvm=data.bvm||0, brx=data.brx||0;
+  let mismatch=((data.bpv!==undefined) && (data.bpv!==0) && (data.bpv!==WP));
+  if(mismatch){ setHtml('bdgLink','<i></i>ارتباط دوطرفه: نسخهٔ سیم ناهم‌خوان (برد '+data.bpv+' / پنل '+WP+')'); setCls(bLk,'bdg err'); }
+  else if(!lko){ setHtml('bdgLink','<i></i>ارتباط دوطرفه: پاسخ برد نیست'); setCls(bLk,'bdg warn'); }
+  else if(bce>0 || bvm>0){ setHtml('bdgLink','<i></i>ارتباط دوطرفه: پرخطا - CRC '+bce+' / نسخه '+bvm); setCls(bLk,'bdg warn'); }
+  else { setHtml('bdgLink','<i></i>ارتباط دوطرفه سالم - برد '+brx+' فریم از ما گرفت'); setCls(bLk,'bdg ok'); }
  }
  let st=document.getElementById('statusTitle'), ss=document.getElementById('statusSub');
  let heroCard=document.getElementById('heroCard');

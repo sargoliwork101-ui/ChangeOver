@@ -121,7 +121,11 @@ static void func__Simple_HttpTelemetry(void)
     func__Simple_ChartTick();
 
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,"
+        /* دست‌دادن دوطرفه (v1.111): lko = پاسخ تازهٔ برد داریم، bfw = نسخهٔ فرم‌ور
+           برد، brx = فریم سالم از دید برد، bce/bvm = خطای CRC و ناهم‌نسخگی از دید
+           برد، bpc = تعداد پارامتر برد، bpr = دورهٔ تله‌متری، lac = سن آخرین پاسخ. */
+        "\"lko\":%u,\"bpv\":%u,\"bfw\":%u,\"bfl\":%u,\"brx\":%lu,\"bce\":%u,\"bvm\":%u,\"bpc\":%u,\"bpr\":%u,\"hac\":%lu,\"hls\":%lu,\"lac\":%lu,\"t\":[",
         bool__online ? 1u : 0u,
         (unsigned long)uint32_t__ageMs,
         (unsigned int)UINT16_T__G__TlmSeq,
@@ -138,7 +142,20 @@ static void func__Simple_HttpTelemetry(void)
         (unsigned long)uint32_t__panelTimeSec,
         BOOL__G__TimeValid ? 1u : 0u,
         BOOL__G__BoardParamSeen ? 1u : 0u,
-        BOOL__G__RecoveryHappened ? 1u : 0u);
+        BOOL__G__RecoveryHappened ? 1u : 0u,
+        BOOL__G__HelloSeen ? 1u : 0u,
+        (unsigned int)UINT8_T__G__BoardProtoVersion,
+        (unsigned int)UINT8_T__G__BoardFwVersion,
+        (unsigned int)UINT8_T__G__BoardFlags,
+        (unsigned long)UINT32_T__G__BoardRxFrames,
+        (unsigned int)UINT16_T__G__BoardCrcErrors,
+        (unsigned int)UINT16_T__G__BoardVerErrors,
+        (unsigned int)UINT16_T__G__BoardParamCount,
+        (unsigned int)UINT16_T__G__BoardPeriodMs,
+        (unsigned long)UINT32_T__G__HelloAckCount,
+        (unsigned long)UINT32_T__G__HelloLossCount,
+        (unsigned long)(BOOL__G__HelloSeen ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
+                                           : 0xFFFFFFFFu));
 
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {

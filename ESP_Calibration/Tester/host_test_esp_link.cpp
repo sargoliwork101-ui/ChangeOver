@@ -1455,6 +1455,83 @@ int main(void)
               "the no-clock file is kept, not thrown away");
     }
 
+    /* ---- two-sided handshake (v1.111) -----------------------------------
+       [EN] Why this block: until v1.111 the only sign of a link was telemetry
+            arriving, which proves the board talks but not that the panel is
+            heard. These checks drive the sketch's own functions: the HELLO
+            frame it puts on the wire, the board's answer being decoded, and
+            silence being reported as a lost link instead of a healthy one.
+       [FA] چرا این بخش: تا نسخهٔ ۱٫۱۱۱ تنها نشانهٔ ارتباط، رسیدن تله‌متری بود
+            که فقط ثابت می‌کند برد حرف می‌زند، نه اینکه صدای پنل شنیده می‌شود.
+            این بررسی‌ها خودِ توابع اسکچ را اجرا می‌کنند: قاب HELLO روی سیم،
+            رمزگشایی پاسخ برد، و اعلام قطع هنگام سکوت برد (نه سالم). */
+    {
+        Serial.tx.clear();
+        UINT32_T__G__LastHelloTxMs = (uint32_t)millis() - ESP_HELLO_INTERVAL_MS;
+        func__Esp_HandshakeTick((uint32_t)millis());
+
+        check(Serial.tx.size() == (ESP_LINK_HEADER_SIZE + ESP_HELLO_LEN + ESP_LINK_CRC_SIZE),
+              "handshake: HELLO goes out on cadence, 16 bytes on the wire",
+              std::to_string(Serial.tx.size()));
+        if (Serial.tx.size() >= 8u) {
+            check(Serial.tx[0] == ESP_LINK_SOF_BYTE0 && Serial.tx[1] == ESP_LINK_SOF_BYTE1,
+                  "handshake: HELLO starts with the frame SOF");
+            check(Serial.tx[2] == ESP_LINK_PROTOCOL_VERSION,
+                  "handshake: HELLO carries the wire version");
+            check(Serial.tx[3] == ESP_MSG_HELLO, "handshake: HELLO is type 0x40");
+            check((Serial.tx[4] == (uint8_t)ESP_HELLO_LEN) && (Serial.tx[5] == 0u),
+                  "handshake: HELLO length is 8");
+            check(Serial.tx[6] == ESP_LINK_PROTOCOL_VERSION &&
+                  Serial.tx[7] == (uint8_t)ESP_ESP_FW_VERSION &&
+                  Serial.tx[8] == (uint8_t)ESP_ESP_ROLE_CALIBRATION,
+                  "handshake: HELLO states its version, its own build and its role");
+            const uint16_t want = crc_over(&Serial.tx[2], (size_t)(4u + ESP_HELLO_LEN));
+            check(Serial.tx[Serial.tx.size() - 2u] == (uint8_t)(want & 0xFFu) &&
+                  Serial.tx[Serial.tx.size() - 1u] == (uint8_t)(want >> 8),
+                  "handshake: HELLO CRC is what the STM32 will verify");
+        }
+
+        /* the board's answer: identity, its own receive health, our uptime back */
+        std::vector<uint8_t> ack(ESP_HELLO_ACK_LEN, 0u);
+        ack[0] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
+        ack[1] = (uint8_t)ESP_ESP_FW_VERSION;
+        ack[2] = 0x0Fu;
+        ack[8] = 52u;              /* good frames the board saw */
+        ack[12] = 0u; ack[13] = 0u; /* board-side CRC errors */
+        ack[16] = (uint8_t)(169u & 0xFFu); ack[17] = (uint8_t)(169u >> 8);
+        ack[18] = (uint8_t)(100u & 0xFFu); ack[19] = (uint8_t)(100u >> 8);
+
+        G_StubMillis += ESP_HELLO_INTERVAL_MS + 10u;
+        feed(build_frame(ESP_MSG_HELLO_ACK, ack));
+
+        check(BOOL__G__HelloSeen, "handshake: a real HELLO_ACK confirms the link");
+        check(UINT8_T__G__BoardFwVersion == (uint8_t)ESP_ESP_FW_VERSION,
+              "handshake: the board's firmware version is read back");
+        check(UINT8_T__G__BoardProtoVersion == (uint8_t)ESP_LINK_PROTOCOL_VERSION,
+              "handshake: the board's wire version is read back");
+        check(UINT32_T__G__BoardRxFrames == 52u,
+              "handshake: the board's own good-frame counter is read back");
+        check((UINT16_T__G__BoardCrcErrors == 0u) && (UINT16_T__G__BoardVerErrors == 0u),
+              "handshake: the board's CRC/version error counters are read back");
+        check((UINT16_T__G__BoardParamCount == 169u) && (UINT16_T__G__BoardPeriodMs == 100u),
+              "handshake: the board's parameter count and telemetry period are read back");
+        check(UINT32_T__G__HelloAckCount == 1u, "handshake: the answer is counted");
+
+        /* silence: the link must be named lost, and counted once */
+        const uint32_t lossesBefore = UINT32_T__G__HelloLossCount;
+        UINT32_T__G__LastHelloAckMs = (uint32_t)millis() - ESP_HELLO_TIMEOUT_MS - 10u;
+        func__Esp_HandshakeTick((uint32_t)millis());
+        check(!BOOL__G__HelloSeen, "handshake: a silent board drops the confirmed flag");
+        check(UINT32_T__G__HelloLossCount == lossesBefore + 1u,
+              "handshake: the drop is counted once");
+
+        /* a wrong-length answer must not confirm anything */
+        UINT32_T__G__LastHelloAckMs = (uint32_t)millis() - ESP_HELLO_TIMEOUT_MS - 10u;
+        func__Esp_HandshakeTick((uint32_t)millis());
+        feed(build_frame(ESP_MSG_HELLO_ACK, std::vector<uint8_t>(8u, 0u)));
+        check(!BOOL__G__HelloSeen, "handshake: a short HELLO_ACK is refused");
+    }
+
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
         std::cout << "ALL " << checks << " ESP HOST TESTS PASSED\n";

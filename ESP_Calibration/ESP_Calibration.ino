@@ -195,6 +195,11 @@ void loop(void)
     func__Esp_DrainSerial();
 
     func__Esp_PumpTx();
+    /* [EN] Two-sided handshake (v1.111): HELLO every 2 s; a silent board drops
+       the confirmed-link flag, so the page can name the side that failed.
+       [FA] دست‌دادن دوطرفه (v1.111): هر ۲ ثانیه HELLO؛ سکوت برد پرچم
+       «لینک تأییدشده» را برمی‌دارد تا صفحه بگوید کدام طرف خراب است. */
+    func__Esp_HandshakeTick((uint32_t)millis());
     ESP_WEB_SERVER_T__G__Server.handleClient();
     func__Esp_WifiPowerSaveTick((uint32_t)millis());
     func__EspLog_Tick();

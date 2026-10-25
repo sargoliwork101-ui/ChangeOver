@@ -194,7 +194,7 @@ static void func__Esp_HttpTelemetry(void)
            [‎FA] vm/ce‎: سلامت لینک. vm بزرگ‌تر از صفر یعنی STM32 و این پنل ناهماهنگ
            فلش شده‌اند - خرابی‌ای که قبلاً از کابل قطع قابل تشخیص نبود. ce خطاهای
            CRC را می‌شمارد تا هارنس نویزی قابل اندازه‌گیری باشد. */
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"q5\":%lu,\"q6\":%lu,\"ka\":%lu,\"vm\":%lu,\"ce\":%lu,\"nk\":%lu,\"nr\":%lu,\"nid\":%lu,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"q5\":%lu,\"q6\":%lu,\"ka\":%lu,\"vm\":%lu,\"ce\":%lu,\"nk\":%lu,\"nr\":%lu,\"nid\":%lu,\"lko\":%u,\"bpv\":%u,\"bfw\":%u,\"bfl\":%u,\"brx\":%lu,\"bce\":%u,\"bvm\":%u,\"bpc\":%u,\"bpr\":%u,\"hac\":%lu,\"hls\":%lu,\"lac\":%lu,\"t\":[",
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned int)UINT8_T__G__TlmFlags2, (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
@@ -205,7 +205,25 @@ static void func__Esp_HttpTelemetry(void)
         (unsigned long)UINT32_T__G__RxVersionMismatch,
         (unsigned long)UINT32_T__G__RxCrcError,
         (unsigned long)UINT32_T__G__NakCount, (unsigned long)UINT8_T__G__NakReason,
-        (unsigned long)UINT8_T__G__NakId);
+        (unsigned long)UINT8_T__G__NakId,
+        /* [EN] Handshake block (v1.111): lko=confirmed, bpv/bfw=board versions,
+           brx/bce/bvm=what the board itself saw on the wire, lac=age of last ACK.
+           [FA] بلوک دست‌دادن (v1.111): lko=تأییدشده، ‎bpv/bfw‎=نسخه‌های برد،
+           ‎brx/bce/bvm‎=آنچه خود برد روی سیم دید، lac=سن آخرین پاسخ. */
+        BOOL__G__HelloSeen ? 1u : 0u,
+        (unsigned int)UINT8_T__G__BoardProtoVersion,
+        (unsigned int)UINT8_T__G__BoardFwVersion,
+        (unsigned int)UINT8_T__G__BoardFlags,
+        (unsigned long)UINT32_T__G__BoardRxFrames,
+        (unsigned int)UINT16_T__G__BoardCrcErrors,
+        (unsigned int)UINT16_T__G__BoardVerErrors,
+        (unsigned int)UINT16_T__G__BoardParamCount,
+        (unsigned int)UINT16_T__G__BoardPeriodMs,
+        (unsigned long)UINT32_T__G__HelloAckCount,
+        (unsigned long)UINT32_T__G__HelloLossCount,
+        (unsigned long)(BOOL__G__HelloSeen
+                        ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
+                        : 0xFFFFFFFFu));
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {

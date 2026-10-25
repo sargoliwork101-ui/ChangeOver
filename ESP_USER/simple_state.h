@@ -27,6 +27,26 @@ static uint32_t UINT32_T__G__RxVersionMismatch = 0u;
 static uint16_t UINT16_T__G__RxCrc = 0u;
 static uint8_t  UINT8_T__G__RxCrcLow = 0u;
 
+/* ==================== دست‌دادن دوطرفه (v1.111) ====================
+   وضعیت «آیا برد واقعاً جواب می‌دهد» جدا از «آیا تله‌متری می‌آید» نگه داشته
+   می‌شود. مقدارهایی که برد در پاسخ می‌گوید (فریم سالم، خطای CRC، ناهم‌نسخگی)
+   همان چیزی است که پنل به کاربر نشان می‌دهد تا مطمئن شود ارتباط «درست» است،
+   نه فقط برقرار. */
+static bool     BOOL__G__HelloSeen = false;      /* پاسخ تازه از برد داریم */
+static uint32_t UINT32_T__G__LastHelloAckMs = 0u; /* زمان آخرین پاسخ */
+static uint32_t UINT32_T__G__LastHelloTxMs = 0u;  /* زمان آخرین HELLO فرستاده‌شده */
+static uint32_t UINT32_T__G__HelloAckCount = 0u;  /* چند پاسخ گرفتیم */
+static uint32_t UINT32_T__G__HelloLossCount = 0u; /* چند بار ارتباط قطع شد */
+static uint8_t  UINT8_T__G__BoardProtoVersion = 0u; /* نسخهٔ سیم برد */
+static uint8_t  UINT8_T__G__BoardFwVersion = 0u;  /* نسخهٔ فرم‌ور برد */
+static uint8_t  UINT8_T__G__BoardFlags = 0u;      /* چه ماژول‌هایی روی برد است */
+static uint32_t UINT32_T__G__BoardUptimeSec = 0u; /* آپتایم برد */
+static uint32_t UINT32_T__G__BoardRxFrames = 0u;  /* فریم سالم از دید برد */
+static uint16_t UINT16_T__G__BoardCrcErrors = 0u; /* خطای CRC از دید برد */
+static uint16_t UINT16_T__G__BoardVerErrors = 0u; /* ناهم‌نسخگی از دید برد */
+static uint16_t UINT16_T__G__BoardParamCount = 0u;/* تعداد پارامترهای برد */
+static uint16_t UINT16_T__G__BoardPeriodMs = 0u;  /* دورهٔ تله‌متری برد */
+
 /* ==================== تاریخچه نمودار - با محور زمان ==================== */
 static uint32_t UINT32_T__G__ChartVin[SIMPLE_CHART_HISTORY_SIZE];
 static uint32_t UINT32_T__G__ChartVpack[SIMPLE_CHART_HISTORY_SIZE];

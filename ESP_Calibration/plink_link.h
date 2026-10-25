@@ -65,6 +65,25 @@ static uint32_t UINT32_T__G__RxVersionMismatch = 0u;
 static uint16_t UINT16_T__G__RxCrc = 0u;
 static uint8_t  UINT8_T__G__RxCrcLow = 0u;
 
+/* [EN] Two-sided handshake state (v1.111). Everything here is proven by a real
+   HELLO_ACK that the board sent; nothing is inferred from telemetry alone.
+   [FA] وضعیت دست‌دادن دوطرفه (v1.111). هر مقدار این‌جا با یک HELLO_ACK واقعی
+   از برد اثبات می‌شود؛ هیچ‌کدام از تله‌متری تنها حدس زده نمی‌شود. */
+static bool     BOOL__G__HelloSeen = false;       /* [EN] fresh ACK in hand / [FA] پاسخ تازه داریم */
+static uint32_t UINT32_T__G__LastHelloAckMs = 0u; /* [EN] time of last ACK / [FA] زمان آخرین پاسخ */
+static uint32_t UINT32_T__G__LastHelloTxMs = 0u;  /* [EN] time of last HELLO sent / [FA] زمان آخرین HELLO */
+static uint32_t UINT32_T__G__HelloAckCount = 0u;  /* [EN] ACKs received / [FA] پاسخ‌های دریافتی */
+static uint32_t UINT32_T__G__HelloLossCount = 0u; /* [EN] link drops seen / [FA] قطع‌های دیده‌شده */
+static uint8_t  UINT8_T__G__BoardProtoVersion = 0u; /* [EN] board wire version / [FA] نسخهٔ سیم برد */
+static uint8_t  UINT8_T__G__BoardFwVersion = 0u;   /* [EN] board firmware version / [FA] نسخهٔ فرم‌ور برد */
+static uint8_t  UINT8_T__G__BoardFlags = 0u;       /* [EN] modules compiled in / [FA] ماژول‌های فعال برد */
+static uint32_t UINT32_T__G__BoardUptimeSec = 0u;  /* [EN] board uptime, seconds / [FA] آپتایم برد به ثانیه */
+static uint32_t UINT32_T__G__BoardRxFrames = 0u;   /* [EN] good frames the board saw / [FA] فریم سالم از دید برد */
+static uint16_t UINT16_T__G__BoardCrcErrors = 0u;  /* [EN] board-side CRC rejects / [FA] خطای CRC از دید برد */
+static uint16_t UINT16_T__G__BoardVerErrors = 0u;  /* [EN] board-side version rejects / [FA] ناهم‌نسخگی از دید برد */
+static uint16_t UINT16_T__G__BoardParamCount = 0u; /* [EN] board parameter count / [FA] تعداد پارامتر برد */
+static uint16_t UINT16_T__G__BoardPeriodMs = 0u;   /* [EN] board telemetry period / [FA] دورهٔ تله‌متری برد */
+
 /**
  * @brief  [EN] Build and write one frame: AA 55 type len payload xor.
  *         [FA] ساخت و ارسال یک فریم: AA 55 type len payload xor.
@@ -827,6 +846,92 @@ static void func__Esp_StatAccumulate(void)
 }
 
 /**
+ * @brief  [EN] Send one HELLO so the board proves it hears us (v1.111).
+ *         [FA] ارسال یک HELLO تا برد ثابت کند حرف ما را می‌شنود (v1.111).
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_SendHello(void)
+{
+    uint8_t UINT8_T__A__Payload[ESP_HELLO_LEN];
+    uint32_t uint32_t__uptimeSec = (uint32_t)((uint32_t)millis() / 1000u);
+    uint8_t uint8_t__flags = 0u;
+    uint8_t uint8_t__index;
+
+    /* [EN] Flags say what this panel knows: bit0 telemetry seen, bit1 a browser
+       is polling. The board stores them but never acts on them.
+       [FA] پرچم‌ها می‌گویند این پنل چه می‌داند: بیت۰ تله‌متری دیده شد،
+       بیت۱ مرورگری در حال پرسش است. برد آن‌ها را نگه می‌دارد اما کاری با آن‌ها ندارد. */
+    if (BOOL__G__TlmSeen) { uint8_t__flags |= 0x01u; }
+    if (BOOL__G__BrowserSeen &&
+        ((uint32_t)((uint32_t)millis() - UINT32_T__G__LastBrowserPollMs) < ESP_LINK_BROWSER_LOST_MS))
+    {
+        uint8_t__flags |= 0x02u;
+    }
+
+    UINT8_T__A__Payload[0] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Payload[1] = (uint8_t)ESP_ESP_FW_VERSION;
+    UINT8_T__A__Payload[2] = (uint8_t)ESP_ESP_ROLE_CALIBRATION;
+    UINT8_T__A__Payload[3] = uint8_t__flags;
+    for (uint8_t__index = 0u; uint8_t__index < 4u; uint8_t__index++)
+    {
+        UINT8_T__A__Payload[4u + uint8_t__index] =
+            (uint8_t)((uint32_t__uptimeSec >> (8u * uint8_t__index)) & 0xFFu);
+    }
+
+    func__Esp_WriteFrame((uint8_t)ESP_MSG_HELLO, UINT8_T__A__Payload, (uint16_t)ESP_HELLO_LEN);
+    UINT32_T__G__LastHelloTxMs = (uint32_t)millis();
+}
+
+/**
+ * @brief  [EN] Store the board's answer: its identity plus its own receive health.
+ *         [FA] ذخیرهٔ پاسخ برد: هویت خودش به‌همراه سلامت دریافت خودش.
+ * @param  uint8_t__ptr_payload [EN] 24 payload bytes / [FA]‎ ۲۴ بایت payload
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
+{
+    UINT8_T__G__BoardProtoVersion = uint8_t__ptr_payload[0];
+    UINT8_T__G__BoardFwVersion    = uint8_t__ptr_payload[1];
+    UINT8_T__G__BoardFlags        = uint8_t__ptr_payload[2];
+    UINT32_T__G__BoardUptimeSec   = func__Esp_ReadU32(uint8_t__ptr_payload, 4u);
+    UINT32_T__G__BoardRxFrames    = func__Esp_ReadU32(uint8_t__ptr_payload, 8u);
+    UINT16_T__G__BoardCrcErrors   = (uint16_t)((uint16_t)uint8_t__ptr_payload[12] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[13] << 8));
+    UINT16_T__G__BoardVerErrors   = (uint16_t)((uint16_t)uint8_t__ptr_payload[14] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[15] << 8));
+    UINT16_T__G__BoardParamCount  = (uint16_t)((uint16_t)uint8_t__ptr_payload[16] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[17] << 8));
+    UINT16_T__G__BoardPeriodMs    = (uint16_t)((uint16_t)uint8_t__ptr_payload[18] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[19] << 8));
+    /* [EN] Bytes 20..23 echo our uptime; used only to pair request and answer.
+       [FA] بایت‌های ۲۰..۲۳ آپتایم ما را بازمی‌گردانند؛ فقط برای جفت‌کردن پرسش و پاسخ. */
+
+    UINT32_T__G__LastHelloAckMs = (uint32_t)millis();
+    BOOL__G__HelloSeen = true;
+    UINT32_T__G__HelloAckCount++;
+}
+
+/**
+ * @brief  [EN] Handshake clock: send HELLO on cadence, drop the link when silent.
+ *         [FA] ساعت دست‌دادن: ارسال HELLO روی دوره، و اعلام قطع در سکوت برد.
+ * @param  uint32_t__nowMs [EN] current millis(), 0..2^32-1 ms / [FA]‎ millis فعلی، ۰ تا ۲^۳۲-۱
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HandshakeTick(uint32_t uint32_t__nowMs)
+{
+    if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloTxMs) >= ESP_HELLO_INTERVAL_MS)
+    {
+        func__Esp_SendHello();
+    }
+    if (BOOL__G__HelloSeen &&
+        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloAckMs) > ESP_HELLO_TIMEOUT_MS))
+    {
+        BOOL__G__HelloSeen = false;
+        UINT32_T__G__HelloLossCount++;
+    }
+}
+
+/**
  * @brief  [EN] Dispatch one checksum-valid frame from the STM32.
  *         [FA] پردازش یک فریم معتبر (checksum درست) دریافتی از STM32.
  * @return [EN] None / [FA]‎ ندارد
@@ -892,6 +997,15 @@ static void func__Esp_HandleFrame(void)
            [FA] نسخهٔ ۱٫۹۳: تاریخچهٔ وضعیت هر فریم را می‌بیند و فقط وقتی چیزی
               واقعاً عوض شده باشد یک ردیف می‌نویسد. */
         func__EspLog_OnFrame();
+    }
+    else if (UINT8_T__G__RxType == ESP_MSG_HELLO_ACK)
+    {
+        /* [EN] Exact length only: a half-written answer must not claim the link.
+           [FA] فقط طول درست: پاسخ نیمه‌نوشته نباید لینک را تأیید کند. */
+        if (UINT16_T__G__RxLen == (uint16_t)ESP_HELLO_ACK_LEN)
+        {
+            func__Esp_HandleHelloAck(uint8_t__ptr_payload);
+        }
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen == ESP_LINK_PARAM_ITEM_SIZE))
     {

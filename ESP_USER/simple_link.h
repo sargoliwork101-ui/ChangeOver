@@ -37,6 +37,108 @@ static uint16_t func__Simple_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte
 }
 
 /* ==================== ذخیره فریم تله‌متری و دیاگ ==================== */
+/* ==================== دست‌دادن دوطرفه (v1.111) ====================
+   دستور کاربر ۲۰۲۶-۱۰-۲۵: «باید برد با ESP یک هندشیک داشته باشد که بفهمم با
+   هم ارتباط گرفته‌اند و آن ارتباط درست بوده».
+   چرا لازم است: تا امروز تنها نشانهٔ ارتباط، آمدن تله‌متری بود. تله‌متری فقط
+   می‌گوید برد حرف می‌زند؛ نمی‌گوید ESP هم به برد می‌رسد. با این دست‌دادن، پنل
+   سه چیز جدا را نشان می‌دهد: (۱) پاسخ برد می‌آید، (۲) برد چند فریم سالم از ما
+   شنیده و چند تا خراب بوده، (۳) دو طرف یک نسخه و یک تعداد پارامتر دارند. */
+
+/* یک HELLO می‌سازد و می‌فرستد: نسخهٔ سیم، نسخهٔ این پنل، نقش، پرچم‌ها، آپتایم. */
+static void func__Simple_SendHello(void)
+{
+    uint8_t UINT8_T__A__Frame[SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN + SIMPLE_LINK_CRC_SIZE];
+    uint8_t UINT8_T__A__Payload[SIMPLE_HELLO_LEN];
+    uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
+    uint32_t uint32_t__uptimeSec = (uint32_t)((uint32_t)millis() / 1000u);
+    uint8_t uint8_t__flags = 0u;
+    uint8_t uint8_t__i;
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+
+    if (BOOL__G__TlmSeen) uint8_t__flags |= 0x01u;                     /* تله‌متری می‌آید */
+    if (BOOL__G__BrowserSeen &&
+        ((uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) < SIMPLE_LINK_TIMEOUT_MS))
+    {
+        uint8_t__flags |= 0x02u;                                        /* کاربر پنل را باز دارد */
+    }
+
+    UINT8_T__A__Payload[0] = (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Payload[1] = (uint8_t)SIMPLE_ESP_FW_VERSION;
+    UINT8_T__A__Payload[2] = (uint8_t)SIMPLE_ESP_ROLE_USER;
+    UINT8_T__A__Payload[3] = uint8_t__flags;
+    UINT8_T__A__Payload[4] = (uint8_t)(uint32_t__uptimeSec & 0xFFu);
+    UINT8_T__A__Payload[5] = (uint8_t)((uint32_t__uptimeSec >> 8) & 0xFFu);
+    UINT8_T__A__Payload[6] = (uint8_t)((uint32_t__uptimeSec >> 16) & 0xFFu);
+    UINT8_T__A__Payload[7] = (uint8_t)((uint32_t__uptimeSec >> 24) & 0xFFu);
+
+    UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
+    UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
+    UINT8_T__A__Frame[2] = (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = (uint8_t)SIMPLE_MSG_HELLO;
+    UINT8_T__A__Frame[4] = (uint8_t)SIMPLE_HELLO_LEN;
+    UINT8_T__A__Frame[5] = 0u;
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)SIMPLE_MSG_HELLO);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)SIMPLE_HELLO_LEN);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_HELLO_LEN; uint8_t__i++)
+    {
+        UINT8_T__A__Frame[SIMPLE_LINK_HEADER_SIZE + uint8_t__i] = UINT8_T__A__Payload[uint8_t__i];
+        uint16_t__crc = func__Simple_Crc16(uint16_t__crc, UINT8_T__A__Payload[uint8_t__i]);
+    }
+    UINT8_T__A__Frame[SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN + 1u] =
+        (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+
+    (void)Serial.write(UINT8_T__A__Frame,
+                       (size_t)(SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN + SIMPLE_LINK_CRC_SIZE));
+    UINT32_T__G__LastHelloTxMs = uint32_t__nowMs;
+}
+
+/* پاسخ برد را می‌خواند: هویت برد + سلامت دریافت خودش + بازپس آپتایم ما. */
+static void func__Simple_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
+{
+    uint32_t uint32_t__echoedUptime;
+
+    if (UINT16_T__G__RxLen != (uint16_t)SIMPLE_HELLO_ACK_LEN) return;
+    uint32_t__echoedUptime = func__Simple_ReadU32(uint8_t__ptr_payload, 20u);
+
+    UINT8_T__G__BoardProtoVersion = uint8_t__ptr_payload[0];
+    UINT8_T__G__BoardFwVersion = uint8_t__ptr_payload[1];
+    UINT8_T__G__BoardFlags = uint8_t__ptr_payload[2];
+    UINT32_T__G__BoardUptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 4u);
+    UINT32_T__G__BoardRxFrames = func__Simple_ReadU32(uint8_t__ptr_payload, 8u);
+    UINT16_T__G__BoardCrcErrors = (uint16_t)(uint8_t__ptr_payload[12] |
+                                             (uint16_t)((uint16_t)uint8_t__ptr_payload[13] << 8));
+    UINT16_T__G__BoardVerErrors = (uint16_t)(uint8_t__ptr_payload[14] |
+                                             (uint16_t)((uint16_t)uint8_t__ptr_payload[15] << 8));
+    UINT16_T__G__BoardParamCount = (uint16_t)(uint8_t__ptr_payload[16] |
+                                              (uint16_t)((uint16_t)uint8_t__ptr_payload[17] << 8));
+    UINT16_T__G__BoardPeriodMs = (uint16_t)(uint8_t__ptr_payload[18] |
+                                            (uint16_t)((uint16_t)uint8_t__ptr_payload[19] << 8));
+    (void)uint32_t__echoedUptime;   /* فقط برای تطبیق است؛ نمایش لازم نیست */
+
+    UINT32_T__G__LastHelloAckMs = (uint32_t)millis();
+    BOOL__G__HelloSeen = true;
+    UINT32_T__G__HelloAckCount++;
+}
+
+/* هر دوره یک HELLO؛ اگر پاسخ نرسد، ارتباط را قطع‌شده اعلام می‌کند. */
+static void func__Simple_HandshakeTick(uint32_t uint32_t__nowMs)
+{
+    if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloTxMs) >= SIMPLE_HELLO_INTERVAL_MS)
+    {
+        func__Simple_SendHello();
+    }
+    if (BOOL__G__HelloSeen &&
+        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloAckMs) > SIMPLE_HELLO_TIMEOUT_MS))
+    {
+        BOOL__G__HelloSeen = false;
+        UINT32_T__G__HelloLossCount++;
+    }
+}
+
 static void func__Simple_HandleFrame(void)
 {
     const uint8_t *uint8_t__ptr_payload = UINT8_T__G__RxPayload;
@@ -63,6 +165,10 @@ static void func__Simple_HandleFrame(void)
         BOOL__G__TlmSeen = true;
         /* هر فریم به تاریخچه داده می‌شود؛ فقط تغییر واقعی ردیف می‌سازد */
         func__SimpleLog_OnFrame();
+    }
+    else if (UINT8_T__G__RxType == SIMPLE_MSG_HELLO_ACK)
+    {
+        func__Simple_HandleHelloAck(uint8_t__ptr_payload);
     }
     else if (UINT8_T__G__RxType == SIMPLE_MSG_DIAG_DATA)
     {

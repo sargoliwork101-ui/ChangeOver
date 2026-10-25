@@ -114,6 +114,10 @@ void loop(void)
     /* صف ریست قفل‌ها: هر ۱۲۰ms حداکثر یک فریم SET_PARAM */
     func__Simple_SlotTick();
 
+    /* دست‌دادن دوطرفه (v1.111): هر ۲ ثانیه یک HELLO؛ اگر پاسخ برد نرسد،
+       پنل «ارتباط دوطرفه قطع» نشان می‌دهد. */
+    func__Simple_HandshakeTick((uint32_t)millis());
+
     /* تاریخچهٔ وضعیت: نوشتن ردیف‌های در انتظار و تشخیص قطع ارتباط */
     func__SimpleLog_Tick();
 

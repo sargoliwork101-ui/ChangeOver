@@ -920,6 +920,106 @@ static void func__T_TestStateHistoryLog(void)
     }
 }
 
+/* ==================== دست‌دادن دوطرفه با برد (v1.111) ====================
+   چرا این بخش: تا امروز تنها نشانهٔ ارتباط، آمدن تله‌متری بود. آن فقط می‌گوید
+   برد حرف می‌زند؛ نمی‌گوید ESP هم به برد می‌رسد و نمی‌گوید ارتباط «درست» است.
+   اکنون ESP هر ۲ ثانیه HELLO می‌فرستد و برد با HELLO_ACK جواب می‌دهد و در آن
+   سلامت دریافت خودش را می‌گوید. اینجا همان توابع خود برنامه صدا زده می‌شوند:
+   - قاب HELLO بایت‌به‌بایت (SOF، نسخه، نوع ۰x40، طول ۸، CRC) بررسی می‌شود.
+   - رسیدن پاسخ: وضعیت «دوطرفه سالم» و مقدارهای گزارش برد ثبت می‌شوند.
+   - سکوت برد: بعد از مهلت، ارتباط قطع اعلام می‌شود و شمرده می‌شود.
+   اجرا: bash ESP_USER/Tester/run_simple_tests.sh */
+static void func__T_TestHandshake(void)
+{
+    uint8_t uint8_t__frame[64];
+    uint8_t uint8_t__payload[SIMPLE_HELLO_ACK_LEN];
+    uint8_t uint8_t__byte;
+    uint16_t uint16_t__len;
+    uint16_t uint16_t__i;
+    uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
+
+    (void)printf("\n== دست‌دادن دوطرفه با برد (v1.111) ==\n");
+
+    /* ۱) قاب HELLO که ESP می‌فرستد */
+    while (Serial.takeEspByte(&uint8_t__byte)) { }
+    func__Simple_SendHello();
+    uint16_t__len = 0u;
+    while (Serial.takeEspByte(&uint8_t__byte))
+    {
+        if (uint16_t__len < (uint16_t)sizeof(uint8_t__frame))
+        {
+            uint8_t__frame[uint16_t__len] = uint8_t__byte;
+        }
+        uint16_t__len++;
+    }
+    uint16_t__len = (uint16_t)(SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN + SIMPLE_LINK_CRC_SIZE);
+    func__T_Check(uint8_t__frame[0] == SIMPLE_LINK_SOF_BYTE0 &&
+                  uint8_t__frame[1] == SIMPLE_LINK_SOF_BYTE1,
+                  "قاب دست‌دادن با SOF درست شروع می‌شود");
+    func__T_Check(uint8_t__frame[2] == (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION,
+                  "نسخهٔ سیم در قاب دست‌دادن درست است");
+    func__T_Check(uint8_t__frame[3] == (uint8_t)SIMPLE_MSG_HELLO,
+                  "نوع پیام ۰x40 (HELLO) است");
+    func__T_Check(uint8_t__frame[4] == 8u && uint8_t__frame[5] == 0u,
+                  "طول پیام دست‌دادن ۸ بایت است");
+    func__T_Check(uint8_t__frame[6] == (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION &&
+                  uint8_t__frame[7] == (uint8_t)SIMPLE_ESP_FW_VERSION &&
+                  uint8_t__frame[8] == (uint8_t)SIMPLE_ESP_ROLE_USER,
+                  "پیام دست‌دادن نسخه، نسخهٔ پنل و نقش را می‌برد");
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)SIMPLE_MSG_HELLO);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 8u);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
+    for (uint16_t__i = 0u; uint16_t__i < (uint16_t)SIMPLE_HELLO_LEN; uint16_t__i++)
+    {
+        uint16_t__crc = func__Simple_Crc16(uint16_t__crc, uint8_t__frame[SIMPLE_LINK_HEADER_SIZE + uint16_t__i]);
+    }
+    func__T_Check(uint8_t__frame[uint16_t__len - 2u] == (uint8_t)(uint16_t__crc & 0xFFu) &&
+                  uint8_t__frame[uint16_t__len - 1u] == (uint8_t)((uint16_t__crc >> 8) & 0xFFu),
+                  "CRC قاب دست‌دادن همان چیزی است که برد محاسبه می‌کند");
+
+    /* ۲) پاسخ برد: هویت، سلامت دریافت خودش و بازپس آپتایم ما */
+    for (uint16_t__i = 0u; uint16_t__i < (uint16_t)SIMPLE_HELLO_ACK_LEN; uint16_t__i++)
+    {
+        uint8_t__payload[uint16_t__i] = 0u;
+    }
+    uint8_t__payload[0] = (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION;
+    uint8_t__payload[1] = 111u;              /* نسخهٔ فرم‌ور برد */
+    uint8_t__payload[2] = 0x0Fu;             /* همهٔ ماژول‌ها */
+    uint8_t__payload[8] = 0x34u;             /* فریم سالم از دید برد = 52 */
+    uint8_t__payload[12] = 0u;               /* خطای CRC برد = 0 */
+    uint8_t__payload[13] = 0u;
+    uint8_t__payload[16] = (uint8_t)(169u & 0xFFu);  /* تعداد پارامتر */
+    uint8_t__payload[18] = (uint8_t)(100u & 0xFFu);  /* دورهٔ تله‌متری ۱۰۰ms */
+    uint16_t__len = func__T_MakeFrame(uint8_t__frame, SIMPLE_MSG_HELLO_ACK,
+                                      uint8_t__payload, (uint16_t)SIMPLE_HELLO_ACK_LEN);
+    Serial.boardToEsp(uint8_t__frame, (size_t)uint16_t__len);
+    func__Simple_DrainSerial();
+
+    func__T_Check(BOOL__G__HelloSeen, "با رسیدن پاسخ برد، ارتباط دوطرفه سالم اعلام می‌شود");
+    func__T_Check(UINT8_T__G__BoardFwVersion == 111u, "نسخهٔ فرم‌ور برد از پاسخ خوانده می‌شود");
+    func__T_Check(UINT32_T__G__BoardRxFrames == 52u, "تعداد فریم سالمِ دیده‌شده توسط برد خوانده می‌شود");
+    func__T_Check(UINT16_T__G__BoardCrcErrors == 0u && UINT16_T__G__BoardVerErrors == 0u,
+                  "خطای CRC و ناهم‌نسخگی برد (صفر = ارتباط درست) خوانده می‌شود");
+    func__T_Check(UINT16_T__G__BoardParamCount == 169u && UINT16_T__G__BoardPeriodMs == 100u,
+                  "تعداد پارامتر و دورهٔ تله‌متری برد خوانده می‌شود");
+    func__T_Check(UINT32_T__G__HelloAckCount == 1u, "پاسخ‌های برد شمرده می‌شوند");
+
+    /* ۳) سکوت برد: بعد از مهلت، ارتباط قطع اعلام و شمرده می‌شود */
+    UINT32_T__G__LastHelloAckMs = (uint32_t)millis() - SIMPLE_HELLO_TIMEOUT_MS - 10u;
+    func__Simple_HandshakeTick((uint32_t)millis());
+    func__T_Check(!BOOL__G__HelloSeen, "با سکوت برد، ارتباط دوطرفه قطع اعلام می‌شود");
+    func__T_Check(UINT32_T__G__HelloLossCount == 1u, "قطع ارتباط یک بار شمرده می‌شود");
+
+    /* ۴) پاسخ با طول غلط نباید ارتباط بسازد */
+    UINT32_T__G__LastHelloAckMs = (uint32_t)millis() - SIMPLE_HELLO_TIMEOUT_MS - 10u;
+    func__Simple_HandshakeTick((uint32_t)millis());
+    uint16_t__len = func__T_MakeFrame(uint8_t__frame, SIMPLE_MSG_HELLO_ACK, uint8_t__payload, 8u);
+    Serial.boardToEsp(uint8_t__frame, (size_t)uint16_t__len);
+    func__Simple_DrainSerial();
+    func__T_Check(!BOOL__G__HelloSeen, "پاسخ با طول غلط نادیده گرفته می‌شود");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -933,6 +1033,7 @@ int main(void)
     func__T_TestDiagStatePersistenceAndClear();
     func__T_TestAuthAdminProtection();
     func__T_TestStateHistoryLog();
+    func__T_TestHandshake();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)
