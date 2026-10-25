@@ -94,7 +94,7 @@ charging toward the 24-hour dead-battery verdict.
 با اولین تطبیق، `FAULT_CHARGER_TECHNICAL` (بیت ۷) در ماژول Fault ست و
 `BOOL__G__TechnicalFaultLockout` در Charger قفل می‌شود. از آن لحظه:
 
-- `func__Charger_FinalDisconnect()` در هر پاس هر دو PWM را صفر و رله را باز نگه می‌دارد؛
+- تا وقتی برق ورودی وصل است `func__Charger_FinalDisconnect()` هر دو PWM را صفر و کویل رله را روشن (کنتاکت NC باز) نگه می‌دارد؛ هرگاه ورودی قطع شود `func__Charger_FinalDisconnectIdle()` کویل رله را خاموش می‌کند تا باتری تخلیه نشود، ولی قفل خطا دست‌نخورده می‌ماند و با برگشت ورودی بلافاصله رله دوباره قطع می‌کند؛
 - تغییر تنظیمات پنل، retry JIT، مود دستی، NVM یا تغییر `app_state` قفل را آزاد نمی‌کند؛
 - فقط `func__Charger_Init()` در بوت بعدی، یعنی reset یا power-cycle، قفل RAM را پاک می‌کند؛
 - ارزیابی بعد از `func__Jitter_Run()` و پیش از ادامهٔ Changeover/Charger انجام می‌شود تا

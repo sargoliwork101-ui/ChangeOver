@@ -315,6 +315,8 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
 static void func__Charger_PidInvalidate(
     charger_channel_state_t *charger_channel_state_t__channel);
 static uint32_t func__Charger_Limit(uint8_t uint8_t__index);
+static bool func__Charger_IsInputPresentForRelay(
+    const measurement_snapshot_t *measurement_snapshot_t__snap);
 
 /* [EN] Read a panel-settable limit by its WIRE ID (ids 93..107, user order
  *      2026-10-03). Spelling the wire id at every use site keeps the call
@@ -467,15 +469,57 @@ static void func__Charger_FinalDisconnectIdle(void)
 
     func__BspPwm_StopAll();
     func__BspGpio_Write(BSP_GPIO_RELAY, false);
+    BOOL__G__RelayOpen = true;
     UINT32_T__G__RelaySettleDeadline = 0u;
-    /* [EN] BOOL__G__RelayOpen intentionally NOT cleared: the final fault
-       stays latched. / [FA] قفل خطا دست‌نخورده می‌ماند. */
+    /* [EN] BOOL__G__RelayOpen stays true: the final fault stays latched while
+       the coil is released on missing input. / [FA] قفل خطا دست‌نخورده می‌ماند. */
 
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
         func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
     }
+}
+
+/* ==================== Charger_IsInputPresentForRelay ==================== */
+
+/**
+ * @brief  [EN] Decide whether mains/input voltage is present so the final-fault
+ *              NC relay coil must stay energized. Unlike bool__inputAdcValid,
+ *              there is no upper voltage cap: overvoltage input must still hold
+ *              the relay open. When the ADC snapshot is not yet valid, fall back
+ *              to the hardware input-presence GPIO.
+ *         [FA] حضور ورودی برای نگه‌داشتن کویل رله در خطای نهایی را تعیین می‌کند.
+ *              برخلاف بازهٔ مجاز شارژ، سقف بالا ندارد تا در اضافه‌ولتاژ ورودی هم
+ *              رله باز بماند؛ در نبود snapshot معتبر از پایهٔ حضور ورودی استفاده می‌شود.
+ * @param  measurement_snapshot_t__snap [EN] Current measurement snapshot / تصویر اندازه‌گیری فعلی
+ * @return bool [EN] true when input is present and coil must energize / در حضور ورودی true
+ */
+static bool func__Charger_IsInputPresentForRelay(
+    const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    uint32_t uint32_t__inputMinMv;
+
+    uint32_t__inputMinMv = CHG_INPUT_VALID_MV;
+#if MODULE_FAULT
+    {
+        uint32_t uint32_t__panelMin = 0u;
+
+        if (func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV,
+                                      &uint32_t__panelMin) == true)
+        {
+            uint32_t__inputMinMv = uint32_t__panelMin;
+        }
+    }
+#endif
+
+    if ((measurement_snapshot_t__snap == NULL) ||
+        (measurement_snapshot_t__snap->valid == false))
+    {
+        return (func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) != false);
+    }
+
+    return (measurement_snapshot_t__snap->v_in_mv >= uint32_t__inputMinMv);
 }
 
 /* ==================== Channel helpers / توابع کمکی کانال ==================== */
@@ -3005,15 +3049,24 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     uint32_t__nowTick = osKernelGetTickCount();
 
-    /* [EN] Scenario 7 owns the final safety gate. Keep the relay physically
-       open and both PWM paths at zero for the rest of this power session;
-       app-state changes, panel writes, JIT retries and NVM saves cannot
-       release this latch. [FA] سناریوی ۷ گیت نهایی ایمنی است: رله باز و هر
-       دو PWM صفر بمانند تا همین نشست برق تمام شود؛ هیچ تغییر حالت یا تنظیمی
-       آن را آزاد نمی‌کند. */
+    /* [EN] Scenario 7 owns the final safety gate. Keep both PWM paths at zero
+       and keep the fault latched for the rest of this power session; energize
+       the NC relay coil only while input is present so missing input cannot
+       drain the battery through the coil.
+       [FA] سناریوی ۷ گیت نهایی ایمنی است: هر دو PWM صفر و قفل تا پایان نشست برق
+       پابرجا می‌ماند؛ کویل رله فقط در حضور ورودی برق‌دار می‌شود تا در بی‌برقی
+       باتری خالی نشود. */
     if (BOOL__G__TechnicalFaultLockout != false)
     {
-        func__Charger_FinalDisconnect();
+        if (func__Charger_IsInputPresentForRelay(measurement_snapshot_t__snap) != false)
+        {
+            func__Charger_FinalDisconnect();
+        }
+        else
+        {
+            func__Charger_FinalDisconnectIdle();
+        }
+        func__Charger_CaptureDiag(measurement_snapshot_t__snap);
         return;
     }
 
@@ -3133,6 +3186,33 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     if (CHG_MASTER_ENABLE == 0u)
     {
         func__Charger_SafeIdle();
+        return;
+    }
+
+    bool__anyFinalFault = false;
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
+    {
+        if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+            CHG_STATE_FINAL_FAULT)
+        {
+            bool__anyFinalFault = true;
+        }
+    }
+
+    if ((bool__anyFinalFault == true) || (BOOL__G__RelayOpen == true))
+    {
+        /* [EN] Guard final-fault / relay-open latches before SafeIdle so an
+           invalid snapshot or concurrent fault never drops BOOL__G__RelayOpen
+           while input is present, and release the coil when input is absent.
+           [FA] حفظ قفل خطای نهایی پیش از SafeIdle؛ کویل فقط در حضور ورودی وصل می‌ماند. */
+        if (func__Charger_IsInputPresentForRelay(measurement_snapshot_t__snap) != false)
+        {
+            func__Charger_FinalDisconnect();
+        }
+        else
+        {
+            func__Charger_FinalDisconnectIdle();
+        }
         return;
     }
 
@@ -3310,7 +3390,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         /* [EN] With the input cut, keep the latch but release the coil so it
            cannot drain the battery; FinalDisconnect resumes when input returns.
            [FA] با ورودی قطع، قفل خطا بماند ولی کویل رها شود تا باتری خالی نشود. */
-        if (bool__inputAdcValid == true)
+        if (func__Charger_IsInputPresentForRelay(measurement_snapshot_t__snap) != false)
         {
             func__Charger_FinalDisconnect();
         }
@@ -3393,7 +3473,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (BOOL__G__RelayOpen == true)
     {
-        if (bool__inputAdcValid == true)
+        if (func__Charger_IsInputPresentForRelay(measurement_snapshot_t__snap) != false)
         {
             func__Charger_FinalDisconnect();
         }

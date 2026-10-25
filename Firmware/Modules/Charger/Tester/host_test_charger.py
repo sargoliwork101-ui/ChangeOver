@@ -4418,6 +4418,244 @@ def test_v1102_item3_stale_limits_fixed():
 
 
 
+def test_relay_coil_gated_on_input_presence():
+    """[EN] Relay coil (BSP_GPIO_RELAY) must turn off whenever input is
+    disconnected during TechnicalFaultLockout / FINAL_FAULT so the coil does
+    not drain the battery (~40 mA), and re-energize immediately when input
+    returns (including overvoltage > 28 V), without touching Jitter latch.
+    [FA] کویل رله در زمان قطع‌بودن ورودی باید خاموش شود تا باتری تخلیه نشود و
+    با برگشت ورودی بلافاصله دوباره فعال گردد، بدون دست‌زدن به پرچم جیتر."""
+    import shutil, subprocess, tempfile
+
+    charger_c = CHARGER_C.read_text()
+    lockout_block = charger_c.split("if (BOOL__G__TechnicalFaultLockout != false)", 1)[1].split("return;", 1)[0]
+    check("func__Charger_IsInputPresentForRelay(measurement_snapshot_t__snap)" in lockout_block and
+          "func__Charger_FinalDisconnect();" in lockout_block and
+          "func__Charger_FinalDisconnectIdle();" in lockout_block,
+          "TechnicalFaultLockout must gate relay coil energization on input presence")
+    latch_body = charger_c.split("static void func__Charger_LatchFinalFault", 1)[1].split("#if MODULE_JITTER", 1)[0]
+    check("func__Jitter_ClearChannel" not in latch_body,
+          "LatchFinalFault must never clear Jitter_ChannelTripped")
+
+    gcc = shutil.which("gcc")
+    check(gcc is not None, "gcc must be available for compiled charger relay harness")
+    tmp = tempfile.mkdtemp(prefix="chg_relay_")
+    try:
+        harness = Path(tmp) / "harness.c"
+        harness.write_text(r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "charger.h"
+#include "bsp_gpio.h"
+#include "bsp_pwm.h"
+#include "fault.h"
+#include "jitter.h"
+#include "diag.h"
+#include "imbalance.h"
+#include "cmsis_os2.h"
+
+static uint32_t g_tick = 1000u;
+static bool g_relay_coil = false;
+static bool g_input_pin = true;
+static uint16_t g_pwm_duty[2] = {0u, 0u};
+static bool g_pwm_stopped = false;
+static bool g_jit_tripped[2] = {false, false};
+static fault_mask_t g_fault_mask = FAULT_NONE;
+
+uint32_t osKernelGetTickCount(void) { return g_tick; }
+uint32_t osKernelGetTickFreq(void) { return 1000u; }
+int32_t osKernelLock(void) { return 0; }
+int32_t osKernelRestoreLock(int32_t lock) { (void)lock; return 0; }
+osStatus_t osDelay(uint32_t ticks) { (void)ticks; return osOK; }
+
+void func__BspGpio_Write(bsp_gpio_id_t id, bool active)
+{
+    if (id == BSP_GPIO_RELAY) { g_relay_coil = active; }
+}
+bool func__BspGpio_Read(bsp_gpio_id_t id)
+{
+    if (id == BSP_GPIO_INPUT_24V_PRESENT) { return g_input_pin; }
+    return false;
+}
+void func__BspPwm_StopAll(void)
+{
+    g_pwm_stopped = true;
+    g_pwm_duty[0] = 0u;
+    g_pwm_duty[1] = 0u;
+}
+void func__BspPwm_Stop(bsp_pwm_channel_t ch)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = 0u; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = 0u; }
+}
+void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t ch, uint16_t duty)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = duty; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = duty; }
+}
+uint16_t func__BspPwm_GetAppliedDutyPermille(bsp_pwm_channel_t ch)
+{
+    return (ch == BSP_PWM_CHARGER_1) ? g_pwm_duty[0] : g_pwm_duty[1];
+}
+
+bool func__Jitter_ChannelTripped(uint8_t ch)
+{
+    return (ch >= 1u && ch <= 2u) ? g_jit_tripped[ch - 1u] : false;
+}
+void func__Jitter_ClearChannel(uint8_t ch)
+{
+    if (ch >= 1u && ch <= 2u) { g_jit_tripped[ch - 1u] = false; }
+}
+
+void func__Fault_Set(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask | m); }
+void func__Fault_Clear(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask & ~m); }
+fault_mask_t func__Fault_Get(void) { return g_fault_mask; }
+bool func__Fault_IsBatteryAbsent(void) { return false; }
+bool func__Fault_IsChannelBatteryAbsent(uint8_t ch) { (void)ch; return false; }
+bool func__Fault_GetAlarmParam(uint8_t id, uint32_t *val)
+{
+    if (id == FAULT_ALARM_PARAM_INPUT_MIN_MV) { *val = 21000u; return true; }
+    if (id == FAULT_ALARM_PARAM_INPUT_MAX_MV) { *val = 28000u; return true; }
+    if (id == FAULT_ALARM_PARAM_DISCONNECT_DEB_MS) { *val = 150u; return true; }
+    return false;
+}
+
+bool func__Imbalance_ChargerGateClosed(void) { return false; }
+void func__Imbalance_NotifyThermalRest(void) {}
+void func__Imbalance_GetOutputs(imbalance_outputs_t *out)
+{
+    if (out != NULL) { *out = (imbalance_outputs_t){0}; }
+}
+void func__Fault_OnSupervisionChange(void) {}
+void func__Diag_RecordChargeComplete(uint8_t ch) { (void)ch; }
+
+int main(void)
+{
+    measurement_snapshot_t snap = {0};
+    snap.valid = true;
+    snap.input_present = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat24_mv = 25000u;
+    snap.v_bat12_mv = 12500u;
+    snap.v_bat_low_mv = 12500u;
+    snap.v_bat_high_mv = 12500u;
+
+    func__Charger_Init();
+    assert(g_relay_coil == false);
+
+    /* Let settle timer elapse and trigger 3 JIT strikes on CH1 */
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+
+    /* Strike 1 -> retry wait -> revive */
+    g_jit_tripped[0] = true;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_relay_coil == false);
+    g_tick += 4000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_jit_tripped[0] == false);
+
+    /* Strike 2 -> retry wait -> revive */
+    g_jit_tripped[0] = true;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_relay_coil == false);
+    g_tick += 4000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_jit_tripped[0] == false);
+
+    /* Strike 3 -> FINAL_FAULT + RelayOpen + Jitter latch stays set -> Scenario 7 locks */
+    g_jit_tripped[0] = true;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_relay_coil == true);
+    assert(func__Charger_IsRelayOpen() == true);
+    assert(g_jit_tripped[0] == true);
+
+    g_tick += 10u;
+    func__Charger_EvaluateTechnicalFault(&snap);
+    assert(func__Charger_IsTechnicalFaultLocked() == true);
+    assert((g_fault_mask & FAULT_CHARGER_TECHNICAL) != 0u);
+
+    /* Input still 24 V -> coil stays ON */
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+    assert(g_pwm_duty[0] == 0u && g_pwm_duty[1] == 0u);
+
+    /* Input disconnected (0 V) -> coil MUST turn OFF, latches stay set */
+    snap.v_in_mv = 0u;
+    snap.input_present = false;
+    g_input_pin = false;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == false);
+    assert(func__Charger_IsRelayOpen() == true);
+    assert(func__Charger_IsTechnicalFaultLocked() == true);
+    assert(g_jit_tripped[0] == true);
+
+    /* Input returns at 24 V -> coil immediately turns ON again */
+    snap.v_in_mv = 24000u;
+    snap.input_present = true;
+    g_input_pin = true;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+
+    /* Overvoltage input (30 V > 28 V max) -> coil MUST still stay ON */
+    snap.v_in_mv = 30000u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+
+    /* Invalid snapshot while PB4=LOW -> coil OFF; while PB4=HIGH -> coil ON */
+    snap.valid = false;
+    g_input_pin = false;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == false);
+    g_input_pin = true;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+
+    printf("RELAY HARNESS OK\n");
+    return 0;
+}
+''', encoding="utf-8")
+        binary = str(Path(tmp) / "harness")
+        inc = [
+            "-I", str(ROOT / "CubeIDE/Core/Inc"),
+            "-I", str(ROOT / "CubeIDE/Drivers/CMSIS/Include"),
+            "-I", str(ROOT / "CubeIDE/Drivers/CMSIS/Device/ST/STM32F1xx/Include"),
+            "-I", str(ROOT / "CubeIDE/Drivers/STM32F1xx_HAL_Driver/Inc"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/include"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"),
+            "-I", str(ROOT / "Firmware/App/Inc"),
+            "-I", str(ROOT / "Firmware/Bsp/Inc"),
+            "-I", str(ROOT / "Firmware/Config/Inc"),
+            "-I", str(ROOT / "Firmware/Rtos/Inc"),
+            "-I", str(ROOT / "Firmware/Modules/Charger"),
+            "-I", str(ROOT / "Firmware/Modules/Measurement"),
+            "-I", str(ROOT / "Firmware/Modules/Fault"),
+            "-I", str(ROOT / "Firmware/Modules/Jitter"),
+            "-I", str(ROOT / "Firmware/Modules/Imbalance"),
+            "-I", str(ROOT / "Firmware/Modules/Diag"),
+        ]
+        r = subprocess.run(
+            [gcc, "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
+             "-DSTM32F103xB", "-DUSE_HAL_DRIVER", *inc,
+             str(CHARGER_C), str(ROOT / "Firmware/Rtos/Src/rtos_time.c"),
+             str(harness), "-o", binary],
+            capture_output=True, text=True)
+        check(r.returncode == 0, "relay harness must compile:\n" + r.stderr)
+        r = subprocess.run([binary], capture_output=True, text=True)
+        check(r.returncode == 0 and "RELAY HARNESS OK" in r.stdout,
+              "relay harness runtime assertions must pass:\n" + r.stdout + r.stderr)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -4476,6 +4714,7 @@ def main():
         test_scenario7_technical_fault_lockout,
         test_panel_calibration_requires_readback_v127,
         test_boundary_concurrency_hardening_v126,
+        test_relay_coil_gated_on_input_presence,
     ]
     for test in tests:
         test()
