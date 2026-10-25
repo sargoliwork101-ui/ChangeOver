@@ -34,7 +34,14 @@ for d in "$ROOT"/Firmware/Modules/*; do
 done
 echo ""
 echo "[3] Bilingual header check"
-find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \) | while read -r f; do
+# [EN] Process substitution, NOT a pipe: `find | while ...` runs the loop in a
+#      subshell, so every FAIL=1 below died with that subshell and the gate
+#      printed "FAIL: ... missing [EN]" and still exited 0. Proven by dropping
+#      a header-less file into Firmware: three FAIL lines, ALL CHECKS PASSED.
+# [FA] جای لوله، جانشینی فرایند: در `find | while ...` حلقه در زیرپوسته اجرا
+#      می‌شود و هر FAIL=1 با همان زیرپوسته می‌مرد؛ دروازه خط FAIL را چاپ
+#      می‌کرد و باز هم با کد صفر برمی‌گشت.
+while read -r f; do
   if ! grep -q "@file" "$f"; then
     echo "  FAIL: $f missing @file"
     FAIL=1
@@ -47,14 +54,14 @@ find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \) | while read -r f
     echo "  FAIL: $f missing [FA]"
     FAIL=1
   fi
-done
+done < <(find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \))
 echo "  Bilingual header scan done"
 echo ""
 echo "[4] Function brief check"
-find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \) | head -n 20 | while read -r f; do
+while read -r f; do
   briefs=$(grep -c "@brief" "$f" || true)
   echo "  $(basename "$f"): briefs=$briefs"
-done
+done < <(find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \) | head -n 20)
 echo ""
 echo "[5] Folder separation"
 if [ -d "$ROOT/CubeIDE/Firmware" ] || [ -d "$ROOT/CubeMX/Firmware" ]; then
