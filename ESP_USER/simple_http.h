@@ -940,10 +940,9 @@ static void func__Simple_HttpClockSet(void)
         if (func__Simple_ParseInt(string__sec.c_str(), &int32_t__sec) &&
             ((uint32_t)int32_t__sec >= SIMPLE_TIME_VALID_MIN))
         {
-            if ((BOOL__G__TimeValid == false) || func__Simple_SessionValid())
-            {
-                func__Simple_TimeSet((uint32_t)int32_t__sec, false);
-            }
+            /* ساعت هر بار که صفحه وصل می‌شود از همان دستگاه گرفته می‌شود؛
+               پرچم «زمان وارد شده» شرطِ همیشگی، نه مانع */
+            func__Simple_TimeSet((uint32_t)int32_t__sec, false);
             func__Simple_TimeSave();
             bool__ok = true;
         }

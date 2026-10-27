@@ -1986,6 +1986,60 @@ int main(void)
               "and the module's state says the flash is usable");
     }
 
+    /* ---- 41. every connection sets the clock, and the jump is written -----
+       [EN] User order 2026-10-27: "whenever I connect with the browser, the
+            clock must take the time of my machine". POST /clock therefore always
+            wins, and a jump larger than a re-sync leaves a row of its own so the
+            history can explain a date that jumps.
+       [FA] دستور کاربر ۲۰۲۶-۱۰-۲۷: «هر وقت با مرورگر وصل شدم، ساعت با ساعت
+            سیستم من تنظیم شود». پس POST /clock همیشه برنده است و پرشی بزرگ‌تر
+            از یک هم‌زمان‌سازی، ردیف خودش را می‌گذارد تا تاریخچه پرش تاریخ را
+            توضیح بدهد. */
+    {
+        LittleFS.failWrites = false;
+        func__EspLog_Clear();
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        BOOL__G__LogClockValid = true;
+        BOOL__G__LogAnchorBoardValid = false;
+        UINT32_T__G__LogAnchorSec = 1700000000u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        UINT32_T__G__LogHighWaterSec = 1700000000u;
+        BOOL__G__LogClockJumpPending = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+
+        /* the page opens: its clock is wrong by a day (a phone set by hand) */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.addArg("sec", "1792756800");
+        ESP_WEB_SERVER_T__G__Server.addArg("tz", "12600");
+        ESP_WEB_SERVER_T__G__Server.call("/clock", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"ok\":1") != std::string::npos,
+              "POST /clock accepts the machine's time and says so",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(func__EspLog_NowSec() == 1792756800u,
+              "and the board clock is now the browser clock",
+              std::to_string(func__EspLog_NowSec()));
+        check(INT32_T__G__LogTzSec == 12600,
+              "with the timezone the browser reported");
+
+        /* the jump is written as a row, not applied silently */
+        G_StubMillis += 3000u;
+        func__EspLog_Tick();
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find(",2048,") != std::string::npos ||
+              ESP_WEB_SERVER_T__G__Server.lastBody.find(",2176,") != std::string::npos ||
+              ESP_WEB_SERVER_T__G__Server.lastBody.find(",2064,") != std::string::npos,
+              "the clock jump has its own row in the history",
+              ESP_WEB_SERVER_T__G__Server.lastBody.substr(0, 80));
+    }
+
     /* ---- 35. a half-written last row cannot eat the next one ------------
        [EN] A power cut in the middle of a row leaves no closing newline. Append
             one row after that and BOTH rows are unreadable. The day file is
@@ -2112,13 +2166,20 @@ int main(void)
         accepted = func__EspLog_TimeSet(1792756800u, 12600);
         check(accepted != false,
               "the same time arriving again a minute later is still accepted");
+        /* [EN] user order 2026-10-27: whenever a page connects, the board takes
+                the time of THAT machine - even a big jump. The jump is not
+                silent: it gets its own row.
+           [FA] دستور کاربر ۲۰۲۶-۱۰-۲۷: هر بار صفحه وصل شود، برد ساعت همان
+                دستگاه را می‌گیرد - حتی پرش بزرگ. پرش بی‌صدا نیست: ردیف خودش
+                را می‌نویسد. */
         accepted = func__EspLog_TimeSet(1700000000u, 12600);
-        check(accepted == false,
-              "a phone whose clock is a year behind cannot rewind the log");
-        check((func__EspLog_NowSec() >= 1792756800u) &&
-              (func__EspLog_NowSec() < (1792756800u + ESP_LOG_CLOCK_REWIND_SEC)),
-              "and the anchor stayed where it was instead of jumping a year back",
+        check(accepted != false,
+              "a browser clock a year off is applied, because the browser owns the clock");
+        check(func__EspLog_NowSec() == 1700000000u,
+              "and the log really follows it",
               std::to_string(func__EspLog_NowSec()));
+        check(BOOL__G__LogClockJumpPending,
+              "a jump that big is queued to be written into the history");
     }
 
     /* ---- two-sided handshake (v1.111) -----------------------------------

@@ -102,6 +102,11 @@ static bool     BOOL__G__LogBoardAlive = false;
         وقت را بگوید می‌ایستد، ولی هیچ‌وقت عقب نمی‌رود: تاریخچه‌ای که عقب
         بپرد، یک ردیف را دو بار در دو فایل می‌نویسد. */
 static uint32_t UINT32_T__G__LogHighWaterSec = 0u;
+/* [EN] set when the browser moved the clock by a lot; the next tick writes the
+        row that says so.
+   [FA] وقتی مرورگر ساعت را زیاد جابه‌جا کرد روشن می‌شود؛ تیک بعدی ردیفی
+        می‌نویسد که همین را بگوید. */
+static bool     BOOL__G__LogClockJumpPending = false;
 static uint32_t UINT32_T__G__LogLastClockSaveMs = 0u;
 
 /* ==================== Open day / روز باز ==================== */
@@ -206,6 +211,7 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_CHG_MODE    0x0100u   /* [EN] hand mode / data validity / [FA] مود دستی و اعتبار داده */
 #define ESP_LOG_CHG_DEAD    0x0200u   /* [EN] condemned-battery verdict / [FA] حکم باتری خراب */
 #define ESP_LOG_CHG_VSTEP   0x0400u   /* [EN] pack voltage moved a visible step / [FA] ولتاژ پک یک پلهٔ محسوس جابه‌جا شد */
+#define ESP_LOG_CHG_CLOCK   0x0800u   /* [EN] the browser moved the clock / [FA] مرورگر ساعت را جابه‌جا کرد */
 
 /* ==================== Notes / یادداشت ردیف ==================== */
 #define ESP_LOG_NOTE_NONE      0u
@@ -573,13 +579,33 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
     {
         int32_t__tzSec = 0;
     }
+    /* [EN] The browser is the boss of the clock (user order 2026-10-27): every
+            time a page connects, the clock becomes the time of that machine. A
+            small difference is a normal re-sync and stays silent. A big one - a
+            wrong clock from yesterday, a phone in another country, a board that
+            was off for a day - is applied AND written as its own row, so the
+            jump in the history always explains itself.
+       [FA] مرورگر ارباب ساعت است (دستور کاربر ۲۰۲۶-۱۰-۲۷): هر بار صفحه وصل
+            شود، ساعت همان دستگاه می‌شود. اختلاف کوچک یک هم‌زمان‌سازی معمولی
+            است و بی‌صدا می‌ماند. اختلاف بزرگ - ساعت غلطِ دیروز، گوشی در کشور
+            دیگر، یا بردی که یک روز خاموش بوده - هم اعمال می‌شود و هم ردیف خودش
+            را می‌نویسد تا پرشِ تاریخ در تاریخچه توضیح داشته باشد. */
     if (BOOL__G__LogClockValid != false)
     {
         uint32_t__nowSec = func__EspLog_NowSec();
         if ((uint32_t__nowSec > uint32_t__epochSec) &&
             ((uint32_t__nowSec - uint32_t__epochSec) > ESP_LOG_CLOCK_REWIND_SEC))
         {
-            return false;
+            BOOL__G__LogClockJumpPending = true;
+        }
+        else if ((uint32_t__epochSec > uint32_t__nowSec) &&
+                 ((uint32_t__epochSec - uint32_t__nowSec) > ESP_LOG_CLOCK_REWIND_SEC))
+        {
+            BOOL__G__LogClockJumpPending = true;
+        }
+        else
+        {
+            /* normal re-sync: a few seconds, nothing to report */
         }
     }
     UINT32_T__G__LogAnchorSec = uint32_t__epochSec;
@@ -1794,6 +1820,14 @@ static void func__EspLog_Tick(void)
         (void)func__EspLog_WriteRow(ESP_LOG_CHG_BOOT,
                                     (UINT8_T__G__LogPrevNote != 0u) ?
                                     ESP_LOG_NOTE_LOW_STOP : ESP_LOG_NOTE_NONE);
+    }
+
+    /* [EN] The clock moved by more than a re-sync: say it in the history.
+       [FA] ساعت بیش از یک هم‌زمان‌سازی جابه‌جا شد: در تاریخچه گفته می‌شود. */
+    if (BOOL__G__LogClockJumpPending != false)
+    {
+        BOOL__G__LogClockJumpPending = false;
+        func__EspLog_Queue(ESP_LOG_CHG_CLOCK, ESP_LOG_NOTE_NONE);
     }
 
     func__EspLog_FlushPending();

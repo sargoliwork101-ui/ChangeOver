@@ -554,7 +554,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0d8bd05</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build dc9ece1</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -581,7 +581,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <div class="cd" id="logcd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل می‌ماند و تا ۳۰ روز نگه داشته می‌شود. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای» نوشته می‌شود.<br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
+<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">امروز</option></select></label>
 <button class="sb" type="button" onclick="evtfetch(1)">به‌روزرسانی</button>
@@ -4457,6 +4457,7 @@ function evtRowText(r){
     add('قفل و وضعیت: '+(t||'همه پاک شد'),(f2&(2|16))?3:((f2&(1|4|8|32|64))?2:1));
   }
   if(chg&1024){add('ولتاژ پک یک پلهٔ ۲۰۰ میلی‌ولتی جابه‌جا شد',0);}
+  if(chg&2048){add('ساعت با ساعت دستگاه شما تنظیم شد',0);}
   if(chg&64){add(r.v24<21200?'ولتاژ باتری به مرز قطع نزدیک شد':'ولتاژ باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
   if(chg&512){
     const who=((r.dm&3)===3)?'هر دو باتری':(((r.dm&1)!==0)?'باتری ۱':'باتری ۲');
@@ -4610,6 +4611,8 @@ async function evtclr(){
   catch(e){if($('evtst'))$('evtst').textContent='پاک نشد';}
 }
 evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
+addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
+addEventListener('online',()=>evtClock());
 setInterval(()=>{if(!document.hidden){evtDays();evtfetch(0);}},10000);
 
 setInterval(uview,250); /* v1.16: آینهٔ LED هر ۲۵۰ میلی‌ثانیه به‌روز می‌شود */

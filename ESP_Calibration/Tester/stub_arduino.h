@@ -209,6 +209,9 @@ struct StubWebServer {
     /* test helpers */
     void setArg(const char *n, const char *v) { args[n] = v; }
     void clearArgs(void) { args.clear(); }
+    /* [EN] query argument for the next call, so /clock?sec=.. can be tested.
+       [FA] پارامتر پرس‌وجو برای فراخوانی بعدی، تا /clock?sec=.. قابل تست باشد. */
+    void addArg(const char *k, const char *v) { args[k] = v; }
     bool has(const char *path, int method) {
         return routes.count(std::make_pair(std::string(path), method)) != 0;
     }

@@ -2090,6 +2090,8 @@ async function evtClear(){
  try{await fetch('/evt/clr',{method:'POST'});await evtDays();evtFetch(1);}catch(e){}
 }
 evtClock().then(()=>evtDays()).then(()=>evtFetch(0));setInterval(evtClock,60000);
+addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
+addEventListener('online',()=>evtClock());
 setInterval(()=>{if(!document.hidden){evtDays();evtFetch(0);}},10000);
 
 function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); setInterval(tickDiagClocks,1000); }
