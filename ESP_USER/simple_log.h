@@ -14,6 +14,13 @@ static uint32_t UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
 static uint16_t UINT16_T__G__LogRowsToday = 0u;
 static bool     BOOL__G__LogDayFull = false;
 static bool     BOOL__G__LogBootRowPending = true;
+/* [EN] 0 = the last flash write was verified. Anything else = failed writes
+        since the last good one. Same fix as the technical panel (2026-10-27):
+        a refused write must be reported, not swallowed.
+   [FA] صفر یعنی آخرین نوشتن روی فلش تأیید شد. هر مقدار دیگر یعنی تعداد
+        نوشتن‌های شکست‌خورده از آخرین نوشتن سالم. همان اصلاح پنل فنی
+        (۲۰۲۶-۱۰-۲۷): نوشتن ردشده باید گزارش شود، نه بی‌صدا دور ریخته. */
+static uint8_t  UINT8_T__G__LogWriteFault = 0u;
 
 /* ==================== وضعیت قبلی و تغییر در انتظار ==================== */
 static bool     BOOL__G__LogHasPrev = false;
@@ -146,6 +153,40 @@ static void func__SimpleLog_PathOf(char *char__ptr_path, uint32_t uint32_t__dayC
 
 /* ==================== فهرست روزها ==================== */
 
+/* [EN] Write one text piece and report whether every byte landed: File::print
+        already returns the count it really wrote, so a full flash is visible.
+   [FA] نوشتن یک تکه متن و گزارش این‌که همهٔ بایت‌ها نشستند: print تعداد واقعی
+        را برمی‌گرداند، پس فلش پر همین‌جا دیده می‌شود. */
+static bool func__SimpleLog_FileText(File &file__target, const char *char__text)
+{
+    size_t size_t__want;
+    size_t size_t__got;
+
+    if (char__text == NULL)
+    {
+        return false;
+    }
+    size_t__want = strlen(char__text);
+    if (size_t__want == 0u)
+    {
+        return true;
+    }
+    size_t__got = file__target.print(char__text);
+    return (size_t__got == size_t__want);
+}
+
+/* [EN] Remember the failure (saturating, so a flash that stays full cannot
+        wrap the counter back to "healthy").
+   [FA] ثبت خرابی (اشباع‌شونده، تا فلشی که پر می‌ماند شمارنده را به «سالم»
+        برنگرداند). */
+static void func__SimpleLog_FaultRaise(void)
+{
+    if (UINT8_T__G__LogWriteFault < 0xFFu)
+    {
+        UINT8_T__G__LogWriteFault++;
+    }
+}
+
 static void func__SimpleLog_IndexSave(void)
 {
     uint8_t uint8_t__slot;
@@ -161,7 +202,15 @@ static void func__SimpleLog_IndexSave(void)
     }
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
-        file__index.println((unsigned long)UINT32_T__G__LogIndexDay[uint8_t__slot]);
+        char char__number[16];
+
+        (void)snprintf(char__number, sizeof(char__number), "%08lu\n",
+                       (unsigned long)UINT32_T__G__LogIndexDay[uint8_t__slot]);
+        if (func__SimpleLog_FileText(file__index, char__number) == false)
+        {
+            func__SimpleLog_FaultRaise();
+            break;
+        }
     }
     file__index.close();
 }
@@ -276,6 +325,7 @@ static bool func__SimpleLog_OpenDay(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     bool bool__isNew;
+    bool bool__ok = true;
     bool bool__alreadyIndexed = false;
     uint32_t uint32_t__dayCode;
     uint8_t uint8_t__slot;
@@ -299,9 +349,13 @@ static bool func__SimpleLog_OpenDay(void)
     }
     if (bool__isNew)
     {
-        file__day.print(SIMPLE_LOG_HEADER);
+        bool__ok = func__SimpleLog_FileText(file__day, SIMPLE_LOG_HEADER);
     }
     file__day.close();
+    if (bool__ok == false)
+    {
+        func__SimpleLog_FaultRaise();
+    }
 
     UINT32_T__G__LogDayCode = uint32_t__dayCode;
     UINT16_T__G__LogRowsToday = func__SimpleLog_CountRows(char__ptr_path);
@@ -321,7 +375,7 @@ static bool func__SimpleLog_OpenDay(void)
         UINT8_T__G__LogIndexCount++;
         func__SimpleLog_TrimDays();
     }
-    return true;
+    return bool__ok;
 }
 
 /* ==================== نوشتن ردیف ==================== */
@@ -370,6 +424,25 @@ static uint8_t func__SimpleLog_Pct(uint32_t uint32_t__batteryMv)
     return (uint8_t)(((uint32_t__batteryMv - uint32_t__vminMv) * 100u) / uint32_t__rangeMv);
 }
 
+/* [EN] A refused write is not a lost row: it goes to the RAM ring.
+   [FA] نوشتن ردشده یعنی ردیف گم‌شده نیست: به حلقهٔ رم می‌رود. */
+static void func__SimpleLog_RamPush(const char *char__row)
+{
+    if (char__row == NULL)
+    {
+        return;
+    }
+    (void)strncpy(CHAR__G__LogRamRow[UINT8_T__G__LogRamHead],
+                  char__row,
+                  SIMPLE_LOG_RAM_ROW_MAX - 1u);
+    CHAR__G__LogRamRow[UINT8_T__G__LogRamHead][SIMPLE_LOG_RAM_ROW_MAX - 1u] = '\0';
+    UINT8_T__G__LogRamHead = (uint8_t)((UINT8_T__G__LogRamHead + 1u) % SIMPLE_LOG_RAM_ROWS);
+    if (UINT8_T__G__LogRamCount < SIMPLE_LOG_RAM_ROWS)
+    {
+        UINT8_T__G__LogRamCount++;
+    }
+}
+
 static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -377,6 +450,7 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     uint32_t uint32_t__nowSec;
     uint32_t uint32_t__uptimeSec;
     uint8_t uint8_t__mains;
+    bool bool__stored = false;
 
     if ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
         (BOOL__G__LogDayFull != false))
@@ -416,39 +490,55 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
 
     if (BOOL__G__FsOk != false)
     {
-        if (func__SimpleLog_OpenDay() == false)
+        if (func__SimpleLog_OpenDay() != false)
         {
-            return false;
-        }
-        if ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
-            (BOOL__G__LogDayFull != false))
-        {
-            BOOL__G__LogDayFull = true;
-            return false;
-        }
-        func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogDayCode);
-        File file__day = LittleFS.open(char__ptr_path, "a");
-        if (!file__day)
-        {
-            return false;
-        }
-        file__day.println(char__row);
-        file__day.close();
-    }
-    else
-    {
-        (void)strncpy(CHAR__G__LogRamRow[UINT8_T__G__LogRamHead],
-                      char__row,
-                      SIMPLE_LOG_RAM_ROW_MAX - 1u);
-        CHAR__G__LogRamRow[UINT8_T__G__LogRamHead][SIMPLE_LOG_RAM_ROW_MAX - 1u] = '\0';
-        UINT8_T__G__LogRamHead = (uint8_t)((UINT8_T__G__LogRamHead + 1u) % SIMPLE_LOG_RAM_ROWS);
-        if (UINT8_T__G__LogRamCount < SIMPLE_LOG_RAM_ROWS)
-        {
-            UINT8_T__G__LogRamCount++;
+            if ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
+                (BOOL__G__LogDayFull != false))
+            {
+                BOOL__G__LogDayFull = true;
+                return false;
+            }
+            func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogDayCode);
+            File file__day = LittleFS.open(char__ptr_path, "a");
+            if (file__day)
+            {
+                bool__stored = func__SimpleLog_FileText(file__day, char__row);
+                if (bool__stored != false)
+                {
+                    bool__stored = func__SimpleLog_FileText(file__day, "\n");
+                }
+                file__day.close();
+            }
         }
     }
 
-    UINT16_T__G__LogRowsToday++;
+    if ((bool__stored == false) || (BOOL__G__FsOk == false))
+    {
+        func__SimpleLog_RamPush(char__row);
+    }
+    if (BOOL__G__FsOk != false)
+    {
+        if (bool__stored != false)
+        {
+            UINT8_T__G__LogWriteFault = 0u;
+        }
+        else
+        {
+            func__SimpleLog_FaultRaise();
+        }
+    }
+
+    /* [EN] the row counter is the day-file cap, so it only grows when the file
+            really grew; with the file system off it keeps its old meaning.
+       [FA] شمارندهٔ ردیف سقف فایل روز است، پس فقط با بزرگ شدن واقعی فایل بالا
+            می‌رود؛ با فایل‌سیستم خاموش همان معنای قبلی را دارد. */
+    if ((bool__stored != false) || (BOOL__G__FsOk == false))
+    {
+        if (UINT16_T__G__LogRowsToday < 0xFFFFu)
+        {
+            UINT16_T__G__LogRowsToday++;
+        }
+    }
     if ((uint16_t__changeMask & SIMPLE_LOG_CHG_VSTEP) != 0u)
     {
         UINT32_T__G__LogLastStepMs = (uint32_t)millis();
@@ -790,6 +880,7 @@ static void func__SimpleLog_Tick(void)
 
 static void func__SimpleLog_Begin(void)
 {
+    UINT8_T__G__LogWriteFault = 0u;
     if (BOOL__G__FsOk == false)
     {
         return;
@@ -797,9 +888,78 @@ static void func__SimpleLog_Begin(void)
     func__SimpleLog_IndexLoad();
 }
 
-static uint16_t func__SimpleLog_RowsOf(const char *char__ptr_path)
+/* [EN] Where does the window of the newest rows start? It walks BACKWARD from
+        the end of the file, so the buffer limit is spent on the NEWEST rows:
+        a busy day shows its last rows, never its first ones.
+   [FA] پنجرهٔ جدیدترین ردیف‌ها از کجا شروع می‌شود؟ از انتهای فایل عقب‌عقب
+        می‌رود، پس سقف بافر خرجِ جدیدترین ردیف‌ها می‌شود: روز شلوغ ردیف‌های
+        آخرش را نشان می‌دهد، نه ردیف‌های اولش. */
+static uint32_t func__SimpleLog_TailStart(File &file__day,
+                                          uint32_t uint32_t__size,
+                                          uint16_t uint16_t__maxRows,
+                                          size_t size_t__budget)
 {
-    return func__SimpleLog_CountRows(char__ptr_path);
+    uint32_t uint32_t__offset = uint32_t__size;
+    uint32_t uint32_t__lines = 0u;
+    uint32_t uint32_t__bytes = 0u;
+    bool bool__cutMidRow = false;
+
+    while (uint32_t__offset > 0u)
+    {
+        int int__ch;
+
+        uint32_t__offset--;
+        if (file__day.seek(uint32_t__offset) == false)
+        {
+            return 0u;
+        }
+        int__ch = file__day.read();
+        if (int__ch < 0)
+        {
+            return 0u;
+        }
+        uint32_t__bytes++;
+        /* [EN] the last character of a normal file closes the newest row; it
+                is not a row of its own.
+           [FA] آخرین کاراکتر فایل عادی، جدیدترین ردیف را می‌بندد؛ خودش ردیف
+                نیست. */
+        if ((int__ch == '\n') && (uint32_t__bytes > 1u))
+        {
+            uint32_t__lines++;
+            if (uint32_t__lines >= (uint32_t)uint16_t__maxRows)
+            {
+                uint32_t__offset++;
+                return uint32_t__offset;
+            }
+        }
+        if (uint32_t__bytes >= (uint32_t)size_t__budget)
+        {
+            bool__cutMidRow = true;
+            break;
+        }
+    }
+
+    if ((bool__cutMidRow != false) && (uint32_t__offset > 0u))
+    {
+        /* [EN] the budget ran out inside a row: drop that half row.
+           [FA] بودجه وسط یک ردیف تمام شد: همان نیم‌ردیف دور ریخته می‌شود. */
+        while (uint32_t__offset < uint32_t__size)
+        {
+            int int__ch;
+
+            if (file__day.seek(uint32_t__offset) == false)
+            {
+                return 0u;
+            }
+            int__ch = file__day.read();
+            uint32_t__offset++;
+            if (int__ch == '\n')
+            {
+                break;
+            }
+        }
+    }
+    return uint32_t__offset;
 }
 
 static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
@@ -807,9 +967,6 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     size_t size_t__used = 0u;
-    uint16_t uint16_t__total;
-    uint16_t uint16_t__skip;
-    uint16_t uint16_t__index = 0u;
     uint32_t uint32_t__chosen = uint32_t__dayCode;
 
     if ((char__ptr_out == NULL) || (size_t__outSize < 2u))
@@ -818,7 +975,12 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
     }
     char__ptr_out[0] = '\0';
 
-    if (BOOL__G__FsOk == false)
+    /* [EN] No file system, or a flash that refused the last writes: the newest
+            rows are the ones in RAM, so serve them instead of an empty card.
+       [FA] فایل‌سیستم نیست، یا فلشی که آخرین نوشتن‌ها را نپذیرفت: جدیدترین
+            ردیف‌ها در رم‌اند، پس همان‌ها نشان داده می‌شوند نه کارت خالی. */
+    if ((BOOL__G__FsOk == false) ||
+        ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u)))
     {
         uint8_t uint8_t__start;
         uint8_t uint8_t__count = UINT8_T__G__LogRamCount;
@@ -876,34 +1038,46 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
         return 0u;
     }
 
-    uint16_t__total = func__SimpleLog_RowsOf(char__ptr_path);
-    uint16_t__skip = (uint16_t__total > uint16_t__maxLines) ?
-                     (uint16_t)(uint16_t__total - uint16_t__maxLines) : 0u;
-
     File file__day = LittleFS.open(char__ptr_path, "r");
     if (!file__day)
     {
         return 0u;
     }
+    {
+        uint32_t uint32_t__size = (uint32_t)file__day.size();
+        uint32_t uint32_t__start;
+
+        if (uint32_t__size == 0u)
+        {
+            file__day.close();
+            return 0u;
+        }
+        uint32_t__start = func__SimpleLog_TailStart(file__day, uint32_t__size,
+                                                    uint16_t__maxLines,
+                                                    size_t__outSize - 2u);
+        if (file__day.seek(uint32_t__start) == false)
+        {
+            file__day.close();
+            return 0u;
+        }
+    }
     while (file__day.available())
     {
         String string__line = file__day.readStringUntil('\n');
+        size_t size_t__len;
+
         string__line.trim();
         if ((string__line.length() == 0u) || (string__line[0] == '#'))
         {
             continue;
         }
-        if (uint16_t__index < uint16_t__skip)
-        {
-            uint16_t__index++;
-            continue;
-        }
-        if ((size_t__used + string__line.length() + 2u) >= size_t__outSize)
+        size_t__len = (size_t)string__line.length();
+        if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
         {
             break;
         }
-        (void)memcpy(&char__ptr_out[size_t__used], string__line.c_str(), string__line.length());
-        size_t__used += string__line.length();
+        (void)memcpy(&char__ptr_out[size_t__used], string__line.c_str(), size_t__len);
+        size_t__used += size_t__len;
         char__ptr_out[size_t__used] = '\n';
         size_t__used++;
         char__ptr_out[size_t__used] = '\0';
@@ -940,6 +1114,7 @@ static uint8_t func__SimpleLog_Clear(void)
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
+    UINT8_T__G__LogWriteFault = 0u;
     return uint8_t__removed;
 }
 

@@ -946,12 +946,33 @@ static void func__Esp_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t__pt
  *         [FA] مسیر ‎GET /evt‎ : آخرین ردیف‎های یک روز به‌صورت متن CSV.
  * @return [EN] None / [FA]‎ ندارد
  */
+/* [EN] Where the rows of this answer come from, for the panel banner:
+        1 = the flash, 0 = the file system is off, 2 = a flash write failed and
+        the newest rows are the ones kept in RAM. Without the third value the
+        page could not tell "nothing happened" from "I could not write".
+   [FA] ردیف‌های این پاسخ از کجا می‌آیند، برای نوار هشدار پنل:
+        ۱ یعنی فلش، ۰ یعنی فایل‌سیستم خاموش، ۲ یعنی نوشتن روی فلش شکست خورد و
+        جدیدترین ردیف‌ها در رم‌اند. بدون مقدار سوم، صفحه نمی‌توانست «چیزی
+        نشده» را از «نتوانستم بنویسم» جدا کند. */
+static const char *func__Esp_LogSourceCode(void)
+{
+    if (BOOL__G__FsOk == false)
+    {
+        return "0";   /* ESP_LOG_FS_OFF */
+    }
+    if (UINT8_T__G__LogWriteFault != 0u)
+    {
+        return "2";   /* ESP_LOG_FS_WRITE_FAULT */
+    }
+    return "1";       /* ESP_LOG_FS_OK */
+}
+
 static void func__Esp_HttpEventLog(void)
 {
     bool bool__hasDay = false;
     uint32_t uint32_t__day = ESP_LOG_DAY_AUTO;
 
-    ESP_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs", BOOL__G__FsOk ? "1" : "0");
+    ESP_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs", func__Esp_LogSourceCode());
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     func__Esp_ParseDayArg(&bool__hasDay, &uint32_t__day);
     if ((bool__hasDay != false) && (uint32_t__day == 0u))
@@ -970,6 +991,7 @@ static void func__Esp_HttpEventLog(void)
  */
 static void func__Esp_HttpEventDays(void)
 {
+    ESP_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs", func__Esp_LogSourceCode());
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     (void)func__EspLog_Days(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
     ESP_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);

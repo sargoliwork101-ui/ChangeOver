@@ -554,7 +554,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b4b8e81</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 08b05f8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4521,10 +4521,12 @@ function evtParse(line){
    جدا نگه داشته می‌شود تا متن قاطی نشود. */
 const xiso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
 const xspr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+xiso(x)+'</span>').join('');
-function evtRender(text,code,ram){
+function evtRender(text,code,ram,src){
   const box=$('evtlist'),sum=$('evtsum');
   const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
-  const fsWarn=ram?'<span class="y">حافظهٔ موقت رم — برای ماندگاری پس از قطع برق، چیدمان فلش دارای فایل‌سیستم انتخاب شود</span>':'';
+  /* v1.113: src 0 = no file system, 2 = the flash refused the write. */
+  const fsWarn=(src==='2')?'<span class="r">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
+              :(ram?'<span class="y">حافظهٔ موقت رم — برای ماندگاری پس از قطع برق، چیدمان فلش دارای فایل‌سیستم انتخاب شود</span>':'');
   rows.forEach(r=>{r.band=r.v24<21200;});
   if(sum)sum.innerHTML=fsWarn;
   if(!rows.length){
@@ -4545,12 +4547,14 @@ async function evtfetch(manual){
   const day=($('evtday')&&$('evtday').value.trim())||'';
   try{
     const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
-    const ram=!!(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs')==='0');
+    const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
+    const ram=(src==='0'||src==='2');
     const t=await r.text();
-    evtRender(t,day,ram);
+    evtRender(t,day,ram,src);
     if($('evtst')){
       const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;
-      $('evtst').textContent=(ram?'حافظهٔ موقت · ':'')+evtDayFa(day||evtToday())+' · '+n+' خط';
+      const where=(src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':'');
+      $('evtst').textContent=where+evtDayFa(day||evtToday())+' · '+n+' خط';
     }
   }catch(e){ if($('evtst'))$('evtst').textContent='خواندن نشد'; }
 }

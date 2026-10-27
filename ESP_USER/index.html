@@ -1981,7 +1981,8 @@ function evtRenderFa(text,day,ram){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
- const fsWarn=ram?'<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">حافظهٔ موقت رم — چیدمان فلش دارای FS انتخاب شود</span>':'';
+ const fsWarn=(src==='2')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
+  :(ram?'<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">حافظهٔ موقت رم — چیدمان فلش دارای FS انتخاب شود</span>':'');
  if(sum)sum.innerHTML=fsWarn;
  if(!rows.length){
   box.innerHTML='<span style="color:var(--mu)">'+(day?'برای این روز هنوز چیزی ثبت نشده است.':'امروز هنوز چیزی ثبت نشده است؛ به‌محض اولین تغییر خط اول همین‌جا نوشته می‌شود.')+'</span>';
@@ -2031,11 +2032,12 @@ async function evtFetch(manual){
  const day=sel?sel.value.trim():'';
  try{
   const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
-  const ram=!!(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs')==='0');
+  const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
+  const ram=(src==='0'||src==='2');
   const t=await r.text();
   evtRenderFa(t,day,ram);
   const st=document.getElementById('evtSt');
-  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=(ram?'حافظهٔ موقت · ':'')+evtDayFa(day||evtToday())+' · '+n+' خط';}
+  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط';}
  }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='خواندن نشد';}
 }
 async function evtDays(){

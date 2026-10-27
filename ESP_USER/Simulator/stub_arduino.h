@@ -287,6 +287,11 @@ private:
 extern SimSerialLink Serial;
 
 /* ==================== File و LittleFS: پوشه‌ای روی دیسک ==================== */
+/* روشن‌کردن این کلید یعنی «فلش پر است»: هر نوشتن صفر بایت می‌نویسد، همان
+   چیزی که print روی برد واقعی وقتی حافظه پر است برمی‌گرداند. بدون آن، هیچ
+   تستی نمی‌توانست مسیر «فلش نپذیرفت» را بیازماید. */
+static bool SIM_BOOL__G__RefuseWrites = false;
+
 class File
 {
 public:
@@ -304,6 +309,7 @@ public:
     size_t print(const char *char__ptr_text)
     {
         if ((handle == NULL) || (char__ptr_text == NULL)) { return 0u; }
+        if (SIM_BOOL__G__RefuseWrites) { return 0u; }
         return fwrite(char__ptr_text, 1u, strlen(char__ptr_text), handle);
     }
     size_t print(const String &string__text) { return print(string__text.c_str()); }
@@ -334,6 +340,7 @@ public:
     }
     size_t println(const char *char__ptr_text)
     {
+        if (SIM_BOOL__G__RefuseWrites) { return 0u; }
         size_t size_t__written = print(char__ptr_text);
         if ((handle != NULL) && (fputc('\n', handle) != EOF)) { size_t__written++; }
         return size_t__written;
@@ -341,6 +348,7 @@ public:
     size_t println(const String &string__text) { return println(string__text.c_str()); }
     size_t println(unsigned long unsigned_long__value)
     {
+        if (SIM_BOOL__G__RefuseWrites) { return 0u; }
         size_t size_t__written = print(unsigned_long__value);
         if ((handle != NULL) && (fputc('\n', handle) != EOF)) { size_t__written++; }
         return size_t__written;
@@ -355,6 +363,22 @@ public:
         (void)fseek(handle, long__here, SEEK_SET);
         if (long__end < long__here) { return 0; }
         return (int)(long__end - long__here);
+    }
+    /* [EN] seek()/read(): the real ESP8266 File has both, and the log reads the
+            newest rows by walking backward from the end of the file. A stub
+            without them would have hidden that path from every host test.
+       [FA] seek و read: کلاس File روی خود ESP8266 هر دو را دارد و لاگ
+            جدیدترین ردیف‌ها را با عقب‌رفتن از انتهای فایل می‌خواند. استابِ
+            بدون این دو، آن مسیر را از همهٔ تست‌های هاست پنهان می‌کرد. */
+    bool seek(uint32_t uint32_t__pos)
+    {
+        if (handle == NULL) { return false; }
+        return fseek(handle, (long)uint32_t__pos, SEEK_SET) == 0;
+    }
+    int read(void)
+    {
+        if (handle == NULL) { return -1; }
+        return fgetc(handle);
     }
     size_t size(void)
     {

@@ -1564,6 +1564,189 @@ int main(void)
         BOOL__G__FsOk = true;
     }
 
+    /* ---- 33. a flash that refuses the row is REPORTED (2026-10-27) ------
+       [EN] Why this block: the user reported "the event log never comes up",
+            and the card said "nothing has been recorded yet". The old module
+            threw away the byte count that File::print already returns, so a
+            flash that refused the write lost the row in silence - the panel
+            had no way to tell "no event" from "no memory". These checks make
+            a full flash happen on purpose and pin the three promises of the
+            rewrite: the row is not lost, the failure is reported to the page,
+            and the first good write clears the report again.
+       [FA] چرا این بخش: کاربر گفت «لاگ‌گیری بالا نمی‌آید» و کارت می‌گفت
+            «هنوز چیزی ثبت نشده». ماژول قبلی تعداد بایتی را که print برمی‌گرداند
+            دور می‌ریخت، پس فلشی که نوشتن را رد می‌کرد ردیف را بی‌صدا از بین
+            می‌برد و پنل نمی‌توانست «اتفاقی نیفتاد» را از «حافظه نپذیرفت» جدا
+            کند. این بررسی‌ها فلش پر را عمداً می‌سازند و سه قول بازنویسی را
+            میخ می‌کنند: ردیف گم نمی‌شود، خرابی به صفحه گزارش می‌شود، و اولین
+            نوشتن سالم گزارش را پاک می‌کند. */
+    {
+        LittleFS.failWrites = false;
+        (void)ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        BOOL__G__LogMainsQueuedValid = false;
+        BOOL__G__LogClockValid = true;
+        INT32_T__G__LogTzSec = 12600;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        BOOL__G__TlmSeen = false;
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+
+        /* the clock is fine, the flash is not: every write is refused */
+        LittleFS.failWrites = true;
+        func__EspLog_Tick();
+        check(UINT8_T__G__LogWriteFault != 0u,
+              "a refused flash write raises the report instead of vanishing",
+              std::to_string((int)UINT8_T__G__LogWriteFault));
+        check(UINT8_T__G__LogRamCount == 1u,
+              "the row the flash refused is kept in the RAM ring",
+              std::to_string((int)UINT8_T__G__LogRamCount));
+        check(UINT16_T__G__LogRowsToday == 0u,
+              "a file that did not grow is not counted as a full day");
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs") == "2",
+              "GET /evt tells the page that the flash refused the write",
+              ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
+        check(!ESP_WEB_SERVER_T__G__Server.lastBody.empty() &&
+              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              "and the refused boot row is still readable under that banner - not an empty card");
+
+        /* the flash works again: the next change lands on flash and clears it */
+        LittleFS.failWrites = false;
+        std::vector<uint8_t> seed = tlm_payload_v24(250u, 24000u);
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, seed));
+        std::vector<uint8_t> mainsBack = tlm_payload_v24(251u, 24000u);
+        mainsBack[2] = 0x02u;
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, mainsBack));
+        check(UINT8_T__G__LogWriteFault == 0u,
+              "the first good write clears the report, so no banner stays on a healthy flash");
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "and that row is in the day file, which now really grew",
+              std::to_string(UINT16_T__G__LogRowsToday));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs") == "1",
+              "the page is told the rows come from the flash again",
+              ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
+        check(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 2L,
+              "and the row it reads back is the mains change, not the old boot row",
+              std::to_string(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u)));
+    }
+
+    /* ---- 34. a busy day shows the NEWEST rows, never the oldest ---------
+       [EN] Why this block: the answer buffer holds 3,600 bytes and 30 rows are
+            asked for; a busy day's 30 rows are bigger than that. The old
+            reader filled the buffer from the OLDEST row of the window and then
+            stopped, so the newest rows - the ones the operator opens the page
+            for - were the ones thrown away. Here a 40-row day is written on
+            purpose and the answer must contain the last rows and none of the
+            first ones.
+       [FA] چرا این بخش: بافر پاسخ ۳٬۶۰۰ بایت است و ۳۰ ردیف خواسته می‌شود؛
+            ۳۰ ردیف یک روز شلوغ از این بزرگ‌تر است. خوانندهٔ قبلی بافر را از
+            قدیمی‌ترین ردیف پنجره پر می‌کرد و بعد می‌ایستاد، پس جدیدترین
+            ردیف‌ها - همان‌هایی که کاربر برایشان صفحه را باز می‌کند - دور
+            ریخته می‌شدند. اینجا عمداً یک روز ۴۰ ردیفی نوشته می‌شود و پاسخ
+            باید ردیف‌های آخر را داشته باشد و هیچ‌کدام از اول‌ها را نه. */
+    {
+        LittleFS.failWrites = false;
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogClockValid = true;
+        INT32_T__G__LogTzSec = 12600;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+
+        const uint32_t busyDay = func__EspLog_TodayCode();
+        char busyPath[32];
+        (void)snprintf(busyPath, sizeof busyPath, "/evt-%08lu.csv",
+                       (unsigned long)busyDay);
+
+        /* ~200 bytes a row, 40 rows: far beyond the 3,600-byte answer */
+        std::string busy = ESP_LOG_HEADER;
+        char oneRow[256];
+        for (int k = 1; k <= 40; k++) {
+            (void)snprintf(oneRow, sizeof oneRow,
+                           "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%d\n",
+                           4000000000UL + (unsigned long)k, 4000000000UL,
+                           (unsigned)1024, (unsigned)(100 + k), (unsigned)1,
+                           (unsigned)255, 4294967295UL, 4294967295UL, 4294967295UL,
+                           (unsigned)255, 4294967295UL, 4294967295UL, 4294967295UL,
+                           4294967295UL, 4294967295UL, 4294967295UL, 4294967295UL,
+                           4294967295UL, 4294967295UL, 4294967295UL, 4294967295UL,
+                           k);
+            busy += oneRow;
+        }
+        check(busy.size() > 7000u,
+              "the test wrote a day far bigger than the answer buffer",
+              std::to_string(busy.size()));
+        LittleFS.files[std::string(busyPath)] = busy;
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        const std::string answer = ESP_WEB_SERVER_T__G__Server.lastBody;
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 && !answer.empty(),
+              "GET /evt answers a busy day with rows");
+        check(answer.size() <= 3600u,
+              "the answer stays inside its own buffer (nothing overflows)",
+              std::to_string(answer.size()));
+
+        /* the newest row, byte for byte, is the LAST line of the answer */
+        std::string lastLine = answer;
+        if (!lastLine.empty() && lastLine[lastLine.size() - 1u] == '\n') {
+            lastLine.erase(lastLine.size() - 1u);
+        }
+        const size_t lastBreak = lastLine.rfind('\n');
+        if (lastBreak != std::string::npos) lastLine = lastLine.substr(lastBreak + 1u);
+        std::string newestRow = oneRow;
+        if (!newestRow.empty() && newestRow[newestRow.size() - 1u] == '\n') {
+            newestRow.erase(newestRow.size() - 1u);
+        }
+        check(lastLine == newestRow,
+              "the newest row of the day is the last line of the answer, complete",
+              lastLine.substr(0u, 40u));
+
+        size_t lines = 0u;
+        for (size_t k = 0u; k < answer.size(); k++) {
+            if (answer[k] == '\n') lines++;
+        }
+        check(lines > 0u && lines < 40u,
+              "the answer holds only what fits, not all forty rows",
+              std::to_string(lines));
+
+        /* and it is the tail: the first row of the file must be gone */
+        check(row_field(answer, 0u, 3u) > 100L,
+              "the first row of the answer is NOT row 1 of the file - the oldest are the ones dropped",
+              std::to_string(row_field(answer, 0u, 3u)));
+        check(answer.find(",101,") == std::string::npos,
+              "row 1 of the file is nowhere in the answer");
+        check(answer.find(",140,") != std::string::npos,
+              "row 40 of the file is in the answer");
+    }
+
     /* ---- two-sided handshake (v1.111) -----------------------------------
        [EN] Why this block: until v1.111 the only sign of a link was telemetry
             arriving, which proves the board talks but not that the panel is

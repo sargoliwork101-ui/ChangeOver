@@ -163,9 +163,18 @@ struct StubWebServer {
     typedef void (*handler_t)(void);
     std::map<std::pair<std::string, int>, handler_t> routes;
     std::map<std::string, std::string> args;
+    /* [EN] every header of the last answer, so a test can ask for
+            X-Log-Fs even when a later sendHeader overwrote the last one.
+       [FA] همهٔ سرصفحه‌های آخرین پاسخ، تا تست بتواند X-Log-Fs را بپرسد حتی
+            وقتی sendHeader بعدی آخری را نوشته باشد. */
+    std::map<std::string, std::string> headers;
     int lastCode = 0;
     std::string lastType, lastBody, lastHeaderKey, lastHeaderVal;
     int sendCount = 0;
+    std::string header(const char *k) {
+        std::map<std::string, std::string>::iterator it = headers.find(std::string(k));
+        return (it == headers.end()) ? std::string() : it->second;
+    }
 
     StubWebServer(int = 80) {}
     void begin(void) {}
@@ -173,7 +182,9 @@ struct StubWebServer {
     void on(const char *path, handler_t h) { routes[std::make_pair(std::string(path), (int)HTTP_GET)] = h; }
     void on(const char *path, int method, handler_t h) { routes[std::make_pair(std::string(path), method)] = h; }
     void onNotFound(handler_t) {}
-    void sendHeader(const char *k, const char *v) { lastHeaderKey = k; lastHeaderVal = v; }
+    void sendHeader(const char *k, const char *v) {
+        lastHeaderKey = k; lastHeaderVal = v; headers[k] = v;
+    }
     void setContentLength(size_t) {}
     void send(int code, const char *type, const String &body) {
         lastCode = code; lastType = type ? type : ""; lastBody = body.s; sendCount++;
@@ -205,7 +216,7 @@ struct StubWebServer {
         std::map<std::pair<std::string, int>, handler_t>::iterator it =
             routes.find(std::make_pair(std::string(path), method));
         if (it == routes.end()) return false;
-        lastCode = 0; lastBody.clear();
+        lastCode = 0; lastBody.clear(); headers.clear();
         it->second();
         return true;
     }
@@ -215,19 +226,32 @@ typedef StubWebServer ESP8266WebServer;
 /* ---------------- LittleFS: one in-memory file ---------------------------*/
 struct StubFile {
     std::string *buf = nullptr;
+    /* [EN] Set by StubFS::failWrites: a real File::print returns the bytes it
+            really wrote, and a full flash returns 0. Without this switch no
+            host test could ever exercise the path that the user's panel was
+            stuck in ("the flash refused the row and nobody noticed").
+       [FA] با StubFS::failWrites روشن می‌شود: print روی برد واقعی تعداد بایت
+            نوشته‌شده را برمی‌گرداند و فلش پر صفر می‌دهد. بدون این کلید هیچ
+            تست هاستی نمی‌توانست همان مسیری را بیازماید که پنل کاربر در آن
+            گیر کرده بود («فلش ردیف را نپذیرفت و کسی ندید»). */
+    const bool *fail = nullptr;
     size_t pos = 0;
     bool ok = false;
     operator bool() const { return ok; }
     size_t size(void) const { return buf ? buf->size() : 0; }
+    bool refuse(void) const { return (fail != nullptr) && (*fail); }
     size_t write(const uint8_t *p, size_t n) {
+        if (refuse()) return 0u;
         if (buf) buf->append((const char *)p, n);
         return n;
     }
     size_t print(const char *s) {
+        if ((s != NULL) && refuse()) return 0u;
         if ((buf != NULL) && (s != NULL)) buf->append(s);
         return (s != NULL) ? strlen(s) : 0;
     }
     size_t print(const String &v) {       /* Arduino File::print(const String&) */
+        if (refuse()) return 0u;
         if (buf != NULL) buf->append(v.s);
         return v.s.size();
     }
@@ -235,10 +259,29 @@ struct StubFile {
     size_t print(long v) { char b[24]; snprintf(b, sizeof b, "%ld", v); return print(b); }
     size_t print(unsigned int v) { char b[24]; snprintf(b, sizeof b, "%u", v); return print(b); }
     size_t print(int v) { char b[24]; snprintf(b, sizeof b, "%d", v); return print(b); }
-    size_t println(const char *v) { size_t n = print(v); if (buf != NULL) buf->append("\n"); return n + 1u; }
-    size_t println(const String &v) { size_t n = print(v); if (buf != NULL) buf->append("\n"); return n + 1u; }
-    size_t println(unsigned long v) { size_t n = print(v); if (buf != NULL) buf->append("\n"); return n + 1u; }
-    size_t println(void) { if (buf != NULL) buf->append("\n"); return 1u; }
+    size_t println(const char *v) {
+        if (refuse()) return 0u;
+        size_t n = print(v);
+        if (buf != NULL) buf->append("\n");
+        return n + 1u;
+    }
+    size_t println(const String &v) {
+        if (refuse()) return 0u;
+        size_t n = print(v);
+        if (buf != NULL) buf->append("\n");
+        return n + 1u;
+    }
+    size_t println(unsigned long v) {
+        if (refuse()) return 0u;
+        size_t n = print(v);
+        if (buf != NULL) buf->append("\n");
+        return n + 1u;
+    }
+    size_t println(void) {
+        if (refuse()) return 0u;
+        if (buf != NULL) buf->append("\n");
+        return 1u;
+    }
     int available(void) { return (buf != NULL && pos < buf->size()) ? (int)(buf->size() - pos) : 0; }
     String readString(void) {
         String r;
@@ -274,6 +317,9 @@ typedef StubFile File;
 struct StubFS {
     std::map<std::string, std::string> files;
     bool mounted = false;
+    /* [EN] true = every write is refused, exactly like a full flash.
+       [FA] روشن = هر نوشتن رد می‌شود، درست مثل فلش پر. */
+    bool failWrites = false;
     bool begin(bool = false) { mounted = true; return true; }
     bool format(void) { files.clear(); return true; }
     bool exists(const char *p) { return files.count(p) != 0; }
@@ -289,6 +335,7 @@ struct StubFS {
             files[key] = "";
         }
         f.buf = &files[key];
+        f.fail = &failWrites;
         f.ok = true;
         return f;
     }

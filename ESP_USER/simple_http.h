@@ -961,7 +961,10 @@ static void func__Simple_HttpEventLog(void)
     bool bool__hasDay = false;
     uint32_t uint32_t__day = SIMPLE_LOG_DAY_AUTO;
 
-    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs", BOOL__G__FsOk ? "1" : "0");
+    /* 0 = no file system, 2 = the flash refused the write (both are served
+       from the RAM ring), 1 = the rows come from the flash. */
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs",
+        (BOOL__G__FsOk == false) ? "0" : ((UINT8_T__G__LogWriteFault != 0u) ? "2" : "1"));
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     func__Simple_ParseDayArg(&bool__hasDay, &uint32_t__day);
     if ((bool__hasDay != false) && (uint32_t__day == 0u))

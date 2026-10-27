@@ -1009,6 +1009,115 @@ static void func__T_TestStateHistoryLog(void)
             BOOL__G__FsOk = true;
         }
     }
+
+    /* فلشی که نوشتن را رد می‌کند (۲۰۲۶-۱۰-۲۷): همان ایراد پنل فنی. ردیف
+       نباید گم شود، خرابی باید گزارش شود، و اولین نوشتن سالم گزارش را پاک
+       کند. */
+    {
+        (void)func__SimpleLog_Clear();
+        (void)LittleFS.remove("/evt-00000000.csv");
+        SIM_BOOL__G__RefuseWrites = true;
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__TlmFlags = 0x02u;
+        UINT32_T__G__TlmField[15] = 24000u;
+        func__Simple_TimeSet(1792756800u, false);
+
+        func__SimpleLog_Tick();
+        func__T_Check(UINT8_T__G__LogWriteFault != 0u,
+                      "نوشتن ردشده روی فلش گزارش می‌شود (شمارندهٔ خطا بالا می‌رود)");
+        func__T_Check(UINT8_T__G__LogRamCount == 1u,
+                      "ردیفی که فلش نپذیرفت در حلقهٔ رم می‌ماند و گم نمی‌شود");
+        {
+            char char__refused[512];
+            (void)func__SimpleLog_Tail(char__refused, sizeof(char__refused), SIMPLE_LOG_DAY_AUTO, 10u);
+            func__T_Check(strlen(char__refused) > 0u,
+                          "خواندن تاریخچه در همین حالت ردیف را نشان می‌دهد، نه کارت خالی");
+        }
+
+        SIM_BOOL__G__RefuseWrites = false;
+        UINT8_T__G__TlmFlags = 0x00u;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();   /* کاشتن وضعیت قبلی: برق شهر قطع */
+        UINT8_T__G__TlmFlags = 0x02u;   /* برق شهر آمد - یک تغییر واقعی */
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+        func__SimpleLog_OnFrame();
+        func__T_Check(UINT8_T__G__LogWriteFault == 0u,
+                      "اولین نوشتن سالم، گزارش خرابی را پاک می‌کند");
+        func__T_Check(UINT16_T__G__LogRowsToday >= 1u,
+                      "و آن ردیف واقعاً در فایل روز نشست");
+        (void)func__SimpleLog_Clear();
+    }
+
+    /* روز شلوغ: جدیدترین ردیف‌ها باید بیایند، نه قدیمی‌ترین‌ها */
+    {
+        const uint32_t uint32_t__busy = 20261005u;
+        char char__busyPath[SIMPLE_LOG_PATH_MAX];
+        func__SimpleLog_PathOf(char__busyPath, uint32_t__busy);
+        (void)LittleFS.remove(char__busyPath);
+        {
+            File file__busy = LittleFS.open(char__busyPath, "w");
+            std::string string__rows = SIMPLE_LOG_HEADER;
+            if (file__busy)
+            {
+                file__busy.print(string__rows.c_str());
+                for (int int__k = 1; int__k <= 40; int__k++)
+                {
+                    char char__one[220];
+                    snprintf(char__one, sizeof(char__one),
+                             "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%d\n",
+                             4000000000UL + (unsigned long)int__k, 4000000000UL,
+                             (unsigned)1024, (unsigned)(100 + int__k), (unsigned)1,
+                             (unsigned)255, 4294967295UL, 4294967295UL, 4294967295UL,
+                             (unsigned)255, 4294967295UL, 4294967295UL, 4294967295UL,
+                             4294967295UL, 4294967295UL, 4294967295UL, 4294967295UL,
+                             4294967295UL, 4294967295UL, 4294967295UL, 4294967295UL,
+                             int__k);
+                    file__busy.print(char__one);
+                }
+                file__busy.close();
+            }
+        }
+        {
+            char char__busyTail[512];
+            std::string string__got;
+            size_t size_t__lastBreak;
+
+            (void)func__SimpleLog_Tail(char__busyTail, sizeof(char__busyTail), uint32_t__busy, 30u);
+            string__got = char__busyTail;
+            func__T_Check(string__got.size() <= sizeof(char__busyTail),
+                          "پاسخ تاریخچه در بافر خودش می‌ماند");
+            func__T_Check(string__got.find(",140,") != std::string::npos,
+                          "جدیدترین ردیف روز شلوغ در پاسخ هست");
+            func__T_Check(string__got.find(",101,") == std::string::npos,
+                          "قدیمی‌ترین ردیف روز شلوغ دور ریخته می‌شود، نه جدیدترین");
+            std::string string__lastLine = string__got;
+            while ((!string__lastLine.empty()) &&
+                   (string__lastLine[string__lastLine.size() - 1u] == '\n'))
+            {
+                string__lastLine.erase(string__lastLine.size() - 1u);
+            }
+            size_t__lastBreak = string__lastLine.rfind('\n');
+            if (size_t__lastBreak != std::string::npos)
+            {
+                string__lastLine = string__lastLine.substr(size_t__lastBreak + 1u);
+            }
+            func__T_Check(string__lastLine.find(",140,") != std::string::npos,
+                          "آخرین خط پاسخ همان جدیدترین ردیف روز است (کامل، نه نصفه)");
+        }
+        (void)LittleFS.remove(char__busyPath);
+    }
     }
 }
 
