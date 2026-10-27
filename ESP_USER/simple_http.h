@@ -965,6 +965,10 @@ static void func__Simple_HttpEventLog(void)
        from the RAM ring), 1 = the rows come from the flash. */
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs",
         (BOOL__G__FsOk == false) ? "0" : ((UINT8_T__G__LogWriteFault != 0u) ? "2" : "1"));
+    /* ردیف‌هایی که حلقهٔ رم ناچار دور ریخت؛ صفحه همان عدد را نشان می‌دهد */
+    (void)snprintf(CHAR__G__LogLostText, sizeof(CHAR__G__LogLostText), "%u",
+                   (unsigned int)UINT16_T__G__LogDroppedRows);
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Lost", CHAR__G__LogLostText);
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     func__Simple_ParseDayArg(&bool__hasDay, &uint32_t__day);
     if ((bool__hasDay != false) && (uint32_t__day == 0u))

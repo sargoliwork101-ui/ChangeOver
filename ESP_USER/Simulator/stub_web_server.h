@@ -76,6 +76,10 @@ typedef void (*SimHttpHandler)(void);
 typedef bool (*SimResponseRewriter)(const char *char__ptr_uri, std::string &string__body);
 
 /* ==================== وب‌سرور ==================== */
+/* پایین‌تر تعریف می‌شود؛ simCall برای خواندن پارامترهای پرس‌وجو از آن استفاده می‌کند. */
+inline void func__Sim_ParsePairs(const std::string &string__text,
+                                 std::map<std::string, std::string> &map_string__out);
+
 class SimWebServerT
 {
 public:
@@ -139,6 +143,38 @@ public:
 
     const char *requestUri(void) const { return requestUriText.c_str(); }
     int requests(void) const { return requestCount; }
+
+    /* قلاب شبیه‌ساز: فراخوانی مسیر در همان فرآیند، بی‌سوکت.
+       تست هاست با این کار می‌تواند سرسطرها و بدنهٔ پاسخ را ببیند. */
+    void simClear(void)
+    {
+        args.clear();
+        headers.clear();
+        responseBody.clear();
+        status = 200;
+        contentType = "text/plain";
+    }
+    void simCall(const char *char__ptr_uri, int int__method, const char *char__ptr_query = "")
+    {
+        simClear();
+        requestUriText = (char__ptr_uri != NULL) ? char__ptr_uri : "/";
+        queryText = (char__ptr_query != NULL) ? char__ptr_query : "";
+        method = int__method;
+        if (!queryText.empty())
+        {
+            (void)func__Sim_ParsePairs(queryText, args);
+        }
+        dispatch();
+    }
+    std::string simHeader(const char *char__ptr_name) const
+    {
+        std::map<std::string, std::string>::const_iterator iterator__found;
+        std::string string__name = (char__ptr_name != NULL) ? char__ptr_name : "";
+
+        iterator__found = headers.find(string__name);
+        return (iterator__found != headers.end()) ? iterator__found->second : std::string();
+    }
+    const std::string &simBody(void) const { return responseBody; }
 
 private:
     struct Route

@@ -452,6 +452,14 @@
 #define ESP_LOG_MAINS_FLUSH_MS       250u    /* سقف انتظار ردیف برق شهر */
 #define ESP_LOG_LINK_TIMEOUT_MS     5000u    /* [EN] no frame = link lost / [FA] بی‌فریم یعنی قطع ارتباط */
 #define ESP_LOG_CLOCK_SAVE_MS       600000u  /* [EN] clock to flash every 10 min / [FA] ذخیرهٔ ساعت هر ۱۰ دقیقه */
+/* [EN] A phone time that would move the clock BACKWARD by more than this is
+        refused: two phones, a wrong timezone or a manual clock change must not
+        rewind the day and split the history into two files with the same rows
+        again. Same order as the simple panel, which uses 300 s.
+   [FA] زمانی که ساعت را بیش از این مقدار عقب ببرد رد می‌شود: دو گوشی، منطقهٔ
+        زمانی اشتباه یا تغییر دستی ساعت نباید روز را عقب ببرد و تاریخچه را دو
+        تکه کند. همان مرتبهٔ پنل ساده که ۳۰۰ ثانیه است. */
+#define ESP_LOG_CLOCK_REWIND_SEC    120u
 #define ESP_LOG_CLOCK_VALID_MIN     1700000000u /* [EN] below this the phone time is junk / [FA] کمتر از این یعنی زمان بی‌معنی */
 #define ESP_LOG_HEADER \
     "# state history / تاریخچهٔ وضعیت\n" \

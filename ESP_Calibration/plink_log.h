@@ -4,49 +4,79 @@
    after plink_state.h and before plink_link.h (the frame parser calls the hook).
    No include guard on purpose: including twice would redefine everything.
 
-   [EN] Rewritten 2026-10-27 after the user reported "the event log never comes
-        up". Three defects were proven in the old version and are the shape of
-        this file:
-        1) a flash write was never checked: print()/println() return the bytes
-           they really wrote, and the old code threw that away, so a full or
-           broken flash lost the row in silence and the panel said "nothing has
-           been recorded yet" - the exact symptom the user saw;
-        2) when the write failed the row was NOT copied to the RAM ring either,
-           so nothing at all was kept;
-        3) the tail reader filled its buffer from the OLDEST row of the window
-           and stopped, so a busy day showed the oldest rows and threw the
-           newest away.
-        The promises of the old file are kept one for one: boot row with no
-        board at all, change-only rows, hysteresis on the cut band, one step row
-        a minute, mains rows inside a short window, six-hour heartbeat,
-        day rotation, day/byte retention, RAM ring when the file system is off.
-   [FA] بازنویسی ۲۰۲۶-۱۰-۲۷ پس از گزارش کاربر «لاگ‌گیری بالا نمی‌آید». سه ایراد
-        در نسخهٔ قبل ثابت شد و ساختار این فایل از آن‌ها آمده است:
-        ۱) نوشتن روی فلش هرگز بررسی نمی‌شد: print و println تعداد بایت
-           نوشته‌شده را برمی‌گردانند و کد قبلی آن را دور می‌ریخت، پس فلش پر یا
-           خراب، ردیف را بی‌صدا از بین می‌برد و پنل می‌گفت «هنوز چیزی ثبت
-           نشده» - همان چیزی که کاربر دید؛
-        ۲) وقتی نوشتن شکست می‌خورد ردیف به حلقهٔ رم هم نمی‌رفت، پس هیچ‌جا
-           نمی‌ماند؛
-        ۳) خوانندهٔ آخرین ردیف‌ها بافرش را از قدیمی‌ترین ردیف پنجره پر می‌کرد
-           و بعد می‌ایستاد، پس روز شلوغ قدیمی‌ها را نشان می‌داد و جدیدها را
-           دور می‌ریخت.
-        قول‌های فایل قبلی یکی‌به‌یکی می‌مانند: ردیف بوت حتی بدون برد، ردیف
-        فقط روی تغییر، هیسترزیس مرز قطع، حداکثر یک ردیف گام در دقیقه، ردیف
-        برق شهر داخل پنجرهٔ کوتاه، ضربان شش‌ساعته، عوض شدن روز، نگه‌داری
+   [EN] Second-generation rewrite, 2026-10-27 (user order: "rewrite the log from
+        scratch, your own way, so it does what I asked for"). The first rewrite
+        fixed the three proven defects; this one is the design I would hand to a
+        production line. What is different from a plain "append a line" logger:
+
+        1) ONE write path. Every row goes through func__EspLog_AppendRow(), so a
+           refused write cannot be swallowed anywhere (v1 had four print sites).
+        2) NOTHING IS LOST WHEN THE FLASH REFUSES. The row waits in the RAM ring
+           and is drained back into its own day file (by the row's own epoch, not
+           by "today") as soon as the flash works again.
+        3) A HALF-WRITTEN LAST ROW CANNOT EAT THE NEXT ONE. A power cut in the
+           middle of a row leaves no closing newline; the day file is repaired
+           once when it is opened, before the next row is appended.
+        4) THE INDEX CARRIES BYTE SIZES, so retention costs nothing: v1 opened up
+           to 30 day files on every day change just to add up their sizes. Sizes
+           are maintained row by row; an entry with an unknown size is measured
+           once and cached.
+        5) THE DAY'S ROW CAP EXPLAINS ITSELF. The last row of a full day is a
+           marker (note 4), so a gap in the history says "the cap was reached"
+           instead of looking like a dead panel.
+        6) LOST ROWS ARE COUNTED. If the RAM ring overflows while the flash is
+           down, the page is told how many rows were dropped (X-Log-Lost).
+        7) THE TIME NEVER RUNS BACKWARD: a phone whose clock is behind cannot
+           rewind the anchor.
+        8) The row buffer is proven at compile time to hold the widest possible
+           row, and a truncation is reported instead of written.
+
+        Kept one for one from the old file, because they are user orders, not
+        choices: boot row with no board at all, change-only rows, cut-band
+        hysteresis, one voltage-step row a minute (rises in discharge always),
+        mains rows inside a short window, six-hour heartbeat, day 0 for a panel
+        that has never seen a phone, retention by day count and byte budget,
+        RAM ring when the file system is off.
+   [FA] بازنویسی نسل دوم، ۲۰۲۶-۱۰-۲۷ (دستور کاربر: «لاگ را از اول، با روش خودت
+        بازنویسی کن تا خواسته‌هایم را برآورده کند»). بازنویسی اول سه ایراد ثابت
+        را درست کرد؛ این یکی همان طرحی است که برای خط تولید تحویل می‌دادم.
+        تفاوتش با یک «چند خط بنویس» ساده:
+
+        ۱) یک مسیر نوشتن. هر ردیف از یک تابع می‌گذرد، پس نوشتنِ ردشده هیچ‌جا
+           پنهان نمی‌شود.
+        ۲) وقتی فلش نمی‌پذیرد، هیچ ردیفی گم نمی‌شود. ردیف در حلقهٔ رم صبر
+           می‌کند و به‌محض سالم‌شدن فلش، در فایل روزِ خودش (بر اساس زمان خودِ
+           ردیف، نه «امروز») نوشته می‌شود.
+        ۳) ردیفِ نیمه‌نوشته ردیف بعدی را نمی‌خورد. اگر برق وسط یک ردیف برود،
+           پایان‌بند نوشته نمی‌شود؛ فایل روز یک‌بار هنگام باز شدن تعمیر می‌شود.
+        ۴) فهرست روزها حجم هر روز را هم نگه می‌دارد، پس پاک‌سازی قدیمی‌ها
+           هزینه‌ای ندارد. نسخهٔ قبل برای جمع‌زدن حجم‌ها تا ۳۰ فایل را باز
+           می‌کرد؛ حالا حجم با هر ردیف به‌روز می‌شود.
+        ۵) سقف ردیف هر روز خودش را توضیح می‌دهد: آخرین ردیف روزِ پر، یک ردیف
+           نشانه است، تا فاصلهٔ تاریخچه «سقف پر شد» بگوید نه «پنل مرد».
+        ۶) ردیف‌های ازدست‌رفته شمرده می‌شوند: اگر حلقهٔ رم پر شود، صفحه
+           می‌فهمد چند ردیف از دست رفته است.
+        ۷) زمان هرگز عقب نمی‌رود: گوشی با ساعت عقب نمی‌تواند لنگر را برگرداند.
+        ۸) بزرگ‌ترین ردیف ممکن در زمان کامپایل بررسی می‌شود و بریده‌شدن ردیف
+           گزارش می‌شود، نه نوشته.
+
+        قول‌های فایل قبلی یکی‌به‌یکی می‌مانند، چون دستور کاربرند نه انتخاب:
+        ردیف بوت حتی بدون برد، ردیف فقط روی تغییر، هیسترزیس مرز قطع، حداکثر یک
+        ردیف گام در دقیقه (در دشارژ هر بالا آمدن)، ردیف برق شهر داخل پنجرهٔ
+        کوتاه، ضربان شش‌ساعته، روز صفر برای پنلی که گوشی ندیده، نگه‌داری
         روزانه و بایتی، و حلقهٔ رم وقتی فایل‌سیستم خاموش است. */
 
 #include <string.h>
 
 /* ==================== Clock / ساعت ==================== */
-/* [EN] The panel has no RTC. The phone that opens the page sends its own time
-        (POST /clock) and this file keeps it as an anchor: now = anchor + the
-        elapsed millis. The time zone offset comes from the same phone, so the
-        daily file name rolls over at the operator's midnight, not at UTC's.
-   [FA] پنل ساعت ندارد. گوشی/کامپیوتری که صفحه را باز می‌کند ساعت خودش را
-        می‌فرستد و این فایل آن را لنگر نگه می‌دارد:
-        اکنون = لنگر + میلی‌ثانیه‌های گذشته. اختلاف منطقهٔ زمانی هم از همان
-        گوشی می‌آید، تا نام فایل روزانه سرِ نیمه‌شب خودِ اپراتور عوض شود نه UTC. */
+/* [EN] The panel has no RTC and the technical link carries no board time (that
+        field exists only in the simple panel's DIAG_DATA), so the phone that
+        opens the page is the only clock: now = anchor + elapsed millis. Rejected
+        time cannot rewind it (see func__EspLog_TimeSet).
+   [FA] پنل ساعت ندارد و لینک فنی هم زمان برد را نمی‌آورد (آن فیلد فقط در پنل
+        ساده هست)، پس تنها ساعت، گوشی‌ای است که صفحه را باز می‌کند:
+        اکنون = لنگر + میلی‌ثانیه‌های گذشته. زمانِ ردشده هم نمی‌تواند آن را
+        عقب ببرد. */
 static uint32_t UINT32_T__G__LogAnchorSec = 0u;
 static uint32_t UINT32_T__G__LogAnchorMs = 0u;
 static int32_t  INT32_T__G__LogTzSec = 0;
@@ -55,22 +85,25 @@ static uint32_t UINT32_T__G__LogLastClockSaveMs = 0u;
 
 /* ==================== Open day / روز باز ==================== */
 /* [EN] The sentinel says "no day opened yet". Day 0 is a real day: the day of a
-        board that has never seen a phone yet. Storage must never wait for the
-        clock - the phone may connect hours later.
+        panel that has never seen a phone. Storage must never wait for the clock.
    [FA] این مقدار یعنی «هنوز روزی باز نشده». روز صفر یک روز واقعی است: روزِ
-        بردی که هنوز گوشی‌ای ندیده. ذخیره‌سازی هرگز نباید منتظر ساعت بماند -
-        ممکن است گوشی ساعت‌ها بعد وصل شود. */
+        پنلی که هنوز گوشی‌ای ندیده. ذخیره‌سازی هرگز نباید منتظر ساعت بماند. */
 static uint32_t UINT32_T__G__LogDayCode = 0xFFFFFFFFu;   /* ‎YYYYMMDD‎, sentinel = none */
 static uint16_t UINT16_T__G__LogRowsToday = 0u;
 static bool     BOOL__G__LogDayFull = false;
 static bool     BOOL__G__LogBootRowPending = true;
-/* [EN] 0 = the last flash write was verified. Anything else = the number of
-        failed writes since the last good one. It is what lets the panel tell
-        "nothing happened" from "I could not write" instead of guessing.
-   [FA] صفر یعنی آخرین نوشتن روی فلش تأیید شد. هر مقدار دیگر یعنی تعداد
-        نوشتن‌های شکست‌خورده از آخرین نوشتن سالم. همین است که به پنل اجازه
+/* [EN] 0 = the last flash write was verified; anything else = failed writes
+        since the last good one. This is what lets the page tell "nothing
+        happened" from "I could not write".
+   [FA] صفر یعنی آخرین نوشتن روی فلش تأیید شد؛ هر مقدار دیگر یعنی تعداد
+        نوشتن‌های شکست‌خورده از آخرین نوشتن سالم. همین است که به صفحه اجازه
         می‌دهد «چیزی نشده» را از «نتوانستم بنویسم» جدا کند. */
 static uint8_t  UINT8_T__G__LogWriteFault = 0u;
+/* [EN] Rows the RAM ring had to throw away because a newer one arrived while the
+        flash was still down. Reported to the page (X-Log-Lost); never hidden.
+   [FA] ردیف‌هایی که حلقهٔ رم ناچار شد دور بریزد، چون ردیف تازه‌تری رسید و فلش
+        هنوز خراب بود. به صفحه گزارش می‌شود و هرگز پنهان نمی‌ماند. */
+static uint16_t UINT16_T__G__LogDroppedRows = 0u;
 
 /* ==================== Previous snapshot / وضعیت قبلی ==================== */
 static bool     BOOL__G__LogHasPrev = false;
@@ -116,14 +149,26 @@ static uint32_t UINT32_T__G__LogSessionStartMs = 0u;
         می‌شود گام را به چشمک‌زدن تبدیل نکند. */
 static uint32_t UINT32_T__G__LogLastStepMs = 0u;
 static bool     BOOL__G__LogLastStepValid = false;
+/* [EN] the day-full marker is written once per day, never twice.
+   [FA] ردیف نشانهٔ «سقف روز پر شد» یک‌بار در روز نوشته می‌شود، نه دوبار. */
+static bool     BOOL__G__LogMarkerDone = false;
 
 /* ==================== Day index / فهرست روزها ==================== */
 static uint32_t UINT32_T__G__LogIndexDay[ESP_LOG_MAX_DAYS + 2u];
+/* [EN] bytes of each day file; 0 = not known yet and has to be measured once.
+        Maintaining this per row is what keeps retention free: without it every
+        day change opened up to 30 files just to add up their sizes.
+   [FA] حجم هر فایل روز؛ صفر یعنی هنوز معلوم نیست و یک‌بار اندازه‌گیری
+        می‌شود. نگه‌داشتن همین عدد با هر ردیف است که پاک‌سازی قدیمی‌ها را
+        بی‌هزینه می‌کند. */
+static uint32_t UINT32_T__G__LogIndexBytes[ESP_LOG_MAX_DAYS + 2u];
 static uint8_t  UINT8_T__G__LogIndexCount = 0u;
-/* [EN] RAM ring: the last rows survive even when the flash cannot take them -
-        either because the file system is off or because a write just failed.
-   [FA] حلقهٔ رم: آخرین ردیف‌ها حتی وقتی فلش نمی‌پذیرد زنده می‌مانند - یا چون
-        فایل‌سیستم خاموش است یا چون نوشتن همین حالا شکست خورد. */
+/* [EN] RAM ring: the last rows survive when the flash cannot take them - either
+        because the file system is off or because a write just failed. It is
+        drained back into the day files as soon as the flash works again.
+   [FA] حلقهٔ رم: آخرین ردیف‌ها وقتی فلش نمی‌پذیرد زنده می‌مانند - یا چون
+        فایل‌سیستم خاموش است یا چون نوشتن شکست خورد. به‌محض سالم شدن فلش،
+        همان ردیف‌ها به فایل روزهای خودشان برگردانده می‌شوند. */
 static char     CHAR__G__LogRamRow[ESP_LOG_RAM_ROWS][ESP_LOG_RAM_ROW_MAX];
 static uint8_t  UINT8_T__G__LogRamHead = 0u;
 static uint8_t  UINT8_T__G__LogRamCount = 0u;
@@ -146,20 +191,32 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_NOTE_LOW_STOP  1u   /* [EN] board came back after a low-battery stop / [FA] برگشت پس از ایست باتری ضعیف */
 #define ESP_LOG_NOTE_LINK_LOST 2u
 #define ESP_LOG_NOTE_LINK_BACK 3u
-#define ESP_LOG_NOTE_DAY_FULL  4u
-#define ESP_LOG_NOTE_HEARTBEAT  5u   /* [EN] nothing changed, the panel is alive / [FA] چیزی عوض نشد، پنل زنده است */
+#define ESP_LOG_NOTE_DAY_FULL  4u   /* [EN] the last row of a full day / [FA] آخرین ردیف یک روزِ پر */
+#define ESP_LOG_NOTE_HEARTBEAT 5u   /* [EN] nothing changed, the panel is alive / [FA] چیزی عوض نشد، پنل زنده است */
 
 #define ESP_LOG_PATH_MAX       24u
-#define ESP_LOG_ROW_MAX        256u   /* [EN] one CSV row, built once / [FA] یک ردیف CSV که یک‌جا ساخته می‌شود */
+/* [EN] One CSV row: 22 numbers, the widest possible being 22 x 10 digits plus
+        21 commas = 241 bytes plus the terminator. The static_assert below turns
+        a future column that does not fit into a build error instead of a
+        silently cut row.
+   [FA] یک ردیف CSV: ۲۲ عدد که بزرگ‌ترین حالتشان ۲۴۱ بایت به‌علاوهٔ پایان‌بند
+        می‌شود. بررسی زمان کامپایل، ستونِ جا نشدِ آینده را به خطای ساخت تبدیل
+        می‌کند، نه ردیفِ بی‌صدا بریده. */
+#define ESP_LOG_ROW_MAX        256u
+#define ESP_LOG_ROW_WORST_CASE 244u
+static_assert(ESP_LOG_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
+              "ESP_LOG_ROW_MAX must hold the widest row: 22 x 10 digits + 21 commas");
+
 /* [EN] The value the /evt answer carries in X-Log-Fs: 1 = rows come from the
         flash, 0 = the file system is off (RAM ring), 2 = the file system is
         mounted but a write failed (RAM ring holds the newest rows).
-   [FA] مقداری که پاسخ /evt در ‎X-Log-Fs‎ می‌گذارد: ۱ یعنی ردیف‌ها از فلش
+   [FA] مقداری که پاسخ ‎/evt‎ در ‎X-Log-Fs‎ می‌گذارد: ۱ یعنی ردیف‌ها از فلش
         می‌آیند، ۰ یعنی فایل‌سیستم خاموش است (حلقهٔ رم)، ۲ یعنی فایل‌سیستم
         سوار است ولی نوشتن شکست خورد (جدیدترین ردیف‌ها در حلقهٔ رم هستند). */
 #define ESP_LOG_FS_OK          1u
 #define ESP_LOG_FS_OFF         0u
 #define ESP_LOG_FS_WRITE_FAULT 2u
+#define ESP_LOG_BYTES_UNKNOWN  0u
 
 /* ==================== Time helpers / کمک‌های زمان ==================== */
 
@@ -272,17 +329,44 @@ static void func__EspLog_PathOf(char *char__path, uint32_t uint32_t__dayCode)
                    ESP_LOG_FILE_PREFIX, (unsigned long)uint32_t__dayCode);
 }
 
+/**
+ * @brief  [EN] The leading number of a CSV row (its epoch field).
+ *         [FA] عدد ابتدای یک ردیف (ستون زمان آن).
+ * @‎param  const char *char__row [EN] row / [FA]‎ ردیف
+ * @return [EN] uint32_t epoch, 0 when the row has no clock / [FA]‎ زمان
+ */
+static uint32_t func__EspLog_RowEpoch(const char *char__row)
+{
+    uint32_t uint32_t__value = 0u;
+    uint8_t uint8_t__index = 0u;
+
+    if (char__row == NULL)
+    {
+        return 0u;
+    }
+    while ((uint8_t__index < 10u) &&
+           (char__row[uint8_t__index] >= '0') &&
+           (char__row[uint8_t__index] <= '9'))
+    {
+        uint32_t__value = (uint32_t__value * 10u) +
+                          (uint32_t)(char__row[uint8_t__index] - '0');
+        uint8_t__index++;
+    }
+    return uint32_t__value;
+}
+
 /* ==================== Clock storage / ذخیرهٔ ساعت ==================== */
 
 /**
- * @brief  [EN] Persist the clock anchor (called every 10 minutes and at boot).
- *         [FA] ذخیرهٔ لنگر ساعت (هر ۱۰ دقیقه و هنگام روشن‌شدن).
+ * @brief  [EN] Persist the clock anchor (every 10 minutes and on adoption).
+ *         [FA] ذخیرهٔ لنگر ساعت (هر ۱۰ دقیقه و هنگام گرفتن ساعت).
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__EspLog_ClockSave(void)
 {
     File file__clock;
     uint32_t uint32_t__nowSec;
+    char char__line[32];
 
     if ((BOOL__G__FsOk == false) || (BOOL__G__LogClockValid == false))
     {
@@ -298,9 +382,9 @@ static void func__EspLog_ClockSave(void)
     {
         return;
     }
-    file__clock.print((unsigned long)uint32_t__nowSec);
-    file__clock.print(",");
-    file__clock.print((long)INT32_T__G__LogTzSec);
+    (void)snprintf(char__line, sizeof(char__line), "%lu,%ld\n",
+                   (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec);
+    (void)file__clock.print(char__line);
     file__clock.close();
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
 }
@@ -345,14 +429,21 @@ static void func__EspLog_ClockLoad(void)
 }
 
 /**
- * @brief  [EN] Adopt the phone's clock (POST /clock) and save it.
- *         [FA] گرفتن ساعت گوشی و ذخیرهٔ آن.
+ * @brief  [EN] Adopt the phone's clock (POST /clock). A time that would move the
+ *              clock BACKWARD by more than two minutes is refused: two phones, a
+ *              wrong timezone or a manual clock change must not rewind the day
+ *              and split the history into two files with the same rows again.
+ *         [FA] گرفتن ساعت گوشی. زمانی که ساعت را بیش از دو دقیقه عقب ببرد رد
+ *              می‌شود: دو گوشی، منطقهٔ زمانی اشتباه یا تغییر دستی ساعت نباید
+ *              روز را عقب ببرد و تاریخچه را دو تکه کند.
  * @‎param  uint32_t uint32_t__epochSec [EN] epoch seconds / [FA]‎ ثانیهٔ یونیکس
  * @‎param  int32_t int32_t__tzSec [EN] UTC offset in seconds / [FA]‎ اختلاف با UTC
- * @‎return [EN] bool, false when the time is not believable / [FA]‎ درستی زمان
+ * @‎return [EN] bool, false when the time is not believable / [FA]‎ پذیرفته شد
  */
 static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__tzSec)
 {
+    uint32_t uint32_t__nowSec;
+
     if (uint32_t__epochSec < ESP_LOG_CLOCK_VALID_MIN)
     {
         return false;
@@ -360,6 +451,15 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
     if ((int32_t__tzSec < -50400) || (int32_t__tzSec > 50400))
     {
         int32_t__tzSec = 0;
+    }
+    if (BOOL__G__LogClockValid != false)
+    {
+        uint32_t__nowSec = func__EspLog_NowSec();
+        if ((uint32_t__nowSec > uint32_t__epochSec) &&
+            ((uint32_t__nowSec - uint32_t__epochSec) > ESP_LOG_CLOCK_REWIND_SEC))
+        {
+            return false;
+        }
     }
     UINT32_T__G__LogAnchorSec = uint32_t__epochSec;
     UINT32_T__G__LogAnchorMs = (uint32_t)millis();
@@ -401,31 +501,6 @@ static bool func__EspLog_FileText(File &file__target, const char *char__text)
 }
 
 /**
- * @brief  [EN] A write that failed is not a lost row: the row goes to the RAM
- *              ring and the fault counter is raised, which the panel shows.
- *         [FA] نوشتنِ شکست‌خورده یعنی ردیفِ گم‌شده نیست: ردیف به حلقهٔ رم
- *              می‌رود و شمارندهٔ خطای نوشتن بالا می‌رود، همان که پنل نشان می‌دهد.
- * @‎param  const char *char__row [EN] one CSV row / [FA]‎ یک ردیف
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__EspLog_RamPush(const char *char__row)
-{
-    if (char__row == NULL)
-    {
-        return;
-    }
-    (void)strncpy(CHAR__G__LogRamRow[UINT8_T__G__LogRamHead],
-                  char__row,
-                  ESP_LOG_RAM_ROW_MAX - 1u);
-    CHAR__G__LogRamRow[UINT8_T__G__LogRamHead][ESP_LOG_RAM_ROW_MAX - 1u] = '\0';
-    UINT8_T__G__LogRamHead = (uint8_t)((UINT8_T__G__LogRamHead + 1u) % ESP_LOG_RAM_ROWS);
-    if (UINT8_T__G__LogRamCount < ESP_LOG_RAM_ROWS)
-    {
-        UINT8_T__G__LogRamCount++;
-    }
-}
-
-/**
  * @brief  [EN] Remember that a flash write failed (saturating, so a flash that
  *              is full forever cannot wrap the counter back to "healthy").
  *         [FA] ثبت این‌که نوشتن روی فلش شکست خورد (اشباع‌شونده، تا فلشی که
@@ -440,86 +515,136 @@ static void func__EspLog_FaultRaise(void)
     }
 }
 
+/**
+ * @brief  [EN] Keep a row that the flash would not take, newest wins. Row N+1
+ *              overwriting row 1 is deliberate: the newest state is what an
+ *              operator needs, and the loss is counted, not hidden.
+ *         [FA] نگه‌داشتن ردیفی که فلش نپذیرفت؛ جدیدترین می‌ماند. اینکه ردیف
+ *              تازه جای قدیمی‌ترین را بگیرد عمدی است: وضعیت تازه چیزی است که
+ *              اپراتور لازم دارد و ازدست‌رفتنش شمرده می‌شود، پنهان نمی‌شود.
+ * @‎param  const char *char__row [EN] one CSV row / [FA]‎ یک ردیف
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_RamPush(const char *char__row)
+{
+    if (char__row == NULL)
+    {
+        return;
+    }
+    if (UINT8_T__G__LogRamCount >= ESP_LOG_RAM_ROWS)
+    {
+        if (UINT16_T__G__LogDroppedRows < 0xFFFFu)
+        {
+            UINT16_T__G__LogDroppedRows++;
+        }
+    }
+    (void)strncpy(CHAR__G__LogRamRow[UINT8_T__G__LogRamHead],
+                  char__row,
+                  ESP_LOG_RAM_ROW_MAX - 1u);
+    CHAR__G__LogRamRow[UINT8_T__G__LogRamHead][ESP_LOG_RAM_ROW_MAX - 1u] = '\0';
+    UINT8_T__G__LogRamHead = (uint8_t)((UINT8_T__G__LogRamHead + 1u) % ESP_LOG_RAM_ROWS);
+    if (UINT8_T__G__LogRamCount < ESP_LOG_RAM_ROWS)
+    {
+        UINT8_T__G__LogRamCount++;
+    }
+}
+
 /* ==================== Day index / فهرست روزها ==================== */
 
-/**
- * @brief  [EN] Load the day list used for retention and the panel's picker.
- *         [FA] خواندن فهرست روزها برای نگه‌داری و انتخابگر پنل.
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__EspLog_IndexLoad(void)
-{
-    File file__index;
-
-    UINT8_T__G__LogIndexCount = 0u;
-    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_INDEX_PATH) == false))
-    {
-        return;
-    }
-    file__index = LittleFS.open(ESP_LOG_INDEX_PATH, "r");
-    if (!file__index)
-    {
-        return;
-    }
-    while (file__index.available() && (UINT8_T__G__LogIndexCount < (ESP_LOG_MAX_DAYS + 2u)))
-    {
-        String string__line = file__index.readStringUntil('\n');
-        string__line.trim();
-        if (string__line.length() > 0u)
-        {
-            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] =
-                (uint32_t)string__line.toInt();
-            UINT8_T__G__LogIndexCount++;
-        }
-    }
-    file__index.close();
-}
+/* [EN] Defined below; retention rewrites the list after it drops a day.
+   [FA] پایین‌تر تعریف می‌شود؛ پاک‌سازی قدیمی‌ها پس از حذف روز، فهرست را
+        بازنویسی می‌کند. */
+static void func__EspLog_IndexSave(void);
 
 /**
- * @brief  [EN] Rewrite the day list (called only when a day is added/removed).
- *         [FA] بازنویسی فهرست روزها (فقط وقتی روزی اضافه یا حذف می‌شود).
- * @return [EN] None / [FA]‎ ندارد
+ * @brief  [EN] Slot of a day in the list, or 0xFF when it is not listed.
+ *         [FA] جای یک روز در فهرست، یا ۰xFF وقتی در فهرست نیست.
+ * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
+ * @return [EN] uint8_t slot / [FA]‎ جای روز
  */
-static void func__EspLog_IndexSave(void)
+static uint8_t func__EspLog_IndexFind(uint32_t uint32_t__dayCode)
 {
-    File file__index;
     uint8_t uint8_t__slot;
-    char char__number[16];
 
-    if (BOOL__G__FsOk == false)
-    {
-        return;
-    }
-    file__index = LittleFS.open(ESP_LOG_INDEX_PATH, "w");
-    if (!file__index)
-    {
-        func__EspLog_FaultRaise();
-        return;
-    }
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
-        (void)snprintf(char__number, sizeof(char__number), "%08lu\n",
-                       (unsigned long)UINT32_T__G__LogIndexDay[uint8_t__slot]);
-        if (func__EspLog_FileText(file__index, char__number) == false)
+        if (UINT32_T__G__LogIndexDay[uint8_t__slot] == uint32_t__dayCode)
         {
-            func__EspLog_FaultRaise();
-            break;
+            return uint8_t__slot;
         }
     }
-    file__index.close();
+    return 0xFFu;
 }
 
 /**
- * @brief  [EN] Size of one day file, so the log can be kept inside the flash.
- *         [FA] حجم یک فایل روز، تا لاگ داخل فلش بماند.
+ * @brief  [EN] Add a day to the list (no-op when it is already there).
+ *         [FA] افزودن یک روز به فهرست (اگر هست، کاری نمی‌کند).
  * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
- * @‎return [EN] bytes / [FA]‎ بایت
+ * @return [EN] uint8_t slot, 0xFF when the list is full / [FA]‎ جای روز
+ */
+static uint8_t func__EspLog_IndexTouch(uint32_t uint32_t__dayCode)
+{
+    uint8_t uint8_t__slot;
+    uint8_t uint8_t__found;
+
+    uint8_t__found = func__EspLog_IndexFind(uint32_t__dayCode);
+    if (uint8_t__found != 0xFFu)
+    {
+        return uint8_t__found;
+    }
+    if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
+    {
+        return 0xFFu;
+    }
+    uint8_t__slot = UINT8_T__G__LogIndexCount;
+    UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__dayCode;
+    UINT32_T__G__LogIndexBytes[uint8_t__slot] = ESP_LOG_BYTES_UNKNOWN;
+    UINT8_T__G__LogIndexCount++;
+    return uint8_t__slot;
+}
+
+/**
+ * @brief  [EN] Add the bytes a row just took on flash to that day's total.
+ *         [FA] افزودن بایت‌هایی که یک ردیف روی فلش گرفت به حجم آن روز.
+ * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
+ * @‎param  uint32_t uint32_t__bytes [EN] bytes written / [FA]‎ بایت نوشته‌شده
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_IndexAddBytes(uint32_t uint32_t__dayCode, uint32_t uint32_t__bytes)
+{
+    uint8_t uint8_t__slot;
+
+    uint8_t__slot = func__EspLog_IndexTouch(uint32_t__dayCode);
+    if ((uint8_t__slot != 0xFFu) &&
+        (UINT32_T__G__LogIndexBytes[uint8_t__slot] != ESP_LOG_BYTES_UNKNOWN))
+    {
+        UINT32_T__G__LogIndexBytes[uint8_t__slot] += uint32_t__bytes;
+    }
+}
+
+/**
+ * @brief  [EN] Size of one day file; measured once and cached, because retention
+ *              needs it on every day change and opening 30 files there was pure
+ *              flash wear.
+ *         [FA] حجم یک فایل روز؛ یک‌بار اندازه‌گیری و نگه داشته می‌شود، چون
+ *              پاک‌سازی قدیمی‌ها هر بار عوض شدن روز به آن نیاز دارد و باز
+ *              کردن ۳۰ فایل فقط فلش را فرسوده می‌کرد.
+ * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
+ * @return [EN] bytes / [FA]‎ بایت
  */
 static uint32_t func__EspLog_DayBytes(uint32_t uint32_t__dayCode)
 {
     char char__path[ESP_LOG_PATH_MAX];
     File file__day;
     uint32_t uint32_t__bytes = 0u;
+    uint8_t uint8_t__slot;
+
+    uint8_t__slot = func__EspLog_IndexFind(uint32_t__dayCode);
+    if ((uint8_t__slot != 0xFFu) &&
+        (UINT32_T__G__LogIndexBytes[uint8_t__slot] != ESP_LOG_BYTES_UNKNOWN))
+    {
+        return UINT32_T__G__LogIndexBytes[uint8_t__slot];
+    }
 
     func__EspLog_PathOf(char__path, uint32_t__dayCode);
     file__day = LittleFS.open(char__path, "r");
@@ -529,32 +654,55 @@ static uint32_t func__EspLog_DayBytes(uint32_t uint32_t__dayCode)
     }
     uint32_t__bytes = (uint32_t)file__day.size();
     file__day.close();
+    if (uint8_t__slot != 0xFFu)
+    {
+        UINT32_T__G__LogIndexBytes[uint8_t__slot] = uint32_t__bytes;
+    }
     return uint32_t__bytes;
 }
 
 /**
- * @brief  [EN] Delete the oldest day when the retention count or the byte
- *              budget is passed.
- *         [FA] حذف قدیمی‌ترین روز وقتی تعداد روزهای نگه‌داری یا بودجهٔ بایتی
- *              رد شود.
+ * @brief  [EN] Drop the oldest day (file, slot and its size).
+ *         [FA] حذف قدیمی‌ترین روز (فایل، جایش در فهرست و حجمش).
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_DropOldest(void)
+{
+    char char__path[ESP_LOG_PATH_MAX];
+    uint8_t uint8_t__slot;
+
+    if (UINT8_T__G__LogIndexCount == 0u)
+    {
+        return;
+    }
+    func__EspLog_PathOf(char__path, UINT32_T__G__LogIndexDay[0]);
+    (void)LittleFS.remove(char__path);
+    for (uint8_t__slot = 1u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    {
+        UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] =
+            UINT32_T__G__LogIndexDay[uint8_t__slot];
+        UINT32_T__G__LogIndexBytes[uint8_t__slot - 1u] =
+            UINT32_T__G__LogIndexBytes[uint8_t__slot];
+    }
+    UINT8_T__G__LogIndexCount--;
+    UINT32_T__G__LogIndexBytes[UINT8_T__G__LogIndexCount] = ESP_LOG_BYTES_UNKNOWN;
+}
+
+/**
+ * @brief  [EN] Delete the oldest days when the retention count or the byte
+ *              budget is passed, then rewrite the list.
+ *         [FA] حذف قدیمی‌ترین روزها وقتی تعداد روزهای نگه‌داری یا بودجهٔ بایتی
+ *              رد شود، و بعد بازنویسی فهرست.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__EspLog_TrimDays(void)
 {
-    char char__path[ESP_LOG_PATH_MAX];
     uint8_t uint8_t__slot;
     bool bool__dropped = false;
 
     while (UINT8_T__G__LogIndexCount > ESP_LOG_MAX_DAYS)
     {
-        func__EspLog_PathOf(char__path, UINT32_T__G__LogIndexDay[0]);
-        (void)LittleFS.remove(char__path);
-        for (uint8_t__slot = 1u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
-        {
-            UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] =
-                UINT32_T__G__LogIndexDay[uint8_t__slot];
-        }
-        UINT8_T__G__LogIndexCount--;
+        func__EspLog_DropOldest();
         bool__dropped = true;
     }
 
@@ -578,14 +726,7 @@ static void func__EspLog_TrimDays(void)
         {
             break;
         }
-        func__EspLog_PathOf(char__path, UINT32_T__G__LogIndexDay[0]);
-        (void)LittleFS.remove(char__path);
-        for (uint8_t__slot = 1u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
-        {
-            UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] =
-                UINT32_T__G__LogIndexDay[uint8_t__slot];
-        }
-        UINT8_T__G__LogIndexCount--;
+        func__EspLog_DropOldest();
         bool__dropped = true;
     }
     if (bool__dropped != false)
@@ -595,8 +736,96 @@ static void func__EspLog_TrimDays(void)
 }
 
 /**
- * @brief  [EN] Count the rows already in a day file (after a restart).
- *         [FA] شمردن ردیف‌های موجود یک فایل روز (بعد از روشن‌شدن).
+ * @brief  [EN] Load the day list (day,bytes per line). A line written by an older
+ *              firmware has no size field: it is read as "unknown" and measured
+ *              on demand, so an upgrade never loses the history.
+ *         [FA] خواندن فهرست روزها (هر خط: روز و حجم). خطی که نسخهٔ قدیمی
+ *              نوشته حجم ندارد: «نامعلوم» خوانده می‌شود و در اولین نیاز
+ *              اندازه‌گیری می‌شود، پس ارتقا تاریخچه را از بین نمی‌برد.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_IndexLoad(void)
+{
+    File file__index;
+
+    UINT8_T__G__LogIndexCount = 0u;
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_INDEX_PATH) == false))
+    {
+        return;
+    }
+    file__index = LittleFS.open(ESP_LOG_INDEX_PATH, "r");
+    if (!file__index)
+    {
+        return;
+    }
+    while (file__index.available() && (UINT8_T__G__LogIndexCount < (ESP_LOG_MAX_DAYS + 2u)))
+    {
+        String string__line = file__index.readStringUntil('\n');
+        String string__bytes;
+        int32_t int32_t__comma;
+
+        string__line.trim();
+        if (string__line.length() == 0u)
+        {
+            continue;
+        }
+        int32_t__comma = string__line.indexOf(',');
+        if (int32_t__comma > 0)
+        {
+            string__bytes = string__line.substring(int32_t__comma + 1);
+            string__line = string__line.substring(0, int32_t__comma);
+        }
+        UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] =
+            (uint32_t)string__line.toInt();
+        UINT32_T__G__LogIndexBytes[UINT8_T__G__LogIndexCount] =
+            (string__bytes.length() > 0u) ? (uint32_t)string__bytes.toInt()
+                                          : ESP_LOG_BYTES_UNKNOWN;
+        UINT8_T__G__LogIndexCount++;
+    }
+    file__index.close();
+}
+
+/**
+ * @brief  [EN] Rewrite the day list with sizes (only when a day is added or
+ *              removed, never per row).
+ *         [FA] بازنویسی فهرست روزها همراه حجم‌ها (فقط وقتی روزی اضافه یا حذف
+ *              می‌شود، نه با هر ردیف).
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_IndexSave(void)
+{
+    File file__index;
+    uint8_t uint8_t__slot;
+
+    if (BOOL__G__FsOk == false)
+    {
+        return;
+    }
+    file__index = LittleFS.open(ESP_LOG_INDEX_PATH, "w");
+    if (!file__index)
+    {
+        func__EspLog_FaultRaise();
+        return;
+    }
+    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    {
+        char char__line[32];
+
+        (void)snprintf(char__line, sizeof(char__line), "%08lu,%lu\n",
+                       (unsigned long)UINT32_T__G__LogIndexDay[uint8_t__slot],
+                       (unsigned long)func__EspLog_DayBytes(UINT32_T__G__LogIndexDay[uint8_t__slot]));
+        if (func__EspLog_FileText(file__index, char__line) == false)
+        {
+            func__EspLog_FaultRaise();
+            break;
+        }
+    }
+    file__index.close();
+}
+
+/**
+ * @brief  [EN] Count the data rows already in a day file (after a restart).
+ *         [FA] شمردن ردیف‌های دادهٔ موجود یک فایل روز (بعد از روشن‌شدن).
  * @‎param  const char *char__path [EN] file / [FA]‎ فایل
  * @return [EN] uint16_t rows / [FA]‎ تعداد ردیف
  */
@@ -623,9 +852,107 @@ static uint16_t func__EspLog_CountRows(const char *char__path)
 }
 
 /**
+ * @brief  [EN] A power cut in the middle of a row leaves no closing newline, so
+ *              the next append would glue a good row onto a broken one and make
+ *              BOTH unreadable. This runs once when a day file is opened: if the
+ *              last byte is not a newline, one is added first.
+ *         [FA] قطع برق وسط یک ردیف، پایان‌بند را جا می‌گذارد؛ در آن حالت ردیف
+ *              بعدی به ردیف خراب می‌چسبد و هر دو ناخوانا می‌شوند. این تابع
+ *              یک‌بار هنگام باز شدن فایل روز اجرا می‌شود: اگر آخرین بایت
+ *              پایان‌بند نبود، اول یکی نوشته می‌شود.
+ * @‎param  const char *char__path [EN] day file / [FA]‎ فایل روز
+ * @return [EN] bool, true when the file ends on a line boundary / [FA]‎ سالم
+ */
+static bool func__EspLog_RepairTail(const char *char__path)
+{
+    File file__day;
+    uint32_t uint32_t__size;
+    bool bool__needsNewline = false;
+
+    file__day = LittleFS.open(char__path, "r");
+    if (!file__day)
+    {
+        return true;   /* nothing to repair, and the next append reports itself */
+    }
+    uint32_t__size = (uint32_t)file__day.size();
+    if (uint32_t__size > 0u)
+    {
+        if ((file__day.seek(uint32_t__size - 1u) == false) || (file__day.read() != '\n'))
+        {
+            bool__needsNewline = true;
+        }
+    }
+    file__day.close();
+    if (bool__needsNewline == false)
+    {
+        return true;
+    }
+
+    file__day = LittleFS.open(char__path, "a");
+    if (!file__day)
+    {
+        func__EspLog_FaultRaise();
+        return false;
+    }
+    bool__needsNewline = (func__EspLog_FileText(file__day, "\n") != false);
+    file__day.close();
+    if (bool__needsNewline != false)
+    {
+        func__EspLog_IndexAddBytes(func__EspLog_TodayCode(), 1u);
+    }
+    else
+    {
+        func__EspLog_FaultRaise();
+    }
+    return bool__needsNewline;
+}
+
+/**
+ * @brief  [EN] THE one append path: one verified row plus its newline into one
+ *              day file. Nothing else in this file writes a row.
+ *         [FA] تنها مسیر نوشتن: یک ردیف تأییدشده به‌همراه پایان‌بندش در فایل
+ *              یک روز. هیچ جای دیگری در این فایل ردیف نمی‌نویسد.
+ * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
+ * @‎param  const char *char__row [EN] row / [FA]‎ ردیف
+ * @return [EN] bool written and counted / [FA]‎ نوشته شد
+ */
+static bool func__EspLog_AppendRow(uint32_t uint32_t__dayCode, const char *char__row)
+{
+    char char__path[ESP_LOG_PATH_MAX];
+    File file__day;
+    uint32_t uint32_t__bytes;
+    bool bool__ok;
+
+    if ((BOOL__G__FsOk == false) || (char__row == NULL))
+    {
+        return false;
+    }
+    func__EspLog_PathOf(char__path, uint32_t__dayCode);
+    file__day = LittleFS.open(char__path, "a");
+    if (!file__day)
+    {
+        func__EspLog_FaultRaise();
+        return false;
+    }
+    bool__ok = func__EspLog_FileText(file__day, char__row);
+    if (bool__ok != false)
+    {
+        bool__ok = func__EspLog_FileText(file__day, "\n");
+    }
+    file__day.close();
+    if (bool__ok == false)
+    {
+        func__EspLog_FaultRaise();
+        return false;
+    }
+    uint32_t__bytes = (uint32_t)strlen(char__row) + 1u;
+    func__EspLog_IndexAddBytes(uint32_t__dayCode, uint32_t__bytes);
+    return true;
+}
+
+/**
  * @brief  [EN] Make sure today's file exists and its row counter is right.
- *         [FA] مطمئن شو فایل امروز هست و شمارندهٔ ردیفش درست است؛ نبودش
- *              گزارش می‌شود نه نادیده گرفته.
+ *         [FA] مطمئن شو فایل امروز هست و شمارندهٔ ردیفش درست است.
  * @return [EN] bool, false when the day file could not be opened or written
  *             / [FA]‎ آماده‌بودن
  */
@@ -636,7 +963,6 @@ static bool func__EspLog_OpenDay(void)
     bool bool__isNew;
     bool bool__ok = true;
     uint32_t uint32_t__dayCode;
-    uint8_t uint8_t__slot;
 
     if (BOOL__G__FsOk == false)
     {
@@ -661,34 +987,81 @@ static bool func__EspLog_OpenDay(void)
         bool__ok = func__EspLog_FileText(file__day, ESP_LOG_HEADER);
     }
     file__day.close();
+
+    UINT32_T__G__LogDayCode = uint32_t__dayCode;
+    if (bool__isNew != false)
+    {
+        UINT32_T__G__LogIndexBytes[func__EspLog_IndexTouch(uint32_t__dayCode)] =
+            (uint32_t)strlen(ESP_LOG_HEADER);
+    }
+    if ((bool__ok != false) && (bool__isNew == false))
+    {
+        bool__ok = func__EspLog_RepairTail(char__path);
+    }
     if (bool__ok == false)
     {
         func__EspLog_FaultRaise();
     }
 
-    UINT32_T__G__LogDayCode = uint32_t__dayCode;
     UINT16_T__G__LogRowsToday = func__EspLog_CountRows(char__path);
     BOOL__G__LogDayFull = (UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY);
+    BOOL__G__LogMarkerDone = BOOL__G__LogDayFull;
 
-    {
-        bool bool__alreadyIndexed = false;
-
-        for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
-        {
-            if (UINT32_T__G__LogIndexDay[uint8_t__slot] == uint32_t__dayCode)
-            {
-                bool__alreadyIndexed = true;
-            }
-        }
-        if ((bool__alreadyIndexed == false) &&
-            (UINT8_T__G__LogIndexCount < (ESP_LOG_MAX_DAYS + 2u)))
-        {
-            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = uint32_t__dayCode;
-            UINT8_T__G__LogIndexCount++;
-            func__EspLog_TrimDays();
-        }
-    }
+    (void)func__EspLog_IndexTouch(uint32_t__dayCode);
+    func__EspLog_TrimDays();
     return bool__ok;
+}
+
+/**
+ * @brief  [EN] Move the rows the RAM ring is holding back into the day files they
+ *              belong to (each row by its OWN epoch, so a row logged before the
+ *              phone clock arrived still lands in the day-zero file). Oldest
+ *              first; it stops at the first refusal and keeps the rest, so a
+ *              flash that is still full loses nothing.
+ *         [FA] برگرداندن ردیف‌هایی که حلقهٔ رم نگه داشته به فایل روزِ خودشان
+ *              (هر ردیف با زمان خودش، پس ردیفی که پیش از رسیدن ساعت گوشی ثبت
+ *              شده در فایل روز صفر می‌نشیند). از قدیمی‌ترین شروع می‌شود و با
+ *              اولین رد شدن می‌ایستد و بقیه را نگه می‌دارد، پس فلشی که هنوز
+ *              پر است چیزی از دست نمی‌دهد.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_DrainRam(void)
+{
+    while (UINT8_T__G__LogRamCount > 0u)
+    {
+        uint8_t uint8_t__oldest;
+        uint32_t uint32_t__epoch;
+        uint32_t uint32_t__dayCode;
+
+        uint8_t__oldest = (uint8_t)((UINT8_T__G__LogRamHead + ESP_LOG_RAM_ROWS -
+                                     UINT8_T__G__LogRamCount) % ESP_LOG_RAM_ROWS);
+        uint32_t__epoch = func__EspLog_RowEpoch(CHAR__G__LogRamRow[uint8_t__oldest]);
+        if (uint32_t__epoch >= ESP_LOG_CLOCK_VALID_MIN)
+        {
+            uint32_t__dayCode = func__EspLog_DateCode(func__EspLog_LocalDay(uint32_t__epoch));
+        }
+        else
+        {
+            uint32_t__dayCode = 0u;
+        }
+        if (func__EspLog_AppendRow(uint32_t__dayCode,
+                                   CHAR__G__LogRamRow[uint8_t__oldest]) == false)
+        {
+            return;   /* the flash is still not taking rows: keep them */
+        }
+        /* [EN] a drained row takes a slot in today's file like any other, so
+                the day cap must count it - otherwise the file could grow past
+                the cap the counter believes in.
+           [FA] ردیف برگردانده‌شده هم مثل بقیه یک خانه از فایل امروز را
+                می‌گیرد، پس سقف روز باید آن را بشمارد؛ وگرنه فایل از سقفی که
+                شمارنده باور دارد بزرگ‌تر می‌شود. */
+        if ((uint32_t__dayCode == UINT32_T__G__LogDayCode) &&
+            (UINT16_T__G__LogRowsToday < 0xFFFFu))
+        {
+            UINT16_T__G__LogRowsToday++;
+        }
+        UINT8_T__G__LogRamCount--;
+    }
 }
 
 /* ==================== Row write / نوشتن ردیف ==================== */
@@ -736,27 +1109,65 @@ static uint8_t func__EspLog_Pct(uint32_t uint32_t__batteryMv)
 }
 
 /**
+ * @brief  [EN] Build one CSV row into a caller buffer. Returns false when the
+ *              row did not fit - a cut row is reported instead of written.
+ *         [FA] ساخت یک ردیف CSV در بافر. اگر جا نشود false می‌دهد: ردیفِ
+ *              بریده گزارش می‌شود نه نوشته.
+ * @‎param  char *char__row [EN] buffer / [FA]‎ بافر
+ * @‎param  size_t size_t__size [EN] buffer size / [FA]‎ اندازه
+ * @‎param  uint16_t uint16_t__changeMask [EN] change bits / [FA]‎ بیت‌های تغییر
+ * @‎param  uint8_t uint8_t__note [EN] note / [FA]‎ یادداشت
+ * @return [EN] bool fits / [FA]‎ جا شد
+ */
+static bool func__EspLog_BuildRow(char *char__row, size_t size_t__size,
+                                  uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
+{
+    int int__written;
+
+    int__written = snprintf(char__row, size_t__size,
+                            "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
+                            (unsigned long)func__EspLog_NowSec(),
+                            (unsigned long)((uint32_t)millis() / 1000u),
+                            (unsigned int)uint16_t__changeMask,
+                            (unsigned int)uint8_t__note,
+                            (unsigned int)(((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u),
+                            (unsigned int)UINT8_T__G__TlmFlags,
+                            (unsigned long)UINT32_T__G__TlmField[6],
+                            (unsigned long)UINT32_T__G__TlmField[13],
+                            (unsigned long)UINT32_T__G__TlmField[19],
+                            (unsigned int)UINT8_T__G__TlmFlags2,
+                            (unsigned long)UINT32_T__G__TlmField[15],
+                            (unsigned long)UINT32_T__G__TlmField[17],
+                            (unsigned long)UINT32_T__G__TlmField[18],
+                            (unsigned long)UINT32_T__G__TlmField[25],
+                            (unsigned long)UINT32_T__G__TlmField[28],
+                            (unsigned long)UINT32_T__G__TlmField[14],
+                            (unsigned long)UINT32_T__G__TlmField[16],
+                            (unsigned long)UINT32_T__G__TlmField[3],
+                            (unsigned long)UINT32_T__G__TlmField[10],
+                            (unsigned long)UINT32_T__G__TlmField[5],
+                            (unsigned long)UINT32_T__G__TlmField[12],
+                            (unsigned long)func__EspLog_Pct(UINT32_T__G__TlmField[15]));
+    return (int__written > 0) && ((size_t)int__written < size_t__size);
+}
+
+/**
  * @brief  [EN] Append one row and close it at once, so a power cut right after
- *              the battery cut cannot lose it. The write is VERIFIED: when the
- *              flash does not take the bytes, the row is kept in the RAM ring
- *              and the fault counter is raised, so the panel can say "the flash
- *              did not accept the row" instead of "nothing happened".
+ *              the battery cut cannot lose it. The flash is tried first; when it
+ *              refuses, the row goes to the RAM ring and the fault counter tells
+ *              the page. The last row of a full day is a marker that says the
+ *              cap was reached.
  *         [FA] یک ردیف را اضافه و همان لحظه می‌بندد، تا قطع برق درست بعد از
- *              قطع باتری آن را از بین نبرد. نوشتن تأیید می‌شود: اگر فلش
- *              بایت‌ها را نپذیرد، ردیف در حلقهٔ رم می‌ماند و شمارندهٔ خطا بالا
- *              می‌رود، تا پنل بگوید «فلش ردیف را نپذیرفت» نه «چیزی نشده».
+ *              قطع باتری آن را از بین نبرد. اول فلش امتحان می‌شود؛ اگر
+ *              نپذیرد، ردیف به حلقهٔ رم می‌رود و شمارندهٔ خرابی به صفحه می‌گوید.
+ *              آخرین ردیف روزِ پر، نشانه‌ای است که می‌گوید سقف پر شد.
  * @‎param  uint16_t uint16_t__changeMask [EN] what changed / [FA]‎ چه عوض شد
  * @‎param  uint8_t uint8_t__note [EN] row note / [FA]‎ یادداشت ردیف
  * @return [EN] bool stored somewhere / [FA]‎ ذخیره شد
  */
 static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
 {
-    char char__path[ESP_LOG_PATH_MAX];
     char char__row[ESP_LOG_ROW_MAX];
-    File file__day;
-    uint32_t uint32_t__nowSec;
-    uint32_t uint32_t__uptimeSec;
-    uint8_t uint8_t__mains;
     bool bool__stored = false;
 
     if ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
@@ -765,35 +1176,12 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         BOOL__G__LogDayFull = true;
         return false;
     }
-
-    uint32_t__nowSec = func__EspLog_NowSec();
-    uint32_t__uptimeSec = (uint32_t)(millis() / 1000u);
-    uint8_t__mains = ((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u;
-
-    (void)snprintf(char__row, sizeof(char__row),
-                   "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
-                   (unsigned long)uint32_t__nowSec,
-                   (unsigned long)uint32_t__uptimeSec,
-                   (unsigned int)uint16_t__changeMask,
-                   (unsigned int)uint8_t__note,
-                   (unsigned int)uint8_t__mains,
-                   (unsigned int)UINT8_T__G__TlmFlags,
-                   (unsigned long)UINT32_T__G__TlmField[6],
-                   (unsigned long)UINT32_T__G__TlmField[13],
-                   (unsigned long)UINT32_T__G__TlmField[19],
-                   (unsigned int)UINT8_T__G__TlmFlags2,
-                   (unsigned long)UINT32_T__G__TlmField[15],
-                   (unsigned long)UINT32_T__G__TlmField[17],
-                   (unsigned long)UINT32_T__G__TlmField[18],
-                   (unsigned long)UINT32_T__G__TlmField[25],
-                   (unsigned long)UINT32_T__G__TlmField[28],
-                   (unsigned long)UINT32_T__G__TlmField[14],
-                   (unsigned long)UINT32_T__G__TlmField[16],
-                   (unsigned long)UINT32_T__G__TlmField[3],
-                   (unsigned long)UINT32_T__G__TlmField[10],
-                   (unsigned long)UINT32_T__G__TlmField[5],
-                   (unsigned long)UINT32_T__G__TlmField[12],
-                   (unsigned long)func__EspLog_Pct(UINT32_T__G__TlmField[15]));
+    if (func__EspLog_BuildRow(char__row, sizeof(char__row),
+                              uint16_t__changeMask, uint8_t__note) == false)
+    {
+        func__EspLog_FaultRaise();
+        return false;
+    }
 
     if (BOOL__G__FsOk != false)
     {
@@ -805,17 +1193,15 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
                 BOOL__G__LogDayFull = true;
                 return false;
             }
-            func__EspLog_PathOf(char__path, UINT32_T__G__LogDayCode);
-            file__day = LittleFS.open(char__path, "a");
-            if (file__day)
+            /* [EN] the flash is taking rows again: the ones waiting in RAM go
+                    first, so the history keeps its order.
+               [FA] فلش دوباره ردیف می‌پذیرد: اول ردیف‌های منتظر در رم
+                    می‌روند تا ترتیب تاریخچه حفظ شود. */
+            if (UINT8_T__G__LogRamCount != 0u)
             {
-                bool__stored = func__EspLog_FileText(file__day, char__row);
-                if (bool__stored != false)
-                {
-                    bool__stored = func__EspLog_FileText(file__day, "\n");
-                }
-                file__day.close();
+                func__EspLog_DrainRam();
             }
+            bool__stored = func__EspLog_AppendRow(UINT32_T__G__LogDayCode, char__row);
         }
     }
 
@@ -862,10 +1248,32 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     UINT16_T__G__LogPendingMask = 0u;
     UINT8_T__G__LogPendingNote = 0u;
     BOOL__G__LogMainsQueuedValid = false;
+
+    /* [EN] one slot before the cap, the day writes its own obituary: a row with
+            note 4 that says "the cap was reached, the rest of today is not
+            recorded". Without it a full day looks like a dead panel.
+       [FA] یک خانه پیش از سقف، روز خودش را توضیح می‌دهد: ردیفی با یادداشت ۴
+            که می‌گوید «سقف پر شد و بقیهٔ امروز ثبت نمی‌شود». بدون آن، روزِ پر
+            شبیه پنلِ مرده دیده می‌شود. */
+    if ((bool__stored != false) && (BOOL__G__LogMarkerDone == false) &&
+        (UINT16_T__G__LogRowsToday == (ESP_LOG_MAX_ROWS_PER_DAY - 1u)))
+    {
+        char char__marker[ESP_LOG_ROW_MAX];
+
+        BOOL__G__LogMarkerDone = true;
+        if (func__EspLog_BuildRow(char__marker, sizeof(char__marker),
+                                  0u, ESP_LOG_NOTE_DAY_FULL) != false)
+        {
+            if (func__EspLog_AppendRow(UINT32_T__G__LogDayCode, char__marker) != false)
+            {
+                UINT16_T__G__LogRowsToday++;
+            }
+        }
+        BOOL__G__LogDayFull = true;
+        UINT16_T__G__LogPendingMask = 0u;
+    }
     return true;
 }
-
-/* ==================== Last state / آخرین وضعیت ==================== */
 
 /**
  * @brief  [EN] Keep the "last state before a restart" note, so the boot row can
@@ -894,7 +1302,6 @@ static void func__EspLog_SaveLast(void)
                    (unsigned long)UINT32_T__G__TlmField[19],
                    (unsigned int)UINT8_T__G__TlmFlags2,
                    (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u);
-
     file__last = LittleFS.open(ESP_LOG_LAST_PATH, "w");
     if (!file__last)
     {
@@ -1225,10 +1632,12 @@ static void func__EspLog_OnFrame(void)
 }
 
 /**
- * @brief  [EN] Periodic work: merge pending rows, save the clock, notice a lost
- *              link. Called from loop().
- *         [FA] کار دوره‌ای: نوشتن ردیف در انتظار، ذخیرهٔ ساعت و تشخیص قطع
- *              ارتباط. از حلقه صدا زده می‌شود.
+ * @brief  [EN] Periodic work: merge pending rows, save the clock, drain the RAM
+ *              ring when the flash is healthy again, notice a lost link. Called
+ *              from loop().
+ *         [FA] کار دوره‌ای: نوشتن ردیف در انتظار، ذخیرهٔ ساعت، برگرداندن
+ *              ردیف‌های رم وقتی فلش سالم شد، و تشخیص قطع ارتباط. از حلقه صدا
+ *              زده می‌شود.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__EspLog_Tick(void)
@@ -1261,6 +1670,15 @@ static void func__EspLog_Tick(void)
         {
             func__EspLog_ClockSave();
         }
+    }
+
+    /* [EN] Rows waiting in RAM go back to their day files as soon as the flash
+            takes writes again, without waiting for the next event.
+       [FA] ردیف‌های منتظر در رم، به‌محض اینکه فلش دوباره بنویسد، بی‌نیاز از
+            رویداد بعدی به فایل روزهای خودشان برمی‌گردند. */
+    if ((BOOL__G__FsOk != false) && (UINT8_T__G__LogRamCount != 0u))
+    {
+        func__EspLog_DrainRam();
     }
 
     /* [EN] Link-silence row: after LINK_TIMEOUT_MS with no frame. If the
@@ -1317,6 +1735,7 @@ static void func__EspLog_Begin(void)
 {
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
     UINT8_T__G__LogWriteFault = 0u;
+    UINT16_T__G__LogDroppedRows = 0u;
     if (BOOL__G__FsOk == false)
     {
         return;
@@ -1367,10 +1786,10 @@ static uint32_t func__EspLog_TailStart(File &file__day,
             return 0u;
         }
         uint32_t__bytes++;
-        /* [EN] the last character of a normal file is the newline that closes
-                the newest row; it is not a row of its own.
-           [FA] آخرین کاراکتر فایل عادی، همان نوی‌لاینی است که جدیدترین ردیف
-                را می‌بندد؛ خودش ردیف نیست. */
+        /* [EN] the last character of a normal file closes the newest row; it is
+                not a row of its own.
+           [FA] آخرین کاراکتر فایل عادی، جدیدترین ردیف را می‌بندد؛ خودش ردیف
+                نیست. */
         if ((int__ch == '\n') && (uint32_t__bytes > 1u))
         {
             uint32_t__lines++;
@@ -1491,12 +1910,14 @@ static uint32_t func__EspLog_PickDay(uint32_t uint32_t__dayCode)
 
 /**
  * @brief  [EN] Copy the last N rows of one day into a buffer, oldest first.
- *              The window is chosen from the END of the file (see
- *              func__EspLog_TailStart), so when the buffer cannot hold 30 rows
- *              the OLDEST of them are dropped, never the newest.
+ *              The window is chosen from the END of the file, so when the
+ *              buffer cannot hold 30 rows the OLDEST of them are dropped,
+ *              never the newest. A flash that refused the last writes is
+ *              served from the RAM ring instead of an empty card.
  *         [FA] کپی آخرین N ردیف یک روز در بافر، قدیمی‌تر اول. پنجره از انتهای
  *              فایل انتخاب می‌شود، پس وقتی بافر ۳۰ ردیف را جا نمی‌دهد
- *              قدیمی‌ترین‌ها دور ریخته می‌شوند، نه جدیدترین‌ها.
+ *              قدیمی‌ترین‌ها دور ریخته می‌شوند، نه جدیدترین‌ها. فلشی که آخرین
+ *              نوشتن‌ها را نپذیرفت، از حلقهٔ رم خوانده می‌شود نه کارت خالی.
  * @‎param  char *char__out [EN] output buffer / [FA]‎ بافر خروجی
  * @‎param  size_t size_t__outSize [EN] buffer size / [FA]‎ اندازهٔ بافر
  * @‎param  uint32_t uint32_t__dayCode [EN] day, AUTO = newest / [FA]‎ روز
@@ -1519,14 +1940,6 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     }
     char__out[0] = '\0';
 
-    /* [EN] No file system, or a file system that refused the last writes: the
-            newest rows are the ones in RAM. Serving them is what makes the
-            panel show "the flash did not accept it" with real rows under it,
-            instead of an empty card.
-       [FA] فایل‌سیستم نیست، یا فایل‌سیستمی که آخرین نوشتن‌ها را نپذیرفت:
-            جدیدترین ردیف‌ها همان‌هایی هستند که در رم‌اند. نشان دادن همان‌ها
-            کاری است که پنل را «فلش نپذیرفت» با ردیف‌های واقعی زیرش نشان
-            می‌دهد، نه کارت خالی. */
     if ((BOOL__G__FsOk == false) ||
         ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u)))
     {
@@ -1604,6 +2017,8 @@ static uint8_t func__EspLog_Clear(void)
     {
         UINT16_T__G__LogRowsToday = 0u;
         BOOL__G__LogDayFull = false;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT16_T__G__LogDroppedRows = 0u;
         return 0u;
     }
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
@@ -1613,6 +2028,7 @@ static uint8_t func__EspLog_Clear(void)
         {
             uint8_t__removed++;
         }
+        UINT32_T__G__LogIndexBytes[uint8_t__slot] = ESP_LOG_BYTES_UNKNOWN;
     }
     (void)LittleFS.remove(ESP_LOG_INDEX_PATH);
     (void)LittleFS.remove(ESP_LOG_LAST_PATH);
@@ -1620,7 +2036,9 @@ static uint8_t func__EspLog_Clear(void)
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
+    BOOL__G__LogMarkerDone = false;
     UINT8_T__G__LogWriteFault = 0u;
+    UINT16_T__G__LogDroppedRows = 0u;
     return uint8_t__removed;
 }
 

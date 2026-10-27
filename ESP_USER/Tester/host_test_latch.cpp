@@ -28,9 +28,12 @@ typedef ESP8266WebServer esp_web_server_t;
 
 #include "../simple_config.h"
 #include "../simple_state.h"
+#include "../simple_panel.h"
 #include "../simple_link.h"
 #include "../simple_auth.h"
+#include "../simple_theme.h"
 #include "../simple_diag.h"
+#include "../simple_http.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -1117,6 +1120,122 @@ static void func__T_TestStateHistoryLog(void)
                           "آخرین خط پاسخ همان جدیدترین ردیف روز است (کامل، نه نصفه)");
         }
         (void)LittleFS.remove(char__busyPath);
+    }
+
+    /* ردیف‌های منتظر در رم، با سالم شدن فلش به فایل روز خودشان برمی‌گردند */
+    {
+        char char__dayPath[SIMPLE_LOG_PATH_MAX];
+        (void)func__SimpleLog_Clear();
+        (void)LittleFS.remove("/evt-00000000.csv");
+        func__Simple_TimeSet(1792756800u, false);
+        INT32_T__G__LogTzSec = 12600;
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT16_T__G__LogDroppedRows = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__TlmFlags = 0x02u;
+        UINT32_T__G__TlmField[15] = 24000u;
+        func__SimpleLog_PathOf(char__dayPath, func__SimpleLog_TodayCode());
+        (void)LittleFS.remove(char__dayPath);
+
+        SIM_BOOL__G__RefuseWrites = true;
+        func__SimpleLog_Tick();
+        SIM_BOOL__G__RefuseWrites = false;
+        func__T_Check(UINT8_T__G__LogRamCount == 1u,
+                      "ردیفِ ردشده در رم منتظر می‌ماند");
+
+        /* فلش سالم شد: Tick همان ردیف را به فایل روز خودش می‌برد */
+        func__SimpleLog_Tick();
+        func__T_Check(UINT8_T__G__LogRamCount == 0u,
+                      "با سالم شدن فلش، ردیف منتظر به فایل روز برگردانده می‌شود");
+        func__T_Check(LittleFS.exists(char__dayPath),
+                      "و فایل همان روز ساخته می‌شود");
+        {
+            char char__drained[512];
+            (void)func__SimpleLog_Tail(char__drained, sizeof(char__drained), SIMPLE_LOG_DAY_AUTO, 10u);
+            func__T_Check(strlen(char__drained) > 0u,
+                          "و همان ردیف از فلش خوانده می‌شود");
+        }
+
+        /* حلقهٔ رم پر شود: ردیف‌های دورریخته شمرده می‌شوند */
+        SIM_BOOL__G__RefuseWrites = true;
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.simClear();
+            func__Simple_HttpEventLog();
+            func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simHeader("X-Log-Lost") == "0",
+                          "در حالت سالم، شمار ردیف‌های ازدست‌رفته صفر است");
+        }
+        for (uint8_t uint8_t__k = 0u; uint8_t__k < (SIMPLE_LOG_RAM_ROWS + 3u); uint8_t__k++)
+        {
+            (void)func__SimpleLog_WriteRow(0u, SIMPLE_LOG_NOTE_NONE);
+        }
+        func__T_Check(UINT8_T__G__LogRamCount == SIMPLE_LOG_RAM_ROWS,
+                      "حلقهٔ رم تا سقف خودش پر می‌شود");
+        func__T_Check(UINT16_T__G__LogDroppedRows == 3u,
+                      "هر ردیفی که حلقه ناچار دور ریخت شمرده می‌شود");
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.simClear();
+            func__Simple_HttpEventLog();
+            func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simHeader("X-Log-Lost") == "3",
+                          "و صفحه شمار ردیف‌های دورریخته را می‌بیند");
+        }
+        SIM_BOOL__G__RefuseWrites = false;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT16_T__G__LogDroppedRows = 0u;
+        UINT8_T__G__LogWriteFault = 0u;
+        (void)func__SimpleLog_Clear();
+    }
+
+    /* دنبالهٔ خراب: ردیفی که پایان‌بند ندارد، ردیف بعدی را نمی‌خورد */
+    {
+        char char__cutPath[SIMPLE_LOG_PATH_MAX];
+        (void)func__SimpleLog_Clear();
+        func__Simple_TimeSet(1792756800u, false);
+        INT32_T__G__LogTzSec = 12600;
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        func__SimpleLog_PathOf(char__cutPath, func__SimpleLog_TodayCode());
+        (void)LittleFS.remove(char__cutPath);
+        {
+            File file__cut = LittleFS.open(char__cutPath, "w");
+            if (file__cut)
+            {
+                file__cut.print(SIMPLE_LOG_HEADER);
+                file__cut.print("1792756000,1,1024,0,1,0,0,0,0,0,23900,12000,11900,0,0,0,0,0,0,0,0,36");
+                file__cut.close();
+            }
+        }
+        func__SimpleLog_Tick();
+        {
+            char char__cutTail[512];
+            (void)func__SimpleLog_Tail(char__cutTail, sizeof(char__cutTail), SIMPLE_LOG_DAY_AUTO, 10u);
+            std::string string__cut(char__cutTail);
+            func__T_Check(string__cut.find(",23900,") != std::string::npos,
+                          "ردیفِ نیمه‌نوشتهٔ پیش از قطع برق خوانا می‌ماند");
+            func__T_Check(string__cut.find(",36\n") != std::string::npos,
+                          "و پایان‌بندش نوشته می‌شود تا ردیف بعدی به آن نچسبد");
+        }
+        (void)func__SimpleLog_Clear();
+        (void)LittleFS.remove(char__cutPath);
     }
     }
 }

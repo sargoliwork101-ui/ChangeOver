@@ -896,6 +896,7 @@ static void func__Esp_HttpBenchLogClear(void)
    [FA] متن ردیف‌ها اینجا ساخته می‌شود نه روی پشته: ۳۰ ردیف × ~۸۰ بایت به‌علاوهٔ
         پایان‌بند، و هندلر باید پیش از هر کار دیگری برگردد. */
 static char CHAR__G__LogTailBuffer[3600];
+static char CHAR__G__LogLostText[8];
 
 /**
  * @brief  [EN] POST /clock?sec=..&tz=.. : adopt the phone clock (or ask it).
@@ -954,6 +955,17 @@ static void func__Esp_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t__pt
         ۱ یعنی فلش، ۰ یعنی فایل‌سیستم خاموش، ۲ یعنی نوشتن روی فلش شکست خورد و
         جدیدترین ردیف‌ها در رم‌اند. بدون مقدار سوم، صفحه نمی‌توانست «چیزی
         نشده» را از «نتوانستم بنویسم» جدا کند. */
+/* [EN] Rows the RAM ring had to throw away while the flash was down, as text.
+        The page shows the number, so a gap in the history is never a mystery.
+   [FA] ردیف‌هایی که حلقهٔ رم وقتی فلش خراب بود ناچار شد دور بریزد، به‌صورت
+        متن. صفحه همان عدد را نشان می‌دهد تا فاصلهٔ تاریخچه معما نماند. */
+static const char *func__Esp_LogLostText(void)
+{
+    (void)snprintf(CHAR__G__LogLostText, sizeof(CHAR__G__LogLostText), "%u",
+                   (unsigned int)UINT16_T__G__LogDroppedRows);
+    return CHAR__G__LogLostText;
+}
+
 static const char *func__Esp_LogSourceCode(void)
 {
     if (BOOL__G__FsOk == false)
@@ -973,6 +985,7 @@ static void func__Esp_HttpEventLog(void)
     uint32_t uint32_t__day = ESP_LOG_DAY_AUTO;
 
     ESP_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs", func__Esp_LogSourceCode());
+    ESP_WEB_SERVER_T__G__Server.sendHeader("X-Log-Lost", func__Esp_LogLostText());
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     func__Esp_ParseDayArg(&bool__hasDay, &uint32_t__day);
     if ((bool__hasDay != false) && (uint32_t__day == 0u))

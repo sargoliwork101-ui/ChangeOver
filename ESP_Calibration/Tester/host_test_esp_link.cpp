@@ -1640,17 +1640,53 @@ int main(void)
         feed(build_frame(ESP_MSG_TLM_LIVE, mainsBack));
         check(UINT8_T__G__LogWriteFault == 0u,
               "the first good write clears the report, so no banner stays on a healthy flash");
-        check(UINT16_T__G__LogRowsToday == 1u,
-              "and that row is in the day file, which now really grew",
+        check(UINT8_T__G__LogRamCount == 0u,
+              "the RAM ring is empty again: its rows went back to the flash",
+              std::to_string((int)UINT8_T__G__LogRamCount));
+        check(UINT16_T__G__LogRowsToday == 2u,
+              "the refused boot row was drained into the file AND the new row was written",
               std::to_string(UINT16_T__G__LogRowsToday));
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs") == "1",
               "the page is told the rows come from the flash again",
               ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
-        check(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 2L,
-              "and the row it reads back is the mains change, not the old boot row",
+        check(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              "the row the flash had refused is now the FIRST row of the day file",
               std::to_string(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u)));
+        check(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 1u, 2u) == 2L,
+              "and the row written after the recovery follows it as the mains change",
+              std::to_string(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 1u, 2u)));
+
+        /* [EN] the ring is finite: a long outage overflows it, and the rows it
+                had to throw away are counted and shown to the page, never
+                silently forgotten.
+           [FA] حلقه محدود است: قطعی طولانی آن را پر می‌کند و ردیف‌هایی که
+                ناچار دور ریخته شدند شمرده و به صفحه نشان داده می‌شوند. */
+        UINT16_T__G__LogDroppedRows = 0u;
+        LittleFS.failWrites = true;
+        for (uint8_t k = 0u; k < (ESP_LOG_RAM_ROWS + 4u); k++)
+        {
+            (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);
+        }
+        check(UINT8_T__G__LogRamCount == ESP_LOG_RAM_ROWS,
+              "the RAM ring fills to its limit and stops growing",
+              std::to_string((int)UINT8_T__G__LogRamCount));
+        check(UINT16_T__G__LogDroppedRows == 4u,
+              "every row the ring had to throw away is counted",
+              std::to_string(UINT16_T__G__LogDroppedRows));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Lost") == "4",
+              "and GET /evt tells the page the number of lost rows",
+              ESP_WEB_SERVER_T__G__Server.header("X-Log-Lost"));
+        check(!ESP_WEB_SERVER_T__G__Server.lastBody.empty(),
+              "while the newest rows are still readable from the ring");
+        LittleFS.failWrites = false;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT16_T__G__LogDroppedRows = 0u;
+        UINT8_T__G__LogWriteFault = 0u;
     }
 
     /* ---- 34. a busy day shows the NEWEST rows, never the oldest ---------
@@ -1745,6 +1781,141 @@ int main(void)
               "row 1 of the file is nowhere in the answer");
         check(answer.find(",140,") != std::string::npos,
               "row 40 of the file is in the answer");
+    }
+
+    /* ---- 35. a half-written last row cannot eat the next one ------------
+       [EN] A power cut in the middle of a row leaves no closing newline. Append
+            one row after that and BOTH rows are unreadable. The day file is
+            therefore repaired once, when it is opened.
+       [FA] قطع برق وسط یک ردیف، پایان‌بند را جا می‌گذارد. اگر بعدش یک ردیف
+            نوشته شود، هر دو ردیف ناخوانا می‌شوند. پس فایل روز یک‌بار هنگام
+            باز شدن تعمیر می‌شود. */
+    {
+        LittleFS.failWrites = false;
+        (void)ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT16_T__G__LogDroppedRows = 0u;
+        BOOL__G__LogClockValid = true;
+        INT32_T__G__LogTzSec = 12600;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        BOOL__G__TlmSeen = false;
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+
+        char cutPath[32];
+        (void)snprintf(cutPath, sizeof cutPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        /* the crash: a row with no closing newline, header already there */
+        LittleFS.files[std::string(cutPath)] = std::string(ESP_LOG_HEADER) +
+            "1792756000,1,1024,0,1,0,0,0,0,0,23900,12000,11900,0,0,0,0,0,0,0,0,36";
+
+        func__EspLog_Tick();   /* boot row: the day has to be opened and repaired */
+        const std::string repaired = LittleFS.files[std::string(cutPath)];
+        check(repaired.find(",36\n") != std::string::npos,
+              "the broken last row gets its newline, so the crash is a closed row again");
+        const size_t bootAt = repaired.rfind(",1,0,");
+        check(bootAt != std::string::npos && bootAt > repaired.find(",36\n"),
+              "and the new boot row starts on its own line, not glued to the broken one");
+
+        /* the reader must not lose the row before the repair either */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find(",23900,") != std::string::npos,
+              "the row from before the crash is still readable");
+    }
+
+    /* ---- 36. a full day says so instead of looking dead ----------------- */
+    {
+        LittleFS.failWrites = false;
+        (void)ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        UINT16_T__G__LogPendingMask = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__TlmSeen = true;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        BOOL__G__LogClockValid = true;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        INT32_T__G__LogTzSec = 12600;
+
+        /* a day that already holds 398 rows: one more data row reaches the
+           cap-minus-one, and the module must then add its own marker as the
+           last row of the day */
+        {
+            char fillPath[32];
+            char oneRow[128];
+            File file__fill;
+            (void)snprintf(fillPath, sizeof fillPath, "/evt-%08lu.csv",
+                           (unsigned long)func__EspLog_TodayCode());
+            file__fill = LittleFS.open(fillPath, "w");
+            check((bool)file__fill, "the test could create the nearly-full day file");
+            (void)file__fill.print(ESP_LOG_HEADER);
+            for (uint16_t k = 1u; k < (ESP_LOG_MAX_ROWS_PER_DAY - 1u); k++) {
+                (void)snprintf(oneRow, sizeof oneRow,
+                               "1792756000,%u,0,5,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n",
+                               (unsigned)k);
+                (void)file__fill.print(oneRow);
+            }
+            file__fill.close();
+            UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        }
+        check(func__EspLog_WriteRow(0u, ESP_LOG_NOTE_HEARTBEAT) != false,
+              "the last allowed row of the day is written");
+        check(BOOL__G__LogDayFull,
+              "and the module marks the day full, so nothing more is appended");
+        check(UINT16_T__G__LogRowsToday == ESP_LOG_MAX_ROWS_PER_DAY,
+              "the file ends exactly on the cap, marker included",
+              std::to_string(UINT16_T__G__LogRowsToday));
+        char markPath[32];
+        (void)snprintf(markPath, sizeof markPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        const std::string marked = LittleFS.files[std::string(markPath)];
+        check(marked.find(",4,") != std::string::npos,
+              "the last row is the day-full marker, so a gap in the history explains itself");
+        check(func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE) == false,
+              "and nothing can be appended after the cap");
+    }
+
+    /* ---- 37. the clock never runs backward ------------------------------ */
+    {
+        bool accepted;
+
+        BOOL__G__LogClockValid = false;
+        check(func__EspLog_TimeSet(1792756800u, 12600) != false,
+              "the first phone time is adopted");
+        G_StubMillis += 60000u;
+        accepted = func__EspLog_TimeSet(1792756800u, 12600);
+        check(accepted != false,
+              "the same time arriving again a minute later is still accepted");
+        accepted = func__EspLog_TimeSet(1700000000u, 12600);
+        check(accepted == false,
+              "a phone whose clock is a year behind cannot rewind the log");
+        check((func__EspLog_NowSec() >= 1792756800u) &&
+              (func__EspLog_NowSec() < (1792756800u + ESP_LOG_CLOCK_REWIND_SEC)),
+              "and the anchor stayed where it was instead of jumping a year back",
+              std::to_string(func__EspLog_NowSec()));
     }
 
     /* ---- two-sided handshake (v1.111) -----------------------------------

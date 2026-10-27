@@ -1959,6 +1959,7 @@ function evtTextFa(r){
  }
  /* ردیف ضربان یعنی «هیچ اتفاقی نیفتاد و پنل زنده است» */
  if(r.note===5)add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);
+ if(r.note===4)add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);
  if(!parts.length)add('وضعیت: کانال ۱ «'+(EVT_CHG_FA[r.c1]||r.c1)+'» · کانال ۲ «'+(EVT_CHG_FA[r.c2]||r.c2)+'»',0);
  return {txt:parts.join(' · '),lv:lv};
 }
@@ -2036,11 +2037,12 @@ async function evtFetch(manual){
  try{
   const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
   const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
+  const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
   const ram=(src==='0'||src==='2');
   const t=await r.text();
   evtRenderFa(t,day,ram);
   const st=document.getElementById('evtSt');
-  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط';}
+  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFa(lost)+' ردیف از دست رفت'):'');}
  }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='خواندن نشد';}
 }
 async function evtDays(){
