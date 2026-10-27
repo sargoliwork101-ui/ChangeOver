@@ -2043,7 +2043,7 @@ async function evtFetch(manual){
   evtRenderFa(t,day,ram);
   const st=document.getElementById('evtSt');
   if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFa(lost)+' ردیف از دست رفت'):'');}
- }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='خواندن نشد';}
+ }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
 }
 async function evtDays(){
  try{

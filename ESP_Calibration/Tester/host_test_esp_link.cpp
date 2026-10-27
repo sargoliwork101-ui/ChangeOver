@@ -1783,6 +1783,78 @@ int main(void)
               "row 40 of the file is in the answer");
     }
 
+    /* ---- 38. the log needs no browser at all -----------------------------
+       [EN] The user's question: "as long as my browser is connected the log is
+            written; when my connection drops, the log stops". On the panel side
+            that must never be true: the clock is restored from flash, frames
+            keep arriving from the board, and rows keep landing on flash with
+            ZERO HTTP traffic. This block makes no HTTP request until the very
+            end, then reads the history back.
+       [FA] پرسش کاربر: «تا وقتی بروزرم وصل است لاگ نوشته می‌شود، ارتباطم که
+            قطع شود لاگ هم قطع می‌شود». سمت پنل این نباید درست باشد: ساعت از
+            فلش برمی‌گردد، فریم‌ها از برد می‌رسند و ردیف‌ها بدون هیچ ترافیک
+            HTTP روی فلش می‌نشینند. این بخش تا آخرین لحظه هیچ درخواست HTTP
+            نمی‌زند، بعد تاریخچه را می‌خواند. */
+    {
+        char evtPath[32];
+
+        LittleFS.failWrites = false;
+        func__EspLog_Clear();
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        G_StubMillis = 100000u;
+
+        /* first session: one browser visit sets the clock, then it is saved */
+        (void)func__EspLog_TimeSet(1792756800u, 12600);
+        func__EspLog_ClockSave();
+        check(LittleFS.exists(ESP_LOG_CLOCK_PATH),
+              "the clock was saved to flash, so the next boot does not need a browser");
+
+        /* second boot: no browser at all from here on */
+        func__EspLog_Begin();
+        check(BOOL__G__LogClockValid,
+              "the panel comes back up with a valid clock and no browser");
+        check(func__EspLog_NowSec() >= 1792756800u,
+              "and the clock really runs",
+              std::to_string(func__EspLog_NowSec()));
+
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__TlmSeen = false;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        UINT8_T__G__LogWriteFault = 0u;
+        func__EspLog_Tick();          /* boot row, still no browser */
+
+        /* the board keeps talking: two mains changes, still no browser */
+        for (uint8_t k = 0u; k < 3u; k++)
+        {
+            G_StubMillis += 5000u;
+            Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(60u + k)));
+            func__Esp_DrainSerial();
+            func__EspLog_Tick();
+        }
+        check(UINT16_T__G__LogRowsToday >= 1u,
+              "rows were written while nobody was connected",
+              std::to_string(UINT16_T__G__LogRowsToday));
+        (void)snprintf(evtPath, sizeof evtPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        check(LittleFS.exists(evtPath),
+              "and they went to today's file on the flash itself");
+
+        /* now the user comes back and opens the page */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs") == "1",
+              "the page is served from the flash, not from a live session",
+              ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find(",1,") != std::string::npos,
+              "and the boot row from the offline session is in the answer");
+    }
+
     /* ---- 35. a half-written last row cannot eat the next one ------------
        [EN] A power cut in the middle of a row leaves no closing newline. Append
             one row after that and BOTH rows are unreadable. The day file is
