@@ -92,7 +92,39 @@ static void func__Esp_HttpRoot(void)
            کلاینت کند حلقهٔ RX سرریز می‌کند و پنل بعد از هر بارگذاری صفحه
            هشدار زرد «رد شده با CRC» می‌دهد. */
         func__Esp_DrainSerial();
+        /* [EN] Feed the watchdog between slices. Half a megabyte over a slow
+                phone takes seconds; without this the board resets in the middle
+                of the document and the browser shows NOTHING - the exact
+                "the page never comes up" report.
+           [FA] بین تکه‌ها نگهبان را تغذیه کن. نیم مگابایت روی گوشی کند چند
+                ثانیه طول می‌کشد؛ بدون این، برد وسط سند ری‌استارت می‌شود و
+                مرورگر «هیچ» نشان نمی‌دهد - همان «صفحه بالا نمی‌آید». */
+        yield();
     }
+}
+
+/**
+ * @brief  [EN] GET /ping : a few bytes that prove the web server is alive even
+ *              when the big page cannot be delivered. The user's first check
+ *              when "the page does not come up": if /ping answers and / does
+ *              not, the board is fine and the panel document is the problem;
+ *              if /ping is silent too, the board is not reachable at all.
+ *         [FA] چند بایت که ثابت می‌کند وب‌سرور زنده است، حتی وقتی صفحهٔ بزرگ
+ *              نمی‌رسد. اولین بررسی کاربر وقتی «صفحه بالا نمی‌آید»: اگر
+ *              ‎/ping‎ جواب بدهد و ‎/‎ نه، برد سالم است و خود سند پنل مشکل
+ *              دارد؛ اگر ‎/ping‎ هم ساکت باشد، برد اصلاً در دسترس نیست.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpPing(void)
+{
+    char char__text[64];
+
+    (void)snprintf(char__text, sizeof(char__text), "pong fs=%u log=%u rows=%u",
+                   (unsigned int)((BOOL__G__FsOk != false) ? 1u : 0u),
+                   (unsigned int)UINT8_T__G__LogWriteFault,
+                   (unsigned int)UINT16_T__G__LogRowsToday);
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    ESP_WEB_SERVER_T__G__Server.send(200, "text/plain", char__text);
 }
 
 /**

@@ -2048,7 +2048,7 @@ async function evtFetch(manual){
 }
 function evtfmt(){
  if(!confirm('همهٔ تاریخچه پاک شود؟'))return;
- fetch('/evt/format',{method:'POST'}).then(()=>{evtDays();evtfetch(1);});
+ fetch('/evt/format',{method:'POST'}).then(()=>{evtDays();evtFetch(1);});
 }
 async function evtDays(){
  try{

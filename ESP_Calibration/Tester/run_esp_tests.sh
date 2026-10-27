@@ -45,3 +45,18 @@ echo "[2/2] running / اجرا"
 export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 export ASAN_OPTIONS="detect_leaks=0"
 "${BINARY}"
+
+# [EN] Optional behavioural tests in a real DOM. They need node and jsdom, which
+#      are not dependencies of this project, so a missing tool SKIPS instead of
+#      failing. When the tools exist they are part of the gate: a panel that
+#      renders but throws on a click is broken for the user just the same.
+# [FA] تست‌های رفتاری اختیاری در یک DOM واقعی. به node و jsdom نیاز دارند که
+#      وابستگی این پروژه نیستند، پس نبودن ابزار یعنی SKIP نه شکست. وقتی ابزار
+#      هست، بخشی از دروازه است: پنلی که نمایش داده می‌شود ولی روی کلیک خطا
+#      می‌دهد، برای کاربر همان‌قدر خراب است.
+if command -v node >/dev/null 2>&1; then
+    node "${SCRIPT_DIRECTORY}/host_test_panel_click.js" || exit 1
+    node "${SCRIPT_DIRECTORY}/host_test_scenario_cards.js" || exit 1
+else
+    echo "SKIP: node is not installed; the DOM tests did not run."
+fi

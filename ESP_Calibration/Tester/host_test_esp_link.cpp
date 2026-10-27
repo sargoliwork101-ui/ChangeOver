@@ -2040,6 +2040,29 @@ int main(void)
               ESP_WEB_SERVER_T__G__Server.lastBody.substr(0, 80));
     }
 
+    /* ---- 42. the board answers even when the big page cannot be sent -----
+       [EN] "The page does not come up" has two very different causes: the board
+            is not reachable at all, or the board is fine and the half-megabyte
+            document cannot be delivered. /ping tells them apart in one second.
+       [FA] «صفحه بالا نمی‌آید» دو علت کاملاً جدا دارد: برد اصلاً در دسترس نیست،
+            یا برد سالم است و سند نیم‌مگابایتی نمی‌رسد. ‎/ping‎ در یک ثانیه
+            این دو را جدا می‌کند. */
+    {
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/ping", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "GET /ping answers 200 without touching the panel document",
+              std::to_string(ESP_WEB_SERVER_T__G__Server.lastCode));
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.rfind("pong", 0) == 0,
+              "and it answers pong, so the web server itself is alive",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("fs=1") != std::string::npos,
+              "it also reports whether the flash is mounted",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+    }
+
     /* ---- 35. a half-written last row cannot eat the next one ------------
        [EN] A power cut in the middle of a row leaves no closing newline. Append
             one row after that and BOTH rows are unreadable. The day file is

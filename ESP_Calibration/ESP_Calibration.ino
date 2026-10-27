@@ -153,6 +153,7 @@ void setup(void)
 #endif
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
 
+    ESP_WEB_SERVER_T__G__Server.on("/ping", HTTP_GET, func__Esp_HttpPing);
     ESP_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Esp_HttpRoot);
     ESP_WEB_SERVER_T__G__Server.on("/f.css", HTTP_GET, func__Esp_HttpFont);
     ESP_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Esp_HttpTelemetry);

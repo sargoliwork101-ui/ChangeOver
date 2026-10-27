@@ -876,10 +876,22 @@ function main() {
                       vp1.textContent + " , " + vp2.textContent + "/" + vp2.className);
 
                 /* Missing battery (<6V or BAT_LOST=8) must not claim 0% */
+                /* [EN] tLost copies tDis, so the lower battery is back at 11500 mV
+                        = 25 % raw. The point of this check is that ONE missing
+                        channel hides its % while the other one still shows ITS
+                        OWN number - not that the number is frozen at the value
+                        of the previous draw. The old expectation said 10 %, the
+                        value of the jitter draw it no longer copies.
+                   [FA] tLost از tDis کپی می‌شود، پس باتری پایین دوباره ۱۱۵۰۰
+                        میلی‌ولت = ۲۵٪ خام است. منظور این تست این است که یک
+                        کانالِ بی‌باتری درصدش را پنهان کند و کانال دیگر عدد
+                        خودش را نشان بدهد - نه اینکه عدد قبلی منجمد بماند.
+                        انتظار قبلی ۱۰٪ بود، یعنی مقدار همان قرائت قبلی. */
                 const tLost = tDis.slice();
                 tLost[6] = 8; tLost[18] = 1200;
                 w.draw({ on: 1, seq: 904, fl: 5, fl2: 0, t: tLost, p: pDis });
-                check(vp1.textContent === "" && vp1.className === "bpct" && vp2.textContent === "10%",
+                check(vp1.textContent === "" && vp1.className === "bpct" &&
+                      vp2.textContent === "25%" && vp2.className === "bpct on y",
                       "a disconnected battery channel hides % while the connected battery keeps showing its %",
                       vp1.textContent + "/" + vp1.className + " , " + vp2.textContent);
             }
