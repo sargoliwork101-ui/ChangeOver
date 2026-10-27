@@ -906,6 +906,12 @@ static void func__Esp_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
     /* [EN] Bytes 20..23 echo our uptime; used only to pair request and answer.
        [FA] بایت‌های ۲۰..۲۳ آپتایم ما را بازمی‌گردانند؛ فقط برای جفت‌کردن پرسش و پاسخ. */
 
+    /* [EN] Hand the board's own uptime to the log: it is the only clock that
+            kept running while this panel was off (user order 2026-10-27).
+       [FA] آپتایم خود برد به لاگ داده می‌شود: تنها ساعتی که وقتی این پنل خاموش
+            بود هم شمرد (دستور کاربر ۲۰۲۶-۱۰-۲۷). */
+    func__EspLog_NoteBoardTime(UINT32_T__G__BoardUptimeSec);
+
     UINT32_T__G__LastHelloAckMs = (uint32_t)millis();
     BOOL__G__HelloSeen = true;
     UINT32_T__G__HelloAckCount++;

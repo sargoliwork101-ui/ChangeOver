@@ -138,17 +138,20 @@ void setup(void)
     BOOL__G__WifiApActive = true;
     BOOL__G__WifiHighPower = true;
 
-    /* سوار کردن فایل‌سیستم برای ثبت بنچ و تاریخچه؛ اگر فرمت نشده باشد یک‌بار فرمت و دوباره سوار می‌شود. */
+    /* [EN] Mount WITHOUT formatting. An automatic format on a mount failure
+            deletes the whole history - that is the "I came back and nothing was
+            saved" report. A failed mount now only means "rows wait in RAM", and
+            formatting is an explicit button in the panel.
+       [FA] سوار کردن بدون فرمت. فرمتِ خودکار هنگام خطای سوار شدن کل تاریخچه را
+            پاک می‌کند - همان «برگشتم و دیدم چیزی ذخیره نشده». حالا خطای سوار
+            شدن فقط یعنی «ردیف‌ها در رم منتظرند» و فرمت یک دکمهٔ صریح در پنل
+            است. */
 #if defined(ESP8266)
     BOOL__G__FsOk = LittleFS.begin();
-    if (BOOL__G__FsOk == false)
-    {
-        (void)LittleFS.format();
-        BOOL__G__FsOk = LittleFS.begin();
-    }
 #else
-    BOOL__G__FsOk = LittleFS.begin(true);
+    BOOL__G__FsOk = LittleFS.begin(false);
 #endif
+    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
 
     ESP_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Esp_HttpRoot);
     ESP_WEB_SERVER_T__G__Server.on("/f.css", HTTP_GET, func__Esp_HttpFont);
@@ -178,6 +181,7 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Esp_HttpEventDays);
     ESP_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Esp_HttpEventDownload);
     ESP_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Esp_HttpEventClear);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Esp_HttpEventFormat);
     ESP_WEB_SERVER_T__G__Server.begin();
 
     /* [EN] v1.93: restore the clock anchor and the day list for the history.

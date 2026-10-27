@@ -81,6 +81,27 @@ static uint32_t UINT32_T__G__LogAnchorSec = 0u;
 static uint32_t UINT32_T__G__LogAnchorMs = 0u;
 static int32_t  INT32_T__G__LogTzSec = 0;
 static bool     BOOL__G__LogClockValid = false;
+/* [EN] THE IMPORTANT ONE: the panel is not the clock. The STM32 stays powered
+        when the panel is cut, reboots or is unplugged, and its HELLO_ACK
+        carries its own uptime. So the wall clock is anchored to the BOARD's
+        uptime, not to millis(): the panel can lose power for an hour and still
+        know the real time with no browser anywhere.
+   [FA] مهم‌ترین قسمت: پنل ساعت نیست. STM32 وقتی پنل خاموش می‌شود، ری‌استارت
+        می‌شود یا کابلش جدا می‌شود روشن می‌ماند و آپتایم خودش را در HELLO_ACK
+        می‌فرستد. پس ساعت روی آپتایم «برد» بسته می‌شود، نه روی millis(): پنل
+        می‌تواند یک ساعت بی‌برق بماند و باز هم وقتِ واقعی را بدونه، بی‌آنکه
+        هیچ مرورگری باز باشد. */
+static uint32_t UINT32_T__G__LogAnchorBoardSec = 0u;
+static bool     BOOL__G__LogAnchorBoardValid = false;
+static uint32_t UINT32_T__G__LogBoardNowSec = 0u;
+static bool     BOOL__G__LogBoardAlive = false;
+/* [EN] The latest time this panel has ever believed. The clock may stand still
+        when nobody can tell it the time, but it NEVER goes back: a history that
+        jumps backwards writes the same rows twice in two different files.
+   [FA] دیرترین زمانی که این پنل تا حالا باور کرده است. ساعت وقتی کسی نتواند
+        وقت را بگوید می‌ایستد، ولی هیچ‌وقت عقب نمی‌رود: تاریخچه‌ای که عقب
+        بپرد، یک ردیف را دو بار در دو فایل می‌نویسد. */
+static uint32_t UINT32_T__G__LogHighWaterSec = 0u;
 static uint32_t UINT32_T__G__LogLastClockSaveMs = 0u;
 
 /* ==================== Open day / روز باز ==================== */
@@ -228,14 +249,86 @@ static_assert(ESP_LOG_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
 static uint32_t func__EspLog_NowSec(void)
 {
     uint32_t uint32_t__elapsedMs;
+    uint32_t uint32_t__panelSec;
 
     if (BOOL__G__LogClockValid == false)
     {
         return 0u;
     }
 
+    /* [EN] What this panel can say on its own: the anchor plus its own uptime.
+       [FA] آنچه پنل به‌تنهایی می‌تواند بگوید: لنگر به‌علاوهٔ آپتایم خودش. */
     uint32_t__elapsedMs = (uint32_t)millis() - UINT32_T__G__LogAnchorMs;
-    return UINT32_T__G__LogAnchorSec + (uint32_t__elapsedMs / 1000u);
+    uint32_t__panelSec = UINT32_T__G__LogAnchorSec + (uint32_t__elapsedMs / 1000u);
+
+    /* [EN] What the BOARD can say: it kept counting while this panel was dead.
+            Whichever is further ahead is the truth, so the clock never rewinds
+            and never loses the time the panel was not running.
+       [FA] آنچه برد می‌تواند بگوید: وقتی پنل مرده بود، برد همچنان می‌شمرد.
+            هرکدام جلوتر باشد درست است، پس ساعت نه عقب می‌رود و نه وقتی را که
+            پنل خاموش بوده گم می‌کند. */
+    if ((BOOL__G__LogAnchorBoardValid != false) && (BOOL__G__LogBoardAlive != false) &&
+        (UINT32_T__G__LogBoardNowSec >= UINT32_T__G__LogAnchorBoardSec))
+    {
+        uint32_t uint32_t__boardSec = UINT32_T__G__LogAnchorSec +
+            (UINT32_T__G__LogBoardNowSec - UINT32_T__G__LogAnchorBoardSec);
+        if (uint32_t__boardSec > uint32_t__panelSec)
+        {
+            uint32_t__panelSec = uint32_t__boardSec;
+        }
+    }
+    if (uint32_t__panelSec < UINT32_T__G__LogHighWaterSec)
+    {
+        return UINT32_T__G__LogHighWaterSec;   /* never back */
+    }
+    UINT32_T__G__LogHighWaterSec = uint32_t__panelSec;
+    return uint32_t__panelSec;
+}
+
+/**
+ * @brief  [EN] The board said how long it has been running (HELLO_ACK).
+ *              First answer after boot: anchor to it without any jump. Answer
+ *              with a SMALLER uptime than the anchor means the board itself
+ *              restarted, so that anchor is dead and a new one is taken.
+ *         [FA] برد گفت چقدر است روشن است (HELLO_ACK). اولین پاسخ پس از بوت:
+ *              بی‌هیچ پرشی به آن لنگر می‌زنیم. آپتایمِ کوچک‌تر از لنگر یعنی
+ *              خودِ برد ری‌استارت شده، پس آن لنگر مرده است و لنگر تازه گرفته
+ *              می‌شود.
+ * @‎param  uint32_t uint32_t__boardUptimeSec [EN] board uptime, s /
+ *                                           [FA]‎ آپتایم برد به ثانیه
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_NoteBoardTime(uint32_t uint32_t__boardUptimeSec)
+{
+    if (uint32_t__boardUptimeSec == 0u)
+    {
+        BOOL__G__LogBoardAlive = false;
+        return;
+    }
+    UINT32_T__G__LogBoardNowSec = uint32_t__boardUptimeSec;
+    BOOL__G__LogBoardAlive = true;
+
+    if (BOOL__G__LogAnchorBoardValid != false)
+    {
+        if (uint32_t__boardUptimeSec < UINT32_T__G__LogAnchorBoardSec)
+        {
+            BOOL__G__LogAnchorBoardValid = false;   /* the board restarted */
+        }
+        else
+        {
+            return;   /* the anchor still stands */
+        }
+    }
+    if (BOOL__G__LogClockValid == false)
+    {
+        return;
+    }
+    /* [EN] fresh anchor at the time the panel believes right now: no jump.
+       [FA] لنگر تازه روی زمانی که پنل همین حالا باور دارد: بدون پرش. */
+    UINT32_T__G__LogAnchorSec = func__EspLog_NowSec();
+    UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+    UINT32_T__G__LogAnchorBoardSec = uint32_t__boardUptimeSec;
+    BOOL__G__LogAnchorBoardValid = true;
 }
 
 /**
@@ -366,7 +459,7 @@ static void func__EspLog_ClockSave(void)
 {
     File file__clock;
     uint32_t uint32_t__nowSec;
-    char char__line[32];
+    char char__line[64];
 
     if ((BOOL__G__FsOk == false) || (BOOL__G__LogClockValid == false))
     {
@@ -382,8 +475,16 @@ static void func__EspLog_ClockSave(void)
     {
         return;
     }
-    (void)snprintf(char__line, sizeof(char__line), "%lu,%ld\n",
-                   (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec);
+    /* [EN] Three fields: the wall clock, the timezone, and the BOARD uptime the
+            wall clock belongs to. With those three, a panel that has just been
+            switched on knows the time again without asking anybody.
+       [FA] سه فیلد: ساعت، منطقهٔ زمانی، و آپتایمِ بردی که این ساعت به آن بسته
+            است. با همین سه عدد، پنلی که تازه روشن شده بی‌آنکه از کسی بپرسد
+            دوباره وقت را می‌داند. */
+    (void)snprintf(char__line, sizeof(char__line), "%lu,%ld,%lu\n",
+                   (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec,
+                   (unsigned long)((BOOL__G__LogAnchorBoardValid != false) ?
+                                   UINT32_T__G__LogAnchorBoardSec : 0u));
     (void)file__clock.print(char__line);
     file__clock.close();
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
@@ -424,8 +525,28 @@ static void func__EspLog_ClockLoad(void)
     }
     UINT32_T__G__LogAnchorSec = uint32_t__savedSec;
     UINT32_T__G__LogAnchorMs = (uint32_t)millis();
-    INT32_T__G__LogTzSec = (int32_t)string__content.substring(int32_t__split + 1).toInt();
+    {
+        String string__rest = string__content.substring(int32_t__split + 1);
+        int32_t int32_t__second = string__rest.indexOf(',');
+
+        if (int32_t__second > 0)
+        {
+            INT32_T__G__LogTzSec = (int32_t)string__rest.substring(0, int32_t__second).toInt();
+            UINT32_T__G__LogAnchorBoardSec = (uint32_t)string__rest.substring(int32_t__second + 1).toInt();
+        }
+        else
+        {
+            INT32_T__G__LogTzSec = (int32_t)string__rest.toInt();
+            UINT32_T__G__LogAnchorBoardSec = 0u;
+        }
+    }
+    /* [EN] An old file with two fields still loads; it simply has no board
+            anchor, and the first HELLO_ACK makes one.
+       [FA] فایل قدیمی دو‌فیلدی هم خوانده می‌شود؛ فقط لنگر برد ندارد و اولین
+            HELLO_ACK لنگر را می‌سازد. */
+    BOOL__G__LogAnchorBoardValid = (UINT32_T__G__LogAnchorBoardSec != 0u);
     BOOL__G__LogClockValid = true;
+    UINT32_T__G__LogHighWaterSec = uint32_t__savedSec;
 }
 
 /**
@@ -465,6 +586,20 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
     UINT32_T__G__LogAnchorMs = (uint32_t)millis();
     INT32_T__G__LogTzSec = int32_t__tzSec;
     BOOL__G__LogClockValid = true;
+    UINT32_T__G__LogHighWaterSec = uint32_t__epochSec;
+    /* [EN] The phone says WHAT time it is; the board says how time passes from
+            here on. Both anchors start at this instant.
+       [FA] گوشی می‌گوید «چند ساعت است»؛ برد می‌گوید از این‌جا به بعد زمان
+            چطور می‌گذرد. هر دو لنگر از همین لحظه شروع می‌کنند. */
+    if ((BOOL__G__LogBoardAlive != false) && (UINT32_T__G__LogBoardNowSec != 0u))
+    {
+        UINT32_T__G__LogAnchorBoardSec = UINT32_T__G__LogBoardNowSec;
+        BOOL__G__LogAnchorBoardValid = true;
+    }
+    else
+    {
+        BOOL__G__LogAnchorBoardValid = false;
+    }
     func__EspLog_ClockSave();
     return true;
 }

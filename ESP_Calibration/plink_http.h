@@ -966,11 +966,39 @@ static const char *func__Esp_LogLostText(void)
     return CHAR__G__LogLostText;
 }
 
+/**
+ * @brief  [EN] Format the panel's flash on the user's explicit request and mount
+ *              it again. Never called by itself: a format is the only action in
+ *              this file that can destroy the history, so it needs a human.
+ *         [FA] فرمت کردن فلش پنل به درخواست صریح کاربر و سوار کردن دوبارهٔ آن.
+ *              هیچ‌وقت خودبه‌خود صدا زده نمی‌شود: فرمت تنها کاری در این فایل
+ *              است که می‌تواند تاریخچه را نابود کند، پس آدم لازم دارد.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventFormat(void)
+{
+    (void)LittleFS.format();
+    BOOL__G__FsOk = LittleFS.begin();
+    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
+    if (BOOL__G__FsOk != false)
+    {
+        func__EspLog_Begin();
+    }
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    ESP_WEB_SERVER_T__G__Server.send(200, "text/plain",
+                                     (BOOL__G__FsOk != false) ? "ok" : "fail");
+}
+
 static const char *func__Esp_LogSourceCode(void)
 {
     if (BOOL__G__FsOk == false)
     {
-        return "0";   /* ESP_LOG_FS_OFF */
+        /* [EN] 0 = no file system at all, 3 = it exists but did not mount, so
+                the history on it is untouched and only the newest rows wait in
+                RAM.
+           [FA] ۰ = فایل‌سیستم نیست، ۳ = هست ولی سوار نشد؛ تاریخچه‌اش
+                دست‌نخورده است و فقط چند ردیف آخر در رم منتظرند. */
+        return (BOOL__G__FsMountFailed != false) ? "3" : "0";
     }
     if (UINT8_T__G__LogWriteFault != 0u)
     {

@@ -955,6 +955,21 @@ static void func__Simple_HttpClockSet(void)
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 
+/* فرمت کردن فلش به درخواست صریح کاربر و سوار کردن دوبارهٔ آن.
+   هیچ‌وقت خودبه‌خود صدا زده نمی‌شود: فرمت تنها کاری است که تاریخچه را نابود می‌کند. */
+static void func__Simple_HttpEventFormat(void)
+{
+    (void)LittleFS.format();
+    BOOL__G__FsOk = LittleFS.begin();
+    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
+    if (BOOL__G__FsOk)
+    {
+        func__SimpleLog_Begin();
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", BOOL__G__FsOk ? "ok" : "fail");
+}
+
 /* GET /evt : آخرین ردیف‌های یک روز (یا جدیدترین روز) به‌صورت متن */
 static void func__Simple_HttpEventLog(void)
 {
@@ -963,8 +978,10 @@ static void func__Simple_HttpEventLog(void)
 
     /* 0 = no file system, 2 = the flash refused the write (both are served
        from the RAM ring), 1 = the rows come from the flash. */
+    /* ۳ = فایل‌سیستم هست ولی سوار نشد؛ تاریخچه‌اش دست‌نخورده است */
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs",
-        (BOOL__G__FsOk == false) ? "0" : ((UINT8_T__G__LogWriteFault != 0u) ? "2" : "1"));
+        (BOOL__G__FsOk == false) ? (BOOL__G__FsMountFailed ? "3" : "0")
+                                : ((UINT8_T__G__LogWriteFault != 0u) ? "2" : "1"));
     /* ردیف‌هایی که حلقهٔ رم ناچار دور ریخت؛ صفحه همان عدد را نشان می‌دهد */
     (void)snprintf(CHAR__G__LogLostText, sizeof(CHAR__G__LogLostText), "%u",
                    (unsigned int)UINT16_T__G__LogDroppedRows);

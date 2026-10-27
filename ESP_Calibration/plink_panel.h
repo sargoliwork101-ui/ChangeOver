@@ -446,7 +446,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 3f7467b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0d8bd05</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -473,7 +473,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="cd" id="logcd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل ذخیره و تا ۳۰ روز نگه داشته می‌شود؛ از حدی که بگذرد، اول قدیمی‌ترین روز حذف می‌شود. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای» نوشته می‌شود.<br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
+<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، مرز قطع باتری و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا روی حافظهٔ پنل می‌ماند و تا ۳۰ روز نگه داشته می‌شود. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک خط می‌سازد و اگر شش ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای» نوشته می‌شود.<br><span class="lb">رنگ نوار کنار هر خط: <b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت</span></div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">امروز</option></select></label>
 <button class="sb" type="button" onclick="evtfetch(1)">به‌روزرسانی</button>
@@ -4417,9 +4417,10 @@ const xspr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+xiso(x)+'</span>
 function evtRender(text,code,ram,src){
   const box=$('evtlist'),sum=$('evtsum');
   const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
-  /* v1.113: src 0 = no file system, 2 = the flash refused the write. */
+  /* src 0 = no file system, 2 = the flash refused the write, 3 = it did not mount. */
   const fsWarn=(src==='2')?'<span class="r">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
-              :(ram?'<span class="y">حافظهٔ موقت رم — برای ماندگاری پس از قطع برق، چیدمان فلش دارای فایل‌سیستم انتخاب شود</span>':'');
+              :(src==='3')?'<span class="r">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
+              :(ram?'<span class="y">حافظهٔ موقت رم — با قطع برق پاک می‌شود</span>':'');
   rows.forEach(r=>{r.band=r.v24<21200;});
   if(sum)sum.innerHTML=fsWarn;
   if(!rows.length){
@@ -4442,7 +4443,7 @@ async function evtfetch(manual){
     const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
     const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
     const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
-    const ram=(src==='0'||src==='2');
+    const ram=(src==='0'||src==='2'||src==='3');
     const t=await r.text();
     evtRender(t,day,ram,src);
     if($('evtst')){
@@ -4452,6 +4453,10 @@ async function evtfetch(manual){
       $('evtst').textContent=where+evtDayFa(day||evtToday())+' · '+n+' خط'+gap;
     }
   }catch(e){ if($('evtst'))$('evtst').textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود'; }
+}
+function evtfmt(){
+  if(!confirm('همهٔ تاریخچه پاک شود؟'))return;
+  fetch('/evt/format',{method:'POST'}).then(()=>{evtDays();evtfetch(1);});
 }
 async function evtDays(){
   try{

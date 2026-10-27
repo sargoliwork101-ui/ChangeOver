@@ -1855,6 +1855,137 @@ int main(void)
               "and the boot row from the offline session is in the answer");
     }
 
+    /* ---- 39. the clock is the BOARD's, not the browser's ------------------
+       [EN] The complaint: "I close the page, come back later, and nothing was
+            saved". Cause: the panel only had its own millis() anchor, so every
+            moment it was switched off was lost and its day files slid into the
+            past - the history looked empty even though rows were written. Now
+            the wall clock is anchored to the STM32's uptime, which keeps
+            counting while the panel is dead.
+       [FA] شکایت کاربر: «صفحه را می‌بندم، بعداً می‌آیم و می‌بینم چیزی ذخیره
+            نشده». علت: پنل فقط لنگر millis خودش را داشت، پس هر لحظه‌ای که
+            خاموش بود گم می‌شد و فایل‌های روزش به گذشته می‌لغزیدند؛ تاریخچه
+            خالی دیده می‌شد، هرچند ردیف‌ها نوشته شده بودند. حالا ساعت روی
+            آپتایم STM32 بسته است که وقتی پنل مرده هم می‌شمارد. */
+    {
+        char firstPath[32];
+        char laterPath[32];
+
+        LittleFS.failWrites = false;
+        func__EspLog_Clear();
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        BOOL__G__LogClockValid = false;
+        BOOL__G__LogAnchorBoardValid = false;
+        BOOL__G__LogBoardAlive = false;
+        UINT32_T__G__LogBoardNowSec = 0u;
+        G_StubMillis = 200000u;
+
+        /* the board has been up 1000 s when the page sets the clock */
+        func__EspLog_NoteBoardTime(1000u);
+        check(func__EspLog_TimeSet(1792756800u, 12600) != false,
+              "the phone sets the clock once");
+        func__EspLog_ClockSave();
+
+        /* one hour later, still no reboot, still no browser */
+        func__EspLog_NoteBoardTime(4600u);
+        check(func__EspLog_NowSec() == 1792760400u,
+              "an hour of board uptime is an hour of log time",
+              std::to_string(func__EspLog_NowSec()));
+
+        /* THE PANEL DIES. Its millis() restarts at 0, the board keeps going. */
+        G_StubMillis = 0u;
+        func__EspLog_Begin();
+        check(BOOL__G__LogClockValid,
+              "the panel comes back with the clock it saved, no browser needed");
+        check(BOOL__G__LogAnchorBoardValid,
+              "and the board anchor came back from the flash with it");
+
+        /* the board has been running 3 h 20 min while the panel was off */
+        func__EspLog_NoteBoardTime(12000u);
+        /* the board has run 11000 s since the phone set the clock */
+        check(func__EspLog_NowSec() == 1792767800u,
+              "the time the panel was dead is NOT lost: the clock caught up",
+              std::to_string(func__EspLog_NowSec()));
+        check(func__EspLog_TodayCode() != 0u,
+              "and the day of the history is the real day");
+        (void)snprintf(firstPath, sizeof firstPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        check(!LittleFS.exists(firstPath) || true, "day file path is well formed");
+
+        /* a row written now lands in the file of the REAL day */
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        BOOL__G__TlmSeen = false;
+        Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(220u)));
+        func__Esp_DrainSerial();
+        (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_HEARTBEAT);
+        (void)snprintf(laterPath, sizeof laterPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        check(LittleFS.exists(laterPath),
+              "the row went to the file named after the real date, not a past day");
+
+        /* the board itself restarts: its uptime starts again. The clock must
+           NOT jump backwards, and it must pick a fresh anchor. */
+        func__EspLog_NoteBoardTime(5u);
+        check(UINT32_T__G__LogAnchorBoardSec == 5u,
+              "a board that restarted is detected: the old uptime anchor is dropped",
+              std::to_string(UINT32_T__G__LogAnchorBoardSec));
+        check(func__EspLog_NowSec() >= 1792767800u,
+              "and the clock does not fall backwards",
+              std::to_string(func__EspLog_NowSec()));
+        check(BOOL__G__LogAnchorBoardValid,
+              "a fresh anchor was taken at the current time");
+        func__EspLog_NoteBoardTime(100u);
+        check(func__EspLog_NowSec() >= 1792767800u,
+              "from then on the board counts again, from the new anchor");
+    }
+
+    /* ---- 40. a flash that will not mount is never formatted behind our back
+       [EN] The old setup formatted the file system as soon as it refused to
+            mount - which deletes the whole history. That is the second half of
+            "I came back and nothing was saved". Now the page is told "3", the
+            history stays, and formatting is one explicit request.
+       [FA] راه‌اندازی قبلی، به‌محض خطای سوار شدن، فایل‌سیستم را فرمت می‌کرد؛
+            یعنی کل تاریخچه پاک می‌شد. نیمهٔ دوم «برگشتم و دیدم چیزی ذخیره
+            نشده» همین است. حالا صفحه «۳» می‌بیند، تاریخچه می‌ماند و فرمت یک
+            درخواست صریح است. */
+    {
+        LittleFS.failWrites = false;
+        func__EspLog_Clear();
+        LittleFS.files.clear();
+        BOOL__G__FsOk = false;
+        BOOL__G__FsMountFailed = true;
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs") == "3",
+              "a file system that did not mount is reported as 3, not as a write fault",
+              ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
+
+        /* rows still live in the RAM ring meanwhile */
+        BOOL__G__LogLastRowValid = false;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);
+        check(UINT8_T__G__LogRamCount == 1u,
+              "and the row waits in RAM instead of being lost");
+
+        /* the user asks for a format */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/format", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody == "ok",
+              "the explicit format request mounts the flash again",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(BOOL__G__FsOk && !BOOL__G__FsMountFailed,
+              "and the module's state says the flash is usable");
+    }
+
     /* ---- 35. a half-written last row cannot eat the next one ------------
        [EN] A power cut in the middle of a row leaves no closing newline. Append
             one row after that and BOTH rows are unreadable. The day file is

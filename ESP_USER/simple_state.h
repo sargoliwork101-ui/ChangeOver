@@ -4,6 +4,8 @@
 #include <LittleFS.h>
 /* ==================== وضعیت حافظه ==================== */
 static bool BOOL__G__FsOk = false;
+/* فایل‌سیستم هست ولی سوار نشد؛ خودکار فرمت نمی‌شود تا تاریخچه پاک نشود */
+static bool BOOL__G__FsMountFailed = false;
 
 /* ==================== وضعیت گیرنده ==================== */
 static simple_rx_state_t SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_SOF0;

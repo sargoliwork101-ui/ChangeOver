@@ -63,6 +63,13 @@ static uint32_t UINT32_T__G__WifiStationSinceMs = 0u;
 
 /* [‎EN] Bench statistics window (see ESP_BENCHLOG_HEADER in plink_config.h) / [FA]‎ پنجرهٔ آمار بنچ (بخش 4 نسخه ۲) */
 static bool     BOOL__G__FsOk = false;   /* [EN] LittleFS mounted / [FA] LittleFS سوار شده */
+/* [EN] The file system exists but refused to mount. It is NOT formatted
+        automatically any more: a format deletes the whole history, which is
+        exactly the "nothing was saved" report. The panel offers the button.
+   [FA] فایل‌سیستم هست ولی سوار نشد. دیگر خودکار فرمت نمی‌شود: فرمت کل
+        تاریخچه را پاک می‌کند و همان «چیزی ذخیره نشده» را می‌سازد. دکمه‌اش در
+        پنل است. */
+static bool     BOOL__G__FsMountFailed = false;
 static uint32_t UINT32_T__G__StatSum[ESP_LINK_TLM_FIELD_COUNT];
 static uint32_t UINT32_T__G__StatMin[ESP_LINK_TLM_FIELD_COUNT];
 static uint32_t UINT32_T__G__StatMax[ESP_LINK_TLM_FIELD_COUNT];

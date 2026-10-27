@@ -45,15 +45,13 @@ void setup(void)
 #if defined(ESP8266)
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     BOOL__G__FsOk = LittleFS.begin();
-    if (BOOL__G__FsOk == false)
-    {
-        (void)LittleFS.format();
-        BOOL__G__FsOk = LittleFS.begin();
-    }
 #else
     WiFi.setSleep(false);
-    BOOL__G__FsOk = LittleFS.begin(true);
+    BOOL__G__FsOk = LittleFS.begin(false);
 #endif
+    /* فرمتِ خودکار هنگام خطای سوار شدن، کل تاریخچه را پاک می‌کند - همان
+       «برگشتم و دیدم چیزی ذخیره نشده». فرمت فقط با دکمهٔ صریح کاربر. */
+    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
 
     /* کلید رمزنگاری از شناسهٔ چیپ ساخته می‌شود - پیش از هر خواندن فایل حساس */
     func__Simple_CryptoKeyInit();
@@ -106,6 +104,7 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Simple_HttpEventDays);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Simple_HttpEventDownload);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Simple_HttpEventClear);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Simple_HttpEventFormat);
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
 

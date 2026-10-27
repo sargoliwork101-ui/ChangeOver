@@ -1985,7 +1985,8 @@ function evtRenderFa(text,day,ram){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
- const fsWarn=(src==='2')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
+ const fsWarn=(src==='3')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
+  :(src==='2')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
   :(ram?'<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">حافظهٔ موقت رم — چیدمان فلش دارای FS انتخاب شود</span>':'');
  if(sum)sum.innerHTML=fsWarn;
  if(!rows.length){
@@ -2038,12 +2039,16 @@ async function evtFetch(manual){
   const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
   const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
   const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
-  const ram=(src==='0'||src==='2');
+  const ram=(src==='0'||src==='2'||src==='3');
   const t=await r.text();
   evtRenderFa(t,day,ram);
   const st=document.getElementById('evtSt');
   if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFa(lost)+' ردیف از دست رفت'):'');}
  }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
+}
+function evtfmt(){
+ if(!confirm('همهٔ تاریخچه پاک شود؟'))return;
+ fetch('/evt/format',{method:'POST'}).then(()=>{evtDays();evtfetch(1);});
 }
 async function evtDays(){
  try{
