@@ -19,6 +19,28 @@
 
 /* ==================== Defines ==================== */
 #define DIAG_SAVE_DELAY_SEC           60u
+/* [EN] v1.113 (user order 2026-10-28: "there must be a save while charging
+        too"): while a channel keeps charging, the record used to be saved only
+        when the charge stopped, so a mains cut in the middle of a long charge
+        threw away every charge second since it started. The record is now
+        written during the charge as well, at most once per this many charge
+        seconds: losing at most ten minutes instead of the whole session.
+   [FA] نسخهٔ ۱٫۱۱۳ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «در زمان شارژ هم باید ذخیره
+        داشته باشیم»): تا امروز رکورد حین شارژِ پیوسته ذخیره نمی‌شد و فقط با
+        تمام شدن شارژ نوشته می‌شد، پس قطع برق در میانهٔ یک شارژ طولانی همهٔ
+        ثانیه‌های شارژ از شروعش را دور می‌ریخت. حالا حین شارژ هم نوشته
+        می‌شود، حداکثر یک بار در هر همین‌قدر ثانیهٔ شارژ: به‌جای کل نشست،
+        حداکثر ده دقیقه از دست می‌رود. */
+#define DIAG_SAVE_CHARGE_SEC          600u
+/* [EN] A gap longer than this between two charge calls means the channel was
+        NOT charging in between (the caller only calls while it charges), so the
+        idle time is not charge time. Two seconds because the caller comes with
+        the control period, a few milliseconds apart.
+   [FA] فاصلهٔ بیشتر از این بین دو فراخوانی شارژ یعنی کانال در این میان شارژ
+        نمی‌کرده (صدازننده فقط وقتی شارژ می‌کند صدا می‌زند)، پس زمان بی‌کاری
+        زمان شارژ نیست. دو ثانیه، چون صدازننده با دورهٔ کنترل و چند
+        میلی‌ثانیه فاصله می‌آید. */
+#define DIAG_CHARGE_GAP_SEC           2u
 #define DIAG_CRC32_POLY               0xEDB88320u
 
 /* ==================== Static Variables ==================== */
@@ -28,7 +50,30 @@ static bool BOOL__G__Dirty = false;
 static uint32_t UINT32_T__G__SaveDelaySec = 0u;
 static uint32_t UINT32_T__G__PowerOffTime = 0u;
 static bool BOOL__G__PowerOffActive = false;
-static uint32_t UINT32_T__G__LastChargeUptimeSec = 0xFFFFFFFFu;
+/* [EN] v1.113 time base (audit 2026-10-28): uptime used to be the NUMBER of
+        control passes, one "second" every hundred of them. A pass that costs
+        more than its 10 ms delay therefore made the board's second longer than
+        a real second, and the panel anchors its wall clock on this uptime
+        (HELLO_ACK), so the recovered clock ran slow. Uptime now comes from the
+        kernel tick counter, which cannot drift with the workload.
+   [FA] مبنای زمان نسخهٔ ۱٫۱۱۳ (ممیزی ۲۰۲۶-۱۰-۲۸): آپتایم «تعداد دورهای» تسک
+        کنترل بود، هر صد دور یک «ثانیه». پس پاسی که بیشتر از تأخیر ۱۰
+        میلی‌ثانیه‌ای‌اش طول می‌کشید، ثانیهٔ برد را از ثانیهٔ واقعی بلندتر
+        می‌کرد و پنل ساعتش را روی همین آپتایم می‌بست (HELLO_ACK)، یعنی ساعتِ
+        بازیابی‌شده کند می‌شد. حالا آپتایم از شمارندهٔ تیک کرنل می‌آید که با
+        بار پردازشی سُر نمی‌خورد. */
+static uint32_t UINT32_T__G__KernelUptimeLastTicks = 0u;
+static uint32_t UINT32_T__G__KernelUptimeWrapSec = 0u;
+/* [EN] Charge accounting by DELTA of real seconds, per channel and for the
+        total. A first call only takes the starting point, so a start in the
+        middle of a second can never add a whole second that did not happen.
+   [FA] حساب ثانیه‌های شارژ بر پایهٔ «تفاضل» ثانیه‌های واقعی، برای هر کانال و
+        برای مجموع. اولین فراخوانی فقط نقطهٔ شروع را می‌گیرد، تا شروع در
+        میانهٔ یک ثانیه هرگز یک ثانیهٔ کاملِ رخ‌نداده اضافه نکند. */
+static bool     BOOL__G__ChargeBaseValid = false;
+static uint32_t UINT32_T__G__LastChargeUptimeSec[2] = { 0u, 0u };
+static uint32_t UINT32_T__G__LastTotalUptimeSec = 0u;
+static uint32_t UINT32_T__G__ChargeSecSinceSave = 0u;
 
 /* ==================== CRC32 ==================== */
 
@@ -248,16 +293,115 @@ void func__Diag_Init(void)
     DIAG_RECORD_T__G__Active.uint32_t__resetCount++;
     BOOL__G__Dirty = false;
     UINT32_T__G__SaveDelaySec = 0u;
-    UINT32_T__G__LastChargeUptimeSec = 0xFFFFFFFFu;
+    /* [EN] v1.113: the charge accounting starts from the first call, so a boot
+            in the middle of a second adds nothing that did not happen.
+       [FA] نسخهٔ ۱٫۱۱۳: حساب شارژ از اولین فراخوانی شروع می‌شود، تا بوت در
+            میانهٔ یک ثانیه چیزی که رخ نداده اضافه نکند. */
+    BOOL__G__ChargeBaseValid = false;
+    UINT32_T__G__LastChargeUptimeSec[0] = 0u;
+    UINT32_T__G__LastChargeUptimeSec[1] = 0u;
+    UINT32_T__G__LastTotalUptimeSec = 0u;
+    UINT32_T__G__ChargeSecSinceSave = 0u;
+    UINT32_T__G__KernelUptimeLastTicks = osKernelGetTickCount();
+    UINT32_T__G__KernelUptimeWrapSec = 0u;
 
     (void)memcpy(&DIAG_RECORD_T__G__Stage, &DIAG_RECORD_T__G__Active, sizeof(diag_record_t));
+}
+
+/* ==================== Diag_UptimeSeconds ==================== */
+
+/**
+ * @brief  [EN] Seconds this board has really been running, read from the
+ *              kernel tick counter instead of counting control passes.
+ *              The 32-bit tick counter wraps after ~49.7 days at 1 kHz, so a
+ *              step backwards is carried into a separate second counter:
+ *              uptime stays monotonic for the life of the product.
+ *         [FA] ثانیه‌هایی که این برد واقعاً روشن بوده، از شمارندهٔ تیک کرنل
+ *              خوانده می‌شود نه از شمردن دورهای کنترل. شمارندهٔ ۳۲بیتی تیک
+ *              در ‎1kHz‎ بعد از حدود ۴۹٫۷ روز سرریز می‌کند، پس پرشِ رو به
+ *              عقب در یک شمارندهٔ ثانیهٔ جدا ذخیره می‌شود: آپتایم تا پایان عمر
+ *              محصول یکنوا می‌ماند.
+ * @return [EN] uptime in seconds / [FA]‎ آپتایم به ثانیه
+ */
+static uint32_t func__Diag_UptimeSeconds(void)
+{
+    uint32_t uint32_t__tickFrequency = osKernelGetTickFreq();
+    uint32_t uint32_t__ticks = osKernelGetTickCount();
+
+    if (uint32_t__tickFrequency == 0u)
+    {
+        /* [EN] A dead kernel clock must not freeze the uptime at zero: keep the
+                value that is already known.
+           [FA] ساعت مردهٔ کرنل نباید آپتایم را صفر نگه دارد: همان مقدار
+                معلوم نگه داشته می‌شود. */
+        return DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
+    }
+    if (uint32_t__ticks < UINT32_T__G__KernelUptimeLastTicks)
+    {
+        UINT32_T__G__KernelUptimeWrapSec +=
+            (0xFFFFFFFFu / uint32_t__tickFrequency) + 1u;
+    }
+    UINT32_T__G__KernelUptimeLastTicks = uint32_t__ticks;
+
+    return UINT32_T__G__KernelUptimeWrapSec +
+           (uint32_t__ticks / uint32_t__tickFrequency);
+}
+
+/* ==================== Diag_IsCharging ==================== */
+
+/**
+ * @brief  [EN] Is at least one channel charging right now? Read straight from
+ *              the charger instead of guessing from the call pattern, so the
+ *              save policy follows the real state even when a call is missed.
+ *         [FA] آیا همین حالا دست‌کم یک کانال شارژ می‌کند؟ مستقیم از شارژر
+ *              خوانده می‌شود نه از روی الگوی فراخوانی، تا سیاست ذخیره با
+ *              حالت واقعی جلو برود، حتی اگر یک فراخوانی جا بیفتد.
+ * @return [EN] true when a channel is active / [FA]‎ اگر کانالی فعال باشد
+ */
+static bool func__Diag_IsCharging(void)
+{
+#if MODULE_CHARGER
+    if (func__Charger_IsChannelActive(0u) != false)
+    {
+        return true;
+    }
+    if (func__Charger_IsChannelActive(1u) != false)
+    {
+        return true;
+    }
+#endif
+    return false;
+}
+
+/* ==================== Diag_SaveDue ==================== */
+
+/**
+ * @brief  [EN] May the pending change go to the flash now?
+ *              Outside a charge the 60 s debounce already decided. Inside a
+ *              charge the flash is spared until DIAG_SAVE_CHARGE_SEC of charge
+ *              has piled up, because a charge second changes a counter every
+ *              single second and the flash does not deserve 3600 writes a day.
+ *         [FA] آیا تغییرِ در انتظار حالا می‌تواند روی فلش برود؟ بیرون شارژ،
+ *              همان دیبانس ۶۰ ثانیه‌ای تصمیم گرفته است. داخل شارژ، تا
+ *              ‎DIAG_SAVE_CHARGE_SEC‎ ثانیهٔ شارژ جمع نشود فلش در امان می‌ماند،
+ *              چون هر ثانیهٔ شارژ یک شمارنده را عوض می‌کند و فلش روزی ۳۶۰۰
+ *              نوشتن را تحمل نمی‌کند.
+ * @return [EN] true when a save may run / [FA]‎ اگر ذخیره مجاز باشد
+ */
+static bool func__Diag_SaveDue(void)
+{
+    if (func__Diag_IsCharging() == false)
+    {
+        return true;
+    }
+    return (UINT32_T__G__ChargeSecSinceSave >= DIAG_SAVE_CHARGE_SEC);
 }
 
 /* ==================== Diag_Tick ==================== */
 
 void func__Diag_Tick(void)
 {
-    DIAG_RECORD_T__G__Active.uint32_t__uptimeSec++;
+    DIAG_RECORD_T__G__Active.uint32_t__uptimeSec = func__Diag_UptimeSeconds();
 
     if (BOOL__G__Dirty)
     {
@@ -265,9 +409,14 @@ void func__Diag_Tick(void)
         {
             UINT32_T__G__SaveDelaySec--;
         }
-        else
+        else if (func__Diag_SaveDue() != false)
         {
             (void)func__Diag_SaveNow();
+        }
+        else
+        {
+            /* [EN] charging: the change waits for the next charge-save slot.
+               [FA] در حال شارژ: تغییر منتظر نوبت بعدی ذخیرهٔ شارژ می‌ماند. */
         }
     }
 }
@@ -326,35 +475,106 @@ uint32_t func__Diag_GetBoardTime(void)
 
 /* ==================== Diag_AddChargeSec ==================== */
 
-void func__Diag_AddChargeSec(uint8_t uint8_t__channel, uint32_t uint32_t__sec)
+void func__Diag_AddChargeSec(uint8_t uint8_t__channel)
 {
-    int32_t int32_t__lock = osKernelLock();
+    uint32_t uint32_t__uptimeSec = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
+    uint32_t uint32_t__deltaSec;
+    uint8_t  uint8_t__index = (uint8_t__channel == 0u) ? 0u : 1u;
+    int32_t  int32_t__lock;
 
-    /* [EN] Count wall-clock charging time once per uptime second even when
-       both channels 0 and 1 are active in the same 1-second tick, and keep
-       the 60 s debounce from firing while charging is continuously active.
-       [FA] زمان کل شارژ در هر ثانیهٔ آپتایم فقط یک‌بار جمع می‌شود حتی اگر هر
-       دو کانال فعال باشند، و تایمر ۶۰ ثانیه‌ای حین شارژ پیوسته نگه‌داشته
-       می‌شود تا فلش و PWM هر دقیقه قطع نشوند. */
-    if (DIAG_RECORD_T__G__Active.uint32_t__uptimeSec != UINT32_T__G__LastChargeUptimeSec)
+    /* [EN] Nothing has moved since the last call: no lock, no work. Both of
+            these live in the control task, so the plain read cannot race.
+       [FA] از فراخوانی قبلی چیزی عوض نشده: نه قفل، نه کار. هر دو مقدار در
+            تسک کنترل زندگی می‌کنند، پس این خواندن سادهٔ بی‌قفل مسابقه ندارد. */
+    if ((BOOL__G__ChargeBaseValid != false) &&
+        (UINT32_T__G__LastChargeUptimeSec[uint8_t__index] == uint32_t__uptimeSec) &&
+        (UINT32_T__G__LastTotalUptimeSec == uint32_t__uptimeSec))
     {
-        DIAG_RECORD_T__G__Active.uint32_t__totalChargeSec += uint32_t__sec;
-        UINT32_T__G__LastChargeUptimeSec = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
+        return;
     }
-    if (uint8_t__channel == 0u)
+
+    int32_t__lock = osKernelLock();
+
+    /* [EN] First call after boot: only remember where time started.
+       [FA] اولین فراخوانی بعد از بوت: فقط آغاز زمان ثبت می‌شود. */
+    if (BOOL__G__ChargeBaseValid == false)
     {
-        DIAG_RECORD_T__G__Active.uint32_t__chargeSecCh1 += uint32_t__sec;
+        UINT32_T__G__LastChargeUptimeSec[0] = uint32_t__uptimeSec;
+        UINT32_T__G__LastChargeUptimeSec[1] = uint32_t__uptimeSec;
+        UINT32_T__G__LastTotalUptimeSec = uint32_t__uptimeSec;
+        BOOL__G__ChargeBaseValid = true;
+        if (int32_t__lock >= 0)
+        {
+            (void)osKernelRestoreLock(int32_t__lock);
+        }
+        return;
     }
-    else
+
+    /* [EN] This channel's share: the real seconds that passed since its own
+            last call, whatever the call rate was.
+       [FA] سهم همین کانال: ثانیه‌های واقعیِ گذشته از آخرین فراخوانی خودش،
+            با هر نرخی که فراخوانی شده باشد. */
+    uint32_t__deltaSec = uint32_t__uptimeSec - UINT32_T__G__LastChargeUptimeSec[uint8_t__index];
+    /* [EN] A long gap is not charge time: the channel was idle, and this call
+            opens a new charge session at this very second.
+       [FA] فاصلهٔ طولانی زمان شارژ نیست: کانال بی‌کار بوده و این فراخوانی یک
+            نشست شارژ تازه در همین ثانیه باز می‌کند. */
+    if (uint32_t__deltaSec > DIAG_CHARGE_GAP_SEC)
     {
-        DIAG_RECORD_T__G__Active.uint32_t__chargeSecCh2 += uint32_t__sec;
+        uint32_t__deltaSec = 0u;
+        UINT32_T__G__LastChargeUptimeSec[uint8_t__index] = uint32_t__uptimeSec;
     }
-    BOOL__G__Dirty = true;
-    if ((UINT32_T__G__SaveDelaySec == 0u) ||
-        (UINT32_T__G__SaveDelaySec >= (DIAG_SAVE_DELAY_SEC - 1u)))
+    if (uint32_t__deltaSec != 0u)
+    {
+        if (uint8_t__index == 0u)
+        {
+            DIAG_RECORD_T__G__Active.uint32_t__chargeSecCh1 += uint32_t__deltaSec;
+        }
+        else
+        {
+            DIAG_RECORD_T__G__Active.uint32_t__chargeSecCh2 += uint32_t__deltaSec;
+        }
+        UINT32_T__G__LastChargeUptimeSec[uint8_t__index] = uint32_t__uptimeSec;
+    }
+
+    /* [EN] The total counts each wall second ONCE, even when both channels
+            charge in that same second (user order: total charge time is the
+            time the product spent charging, not the sum of the channels).
+       [FA] مجموع هر ثانیهٔ دیواری را «یک‌بار» می‌شمارد، حتی وقتی هر دو کانال
+            در همان ثانیه شارژ کنند (دستور کاربر: زمان کل شارژ یعنی زمانی که
+            دستگاه در حال شارژ بوده، نه جمع دو کانال). */
+    if (uint32_t__uptimeSec != UINT32_T__G__LastTotalUptimeSec)
+    {
+        uint32_t uint32_t__totalDeltaSec =
+            uint32_t__uptimeSec - UINT32_T__G__LastTotalUptimeSec;
+
+        if (uint32_t__totalDeltaSec > DIAG_CHARGE_GAP_SEC)
+        {
+            /* [‎EN] nothing was charging in between / [FA]‎ در این میان چیزی شارژ نمی‌کرد */
+            uint32_t__totalDeltaSec = 0u;
+        }
+
+        DIAG_RECORD_T__G__Active.uint32_t__totalChargeSec += uint32_t__totalDeltaSec;
+        UINT32_T__G__LastTotalUptimeSec = uint32_t__uptimeSec;
+        if (UINT32_T__G__ChargeSecSinceSave < 0xFFFFFFFFu)
+        {
+            UINT32_T__G__ChargeSecSinceSave += uint32_t__totalDeltaSec;
+        }
+    }
+
+    /* [EN] v1.113: the 60 s debounce is armed ONCE, when a fresh change
+            arrives after a save (Dirty was false). It is never re-armed while
+            the change keeps coming - that constant re-arming was exactly what
+            kept the record out of the flash for a whole charge.
+       [FA] نسخهٔ ۱٫۱۱۳: دیبانس ۶۰ ثانیه‌ای فقط «یک بار» مسلح می‌شود، وقتی
+            تغییری تازه بعد از یک ذخیره می‌رسد (‎Dirty‎ خاموش بود). تا وقتی
+            تغییر ادامه دارد دیگر مسلح نمی‌شود - همان مسلح‌شدن پیوسته بود که
+            رکورد را تمام یک شارژ بیرون فلش نگه می‌داشت. */
+    if (BOOL__G__Dirty == false)
     {
         UINT32_T__G__SaveDelaySec = DIAG_SAVE_DELAY_SEC;
     }
+    BOOL__G__Dirty = true;
     if (int32_t__lock >= 0)
     {
         (void)osKernelRestoreLock(int32_t__lock);
@@ -541,6 +761,11 @@ void func__Diag_ClearHistory(void)
     (void)memset(DIAG_RECORD_T__G__Active.diag_power_event_t__A__PowerEvents, 0,
                  sizeof(DIAG_RECORD_T__G__Active.diag_power_event_t__A__PowerEvents));
     BOOL__G__PowerOffActive = false;
+    /* [EN] a cleared history starts its charge-save budget from zero as well,
+            so the next save is not postponed by seconds that are already gone.
+       [FA] تاریخچهٔ پاک‌شده بودجهٔ ذخیرهٔ شارژش را هم از صفر شروع می‌کند، تا
+            ذخیرهٔ بعدی با ثانیه‌هایی که دیگر نیستند عقب نیفتد. */
+    UINT32_T__G__ChargeSecSinceSave = 0u;
     if (bool__hadHistory)
     {
         BOOL__G__Dirty = true;
@@ -766,6 +991,9 @@ bool func__Diag_SaveNow(void)
         int32_t int32_t__lock = osKernelLock();
         BOOL__G__Dirty = false;
         UINT32_T__G__SaveDelaySec = 0u;
+        /* [EN] the flash now holds every charge second counted so far.
+           [FA] فلش حالا همهٔ ثانیه‌های شارژِ شمرده‌شده تا این لحظه را دارد. */
+        UINT32_T__G__ChargeSecSinceSave = 0u;
         (void)memcpy(&DIAG_RECORD_T__G__Active, &DIAG_RECORD_T__G__Stage, sizeof(diag_record_t));
         if (int32_t__lock >= 0)
         {

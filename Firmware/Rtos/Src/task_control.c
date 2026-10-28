@@ -368,17 +368,27 @@ void func__TaskControl(void *void_ptr__argument)
             {
                 UINT16_T__G__DiagTickDiv = 0u;
                 func__Diag_Tick();
-#if MODULE_CHARGER
-                if (func__Charger_IsChannelActive(0u) != false)
-                {
-                    func__Diag_AddChargeSec(0u, 1u);
-                }
-                if (func__Charger_IsChannelActive(1u) != false)
-                {
-                    func__Diag_AddChargeSec(1u, 1u);
-                }
-#endif
             }
+#if MODULE_CHARGER
+            /* [EN] v1.113: the charge seconds are offered on EVERY pass and the
+                   module takes them from the real uptime delta, so the count no
+                   longer depends on this loop's rate: a pass that takes longer
+                   than 10 ms can no longer lose charge time. While the channel
+                   is idle this call is one comparison and nothing else.
+               [FA] نسخهٔ ۱٫۱۱۳: ثانیه‌های شارژ در «هر» پاس پیشنهاد می‌شوند و
+                   ماژول آن‌ها را از تفاضل آپتایم واقعی می‌گیرد، پس دیگر شمارش
+                   به نرخ این حلقه وابسته نیست: پاسی که بیشتر از ۱۰ میلی‌ثانیه
+                   طول بکشد نمی‌تواند زمان شارژ را گم کند. تا وقتی کانال
+                   بی‌کار است این فراخوانی یک مقایسه است و بس. */
+            if (func__Charger_IsChannelActive(0u) != false)
+            {
+                func__Diag_AddChargeSec(0u);
+            }
+            if (func__Charger_IsChannelActive(1u) != false)
+            {
+                func__Diag_AddChargeSec(1u);
+            }
+#endif
 #endif
             (void)app_state_t__state;
         }

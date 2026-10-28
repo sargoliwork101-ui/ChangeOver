@@ -114,10 +114,14 @@ typedef struct
 void func__Diag_Init(void);
 
 /**
- * @brief  [EN] Periodic tick, increments uptime, debounced flash save.
- *              Call every 1000ms from TaskControl or TaskComm.
- *         [FA] تیک دوره‌ای، افزایش آپتایم و ذخیره دیبانس فلش.
- *              هر ۱۰۰۰ms صدا بزن.
+ * @brief  [EN] Periodic tick: takes the uptime from the kernel tick counter and
+ *              runs the debounced flash save. Call about once a second from
+ *              TaskControl; a late call costs nothing because uptime is read
+ *              from the kernel, not counted here (v1.113).
+ *         [FA] تیک دوره‌ای: آپتایم را از شمارندهٔ تیک کرنل می‌گیرد و ذخیرهٔ
+ *              دیبانس‌شدهٔ فلش را می‌گرداند. حدود هر ثانیه از TaskControl صدا
+ *              زده می‌شود؛ دیر رسیدنش هزینه‌ای ندارد چون آپتایم از کرنل خوانده
+ *              می‌شود و این‌جا شمرده نمی‌شود (نسخهٔ ۱٫۱۱۳).
  */
 void func__Diag_Tick(void);
 
@@ -136,12 +140,15 @@ void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec);
 uint32_t func__Diag_GetBoardTime(void);
 
 /**
- * @brief  [EN] Add charge seconds for a channel.
- *         [FA] افزودن ثانیه شارژ برای یک کانال.
+ * @brief  [EN] Count the charge time this channel has run since the previous
+ *              call. The seconds are taken from the real uptime delta, so they
+ *              never depend on how often the caller comes (v1.113).
+ *         [FA] زمان شارژی که این کانال از فراخوانی قبلی کار کرده را می‌شمارد.
+ *              ثانیه‌ها از تفاضل آپتایم واقعی گرفته می‌شوند، پس هرگز به نرخ
+ *              فراخوانی وابسته نیستند (نسخهٔ ۱٫۱۱۳).
  * @param  uint8_t__channel [EN] 0 or 1 / کانال
- * @param  uint32_t__sec [EN] Seconds to add / ثانیه
  */
-void func__Diag_AddChargeSec(uint8_t uint8_t__channel, uint32_t uint32_t__sec);
+void func__Diag_AddChargeSec(uint8_t uint8_t__channel);
 
 /**
  * @brief  [EN] Record a complete charge cycle.

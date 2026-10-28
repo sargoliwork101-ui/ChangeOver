@@ -159,6 +159,17 @@ echo "--- BSP GPIO polarity host test / تست هاست قطبیت GPIO برد -
 echo "--- FlashLock host test / تست هاست قفل خواندن ---"
 ./Firmware/Modules/FlashLock/Tester/run_host_test_flash_lock.sh
 
+# [EN] diag.c was the only module with no host test at all: the uptime base
+#      and the "save while charging" policy could only be judged on the board.
+#      Added 2026-10-28 with the audit fix; the pages are mapped at their real
+#      addresses so the module is executed exactly as it runs on the chip.
+# [FA] ‎diag.c‎ تنها ماژولی بود که هیچ تست هاستی نداشت: مبنای آپتایم و سیاست
+#      «ذخیره حین شارژ» فقط روی برد قابل داوری بودند. همراه اصلاح ممیزی
+#      ۲۰۲۶-۱۰-۲۸ اضافه شد؛ صفحه‌ها روی آدرس واقعی خودشان نگاشت می‌شوند تا
+#      ماژول دقیقاً همان‌طور که روی تراشه اجرا می‌شود اجرا شود.
+echo "--- Diag host test / تست هاست دیاگ ---"
+./Firmware/Modules/Diag/Tester/run_host_test_diag.sh
+
 echo "--- EspLink NVM host test / تست هاست NVM لینک ESP ---"
 ./Firmware/Modules/EspLink/Tester/run_host_test_nvm.sh
 echo "--- EspLink parser host test / تست هاست پارسر لینک ESP ---"
