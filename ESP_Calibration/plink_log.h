@@ -107,6 +107,24 @@ static uint32_t UINT32_T__G__LogHighWaterSec = 0u;
    [FA] وقتی مرورگر ساعت را زیاد جابه‌جا کرد روشن می‌شود؛ تیک بعدی ردیفی
         می‌نویسد که همین را بگوید. */
 static bool     BOOL__G__LogClockJumpPending = false;
+/* [EN] The state the flash remembers from before the power went off. It is read
+        ONCE at boot and used to compare "before" with "now": if any logged
+        condition changed while the panel was dead, the change is written; if
+        nothing changed, the panel says nothing and waits.
+   [FA] وضعیتی که فلش از پیش از قطع برق به یاد دارد. یک‌بار هنگام روشن شدن
+        خوانده می‌شود و «قبل» با «حالا» مقایسه می‌شود: اگر یکی از حالت‌های
+        لاگ در مدت خاموشی عوض شده باشد نوشته می‌شود؛ اگر چیزی عوض نشده باشد
+        پنل چیزی نمی‌گوید و منتظر می‌ماند. */
+static bool     BOOL__G__LogBootSnapValid = false;
+static uint32_t UINT32_T__G__LogBootV24 = 0u;
+static uint32_t UINT32_T__G__LogBootFault = 0u;
+static uint32_t UINT32_T__G__LogBootVlow = 0u;
+static uint32_t UINT32_T__G__LogBootVhigh = 0u;
+static uint8_t  UINT8_T__G__LogBootFlags2 = 0u;
+static uint8_t  UINT8_T__G__LogBootChg1 = 0u;
+static uint8_t  UINT8_T__G__LogBootChg2 = 0u;
+static uint8_t  UINT8_T__G__LogBootMains = 0u;
+static uint8_t  UINT8_T__G__LogBootDanger = 0u;
 static uint32_t UINT32_T__G__LogLastClockSaveMs = 0u;
 
 /* ==================== Open day / روز باز ==================== */
@@ -716,6 +734,10 @@ static void func__EspLog_RamPush(const char *char__row)
    [FA] پایین‌تر تعریف می‌شود؛ پاک‌سازی قدیمی‌ها پس از حذف روز، فهرست را
         بازنویسی می‌کند. */
 static void func__EspLog_IndexSave(void);
+
+/* [EN] Defined below; every written row refreshes it.
+   [FA] پایین‌تر تعریف می‌شود؛ هر ردیف نوشته‌شده آن را تازه می‌کند. */
+static void func__EspLog_SaveLast(void);
 
 /**
  * @brief  [EN] Slot of a day in the list, or 0xFF when it is not listed.
@@ -1398,6 +1420,18 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         }
     }
 
+    /* [EN] The snapshot of "how it was" is refreshed with every row, so it is
+            never older than the last row. Only when the board has really spoken:
+            the boot row is written before the first frame and must not stamp a
+            snapshot of all zeros over a good one.
+       [FA] عکسِ «چه بود» با هر ردیف تازه می‌شود تا هرگز از آخرین ردیف کهنه‌تر
+            نباشد. فقط وقتی برد واقعاً حرف زده باشد: ردیف بوت پیش از اولین
+            فریم نوشته می‌شود و نباید عکسِ صفرها را روی عکس سالم بنشاند. */
+    if (BOOL__G__TlmSeen != false)
+    {
+        func__EspLog_SaveLast();
+    }
+
     if ((uint16_t__changeMask & ESP_LOG_CHG_VSTEP) != 0u)
     {
         UINT32_T__G__LogLastStepMs = (uint32_t)millis();
@@ -1437,31 +1471,40 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
 }
 
 /**
- * @brief  [EN] Keep the "last state before a restart" note, so the boot row can
- *              say the panel went down while the battery was at the cut line.
- *              Written only on a fault/latch change or when the pack enters the
- *              danger band - not on every row, to spare the flash.
- *         [FA] نگه‌داشتن یادداشت «آخرین وضعیت پیش از روشن‌شدن دوباره»، تا ردیف
- *              بوت بتواند بگوید پنل وقتی باتری روی مرز قطع بود خاموش شد. فقط
- *              هنگام تغییر خطا/قفل یا ورود پک به ناحیهٔ خطر نوشته می‌شود، نه
- *              هر ردیف، تا فلش کمتر فرسوده شود.
+ * @brief  [EN] Remember the state of THIS MOMENT on the flash, so the next boot
+ *              can compare "what it was" with "what it is now". Every row
+ *              refreshes it - a snapshot older than the last row would make the
+ *              comparison after a power cut invent changes that never happened.
+ *              Ten fields: clock, pack, low half, high half, fault mask, flags2,
+ *              both charger phases, mains, danger flag.
+ *         [FA] وضعیت همین لحظه روی فلش نگه داشته می‌شود تا روشن‌شدن بعدی
+ *              بتواند «چه بود» را با «چه هست» مقایسه کند. هر ردیف آن را تازه
+ *              می‌کند - عکسی کهنه‌تر از آخرین ردیف، پس از قطع برق تغییرهایی
+ *              می‌سازد که هرگز رخ نداده‌اند. ده فیلد: ساعت، پک، نیم‌پایین،
+ *              نیم‌بالا، ماسک خطا، flags2، مرحلهٔ هر دو شارژر، برق شهر و
+ *              پرچم خطر.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__EspLog_SaveLast(void)
 {
     File file__last;
-    char char__line[96];
+    char char__line[128];
     bool bool__ok;
 
     if (BOOL__G__FsOk == false)
     {
         return;
     }
-    (void)snprintf(char__line, sizeof(char__line), "%lu,%lu,%lu,%u,%u\n",
+    (void)snprintf(char__line, sizeof(char__line), "%lu,%lu,%lu,%lu,%lu,%u,%u,%u,%u,%u\n",
                    (unsigned long)func__EspLog_NowSec(),
                    (unsigned long)UINT32_T__G__TlmField[15],
+                   (unsigned long)UINT32_T__G__TlmField[17],
+                   (unsigned long)UINT32_T__G__TlmField[18],
                    (unsigned long)UINT32_T__G__TlmField[19],
                    (unsigned int)UINT8_T__G__TlmFlags2,
+                   (unsigned int)(uint8_t)UINT32_T__G__TlmField[6],
+                   (unsigned int)(uint8_t)UINT32_T__G__TlmField[13],
+                   (unsigned int)(((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u),
                    (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u);
     file__last = LittleFS.open(ESP_LOG_LAST_PATH, "w");
     if (!file__last)
@@ -1478,33 +1521,88 @@ static void func__EspLog_SaveLast(void)
 }
 
 /**
- * @brief  [EN] Read the saved last-state note; only the danger flag is used.
- *         [FA] خواندن یادداشت آخرین وضعیت؛ فقط پرچم خطر استفاده می‌شود.
- * @‎return [EN] uint8_t 1 = the last run was in the danger band / [FA]‎ ۱ = خطر
+ * @brief  [EN] Read back the state saved before the power went off, so the first
+ *              board frame after boot can be compared with it. A line written by
+ *              an older firmware has five fields; it is refused as a whole rather
+ *              than half-read, because half a snapshot would invent changes.
+ *         [FA] وضعیتی که پیش از قطع برق ذخیره شده بود خوانده می‌شود تا اولین
+ *              فریم برد پس از روشن شدن با آن مقایسه شود. خطی که نسخهٔ قدیمی
+ *              با پنج فیلد نوشته باشد کامل رد می‌شود، نه نصفه‌خوانده؛ چون
+ *              عکس ناقص، تغییرهای جعلی می‌سازد.
+ * @return [EN] None / [FA]‎ ندارد
  */
-static uint8_t func__EspLog_LoadLastDanger(void)
+static void func__EspLog_LoadLastSnapshot(void)
 {
     File file__last;
     String string__content;
-    int32_t int32_t__lastComma;
+    int32_t int32_t__cursor = 0;
+    uint32_t uint32_t__field[10];
+    uint8_t uint8_t__count = 0u;
 
+    BOOL__G__LogBootSnapValid = false;
     if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_LAST_PATH) == false))
     {
-        return 0u;
+        return;
     }
     file__last = LittleFS.open(ESP_LOG_LAST_PATH, "r");
     if (!file__last)
     {
-        return 0u;
+        return;
     }
     string__content = file__last.readString();
     file__last.close();
-    int32_t__lastComma = string__content.lastIndexOf(',');
-    if (int32_t__lastComma < 0)
+    string__content.trim();
+    while ((uint8_t__count < 10u) && (int32_t__cursor >= 0))
     {
-        return 0u;
+        int32_t int32_t__comma = string__content.substring((unsigned int)int32_t__cursor).indexOf(',');
+
+        if (int32_t__comma >= 0)
+        {
+            int32_t__comma += int32_t__cursor;
+        }
+
+        if (int32_t__comma < 0)
+        {
+            uint32_t__field[uint8_t__count++] =
+                (uint32_t)string__content.substring((unsigned int)int32_t__cursor).toInt();
+            int32_t__cursor = -1;
+        }
+        else
+        {
+            uint32_t__field[uint8_t__count++] =
+                (uint32_t)string__content.substring((unsigned int)int32_t__cursor,
+                                                    (unsigned int)int32_t__comma).toInt();
+            int32_t__cursor = int32_t__comma + 1;
+        }
     }
-    return (string__content.substring(int32_t__lastComma + 1).toInt() != 0) ? 1u : 0u;
+    if (uint8_t__count < 10u)
+    {
+        return;   /* an old five-field note: not enough to compare */
+    }
+    UINT32_T__G__LogBootV24 = uint32_t__field[1];
+    UINT32_T__G__LogBootVlow = uint32_t__field[2];
+    UINT32_T__G__LogBootVhigh = uint32_t__field[3];
+    UINT32_T__G__LogBootFault = uint32_t__field[4];
+    UINT8_T__G__LogBootFlags2 = (uint8_t)uint32_t__field[5];
+    UINT8_T__G__LogBootChg1 = (uint8_t)uint32_t__field[6];
+    UINT8_T__G__LogBootChg2 = (uint8_t)uint32_t__field[7];
+    UINT8_T__G__LogBootMains = (uint8_t)uint32_t__field[8];
+    UINT8_T__G__LogBootDanger = (uint8_t)uint32_t__field[9];
+    BOOL__G__LogBootSnapValid = true;
+}
+
+/**
+ * @brief  [EN] Was the panel stopped while the battery sat at the cut line?
+ *         [FA] پنل وقتی باتری روی مرز قطع بود خاموش شد؟
+ * @‎return [EN] uint8_t 1 = the last run was in the danger band / [FA]‎ ۱ = خطر
+ */
+static uint8_t func__EspLog_LoadLastDanger(void)
+{
+    if (BOOL__G__LogBootSnapValid == false)
+    {
+        func__EspLog_LoadLastSnapshot();
+    }
+    return (BOOL__G__LogBootSnapValid != false) ? UINT8_T__G__LogBootDanger : 0u;
 }
 
 /**
@@ -1660,16 +1758,48 @@ static void func__EspLog_DetectChanges(void)
     if (BOOL__G__LogHasPrev == false)
     {
         BOOL__G__LogHasPrev = true;
-        UINT8_T__G__LogPrevMains = uint8_t__mains;
-        UINT8_T__G__LogPrevChg1 = uint8_t__chg1;
-        UINT8_T__G__LogPrevChg2 = uint8_t__chg2;
-        UINT8_T__G__LogPrevFlags2 = uint8_t__flags2;
-        UINT32_T__G__LogPrevFault = uint32_t__fault;
-        UINT8_T__G__LogPrevBand = uint8_t__band;
-        UINT8_T__G__LogPrevFl = uint8_t__fl;
-        UINT32_T__G__LogPrevDead = uint32_t__dead;
-        UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
-        return;
+        if ((BOOL__G__LogBootSnapValid != false) && (BOOL__G__LogClockValid != false))
+        {
+            /* [EN] First frame after boot AND the flash remembers what the world
+                    looked like before the power went off. Seed the comparison
+                    with that, then fall through: the checks below decide whether
+                    anything really changed while the panel was dead. If nothing
+                    changed, no row is written - the panel waits, exactly as the
+                    user ordered.
+               [FA] اولین فریم بعد از روشن شدن و فلش به یاد دارد که پیش از قطع
+                    برق دنیا چه شکلی بود. مقایسه با همان بذر می‌شود و پایین
+                    ادامه می‌یابد: بررسی‌های زیر می‌گویند آیا در مدت خاموشی
+                    چیزی واقعاً عوض شده یا نه. اگر چیزی عوض نشده باشد ردیفی
+                    نوشته نمی‌شود و پنل منتظر می‌ماند - همان دستور کاربر. */
+            UINT8_T__G__LogPrevMains = UINT8_T__G__LogBootMains;
+            UINT8_T__G__LogPrevChg1 = UINT8_T__G__LogBootChg1;
+            UINT8_T__G__LogPrevChg2 = UINT8_T__G__LogBootChg2;
+            UINT8_T__G__LogPrevFlags2 = UINT8_T__G__LogBootFlags2;
+            UINT32_T__G__LogPrevFault = UINT32_T__G__LogBootFault;
+            UINT32_T__G__LogPrevV24 = UINT32_T__G__LogBootV24;
+            UINT32_T__G__LogPrevDead = uint32_t__dead;
+            UINT8_T__G__LogPrevFl = uint8_t__fl;
+            /* The danger band is re-derived from the saved pack voltage, so a
+               pack that was already low before the restart is not announced
+               twice; one that crossed the line while the panel was off is. */
+            UINT8_T__G__LogPrevBand = (UINT32_T__G__LogBootV24 < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
+            BOOL__G__LogBootSnapValid = false;
+        }
+        else
+        {
+            /* [EN] No snapshot: this frame is the baseline, nothing to compare.
+               [FA] عکسی نیست: همین فریم مبنا می‌شود و چیزی برای مقایسه نیست. */
+            UINT8_T__G__LogPrevMains = uint8_t__mains;
+            UINT8_T__G__LogPrevChg1 = uint8_t__chg1;
+            UINT8_T__G__LogPrevChg2 = uint8_t__chg2;
+            UINT8_T__G__LogPrevFlags2 = uint8_t__flags2;
+            UINT32_T__G__LogPrevFault = uint32_t__fault;
+            UINT8_T__G__LogPrevBand = uint8_t__band;
+            UINT8_T__G__LogPrevFl = uint8_t__fl;
+            UINT32_T__G__LogPrevDead = uint32_t__dead;
+            UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
+            return;
+        }
     }
 
     if (uint8_t__mains != UINT8_T__G__LogPrevMains)
@@ -1738,15 +1868,6 @@ static void func__EspLog_DetectChanges(void)
     if (uint16_t__mask != 0u)
     {
         func__EspLog_Queue(uint16_t__mask, ESP_LOG_NOTE_NONE);
-    }
-
-    if ((uint16_t__mask & (ESP_LOG_CHG_FAULT | ESP_LOG_CHG_FLAGS)) != 0u)
-    {
-        func__EspLog_SaveLast();
-    }
-    if ((uint8_t__band != 0u) && (UINT8_T__G__LogPrevBand == 0u))
-    {
-        func__EspLog_SaveLast();
     }
 
     UINT8_T__G__LogPrevMains = uint8_t__mains;
@@ -1911,6 +2032,9 @@ static void func__EspLog_Begin(void)
     }
     func__EspLog_ClockLoad();
     func__EspLog_IndexLoad();
+    /* [EN] read back what the world looked like before the power went off.
+       [FA] خواندن دوبارهٔ این‌که پیش از قطع برق دنیا چه شکلی بود. */
+    func__EspLog_LoadLastSnapshot();
 }
 
 /* ==================== Read back / خواندن دوباره ==================== */

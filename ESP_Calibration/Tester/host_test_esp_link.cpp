@@ -2063,6 +2063,84 @@ int main(void)
               ESP_WEB_SERVER_T__G__Server.lastBody);
     }
 
+    /* ---- 43. after a restart: compare with what the flash remembers ------
+       [EN] User order 2026-10-27: "on power-up the panel must read the last
+            state from its flash, compare it with now, and write a row only if
+            one of the logged conditions really changed - otherwise it waits."
+            This block does exactly that twice: once with a changed pack, once
+            with an identical one.
+       [FA] دستور کاربر ۲۰۲۶-۱۰-۲۷: «پنل بعد از روشن شدن باید آخرین وضعیت را از
+            حافظه بخواند و با حالا مقایسه کند و فقط اگر یکی از حالت‌های لاگ
+            عوض شده بود ردیف بنویسد؛ وگرنه منتظر بماند». این بخش دقیقاً همین
+            را دو بار انجام می‌دهد: یک‌بار با پکِ عوض‌شده، یک‌بار با پکِ یکسان. */
+    {
+        /* ---- a first life: the board reports 24.00 V, nothing else ---- */
+        LittleFS.failWrites = false;
+        func__EspLog_Clear();
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        BOOL__G__LogClockValid = true;
+        BOOL__G__LogAnchorBoardValid = false;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        UINT32_T__G__LogHighWaterSec = 1792756800u;
+        INT32_T__G__LogTzSec = 12600;
+        G_StubMillis += 1000u;
+
+        Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(1u, 24000u)));
+        func__Esp_DrainSerial();
+        (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);        /* the row */
+        check(LittleFS.exists(ESP_LOG_LAST_PATH),
+              "a written row leaves the state of that moment on the flash");
+
+        /* ---- the power goes off and comes back ---- */
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootSnapValid = false;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogBootRowPending = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__LogWriteFault = 0u;
+        func__EspLog_Begin();
+        check(BOOL__G__LogBootSnapValid,
+              "boot reads the saved state back from the flash");
+        check(UINT32_T__G__LogBootV24 == 24000u,
+              "and that state carries the pack voltage of the moment it was saved",
+              std::to_string(UINT32_T__G__LogBootV24));
+
+        /* ---- nothing changed while the panel was dead: it must stay quiet -- */
+        {
+            const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+
+            G_StubMillis += 1000u;
+            Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(2u, 24000u)));
+            func__Esp_DrainSerial();
+            check(UINT16_T__G__LogRowsToday == rowsBefore,
+                  "an identical state after the restart writes NO row - the panel waits",
+                  std::to_string(UINT16_T__G__LogRowsToday));
+        }
+
+        /* ---- now the pack really moved while the panel was off ------------- */
+        {
+            const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+            BOOL__G__LogHasPrev = false;
+            BOOL__G__LogBootSnapValid = false;
+            func__EspLog_Begin();
+            G_StubMillis += 600000u;
+            Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(3u, 23200u)));
+            func__Esp_DrainSerial();
+            func__EspLog_Tick();           /* let the merge window pass */
+            check(UINT16_T__G__LogRowsToday > rowsBefore,
+                  "a pack that dropped 800 mV while the panel was dead IS written",
+                  std::to_string(UINT16_T__G__LogRowsToday));
+            check(UINT32_T__G__LogBootV24 == 24000u,
+                  "and the comparison used the saved value, not the new one");
+        }
+    }
+
     /* ---- 35. a half-written last row cannot eat the next one ------------
        [EN] A power cut in the middle of a row leaves no closing newline. Append
             one row after that and BOTH rows are unreadable. The day file is
