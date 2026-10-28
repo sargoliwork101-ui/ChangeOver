@@ -2689,7 +2689,8 @@ function evtTimeFa(epoch){
 function evtTextFa(r){
  const parts=[];let lv=0;
  const add=(t,l)=>{parts.push(t);if(l>lv)lv=l;};
- if(r.chg&1){add('پنل روشن شد'+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+ if(r.chg&1){add('پنل روشن شد'+(r.chg&4096?' — بروزرسانی فرم‌ور':'')+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+ if((r.chg&4096)&&!(r.chg&1)){add('بروزرسانی فرم‌ور انجام شد',2);}
  if(r.chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد دوباره برقرار شد',(r.note===2)?2:1);}
  if(r.chg&2){add(r.mains?'برق شهر وصل شد':'برق شهر قطع شد',r.mains?1:2);}
  if(r.chg&4){add('کانال ۱ به مرحلهٔ «'+(EVT_CHG_FA[r.c1]||('#'+r.c1))+'» رفت',(r.c1>=7&&r.c1<=8)?3:((r.c1===10)?2:0));}
@@ -2716,6 +2717,7 @@ function evtTextFa(r){
  }
  /* ردیف ضربان یعنی «هیچ اتفاقی نیفتاد و پنل زنده است» */
  if(r.note===5)add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);
+ if(r.note===4)add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);
  if(!parts.length)add('وضعیت: کانال ۱ «'+(EVT_CHG_FA[r.c1]||r.c1)+'» · کانال ۲ «'+(EVT_CHG_FA[r.c2]||r.c2)+'»',0);
  return {txt:parts.join(' · '),lv:lv};
 }
@@ -2741,7 +2743,8 @@ function evtRenderFa(text,day,ram){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
- const fsWarn=(src==='2')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
+ const fsWarn=(src==='3')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
+  :(src==='2')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
   :(ram?'<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">حافظهٔ موقت رم — چیدمان فلش دارای FS انتخاب شود</span>':'');
  if(sum)sum.innerHTML=fsWarn;
  if(!rows.length){
@@ -2793,12 +2796,17 @@ async function evtFetch(manual){
  try{
   const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
   const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
-  const ram=(src==='0'||src==='2');
+  const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
+  const ram=(src==='0'||src==='2'||src==='3');
   const t=await r.text();
   evtRenderFa(t,day,ram);
   const st=document.getElementById('evtSt');
-  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط';}
- }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='خواندن نشد';}
+  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFa(lost)+' ردیف از دست رفت'):'');}
+ }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
+}
+function evtfmt(){
+ if(!confirm('همهٔ تاریخچه پاک شود؟'))return;
+ fetch('/evt/format',{method:'POST'}).then(()=>{evtDays();evtFetch(1);});
 }
 async function evtDays(){
  try{
@@ -2837,9 +2845,31 @@ async function evtDlAll(){
 }
 async function evtClear(){
  if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟'))return;
- try{await fetch('/evt/clr',{method:'POST'});await evtDays();evtFetch(1);}catch(e){}
+ const st=document.getElementById('evtSt');
+ try{
+  const r=await fetch('/evt/clr',{method:'POST',cache:'no-store'});
+  let j={};try{j=await r.json();}catch(e){}
+  const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
+  /* [EN] v1.113: the answer says how many day files really went. "Cleared" is
+          only printed when something WAS cleared, so a button that hits a file
+          system it cannot reach can no longer look successful (user report
+          2026-10-28: rows that could not be deleted).
+     [FA] نسخهٔ ۱٫۱۱۳: پاسخ می‌گوید واقعاً چند فایل روز پاک شد. «پاک شد» فقط
+          وقتی نوشته می‌شود که چیزی پاک شده باشد، تا دکمه‌ای که به فایل‌سیستم
+          نمی‌رسد دیگر موفق به نظر نرسد (گزارش کاربر ۲۰۲۶-۱۰-۲۸: ردیف‌هایی که
+          پاک نمی‌شدند). */
+  if(st){
+   if(r.status!==200)st.textContent='پاک نشد (پاسخ '+r.status+')';
+   else if(src!=='1')st.textContent='پاک نشد: حافظهٔ پنل سوار نشد؛ فقط رم پاک شد';
+   else if((j&&j.removed)>0)st.textContent='پاک شد: '+evtFaNum(j.removed)+' روز';
+   else st.textContent='چیزی برای پاک‌کردن نبود';
+  }
+  await evtDays();evtFetch(1);
+ }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
 }
 evtClock().then(()=>evtDays()).then(()=>evtFetch(0));setInterval(evtClock,60000);
+addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
+addEventListener('online',()=>evtClock());
 setInterval(()=>{if(!document.hidden){evtDays();evtFetch(0);}},10000);
 
 function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); setInterval(tickDiagClocks,1000); }
