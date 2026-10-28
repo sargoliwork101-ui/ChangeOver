@@ -184,10 +184,7 @@ static void func__Simple_HandleFrame(void)
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
             UINT32_T__G__ResetCount = func__Simple_ReadU32(uint8_t__ptr_payload, 13u);
             UINT32_T__G__BoardTimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 17u);
-            /* [EN] v1.112: never overrule a browser clock with the board clock.
-               [FA] نسخهٔ ۱٫۱۱۲: هرگز ساعت مرورگر با ساعت برد زیر پا نمی‌شود. */
-            if ((UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN) &&
-                (BOOL__G__ClockFromBrowser == false))
+            if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
             {
                 uint32_t uint32_t__panelNowSec = func__Simple_NowSec();
                 if ((!BOOL__G__TimeValid) ||

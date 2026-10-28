@@ -448,8 +448,6 @@ static void func__Simple_HttpTimeSync(void)
     func__Simple_SendTimeSync(func__Simple_NowSec());
     UINT32_T__G__BoardTimeSec = func__Simple_NowSec();
     BOOL__G__TimePushed = true;
-    /* از این لحظه مرورگر ارباب ساعت است و ساعت برد دیگر روی آن نمی‌نویسد */
-    BOOL__G__ClockFromBrowser = true;
 
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }

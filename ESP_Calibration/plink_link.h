@@ -73,13 +73,6 @@ static bool     BOOL__G__HelloSeen = false;       /* [EN] fresh ACK in hand / [F
 static uint32_t UINT32_T__G__LastHelloAckMs = 0u; /* [EN] time of last ACK / [FA] زمان آخرین پاسخ */
 static uint32_t UINT32_T__G__LastHelloTxMs = 0u;  /* [EN] time of last HELLO sent / [FA] زمان آخرین HELLO */
 static uint32_t UINT32_T__G__HelloAckCount = 0u;  /* [EN] ACKs received / [FA] پاسخ‌های دریافتی */
-/* [EN] v1.112: last time the board was asked for its clock, and how many times
-        the browser handed a clock to the board.
-   [FA] نسخهٔ ۱٫۱۱۲: آخرین بار پرسیدن ساعت از برد، و چند بار مرورگر ساعت را به
-        برد داد. */
-static uint32_t UINT32_T__G__LastDiagReqMs = 0u;
-static uint32_t UINT32_T__G__BoardClockAskCount = 0u;
-static uint32_t UINT32_T__G__TimeSyncCount = 0u;
 static uint32_t UINT32_T__G__HelloLossCount = 0u; /* [EN] link drops seen / [FA] قطع‌های دیده‌شده */
 static uint8_t  UINT8_T__G__BoardProtoVersion = 0u; /* [EN] board wire version / [FA] نسخهٔ سیم برد */
 static uint8_t  UINT8_T__G__BoardFwVersion = 0u;   /* [EN] board firmware version / [FA] نسخهٔ فرم‌ور برد */
@@ -925,67 +918,6 @@ static void func__Esp_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
 }
 
 /**
- * @brief  [EN] Hand the panel clock to the board (TIME_SYNC): the board keeps
- *              it as "the last synced time", so a later ESP that boots up with
- *              no browser can ask for it back and start with the right time.
- *         [FA] دادن ساعت پنل به برد (TIME_SYNC): برد آن را «آخرین زمان
- *              سینک‌شده» نگه می‌دارد، تا ESP بعدی که بی‌مرورگر بالا می‌آید
- *              بتواند همان را پس بگیرد و با ساعت درست شروع کند.
- * @‎param  uint32_t uint32_t__sec [EN] epoch seconds / [FA]‎ ثانیهٔ یونیکس
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__Esp_SendTimeSync(uint32_t uint32_t__sec)
-{
-    uint8_t UINT8_T__A__Payload[ESP_TIME_SYNC_LEN];
-
-    if (uint32_t__sec < ESP_LOG_CLOCK_VALID_MIN)
-    {
-        return;
-    }
-    UINT8_T__A__Payload[0] = (uint8_t)(uint32_t__sec & 0xFFu);
-    UINT8_T__A__Payload[1] = (uint8_t)((uint32_t__sec >> 8) & 0xFFu);
-    UINT8_T__A__Payload[2] = (uint8_t)((uint32_t__sec >> 16) & 0xFFu);
-    UINT8_T__A__Payload[3] = (uint8_t)((uint32_t__sec >> 24) & 0xFFu);
-    func__Esp_WriteFrame((uint8_t)ESP_MSG_TIME_SYNC, UINT8_T__A__Payload,
-                         (uint16_t)ESP_TIME_SYNC_LEN);
-    UINT32_T__G__TimeSyncCount++;
-}
-
-/**
- * @brief  [EN] Ask the board for one diagnostic report; chunk 0 carries its
- *              wall clock.
- *         [FA] خواستن یک گزارش دیاگ از برد؛ چانک ۰ ساعتِ آن را دارد.
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__Esp_SendDiagReq(void)
-{
-    func__Esp_WriteFrame((uint8_t)ESP_MSG_DIAG_REQ, NULL, 0u);
-    UINT32_T__G__LastDiagReqMs = (uint32_t)millis();
-    UINT32_T__G__BoardClockAskCount++;
-}
-
-/**
- * @brief  [EN] DIAG chunk 0 arrived: the board's wall clock is in it.
- *         [FA] چانک ۰ دیاگ رسید: ساعتِ دیواری برد داخل آن است.
- * @‎param  const uint8_t *uint8_t__ptr_payload [EN] chunk / [FA]‎ چانک
- * @‎param  uint16_t uint16_t__len [EN] payload length / [FA]‎ طول
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__Esp_HandleDiagChunk0(const uint8_t *uint8_t__ptr_payload,
-                                       uint16_t uint16_t__len)
-{
-    uint32_t uint32_t__boardSec;
-
-    if (uint16_t__len < (uint16_t)ESP_DIAG_CHUNK0_MIN_LEN)
-    {
-        return;
-    }
-    uint32_t__boardSec = func__Esp_ReadU32(uint8_t__ptr_payload,
-                                           (uint8_t)ESP_DIAG_BOARD_TIME_OFFSET);
-    (void)func__EspLog_NoteBoardClock(uint32_t__boardSec);
-}
-
-/**
  * @brief  [EN] Handshake clock: send HELLO on cadence, drop the link when silent.
  *         [FA] ساعت دست‌دادن: ارسال HELLO روی دوره، و اعلام قطع در سکوت برد.
  * @param  uint32_t__nowMs [EN] current millis(), 0..2^32-1 ms / [FA]‎ millis فعلی، ۰ تا ۲^۳۲-۱
@@ -996,19 +928,6 @@ static void func__Esp_HandshakeTick(uint32_t uint32_t__nowMs)
     if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloTxMs) >= ESP_HELLO_INTERVAL_MS)
     {
         func__Esp_SendHello();
-    }
-    /* [EN] No browser has set the clock in this session and the board has not
-            been believed yet: ask the board for its clock. It stops by itself
-            as soon as either side settles the time, so the serial line is not
-            loaded with reports nobody needs.
-       [FA] در این نشست مرورگری ساعت را نگذاشته و به برد هم باور نشده: ساعت
-            از برد پرسیده می‌شود. به‌محض اینکه یکی از دو طرف زمان را روشن
-            کند خودش می‌ایستد، پس خط سریال با گزارش‌های بی‌مصرف پر نمی‌شود. */
-    if ((BOOL__G__ClockFromBrowser == false) && (BOOL__G__ClockFromBoard == false) &&
-        (BOOL__G__TlmSeen != false) &&
-        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastDiagReqMs) >= ESP_BOARD_CLOCK_REQ_MS))
-    {
-        func__Esp_SendDiagReq();
     }
     if (BOOL__G__HelloSeen &&
         ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloAckMs) > ESP_HELLO_TIMEOUT_MS))
@@ -1092,17 +1011,6 @@ static void func__Esp_HandleFrame(void)
         if (UINT16_T__G__RxLen == (uint16_t)ESP_HELLO_ACK_LEN)
         {
             func__Esp_HandleHelloAck(uint8_t__ptr_payload);
-        }
-    }
-    else if ((UINT8_T__G__RxType == ESP_MSG_DIAG_DATA) && (UINT16_T__G__RxLen >= 1u))
-    {
-        /* [EN] Only chunk 0 carries the board clock; the error and power chunks
-                are not this panel's business.
-           [FA] فقط چانک ۰ ساعت برد را دارد؛ چانک‌های خطا و قطع برق کار این
-                پنل نیست. */
-        if (uint8_t__ptr_payload[0] == 0u)
-        {
-            func__Esp_HandleDiagChunk0(uint8_t__ptr_payload, UINT16_T__G__RxLen);
         }
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen == ESP_LINK_PARAM_ITEM_SIZE))

@@ -950,18 +950,6 @@ static void func__Esp_HttpClockSet(void)
         int32_t__tz = (int32_t)ESP_WEB_SERVER_T__G__Server.arg("tz").toInt();
     }
     bool__ok = func__EspLog_TimeSet(uint32_t__sec, int32_t__tz);
-    if (bool__ok != false)
-    {
-        /* [EN] v1.112: a browser is the boss of the clock (user order
-                2026-10-27), and the board is told the same time so that the
-                last synced clock lives on the board too. From now on the board
-                is never asked again in this session.
-           [FA] نسخهٔ ۱٫۱۱۲: مرورگر ارباب ساعت است (دستور کاربر ۲۰۲۶-۱۰-۲۷) و
-                همان ساعت به برد هم گفته می‌شود تا آخرین زمان سینک‌شده روی برد
-                هم بماند. از این پس در این نشست دیگر از برد پرسیده نمی‌شود. */
-        BOOL__G__ClockFromBrowser = true;
-        func__Esp_SendTimeSync(func__EspLog_NowSec());
-    }
     (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
                    "{\"ok\":%u,\"sec\":%lu}",
                    (bool__ok != false) ? 1u : 0u,
