@@ -1067,8 +1067,16 @@ int main(void)
         feed(build_frame(ESP_MSG_TLM_LIVE, lowPack));
         check(UINT16_T__G__LogRowsToday == 3u,
               "crossing the cut band writes one row");
-        check(LittleFS.exists("/evt-last.txt"),
-              "the last state is kept on flash, so a boot row can say the panel stopped at the cut line");
+        /* [EN] no second file: the row itself is the memory. The last row of the
+                day file carries the pack voltage, so the next boot can compare.
+           [FA] فایل دوم نداریم: خود ردیف حافظه است. آخرین ردیف فایل روز ولتاژ
+                پک را دارد، پس روشن‌شدن بعدی می‌تواند مقایسه کند. */
+        {
+            std::string bodyLow = LittleFS.files[std::string(path)];
+            check(row_field(bodyLow, 2u, 10u) == 20608,
+                  "the last row itself holds the pack voltage, no extra file needed",
+                  std::to_string(row_field(bodyLow, 2u, 10u)));
+        }
 
         /* the panel reads the tail back */
         ESP_WEB_SERVER_T__G__Server.clearArgs();
@@ -2090,8 +2098,9 @@ int main(void)
         Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(1u, 24000u)));
         func__Esp_DrainSerial();
         (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);        /* the row */
-        check(LittleFS.exists(ESP_LOG_LAST_PATH),
-              "a written row leaves the state of that moment on the flash");
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "one row is on the flash, and it is the only memory the panel keeps",
+              std::to_string(UINT16_T__G__LogRowsToday));
 
         /* ---- the power goes off and comes back ---- */
         BOOL__G__LogHasPrev = false;

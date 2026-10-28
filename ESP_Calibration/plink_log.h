@@ -735,9 +735,7 @@ static void func__EspLog_RamPush(const char *char__row)
         بازنویسی می‌کند. */
 static void func__EspLog_IndexSave(void);
 
-/* [EN] Defined below; every written row refreshes it.
-   [FA] پایین‌تر تعریف می‌شود؛ هر ردیف نوشته‌شده آن را تازه می‌کند. */
-static void func__EspLog_SaveLast(void);
+
 
 /**
  * @brief  [EN] Slot of a day in the list, or 0xFF when it is not listed.
@@ -1420,18 +1418,6 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         }
     }
 
-    /* [EN] The snapshot of "how it was" is refreshed with every row, so it is
-            never older than the last row. Only when the board has really spoken:
-            the boot row is written before the first frame and must not stamp a
-            snapshot of all zeros over a good one.
-       [FA] عکسِ «چه بود» با هر ردیف تازه می‌شود تا هرگز از آخرین ردیف کهنه‌تر
-            نباشد. فقط وقتی برد واقعاً حرف زده باشد: ردیف بوت پیش از اولین
-            فریم نوشته می‌شود و نباید عکسِ صفرها را روی عکس سالم بنشاند. */
-    if (BOOL__G__TlmSeen != false)
-    {
-        func__EspLog_SaveLast();
-    }
-
     if ((uint16_t__changeMask & ESP_LOG_CHG_VSTEP) != 0u)
     {
         UINT32_T__G__LogLastStepMs = (uint32_t)millis();
@@ -1471,124 +1457,174 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
 }
 
 /**
- * @brief  [EN] Remember the state of THIS MOMENT on the flash, so the next boot
- *              can compare "what it was" with "what it is now". Every row
- *              refreshes it - a snapshot older than the last row would make the
- *              comparison after a power cut invent changes that never happened.
- *              Ten fields: clock, pack, low half, high half, fault mask, flags2,
- *              both charger phases, mains, danger flag.
- *         [FA] وضعیت همین لحظه روی فلش نگه داشته می‌شود تا روشن‌شدن بعدی
- *              بتواند «چه بود» را با «چه هست» مقایسه کند. هر ردیف آن را تازه
- *              می‌کند - عکسی کهنه‌تر از آخرین ردیف، پس از قطع برق تغییرهایی
- *              می‌سازد که هرگز رخ نداده‌اند. ده فیلد: ساعت، پک، نیم‌پایین،
- *              نیم‌بالا، ماسک خطا، flags2، مرحلهٔ هر دو شارژر، برق شهر و
- *              پرچم خطر.
- * @return [EN] None / [FA]‎ ندارد
+ * @brief  [EN] One numeric field of a CSV row, by column index (0 = first).
+ *              Missing columns read as 0, so a short row never invents values.
+ *         [FA] یک فیلد عددی از یک ردیف CSV، بر اساس شمارهٔ ستون (۰ = اولی).
+ *              ستون نبوده صفر خوانده می‌شود، پس ردیف کوتاه مقدار جعلی نمی‌سازد.
+ * @‎param  const char *char__row [EN] one row / [FA]‎ یک ردیف
+ * @‎param  uint8_t uint8_t__index [EN] column / [FA]‎ شمارهٔ ستون
+ * @return [EN] value / [FA]‎ مقدار
  */
-static void func__EspLog_SaveLast(void)
+static uint32_t func__EspLog_RowFieldAt(const char *char__row, uint8_t uint8_t__index)
 {
-    File file__last;
-    char char__line[128];
-    bool bool__ok;
+    uint8_t uint8_t__column = 0u;
+    uint16_t uint16_t__cursor = 0u;
+    uint32_t uint32_t__value = 0u;
 
-    if (BOOL__G__FsOk == false)
+    if (char__row == NULL)
     {
-        return;
+        return 0u;
     }
-    (void)snprintf(char__line, sizeof(char__line), "%lu,%lu,%lu,%lu,%lu,%u,%u,%u,%u,%u\n",
-                   (unsigned long)func__EspLog_NowSec(),
-                   (unsigned long)UINT32_T__G__TlmField[15],
-                   (unsigned long)UINT32_T__G__TlmField[17],
-                   (unsigned long)UINT32_T__G__TlmField[18],
-                   (unsigned long)UINT32_T__G__TlmField[19],
-                   (unsigned int)UINT8_T__G__TlmFlags2,
-                   (unsigned int)(uint8_t)UINT32_T__G__TlmField[6],
-                   (unsigned int)(uint8_t)UINT32_T__G__TlmField[13],
-                   (unsigned int)(((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u),
-                   (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u);
-    file__last = LittleFS.open(ESP_LOG_LAST_PATH, "w");
-    if (!file__last)
+    while ((char__row[uint16_t__cursor] != '\0') &&
+           (char__row[uint16_t__cursor] != '\n'))
     {
-        func__EspLog_FaultRaise();
-        return;
+        if (char__row[uint16_t__cursor] == ',')
+        {
+            uint8_t__column++;
+            uint16_t__cursor++;
+            continue;
+        }
+        if (uint8_t__column == uint8_t__index)
+        {
+            if ((char__row[uint16_t__cursor] >= '0') &&
+                (char__row[uint16_t__cursor] <= '9'))
+            {
+                uint32_t__value = (uint32_t__value * 10u) +
+                                  (uint32_t)(char__row[uint16_t__cursor] - '0');
+            }
+        }
+        uint16_t__cursor++;
     }
-    bool__ok = func__EspLog_FileText(file__last, char__line);
-    file__last.close();
-    if (bool__ok == false)
-    {
-        func__EspLog_FaultRaise();
-    }
+    return uint32_t__value;
 }
 
 /**
- * @brief  [EN] Read back the state saved before the power went off, so the first
- *              board frame after boot can be compared with it. A line written by
- *              an older firmware has five fields; it is refused as a whole rather
- *              than half-read, because half a snapshot would invent changes.
- *         [FA] وضعیتی که پیش از قطع برق ذخیره شده بود خوانده می‌شود تا اولین
- *              فریم برد پس از روشن شدن با آن مقایسه شود. خطی که نسخهٔ قدیمی
- *              با پنج فیلد نوشته باشد کامل رد می‌شود، نه نصفه‌خوانده؛ چون
- *              عکس ناقص، تغییرهای جعلی می‌سازد.
+ * @brief  [EN] Read back how the world looked at the last row: the LAST LINE OF
+ *              THE NEWEST DAY FILE is the memory. The log already carries the
+ *              pack voltage, both halves, the fault mask, flags2, both charger
+ *              phases and the mains bit, so no second file and no extra write per
+ *              row is needed.
+ *         [FA] خواندن این‌که دنیا در آخرین ردیف چه شکلی بود: حافظه، آخرین خطِ
+ *              جدیدترین فایل روز است. خود لاگ ولتاژ پک، دو نیم‌باتری، ماسک
+ *              خطا، flags2، مرحلهٔ هر دو شارژر و بیت برق شهر را دارد، پس نه
+ *              فایل دوم لازم است و نه نوشتن اضافه با هر ردیف.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__EspLog_LoadLastSnapshot(void)
 {
-    File file__last;
-    String string__content;
-    int32_t int32_t__cursor = 0;
-    uint32_t uint32_t__field[10];
-    uint8_t uint8_t__count = 0u;
+    char char__path[ESP_LOG_PATH_MAX];
+    char char__tail[320];
+    File file__day;
+    uint32_t uint32_t__dayCode;
+    uint32_t uint32_t__size;
+    uint32_t uint32_t__start;
+    size_t size_t__got = 0u;
+    int32_t int32_t__end;
+    int32_t int32_t__begin;
+    uint8_t uint8_t__scan;
+    uint32_t uint32_t__v24;
 
     BOOL__G__LogBootSnapValid = false;
-    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_LAST_PATH) == false))
+    if (BOOL__G__FsOk == false)
     {
         return;
     }
-    file__last = LittleFS.open(ESP_LOG_LAST_PATH, "r");
-    if (!file__last)
+
+    /* [EN] Newest day that really exists: today if it is there, otherwise the
+            last day of the list.
+       [FA] جدیدترین روزی که واقعاً هست: امروز اگر باشد، وگرنه آخرین روزِ
+            فهرست. */
+    uint32_t__dayCode = func__EspLog_TodayCode();
+    func__EspLog_PathOf(char__path, uint32_t__dayCode);
+    if (LittleFS.exists(char__path) == false)
+    {
+        if (UINT8_T__G__LogIndexCount == 0u)
+        {
+            return;
+        }
+        uint32_t__dayCode = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+        func__EspLog_PathOf(char__path, uint32_t__dayCode);
+    }
+
+    file__day = LittleFS.open(char__path, "r");
+    if (!file__day)
     {
         return;
     }
-    string__content = file__last.readString();
-    file__last.close();
-    string__content.trim();
-    while ((uint8_t__count < 10u) && (int32_t__cursor >= 0))
+    uint32_t__size = (uint32_t)file__day.size();
+    if (uint32_t__size == 0u)
     {
-        int32_t int32_t__comma = string__content.substring((unsigned int)int32_t__cursor).indexOf(',');
-
-        if (int32_t__comma >= 0)
-        {
-            int32_t__comma += int32_t__cursor;
-        }
-
-        if (int32_t__comma < 0)
-        {
-            uint32_t__field[uint8_t__count++] =
-                (uint32_t)string__content.substring((unsigned int)int32_t__cursor).toInt();
-            int32_t__cursor = -1;
-        }
-        else
-        {
-            uint32_t__field[uint8_t__count++] =
-                (uint32_t)string__content.substring((unsigned int)int32_t__cursor,
-                                                    (unsigned int)int32_t__comma).toInt();
-            int32_t__cursor = int32_t__comma + 1;
-        }
+        file__day.close();
+        return;
     }
-    if (uint8_t__count < 10u)
+    uint32_t__start = (uint32_t__size > (uint32_t)(sizeof(char__tail) - 1u)) ?
+                      (uint32_t__size - (uint32_t)(sizeof(char__tail) - 1u)) : 0u;
+    (void)file__day.seek(uint32_t__start);
+    while (size_t__got < (sizeof(char__tail) - 1u))
     {
-        return;   /* an old five-field note: not enough to compare */
+        int int__byte = file__day.read();
+        if (int__byte < 0)
+        {
+            break;
+        }
+        char__tail[size_t__got] = (char)int__byte;
+        size_t__got++;
     }
-    UINT32_T__G__LogBootV24 = uint32_t__field[1];
-    UINT32_T__G__LogBootVlow = uint32_t__field[2];
-    UINT32_T__G__LogBootVhigh = uint32_t__field[3];
-    UINT32_T__G__LogBootFault = uint32_t__field[4];
-    UINT8_T__G__LogBootFlags2 = (uint8_t)uint32_t__field[5];
-    UINT8_T__G__LogBootChg1 = (uint8_t)uint32_t__field[6];
-    UINT8_T__G__LogBootChg2 = (uint8_t)uint32_t__field[7];
-    UINT8_T__G__LogBootMains = (uint8_t)uint32_t__field[8];
-    UINT8_T__G__LogBootDanger = (uint8_t)uint32_t__field[9];
-    BOOL__G__LogBootSnapValid = true;
+    file__day.close();
+    char__tail[size_t__got] = '\0';
+    int32_t__end = (int32_t)size_t__got - 1;
+
+    /* [EN] Skip trailing newlines, then find the start of the last LINE - and
+            skip comment lines, so the file header can never be read as a row.
+       [FA] پایان‌بندها رد می‌شوند، بعد شروع آخرین «خط» پیدا و خط‌های کامنت هم
+            رد می‌شوند تا سرسطر فایل هرگز به‌جای ردیف خوانده نشود. */
+    for (uint8_t__scan = 0u; uint8_t__scan < 8u; uint8_t__scan++)
+    {
+        while ((int32_t__end >= 0) &&
+               ((char__tail[int32_t__end] == '\n') || (char__tail[int32_t__end] == '\r')))
+        {
+            int32_t__end--;
+        }
+        if (int32_t__end < 0)
+        {
+            return;
+        }
+        int32_t__begin = int32_t__end;
+        while ((int32_t__begin > 0) && (char__tail[int32_t__begin - 1] != '\n'))
+        {
+            int32_t__begin--;
+        }
+        if ((char__tail[int32_t__begin] < '0') || (char__tail[int32_t__begin] > '9'))
+        {
+            int32_t__end = int32_t__begin - 1;   /* header or blank: one line up */
+            continue;
+        }
+        break;
+    }
+    if (int32_t__end < 0)
+    {
+        return;
+    }
+
+    {
+        const char *char__row = &char__tail[int32_t__begin];
+
+        uint32_t__v24 = func__EspLog_RowFieldAt(char__row, 10u);
+        if (uint32_t__v24 == 0u)
+        {
+            return;   /* a row without a pack voltage says nothing useful */
+        }
+        UINT32_T__G__LogBootV24 = uint32_t__v24;
+        UINT32_T__G__LogBootVlow = func__EspLog_RowFieldAt(char__row, 11u);
+        UINT32_T__G__LogBootVhigh = func__EspLog_RowFieldAt(char__row, 12u);
+        UINT32_T__G__LogBootFault = func__EspLog_RowFieldAt(char__row, 8u);
+        UINT8_T__G__LogBootFlags2 = (uint8_t)func__EspLog_RowFieldAt(char__row, 9u);
+        UINT8_T__G__LogBootChg1 = (uint8_t)func__EspLog_RowFieldAt(char__row, 6u);
+        UINT8_T__G__LogBootChg2 = (uint8_t)func__EspLog_RowFieldAt(char__row, 7u);
+        UINT8_T__G__LogBootMains = (uint8_t)func__EspLog_RowFieldAt(char__row, 4u);
+        UINT8_T__G__LogBootDanger = (uint32_t__v24 < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
+        BOOL__G__LogBootSnapValid = true;
+    }
 }
 
 /**
@@ -2324,7 +2360,6 @@ static uint8_t func__EspLog_Clear(void)
         UINT32_T__G__LogIndexBytes[uint8_t__slot] = ESP_LOG_BYTES_UNKNOWN;
     }
     (void)LittleFS.remove(ESP_LOG_INDEX_PATH);
-    (void)LittleFS.remove(ESP_LOG_LAST_PATH);
     UINT8_T__G__LogIndexCount = 0u;
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;

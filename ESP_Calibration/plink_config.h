@@ -430,7 +430,6 @@
 #define ESP_LOG_RAM_ROWS            16u      /* حلقهٔ موقت در رم وقتی فایل‌سیستم فلش غیرفعال باشد */
 #define ESP_LOG_RAM_ROW_MAX         160u     /* سقف طول یک ردیف در حلقهٔ رم */
 #define ESP_LOG_INDEX_PATH          "/evt-days.txt"   /* [EN] day list + row counts / [FA] فهرست روزها */
-#define ESP_LOG_LAST_PATH           "/evt-last.txt"   /* [EN] snapshot of the last written row, compared with the first frame after a restart / [FA] عکس آخرین ردیف نوشته‌شده، برای مقایسه با اولین فریم بعد از روشن شدن */
 #define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"  /* [EN] phone clock anchor / [FA] لنگر ساعت گوشی */
 #define ESP_LOG_FILE_PREFIX         "/evt-"
 #define ESP_LOG_CUT_BAND_MV         21200u   /* [EN] battery "near the cut" line: entered below / [FA] مرز «نزدیک قطع» باتری: ورود از زیر */
