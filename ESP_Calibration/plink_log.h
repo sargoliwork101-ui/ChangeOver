@@ -73,14 +73,23 @@
         field exists only in the simple panel's DIAG_DATA), so the phone that
         opens the page is the only clock: now = anchor + elapsed millis. Rejected
         time cannot rewind it (see func__EspLog_TimeSet).
-   [FA] پنل ساعت ندارد و لینک فنی هم زمان برد را نمی‌آورد (آن فیلد فقط در پنل
-        ساده هست)، پس تنها ساعت، گوشی‌ای است که صفحه را باز می‌کند:
-        اکنون = لنگر + میلی‌ثانیه‌های گذشته. زمانِ ردشده هم نمی‌تواند آن را
-        عقب ببرد. */
+   [FA] پنل ساعت ندارد و تا نسخهٔ ۱٫۱۱۱ زمان برد را از لینک نمی‌گرفت، پس تنها
+        ساعت، گوشی‌ای بود که صفحه را باز می‌کند: اکنون = لنگر + میلی‌ثانیه‌های
+        گذشته. زمانِ ردشده هم نمی‌تواند آن را عقب ببرد. از نسخهٔ ۱٫۱۱۲ زمان
+        برد هم از چانک ۰ پاسخ DIAG_DATA خوانده می‌شود (نگاه کنید به
+        func__EspLog_NoteBoardClock). */
 static uint32_t UINT32_T__G__LogAnchorSec = 0u;
 static uint32_t UINT32_T__G__LogAnchorMs = 0u;
 static int32_t  INT32_T__G__LogTzSec = 0;
 static bool     BOOL__G__LogClockValid = false;
+/* [EN] v1.112: has a browser given the clock in this session, and has the board
+        already been believed? The browser always wins, so the board is only
+        asked while nobody with a real clock has spoken.
+   [FA] نسخهٔ ۱٫۱۱۲: آیا در همین نشست مرورگری ساعت داده، و آیا به برد باور شده
+        است؟ مرورگر همیشه ارباب است، پس تا وقتی صاحب ساعتِ واقعی حرف نزده از
+        برد پرسیده می‌شود. */
+static bool     BOOL__G__ClockFromBrowser = false;
+static bool     BOOL__G__ClockFromBoard = false;
 /* [EN] THE IMPORTANT ONE: the panel is not the clock. The STM32 stays powered
         when the panel is cut, reboots or is unplugged, and its HELLO_ACK
         carries its own uptime. So the wall clock is anchored to the BOARD's
@@ -679,6 +688,52 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
     {
         func__EspLog_ClockSave();
     }
+    return true;
+}
+
+/**
+ * @brief  [EN] The board answered with its own wall clock (DIAG chunk 0).
+ *              While no browser has given the clock in this session, the board
+ *              is the clock: it is the only part that kept running while the
+ *              panel was off, and it holds the last time it was synced with.
+ *              A clear difference is adopted - and written as its own row, so
+ *              the jump in the history explains itself. A small difference is
+ *              ignored: the two clocks are drifting, not disagreeing.
+ *         [FA] برد ساعتِ خودش را گفت (چانک ۰ دیاگ). تا وقتی در این نشست
+ *              مرورگری ساعت نداده، برد ساعت است: تنها بخشی است که وقتی پنل
+ *              خاموش بود شمرد و آخرین زمانی را که با آن سینک شده نگه می‌دارد.
+ *              اختلاف روشن پذیرفته می‌شود - و ردیف خودش را می‌نویسد تا پرشِ
+ *              تاریخ در تاریخچه توضیح داشته باشد. اختلاف کوچک نادیده می‌ماند:
+ *              این دو ساعت در حال سُر خوردن‌اند، نه در حال اختلاف.
+ * @‎param  uint32_t uint32_t__boardSec [EN] board clock, epoch s / [FA]‎ ساعت برد
+ * @return [EN] bool, true when it was adopted / [FA]‎ پذیرفته شد
+ */
+static bool func__EspLog_NoteBoardClock(uint32_t uint32_t__boardSec)
+{
+    uint32_t uint32_t__nowSec;
+
+    if (BOOL__G__ClockFromBrowser != false)
+    {
+        return false;
+    }
+    if (uint32_t__boardSec < ESP_LOG_CLOCK_VALID_MIN)
+    {
+        return false;
+    }
+    if (BOOL__G__LogClockValid != false)
+    {
+        uint32_t__nowSec = func__EspLog_NowSec();
+        if ((uint32_t__boardSec <= uint32_t__nowSec) ||
+            ((uint32_t__boardSec - uint32_t__nowSec) < ESP_BOARD_CLOCK_ADOPT_SEC))
+        {
+            return false;
+        }
+    }
+    if (func__EspLog_TimeSet(uint32_t__boardSec, INT32_T__G__LogTzSec) == false)
+    {
+        return false;
+    }
+    BOOL__G__ClockFromBoard = true;
     return true;
 }
 

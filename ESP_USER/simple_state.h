@@ -258,6 +258,11 @@ static uint32_t UINT32_T__G__TimeAnchorSec = 0u;   /* ثانیه یونیکس د
 static uint32_t UINT32_T__G__TimeAnchorMs = 0u;    /* millis همان لحظه */
 static bool BOOL__G__TimeValid = false;            /* ساعت معتبر است (از فایل یا مرورگر) */
 static bool BOOL__G__TimePushed = false;           /* ساعت به برد گفته شد */
+/* [EN] v1.112: did a browser give the clock in this session? The browser is the
+        boss (order 2026-10-27), so a board clock may never overwrite it.
+   [FA] نسخهٔ ۱٫۱۱۲: آیا در این نشست مرورگری ساعت داده است؟ مرورگر ارباب است
+        (دستور ۲۰۲۶-۱۰-۲۷)، پس ساعت برد هرگز نباید روی آن بنویسد. */
+static bool BOOL__G__ClockFromBrowser = false;
 static uint32_t UINT32_T__G__TimePushMs = 0u;      /* آخرین تلاش برای گفتن ساعت به برد */
 static uint32_t UINT32_T__G__TimePushArmedMs = 0u; /* لحظه‌ای که لینک تازه دیده شد (شروع تأخیر) */
 

@@ -991,6 +991,53 @@ static void func__T_TestStateHistoryLog(void)
         UINT16_T__G__LogRowsToday = 0u;
     }
 
+    /* ---- v1.112: ساعت مرورگر با ساعت برد زیر پا نمی‌شود ---- */
+    {
+        std::vector<uint8_t> vector__frame;
+        const uint32_t uint32_t__boardSec = 1792756800u;
+        const uint32_t uint32_t__browserSec = 1792760400u;
+        uint8_t uint8_t__i;
+
+        /* ساعت پنل از مرورگر گرفته شده است */
+        func__Simple_TimeSet(uint32_t__browserSec, false);
+        BOOL__G__ClockFromBrowser = true;
+
+        /* فریم چانک ۰ دیاگ با ساعت برد دو ساعت جلوتر */
+        vector__frame.push_back(0xAA); vector__frame.push_back(0x55);
+        vector__frame.push_back((uint8_t)SIMPLE_LINK_PROTOCOL_VERSION);
+        vector__frame.push_back((uint8_t)SIMPLE_MSG_DIAG_DATA);
+        const uint16_t uint16_t__len = 23u;
+        vector__frame.push_back((uint8_t)(uint16_t__len & 0xFFu));
+        vector__frame.push_back((uint8_t)(uint16_t__len >> 8));
+        std::vector<uint8_t> vector__body(23u, 0u);
+        for (uint8_t__i = 0u; uint8_t__i < 4u; uint8_t__i++)
+        {
+            vector__body[17u + uint8_t__i] =
+                (uint8_t)(((uint32_t__boardSec + 7200u) >> (8u * uint8_t__i)) & 0xFFu);
+        }
+        uint16_t uint16_t__crc = func__Simple_Crc16(SIMPLE_LINK_CRC16_INIT,
+                                                    (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION);
+        uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)SIMPLE_MSG_DIAG_DATA);
+        uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)(uint16_t__len & 0xFFu));
+        uint16_t__crc = func__Simple_Crc16(uint16_t__crc, (uint8_t)(uint16_t__len >> 8));
+        for (uint8_t__i = 0u; uint8_t__i < 23u; uint8_t__i++)
+        {
+            vector__frame.push_back(vector__body[uint8_t__i]);
+            uint16_t__crc = func__Simple_Crc16(uint16_t__crc, vector__body[uint8_t__i]);
+        }
+        vector__frame.push_back((uint8_t)(uint16_t__crc & 0xFFu));
+        vector__frame.push_back((uint8_t)(uint16_t__crc >> 8));
+        for (size_t size_t__k = 0u; size_t__k < vector__frame.size(); size_t__k++)
+        {
+            func__Simple_ParseByte(vector__frame[size_t__k]);
+        }
+
+        func__T_Check(func__Simple_NowSec() < (uint32_t__boardSec + 7200u),
+                      "ساعت مرورگر با ساعت بردِ دو ساعت جلوتر عوض نمی‌شود");
+
+        BOOL__G__ClockFromBrowser = false;
+    }
+
     (void)func__SimpleLog_Clear();
     func__T_Check((UINT8_T__G__LogIndexCount == 0u) && (!LittleFS.exists(char__path)),
                   "پاک کردن، فایل روزها را برمی‌دارد");

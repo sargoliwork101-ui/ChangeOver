@@ -197,6 +197,60 @@ static std::vector<uint8_t> tlm_payload_field(uint16_t seq, uint32_t v24,
     return p;
 }
 
+/* [EN] Walk the bytes this panel wrote and return the payload of the first
+        frame of the asked type, or an empty vector when there is none.
+   [FA] بایت‌هایی که پنل نوشته را می‌گردد و payload اولین فریم از نوع خواسته‌شده
+        را برمی‌گرداند، یا هیچ. */
+static std::vector<uint8_t> find_tx_frame(uint8_t type)
+{
+    std::vector<uint8_t> found;
+    size_t i = 0u;
+
+    while ((i + (size_t)ESP_LINK_HEADER_SIZE) <= Serial.tx.size()) {
+        if ((Serial.tx[i] != ESP_LINK_SOF_BYTE0) || (Serial.tx[i + 1u] != ESP_LINK_SOF_BYTE1)) {
+            i++;
+            continue;
+        }
+        const size_t len = (size_t)Serial.tx[i + 4u] | ((size_t)Serial.tx[i + 5u] << 8);
+        const size_t end = i + (size_t)ESP_LINK_HEADER_SIZE + len + (size_t)ESP_LINK_CRC_SIZE;
+        if (end > Serial.tx.size()) {
+            break;
+        }
+        if (Serial.tx[i + 3u] == type) {
+            found.assign(Serial.tx.begin() + (long)(i + (size_t)ESP_LINK_HEADER_SIZE),
+                         Serial.tx.begin() + (long)(i + (size_t)ESP_LINK_HEADER_SIZE + len));
+            return found;
+        }
+        i = end;
+    }
+    return found;
+}
+
+/* [EN] Is there at least one frame of this type in what the panel wrote?
+   [FA] آیا دست‌کم یک فریم از این نوع بین بایت‌های نوشته‌شده هست؟ */
+static bool has_tx_frame(uint8_t type, size_t *lenOut)
+{
+    size_t i = 0u;
+
+    while ((i + (size_t)ESP_LINK_HEADER_SIZE) <= Serial.tx.size()) {
+        if ((Serial.tx[i] != ESP_LINK_SOF_BYTE0) || (Serial.tx[i + 1u] != ESP_LINK_SOF_BYTE1)) {
+            i++;
+            continue;
+        }
+        const size_t len = (size_t)Serial.tx[i + 4u] | ((size_t)Serial.tx[i + 5u] << 8);
+        const size_t end = i + (size_t)ESP_LINK_HEADER_SIZE + len + (size_t)ESP_LINK_CRC_SIZE;
+        if (end > Serial.tx.size()) {
+            break;
+        }
+        if (Serial.tx[i + 3u] == type) {
+            if (lenOut != NULL) { *lenOut = len; }
+            return true;
+        }
+        i = end;
+    }
+    return false;
+}
+
 /* ======================================================================== */
 int main(void)
 {
@@ -2760,6 +2814,119 @@ int main(void)
         }
         BOOL__G__FsOk = true;
         LittleFS.failWrites = false;
+    }
+
+    /* ---- 47. the clock comes from the STM32 when no computer is there -----
+       [EN] 2026-10-28, user order: "when the ESP is switched off and on again,
+            if it is not connected to a computer it must take the clock from
+            the STM32 and the last synced time". The board already keeps that
+            time and sends it in DIAG chunk 0; this panel never asked. Three
+            things are proven here: the boot asks, the answer is adopted, and a
+            browser clock is never overwritten afterwards.
+       [FA] ۲۰۲۶-۱۰-۲۸، دستور کاربر: «زمان‌هایی که برد ESP خاموش و روشن می‌شود
+            باید ساعت را اگر به کامپیوتر وصل نبود با میکرو STM32 و آخرین ساعت
+            سینک کند». برد همان ساعت را نگه می‌دارد و در چانک ۰ دیاگ می‌فرستد؛
+            این پنل هرگز نمی‌پرسید. سه چیز این‌جا ثابت می‌شود: بوت می‌پرسد،
+            پاسخ پذیرفته می‌شود، و ساعت مرورگر بعد از آن هرگز زیر پا نمی‌رود. */
+    {
+        std::vector<uint8_t> diag(ESP_DIAG_CHUNK0_MIN_LEN, 0u);
+        const uint32_t boardSec = 1792756800u;
+        std::vector<uint8_t> frame;
+        uint32_t i;
+
+        /* a fresh boot: no clock, no browser, nobody believed yet */
+        BOOL__G__LogClockValid = false;
+        BOOL__G__ClockFromBrowser = false;
+        BOOL__G__ClockFromBoard = false;
+        UINT32_T__G__LastDiagReqMs = 0u;
+        BOOL__G__TlmSeen = true;
+        UINT32_T__G__LastHelloTxMs = (uint32_t)millis();
+
+        /* ---- the boot asks the board -------------------------------------- */
+        {
+            const uint32_t asksBefore = UINT32_T__G__BoardClockAskCount;
+            size_t askedLen = 99u;
+
+            Serial.tx.clear();
+            G_StubMillis += ESP_BOARD_CLOCK_REQ_MS + 1000u;
+            func__Esp_HandshakeTick((uint32_t)millis());
+            check(has_tx_frame((uint8_t)ESP_MSG_DIAG_REQ, &askedLen),
+                  "with no browser the boot asks the STM32 for its clock");
+            check(askedLen == 0u,
+                  "the question carries no payload, only header and CRC",
+                  std::to_string(askedLen) + " bytes");
+            check(UINT32_T__G__BoardClockAskCount == (asksBefore + 1u),
+                  "and the ask is counted once",
+                  std::to_string(UINT32_T__G__BoardClockAskCount) + " vs " +
+                  std::to_string(asksBefore + 1u));
+        }
+
+        /* ---- the board answers: chunk 0 carries its wall clock ------------ */
+        diag[0] = 0u;
+        for (i = 0u; i < 4u; i++) {
+            const size_t o = 1u + (size_t)i * 4u;
+            diag[o] = (uint8_t)((1000u + i) & 0xFFu);
+            diag[o + 1u] = (uint8_t)(((1000u + i) >> 8) & 0xFFu);
+            diag[o + 2u] = 0u; diag[o + 3u] = 0u;
+        }
+        for (i = 0u; i < 4u; i++) {
+            diag[(size_t)ESP_DIAG_BOARD_TIME_OFFSET + i] =
+                (uint8_t)((boardSec >> (8u * i)) & 0xFFu);
+        }
+        diag[21] = 0u; diag[22] = 0u;
+        feed(build_frame(ESP_MSG_DIAG_DATA, diag));
+        check(BOOL__G__LogClockValid != false,
+              "the board clock in DIAG chunk 0 is adopted when no browser exists",
+              std::to_string(func__EspLog_NowSec()));
+        check(func__EspLog_NowSec() >= boardSec,
+              "and it is the time the board reported",
+              std::to_string(func__EspLog_NowSec()) + " vs " + std::to_string(boardSec));
+        check(BOOL__G__ClockFromBoard != false,
+              "the board has been believed, so the asking stops");
+
+        /* ---- settled: no further asking ----------------------------------- */
+        Serial.tx.clear();
+        G_StubMillis += ESP_BOARD_CLOCK_REQ_MS + 1000u;
+        func__Esp_HandshakeTick((uint32_t)millis());
+        check(!has_tx_frame((uint8_t)ESP_MSG_DIAG_REQ, NULL),
+              "after the clock is settled the panel stops asking",
+              std::to_string(Serial.tx.size()) + " bytes on the wire, no DIAG_REQ");
+
+        /* ---- a browser clock is never overwritten by the board ------------ */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.addArg("sec", "1792760400");
+        ESP_WEB_SERVER_T__G__Server.addArg("tz", "12600");
+        Serial.tx.clear();
+        ESP_WEB_SERVER_T__G__Server.call("/clock", HTTP_POST);
+        check(BOOL__G__ClockFromBrowser != false,
+              "a browser clock marks the browser as the boss of the clock");
+        frame = find_tx_frame((uint8_t)ESP_MSG_TIME_SYNC);
+        check(frame.size() == (size_t)ESP_TIME_SYNC_LEN,
+              "and the same time is handed to the STM32 as TIME_SYNC",
+              std::to_string(frame.size()) + " bytes");
+        if (frame.size() == (size_t)ESP_TIME_SYNC_LEN) {
+            const uint32_t sent = (uint32_t)frame[0] | ((uint32_t)frame[1] << 8) |
+                                  ((uint32_t)frame[2] << 16) | ((uint32_t)frame[3] << 24);
+            check(sent == 1792760400u,
+                  "TIME_SYNC carries the browser time little-endian",
+                  std::to_string(sent));
+        }
+        for (i = 0u; i < 4u; i++) {
+            diag[(size_t)ESP_DIAG_BOARD_TIME_OFFSET + i] =
+                (uint8_t)(((boardSec + 7200u) >> (8u * i)) & 0xFFu);
+        }
+        feed(build_frame(ESP_MSG_DIAG_DATA, diag));
+        check(func__EspLog_NowSec() < (boardSec + 7200u),
+              "a board clock two hours ahead cannot overrule the browser",
+              std::to_string(func__EspLog_NowSec()) +
+              " vs " + std::to_string(boardSec + 7200u));
+
+        /* leave the panel in a clean state for the next block */
+        BOOL__G__ClockFromBrowser = false;
+        BOOL__G__ClockFromBoard = false;
+        UINT32_T__G__LastDiagReqMs = (uint32_t)millis();
+        UINT32_T__G__LastHelloTxMs = (uint32_t)millis();
+        Serial.tx.clear();
     }
 
     std::cout << std::string(70, '=') << "\n";

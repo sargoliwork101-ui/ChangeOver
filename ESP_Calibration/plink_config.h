@@ -82,7 +82,29 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          111u
+#define ESP_ESP_FW_VERSION          112u
+/* [EN] v1.112 (user order 2026-10-28: "when the ESP is switched off and on
+        again, if it is not connected to a computer it must take the clock from
+        the STM32 and the last synced time"): the board keeps the last clock it
+        was given and its own uptime. DIAG_REQ asks for it, DIAG_DATA chunk 0
+        answers with board time (byte 17), and TIME_SYNC hands the browser clock
+        back, so "the last synced time" is always the newest one either side
+        knows.
+   [FA] نسخهٔ ۱٫۱۱۲ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «زمان‌هایی که برد ESP خاموش و روشن
+        می‌شود باید ساعت را اگر به کامپیوتر وصل نبود با میکرو STM32 و آخرین
+        ساعت سینک کند»): برد آخرین ساعتی که به آن داده شده و آپتایم خودش را
+        نگه می‌دارد. DIAG_REQ آن را می‌پرسد، چانک ۰ پاسخ DIAG_DATA زمان برد را
+        در بایت ۱۷ می‌آورد، و TIME_SYNC ساعت مرورگر را برمی‌گرداند تا «آخرین
+        ساعت سینک‌شده» همیشه تازه‌ترین چیزی باشد که یک طرف می‌داند. */
+#define ESP_MSG_TIME_SYNC           0x30u
+#define ESP_MSG_DIAG_REQ            0x31u
+#define ESP_MSG_DIAG_DATA           0x32u
+#define ESP_TIME_SYNC_LEN           4u
+#define ESP_DIAG_CHUNK0_MIN_LEN     23u
+#define ESP_DIAG_BOARD_TIME_OFFSET  17u
+#define ESP_BOARD_CLOCK_REQ_MS      30000u  /* [EN] ask the board once per 30 s / [FA] پرسش از برد هر ۳۰ ثانیه */
+#define ESP_BOARD_CLOCK_ADOPT_SEC   120u    /* [EN] adopt only a clear difference / [FA] فقط اختلاف روشن پذیرفته می‌شود */
+
 /* [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
    [FA] بیت ۶ بایت پرچم تله‌متری: برد تأیید می‌کند دست‌دادن انجام شده است. */
 #define ESP_TLM_FLAG_LINK_OK        0x40u
