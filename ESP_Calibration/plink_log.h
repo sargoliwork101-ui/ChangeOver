@@ -125,7 +125,16 @@ static uint8_t  UINT8_T__G__LogBootChg1 = 0u;
 static uint8_t  UINT8_T__G__LogBootChg2 = 0u;
 static uint8_t  UINT8_T__G__LogBootMains = 0u;
 static uint8_t  UINT8_T__G__LogBootDanger = 0u;
+/* [EN] v1.110: the condemned-battery mask and the status byte are logged
+        conditions too, so the last row carries them and the first frame after
+        a restart is compared against it like every other condition.
+   [FA] نسخهٔ ۱٫۱۱۰: ماسک باتری خراب و بایت وضعیت هم شرط‌های ثبت‌شده‌اند، پس
+        آخرین ردیف آن‌ها را دارد و اولین فریم بعد از روشن شدن مثل بقیهٔ
+        شرط‌ها با همان مقایسه می‌شود. */
+static uint32_t UINT32_T__G__LogBootDead = 0u;
+static uint8_t  UINT8_T__G__LogBootFl = 0u;
 static uint32_t UINT32_T__G__LogLastClockSaveMs = 0u;
+static bool     BOOL__G__LogClockSavedOnce = false;
 
 /* ==================== Open day / روز باز ==================== */
 /* [EN] The sentinel says "no day opened yet". Day 0 is a real day: the day of a
@@ -513,6 +522,7 @@ static void func__EspLog_ClockSave(void)
     (void)file__clock.print(char__line);
     file__clock.close();
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
+    BOOL__G__LogClockSavedOnce = true;
 }
 
 /**
@@ -589,6 +599,7 @@ static void func__EspLog_ClockLoad(void)
 static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__tzSec)
 {
     uint32_t uint32_t__nowSec;
+    bool bool__jump = false;
 
     if (uint32_t__epochSec < ESP_LOG_CLOCK_VALID_MIN)
     {
@@ -616,11 +627,13 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
             ((uint32_t__nowSec - uint32_t__epochSec) > ESP_LOG_CLOCK_REWIND_SEC))
         {
             BOOL__G__LogClockJumpPending = true;
+            bool__jump = true;
         }
         else if ((uint32_t__epochSec > uint32_t__nowSec) &&
                  ((uint32_t__epochSec - uint32_t__nowSec) > ESP_LOG_CLOCK_REWIND_SEC))
         {
             BOOL__G__LogClockJumpPending = true;
+            bool__jump = true;
         }
         else
         {
@@ -645,7 +658,27 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
     {
         BOOL__G__LogAnchorBoardValid = false;
     }
-    func__EspLog_ClockSave();
+    /* [EN] v1.110 (finding of the line-by-line review, 2026-10-28): the page
+            sets the clock on every poll - once a minute - and this function
+            saved the anchor every time, so the flash was written 1440 times a
+            day instead of the 144 that ESP_LOG_CLOCK_SAVE_MS asks for. A small
+            re-sync now lives in RAM only; the anchor is saved when the clock
+            really jumped, when it has never been saved, or when the 10-minute
+            policy says so. A restart in between loses at most those minutes,
+            and the first page that connects sets the clock again.
+       [FA] نسخهٔ ۱٫۱۱۰ (یافتهٔ مرور خط‌به‌خط، ۲۰۲۶-۱۰-۲۸): صفحه با هر پرسش -
+            هر یک دقیقه - ساعت را تنظیم می‌کند و این تابع هر بار لنگر را ذخیره
+            می‌کرد، یعنی فلش روزی ۱۴۴۰ بار نوشته می‌شد به‌جای ۱۴۴ باری که
+            ESP_LOG_CLOCK_SAVE_MS می‌خواهد. حالا هم‌زمان‌سازی کوچک فقط در رم
+            می‌ماند و لنگر وقتی ذخیره می‌شود که ساعت واقعاً پرش کرده باشد، یا
+            هرگز ذخیره نشده باشد، یا سیاست ۱۰ دقیقه‌ای بگوید. ری‌استارت در
+            این فاصله حداکثر همان چند دقیقه را از دست می‌دهد و اولین صفحه‌ای
+            که وصل شود دوباره ساعت را می‌گذارد. */
+    if ((bool__jump != false) || (BOOL__G__LogClockSavedOnce == false) ||
+        ((uint32_t)((uint32_t)millis() - UINT32_T__G__LogLastClockSaveMs) >= ESP_LOG_CLOCK_SAVE_MS))
+    {
+        func__EspLog_ClockSave();
+    }
     return true;
 }
 
@@ -1587,6 +1620,17 @@ static void func__EspLog_LoadLastSnapshot(void)
         UINT8_T__G__LogBootChg1 = (uint8_t)func__EspLog_RowFieldAt(char__row, 6u);
         UINT8_T__G__LogBootChg2 = (uint8_t)func__EspLog_RowFieldAt(char__row, 7u);
         UINT8_T__G__LogBootMains = (uint8_t)func__EspLog_RowFieldAt(char__row, 4u);
+        /* [EN] the row stores the whole status byte; the comparison uses the
+                state bits only (the mains bit has its own change bit), so the
+                same mask is applied here or every boot would look like a mode
+                change.
+           [FA] ردیف کل بایت وضعیت را ذخیره می‌کند و مقایسه فقط بیت‌های وضعیت
+                را می‌بیند (بیت برق شهر بیت تغییر خودش را دارد)، پس همان ماسک
+                اینجا هم اعمال می‌شود وگرنه هر روشن شدن شبیه تغییر مود
+                دیده می‌شد. */
+        UINT8_T__G__LogBootFl =
+            (uint8_t)(func__EspLog_RowFieldAt(char__row, 5u) & 0x3Du);
+        UINT32_T__G__LogBootDead = func__EspLog_RowFieldAt(char__row, 14u);
         UINT8_T__G__LogBootDanger = (uint32_t__v24 < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
         BOOL__G__LogBootSnapValid = true;
     }
@@ -1731,22 +1775,6 @@ static void func__EspLog_DetectChanges(void)
     uint8_t__chg2 = (uint8_t)UINT32_T__G__TlmField[13];
     uint8_t__flags2 = UINT8_T__G__TlmFlags2;
     uint32_t__fault = UINT32_T__G__TlmField[19];
-    /* [EN] v1.98: the cut band has HYSTERESIS. It is entered below
-            21,200 mV and left only above 21,400 mV, so a pack resting on the
-            line - or a load switching on and off - cannot write a row every
-            couple of seconds and fill the flash with one repeated event.
-       [FA] نسخهٔ ۱٫۹۸: مرز قطع هیسترزیس دارد. زیر ۲۱٬۲۰۰ میلی‌ولت وارد و
-            فقط بالای ۲۱٬۴۰۰ میلی‌ولت خارج می‌شود؛ پس باتریِ خوابیده روی
-            مرز - یا باری که روشن و خاموش می‌شود - نمی‌تواند هر دو ثانیه
-            یک ردیف بنویسد و فلش را با یک اتفاق تکراری پر کند. */
-    if (UINT8_T__G__LogPrevBand != 0u)
-    {
-        uint8_t__band = (UINT32_T__G__TlmField[15] > ESP_LOG_BAND_OFF_MV) ? 0u : 1u;
-    }
-    else
-    {
-        uint8_t__band = (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
-    }
     /* [EN] every state bit of the general byte except the input-present
             bit, which already has its own change bit: snapshot, valid
             measurement, both charger enables and hand mode.
@@ -1778,8 +1806,18 @@ static void func__EspLog_DetectChanges(void)
             UINT8_T__G__LogPrevFlags2 = UINT8_T__G__LogBootFlags2;
             UINT32_T__G__LogPrevFault = UINT32_T__G__LogBootFault;
             UINT32_T__G__LogPrevV24 = UINT32_T__G__LogBootV24;
-            UINT32_T__G__LogPrevDead = uint32_t__dead;
-            UINT8_T__G__LogPrevFl = uint8_t__fl;
+            /* [EN] v1.110: the condemned mask and the status byte come from the
+                    last row too. They were taken from the frame in hand, so a
+                    battery condemned - or a charger enabled - while the panel
+                    was off never produced a row, although both are logged
+                    conditions with their own change bits.
+               [FA] نسخهٔ ۱٫۱۱۰: ماسک باتری خراب و بایت وضعیت هم از آخرین
+                    ردیف می‌آیند. قبلاً از فریمِ در دست گرفته می‌شدند، پس
+                    باتری‌ای که در مدت خاموشی حکم خرابی می‌گرفت - یا شارژری
+                    که اجازه می‌گرفت - هیچ ردیفی نمی‌ساخت، در حالی که هر دو
+                    شرط ثبت‌شده با بیت تغییر خودشان‌اند. */
+            UINT32_T__G__LogPrevDead = UINT32_T__G__LogBootDead;
+            UINT8_T__G__LogPrevFl = UINT8_T__G__LogBootFl;
             /* The danger band is re-derived from the saved pack voltage, so a
                pack that was already low before the restart is not announced
                twice; one that crossed the line while the panel was off is. */
@@ -1795,12 +1833,36 @@ static void func__EspLog_DetectChanges(void)
             UINT8_T__G__LogPrevChg2 = uint8_t__chg2;
             UINT8_T__G__LogPrevFlags2 = uint8_t__flags2;
             UINT32_T__G__LogPrevFault = uint32_t__fault;
-            UINT8_T__G__LogPrevBand = uint8_t__band;
+            UINT8_T__G__LogPrevBand =
+                (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
             UINT8_T__G__LogPrevFl = uint8_t__fl;
             UINT32_T__G__LogPrevDead = uint32_t__dead;
             UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
             return;
         }
+    }
+
+    /* [EN] v1.98: the cut band has HYSTERESIS. It is entered below
+            21,200 mV and left only above 21,400 mV, so a pack resting on the
+            line - or a load switching on and off - cannot write a row every
+            couple of seconds and fill the flash with one repeated event.
+            v1.110: this runs AFTER the comparison is seeded, so the first
+            frame after a restart obeys the same rule instead of leaving the
+            band at 21,300 mV, 100 mV early.
+       [FA] نسخهٔ ۱٫۹۸: مرز قطع هیسترزیس دارد. زیر ۲۱٬۲۰۰ میلی‌ولت وارد و
+            فقط بالای ۲۱٬۴۰۰ میلی‌ولت خارج می‌شود؛ پس باتریِ خوابیده روی
+            مرز - یا باری که روشن و خاموش می‌شود - نمی‌تواند هر دو ثانیه
+            یک ردیف بنویسد و فلش را با یک اتفاق تکراری پر کند.
+            نسخهٔ ۱٫۱۱۰: این محاسبه «بعد از» بذر شدن مقایسه انجام می‌شود تا
+            اولین فریم بعد از روشن شدن هم همان قاعده را رعایت کند و باند را
+            ۱۰۰ میلی‌ولت زودتر ترک نکند. */
+    if (UINT8_T__G__LogPrevBand != 0u)
+    {
+        uint8_t__band = (UINT32_T__G__TlmField[15] > ESP_LOG_BAND_OFF_MV) ? 0u : 1u;
+    }
+    else
+    {
+        uint8_t__band = (UINT32_T__G__TlmField[15] < ESP_LOG_CUT_BAND_MV) ? 1u : 0u;
     }
 
     if (uint8_t__mains != UINT8_T__G__LogPrevMains)
@@ -2180,6 +2242,30 @@ static size_t func__EspLog_TailRam(char *char__out, size_t size_t__outSize,
 }
 
 /**
+ * @brief  [EN] The RAM ring is the only history left: the card shows those rows
+ *              instead of nothing.
+ *         [FA] تنها تاریخچهٔ باقی‌مانده حلقهٔ رم است: کارت همان ردیف‌ها را
+ *              نشان می‌دهد، نه هیچ.
+ * @‎param  char *char__out [EN] output buffer / [FA]‎ بافر خروجی
+ * @‎param  size_t size_t__outSize [EN] size / [FA]‎ اندازهٔ بافر
+ * @‎param  uint16_t uint16_t__maxLines [EN] how many rows / [FA]‎ چند ردیف
+ * @return [EN] size_t bytes written / [FA]‎ تعداد بایت
+ */
+static size_t func__EspLog_TailRamOnly(char *char__out, size_t size_t__outSize,
+                                        uint16_t uint16_t__maxLines)
+{
+    /* [EN] Without a write fault the emptiness is real (a day with no rows),
+            so the RAM ring must not invent history.
+       [FA] بدون خرابیِ نوشتن، خالی‌بودن واقعی است (روزی که ردیف ندارد)، پس
+            حلقهٔ رم نباید تاریخچه از خودش بسازد. */
+    if (UINT8_T__G__LogWriteFault == 0u)
+    {
+        return 0u;
+    }
+    return func__EspLog_TailRam(char__out, size_t__outSize, uint16_t__maxLines);
+}
+
+/**
  * @brief  [EN] Which file does an automatic read pick? Today's file when it
  *              exists, otherwise the newest day of the list - the day the phone
  *              clock has not named yet keeps its own file and is never hidden.
@@ -2247,8 +2333,15 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     }
     char__out[0] = '\0';
 
-    if ((BOOL__G__FsOk == false) ||
-        ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u)))
+    /* [EN] v1.111 (user report 2026-10-28): one refused write used to hide the
+            whole day file behind 16 RAM rows, so a card that had hundreds of
+            rows showed a handful. The file is read first and the rows that
+            never reached the flash follow it.
+       [FA] نسخهٔ ۱٫۱۱۱ (گزارش کاربر ۲۰۲۶-۱۰-۲۸): یک نوشتنِ ردشده کل فایل روز
+            را پشت ۱۶ ردیف رم پنهان می‌کرد، پس کارتی که صدها ردیف داشت چند
+            ردیف نشان می‌داد. اول فایل خوانده می‌شود و ردیف‌هایی که به فلش
+            نرسیدند پشت آن می‌آیند. */
+    if (BOOL__G__FsOk == false)
     {
         return func__EspLog_TailRam(char__out, size_t__outSize, uint16_t__maxLines);
     }
@@ -2256,31 +2349,31 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     uint32_t__chosen = func__EspLog_PickDay(uint32_t__dayCode);
     if (uint32_t__chosen == ESP_LOG_DAY_AUTO)
     {
-        return 0u;
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
     }
 
     func__EspLog_PathOf(char__path, uint32_t__chosen);
     if (LittleFS.exists(char__path) == false)
     {
-        return 0u;
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
     }
     file__day = LittleFS.open(char__path, "r");
     if (!file__day)
     {
-        return 0u;
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
     }
     uint32_t__size = (uint32_t)file__day.size();
     if (uint32_t__size == 0u)
     {
         file__day.close();
-        return 0u;
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
     }
     uint32_t__start = func__EspLog_TailStart(file__day, uint32_t__size,
                                              uint16_t__maxLines, size_t__outSize - 2u);
     if (file__day.seek(uint32_t__start) == false)
     {
         file__day.close();
-        return 0u;
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
     }
     while (file__day.available())
     {
@@ -2304,6 +2397,18 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
         char__out[size_t__used] = '\0';
     }
     file__day.close();
+
+    /* [EN] the rows that failed to reach the flash are newer than everything in
+            the file, so they are appended, not substituted.
+       [FA] ردیف‌هایی که به فلش نرسیدند از هر چه در فایل است جدیدترند، پس
+            پشت آن‌ها می‌آیند، نه به‌جای آن‌ها. */
+    if ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u) &&
+        ((size_t__used + 2u) < size_t__outSize))
+    {
+        size_t__used += func__EspLog_TailRam(&char__out[size_t__used],
+                                             size_t__outSize - size_t__used,
+                                             uint16_t__maxLines);
+    }
     return size_t__used;
 }
 
@@ -2366,7 +2471,13 @@ static size_t func__EspLog_Days(char *char__out, size_t size_t__outSize)
     char__out[0] = '\0';
     if (BOOL__G__FsOk == false)
     {
-        if ((UINT8_T__G__LogRamCount > 0u) && (size_t__outSize >= 12u))
+        /* [EN] v1.111: with the file system down the only day that can exist is
+                today's RAM rows. The list used to stay empty until the first
+                row arrived, so the day picker showed nothing at all.
+           [FA] نسخهٔ ۱٫۱۱۱: با خاموش بودن فایل‌سیستم تنها روزی که می‌تواند
+                باشد ردیف‌های رمِ امروز است. فهرست تا رسیدن اولین ردیف خالی
+                می‌ماند و انتخاب‌گر روز هیچ چیز نشان نمی‌داد. */
+        if (size_t__outSize >= 12u)
         {
             int int__ramWritten = snprintf(char__out, size_t__outSize, "%08lu",
                                            (unsigned long)func__EspLog_TodayCode());

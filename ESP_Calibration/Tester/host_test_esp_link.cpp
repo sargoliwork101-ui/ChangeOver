@@ -185,6 +185,18 @@ static std::vector<uint8_t> tlm_payload_v24(uint16_t seq, uint32_t v24)
 }
 
 
+static std::vector<uint8_t> tlm_payload_field(uint16_t seq, uint32_t v24,
+                                              uint8_t field, uint32_t value)
+{
+    std::vector<uint8_t> p = tlm_payload_v24(seq, v24);
+    const size_t o = ESP_LINK_TLM_FIELD_OFFSET + (size_t)field * 4u;
+    p[o] = (uint8_t)(value & 0xFFu);
+    p[o + 1u] = (uint8_t)((value >> 8) & 0xFFu);
+    p[o + 2u] = (uint8_t)((value >> 16) & 0xFFu);
+    p[o + 3u] = (uint8_t)((value >> 24) & 0xFFu);
+    return p;
+}
+
 /* ======================================================================== */
 int main(void)
 {
@@ -2498,6 +2510,256 @@ int main(void)
               std::string("20261023 20261024"),
               "both days are listed, read from the files",
               std::string(daysText));
+    }
+
+    /* ---- 45. three findings of the line-by-line review -------------------
+       [EN] 2026-10-28, found by reading the program line by line and proven
+            before the fix:
+              a. the clock file was written on EVERY /clock (the page polls
+                 once a minute), 1440 flash writes a day instead of 144;
+              b. the condemned-battery mask and the status byte were seeded
+                 from the frame in hand at boot, so a battery condemned while
+                 the panel was off never produced a row;
+              c. the cut band was computed before the comparison was seeded,
+                 so the first frame after a restart left the band at 21,300 mV
+                 although the rule is "only above 21,400".
+       [FA] ۲۰۲۶-۱۰-۲۸، از مرور خط‌به‌خط برنامه و پیش از اصلاح ثابت شد:
+              الف. فایل ساعت با «هر» ‎/clock‎ نوشته می‌شد (صفحه هر یک دقیقه
+                   می‌پرسد): روزی ۱۴۴۰ نوشتن روی فلش به‌جای ۱۴۴؛
+              ب. ماسک باتری خراب و بایت وضعیت هنگام بوت از فریمِ در دست بذر
+                   می‌شدند، پس باتری‌ای که در خاموشی حکم خرابی می‌گرفت ردیفی
+                   نمی‌ساخت؛
+              ج. باند قطع قبل از بذر شدن مقایسه حساب می‌شد، پس اولین فریم
+                   بعد از روشن شدن باند را در ۲۱٬۳۰۰ ترک می‌کرد در حالی که
+                   قاعده «فقط بالای ۲۱٬۴۰۰» است. */
+    {
+        /* a fresh flash and a known clock, so every block starts equal */
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        BOOL__G__TlmSeen = false;
+        UINT8_T__G__LogWriteFault = 0u; UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u; UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false; UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u; BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false; BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = false; BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false; UINT16_T__G__LogPendingMask = 0u;
+        BOOL__G__LogLastStepValid = false; UINT8_T__G__LogPrevBand = 0u;
+        BOOL__G__LogBootSnapValid = false; BOOL__G__LogClockValid = true;
+        INT32_T__G__LogTzSec = 12600; UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        UINT32_T__G__LogHighWaterSec = 1792756800u;
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+
+        /* ---- (c) the band is not left 100 mV early after a restart ------ */
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(1u, 21100u)));
+        (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);
+        BOOL__G__LogHasPrev = false; BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogBootSnapValid = false; UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u; BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false; UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__LogPrevBand = 0u;      /* a real power cycle: RAM is empty */
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__EspLog_Begin();
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(2u, 21300u)));
+        {
+            char lastRow[256] = { 0 };
+            char rowPath[32];
+            (void)snprintf(rowPath, sizeof rowPath, "/evt-%08lu.csv",
+                           (unsigned long)func__EspLog_TodayCode());
+            (void)func__EspLog_Tail(lastRow, sizeof lastRow,
+                                    func__EspLog_TodayCode(), 1u);
+            check(func__EspLog_RowFieldAt(lastRow, 2u) == ESP_LOG_CHG_VSTEP,
+                  "21.30 V after a restart is a voltage step, NOT a band exit "
+                  "(the band is left above 21.40 V)",
+                  std::to_string(func__EspLog_RowFieldAt(lastRow, 2u)));
+        }
+
+        /* ---- (b) a battery condemned while the panel was off ------------ */
+        LittleFS.files.clear();
+        UINT8_T__G__LogIndexCount = 0u; BOOL__G__LogScanValid = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu; UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false; BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogHasPrev = false; BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogBootSnapValid = false; UINT16_T__G__LogPendingMask = 0u;
+        BOOL__G__LogLastStepValid = false; UINT8_T__G__LogPrevBand = 0u;
+        BOOL__G__TlmSeen = false;
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_field(1u, 24000u, 28u, 0u)));
+        (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);
+        BOOL__G__LogHasPrev = false; BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogBootSnapValid = false; UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u; BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false; UINT16_T__G__LogPendingMask = 0u;
+        BOOL__G__LogLastStepValid = false; UINT8_T__G__LogPrevBand = 0u;
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__EspLog_Begin();
+        check(UINT32_T__G__LogBootDead == 0u,
+              "the last row's condemned mask is read back at boot");
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_field(2u, 24000u, 28u, 3u)));
+        {
+            char lastRow[256] = { 0 };
+            (void)func__EspLog_Tail(lastRow, sizeof lastRow,
+                                    func__EspLog_TodayCode(), 1u);
+            check((func__EspLog_RowFieldAt(lastRow, 2u) & ESP_LOG_CHG_DEAD) != 0u,
+                  "both batteries condemned while the panel was off is written as a row",
+                  std::to_string(func__EspLog_RowFieldAt(lastRow, 2u)));
+        }
+
+        /* an identical state must still write nothing after a restart */
+        LittleFS.files.clear();
+        UINT8_T__G__LogIndexCount = 0u; BOOL__G__LogScanValid = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu; UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false; BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogHasPrev = false; BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogBootSnapValid = false; UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__LogPrevBand = 0u; BOOL__G__TlmSeen = false;
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(1u, 24000u)));
+        (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);
+        BOOL__G__LogHasPrev = false; BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogBootSnapValid = false; UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u; BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false; UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__LogPrevBand = 0u;
+        /* a clock jump queued by an earlier block is not this block's business */
+        BOOL__G__LogClockJumpPending = false;
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__EspLog_Begin();
+        const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(2u, 24000u)));
+        func__EspLog_Tick();
+        {
+            char lastRow[256] = { 0 };
+            (void)func__EspLog_Tail(lastRow, sizeof lastRow,
+                                    func__EspLog_TodayCode(), 1u);
+            check(UINT16_T__G__LogRowsToday == rowsBefore,
+                  "and the same state after the restart still writes nothing",
+                  std::to_string(UINT16_T__G__LogRowsToday) + " rows, last row bits " +
+                  std::to_string(func__EspLog_RowFieldAt(lastRow, 2u)) + " note " +
+                  std::to_string(func__EspLog_RowFieldAt(lastRow, 3u)));
+        }
+
+        /* ---- (a) the clock anchor is not rewritten on every poll -------- */
+        UINT8_T__G__LogWriteFault = 0u;
+        LittleFS.files["/evt-clock.txt"] = "1";
+        BOOL__G__LogClockSavedOnce = false;
+        (void)func__EspLog_TimeSet(1792756800u, 12600);
+        check(LittleFS.files["/evt-clock.txt"].find("1792756800,12600") == 0u,
+              "the first adoption is always saved");
+        unsigned clockWrites = 0u;
+        for (uint8_t k = 0u; k < 9u; k++) {
+            LittleFS.files["/evt-clock.txt"] += "M\n";
+            G_StubMillis += 60000u;
+            (void)func__EspLog_TimeSet(1792756800u + 60u * (uint32_t)(k + 1u), 12600);
+            if (LittleFS.files["/evt-clock.txt"].find('M') == std::string::npos) clockWrites++;
+        }
+        check(clockWrites == 0u,
+              "nine page polls in nine minutes write the clock file zero times",
+              std::to_string(clockWrites));
+        G_StubMillis += ESP_LOG_CLOCK_SAVE_MS + 1000u;
+        LittleFS.files["/evt-clock.txt"] += "M\n";
+        (void)func__EspLog_TimeSet(1792756800u + 2000u, 12600);
+        check(LittleFS.files["/evt-clock.txt"].find('M') == std::string::npos,
+              "after the ten-minute window a small re-sync is saved again");
+        BOOL__G__LogClockSavedOnce = false;
+    }
+
+    /* ---- 46. one refused write hides the whole day file ----------------
+       [EN] 2026-10-28, found by reading the program line by line and proven
+            before the fix: the log card switched to the RAM ring as soon as the
+            flash refused a single write, so a day with hundreds of rows showed
+            at most the sixteen rows still in RAM. The file is read first now
+            and the rows that never reached it follow.
+       [FA] ۲۰۲۶-۱۰-۲۸، از مرور خط‌به‌خط برنامه و پیش از اصلاح ثابت شد: کارت
+            لاگ با «یک» نوشتنِ ردشده به حلقهٔ رم می‌پرید، پس روزی با صدها ردیف
+            حداکثر همان شانزده ردیفِ رم را نشان می‌داد. حالا اول فایل خوانده
+            می‌شود و ردیف‌هایی که به فلش نرسیدند پشت آن می‌آیند. */
+    {
+        char tail[4096];
+        uint32_t lines;
+        uint32_t i;
+
+        LittleFS.files.clear();
+        LittleFS.failWrites = false;
+        BOOL__G__FsOk = true;
+        BOOL__G__TlmSeen = false;
+        UINT8_T__G__LogWriteFault = 0u; UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u; UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false; UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u; BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false; UINT16_T__G__LogDroppedRows = 0u;
+        UINT8_T__G__LogPrevBand = 0u; BOOL__G__LogClockJumpPending = false;
+        BOOL__G__LogClockValid = true; INT32_T__G__LogTzSec = 12600;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        UINT32_T__G__LogHighWaterSec = 1792756800u;
+        G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(1u, 24000u)));
+
+        /* three rows reach the flash */
+        for (i = 0u; i < 3u; i++)
+        {
+            G_StubMillis += 5000u;
+            (void)func__EspLog_WriteRow(ESP_LOG_CHG_BOOT, ESP_LOG_NOTE_NONE);
+        }
+        check(UINT16_T__G__LogRowsToday == 3u,
+              "three rows are on the flash before the flash refuses",
+              std::to_string(UINT16_T__G__LogRowsToday));
+
+        /* the flash is full: the next two rows wait in RAM */
+        LittleFS.failWrites = true;
+        for (i = 0u; i < 2u; i++)
+        {
+            G_StubMillis += 5000u;
+            (void)func__EspLog_WriteRow(ESP_LOG_CHG_DEAD, ESP_LOG_NOTE_NONE);
+        }
+        check((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount == 2u),
+              "a full flash raises the fault and keeps both rows in RAM",
+              std::to_string(UINT8_T__G__LogWriteFault) + "/" +
+              std::to_string(UINT8_T__G__LogRamCount));
+
+        (void)func__EspLog_Tail(tail, sizeof tail, func__EspLog_TodayCode(), 30u);
+        lines = 0u;
+        for (i = 0u; tail[i] != '\0'; i++)
+        {
+            if (tail[i] == '\n') lines++;
+        }
+        check(lines == 5u,
+              "the card shows the three flash rows AND the two RAM rows",
+              std::to_string(lines) + " rows");
+        check(tail[0] == '1',
+              "the first row of the card is the oldest row of the file",
+              std::string(tail).substr(0u, 24u));
+
+        /* a day with no rows at all must stay empty, not borrow RAM history */
+        LittleFS.files.clear();
+        UINT8_T__G__LogRamCount = 0u; UINT16_T__G__LogRowsToday = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu; BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        (void)func__EspLog_Tail(tail, sizeof tail, 20260101u, 30u);
+        check(tail[0] == '\0',
+              "a day without rows is empty, the RAM ring is not invented",
+              std::string(tail).substr(0u, 24u));
+
+        /* no file system at all: the day list still names today, so the panel
+           keeps a day to click instead of an empty picker */
+        BOOL__G__FsOk = false;
+        UINT8_T__G__LogRamCount = 0u;
+        (void)func__EspLog_Days(tail, sizeof tail);
+        {
+            char expected[16];
+            (void)snprintf(expected, sizeof expected, "%08lu",
+                           (unsigned long)func__EspLog_TodayCode());
+            check(strcmp(tail, expected) == 0,
+                  "with no file system the day list still names today",
+                  std::string(tail) + " vs " + std::string(expected));
+        }
+        BOOL__G__FsOk = true;
+        LittleFS.failWrites = false;
     }
 
     std::cout << std::string(70, '=') << "\n";
