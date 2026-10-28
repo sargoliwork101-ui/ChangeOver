@@ -437,7 +437,17 @@
 #define ESP_LOG_BAND_OFF_MV         21400u   /* [EN] ...and left only above this / [FA] ...و خروج فقط از بالای این */
 #define ESP_LOG_VSTEP_MIN_MS        60000u   /* [EN] at most one step row a minute / [FA] حداکثر یک ردیف گام در دقیقه */
 #define ESP_LOG_VSTEP_MV             200u     /* [EN] pack step that counts as a change / [FA] پلهٔ ولتاژ پک که تغییر حساب می‌شود */
-#define ESP_LOG_HEARTBEAT_MS         21600000u /* [EN] 6 h: one "still alive" row / [FA] هر ۶ ساعت یک ردیف «زنده‌ام» */
+/* [EN] One "still alive" row this often when nothing at all has changed. It was
+        6 h, which meant a pack lying quietly on battery produced ONE row a
+        session and the history looked empty (user order 2026-10-27: "it is on
+        and it still writes nothing"). 10 min = 144 rows a day, inside the 400
+        rows a day cap with room for real events.
+   [FA] هر این مدت یک ردیف «زنده‌ام» وقتی هیچ چیز عوض نشده باشد. قبلاً ۶ ساعت
+        بود، یعنی پکی که آرام روی باتری می‌خوابید در هر نشست یک ردیف می‌داد و
+        تاریخچه خالی دیده می‌شد (دستور کاربر ۲۰۲۶-۱۰-۲۷: «روشن است و باز هم
+        چیزی نمی‌نویسد»). ۱۰ دقیقه = ۱۴۴ ردیف در روز، داخل سقف ۴۰۰ ردیف با جا
+        برای رویدادهای واقعی. */
+#define ESP_LOG_HEARTBEAT_MS         600000u  /* [EN] 10 min / [FA] ۱۰ دقیقه */
 #define ESP_LOG_TOTAL_BUDGET_BYTES     200000u   /* [EN] old days are dropped past this / [FA] از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
 #define ESP_LOG_MIN_INTERVAL_MS     2000u    /* [EN] merges a burst into one row / [FA] ادغام چند تغییر پشت‌سرهم */
 /* [EN] A queued mains cut/return is written after this short coalescing
