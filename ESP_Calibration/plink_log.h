@@ -197,14 +197,16 @@ static bool     BOOL__G__LogLastStepValid = false;
    [FA] ردیف نشانهٔ «سقف روز پر شد» یک‌بار در روز نوشته می‌شود، نه دوبار. */
 static bool     BOOL__G__LogMarkerDone = false;
 
-/* ==================== Day index / فهرست روزها ==================== */
+/* ==================== Day list / فهرست روزها ==================== */
+/* [EN] The days are NOT stored anywhere: this is a cache of the directory,
+        filled by func__EspLog_ScanDays from the file names on the flash.
+   [FA] روزها هیچ‌جا ذخیره نمی‌شوند: این فقط حافظهٔ موقت پوشه است که
+        func__EspLog_ScanDays از نام فایل‌های روی فلش پر می‌کند. */
 static uint32_t UINT32_T__G__LogIndexDay[ESP_LOG_MAX_DAYS + 2u];
-/* [EN] bytes of each day file; 0 = not known yet and has to be measured once.
-        Maintaining this per row is what keeps retention free: without it every
-        day change opened up to 30 files just to add up their sizes.
-   [FA] حجم هر فایل روز؛ صفر یعنی هنوز معلوم نیست و یک‌بار اندازه‌گیری
-        می‌شود. نگه‌داشتن همین عدد با هر ردیف است که پاک‌سازی قدیمی‌ها را
-        بی‌هزینه می‌کند. */
+/* [EN] size of each day file, read from the directory in the same scan; the
+        retention needs it and asking the flash once is enough.
+   [FA] حجم هر فایل روز، در همان خواندن پوشه؛ پاک‌سازی قدیمی‌ها به آن نیاز
+        دارد و یک بار پرسیدن از فلش کافی است. */
 static uint32_t UINT32_T__G__LogIndexBytes[ESP_LOG_MAX_DAYS + 2u];
 static uint8_t  UINT8_T__G__LogIndexCount = 0u;
 /* [EN] RAM ring: the last rows survive when the flash cannot take them - either
@@ -261,7 +263,6 @@ static_assert(ESP_LOG_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
 #define ESP_LOG_FS_OK          1u
 #define ESP_LOG_FS_OFF         0u
 #define ESP_LOG_FS_WRITE_FAULT 2u
-#define ESP_LOG_BYTES_UNKNOWN  0u
 
 /* ==================== Time helpers / کمک‌های زمان ==================== */
 
@@ -728,123 +729,178 @@ static void func__EspLog_RamPush(const char *char__row)
     }
 }
 
-/* ==================== Day index / فهرست روزها ==================== */
+/* ==================== Day list / فهرست روزها ==================== */
 
-/* [EN] Defined below; retention rewrites the list after it drops a day.
-   [FA] پایین‌تر تعریف می‌شود؛ پاک‌سازی قدیمی‌ها پس از حذف روز، فهرست را
-        بازنویسی می‌کند. */
-static void func__EspLog_IndexSave(void);
+/* [EN] v1.110 (user order 2026-10-28: "why not take it from the log file
+        itself?"): the day list is READ FROM THE FLASH, not stored. One scan of
+        "/" collects every day file, sorts it by day and remembers each file's
+        size, so the day picker, the download and the retention all look at the
+        real files. The old list file is gone: a list written beside the rows
+        can fall out of step with them - a panel that was switched off came back
+        with an EMPTY list while every day file was still on the flash, and a
+        stale list also meant the retention never deleted anything.
+   [FA] نسخهٔ ۱٫۱۱۰ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «چرا از خود فایل لاگ برنمی‌داری؟»):
+        فهرست روزها از خود فلش خوانده می‌شود، نه ذخیره. یک بار خواندن پوشهٔ «/»
+        همهٔ فایل‌های روز را جمع می‌کند، به ترتیب روز می‌چیند و حجم هر فایل را
+        نگه می‌دارد؛ پس فهرست روزهای پنل، دانلود و پاک‌سازی قدیمی‌ها همه
+        فایل‌های واقعی را می‌بینند. فایل فهرست حذف شد: فهرستی که کنار ردیف‌ها
+        نوشته شود می‌تواند از آن‌ها عقب بماند - پنلی که خاموش و روشن شد با
+        فهرست خالی برگشت در حالی که همهٔ فایل‌های روز سر جایشان بودند، و فهرست
+        کهنه یعنی پاک‌سازی هم هیچ‌وقت چیزی را حذف نمی‌کرد. */
 
-
+/* [EN] When the directory was last read, so a page that refreshes every 10 s
+        does not make the flash walk the directory every 10 s as well.
+   [FA] زمان آخرین خواندن پوشه، تا صفحه‌ای که هر ۱۰ ثانیه تازه می‌شود پوشه را
+        هم هر ۱۰ ثانیه از فلش نخواند. */
+static uint32_t UINT32_T__G__LogLastScanMs = 0u;
+static bool     BOOL__G__LogScanValid = false;
 
 /**
- * @brief  [EN] Slot of a day in the list, or 0xFF when it is not listed.
- *         [FA] جای یک روز در فهرست، یا ۰xFF وقتی در فهرست نیست.
- * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
- * @return [EN] uint8_t slot / [FA]‎ جای روز
+ * @brief  [EN] Day code of one file name, or false when the name is not a day
+ *              file. Only the day-file shape counts, so the clock file, the
+ *              bench log and any leftover file are never read as days.
+ *         [FA] کد روز از یک نام فایل، یا false وقتی نام، فایل روز نیست. فقط
+ *              شکل نام فایل روز حساب می‌شود، پس فایل ساعت، لاگ بنچ و هر فایل
+ *              جاماندهٔ دیگر هرگز به‌جای روز خوانده نمی‌شوند.
+ * @‎param  const char *char__ptr_name [EN] name from the directory / [FA] نام از پوشه
+ * @‎param  uint32_t *uint32_t__ptr_day [EN] output day code / [FA] کد روز خروجی
+ * @return [EN] bool / [FA]‎ درست
  */
-static uint8_t func__EspLog_IndexFind(uint32_t uint32_t__dayCode)
+static bool func__EspLog_DayFromName(const char *char__ptr_name,
+                                     uint32_t *uint32_t__ptr_day)
 {
-    uint8_t uint8_t__slot;
+    uint8_t uint8_t__index = 0u;
+    uint8_t uint8_t__digits = 0u;
+    uint32_t uint32_t__day = 0u;
 
-    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    if ((char__ptr_name == NULL) || (uint32_t__ptr_day == NULL))
     {
-        if (UINT32_T__G__LogIndexDay[uint8_t__slot] == uint32_t__dayCode)
-        {
-            return uint8_t__slot;
-        }
+        return false;
     }
-    return 0xFFu;
+    while ((ESP_LOG_FILE_PREFIX[uint8_t__index] != '\0') &&
+           (char__ptr_name[uint8_t__index] == ESP_LOG_FILE_PREFIX[uint8_t__index]))
+    {
+        uint8_t__index++;
+    }
+    if (ESP_LOG_FILE_PREFIX[uint8_t__index] != '\0')
+    {
+        return false;
+    }
+    while ((uint8_t__digits < 8u) &&
+           (char__ptr_name[uint8_t__index] >= '0') &&
+           (char__ptr_name[uint8_t__index] <= '9'))
+    {
+        uint32_t__day = (uint32_t__day * 10u) +
+                        (uint32_t)(char__ptr_name[uint8_t__index] - '0');
+        uint8_t__digits++;
+        uint8_t__index++;
+    }
+    if (uint8_t__digits != 8u)
+    {
+        return false;
+    }
+    if ((char__ptr_name[uint8_t__index] != '.') ||
+        (char__ptr_name[uint8_t__index + 1u] != 'c') ||
+        (char__ptr_name[uint8_t__index + 2u] != 's') ||
+        (char__ptr_name[uint8_t__index + 3u] != 'v') ||
+        (char__ptr_name[uint8_t__index + 4u] != '\0'))
+    {
+        return false;
+    }
+    *uint32_t__ptr_day = uint32_t__day;
+    return true;
 }
 
 /**
- * @brief  [EN] Add a day to the list (no-op when it is already there).
- *         [FA] افزودن یک روز به فهرست (اگر هست، کاری نمی‌کند).
- * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
- * @return [EN] uint8_t slot, 0xFF when the list is full / [FA]‎ جای روز
+ * @brief  [EN] Fill the day cache from one directory scan, oldest first. Two
+ *              entries more than the retention keeps are taken, so the trim
+ *              below always sees the oldest day and can delete it. A page that
+ *              asks again inside ESP_LOG_SCAN_MIN_MS gets the cache without
+ *              touching the flash.
+ *         [FA] پر کردن حافظهٔ روزها با یک بار خواندن پوشه، قدیمی‌تر اول. دو
+ *              خانه بیش از سقف نگه‌داری خوانده می‌شود تا پاک‌سازی همیشه
+ *              قدیمی‌ترین روز را ببیند و بتواند حذفش کند. صفحه‌ای که داخل
+ *              ESP_LOG_SCAN_MIN_MS دوباره بپرسد، پاسخ را از حافظه می‌گیرد و
+ *              به فلش دست نمی‌زند.
+ * @‎param  bool bool__force [EN] true = read the flash now / [FA] درست = همین حالا از فلش بخوان
+ * @return [EN] uint8_t number of days found / [FA]‎ تعداد روزهای پیداشده
  */
-static uint8_t func__EspLog_IndexTouch(uint32_t uint32_t__dayCode)
+static uint8_t func__EspLog_ScanDays(bool bool__force)
 {
-    uint8_t uint8_t__slot;
-    uint8_t uint8_t__found;
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
 
-    uint8_t__found = func__EspLog_IndexFind(uint32_t__dayCode);
-    if (uint8_t__found != 0xFFu)
+    if (BOOL__G__FsOk == false)
     {
-        return uint8_t__found;
-    }
-    if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
-    {
-        return 0xFFu;
-    }
-    uint8_t__slot = UINT8_T__G__LogIndexCount;
-    UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__dayCode;
-    UINT32_T__G__LogIndexBytes[uint8_t__slot] = ESP_LOG_BYTES_UNKNOWN;
-    UINT8_T__G__LogIndexCount++;
-    return uint8_t__slot;
-}
-
-/**
- * @brief  [EN] Add the bytes a row just took on flash to that day's total.
- *         [FA] افزودن بایت‌هایی که یک ردیف روی فلش گرفت به حجم آن روز.
- * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
- * @‎param  uint32_t uint32_t__bytes [EN] bytes written / [FA]‎ بایت نوشته‌شده
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__EspLog_IndexAddBytes(uint32_t uint32_t__dayCode, uint32_t uint32_t__bytes)
-{
-    uint8_t uint8_t__slot;
-
-    uint8_t__slot = func__EspLog_IndexTouch(uint32_t__dayCode);
-    if ((uint8_t__slot != 0xFFu) &&
-        (UINT32_T__G__LogIndexBytes[uint8_t__slot] != ESP_LOG_BYTES_UNKNOWN))
-    {
-        UINT32_T__G__LogIndexBytes[uint8_t__slot] += uint32_t__bytes;
-    }
-}
-
-/**
- * @brief  [EN] Size of one day file; measured once and cached, because retention
- *              needs it on every day change and opening 30 files there was pure
- *              flash wear.
- *         [FA] حجم یک فایل روز؛ یک‌بار اندازه‌گیری و نگه داشته می‌شود، چون
- *              پاک‌سازی قدیمی‌ها هر بار عوض شدن روز به آن نیاز دارد و باز
- *              کردن ۳۰ فایل فقط فلش را فرسوده می‌کرد.
- * @‎param  uint32_t uint32_t__dayCode [EN] day / [FA]‎ روز
- * @return [EN] bytes / [FA]‎ بایت
- */
-static uint32_t func__EspLog_DayBytes(uint32_t uint32_t__dayCode)
-{
-    char char__path[ESP_LOG_PATH_MAX];
-    File file__day;
-    uint32_t uint32_t__bytes = 0u;
-    uint8_t uint8_t__slot;
-
-    uint8_t__slot = func__EspLog_IndexFind(uint32_t__dayCode);
-    if ((uint8_t__slot != 0xFFu) &&
-        (UINT32_T__G__LogIndexBytes[uint8_t__slot] != ESP_LOG_BYTES_UNKNOWN))
-    {
-        return UINT32_T__G__LogIndexBytes[uint8_t__slot];
-    }
-
-    func__EspLog_PathOf(char__path, uint32_t__dayCode);
-    file__day = LittleFS.open(char__path, "r");
-    if (!file__day)
-    {
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false;
         return 0u;
     }
-    uint32_t__bytes = (uint32_t)file__day.size();
-    file__day.close();
-    if (uint8_t__slot != 0xFFu)
+    if ((bool__force == false) && (BOOL__G__LogScanValid != false) &&
+        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastScanMs) < ESP_LOG_SCAN_MIN_MS))
     {
-        UINT32_T__G__LogIndexBytes[uint8_t__slot] = uint32_t__bytes;
+        return UINT8_T__G__LogIndexCount;
     }
-    return uint32_t__bytes;
+
+    UINT32_T__G__LogLastScanMs = uint32_t__nowMs;
+    BOOL__G__LogScanValid = true;
+    UINT8_T__G__LogIndexCount = 0u;
+
+    {
+        Dir dir__root = LittleFS.openDir("/");
+
+        while (dir__root.next())
+        {
+            uint32_t uint32_t__day = 0u;
+            uint32_t uint32_t__size = (uint32_t)dir__root.fileSize();
+            uint8_t uint8_t__slot;
+
+            if (func__EspLog_DayFromName(dir__root.fileName().c_str(),
+                                         &uint32_t__day) == false)
+            {
+                continue;
+            }
+            if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
+            {
+                break;   /* the trim below removes the oldest of what is here */
+            }
+            uint8_t__slot = UINT8_T__G__LogIndexCount;
+            while ((uint8_t__slot > 0u) &&
+                   (UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] > uint32_t__day))
+            {
+                UINT32_T__G__LogIndexDay[uint8_t__slot] =
+                    UINT32_T__G__LogIndexDay[uint8_t__slot - 1u];
+                UINT32_T__G__LogIndexBytes[uint8_t__slot] =
+                    UINT32_T__G__LogIndexBytes[uint8_t__slot - 1u];
+                uint8_t__slot--;
+            }
+            UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__day;
+            UINT32_T__G__LogIndexBytes[uint8_t__slot] = uint32_t__size;
+            UINT8_T__G__LogIndexCount++;
+        }
+    }
+    return UINT8_T__G__LogIndexCount;
 }
 
 /**
- * @brief  [EN] Drop the oldest day (file, slot and its size).
- *         [FA] حذف قدیمی‌ترین روز (فایل، جایش در فهرست و حجمش).
+ * @brief  [EN] Newest day that really exists on the flash, or ESP_LOG_DAY_AUTO
+ *              when there is none.
+ *         [FA] جدیدترین روزی که واقعاً روی فلش هست، یا ESP_LOG_DAY_AUTO وقتی
+ *              هیچ روزی نیست.
+ * @‎return [EN] uint32_t day code or ESP_LOG_DAY_AUTO / [FA]‎ کد روز یا AUTO
+ */
+static uint32_t func__EspLog_NewestDay(void)
+{
+    (void)func__EspLog_ScanDays(false);
+    if (UINT8_T__G__LogIndexCount == 0u)
+    {
+        return ESP_LOG_DAY_AUTO;
+    }
+    return UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+}
+
+/**
+ * @brief  [EN] Delete the oldest day file and its entry.
+ *         [FA] حذف قدیمی‌ترین فایل روز و خانه‌اش.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__EspLog_DropOldest(void)
@@ -866,25 +922,24 @@ static void func__EspLog_DropOldest(void)
             UINT32_T__G__LogIndexBytes[uint8_t__slot];
     }
     UINT8_T__G__LogIndexCount--;
-    UINT32_T__G__LogIndexBytes[UINT8_T__G__LogIndexCount] = ESP_LOG_BYTES_UNKNOWN;
 }
 
 /**
  * @brief  [EN] Delete the oldest days when the retention count or the byte
- *              budget is passed, then rewrite the list.
+ *              budget is passed. Nothing has to be written down afterwards:
+ *              the list is the directory, so the next scan reads what is left.
  *         [FA] حذف قدیمی‌ترین روزها وقتی تعداد روزهای نگه‌داری یا بودجهٔ بایتی
- *              رد شود، و بعد بازنویسی فهرست.
+ *              رد شود. بعد از آن چیزی برای نوشتن نیست: فهرست همان پوشه است،
+ *              پس خواندن بعدی هر چه مانده را می‌بیند.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__EspLog_TrimDays(void)
 {
     uint8_t uint8_t__slot;
-    bool bool__dropped = false;
 
     while (UINT8_T__G__LogIndexCount > ESP_LOG_MAX_DAYS)
     {
         func__EspLog_DropOldest();
-        bool__dropped = true;
     }
 
     /* [EN] v1.96: the day count alone does not bound the flash -
@@ -901,107 +956,15 @@ static void func__EspLog_TrimDays(void)
 
         for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
         {
-            uint32_t__bytes += func__EspLog_DayBytes(UINT32_T__G__LogIndexDay[uint8_t__slot]);
+            uint32_t__bytes += UINT32_T__G__LogIndexBytes[uint8_t__slot];
         }
         if (uint32_t__bytes <= ESP_LOG_TOTAL_BUDGET_BYTES)
         {
             break;
         }
         func__EspLog_DropOldest();
-        bool__dropped = true;
+        BOOL__G__LogScanValid = false;
     }
-    if (bool__dropped != false)
-    {
-        func__EspLog_IndexSave();
-    }
-}
-
-/**
- * @brief  [EN] Load the day list (day,bytes per line). A line written by an older
- *              firmware has no size field: it is read as "unknown" and measured
- *              on demand, so an upgrade never loses the history.
- *         [FA] خواندن فهرست روزها (هر خط: روز و حجم). خطی که نسخهٔ قدیمی
- *              نوشته حجم ندارد: «نامعلوم» خوانده می‌شود و در اولین نیاز
- *              اندازه‌گیری می‌شود، پس ارتقا تاریخچه را از بین نمی‌برد.
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__EspLog_IndexLoad(void)
-{
-    File file__index;
-
-    UINT8_T__G__LogIndexCount = 0u;
-    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_INDEX_PATH) == false))
-    {
-        return;
-    }
-    file__index = LittleFS.open(ESP_LOG_INDEX_PATH, "r");
-    if (!file__index)
-    {
-        return;
-    }
-    while (file__index.available() && (UINT8_T__G__LogIndexCount < (ESP_LOG_MAX_DAYS + 2u)))
-    {
-        String string__line = file__index.readStringUntil('\n');
-        String string__bytes;
-        int32_t int32_t__comma;
-
-        string__line.trim();
-        if (string__line.length() == 0u)
-        {
-            continue;
-        }
-        int32_t__comma = string__line.indexOf(',');
-        if (int32_t__comma > 0)
-        {
-            string__bytes = string__line.substring(int32_t__comma + 1);
-            string__line = string__line.substring(0, int32_t__comma);
-        }
-        UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] =
-            (uint32_t)string__line.toInt();
-        UINT32_T__G__LogIndexBytes[UINT8_T__G__LogIndexCount] =
-            (string__bytes.length() > 0u) ? (uint32_t)string__bytes.toInt()
-                                          : ESP_LOG_BYTES_UNKNOWN;
-        UINT8_T__G__LogIndexCount++;
-    }
-    file__index.close();
-}
-
-/**
- * @brief  [EN] Rewrite the day list with sizes (only when a day is added or
- *              removed, never per row).
- *         [FA] بازنویسی فهرست روزها همراه حجم‌ها (فقط وقتی روزی اضافه یا حذف
- *              می‌شود، نه با هر ردیف).
- * @return [EN] None / [FA]‎ ندارد
- */
-static void func__EspLog_IndexSave(void)
-{
-    File file__index;
-    uint8_t uint8_t__slot;
-
-    if (BOOL__G__FsOk == false)
-    {
-        return;
-    }
-    file__index = LittleFS.open(ESP_LOG_INDEX_PATH, "w");
-    if (!file__index)
-    {
-        func__EspLog_FaultRaise();
-        return;
-    }
-    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
-    {
-        char char__line[32];
-
-        (void)snprintf(char__line, sizeof(char__line), "%08lu,%lu\n",
-                       (unsigned long)UINT32_T__G__LogIndexDay[uint8_t__slot],
-                       (unsigned long)func__EspLog_DayBytes(UINT32_T__G__LogIndexDay[uint8_t__slot]));
-        if (func__EspLog_FileText(file__index, char__line) == false)
-        {
-            func__EspLog_FaultRaise();
-            break;
-        }
-    }
-    file__index.close();
 }
 
 /**
@@ -1077,11 +1040,7 @@ static bool func__EspLog_RepairTail(const char *char__path)
     }
     bool__needsNewline = (func__EspLog_FileText(file__day, "\n") != false);
     file__day.close();
-    if (bool__needsNewline != false)
-    {
-        func__EspLog_IndexAddBytes(func__EspLog_TodayCode(), 1u);
-    }
-    else
+    if (bool__needsNewline == false)
     {
         func__EspLog_FaultRaise();
     }
@@ -1101,7 +1060,6 @@ static bool func__EspLog_AppendRow(uint32_t uint32_t__dayCode, const char *char_
 {
     char char__path[ESP_LOG_PATH_MAX];
     File file__day;
-    uint32_t uint32_t__bytes;
     bool bool__ok;
 
     if ((BOOL__G__FsOk == false) || (char__row == NULL))
@@ -1126,8 +1084,6 @@ static bool func__EspLog_AppendRow(uint32_t uint32_t__dayCode, const char *char_
         func__EspLog_FaultRaise();
         return false;
     }
-    uint32_t__bytes = (uint32_t)strlen(char__row) + 1u;
-    func__EspLog_IndexAddBytes(uint32_t__dayCode, uint32_t__bytes);
     return true;
 }
 
@@ -1170,11 +1126,6 @@ static bool func__EspLog_OpenDay(void)
     file__day.close();
 
     UINT32_T__G__LogDayCode = uint32_t__dayCode;
-    if (bool__isNew != false)
-    {
-        UINT32_T__G__LogIndexBytes[func__EspLog_IndexTouch(uint32_t__dayCode)] =
-            (uint32_t)strlen(ESP_LOG_HEADER);
-    }
     if ((bool__ok != false) && (bool__isNew == false))
     {
         bool__ok = func__EspLog_RepairTail(char__path);
@@ -1188,7 +1139,13 @@ static bool func__EspLog_OpenDay(void)
     BOOL__G__LogDayFull = (UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY);
     BOOL__G__LogMarkerDone = BOOL__G__LogDayFull;
 
-    (void)func__EspLog_IndexTouch(uint32_t__dayCode);
+    /* [EN] the day list is the directory itself: read it again now that this
+            day's file exists, then drop the oldest days if the count or the
+            byte budget says so.
+       [FA] فهرست روزها همان پوشه است: حالا که فایل امروز ساخته شد دوباره
+            خوانده می‌شود، بعد اگر تعداد یا بودجهٔ بایتی حکم کرد قدیمی‌ترین
+            روزها حذف می‌شوند. */
+    (void)func__EspLog_ScanDays(true);
     func__EspLog_TrimDays();
     return bool__ok;
 }
@@ -1351,6 +1308,23 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     char char__row[ESP_LOG_ROW_MAX];
     bool bool__stored = false;
 
+    /* [EN] v1.110 (user report 2026-10-28: "it is on and it writes nothing"):
+            the day cap used to be judged BEFORE the day was looked up, and the
+            only place that notices a new day is OpenDay. So the first day that
+            reached 400 rows blocked every later write and the new day's file
+            was never created - the panel stayed silent until it was switched
+            off and on again. The day is opened first, so a full day ends where
+            it should: at midnight.
+       [FA] نسخهٔ ۱٫۱۱۰ (گزارش کاربر ۲۰۲۶-۱۰-۲۸: «روشن است و چیزی نمی‌نویسد»):
+            سقف روز «قبل از» پیدا کردن روزِ جاری بررسی می‌شد و تنها جایی که
+            عوض شدن روز را می‌فهمد OpenDay است. پس اولین روزی که به ۴۰۰ ردیف
+            می‌رسید هر نوشتن بعدی را می‌بست و فایل روز تازه هرگز ساخته
+            نمی‌شد - پنل تا خاموش و روشن شدن بعدی ساکت می‌ماند. حالا اول روز
+            باز می‌شود، پس روزِ پر همان‌جا که باید تمام می‌شود: نیمه‌شب. */
+    if (BOOL__G__FsOk != false)
+    {
+        (void)func__EspLog_OpenDay();
+    }
     if ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
         (BOOL__G__LogDayFull != false))
     {
@@ -1364,26 +1338,17 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         return false;
     }
 
-    if (BOOL__G__FsOk != false)
+    if ((BOOL__G__FsOk != false) && (BOOL__G__LogDayFull == false))
     {
-        if (func__EspLog_OpenDay() != false)
+        /* [EN] the flash is taking rows again: the ones waiting in RAM go
+                first, so the history keeps its order.
+           [FA] فلش دوباره ردیف می‌پذیرد: اول ردیف‌های منتظر در رم
+                می‌روند تا ترتیب تاریخچه حفظ شود. */
+        if (UINT8_T__G__LogRamCount != 0u)
         {
-            if ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
-                (BOOL__G__LogDayFull != false))
-            {
-                BOOL__G__LogDayFull = true;
-                return false;
-            }
-            /* [EN] the flash is taking rows again: the ones waiting in RAM go
-                    first, so the history keeps its order.
-               [FA] فلش دوباره ردیف می‌پذیرد: اول ردیف‌های منتظر در رم
-                    می‌روند تا ترتیب تاریخچه حفظ شود. */
-            if (UINT8_T__G__LogRamCount != 0u)
-            {
-                func__EspLog_DrainRam();
-            }
-            bool__stored = func__EspLog_AppendRow(UINT32_T__G__LogDayCode, char__row);
+            func__EspLog_DrainRam();
         }
+        bool__stored = func__EspLog_AppendRow(UINT32_T__G__LogDayCode, char__row);
     }
 
     if ((bool__stored == false) || (BOOL__G__FsOk == false))
@@ -1538,11 +1503,11 @@ static void func__EspLog_LoadLastSnapshot(void)
     func__EspLog_PathOf(char__path, uint32_t__dayCode);
     if (LittleFS.exists(char__path) == false)
     {
-        if (UINT8_T__G__LogIndexCount == 0u)
+        uint32_t__dayCode = func__EspLog_NewestDay();
+        if (uint32_t__dayCode == ESP_LOG_DAY_AUTO)
         {
             return;
         }
-        uint32_t__dayCode = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
         func__EspLog_PathOf(char__path, uint32_t__dayCode);
     }
 
@@ -2066,8 +2031,21 @@ static void func__EspLog_Begin(void)
     {
         return;
     }
+    /* [EN] a panel flashed with the old firmware still carries the list file
+            it used to keep. Nothing reads it any more, so it only wastes
+            flash: one boot deletes it.
+       [FA] پنلی که با نسخهٔ قدیمی فلش شده هنوز همان فایل فهرست را دارد.
+            دیگر چیزی آن را نمی‌خواند و فقط جای فلش می‌گیرد: یک بار سر روشن
+            شدن حذف می‌شود. */
+    if (LittleFS.exists(ESP_LOG_LEGACY_INDEX_PATH) != false)
+    {
+        (void)LittleFS.remove(ESP_LOG_LEGACY_INDEX_PATH);
+    }
     func__EspLog_ClockLoad();
-    func__EspLog_IndexLoad();
+    /* [EN] the day list is read from the flash, so a restart cannot lose it.
+       [FA] فهرست روزها از خود فلش خوانده می‌شود، پس ری‌استارت آن را از دست
+            نمی‌دهد. */
+    (void)func__EspLog_ScanDays(true);
     /* [EN] read back what the world looked like before the power went off.
        [FA] خواندن دوبارهٔ این‌که پیش از قطع برق دنیا چه شکلی بود. */
     func__EspLog_LoadLastSnapshot();
@@ -2228,11 +2206,11 @@ static uint32_t func__EspLog_PickDay(uint32_t uint32_t__dayCode)
     func__EspLog_PathOf(char__path, uint32_t__chosen);
     if (LittleFS.exists(char__path) == false)
     {
-        if (UINT8_T__G__LogIndexCount == 0u)
+        uint32_t__chosen = func__EspLog_NewestDay();
+        if (uint32_t__chosen == ESP_LOG_DAY_AUTO)
         {
             return ESP_LOG_DAY_AUTO;
         }
-        uint32_t__chosen = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
     }
     return uint32_t__chosen;
 }
@@ -2350,6 +2328,7 @@ static uint8_t func__EspLog_Clear(void)
         UINT16_T__G__LogDroppedRows = 0u;
         return 0u;
     }
+    (void)func__EspLog_ScanDays(true);
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
         func__EspLog_PathOf(char__path, UINT32_T__G__LogIndexDay[uint8_t__slot]);
@@ -2357,9 +2336,7 @@ static uint8_t func__EspLog_Clear(void)
         {
             uint8_t__removed++;
         }
-        UINT32_T__G__LogIndexBytes[uint8_t__slot] = ESP_LOG_BYTES_UNKNOWN;
     }
-    (void)LittleFS.remove(ESP_LOG_INDEX_PATH);
     UINT8_T__G__LogIndexCount = 0u;
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;
@@ -2397,6 +2374,7 @@ static size_t func__EspLog_Days(char *char__out, size_t size_t__outSize)
         }
         return 0u;
     }
+    (void)func__EspLog_ScanDays(false);
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
         int int__written = snprintf(&char__out[size_t__used],

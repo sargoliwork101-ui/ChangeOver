@@ -317,6 +317,29 @@ struct StubFile {
 };
 typedef StubFile File;
 
+/* ---------------- Dir: the directory scan the log relies on --------------
+   [EN] The program does not keep a list of its days any more; it reads the
+        directory. So the stub must walk it the way ESP8266 does: next()
+        advances and says whether an entry is there, fileName() names it and
+        fileSize() gives the size the retention needs.
+   [FA] برنامه دیگر فهرست روزهایش را نگه نمی‌دارد و پوشه را می‌خواند. پس
+        استاب باید مثل ESP8266 راه برود: next() جلو می‌رود و می‌گوید خانه‌ای
+        هست، fileName() نامش را می‌دهد و fileSize() حجمی را که پاک‌سازی
+        قدیمی‌ها لازم دارد. */
+struct StubDir {
+    std::vector<std::string> names;
+    std::vector<size_t> sizes;
+    size_t pos = 0;
+    bool next(void) {
+        if (pos >= names.size()) return false;
+        pos++;
+        return true;
+    }
+    String fileName(void) const { return String(names[pos - 1]); }
+    size_t fileSize(void) const { return sizes[pos - 1]; }
+};
+typedef StubDir Dir;
+
 struct StubFS {
     std::map<std::string, std::string> files;
     bool mounted = false;
@@ -327,6 +350,15 @@ struct StubFS {
     bool format(void) { files.clear(); return true; }
     bool exists(const char *p) { return files.count(p) != 0; }
     bool remove(const char *p) { return files.erase(p) > 0; }
+    StubDir openDir(const char *) {
+        StubDir d;
+        for (std::map<std::string, std::string>::const_iterator it = files.begin();
+             it != files.end(); ++it) {
+            d.names.push_back(it->first);
+            d.sizes.push_back(it->second.size());
+        }
+        return d;
+    }
     StubFile open(const char *p, const char *mode) {
         StubFile f;
         std::string key(p);

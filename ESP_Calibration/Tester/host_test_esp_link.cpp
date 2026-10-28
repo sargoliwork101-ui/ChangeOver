@@ -1437,9 +1437,14 @@ int main(void)
             File f = LittleFS.open(dayPath, "w");
             if (f) { f.print(big.c_str()); ok = true; f.close(); }
             check(ok, "the test could write a big day file");
-            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = days[k];
-            UINT8_T__G__LogIndexCount++;
         }
+
+        /* [EN] the day list is the directory now, so the scan is what fills it.
+           [FA] فهرست روزها حالا همان پوشه است، پس خواندن پوشه آن را پر می‌کند. */
+        (void)func__EspLog_ScanDays(true);
+        check(UINT8_T__G__LogIndexCount == 3u,
+              "the day list is read from the files themselves",
+              std::to_string(UINT8_T__G__LogIndexCount));
 
         func__EspLog_TrimDays();
         check(UINT8_T__G__LogIndexCount == 1u,
@@ -2367,6 +2372,132 @@ int main(void)
         func__Esp_HandshakeTick((uint32_t)millis());
         feed(build_frame(ESP_MSG_HELLO_ACK, std::vector<uint8_t>(8u, 0u)));
         check(!BOOL__G__HelloSeen, "handshake: a short HELLO_ACK is refused");
+    }
+
+    /* ---- 44. the day list is the log itself, not a second file ----------
+       [EN] User order 2026-10-28: "I do not want that extra file either - why
+            not take it from the log file itself?" Two defects came out of the
+            old list file:
+              1. it was only written when a day was DELETED, so a panel that
+                 was switched off came back with an EMPTY day list while every
+                 day file was still on the flash (the picker could only show
+                 "today", and the retention never ran on the older files);
+              2. the day cap was judged before the day was looked up, so the
+                 first day that reached 400 rows silenced the log until the
+                 next power cycle.
+            Both are exercised here on the real code.
+       [FA] دستور کاربر ۲۰۲۶-۱۰-۲۸: «من آن یک فایل اضافه را هم نمی‌خواهم - چرا
+            از خود فایل لاگ برنمی‌داری؟» دو ایراد از فهرست فایلی می‌آمد:
+              ۱. فقط وقتی نوشته می‌شد که روزی «حذف» شود؛ پس پنلی که خاموش و
+                 روشن می‌شد با فهرست خالی برمی‌گشت در حالی که همهٔ فایل‌های
+                 روز سر جایشان بودند (فهرست فقط «امروز» را نشان می‌داد و
+                 پاک‌سازی هم روی فایل‌های قدیمی اجرا نمی‌شد)؛
+              ۲. سقف روز قبل از پیدا کردن روز جاری بررسی می‌شد، پس اولین روزی
+                 که ۴۰۰ ردیف می‌شد لاگ را تا خاموش/روشن بعدی ساکت می‌کرد.
+            هر دو اینجا روی خود کد آزموده می‌شوند. */
+    {
+        char daysText[256];
+
+        LittleFS.failWrites = false;
+        LittleFS.files.clear();
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT16_T__G__LogDroppedRows = 0u;
+        BOOL__G__LogClockValid = true;
+        INT32_T__G__LogTzSec = 12600;
+        UINT32_T__G__LogAnchorSec = 1792756800u;   /* 2026-10-23 */
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        UINT32_T__G__LogHighWaterSec = 1792756800u;
+        BOOL__G__TlmSeen = true;
+        G_StubMillis += 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+
+        /* ---- three days of rows, one day after another ------------------ */
+        for (uint8_t d = 0u; d < 3u; d++) {
+            (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_HEARTBEAT);
+            UINT32_T__G__LogAnchorSec += 86400u;
+            UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+            UINT32_T__G__LogHighWaterSec = UINT32_T__G__LogAnchorSec;
+        }
+        check(!LittleFS.exists("/evt-days.txt"),
+              "no day-list file is written any more: the days are the files");
+        check((func__EspLog_Days(daysText, sizeof daysText), std::string(daysText)) ==
+              std::string("20261023 20261024 20261025"),
+              "the three day files are listed by reading the directory",
+              std::string(daysText));
+
+        /* ---- the power goes off and comes back ------------------------- */
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogHasPrev = false;
+        func__EspLog_Begin();
+        check((func__EspLog_Days(daysText, sizeof daysText), std::string(daysText)) ==
+              std::string("20261023 20261024 20261025"),
+              "after the restart the day list is still complete - it is the flash itself",
+              std::string(daysText));
+        check(func__EspLog_NewestDay() == 20261025u,
+              "and the newest day is the last file, not an empty list",
+              std::to_string(func__EspLog_NewestDay()));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/days", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("20261023") != std::string::npos,
+              "the panel's own endpoint lists the older days too",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+
+        /* ---- an old panel still carries the obsolete list file --------- */
+        LittleFS.files["/evt-days.txt"] = "20261023,900\n";
+        func__EspLog_Begin();
+        check(!LittleFS.exists("/evt-days.txt"),
+              "the leftover list file of an older firmware is deleted on boot");
+
+        /* ---- a full day must end at midnight, not forever --------------- */
+        LittleFS.files.clear();
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogLastRowValid = false;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        UINT32_T__G__LogHighWaterSec = 1792756800u;
+        for (uint16_t r = 0u; r < (ESP_LOG_MAX_ROWS_PER_DAY + 5u); r++) {
+            (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_HEARTBEAT);
+        }
+        check(BOOL__G__LogDayFull, "a day stops at its 400th row");
+        check(LittleFS.exists("/evt-20261023.csv"), "and that day's file is on the flash");
+
+        UINT32_T__G__LogAnchorSec += 86400u;             /* the next day */
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        UINT32_T__G__LogHighWaterSec = UINT32_T__G__LogAnchorSec;
+        check(func__EspLog_WriteRow(0u, ESP_LOG_NOTE_HEARTBEAT) != false,
+              "the next day writes again - a full day no longer silences the panel");
+        check(LittleFS.exists("/evt-20261024.csv"),
+              "and its rows go into the new day's file",
+              std::to_string(LittleFS.files.size()));
+        check(!BOOL__G__LogDayFull, "the new day starts with room to write");
+        check((func__EspLog_Days(daysText, sizeof daysText), std::string(daysText)) ==
+              std::string("20261023 20261024"),
+              "both days are listed, read from the files",
+              std::string(daysText));
     }
 
     std::cout << std::string(70, '=') << "\n";

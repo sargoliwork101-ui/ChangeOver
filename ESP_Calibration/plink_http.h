@@ -1118,12 +1118,16 @@ static void func__Esp_HttpEventDownload(void)
         func__EspLog_PathOf(char__path, uint32_t__day);
         if (LittleFS.exists(char__path) == false)
         {
-            if (UINT8_T__G__LogIndexCount == 0u)
+            /* [EN] no day file for today yet: the newest day that DOES exist is
+                    what the user means by "download it".
+               [FA] هنوز فایل امروز ساخته نشده: جدیدترین روزی که واقعاً هست
+                    همان است که کاربر می‌خواهد. */
+            uint32_t__day = func__EspLog_NewestDay();
+            if (uint32_t__day == ESP_LOG_DAY_AUTO)
             {
                 ESP_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
                 return;
             }
-            uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
         }
     }
 

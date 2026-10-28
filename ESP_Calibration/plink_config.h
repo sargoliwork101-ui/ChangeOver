@@ -429,7 +429,20 @@
 #define ESP_LOG_DAY_ZERO            0xFFFFFFFEu /* انتخاب صریح فایل روز بدون ساعت (00000000) */
 #define ESP_LOG_RAM_ROWS            16u      /* حلقهٔ موقت در رم وقتی فایل‌سیستم فلش غیرفعال باشد */
 #define ESP_LOG_RAM_ROW_MAX         160u     /* سقف طول یک ردیف در حلقهٔ رم */
-#define ESP_LOG_INDEX_PATH          "/evt-days.txt"   /* [EN] day list + row counts / [FA] فهرست روزها */
+/* [EN] v1.110 (user order 2026-10-28: "why not take it from the log file
+        itself?"): the day list is no longer a file. It is read from the day
+        files themselves, so one directory scan this often is all it costs -
+        a page that asks every 10 s gets the cache, not a flash walk.
+   [FA] نسخهٔ ۱٫۱۱۰ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «چرا از خود فایل لاگ برنمی‌داری؟»):
+        فهرست روزها دیگر فایل نیست و از خود فایل‌های روز خوانده می‌شود؛ یک بار
+        خواندن پوشه در هر بازهٔ زیر تمام هزینه‌اش است - صفحه‌ای که هر ۱۰ ثانیه
+        می‌پرسد پاسخ را از حافظه می‌گیرد، نه از فلش. */
+#define ESP_LOG_SCAN_MIN_MS         3000u
+/* [EN] What the old firmware left behind: it is never read again, only deleted
+        on boot so it stops taking flash.
+   [FA] چیزی که نسخهٔ قدیمی جا گذاشته: دیگر خوانده نمی‌شود و فقط سر روشن شدن
+        حذف می‌شود تا جای فلش نگیرد. */
+#define ESP_LOG_LEGACY_INDEX_PATH   "/evt-days.txt"
 #define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"  /* [EN] phone clock anchor / [FA] لنگر ساعت گوشی */
 #define ESP_LOG_FILE_PREFIX         "/evt-"
 #define ESP_LOG_CUT_BAND_MV         21200u   /* [EN] battery "near the cut" line: entered below / [FA] مرز «نزدیک قطع» باتری: ورود از زیر */
