@@ -26,6 +26,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -90,6 +91,37 @@ bool SimLittleFS::exists(const char *char__ptr_path)
 {
     struct stat struct_stat__info;
     return stat(func__Sim_FsPath(char__ptr_path).c_str(), &struct_stat__info) == 0;
+}
+
+/* [EN] Same door the real LittleFS has: the panel walks the folder to build its
+        day list, so the simulator hands it the file names.
+   [FA] همان دری که LittleFS واقعی دارد: پنل برای ساختن فهرست روزها پوشه را
+        می‌گردد، پس شبیه‌ساز نام فایل‌ها را به آن می‌دهد. */
+SimDir SimLittleFS::openDir(const char *char__ptr_path)
+{
+    SimDir dir__result;
+    std::string string__full = func__Sim_FsPath(char__ptr_path);
+    DIR *dir__handle = opendir(string__full.c_str());
+
+    if (dir__handle == NULL)
+    {
+        return dir__result;
+    }
+    {
+        struct dirent *entry__item;
+
+        while ((entry__item = readdir(dir__handle)) != NULL)
+        {
+            if (entry__item->d_name[0] == '.')
+            {
+                continue;
+            }
+            /* مسیر داخل فلش با «/» شروع می‌شود، اسم واقعی فایل در پوشه نه */
+            dir__result.names.push_back("/" + std::string(entry__item->d_name));
+        }
+    }
+    closedir(dir__handle);
+    return dir__result;
 }
 
 /* ==================== shim تب سیمولاتور برای صفحهٔ "/" ==================== */

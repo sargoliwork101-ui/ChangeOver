@@ -39,7 +39,7 @@
 #define SIMPLE_HELLO_INTERVAL_MS        2000u
 #define SIMPLE_HELLO_TIMEOUT_MS         6000u
 #define SIMPLE_ESP_ROLE_USER            1u
-#define SIMPLE_ESP_FW_VERSION           111u
+#define SIMPLE_ESP_FW_VERSION           112u
 #define SIMPLE_TLM_FLAG_LINK_OK         0x40u
 
 #define SIMPLE_MSG_TLM_LIVE             0x10u
@@ -178,7 +178,8 @@
 #define SIMPLE_LOG_DAY_ZERO             0xFFFFFFFEu
 #define SIMPLE_LOG_RAM_ROWS             16u
 #define SIMPLE_LOG_RAM_ROW_MAX          160u
-#define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"
+#define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"   /* فقط برای پاک‌کردن بازماندهٔ نسخهٔ قدیمی؛ فهرست حالا از خود پوشه خوانده می‌شود */
+#define SIMPLE_LOG_SCAN_MIN_MS          2000u    /* فهرست روزها حداکثر هر ۲ ثانیه یک بار از فلش خوانده می‌شود */
 #define SIMPLE_LOG_LAST_PATH            "/evt-last.txt"
 #define SIMPLE_LOG_FILE_PREFIX          "/evt-"
 #define SIMPLE_LOG_CUT_BAND_MV          21200u   /* مرز «نزدیک قطع» باتری: ورود از زیر */

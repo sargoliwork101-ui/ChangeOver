@@ -1932,7 +1932,8 @@ function evtTimeFa(epoch){
 function evtTextFa(r){
  const parts=[];let lv=0;
  const add=(t,l)=>{parts.push(t);if(l>lv)lv=l;};
- if(r.chg&1){add('پنل روشن شد'+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+ if(r.chg&1){add('پنل روشن شد'+(r.chg&4096?' — بروزرسانی فرم‌ور':'')+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+ if((r.chg&4096)&&!(r.chg&1)){add('بروزرسانی فرم‌ور انجام شد',2);}
  if(r.chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد دوباره برقرار شد',(r.note===2)?2:1);}
  if(r.chg&2){add(r.mains?'برق شهر وصل شد':'برق شهر قطع شد',r.mains?1:2);}
  if(r.chg&4){add('کانال ۱ به مرحلهٔ «'+(EVT_CHG_FA[r.c1]||('#'+r.c1))+'» رفت',(r.c1>=7&&r.c1<=8)?3:((r.c1===10)?2:0));}
@@ -2087,7 +2088,27 @@ async function evtDlAll(){
 }
 async function evtClear(){
  if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟'))return;
- try{await fetch('/evt/clr',{method:'POST'});await evtDays();evtFetch(1);}catch(e){}
+ const st=document.getElementById('evtSt');
+ try{
+  const r=await fetch('/evt/clr',{method:'POST',cache:'no-store'});
+  let j={};try{j=await r.json();}catch(e){}
+  const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
+  /* [EN] v1.113: the answer says how many day files really went. "Cleared" is
+          only printed when something WAS cleared, so a button that hits a file
+          system it cannot reach can no longer look successful (user report
+          2026-10-28: rows that could not be deleted).
+     [FA] نسخهٔ ۱٫۱۱۳: پاسخ می‌گوید واقعاً چند فایل روز پاک شد. «پاک شد» فقط
+          وقتی نوشته می‌شود که چیزی پاک شده باشد، تا دکمه‌ای که به فایل‌سیستم
+          نمی‌رسد دیگر موفق به نظر نرسد (گزارش کاربر ۲۰۲۶-۱۰-۲۸: ردیف‌هایی که
+          پاک نمی‌شدند). */
+  if(st){
+   if(r.status!==200)st.textContent='پاک نشد (پاسخ '+r.status+')';
+   else if(src!=='1')st.textContent='پاک نشد: حافظهٔ پنل سوار نشد؛ فقط رم پاک شد';
+   else if((j&&j.removed)>0)st.textContent='پاک شد: '+evtFaNum(j.removed)+' روز';
+   else st.textContent='چیزی برای پاک‌کردن نبود';
+  }
+  await evtDays();evtFetch(1);
+ }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
 }
 evtClock().then(()=>evtDays()).then(()=>evtFetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});

@@ -427,6 +427,29 @@ private:
 /* روی برد خود `LittleFS` یک شیء سراسری است (نه نام‌فضا)، پس برنامه با نقطه
    صدایش می‌زند؛ اینجا هم عیناً همان شکل پیاده می‌شود. ریشهٔ فایل‌سیستم پیش‌فرض
    بیرون مخزن است تا هیچ فایل وضعیتی داخل گیت ساخته نشود. */
+/* [EN] Directory listing of the simulated flash. The panel now reads its day
+        list from the folder itself, exactly like the real LittleFS does, so the
+        simulator needs the same door.
+   [FA] فهرست پوشهٔ فلش شبیه‌سازی‌شده. پنل حالا فهرست روزهایش را از خود پوشه
+        می‌خواند، دقیقاً مثل LittleFS واقعی، پس شبیه‌ساز هم همان در را لازم دارد. */
+class SimDir
+{
+public:
+    std::vector<std::string> names;
+    size_t pos = 0;
+    bool next(void)
+    {
+        if (pos >= names.size()) { return false; }
+        pos++;
+        return true;
+    }
+    String fileName(void) const { return String(names[pos - 1u].c_str()); }
+};
+
+/* [EN] the real LittleFS calls this type "Dir"; the program uses that name.
+   [FA] نوع پوشه در LittleFS واقعی «Dir» نام دارد؛ برنامه همان نام را به کار می‌برد. */
+typedef SimDir Dir;
+
 class SimLittleFS
 {
 public:
@@ -435,6 +458,7 @@ public:
     File open(const char *char__ptr_path, const char *char__ptr_mode);
     bool remove(const char *char__ptr_path);
     bool exists(const char *char__ptr_path);
+    SimDir openDir(const char *char__ptr_path);
 };
 
 extern SimLittleFS LittleFS;

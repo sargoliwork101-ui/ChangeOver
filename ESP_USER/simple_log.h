@@ -70,8 +70,27 @@ static uint32_t UINT32_T__G__LogLastStepMs = 0u;
 static bool     BOOL__G__LogLastStepValid = false;
 
 /* ==================== فهرست روزها ==================== */
+/* [EN] The list is read from the DIRECTORY, not from a remembered index: a day
+        file the index did not know about was invisible in the picker, could
+        never be deleted by "clear history", and still came back through the
+        automatic "today" read. The scan cache below only saves flash reads
+        inside one page refresh.
+   [FA] فهرست از «خود پوشه» خوانده می‌شود، نه از فهرستی که به یاد سپرده شده:
+        فایل روزی که فهرست نمی‌شناخت نه در انتخاب‌گر دیده می‌شد، نه با «پاک
+        کردن تاریخچه» پاک می‌شد، و باز هم از راه خواندن خودکار «امروز» برمی‌گشت.
+        حافظهٔ زیر فقط برای این است که یک بار باز شدن صفحه چند بار فلش نخواند. */
 static uint32_t UINT32_T__G__LogIndexDay[SIMPLE_LOG_MAX_DAYS + 2u];
 static uint8_t  UINT8_T__G__LogIndexCount = 0u;
+static uint32_t UINT32_T__G__LogLastScanMs = 0u;
+static bool     BOOL__G__LogScanValid = false;
+/* [EN] A firmware update was seen at this boot, so the row must be written no
+        matter what.
+   [FA] در همین بوت یک بروزرسانی فرم‌ور دیده شد، پس ردیفش باید بی‌قید و شرط
+        نوشته شود. */
+static bool     BOOL__G__LogUpdatePending = false;
+/* [EN] One-shot: the next row ignores the day cap too.
+   [FA] یک‌بارمصرف: ردیف بعدی سقف روز را هم نادیده می‌گیرد. */
+static bool     BOOL__A__LogForceRow = false;
 static char     CHAR__G__LogRamRow[SIMPLE_LOG_RAM_ROWS][SIMPLE_LOG_RAM_ROW_MAX];
 /* [EN] the lost-row count as text, for the X-Log-Lost header.
    [FA] شمار ردیف‌های ازدست‌رفته به‌صورت متن، برای سرسطر X-Log-Lost. */
@@ -90,6 +109,7 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define SIMPLE_LOG_CHG_LINK    0x0080u
 #define SIMPLE_LOG_CHG_MODE    0x0100u   /* [EN] hand mode / data validity / [FA] مود دستی و اعتبار داده */
 #define SIMPLE_LOG_CHG_DEAD    0x0200u   /* [EN] condemned-battery verdict / [FA] حکم باتری خراب */
+#define SIMPLE_LOG_CHG_UPDATE  0x1000u   /* [EN] panel flashed with a new firmware / [FA] پنل با فرم‌ور تازه فلش شد */
 #define SIMPLE_LOG_CHG_VSTEP   0x0400u   /* [EN] pack voltage moved a visible step / [FA] ولتاژ پک یک پلهٔ محسوس جابه‌جا شد */
 
 #define SIMPLE_LOG_NOTE_NONE      0u
@@ -162,6 +182,124 @@ static void func__SimpleLog_PathOf(char *char__ptr_path, uint32_t uint32_t__dayC
                    SIMPLE_LOG_FILE_PREFIX, (unsigned long)uint32_t__dayCode);
 }
 
+/**
+ * @brief  [EN] Day code out of a file name: "/evt-20261028.csv" -> 20261028,
+ *              "0" for the day the clock has not named yet. Anything else is
+ *              rejected, so no other file in the folder is mistaken for a day.
+ *         [FA] کد روز از نام فایل: «‎/evt-20261028.csv‎» ← ۲۰۲۶۱۰۲۸، و صفر
+ *              برای روزی که ساعت هنوز نامش را نبرده. هر چیز دیگر رد می‌شود تا
+ *              هیچ فایل دیگری در پوشه به‌جای فایل روز گرفته نشود.
+ * @param  const char *char__ptr_name [EN] file name / [FA] نام فایل
+ * @param  uint32_t *uint32_t__ptr_day [EN] output / [FA] خروجی
+ * @return bool [EN] it is a day file / [FA] فایل روز است
+ */
+static bool func__SimpleLog_DayFromName(const char *char__ptr_name,
+                                        uint32_t *uint32_t__ptr_day)
+{
+    uint8_t uint8_t__index = 0u;
+    uint8_t uint8_t__digits = 0u;
+    uint32_t uint32_t__day = 0u;
+
+    if ((char__ptr_name == NULL) || (uint32_t__ptr_day == NULL))
+    {
+        return false;
+    }
+    while ((SIMPLE_LOG_FILE_PREFIX[uint8_t__index] != '\0') &&
+           (char__ptr_name[uint8_t__index] == SIMPLE_LOG_FILE_PREFIX[uint8_t__index]))
+    {
+        uint8_t__index++;
+    }
+    if (SIMPLE_LOG_FILE_PREFIX[uint8_t__index] != '\0')
+    {
+        return false;
+    }
+    while ((uint8_t__digits < 8u) &&
+           (char__ptr_name[uint8_t__index] >= '0') &&
+           (char__ptr_name[uint8_t__index] <= '9'))
+    {
+        uint32_t__day = (uint32_t__day * 10u) +
+                        (uint32_t)(char__ptr_name[uint8_t__index] - '0');
+        uint8_t__digits++;
+        uint8_t__index++;
+    }
+    if (uint8_t__digits != 8u)
+    {
+        return false;
+    }
+    if ((char__ptr_name[uint8_t__index] != '.') ||
+        (char__ptr_name[uint8_t__index + 1u] != 'c') ||
+        (char__ptr_name[uint8_t__index + 2u] != 's') ||
+        (char__ptr_name[uint8_t__index + 3u] != 'v') ||
+        (char__ptr_name[uint8_t__index + 4u] != '\0'))
+    {
+        return false;
+    }
+    *uint32_t__ptr_day = uint32_t__day;
+    return true;
+}
+
+/**
+ * @brief  [EN] Fill the day cache from the DIRECTORY, oldest first. Two slots
+ *              more than the retention keeps are read, so the trim below always
+ *              sees the oldest day. A page that asks again inside the cache
+ *              window gets the cache without touching the flash.
+ *         [FA] پر کردن حافظهٔ روزها از «خود پوشه»، قدیمی‌تر اول. دو خانه بیش
+ *              از سقف نگه‌داری خوانده می‌شود تا پاک‌سازی همیشه قدیمی‌ترین روز
+ *              را ببیند. صفحه‌ای که داخل پنجرهٔ حافظه دوباره بپرسد، پاسخ را
+ *              بدون دست‌زدن به فلش می‌گیرد.
+ * @param  bool bool__force [EN] true = read the flash now / [FA] درست = همین حالا
+ * @return uint8_t [EN] days found / [FA] تعداد روزهای پیداشده
+ */
+static uint8_t func__SimpleLog_ScanDays(bool bool__force)
+{
+    if (BOOL__G__FsOk == false)
+    {
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false;
+        return 0u;
+    }
+    if ((bool__force == false) && (BOOL__G__LogScanValid != false) &&
+        ((uint32_t)((uint32_t)millis() - UINT32_T__G__LogLastScanMs) < SIMPLE_LOG_SCAN_MIN_MS))
+    {
+        return UINT8_T__G__LogIndexCount;
+    }
+
+    UINT32_T__G__LogLastScanMs = (uint32_t)millis();
+    BOOL__G__LogScanValid = true;
+    UINT8_T__G__LogIndexCount = 0u;
+
+    {
+        Dir dir__root = LittleFS.openDir("/");
+
+        while (dir__root.next())
+        {
+            uint32_t uint32_t__day = 0u;
+            uint8_t uint8_t__slot;
+
+            if (func__SimpleLog_DayFromName(dir__root.fileName().c_str(),
+                                            &uint32_t__day) == false)
+            {
+                continue;
+            }
+            if (UINT8_T__G__LogIndexCount >= (SIMPLE_LOG_MAX_DAYS + 2u))
+            {
+                break;   /* the trim below removes the oldest of what is here */
+            }
+            uint8_t__slot = UINT8_T__G__LogIndexCount;
+            while ((uint8_t__slot > 0u) &&
+                   (UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] > uint32_t__day))
+            {
+                UINT32_T__G__LogIndexDay[uint8_t__slot] =
+                    UINT32_T__G__LogIndexDay[uint8_t__slot - 1u];
+                uint8_t__slot--;
+            }
+            UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__day;
+            UINT8_T__G__LogIndexCount++;
+        }
+    }
+    return UINT8_T__G__LogIndexCount;
+}
+
 /* ==================== فهرست روزها ==================== */
 
 /* [EN] Write one text piece and report whether every byte landed: File::print
@@ -198,57 +336,180 @@ static void func__SimpleLog_FaultRaise(void)
     }
 }
 
-static void func__SimpleLog_IndexSave(void)
+/* [EN] v1.113: the two index functions are gone. The day list is the folder
+        itself now (func__SimpleLog_ScanDays), so it can never disagree with
+        what is really on the flash: the old "/evt-days.txt" was the reason a
+        day file could exist, stay undeletable and never be listed.
+   [FA] نسخهٔ ۱٫۱۱۳: دو تابع فهرست حذف شدند. فهرست روزها حالا خودِ پوشه است
+        (‎func__SimpleLog_ScanDays‎)، پس هرگز با آنچه واقعاً روی فلش است
+        اختلاف ندارد: همان «‎/evt-days.txt‎» باعث می‌شد فایل روزی وجود داشته
+        باشد، پاک نشود و در فهرست هم نیاید. */
+
+/* ==================== مهر نسخهٔ فرم‌ور / firmware stamp ==================== */
+/**
+ * @brief  [EN] Which firmware version is remembered in the clock file? 0 means
+ *              "nothing remembered yet" (a fresh flash), never "an update".
+ *         [FA] کدام نسخهٔ فرم‌ور در فایل ساعت به یاد سپرده شده؟ صفر یعنی
+ *              «هنوز چیزی به یاد نیست» (فلش تازه)، هرگز یعنی «بروزرسانی».
+ * @return uint32_t [EN] stored version / [FA] نسخهٔ ذخیره‌شده
+ */
+static uint32_t func__SimpleLog_FwStampRead(void)
 {
-    uint8_t uint8_t__slot;
+    String string__content;
+    int32_t int32_t__pos;
+    int32_t int32_t__end;
+    int32_t int32_t__comma;
+
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(SIMPLE_TIME_FILE) == false))
+    {
+        return 0u;
+    }
+    {
+        File file__read = LittleFS.open(SIMPLE_TIME_FILE, "r");
+
+        if (!file__read)
+        {
+            return 0u;
+        }
+        string__content = file__read.readString();
+        file__read.close();
+    }
+    int32_t__pos = string__content.indexOf("\"fw\":");
+    if (int32_t__pos < 0)
+    {
+        return 0u;
+    }
+    int32_t__pos += 5;
+    int32_t__end = string__content.indexOf("}", int32_t__pos);
+    int32_t__comma = string__content.indexOf(",", int32_t__pos);
+    if ((int32_t__comma > int32_t__pos) &&
+        ((int32_t__end < 0) || (int32_t__comma < int32_t__end)))
+    {
+        int32_t__end = int32_t__comma;
+    }
+    if (int32_t__end <= int32_t__pos)
+    {
+        return 0u;
+    }
+    {
+        String string__value = string__content.substring(int32_t__pos, int32_t__end);
+        string__value.trim();
+        if (string__value.length() == 0u)
+        {
+            return 0u;
+        }
+        return (uint32_t)string__value.toInt();
+    }
+}
+
+/**
+ * @brief  [EN] Write the running firmware version into the clock file next to
+ *              ts/tz. The old values are read back first, so this never erases
+ *              the clock; with no file at all it writes zero time (which the
+ *              loader ignores) and just the stamp.
+ *         [FA] نوشتن نسخهٔ فرم‌ور در حال اجرا در فایل ساعت، کنار ts/tz. مقدار
+ *              قبلی اول خوانده می‌شود، پس این کار هرگز ساعت را پاک نمی‌کند؛
+ *              اگر فایل نباشد، ساعت صفر (که خواننده نادیده می‌گیرد) و فقط
+ *              مهر نوشته می‌شود.
+ * @param  uint32_t uint32_t__version [EN] version / [FA] نسخه
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__SimpleLog_FwStampWrite(uint32_t uint32_t__version)
+{
+    uint32_t uint32_t__savedSec = 0u;
+    int32_t  int32_t__savedTz = 0;
+    String string__content;
+    int32_t int32_t__pos;
+    int32_t int32_t__end;
 
     if (BOOL__G__FsOk == false)
     {
         return;
     }
-    File file__index = LittleFS.open(SIMPLE_LOG_INDEX_PATH, "w");
-    if (!file__index)
+    if (LittleFS.exists(SIMPLE_TIME_FILE) != false)
+    {
+        File file__read = LittleFS.open(SIMPLE_TIME_FILE, "r");
+        if (file__read)
+        {
+            string__content = file__read.readString();
+            file__read.close();
+            int32_t__pos = string__content.indexOf("\"ts\":");
+            if (int32_t__pos >= 0)
+            {
+                int32_t__pos += 5;
+                int32_t__end = string__content.indexOf(",", int32_t__pos);
+                if (int32_t__end < 0)
+                {
+                    int32_t__end = string__content.indexOf("}", int32_t__pos);
+                }
+                if (int32_t__end > int32_t__pos)
+                {
+                    String string__value =
+                        string__content.substring(int32_t__pos, int32_t__end);
+                    string__value.trim();
+                    uint32_t__savedSec = (uint32_t)string__value.toInt();
+                }
+            }
+            int32_t__pos = string__content.indexOf("\"tz\":");
+            if (int32_t__pos >= 0)
+            {
+                int32_t__pos += 5;
+                int32_t__end = string__content.indexOf(",", int32_t__pos);
+                if (int32_t__end < 0)
+                {
+                    int32_t__end = string__content.indexOf("}", int32_t__pos);
+                }
+                if (int32_t__end > int32_t__pos)
+                {
+                    String string__value =
+                        string__content.substring(int32_t__pos, int32_t__end);
+                    string__value.trim();
+                    int32_t__savedTz = (int32_t)string__value.toInt();
+                }
+            }
+        }
+    }
+    File file__write = LittleFS.open(SIMPLE_TIME_FILE, "w");
+    if (!file__write)
     {
         return;
     }
-    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
-    {
-        char char__number[16];
-
-        (void)snprintf(char__number, sizeof(char__number), "%08lu\n",
-                       (unsigned long)UINT32_T__G__LogIndexDay[uint8_t__slot]);
-        if (func__SimpleLog_FileText(file__index, char__number) == false)
-        {
-            func__SimpleLog_FaultRaise();
-            break;
-        }
-    }
-    file__index.close();
+    file__write.print("{\"ts\":");
+    file__write.print((unsigned long)uint32_t__savedSec);
+    file__write.print(",\"tz\":");
+    file__write.print((long)int32_t__savedTz);
+    file__write.print(",\"fw\":");
+    file__write.print((unsigned long)uint32_t__version);
+    file__write.print("}");
+    file__write.close();
+    UINT32_T__G__LastSavedTimeSec = uint32_t__savedSec;
+    INT32_T__G__LastSavedTzSec = int32_t__savedTz;
 }
 
-static void func__SimpleLog_IndexLoad(void)
+/**
+ * @brief  [EN] Is this boot the first one of a new firmware? The remembered
+ *              version is compared with the running one; "nothing remembered"
+ *              is a fresh flash and is not an update. Either way the stamp is
+ *              brought up to date.
+ *         [FA] آیا این بوت، اولین بوت یک فرم‌ور تازه است؟ نسخهٔ به‌یادسپرده با
+ *              نسخهٔ در حال اجرا مقایسه می‌شود؛ «چیزی به یاد نیست» یعنی فلش
+ *              تازه و بروزرسانی حساب نمی‌شود. در هر دو حالت مهر تازه می‌شود.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__SimpleLog_FwCheck(void)
 {
-    UINT8_T__G__LogIndexCount = 0u;
-    if ((BOOL__G__FsOk == false) || (LittleFS.exists(SIMPLE_LOG_INDEX_PATH) == false))
+    uint32_t uint32_t__stored;
+
+    uint32_t__stored = func__SimpleLog_FwStampRead();
+    if ((uint32_t__stored != 0u) &&
+        (uint32_t__stored != (uint32_t)SIMPLE_ESP_FW_VERSION))
     {
-        return;
+        BOOL__G__LogUpdatePending = true;
     }
-    File file__index = LittleFS.open(SIMPLE_LOG_INDEX_PATH, "r");
-    if (!file__index)
+    if (uint32_t__stored != (uint32_t)SIMPLE_ESP_FW_VERSION)
     {
-        return;
+        func__SimpleLog_FwStampWrite((uint32_t)SIMPLE_ESP_FW_VERSION);
     }
-    while (file__index.available() && (UINT8_T__G__LogIndexCount < (SIMPLE_LOG_MAX_DAYS + 2u)))
-    {
-        String string__line = file__index.readStringUntil('\n');
-        string__line.trim();
-        if (string__line.length() > 0u)
-        {
-            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = (uint32_t)string__line.toInt();
-            UINT8_T__G__LogIndexCount++;
-        }
-    }
-    file__index.close();
 }
 
 static uint32_t func__SimpleLog_DayBytes(uint32_t uint32_t__dayCode)
@@ -308,7 +569,7 @@ static void func__SimpleLog_TrimDays(void)
         }
         UINT8_T__G__LogIndexCount--;
     }
-    func__SimpleLog_IndexSave();
+    BOOL__G__LogScanValid = false;   /* the folder changed: the next read re-scans */
 }
 
 static uint16_t func__SimpleLog_CountRows(const char *char__ptr_path)
@@ -619,8 +880,13 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     uint8_t uint8_t__mains;
     bool bool__stored = false;
 
-    if ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
-        (BOOL__G__LogDayFull != false))
+    /* [EN] v1.113: a forced row (the firmware-update row) ignores this cap as
+            well - the user asked for it "with no conditions".
+       [FA] نسخهٔ ۱٫۱۱۳: ردیف اجباری (ردیف بروزرسانی فرم‌ور) این سقف را هم
+            نادیده می‌گیرد - دستور کاربر «بدون در نظر گرفتن شرط‌ها» بود. */
+    if ((BOOL__A__LogForceRow == false) &&
+        ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
+         (BOOL__G__LogDayFull != false)))
     {
         BOOL__G__LogDayFull = true;
         return false;
@@ -659,8 +925,9 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     {
         if (func__SimpleLog_OpenDay() != false)
         {
-            if ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
-                (BOOL__G__LogDayFull != false))
+            if ((BOOL__A__LogForceRow == false) &&
+                ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
+                 (BOOL__G__LogDayFull != false)))
             {
                 BOOL__G__LogDayFull = true;
                 return false;
@@ -715,6 +982,7 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     UINT16_T__G__LogPendingMask = 0u;
     UINT8_T__G__LogPendingNote = 0u;
     BOOL__G__LogMainsQueuedValid = false;
+    BOOL__A__LogForceRow = false;   /* the one forced row has been written */
 
     /* [EN] one slot before the cap, the day writes its own obituary: a row with
             note 4 saying "the cap was reached". Without it a full day looks
@@ -1034,10 +1302,40 @@ static void func__SimpleLog_Tick(void)
           پس نشستِ بدون برد هم تاریخچهٔ خودش را شروع می‌کند (۲۰۲۶-۱۰-۲۴). */
     if (BOOL__G__LogBootRowPending != false)
     {
+        uint16_t uint16_t__mask = SIMPLE_LOG_CHG_BOOT;
+
         BOOL__G__LogBootRowPending = false;
         UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
         UINT8_T__G__LogPrevNote = func__SimpleLog_LoadLastDanger();
-        (void)func__SimpleLog_WriteRow(SIMPLE_LOG_CHG_BOOT,
+        /* [EN] v1.113 (user order 2026-10-28: "every time I do an update one
+                record must be written, with no conditions at all, and only the
+                log timers zeroed"). The update joins the boot row, so one
+                switch-on gives one row. The timers of the log are zeroed just
+                before it: the merge window, the step throttle and the "last
+                row" clock all start again from this row, so nothing that
+                happened before the update can swallow it or push it into a
+                merged line.
+           [FA] نسخهٔ ۱٫۱۱۳ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «هر وقت بروزرسانی را زدم یک
+                رکورد ضبط بشه، بدون در نظر گرفتن شرط‌ها، و فقط تایمرهای مربوط
+                به لاگ صفر بشه»). بروزرسانی با ردیف بوت یکی می‌شود، پس یک
+                روشن‌شدن یک ردیف می‌دهد. تایمرهای لاگ درست پیش از آن صفر
+                می‌شوند: پنجرهٔ ادغام، محدودیت گام ولتاژ و ساعتِ «آخرین ردیف»
+                از همین ردیف دوباره شروع می‌کنند تا هیچ چیزِ پیش از بروزرسانی
+                نه آن را ببلعد و نه با ردیف دیگری ادغامش کند. */
+        if (BOOL__G__LogUpdatePending != false)
+        {
+            BOOL__G__LogUpdatePending = false;
+            uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_UPDATE);
+            UINT32_T__G__LogLastRowMs = 0u;
+            BOOL__G__LogLastRowValid = false;
+            UINT32_T__G__LogLastStepMs = 0u;
+            BOOL__G__LogLastStepValid = false;
+            UINT16_T__G__LogPendingMask = 0u;
+            UINT8_T__G__LogPendingNote = SIMPLE_LOG_NOTE_NONE;
+            BOOL__G__LogMainsQueuedValid = false;
+            BOOL__A__LogForceRow = true;
+        }
+        (void)func__SimpleLog_WriteRow(uint16_t__mask,
                                        (UINT8_T__G__LogPrevNote != 0u) ?
                                        SIMPLE_LOG_NOTE_LOW_STOP : SIMPLE_LOG_NOTE_NONE);
     }
@@ -1102,7 +1400,10 @@ static void func__SimpleLog_Begin(void)
     {
         return;
     }
-    func__SimpleLog_IndexLoad();
+    /* [EN] v1.113: read the folder, not a remembered index.
+       [FA] نسخهٔ ۱٫۱۱۳: پوشه خوانده می‌شود، نه یک فهرست به‌یادسپرده. */
+    (void)func__SimpleLog_ScanDays(true);
+    func__SimpleLog_FwCheck();
 }
 
 /* [EN] Where does the window of the newest rows start? It walks BACKWARD from
@@ -1373,6 +1674,18 @@ static uint8_t func__SimpleLog_Clear(void)
         BOOL__G__LogDayFull = false;
         return 0u;
     }
+    /* [EN] v1.113 (user report 2026-10-28: "a pile of «panel switched on» rows
+            that the panel cannot delete"): the folder is scanned right here, so
+            EVERY day file goes - also the ones the old "/evt-days.txt" index
+            had forgotten. Those were the rows that survived the button, stayed
+            visible through the automatic "today" read and could never be
+            removed again.
+       [FA] نسخهٔ ۱٫۱۱۳ (گزارش کاربر ۲۰۲۶-۱۰-۲۸: «یک سری «پنل روشن شد» در حافظه
+            هست که پاک نمی‌شود»): همین‌جا پوشه خوانده می‌شود، پس «هر» فایل روز
+            می‌رود - از جمله آن‌هایی که فهرست قدیمی «‎/evt-days.txt‎» فراموش
+            کرده بود. همان‌ها ردیف‌هایی بودند که بعد از زدن دکمه می‌ماندند، از
+            راه خواندن خودکار «امروز» دیده می‌شدند و دیگر هرگز پاک نمی‌شدند. */
+    (void)func__SimpleLog_ScanDays(true);
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
         func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__slot]);
@@ -1384,6 +1697,7 @@ static uint8_t func__SimpleLog_Clear(void)
     (void)LittleFS.remove(SIMPLE_LOG_INDEX_PATH);
     (void)LittleFS.remove(SIMPLE_LOG_LAST_PATH);
     UINT8_T__G__LogIndexCount = 0u;
+    BOOL__G__LogScanValid = false;
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
@@ -1419,6 +1733,7 @@ static size_t func__SimpleLog_Days(char *char__ptr_out, size_t size_t__outSize)
         }
         return 0u;
     }
+    (void)func__SimpleLog_ScanDays(false);
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
         int int__written = snprintf(&char__ptr_out[size_t__used],

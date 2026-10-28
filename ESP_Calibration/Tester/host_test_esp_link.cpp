@@ -2762,6 +2762,81 @@ int main(void)
         LittleFS.failWrites = false;
     }
 
+    /* ---- 33. v1.113: every day file on the flash is deletable, and a firmware
+       update writes one row with no conditions (user reports 2026-10-28).
+       [FA] هر فایل روزی روی فلش پاک‌شدنی است، و هر بروزرسانی فرم‌ور یک ردیف
+            بدون هیچ شرطی می‌نویسد (گزارش‌های کاربر ۲۰۲۶-۱۰-۲۸). */
+    {
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        LittleFS.files.clear();
+        LittleFS.failWrites = false;
+        BOOL__G__FsOk = true;
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+
+        /* a day file nobody ever listed - the one the button could not delete */
+        LittleFS.files[std::string("/evt-20250101.csv")] =
+            std::string("# old day\n100,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              LittleFS.exists("/evt-20250101.csv") == false,
+              "clear history deletes a day file the list never knew about");
+
+        /* a remembered old version: the next boot must write one update row */
+        LittleFS.files.clear();
+        BOOL__G__LogUpdatePending = false;
+        BOOL__G__LogBootRowPending = true;
+        LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] = std::string("1792756800,12600,0,1");
+        func__EspLog_Begin();
+        check(BOOL__G__LogUpdatePending == true,
+              "an old version stamp in the clock file means this boot is an update");
+        check(func__EspLog_FwStampRead() == (uint32_t)ESP_ESP_FW_VERSION,
+              "the stamp is brought up to the running version",
+              std::to_string(func__EspLog_FwStampRead()));
+
+        /* dirty log timers must not stop it: the update row ignores them */
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        BOOL__G__LogLastRowValid = true;
+        UINT32_T__G__LogLastStepMs = (uint32_t)millis();
+        BOOL__G__LogLastStepValid = true;
+        BOOL__G__LogLinkDown = true;
+        func__EspLog_Tick();
+        check(BOOL__G__LogUpdatePending == false,
+              "the update is announced exactly once");
+        check(BOOL__A__LogForceRow == false,
+              "the forced write is one-shot");
+        check(BOOL__G__LogLastStepValid == false,
+              "the step timer was zeroed by the update row");
+        {
+            char dayPath[32];
+            (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
+                           (unsigned long)func__EspLog_TodayCode());
+            std::string dayText = LittleFS.files[std::string(dayPath)];
+            check(dayText.find(",4097,") != std::string::npos,
+                  "the row carries both \"panel switched on\" and \"update\"",
+                  dayText.substr(0u, 60u));
+        }
+
+        /* the next boot with the same firmware stays quiet */
+        BOOL__G__LogUpdatePending = false;
+        func__EspLog_Begin();
+        check(BOOL__G__LogUpdatePending == false,
+              "the next boot with the same firmware is not an update");
+
+        /* a fresh flash with no stamp at all is not an update either */
+        (void)LittleFS.remove(ESP_LOG_CLOCK_PATH);
+        BOOL__G__LogUpdatePending = false;
+        func__EspLog_Begin();
+        check(BOOL__G__LogUpdatePending == false,
+              "a fresh flash with no stamp is not an update");
+
+        LittleFS.files.clear();
+        BOOL__G__LogBootRowPending = true;
+    }
+
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
         std::cout << "ALL " << checks << " ESP HOST TESTS PASSED\n";

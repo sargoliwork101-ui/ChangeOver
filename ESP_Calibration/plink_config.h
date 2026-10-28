@@ -82,7 +82,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          111u
+#define ESP_ESP_FW_VERSION          112u
 /* [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
    [FA] بیت ۶ بایت پرچم تله‌متری: برد تأیید می‌کند دست‌دادن انجام شده است. */
 #define ESP_TLM_FLAG_LINK_OK        0x40u
@@ -500,7 +500,12 @@
 /* افزودن نشان درصد پر بودن هر باتری روی دشارژ در صفحهٔ اول مارک‌آپ را به
    ۴۷۷٬۹۶۸ بایت رساند؛ سقف آگاهانه ۲ کیلوبایت پله خورد (۴۷۹٬۲۳۲ بایت) و
    نگهبان سر جایش می‌ماند. */
-#define ESP_PANEL_HTML_MAX_BYTES    479232u
+/* [EN] v1.113: the history card now says what a clear really deleted and names
+        a firmware update, which costs about 1 KB of HTML - raised on purpose.
+   [FA] نسخهٔ ۱٫۱۱۳: کارت تاریخچه حالا می‌گوید پاک‌کردن واقعاً چه چیزی را برد و
+        بروزرسانی فرم‌ور را نام می‌برد و حدود ۱ کیلوبایت HTML گران‌تر شد -
+        عمداً بالا رفت. */
+#define ESP_PANEL_HTML_MAX_BYTES    483328u
 
 /* ==================== Parser States ==================== */
 typedef enum

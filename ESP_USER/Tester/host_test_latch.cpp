@@ -40,6 +40,7 @@ typedef ESP8266WebServer esp_web_server_t;
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <dirent.h>
 #include <unistd.h>
 
 /* ==================== نمونه‌های سراسری استاب‌ها ==================== */
@@ -67,6 +68,37 @@ bool SimLittleFS::remove(const char *char__ptr_path)
 bool SimLittleFS::exists(const char *char__ptr_path)
 {
     return (::access(func__T_FsPath(char__ptr_path).c_str(), F_OK) == 0);
+}
+
+/* فهرست پوشه: همین پوشهٔ /tmp که فایل‌های تست در آن هستند، بی زیرپوشه. */
+SimDir SimLittleFS::openDir(const char *char__ptr_path)
+{
+    static const std::string PREFIX = "changeover_simple_test_";
+    SimDir dir__result;
+    DIR *dir__handle = ::opendir("/tmp");
+
+    (void)char__ptr_path;
+    if (dir__handle == NULL)
+    {
+        return dir__result;
+    }
+    {
+        struct dirent *entry__item;
+
+        while ((entry__item = ::readdir(dir__handle)) != NULL)
+        {
+            std::string string__name(entry__item->d_name);
+
+            if (string__name.compare(0u, PREFIX.size(), PREFIX) != 0)
+            {
+                continue;
+            }
+            /* مسیر داخل فلش با «/» شروع می‌شود، اسم واقعی فایل در /tmp نه */
+            dir__result.names.push_back("/" + string__name.substr(PREFIX.size()));
+        }
+    }
+    ::closedir(dir__handle);
+    return dir__result;
 }
 
 /* ==================== شمارندهٔ بررسی‌ها ==================== */
@@ -1404,6 +1436,149 @@ static void func__T_TestHandshake(void)
     func__T_Check(!BOOL__G__HelloSeen, "پاسخ با طول غلط نادیده گرفته می‌شود");
 }
 
+/* ---- v1.113: فایل روزی که فهرست نمی‌شناخت، و ردیف بروزرسانی فرم‌ور ----
+   [EN] Two user reports of 2026-10-28: rows that the clear button could not
+        delete, and one record per firmware update with no conditions.
+   [FA] دو گزارش کاربر ۲۰۲۶-۱۰-۲۸: ردیف‌هایی که دکمهٔ پاک‌کردن نمی‌توانست
+        حذفشان کند، و یک رکورد برای هر بروزرسانی فرم‌ور، بدون هیچ شرطی. */
+static void func__T_TestClearOrphansAndUpdateRow(void)
+{
+    (void)printf("\n-- v1.113: فایل روزِ بیرون از فهرست و ردیف بروزرسانی --\n");
+
+    /* ۱) فایل روزی که هیچ فهرستی آن را به یاد ندارد (همان حالتی که روی برد
+          دیده شد: ردیف روی فلش هست، در فهرست نیست و پاک نمی‌شود). */
+    (void)func__SimpleLog_Clear();
+    {
+        File file__orphan = LittleFS.open("/evt-20250101.csv", "w");
+
+        if (file__orphan) {
+            file__orphan.print("# روز قدیمی\n100,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n");
+            file__orphan.close();
+        }
+    }
+    (void)func__SimpleLog_ScanDays(true);
+    {
+        char char__days[128];
+
+        char__days[0] = '\0';
+        (void)func__SimpleLog_Days(char__days, sizeof char__days);
+        func__T_Check(std::string(char__days).find("20250101") != std::string::npos,
+                      "فایل روزی که در فهرست نبود، حالا در فهرست روزها دیده می‌شود");
+        func__T_Check(func__SimpleLog_Clear() == 1u,
+                      "همان فایل روز با «پاک کردن تاریخچه» پاک می‌شود");
+        func__T_Check(!LittleFS.exists("/evt-20250101.csv"),
+                      "و بعد از پاک‌کردن دیگر روی فلش نیست");
+    }
+
+    /* ۲) ردیف بروزرسانی: مهر نسخهٔ کهنه روی فلش، فرم‌ور در حال اجرا تازه */
+    (void)func__SimpleLog_Clear();
+    {
+        File file__time = LittleFS.open(SIMPLE_TIME_FILE, "w");
+
+        if (file__time) {
+            file__time.print("{\"ts\":0,\"tz\":0,\"fw\":1}");
+            file__time.close();
+        }
+    }
+    BOOL__G__LogUpdatePending = false;
+    func__SimpleLog_Begin();
+    func__T_Check(BOOL__G__LogUpdatePending,
+                  "نسخهٔ کهنهٔ روی فلش، بروزرسانی فرم‌ور را اعلام می‌کند");
+    func__T_Check(func__SimpleLog_FwStampRead() == (uint32_t)SIMPLE_ESP_FW_VERSION,
+                  "مهر نسخه با نسخهٔ در حال اجرا تازه می‌شود");
+
+    /* تایمرهای لاگ را دستی کثیف می‌کنیم: ردیف بروزرسانی باید بی‌اعتنا بنویسد */
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+    BOOL__G__LogLastRowValid = true;
+    UINT32_T__G__LogLastStepMs = (uint32_t)millis();
+    BOOL__G__LogLastStepValid = true;
+    BOOL__G__LogLinkDown = true;
+    BOOL__G__TlmSeen = false;
+    BOOL__G__LogBootRowPending = true;
+    BOOL__G__LogHasPrev = false;
+    func__SimpleLog_Tick();
+    func__T_Check(BOOL__G__LogUpdatePending == false,
+                  "بروزرسانی فقط یک بار اعلام می‌شود، نه در هر تیک");
+    func__T_Check(BOOL__A__LogForceRow == false,
+                  "اجبارِ نوشتن یک‌بارمصرف است و بعد خاموش می‌شود");
+    func__T_Check(BOOL__G__LogLastStepValid == false,
+                  "تایمر گام ولتاژ در همین ردیف صفر شد");
+
+    /* ردیف نوشته‌شده: ستون سوم باید هر دو بیت «روشن شد» و «بروزرسانی» را داشته باشد */
+    {
+        char char__path[SIMPLE_LOG_PATH_MAX];
+        std::string string__text;
+
+        func__SimpleLog_PathOf(char__path, func__SimpleLog_TodayCode());
+        {
+            File file__day = LittleFS.open(char__path, "r");
+
+            if (file__day) {
+                while (file__day.available() > 0) {
+                    string__text += file__day.readStringUntil('\n').c_str();
+                    string__text += "\n";
+                }
+                file__day.close();
+            }
+        }
+        bool bool__found = false;
+
+        {
+            size_t size_t__start = 0u;
+
+            while (size_t__start < string__text.size()) {
+                size_t size_t__end = string__text.find('\n', size_t__start);
+
+                if (size_t__end == std::string::npos) {
+                    break;
+                }
+                {
+                    std::string string__row = string__text.substr(size_t__start,
+                                                                  size_t__end - size_t__start);
+                    size_t size_t__first = string__row.find(',');
+
+                    if ((string__row.empty() == false) && (string__row[0] != '#')) {
+                        /* ستون سوم ردیف است: زمان، آپتایم، ماسک تغییر */
+                        size_t size_t__second = (size_t__first == std::string::npos)
+                                                ? std::string::npos
+                                                : string__row.find(',', size_t__first + 1u);
+                        size_t size_t__third = (size_t__second == std::string::npos)
+                                               ? std::string::npos
+                                               : string__row.find(',', size_t__second + 1u);
+                        if ((size_t__second != std::string::npos) &&
+                            (size_t__third != std::string::npos)) {
+                            std::string string__mask = string__row.substr(size_t__second + 1u,
+                                                                          size_t__third - size_t__second - 1u);
+                            if ((string__mask == "4097") || (string__mask == "4097\r")) {
+                                bool__found = true;
+                            }
+                        }
+                    }
+                }
+                size_t__start = size_t__end + 1u;
+            }
+        }
+        func__T_Check(bool__found,
+                      "ردیف نوشته‌شده هم «پنل روشن شد» و هم «بروزرسانی» را با هم دارد");
+    }
+
+    /* ۳) بوت بعدی با همان نسخه: دیگر ردیف بروزرسانی نمی‌سازد */
+    (void)func__SimpleLog_Clear();
+    BOOL__G__LogUpdatePending = false;
+    func__SimpleLog_Begin();
+    func__T_Check(BOOL__G__LogUpdatePending == false,
+                  "بوت بعدی با همان نسخه، بروزرسانی حساب نمی‌شود");
+
+    /* ۴) فلشِ تازه (بی‌مهر) هم بروزرسانی حساب نمی‌شود */
+    (void)func__SimpleLog_Clear();
+    (void)LittleFS.remove(SIMPLE_TIME_FILE);
+    BOOL__G__LogUpdatePending = false;
+    func__SimpleLog_Begin();
+    func__T_Check(BOOL__G__LogUpdatePending == false,
+                  "پنلِ تازه‌فلش‌شده بی‌مهر قبلی، بروزرسانی حساب نمی‌شود");
+    (void)func__SimpleLog_Clear();
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -1419,6 +1594,7 @@ int main(void)
     func__T_TestAuthAdminProtection();
     func__T_TestStateHistoryLog();
     func__T_TestHandshake();
+    func__T_TestClearOrphansAndUpdateRow();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

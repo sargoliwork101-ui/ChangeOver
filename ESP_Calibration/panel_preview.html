@@ -554,7 +554,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a82e64a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bef767a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4446,7 +4446,8 @@ function evtRowText(r){
   const parts=[];let lv=0;
   const add=(txt,l)=>{parts.push(txt);if(l>lv)lv=l;};
   const stName=v=>((typeof STFA!=='undefined'&&STFA[v])?STFA[v]:(ST[v]||('#'+v)));
-  if(chg&1){add('پنل روشن شد'+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+  if(chg&1){add('پنل روشن شد'+((chg&4096)?' — بروزرسانی فرم‌ور':'')+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+  if((chg&4096)&&!(chg&1)){add('بروزرسانی فرم‌ور انجام شد',2);}
   if(chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد دوباره برقرار شد',(r.note===2)?2:1);}
   if(chg&2){add(mains?'برق شهر وصل شد':'برق شهر قطع شد',(mains?(r.band?2:1):2));}
   if(chg&4){add('کانال ۱ به مرحلهٔ «'+stName(c1)+'» رفت',(c1>=7&&c1<=8)?3:((c1===10)?2:0));}
@@ -4607,8 +4608,25 @@ async function evtdlall(){
 }
 async function evtclr(){
   if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟ این کار برگشت‌پذیر نیست.'))return;
-  try{await req('/evt/clr','POST');if($('evtst'))$('evtst').textContent='پاک شد';await evtDays();await evtfetch(1);}
-  catch(e){if($('evtst'))$('evtst').textContent='پاک نشد';}
+  const st=$('evtst');
+  try{
+    const r=await fetch('/evt/clr',{method:'POST',cache:'no-store'});
+    let j={};try{j=await r.json();}catch(e){}
+    const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
+    /* [EN] v1.113: the answer says how many day files really went. "Cleared" is
+            only printed when something WAS cleared, so a button that cannot
+            reach the file system can no longer look successful.
+       [FA] نسخهٔ ۱٫۱۱۳: پاسخ می‌گوید واقعاً چند فایل روز پاک شد. «پاک شد» فقط
+            وقتی نوشته می‌شود که چیزی پاک شده باشد، تا دکمه‌ای که به فایل‌سیستم
+            نمی‌رسد دیگر موفق به نظر نرسد. */
+    if(st){
+      if(r.status!==200)st.textContent='پاک نشد (پاسخ '+r.status+')';
+      else if(src!=='1')st.textContent='پاک نشد: حافظهٔ پنل سوار نشد؛ فقط رم پاک شد';
+      else if((j&&j.removed)>0)st.textContent='پاک شد: '+evtFa(j.removed)+' روز';
+      else st.textContent='چیزی برای پاک‌کردن نبود';
+    }
+    await evtDays();await evtfetch(1);
+  }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
 }
 evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});

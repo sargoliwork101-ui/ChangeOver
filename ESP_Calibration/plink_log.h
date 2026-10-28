@@ -184,6 +184,14 @@ static uint32_t UINT32_T__G__LogPrevFault = 0u;
 static uint8_t  UINT8_T__G__LogPrevNote = 0u;   /* [EN] danger before the last restart / [FA] خطر پیش از ری‌استارت */
 
 /* ==================== Pending change / تغییر در انتظار ==================== */
+/* [EN] A firmware update was seen at this boot, so its row must be written no
+        matter what.
+   [FA] در همین بوت یک بروزرسانی فرم‌ور دیده شد، پس ردیفش باید بی‌قید و شرط
+        نوشته شود. */
+static bool     BOOL__G__LogUpdatePending = false;
+/* [EN] One-shot: the next row ignores the day cap too.
+   [FA] یک‌بارمصرف: ردیف بعدی سقف روز را هم نادیده می‌گیرد. */
+static bool     BOOL__A__LogForceRow = false;
 static uint16_t UINT16_T__G__LogPendingMask = 0u;
 static uint8_t  UINT8_T__G__LogPendingNote = 0u;
 static bool     BOOL__G__LogMainsQueuedValid = false;
@@ -241,6 +249,7 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_CHG_DEAD    0x0200u   /* [EN] condemned-battery verdict / [FA] حکم باتری خراب */
 #define ESP_LOG_CHG_VSTEP   0x0400u   /* [EN] pack voltage moved a visible step / [FA] ولتاژ پک یک پلهٔ محسوس جابه‌جا شد */
 #define ESP_LOG_CHG_CLOCK   0x0800u   /* [EN] the browser moved the clock / [FA] مرورگر ساعت را جابه‌جا کرد */
+#define ESP_LOG_CHG_UPDATE  0x1000u   /* [EN] the panel was flashed with a new firmware / [FA] پنل با فرم‌ور تازه فلش شد */
 
 /* ==================== Notes / یادداشت ردیف ==================== */
 #define ESP_LOG_NOTE_NONE      0u
@@ -515,10 +524,19 @@ static void func__EspLog_ClockSave(void)
        [FA] سه فیلد: ساعت، منطقهٔ زمانی، و آپتایمِ بردی که این ساعت به آن بسته
             است. با همین سه عدد، پنلی که تازه روشن شده بی‌آنکه از کسی بپرسد
             دوباره وقت را می‌داند. */
-    (void)snprintf(char__line, sizeof(char__line), "%lu,%ld,%lu\n",
+    /* [EN] v1.113: a fourth field carries the firmware version, so the next
+            boot can tell "switched on again" from "flashed with new firmware"
+            (user order 2026-10-28). It rides in a file that already exists and
+            is never erased by clearing the history, so no new file is needed.
+       [FA] نسخهٔ ۱٫۱۱۳: فیلد چهارم نسخهٔ فرم‌ور را می‌برد تا بوت بعدی بتواند
+            «دوباره روشن شد» را از «فرم‌ور تازه فلش شد» تشخیص دهد (دستور کاربر
+            ۲۰۲۶-۱۰-۲۸). سوار همان فایلی است که از قبل هست و با پاک‌کردن
+            تاریخچه هم پاک نمی‌شود، پس فایل تازه‌ای لازم نیست. */
+    (void)snprintf(char__line, sizeof(char__line), "%lu,%ld,%lu,%u\n",
                    (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec,
                    (unsigned long)((BOOL__G__LogAnchorBoardValid != false) ?
-                                   UINT32_T__G__LogAnchorBoardSec : 0u));
+                                   UINT32_T__G__LogAnchorBoardSec : 0u),
+                   (unsigned int)ESP_ESP_FW_VERSION);
     (void)file__clock.print(char__line);
     file__clock.close();
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
@@ -567,7 +585,20 @@ static void func__EspLog_ClockLoad(void)
         if (int32_t__second > 0)
         {
             INT32_T__G__LogTzSec = (int32_t)string__rest.substring(0, int32_t__second).toInt();
-            UINT32_T__G__LogAnchorBoardSec = (uint32_t)string__rest.substring(int32_t__second + 1).toInt();
+            /* [EN] v1.113: a fourth field (the firmware stamp) follows the
+                    board anchor, so the anchor stops at the next comma.
+               [FA] نسخهٔ ۱٫۱۱۳: فیلد چهارم (مهر فرم‌ور) بعد از لنگر برد
+                    می‌آید، پس لنگر به کامای بعدی ختم می‌شود. */
+            {
+                String string__board = string__rest.substring(int32_t__second + 1);
+                int32_t int32_t__third = string__board.indexOf(',');
+
+                if (int32_t__third >= 0)
+                {
+                    string__board = string__board.substring(0, int32_t__third);
+                }
+                UINT32_T__G__LogAnchorBoardSec = (uint32_t)string__board.toInt();
+            }
         }
         else
         {
@@ -582,6 +613,154 @@ static void func__EspLog_ClockLoad(void)
     BOOL__G__LogAnchorBoardValid = (UINT32_T__G__LogAnchorBoardSec != 0u);
     BOOL__G__LogClockValid = true;
     UINT32_T__G__LogHighWaterSec = uint32_t__savedSec;
+}
+
+/* ==================== Firmware stamp / مهر نسخهٔ فرم‌ور ==================== */
+
+/**
+ * @brief  [EN] Where does field N (1-based, N>1) start in a comma separated
+ *              line? -1 when the line has fewer fields.
+ *         [FA] فیلد شمارهٔ N (از یک، برای ‎N>1)‎ در یک خط جداشده با کاما از کجا
+ *              شروع می‌شود؟ اگر خط فیلد کمتری داشته باشد، منفی یک.
+ * @‎param  String string__line [EN] line / [FA]‎ خط
+ * @‎param  uint8_t uint8_t__field [EN] field number / [FA]‎ شمارهٔ فیلد
+ * @‎return [EN] start index / [FA]‎ اندیس شروع
+ */
+static int32_t func__EspLog_FieldStart(String string__line, uint8_t uint8_t__field)
+{
+    int32_t int32_t__offset = 0;
+    uint8_t uint8_t__seen = 1u;
+
+    while (uint8_t__seen < uint8_t__field)
+    {
+        int32_t int32_t__comma = (int32_t)string__line.indexOf(',');
+
+        if (int32_t__comma < 0)
+        {
+            return -1;
+        }
+        int32_t__offset += int32_t__comma + 1;
+        string__line = string__line.substring((size_t)int32_t__comma + 1u);
+        uint8_t__seen++;
+    }
+    return int32_t__offset;
+}
+
+/**
+ * @brief  [EN] Fourth field of the clock file: which firmware version wrote it
+ *              last. 0 = nothing remembered yet (a fresh flash), never "update".
+ *         [FA] فیلد چهارم فایل ساعت: آخرین بار کدام نسخهٔ فرم‌ور نوشته است.
+ *              صفر یعنی «هنوز چیزی به یاد نیست» (فلش تازه)، هرگز «بروزرسانی».
+ * @‎return [EN] uint32_t version / [FA]‎ نسخه
+ */
+static uint32_t func__EspLog_FwStampRead(void)
+{
+    String string__content;
+    int32_t int32_t__start;
+    File file__clock;
+
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_CLOCK_PATH) == false))
+    {
+        return 0u;
+    }
+    file__clock = LittleFS.open(ESP_LOG_CLOCK_PATH, "r");
+    if (!file__clock)
+    {
+        return 0u;
+    }
+    string__content = file__clock.readString();
+    file__clock.close();
+    /* [EN] the fourth field starts after the third comma
+       [FA] فیلد چهارم بعد از سومین کاما شروع می‌شود */
+    int32_t__start = func__EspLog_FieldStart(string__content, 4u);
+    if (int32_t__start < 0)
+    {
+        return 0u;
+    }
+    {
+        String string__value = string__content.substring((size_t)int32_t__start);
+        string__value.trim();
+        if (string__value.length() == 0u)
+        {
+            return 0u;
+        }
+        return (uint32_t)string__value.toInt();
+    }
+}
+
+/**
+ * @brief  [EN] Rewrite the clock file with the running firmware version as its
+ *              fourth field. The first three fields are kept exactly as they
+ *              are, so this can never lose or rewind the clock.
+ *         [FA] بازنویسی فایل ساعت با نسخهٔ فرم‌ور در حال اجرا به‌عنوان فیلد
+ *              چهارم. سه فیلد اول عیناً همان‌طور که هستند می‌مانند، پس این کار
+ *              هرگز ساعت را پاک یا عقب نمی‌برد.
+ * @‎param  uint32_t uint32_t__version [EN] version / [FA]‎ نسخه
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_FwStampWrite(uint32_t uint32_t__version)
+{
+    String string__content = String("0,0,0");
+    String string__firstThree;
+    int32_t int32_t__start;
+    char char__line[80];
+    File file__clock;
+
+    if (BOOL__G__FsOk == false)
+    {
+        return;
+    }
+    if (LittleFS.exists(ESP_LOG_CLOCK_PATH) != false)
+    {
+        file__clock = LittleFS.open(ESP_LOG_CLOCK_PATH, "r");
+        if (file__clock)
+        {
+            string__content = file__clock.readString();
+            file__clock.close();
+        }
+    }
+    string__content.trim();
+    int32_t__start = func__EspLog_FieldStart(string__content, 4u);
+    /* [EN] keep the three fields before the stamp; with no fourth field the
+            whole line is kept.
+       [FA] سه فیلد پیش از مهر نگه داشته می‌شود؛ اگر فیلد چهارم نبود، کل خط. */
+    string__firstThree = (int32_t__start > 1) ?
+                         string__content.substring(0, (size_t)(int32_t__start - 1)) :
+                         String("0,0,0");
+    file__clock = LittleFS.open(ESP_LOG_CLOCK_PATH, "w");
+    if (!file__clock)
+    {
+        return;
+    }
+    (void)snprintf(char__line, sizeof(char__line), "%s,%u\n",
+                   string__firstThree.c_str(), (unsigned int)uint32_t__version);
+    (void)file__clock.print(char__line);
+    file__clock.close();
+}
+
+/**
+ * @brief  [EN] Is this boot the first one of a new firmware? The remembered
+ *              version is compared with the running one; "nothing remembered"
+ *              is a fresh flash and is not an update. Either way the stamp is
+ *              brought up to date.
+ *         [FA] آیا این بوت اولین بوت یک فرم‌ور تازه است؟ نسخهٔ به‌یادسپرده با
+ *              نسخهٔ در حال اجرا مقایسه می‌شود؛ «چیزی به یاد نیست» یعنی فلش
+ *              تازه و بروزرسانی حساب نمی‌شود. در هر دو حالت مهر تازه می‌شود.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_FwCheck(void)
+{
+    uint32_t uint32_t__stored;
+
+    uint32_t__stored = func__EspLog_FwStampRead();
+    if ((uint32_t__stored != 0u) && (uint32_t__stored != (uint32_t)ESP_ESP_FW_VERSION))
+    {
+        BOOL__G__LogUpdatePending = true;
+    }
+    if (uint32_t__stored != (uint32_t)ESP_ESP_FW_VERSION)
+    {
+        func__EspLog_FwStampWrite((uint32_t)ESP_ESP_FW_VERSION);
+    }
 }
 
 /**
@@ -1358,8 +1537,13 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     {
         (void)func__EspLog_OpenDay();
     }
-    if ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
-        (BOOL__G__LogDayFull != false))
+    /* [EN] v1.113: a forced row (the firmware-update row) ignores this cap as
+            well - the user asked for it "with no conditions".
+       [FA] نسخهٔ ۱٫۱۱۳: ردیف اجباری (ردیف بروزرسانی فرم‌ور) این سقف را هم
+            نادیده می‌گیرد - دستور کاربر «بدون در نظر گرفتن شرط‌ها» بود. */
+    if ((BOOL__A__LogForceRow == false) &&
+        ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
+         (BOOL__G__LogDayFull != false)))
     {
         BOOL__G__LogDayFull = true;
         return false;
@@ -1371,7 +1555,8 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         return false;
     }
 
-    if ((BOOL__G__FsOk != false) && (BOOL__G__LogDayFull == false))
+    if ((BOOL__G__FsOk != false) &&
+        ((BOOL__G__LogDayFull == false) || (BOOL__A__LogForceRow != false)))
     {
         /* [EN] the flash is taking rows again: the ones waiting in RAM go
                 first, so the history keeps its order.
@@ -1427,6 +1612,7 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     UINT16_T__G__LogPendingMask = 0u;
     UINT8_T__G__LogPendingNote = 0u;
     BOOL__G__LogMainsQueuedValid = false;
+    BOOL__A__LogForceRow = false;   /* the one forced row has been written */
 
     /* [EN] one slot before the cap, the day writes its own obituary: a row with
             note 4 that says "the cap was reached, the rest of today is not
@@ -1998,10 +2184,40 @@ static void func__EspLog_Tick(void)
           این ردیف وضعیتِ آخرین اجرا و خطرناک‌بودن آن را هم می‌برد. */
     if (BOOL__G__LogBootRowPending != false)
     {
+        uint16_t uint16_t__mask = ESP_LOG_CHG_BOOT;
+
         BOOL__G__LogBootRowPending = false;
         UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
         UINT8_T__G__LogPrevNote = func__EspLog_LoadLastDanger();
-        (void)func__EspLog_WriteRow(ESP_LOG_CHG_BOOT,
+        /* [EN] v1.113 (user order 2026-10-28: "every time I do an update one
+                record must be written, with no conditions at all, and only the
+                log timers zeroed"). The update joins the boot row, so one
+                switch-on gives one row. The log timers are zeroed just before
+                it: the merge window, the step throttle, the "last row" clock
+                and the clock-save timer all start again from this row, so
+                nothing from before the update can swallow or merge it.
+           [FA] نسخهٔ ۱٫۱۱۳ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «هر وقت بروزرسانی را زدم یک
+                رکورد ضبط بشه، بدون در نظر گرفتن شرط‌ها، و فقط تایمرهای مربوط
+                به لاگ صفر بشه»). بروزرسانی با ردیف بوت یکی می‌شود، پس یک
+                روشن‌شدن یک ردیف می‌دهد. تایمرهای لاگ درست پیش از آن صفر
+                می‌شوند: پنجرهٔ ادغام، محدودیت گام ولتاژ، ساعتِ «آخرین ردیف» و
+                تایمر ذخیرهٔ ساعت از همین ردیف دوباره شروع می‌کنند تا هیچ
+                چیزِ پیش از بروزرسانی آن را نبلعد یا ادغام نکند. */
+        if (BOOL__G__LogUpdatePending != false)
+        {
+            BOOL__G__LogUpdatePending = false;
+            uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_UPDATE);
+            UINT32_T__G__LogLastRowMs = 0u;
+            BOOL__G__LogLastRowValid = false;
+            UINT32_T__G__LogLastStepMs = 0u;
+            BOOL__G__LogLastStepValid = false;
+            UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
+            UINT16_T__G__LogPendingMask = 0u;
+            UINT8_T__G__LogPendingNote = ESP_LOG_NOTE_NONE;
+            BOOL__G__LogMainsQueuedValid = false;
+            BOOL__A__LogForceRow = true;
+        }
+        (void)func__EspLog_WriteRow(uint16_t__mask,
                                     (UINT8_T__G__LogPrevNote != 0u) ?
                                     ESP_LOG_NOTE_LOW_STOP : ESP_LOG_NOTE_NONE);
     }
@@ -2104,6 +2320,11 @@ static void func__EspLog_Begin(void)
         (void)LittleFS.remove(ESP_LOG_LEGACY_INDEX_PATH);
     }
     func__EspLog_ClockLoad();
+    /* [EN] v1.113: was this flash a new firmware? The stamp lives in the clock
+            file, so it survives both a restart and a history clear.
+       [FA] نسخهٔ ۱٫۱۱۳: آیا این فلش، فرم‌ور تازه‌ای بود؟ مهر در فایل ساعت است،
+            پس هم ری‌استارت و هم پاک‌کردن تاریخچه را از سر می‌گذراند. */
+    func__EspLog_FwCheck();
     /* [EN] the day list is read from the flash, so a restart cannot lose it.
        [FA] فهرست روزها از خود فلش خوانده می‌شود، پس ری‌استارت آن را از دست
             نمی‌دهد. */
