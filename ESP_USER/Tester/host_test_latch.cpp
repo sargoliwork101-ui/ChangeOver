@@ -927,6 +927,70 @@ static void func__T_TestStateHistoryLog(void)
                       "آن ردیف یادداشت ضربان را دارد");
     }
 
+    /* ---- v1.112: یک نوشتنِ ردشده کل فایل روز را پنهان نمی‌کند ---- */
+    {
+        char char__ptr_day[SIMPLE_LOG_PATH_MAX];
+        char char__ptr_text[4096];
+        uint32_t uint32_t__day = func__SimpleLog_TodayCode();
+        uint8_t uint8_t__i;
+        uint32_t uint32_t__lines = 0u;
+
+        func__SimpleLog_PathOf(char__ptr_day, uint32_t__day);
+        (void)LittleFS.remove(char__ptr_day);
+        for (uint8_t__i = 0u; uint8_t__i < 3u; uint8_t__i++)
+        {
+            char char__ptr_row[128];
+            (void)snprintf(char__ptr_row, sizeof(char__ptr_row),
+                           "179275680%d,10,1,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0,0,0,0,0",
+                           (int)uint8_t__i);
+            (void)func__SimpleLog_AppendRow(uint32_t__day, char__ptr_row);
+        }
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        (void)func__SimpleLog_RamPush("1792756809,14,64,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0,0,0,0,0");
+        (void)func__SimpleLog_RamPush("1792756810,15,512,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0,0,0,0,0");
+        UINT8_T__G__LogWriteFault = 1u;
+
+        (void)func__SimpleLog_Tail(char__ptr_text, sizeof(char__ptr_text), uint32_t__day, 30u);
+        {
+            size_t size_t__i;
+            for (size_t__i = 0u; char__ptr_text[size_t__i] != '\0'; size_t__i++)
+            {
+                if (char__ptr_text[size_t__i] == '\n') { uint32_t__lines++; }
+            }
+        }
+        func__T_Check(uint32_t__lines == 5u,
+                      "کارت لاگ سه ردیف فایل و دو ردیف رم را با هم نشان می‌دهد");
+        func__T_Check(char__ptr_text[0] == '1',
+                      "اولین ردیف کارت، قدیمی‌ترین ردیف فایل است");
+
+        /* روزِ بی‌ردیف باید خالی بماند، نه اینکه از رم چیزی بسازد */
+        char__ptr_text[0] = '\0';
+        (void)func__SimpleLog_Tail(char__ptr_text, sizeof(char__ptr_text), 20260101u, 30u);
+        func__T_Check(char__ptr_text[0] == '\0',
+                      "روزِ بی‌ردیف خالی می‌ماند و از رم ردیف نمی‌سازد");
+
+        /* فایل‌سیستم خاموش: فهرست روزها باز هم امروز را نام می‌برد */
+        UINT8_T__G__LogRamCount = 0u;
+        UINT8_T__G__LogWriteFault = 0u;
+        BOOL__G__FsOk = false;
+        (void)func__SimpleLog_Days(char__ptr_text, sizeof(char__ptr_text));
+        {
+            char char__ptr_want[16];
+            (void)snprintf(char__ptr_want, sizeof(char__ptr_want), "%08lu",
+                           (unsigned long)uint32_t__day);
+            func__T_Check(strcmp(char__ptr_text, char__ptr_want) == 0,
+                          "با فایل‌سیستم خاموش، فهرست روزها باز هم امروز را نام می‌برد");
+        }
+        BOOL__G__FsOk = true;
+
+        /* پاک‌کردن وضعیت برای تست‌های بعدی */
+        UINT8_T__G__LogWriteFault = 0u;
+        (void)LittleFS.remove(char__ptr_day);
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+    }
+
     (void)func__SimpleLog_Clear();
     func__T_Check((UINT8_T__G__LogIndexCount == 0u) && (!LittleFS.exists(char__path)),
                   "پاک کردن، فایل روزها را برمی‌دارد");

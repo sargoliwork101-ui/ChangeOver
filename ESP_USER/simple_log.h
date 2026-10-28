@@ -1179,12 +1179,69 @@ static uint32_t func__SimpleLog_TailStart(File &file__day,
     return uint32_t__offset;
 }
 
+/* [EN] The newest rows that never reached the flash, straight from the RAM ring.
+   [FA] جدیدترین ردیف‌هایی که به فلش نرسیدند، مستقیم از حلقهٔ رم. */
+static size_t func__SimpleLog_TailRam(char *char__ptr_out, size_t size_t__outSize,
+                                      uint16_t uint16_t__maxLines)
+{
+    size_t size_t__used = 0u;
+    uint8_t uint8_t__start;
+    uint8_t uint8_t__count = UINT8_T__G__LogRamCount;
+    uint8_t uint8_t__item;
+
+    if (uint8_t__count == 0u)
+    {
+        return 0u;
+    }
+    uint8_t__start = (uint8_t)((UINT8_T__G__LogRamHead + SIMPLE_LOG_RAM_ROWS - uint8_t__count) % SIMPLE_LOG_RAM_ROWS);
+    if ((uint16_t)uint8_t__count > uint16_t__maxLines)
+    {
+        uint8_t uint8_t__drop = (uint8_t)((uint16_t)uint8_t__count - uint16_t__maxLines);
+        uint8_t__start = (uint8_t)((uint8_t__start + uint8_t__drop) % SIMPLE_LOG_RAM_ROWS);
+        uint8_t__count = (uint8_t)uint16_t__maxLines;
+    }
+    for (uint8_t__item = 0u; uint8_t__item < uint8_t__count; uint8_t__item++)
+    {
+        uint8_t uint8_t__slot = (uint8_t)((uint8_t__start + uint8_t__item) % SIMPLE_LOG_RAM_ROWS);
+        size_t size_t__len = strlen(CHAR__G__LogRamRow[uint8_t__slot]);
+        if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
+        {
+            break;
+        }
+        (void)memcpy(&char__ptr_out[size_t__used], CHAR__G__LogRamRow[uint8_t__slot], size_t__len);
+        size_t__used += size_t__len;
+        char__ptr_out[size_t__used] = '\n';
+        size_t__used++;
+        char__ptr_out[size_t__used] = '\0';
+    }
+    return size_t__used;
+}
+
+/* [EN] With no day file at all the RAM ring is the only history - but only when
+        a write really failed; an empty day must stay empty.
+   [FA] وقتی فایل روزی نیست حلقهٔ رم تنها تاریخچه است - اما فقط وقتی نوشتن
+        واقعاً شکست خورده باشد؛ روزِ بی‌ردیف باید خالی بماند. */
+static size_t func__SimpleLog_TailRamOnly(char *char__ptr_out, size_t size_t__outSize,
+                                          uint16_t uint16_t__maxLines, bool bool__isToday)
+{
+    /* [EN] The RAM ring only ever holds today's rows, so an older day must not
+            borrow them; and without a write fault the emptiness is real.
+       [FA] حلقهٔ رم فقط ردیف‌های امروز را دارد، پس روز قدیمی‌تر نباید آن‌ها را
+            قرض بگیرد؛ و بدون خرابیِ نوشتن، خالی‌بودن واقعی است. */
+    if ((UINT8_T__G__LogWriteFault == 0u) || (bool__isToday == false))
+    {
+        return 0u;
+    }
+    return func__SimpleLog_TailRam(char__ptr_out, size_t__outSize, uint16_t__maxLines);
+}
+
 static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
                                    uint32_t uint32_t__dayCode, uint16_t uint16_t__maxLines)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     size_t size_t__used = 0u;
     uint32_t uint32_t__chosen = uint32_t__dayCode;
+    bool bool__isToday;
 
     if ((char__ptr_out == NULL) || (size_t__outSize < 2u))
     {
@@ -1192,43 +1249,25 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
     }
     char__ptr_out[0] = '\0';
 
-    /* [EN] No file system, or a flash that refused the last writes: the newest
-            rows are the ones in RAM, so serve them instead of an empty card.
-       [FA] فایل‌سیستم نیست، یا فلشی که آخرین نوشتن‌ها را نپذیرفت: جدیدترین
-            ردیف‌ها در رم‌اند، پس همان‌ها نشان داده می‌شوند نه کارت خالی. */
-    if ((BOOL__G__FsOk == false) ||
-        ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u)))
+    /* [EN] v1.112 (user order 2026-10-28: mirror the log fixes): one refused
+            write used to hide the whole day file behind the RAM ring, so a card
+            with hundreds of rows showed a handful. The file is read first and
+            the rows that never reached the flash follow it.
+       [FA] نسخهٔ ۱٫۱۱۲ (دستور کاربر ۲۰۲۶-۱۰-۲۸: بازتاب اصلاح‌های لاگ): یک
+            نوشتنِ ردشده کل فایل روز را پشت حلقهٔ رم پنهان می‌کرد، پس کارتی با
+            صدها ردیف چند ردیف نشان می‌داد. اول فایل خوانده می‌شود و
+            ردیف‌هایی که به فلش نرسیدند پشت آن می‌آیند. */
+    bool__isToday = ((uint32_t__dayCode == SIMPLE_LOG_DAY_AUTO) ||
+                     (uint32_t__dayCode == 0u) ||
+                     (uint32_t__dayCode == func__SimpleLog_TodayCode()));
+    /* [EN] No file system at all: the RAM ring is the whole history, so today's
+            rows are served as they are.
+       [FA] فایل‌سیستم نیست: حلقهٔ رم تمام تاریخچه است، پس ردیف‌های امروز
+            همان‌طور که هستند خوانده می‌شوند. */
+    if (BOOL__G__FsOk == false)
     {
-        uint8_t uint8_t__start;
-        uint8_t uint8_t__count = UINT8_T__G__LogRamCount;
-        uint8_t uint8_t__item;
-
-        if (uint8_t__count == 0u)
-        {
-            return 0u;
-        }
-        uint8_t__start = (uint8_t)((UINT8_T__G__LogRamHead + SIMPLE_LOG_RAM_ROWS - uint8_t__count) % SIMPLE_LOG_RAM_ROWS);
-        if ((uint16_t)uint8_t__count > uint16_t__maxLines)
-        {
-            uint8_t uint8_t__drop = (uint8_t)((uint16_t)uint8_t__count - uint16_t__maxLines);
-            uint8_t__start = (uint8_t)((uint8_t__start + uint8_t__drop) % SIMPLE_LOG_RAM_ROWS);
-            uint8_t__count = (uint8_t)uint16_t__maxLines;
-        }
-        for (uint8_t__item = 0u; uint8_t__item < uint8_t__count; uint8_t__item++)
-        {
-            uint8_t uint8_t__slot = (uint8_t)((uint8_t__start + uint8_t__item) % SIMPLE_LOG_RAM_ROWS);
-            size_t size_t__len = strlen(CHAR__G__LogRamRow[uint8_t__slot]);
-            if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
-            {
-                break;
-            }
-            (void)memcpy(&char__ptr_out[size_t__used], CHAR__G__LogRamRow[uint8_t__slot], size_t__len);
-            size_t__used += size_t__len;
-            char__ptr_out[size_t__used] = '\n';
-            size_t__used++;
-            char__ptr_out[size_t__used] = '\0';
-        }
-        return size_t__used;
+        return func__SimpleLog_TailRam(char__ptr_out, size_t__outSize,
+                                       uint16_t__maxLines);
     }
 
     if ((uint32_t__chosen == SIMPLE_LOG_DAY_AUTO) || (uint32_t__chosen == 0u))
@@ -1239,7 +1278,8 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
         {
             if (UINT8_T__G__LogIndexCount == 0u)
             {
-                return 0u;
+                return func__SimpleLog_TailRamOnly(char__ptr_out, size_t__outSize,
+                                                   uint16_t__maxLines, bool__isToday);
             }
             uint32_t__chosen = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
         }
@@ -1252,13 +1292,15 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__chosen);
     if (LittleFS.exists(char__ptr_path) == false)
     {
-        return 0u;
+        return func__SimpleLog_TailRamOnly(char__ptr_out, size_t__outSize,
+                                          uint16_t__maxLines, bool__isToday);
     }
 
     File file__day = LittleFS.open(char__ptr_path, "r");
     if (!file__day)
     {
-        return 0u;
+        return func__SimpleLog_TailRamOnly(char__ptr_out, size_t__outSize,
+                                          uint16_t__maxLines, bool__isToday);
     }
     {
         uint32_t uint32_t__size = (uint32_t)file__day.size();
@@ -1267,7 +1309,8 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
         if (uint32_t__size == 0u)
         {
             file__day.close();
-            return 0u;
+            return func__SimpleLog_TailRamOnly(char__ptr_out, size_t__outSize,
+                                              uint16_t__maxLines, bool__isToday);
         }
         uint32_t__start = func__SimpleLog_TailStart(file__day, uint32_t__size,
                                                     uint16_t__maxLines,
@@ -1275,7 +1318,8 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
         if (file__day.seek(uint32_t__start) == false)
         {
             file__day.close();
-            return 0u;
+            return func__SimpleLog_TailRamOnly(char__ptr_out, size_t__outSize,
+                                              uint16_t__maxLines, bool__isToday);
         }
     }
     while (file__day.available())
@@ -1300,6 +1344,18 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
         char__ptr_out[size_t__used] = '\0';
     }
     file__day.close();
+
+    /* [EN] the rows that failed to reach the flash are newer than everything in
+            the file, so they are appended, not substituted.
+       [FA] ردیف‌هایی که به فلش نرسیدند از هر چه در فایل است جدیدترند، پس
+            پشت آن‌ها می‌آیند، نه به‌جای آن‌ها. */
+    if ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u) &&
+        ((size_t__used + 2u) < size_t__outSize))
+    {
+        size_t__used += func__SimpleLog_TailRam(&char__ptr_out[size_t__used],
+                                                size_t__outSize - size_t__used,
+                                                uint16_t__maxLines);
+    }
     return size_t__used;
 }
 
@@ -1349,7 +1405,13 @@ static size_t func__SimpleLog_Days(char *char__ptr_out, size_t size_t__outSize)
     char__ptr_out[0] = '\0';
     if (BOOL__G__FsOk == false)
     {
-        if ((UINT8_T__G__LogRamCount > 0u) && (size_t__outSize >= 12u))
+        /* [EN] v1.112: today is the only day that can exist without a file
+                system. The list stayed empty until the first row arrived, so
+                the day picker showed nothing at all.
+           [FA] نسخهٔ ۱٫۱۱۲: بی فایل‌سیستم تنها روزی که می‌تواند باشد امروز است.
+                فهرست تا رسیدن اولین ردیف خالی می‌ماند و انتخاب‌گر روز هیچ چیز
+                نشان نمی‌داد. */
+        if (size_t__outSize >= 12u)
         {
             int int__ramWritten = snprintf(char__ptr_out, size_t__outSize, "%08lu",
                                            (unsigned long)func__SimpleLog_TodayCode());

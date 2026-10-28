@@ -2249,16 +2249,17 @@ static size_t func__EspLog_TailRam(char *char__out, size_t size_t__outSize,
  * @‎param  char *char__out [EN] output buffer / [FA]‎ بافر خروجی
  * @‎param  size_t size_t__outSize [EN] size / [FA]‎ اندازهٔ بافر
  * @‎param  uint16_t uint16_t__maxLines [EN] how many rows / [FA]‎ چند ردیف
+ * @‎param  bool bool__isToday [EN] is the asked day today? / [FA]‎ روز پرسیده امروز است؟
  * @return [EN] size_t bytes written / [FA]‎ تعداد بایت
  */
 static size_t func__EspLog_TailRamOnly(char *char__out, size_t size_t__outSize,
-                                        uint16_t uint16_t__maxLines)
+                                        uint16_t uint16_t__maxLines, bool bool__isToday)
 {
-    /* [EN] Without a write fault the emptiness is real (a day with no rows),
-            so the RAM ring must not invent history.
-       [FA] بدون خرابیِ نوشتن، خالی‌بودن واقعی است (روزی که ردیف ندارد)، پس
-            حلقهٔ رم نباید تاریخچه از خودش بسازد. */
-    if (UINT8_T__G__LogWriteFault == 0u)
+    /* [EN] The RAM ring only ever holds today's rows. Without a write fault the
+            emptiness is real, and an older day must never borrow today's rows.
+       [FA] حلقهٔ رم فقط ردیف‌های امروز را دارد. بدون خرابیِ نوشتن، خالی‌بودن
+            واقعی است و روز قدیمی‌تر هرگز نباید ردیف‌های امروز را قرض بگیرد. */
+    if ((UINT8_T__G__LogWriteFault == 0u) || (bool__isToday == false))
     {
         return 0u;
     }
@@ -2326,6 +2327,7 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     uint32_t uint32_t__chosen;
     uint32_t uint32_t__size;
     uint32_t uint32_t__start;
+    bool bool__isToday;
 
     if ((char__out == NULL) || (size_t__outSize < 2u))
     {
@@ -2341,6 +2343,13 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
             را پشت ۱۶ ردیف رم پنهان می‌کرد، پس کارتی که صدها ردیف داشت چند
             ردیف نشان می‌داد. اول فایل خوانده می‌شود و ردیف‌هایی که به فلش
             نرسیدند پشت آن می‌آیند. */
+    bool__isToday = ((uint32_t__dayCode == ESP_LOG_DAY_AUTO) ||
+                     (uint32_t__dayCode == 0u) ||
+                     (uint32_t__dayCode == func__EspLog_TodayCode()));
+    /* [EN] No file system at all: the RAM ring is the whole history, so today's
+            rows are served as they are.
+       [FA] فایل‌سیستم نیست: حلقهٔ رم تمام تاریخچه است، پس ردیف‌های امروز
+            همان‌طور که هستند خوانده می‌شوند. */
     if (BOOL__G__FsOk == false)
     {
         return func__EspLog_TailRam(char__out, size_t__outSize, uint16_t__maxLines);
@@ -2349,31 +2358,36 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     uint32_t__chosen = func__EspLog_PickDay(uint32_t__dayCode);
     if (uint32_t__chosen == ESP_LOG_DAY_AUTO)
     {
-        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize,
+                                        uint16_t__maxLines, bool__isToday);
     }
 
     func__EspLog_PathOf(char__path, uint32_t__chosen);
     if (LittleFS.exists(char__path) == false)
     {
-        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize,
+                                        uint16_t__maxLines, bool__isToday);
     }
     file__day = LittleFS.open(char__path, "r");
     if (!file__day)
     {
-        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize,
+                                        uint16_t__maxLines, bool__isToday);
     }
     uint32_t__size = (uint32_t)file__day.size();
     if (uint32_t__size == 0u)
     {
         file__day.close();
-        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize,
+                                        uint16_t__maxLines, bool__isToday);
     }
     uint32_t__start = func__EspLog_TailStart(file__day, uint32_t__size,
                                              uint16_t__maxLines, size_t__outSize - 2u);
     if (file__day.seek(uint32_t__start) == false)
     {
         file__day.close();
-        return func__EspLog_TailRamOnly(char__out, size_t__outSize, uint16_t__maxLines);
+        return func__EspLog_TailRamOnly(char__out, size_t__outSize,
+                                        uint16_t__maxLines, bool__isToday);
     }
     while (file__day.available())
     {
