@@ -44,6 +44,7 @@ void setup(void)
     WiFi.mode(WIFI_AP);
 #if defined(ESP8266)
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
+    (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();
 #else
     WiFi.setSleep(false);
@@ -70,6 +71,9 @@ void setup(void)
     UINT32_T__G__ChargeCountCh1 = UINT32_T__G__PrevChargeCountCh1;
     UINT32_T__G__ChargeCountCh2 = UINT32_T__G__PrevChargeCountCh2;
 
+    (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
+                            IPAddress(0, 0, 0, 0),
+                            IPAddress(255, 255, 255, 0));
     (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
 #if defined(ESP8266)
     WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
@@ -104,7 +108,10 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Simple_HttpEventDays);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Simple_HttpEventDownload);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Simple_HttpEventClear);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/snap", HTTP_POST, func__Simple_HttpEventSnap);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Simple_HttpEventFormat);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Simple_HttpEventFsStatus);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Simple_HttpEventClean);
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
 

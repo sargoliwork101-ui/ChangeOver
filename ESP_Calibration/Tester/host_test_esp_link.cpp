@@ -2833,8 +2833,131 @@ int main(void)
         check(BOOL__G__LogUpdatePending == false,
               "a fresh flash with no stamp is not an update");
 
+        /* pressing Refresh (POST /evt/snap) writes one record unconditionally,
+           even inside the 2 s merge window and even when the day cap is full,
+           and zeroes ONLY the log timers */
         LittleFS.files.clear();
+        (void)func__EspLog_TimeSet(1792756800u, 12600);
+        UINT16_T__G__LogRowsToday = ESP_LOG_MAX_ROWS_PER_DAY;
+        BOOL__G__LogDayFull = true;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        BOOL__G__LogLastRowValid = true;
+        UINT32_T__G__LogLastStepMs = (uint32_t)millis();
+        BOOL__G__LogLastStepValid = true;
+        UINT32_T__G__LogMainsQueuedMs = (uint32_t)millis();
+        BOOL__G__LogMainsQueuedValid = true;
+        UINT32_T__G__LastKeepaliveMs = 4242u;
+        UINT32_T__G__WifiBatteryIdleStartMs = 7777u;
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/snap", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"ok\":1") != std::string::npos,
+              "POST /evt/snap writes one record even when nothing changed and day is full",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(BOOL__G__LogLastStepValid == false && UINT32_T__G__LogLastStepMs == 0u &&
+              BOOL__G__LogMainsQueuedValid == false && UINT32_T__G__LogMainsQueuedMs == 0u,
+              "POST /evt/snap zeroes the log timers");
+        check(UINT32_T__G__LastKeepaliveMs == 4242u &&
+              UINT32_T__G__WifiBatteryIdleStartMs == 7777u,
+              "POST /evt/snap leaves non-log timers untouched");
+
+        /* a second click right away (inside 2 s) must write a SECOND row too */
+        ESP_WEB_SERVER_T__G__Server.call("/evt/snap", HTTP_POST);
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
+        {
+            std::string body = ESP_WEB_SERVER_T__G__Server.lastBody;
+            size_t hits = 0u;
+            size_t pos = 0u;
+            while ((pos = body.find(",0,6,", pos)) != std::string::npos) {
+                hits++;
+                pos += 5u;
+            }
+            check(hits == 2u,
+                  "two consecutive Refresh clicks record two manual rows with note=6",
+                  std::to_string(hits));
+        }
+
+        LittleFS.files.clear();
+        BOOL__G__LogDayFull = false;
+        UINT16_T__G__LogRowsToday = 0u;
         BOOL__G__LogBootRowPending = true;
+    }
+
+    /* ---- 50. 1h heartbeat, slashless ESP8266 Dir::fileName, DrainRam cooldown,
+                SoftAP gateway=0.0.0.0, and Flash Inspector/Cleaner ----------- */
+    {
+        check(ESP_LOG_HEARTBEAT_MS == 3600000u,
+              "no-change periodic log heartbeat is 1 hour (3,600,000 ms)",
+              std::to_string(ESP_LOG_HEARTBEAT_MS));
+        check(WiFi.routerDisabled,
+              "SoftAP configures gateway 0.0.0.0 so DHCP_OPTION_ROUTER is disabled");
+        check(LittleFS.autoFormatCfg == false,
+              "ESP8266 LittleFS.setConfig(LittleFSConfig(false)) disables silent auto-format");
+
+        /* Real ESP8266 LittleFSDirImpl::fileName() returns names WITHOUT a
+           leading '/'. Verify ScanDays, /evt/fs, /evt/clean, and /evt/clr! */
+        LittleFS.files.clear();
+        LittleFS.slashlessDirNames = true;
+        BOOL__G__FsOk = true;
+        BOOL__G__LogScanValid = false;
+        LittleFS.files["/evt-20261028.csv"] = "1792700000,1,1,0,1,2,0,0,0,0,24000,12000,12000,0,0,24000,12000,0,0,0,0,37\n";
+        LittleFS.files["/evt-clock.txt"] = "1792756800,12600,100,113\n";
+        LittleFS.files["/old_sketch_leftover.bin"] = std::string(4096u, 'Z');
+
+        check(func__EspLog_ScanDays(true) == 1u,
+              "ScanDays finds evt-YYYYMMDD.csv even when Dir::fileName() omits leading '/'",
+              std::to_string(UINT8_T__G__LogIndexCount));
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/fs", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"name\":\"old_sketch_leftover.bin\"") != std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"own\":0") != std::string::npos,
+              "GET /evt/fs exposes leftover files from previous sketches with own=0",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/clean", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"removed\":1") != std::string::npos,
+              "POST /evt/clean removes the 1 leftover foreign file",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(!LittleFS.exists("/old_sketch_leftover.bin") &&
+              LittleFS.exists("/evt-20261028.csv") &&
+              LittleFS.exists("/evt-clock.txt"),
+              "POST /evt/clean deletes only foreign files and keeps owned log/clock files");
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
+        check(!LittleFS.exists("/evt-20261028.csv"),
+              "POST /evt/clr deletes day files when Dir::fileName() omits leading '/'");
+
+        /* DrainRam 30 s cooldown test */
+        LittleFS.slashlessDirNames = false;
+        LittleFS.failWrites = true;
+        BOOL__G__LogBootRowPending = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__LogPendingNote = 0u;
+        BOOL__G__LogLinkDown = true;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        BOOL__G__LogDrainWait = false;
+        (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_NONE);
+        check(UINT8_T__G__LogRamCount == 1u && BOOL__G__LogDrainWait,
+              "refused write enters 30 s DrainRam cooldown");
+        LittleFS.failWrites = false;
+        G_StubMillis += 1000u; /* only 1 s < 30 s */
+        func__EspLog_Tick();
+        check(UINT8_T__G__LogRamCount == 1u,
+              "Log_Tick does not hammer flash before 30 s DrainRam cooldown elapses");
+        G_StubMillis += ESP_LOG_DRAIN_RETRY_MS;
+        func__EspLog_Tick();
+        check(UINT8_T__G__LogRamCount == 0u && UINT8_T__G__LogWriteFault == 0u,
+              "after 30 s cooldown, Log_Tick drains RAM ring and clears write fault");
+
+        LittleFS.files.clear();
     }
 
     std::cout << std::string(70, '=') << "\n";

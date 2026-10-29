@@ -42,6 +42,8 @@ enum
 };
 
 /* ==================== نشانی کلاینت ==================== */
+#ifndef SIM_IPADDRESS_DEFINED
+#define SIM_IPADDRESS_DEFINED
 class IPAddress
 {
 public:
@@ -61,12 +63,16 @@ public:
 private:
     uint8_t octets[4];
 };
+#endif
 
 class SimWebClient
 {
 public:
     explicit SimWebClient(const IPAddress &ip_address__address) : address(ip_address__address) {}
     IPAddress remoteIP(void) const { return address; }
+    bool connected(void) const { return true; }
+    void setTimeout(unsigned long ulong__ms) { (void)ulong__ms; }
+    void stop(void) {}
 
 private:
     IPAddress address;
@@ -104,6 +110,7 @@ public:
     bool hasArg(const char *char__ptr_name) const;
     String arg(const char *char__ptr_name) const;
     SimWebClient client(void) const { return SimWebClient(clientAddress); }
+    void keepAlive(bool bool__enabled) { (void)bool__enabled; }
 
     void sendHeader(const char *char__ptr_name, const char *char__ptr_value)
     {

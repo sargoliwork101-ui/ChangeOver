@@ -479,7 +479,9 @@ static void func__Simple_SendGetParams(void)
 }
 
 /* ==================== ذخیره تاریخچه شارژ ==================== */
+#ifndef SIMPLE_CHARGE_HISTORY_FILE
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
+#endif
 static void func__Simple_ChargeHistorySave(void)
 {
     if (!BOOL__G__FsOk) return;
@@ -777,7 +779,9 @@ static void func__Simple_ChartsLoad(void)
 }
 
 /* ==================== ذخیره دیاگ محلی - خطاها و برق ==================== */
+#ifndef SIMPLE_DIAG_FILE
 #define SIMPLE_DIAG_FILE            "/diag.json"
+#endif
 static void func__Simple_DiagSave(void)
 {
     if (!BOOL__G__FsOk) return;

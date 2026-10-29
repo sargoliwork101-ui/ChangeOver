@@ -97,6 +97,8 @@ static char     CHAR__G__LogRamRow[SIMPLE_LOG_RAM_ROWS][SIMPLE_LOG_RAM_ROW_MAX];
 static char     CHAR__G__LogLostText[8];
 static uint8_t  UINT8_T__G__LogRamHead = 0u;
 static uint8_t  UINT8_T__G__LogRamCount = 0u;
+static bool     BOOL__G__LogDrainWait = false;
+static uint32_t UINT32_T__G__LogLastDrainMs = 0u;
 
 /* ==================== بیت‌های تغییر ==================== */
 #define SIMPLE_LOG_CHG_BOOT    0x0001u
@@ -118,6 +120,7 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define SIMPLE_LOG_NOTE_LINK_BACK 3u
 #define SIMPLE_LOG_NOTE_DAY_FULL  4u
 #define SIMPLE_LOG_NOTE_HEARTBEAT  5u   /* چیزی عوض نشد، پنل زنده است */
+#define SIMPLE_LOG_NOTE_MANUAL     6u   /* ثبت فوری با زدن دکمهٔ به‌روزرسانی */
 
 #define SIMPLE_LOG_PATH_MAX       24u
 
@@ -196,7 +199,9 @@ static void func__SimpleLog_PathOf(char *char__ptr_path, uint32_t uint32_t__dayC
 static bool func__SimpleLog_DayFromName(const char *char__ptr_name,
                                         uint32_t *uint32_t__ptr_day)
 {
-    uint8_t uint8_t__index = 0u;
+    const char *char__ptr_prefix = &SIMPLE_LOG_FILE_PREFIX[1];
+    uint8_t uint8_t__nameIndex = 0u;
+    uint8_t uint8_t__prefixIndex = 0u;
     uint8_t uint8_t__digits = 0u;
     uint32_t uint32_t__day = 0u;
 
@@ -204,38 +209,70 @@ static bool func__SimpleLog_DayFromName(const char *char__ptr_name,
     {
         return false;
     }
-    while ((SIMPLE_LOG_FILE_PREFIX[uint8_t__index] != '\0') &&
-           (char__ptr_name[uint8_t__index] == SIMPLE_LOG_FILE_PREFIX[uint8_t__index]))
+    if (char__ptr_name[0] == '/')
     {
-        uint8_t__index++;
+        uint8_t__nameIndex = 1u;
     }
-    if (SIMPLE_LOG_FILE_PREFIX[uint8_t__index] != '\0')
+    while ((char__ptr_prefix[uint8_t__prefixIndex] != '\0') &&
+           (char__ptr_name[uint8_t__nameIndex] == char__ptr_prefix[uint8_t__prefixIndex]))
+    {
+        uint8_t__nameIndex++;
+        uint8_t__prefixIndex++;
+    }
+    if (char__ptr_prefix[uint8_t__prefixIndex] != '\0')
     {
         return false;
     }
     while ((uint8_t__digits < 8u) &&
-           (char__ptr_name[uint8_t__index] >= '0') &&
-           (char__ptr_name[uint8_t__index] <= '9'))
+           (char__ptr_name[uint8_t__nameIndex] >= '0') &&
+           (char__ptr_name[uint8_t__nameIndex] <= '9'))
     {
         uint32_t__day = (uint32_t__day * 10u) +
-                        (uint32_t)(char__ptr_name[uint8_t__index] - '0');
+                        (uint32_t)(char__ptr_name[uint8_t__nameIndex] - '0');
         uint8_t__digits++;
-        uint8_t__index++;
+        uint8_t__nameIndex++;
     }
     if (uint8_t__digits != 8u)
     {
         return false;
     }
-    if ((char__ptr_name[uint8_t__index] != '.') ||
-        (char__ptr_name[uint8_t__index + 1u] != 'c') ||
-        (char__ptr_name[uint8_t__index + 2u] != 's') ||
-        (char__ptr_name[uint8_t__index + 3u] != 'v') ||
-        (char__ptr_name[uint8_t__index + 4u] != '\0'))
+    if ((char__ptr_name[uint8_t__nameIndex] != '.') ||
+        (char__ptr_name[uint8_t__nameIndex + 1u] != 'c') ||
+        (char__ptr_name[uint8_t__nameIndex + 2u] != 's') ||
+        (char__ptr_name[uint8_t__nameIndex + 3u] != 'v') ||
+        (char__ptr_name[uint8_t__nameIndex + 4u] != '\0'))
     {
         return false;
     }
     *uint32_t__ptr_day = uint32_t__day;
     return true;
+}
+
+/* ==================== ثبت روز پیداشده در حافظهٔ موقت ==================== */
+
+static void func__SimpleLog_RecordDayEntry(const char *char__ptr_name)
+{
+    uint32_t uint32_t__day = 0u;
+    uint8_t uint8_t__slot;
+
+    if (func__SimpleLog_DayFromName(char__ptr_name, &uint32_t__day) == false)
+    {
+        return;
+    }
+    if (UINT8_T__G__LogIndexCount >= (SIMPLE_LOG_MAX_DAYS + 2u))
+    {
+        return;
+    }
+    uint8_t__slot = UINT8_T__G__LogIndexCount;
+    while ((uint8_t__slot > 0u) &&
+           (UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] > uint32_t__day))
+    {
+        UINT32_T__G__LogIndexDay[uint8_t__slot] =
+            UINT32_T__G__LogIndexDay[uint8_t__slot - 1u];
+        uint8_t__slot--;
+    }
+    UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__day;
+    UINT8_T__G__LogIndexCount++;
 }
 
 /**
@@ -268,35 +305,39 @@ static uint8_t func__SimpleLog_ScanDays(bool bool__force)
     BOOL__G__LogScanValid = true;
     UINT8_T__G__LogIndexCount = 0u;
 
+#if defined(ESP32)
+    {
+        File file__root = LittleFS.open("/", "r");
+        if (file__root)
+        {
+            File file__entry = file__root.openNextFile();
+            while (file__entry)
+            {
+                func__SimpleLog_RecordDayEntry(file__entry.name());
+                file__entry.close();
+                if (UINT8_T__G__LogIndexCount >= (SIMPLE_LOG_MAX_DAYS + 2u))
+                {
+                    break;
+                }
+                file__entry = file__root.openNextFile();
+            }
+            file__root.close();
+        }
+    }
+#else
     {
         Dir dir__root = LittleFS.openDir("/");
 
         while (dir__root.next())
         {
-            uint32_t uint32_t__day = 0u;
-            uint8_t uint8_t__slot;
-
-            if (func__SimpleLog_DayFromName(dir__root.fileName().c_str(),
-                                            &uint32_t__day) == false)
-            {
-                continue;
-            }
+            func__SimpleLog_RecordDayEntry(dir__root.fileName().c_str());
             if (UINT8_T__G__LogIndexCount >= (SIMPLE_LOG_MAX_DAYS + 2u))
             {
-                break;   /* the trim below removes the oldest of what is here */
+                break;
             }
-            uint8_t__slot = UINT8_T__G__LogIndexCount;
-            while ((uint8_t__slot > 0u) &&
-                   (UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] > uint32_t__day))
-            {
-                UINT32_T__G__LogIndexDay[uint8_t__slot] =
-                    UINT32_T__G__LogIndexDay[uint8_t__slot - 1u];
-                uint8_t__slot--;
-            }
-            UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__day;
-            UINT8_T__G__LogIndexCount++;
         }
     }
+#endif
     return UINT8_T__G__LogIndexCount;
 }
 
@@ -860,6 +901,8 @@ static void func__SimpleLog_DrainRam(void)
         if (func__SimpleLog_AppendRow(uint32_t__dayCode,
                                       CHAR__G__LogRamRow[uint8_t__oldest]) == false)
         {
+            BOOL__G__LogDrainWait = true;
+            UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
             return;
         }
         if ((uint32_t__dayCode == UINT32_T__G__LogDayCode) &&
@@ -869,6 +912,8 @@ static void func__SimpleLog_DrainRam(void)
         }
         UINT8_T__G__LogRamCount--;
     }
+    BOOL__G__LogDrainWait = false;
+    UINT8_T__G__LogWriteFault = 0u;
 }
 
 static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
@@ -952,10 +997,13 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     {
         if (bool__stored != false)
         {
+            BOOL__G__LogDrainWait = false;
             UINT8_T__G__LogWriteFault = 0u;
         }
         else
         {
+            BOOL__G__LogDrainWait = true;
+            UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
             func__SimpleLog_FaultRaise();
         }
     }
@@ -1355,7 +1403,12 @@ static void func__SimpleLog_Tick(void)
             رویداد بعدی به فایل روزهای خودشان برمی‌گردند. */
     if ((BOOL__G__FsOk != false) && (UINT8_T__G__LogRamCount != 0u))
     {
-        func__SimpleLog_DrainRam();
+        uint32_t uint32_t__sinceDrainMs = uint32_t__nowMs - UINT32_T__G__LogLastDrainMs;
+        if ((BOOL__G__LogDrainWait == false) ||
+            (uint32_t__sinceDrainMs >= SIMPLE_LOG_DRAIN_RETRY_MS))
+        {
+            func__SimpleLog_DrainRam();
+        }
     }
 
     if (BOOL__G__LogLinkDown == false)
@@ -1404,6 +1457,49 @@ static void func__SimpleLog_Begin(void)
        [FA] نسخهٔ ۱٫۱۱۳: پوشه خوانده می‌شود، نه یک فهرست به‌یادسپرده. */
     (void)func__SimpleLog_ScanDays(true);
     func__SimpleLog_FwCheck();
+}
+
+/* ==================== ثبت دستی با دکمهٔ به‌روزرسانی ==================== */
+
+/**
+ * @brief  [EN] Record one state row unconditionally when the user presses
+ *              Refresh, and zero only the log timers so every log window
+ *              restarts from this row (user order 2026-10-28).
+ *         [FA] ثبت فوری یک رکورد از وضعیت فعلی بدون هیچ شرطی هنگام زدن دکمهٔ
+ *              به‌روزرسانی، و صفر کردن فقط تایمرهای مربوط به لاگ تا همهٔ
+ *              بازه‌های زمانی لاگ از همین ردیف دوباره شروع شوند.
+ * @return [EN] bool stored / [FA]‎ ذخیره شد
+ */
+static bool func__SimpleLog_SnapshotNow(void)
+{
+    uint32_t uint32_t__nowMs;
+    uint16_t uint16_t__mask;
+    bool bool__stored;
+
+    uint32_t__nowMs = (uint32_t)millis();
+    uint16_t__mask = UINT16_T__G__LogPendingMask;
+
+    UINT32_T__G__LogLastRowMs = 0u;
+    BOOL__G__LogLastRowValid = false;
+    UINT32_T__G__LogLastStepMs = 0u;
+    BOOL__G__LogLastStepValid = false;
+    UINT32_T__G__LogMainsQueuedMs = 0u;
+    BOOL__G__LogMainsQueuedValid = false;
+    UINT32_T__G__LogLastScanMs = 0u;
+    BOOL__G__LogScanValid = false;
+    if (BOOL__G__TlmSeen == false)
+    {
+        UINT32_T__G__LogSessionStartMs = uint32_t__nowMs;
+    }
+    UINT16_T__G__LogPendingMask = 0u;
+    UINT8_T__G__LogPendingNote = SIMPLE_LOG_NOTE_NONE;
+    BOOL__A__LogForceRow = true;
+
+    bool__stored = func__SimpleLog_WriteRow(uint16_t__mask, SIMPLE_LOG_NOTE_MANUAL);
+    BOOL__A__LogForceRow = false;
+    UINT32_T__G__LogLastScanMs = 0u;
+    BOOL__G__LogScanValid = false;
+    return bool__stored;
 }
 
 /* [EN] Where does the window of the newest rows start? It walks BACKWARD from
@@ -1702,6 +1798,7 @@ static uint8_t func__SimpleLog_Clear(void)
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
     BOOL__G__LogMarkerDone = false;
+    BOOL__G__LogDrainWait = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
     return uint8_t__removed;
@@ -1753,3 +1850,320 @@ static size_t func__SimpleLog_Days(char *char__ptr_out, size_t size_t__outSize)
     }
     return size_t__used;
 }
+
+/* ==================== بررسی و پاک‌سازی حافظهٔ فلش ==================== */
+
+static bool func__SimpleLog_IsOwnFile(const char *char__ptr_name)
+{
+    static const char * const CHAR_PTR__OWN_FILES[] =
+    {
+        &SIMPLE_WIFI_FILE[1],
+        &SIMPLE_CHARTS_FILE[1],
+        &SIMPLE_USERS_FILE[1],
+        &SIMPLE_TIME_FILE[1],
+        &SIMPLE_LOG_LAST_PATH[1],
+        &SIMPLE_PARAMS_FILE[1],
+        &SIMPLE_THEME_FILE[1],
+        &SIMPLE_RECOVERY_FILE[1],
+        &SIMPLE_CHARGE_HISTORY_FILE[1],
+        &SIMPLE_DIAG_FILE[1]
+    };
+    const char *char__ptr_base;
+    uint32_t uint32_t__day = 0u;
+    size_t size_t__idx;
+
+    if ((char__ptr_name == NULL) || (char__ptr_name[0] == '\0'))
+    {
+        return false;
+    }
+    if (func__SimpleLog_DayFromName(char__ptr_name, &uint32_t__day) != false)
+    {
+        return true;
+    }
+    char__ptr_base = (char__ptr_name[0] == '/') ? &char__ptr_name[1] : char__ptr_name;
+    for (size_t__idx = 0u;
+         size_t__idx < (sizeof(CHAR_PTR__OWN_FILES) / sizeof(CHAR_PTR__OWN_FILES[0]));
+         size_t__idx++)
+    {
+        if (strcmp(char__ptr_base, CHAR_PTR__OWN_FILES[size_t__idx]) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void func__SimpleLog_SanitizeFileName(const char *char__ptr_src,
+                                             char *char__ptr_out,
+                                             size_t size_t__outSize)
+{
+    const char *char__ptr_base;
+    size_t size_t__idx = 0u;
+
+    if ((char__ptr_out == NULL) || (size_t__outSize == 0u))
+    {
+        return;
+    }
+    if (char__ptr_src == NULL)
+    {
+        char__ptr_out[0] = '\0';
+        return;
+    }
+    char__ptr_base = (char__ptr_src[0] == '/') ? &char__ptr_src[1] : char__ptr_src;
+    while ((char__ptr_base[size_t__idx] != '\0') &&
+           ((size_t__idx + 1u) < size_t__outSize))
+    {
+        char char__ch = char__ptr_base[size_t__idx];
+        if ((char__ch < 0x20) || (char__ch > 0x7E) ||
+            (char__ch == '"') || (char__ch == '\\'))
+        {
+            char__ch = '?';
+        }
+        char__ptr_out[size_t__idx] = char__ch;
+        size_t__idx++;
+    }
+    char__ptr_out[size_t__idx] = '\0';
+}
+
+static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__outSize)
+{
+    uint32_t uint32_t__totalBytes = 0u;
+    uint32_t uint32_t__usedBytes = 0u;
+    uint32_t uint32_t__sumBytes = 0u;
+    uint16_t uint16_t__shown = 0u;
+    uint16_t uint16_t__more = 0u;
+    size_t size_t__used = 0u;
+    int int__written;
+
+    if ((char__ptr_out == NULL) || (size_t__outSize < 64u))
+    {
+        return 0u;
+    }
+    if (BOOL__G__FsOk != false)
+    {
+#if defined(ESP32)
+        uint32_t__totalBytes = (uint32_t)LittleFS.totalBytes();
+        uint32_t__usedBytes = (uint32_t)LittleFS.usedBytes();
+#else
+        FSInfo fsInfo__stat;
+        if (LittleFS.info(fsInfo__stat))
+        {
+            uint32_t__totalBytes = (uint32_t)fsInfo__stat.totalBytes;
+            uint32_t__usedBytes = (uint32_t)fsInfo__stat.usedBytes;
+        }
+#endif
+    }
+
+    int__written = snprintf(char__ptr_out, size_t__outSize,
+                            "{\"fs\":%u,\"mountFail\":%u,\"total\":%lu,\"used\":%lu,\"files\":[",
+                            (BOOL__G__FsOk != false) ? 1u : 0u,
+                            (BOOL__G__FsMountFailed != false) ? 1u : 0u,
+                            (unsigned long)uint32_t__totalBytes,
+                            (unsigned long)uint32_t__usedBytes);
+    if ((int__written <= 0) || ((size_t)int__written >= size_t__outSize))
+    {
+        char__ptr_out[0] = '\0';
+        return 0u;
+    }
+    size_t__used = (size_t)int__written;
+
+    if (BOOL__G__FsOk != false)
+    {
+#if defined(ESP32)
+        File file__root = LittleFS.open("/", "r");
+        if (file__root)
+        {
+            File file__entry = file__root.openNextFile();
+            while (file__entry)
+            {
+                char char__safeName[40];
+                const char *char__ptr_raw = file__entry.name();
+                uint32_t uint32_t__fsize = (uint32_t)file__entry.size();
+                bool bool__own = func__SimpleLog_IsOwnFile(char__ptr_raw);
+
+                uint32_t__sumBytes += uint32_t__fsize;
+                func__SimpleLog_SanitizeFileName(char__ptr_raw, char__safeName, sizeof(char__safeName));
+                if ((uint16_t__shown < 36u) && ((size_t__used + 96u) < size_t__outSize))
+                {
+                    int int__item = snprintf(&char__ptr_out[size_t__used],
+                                             size_t__outSize - size_t__used,
+                                             "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
+                                             (uint16_t__shown == 0u) ? "" : ",",
+                                             char__safeName,
+                                             (unsigned long)uint32_t__fsize,
+                                             (bool__own != false) ? 1u : 0u);
+                    if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
+                    {
+                        size_t__used += (size_t)int__item;
+                        uint16_t__shown++;
+                    }
+                }
+                else
+                {
+                    uint16_t__more++;
+                }
+                file__entry.close();
+                file__entry = file__root.openNextFile();
+            }
+            file__root.close();
+        }
+#else
+        Dir dir__root = LittleFS.openDir("/");
+        while (dir__root.next())
+        {
+            char char__safeName[40];
+            String string__raw = dir__root.fileName();
+            uint32_t uint32_t__fsize = (uint32_t)dir__root.fileSize();
+            bool bool__own = func__SimpleLog_IsOwnFile(string__raw.c_str());
+
+            uint32_t__sumBytes += uint32_t__fsize;
+            func__SimpleLog_SanitizeFileName(string__raw.c_str(), char__safeName, sizeof(char__safeName));
+            if ((uint16_t__shown < 36u) && ((size_t__used + 96u) < size_t__outSize))
+            {
+                int int__item = snprintf(&char__ptr_out[size_t__used],
+                                         size_t__outSize - size_t__used,
+                                         "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
+                                         (uint16_t__shown == 0u) ? "" : ",",
+                                         char__safeName,
+                                         (unsigned long)uint32_t__fsize,
+                                         (bool__own != false) ? 1u : 0u);
+                if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
+                {
+                    size_t__used += (size_t)int__item;
+                    uint16_t__shown++;
+                }
+            }
+            else
+            {
+                uint16_t__more++;
+            }
+        }
+#endif
+        if ((uint32_t__usedBytes == 0u) && (uint32_t__sumBytes > 0u))
+        {
+            uint32_t__usedBytes = uint32_t__sumBytes;
+        }
+    }
+
+    int__written = snprintf(&char__ptr_out[size_t__used],
+                            size_t__outSize - size_t__used,
+                            "],\"fileBytes\":%lu,\"more\":%u}",
+                            (unsigned long)uint32_t__sumBytes,
+                            (unsigned int)uint16_t__more);
+    if ((int__written > 0) && ((size_t__used + (size_t)int__written) < size_t__outSize))
+    {
+        size_t__used += (size_t)int__written;
+    }
+    return size_t__used;
+}
+
+static uint16_t func__SimpleLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedBytes)
+{
+    uint16_t uint16_t__removed = 0u;
+    uint32_t uint32_t__freed = 0u;
+    uint8_t uint8_t__pass;
+
+    if (uint32_t__ptr_freedBytes != NULL)
+    {
+        *uint32_t__ptr_freedBytes = 0u;
+    }
+    if (BOOL__G__FsOk == false)
+    {
+        return 0u;
+    }
+    for (uint8_t__pass = 0u; uint8_t__pass < 8u; uint8_t__pass++)
+    {
+        char char__batch[8][40];
+        uint32_t uint32_t__sizes[8];
+        uint8_t uint8_t__count = 0u;
+        uint8_t uint8_t__idx;
+
+#if defined(ESP32)
+        File file__root = LittleFS.open("/", "r");
+        if (file__root)
+        {
+            File file__entry = file__root.openNextFile();
+            while (file__entry && (uint8_t__count < 8u))
+            {
+                const char *char__ptr_nm = file__entry.name();
+                if ((char__ptr_nm != NULL) && (func__SimpleLog_IsOwnFile(char__ptr_nm) == false))
+                {
+                    const char *char__ptr_base = (char__ptr_nm[0] == '/') ? &char__ptr_nm[1] : char__ptr_nm;
+                    (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "/%s", char__ptr_base);
+                    uint32_t__sizes[uint8_t__count] = (uint32_t)file__entry.size();
+                    uint8_t__count++;
+                }
+                file__entry.close();
+                file__entry = file__root.openNextFile();
+            }
+            if (file__entry)
+            {
+                file__entry.close();
+            }
+            file__root.close();
+        }
+#else
+        Dir dir__root = LittleFS.openDir("/");
+        while (dir__root.next() && (uint8_t__count < 8u))
+        {
+            String string__nm = dir__root.fileName();
+            if (func__SimpleLog_IsOwnFile(string__nm.c_str()) == false)
+            {
+                const char *char__ptr_base = (string__nm.c_str()[0] == '/')
+                    ? &string__nm.c_str()[1]
+                    : string__nm.c_str();
+                (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "/%s", char__ptr_base);
+                uint32_t__sizes[uint8_t__count] = (uint32_t)dir__root.fileSize();
+                uint8_t__count++;
+            }
+        }
+#endif
+        if (uint8_t__count == 0u)
+        {
+            break;
+        }
+        {
+            uint8_t uint8_t__passRemoved = 0u;
+            for (uint8_t__idx = 0u; uint8_t__idx < uint8_t__count; uint8_t__idx++)
+            {
+                bool bool__ok = LittleFS.remove(char__batch[uint8_t__idx]);
+                if (bool__ok == false)
+                {
+                    bool__ok = LittleFS.remove(&char__batch[uint8_t__idx][1]);
+                }
+                if (bool__ok != false)
+                {
+                    uint16_t__removed++;
+                    uint8_t__passRemoved++;
+                    uint32_t__freed += uint32_t__sizes[uint8_t__idx];
+                }
+            }
+            if (uint8_t__passRemoved == 0u)
+            {
+                break;
+            }
+        }
+    }
+    BOOL__G__LogScanValid = false;
+    if (uint32_t__ptr_freedBytes != NULL)
+    {
+        *uint32_t__ptr_freedBytes = uint32_t__freed;
+    }
+    return uint16_t__removed;
+}
+
+static void func__SimpleLog_ResetStateAfterFormat(void)
+{
+    UINT8_T__G__LogIndexCount = 0u;
+    BOOL__G__LogScanValid = false;
+    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+    UINT16_T__G__LogRowsToday = 0u;
+    BOOL__G__LogDayFull = false;
+    BOOL__G__LogMarkerDone = false;
+    UINT8_T__G__LogRamHead = 0u;
+    UINT8_T__G__LogRamCount = 0u;
+    BOOL__G__LogDrainWait = false;
+    UINT8_T__G__LogWriteFault = 0u;
+    UINT16_T__G__LogDroppedRows = 0u;
+}
+

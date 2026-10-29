@@ -700,12 +700,14 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <br>رنگ نوار کنار هر خط: <b style="color:#e5484d">قرمز = خطا یا قفل</b> · <b style="color:#c9a227">نارنجی = هشدار</b> · <b style="color:#2f9e63">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
-   <select id="evtDay" onchange="evtFetch(1)" style="min-width:150px"><option value="">امروز</option></select>
-   <button class="btn" type="button" onclick="evtFetch(1)">به‌روزرسانی</button>
+   <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
+   <button class="btn" type="button" onclick="evtSnap()">به‌روزرسانی</button>
+   <button class="btn" type="button" onclick="evtFs(1)">حافظهٔ ESP</button>
    <button class="btn" type="button" onclick="evtDl()">دانلود این روز</button>
    <button class="btn" type="button" onclick="evtDlAll()">دانلود همهٔ روزها</button>
    <button class="btn" type="button" onclick="evtClear()">پاک کردن</button>
   </div>
+  <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
   <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
   <div id="evtSt" style="font-size:11px;color:var(--mu);min-height:16px"></div>
   <div id="evtList" style="max-height:300px;overflow:auto;font-size:12px;line-height:1.9;border-top:1px solid var(--ln);margin-top:6px">در حال خواندن…</div>
@@ -1957,6 +1959,7 @@ function evtTextFa(r){
  }
  /* ردیف ضربان یعنی «هیچ اتفاقی نیفتاد و پنل زنده است» */
  if(r.note===5)add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);
+ if(r.note===6)add('ثبت دستی (به‌روزرسانی) — کانال ۱ «'+(EVT_CHG_FA[r.c1]||r.c1)+'» · کانال ۲ «'+(EVT_CHG_FA[r.c2]||r.c2)+'»',0);
  if(r.note===4)add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);
  if(!parts.length)add('وضعیت: کانال ۱ «'+(EVT_CHG_FA[r.c1]||r.c1)+'» · کانال ۲ «'+(EVT_CHG_FA[r.c2]||r.c2)+'»',0);
  return {txt:parts.join(' · '),lv:lv};
@@ -1975,11 +1978,24 @@ function evtParse(line){
    می‌شوند تا متن راست‌به‌چپ قاطی نشود. [EN] every piece in its own span, bidi-isolated. */
 const evtIso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
-function evtClock(){
- const sec=Math.floor(Date.now()/1000),tz=-new Date().getTimezoneOffset()*60;
- return fetch('/clock?sec='+sec+'&tz='+tz,{method:'POST'}).catch(()=>{});
+let evtBusy=false,evtClkBusy=false;
+async function evtHttp(u,m,ms){
+ const o={method:m||'GET',cache:'no-store'};
+ let ac=null,tm=0;
+ if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
+ try{return await fetch(u,o);}finally{if(tm)clearTimeout(tm);}
 }
-function evtRenderFa(text,day,ram){
+function evtEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function evtKb(b){return evtFaNum(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
+async function evtClock(){
+ if(evtClkBusy)return;
+ evtClkBusy=true;
+ try{
+  const sec=Math.floor(Date.now()/1000),tz=-new Date().getTimezoneOffset()*60;
+  await evtHttp('/clock?sec='+sec+'&tz='+tz,'POST',3000);
+ }catch(e){}finally{evtClkBusy=false;}
+}
+function evtRenderFa(text,day,ram,src){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
@@ -2034,23 +2050,79 @@ async function evtFetch(manual){
  const sel=document.getElementById('evtDay');
  const day=sel?sel.value.trim():'';
  try{
-  const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
+  const r=await evtHttp('/evt'+(day?'?day='+encodeURIComponent(day):''),'GET',4000);
   const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
   const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
   const ram=(src==='0'||src==='2'||src==='3');
   const t=await r.text();
-  evtRenderFa(t,day,ram);
+  evtRenderFa(t,day,ram,src);
   const st=document.getElementById('evtSt');
-  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFa(lost)+' ردیف از دست رفت'):'');}
+  if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFaNum(lost)+' ردیف از دست رفت'):'');}
  }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
 }
-function evtfmt(){
- if(!confirm('همهٔ تاریخچه پاک شود؟'))return;
- fetch('/evt/format',{method:'POST'}).then(()=>{evtDays();evtFetch(1);});
+async function evtSnap(){
+ const sel=document.getElementById('evtDay');if(sel)sel.value='';
+ try{await evtHttp('/evt/snap','POST',4000);}catch(e){}
+ await evtDays();await evtFetch(0);
+ const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
+}
+async function evtFs(toggle){
+ const box=document.getElementById('evtFs');if(!box)return;
+ if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
+ box.style.display='block';box.innerHTML='<span style="color:var(--mu)">در حال خواندن حافظهٔ ESP…</span>';
+ try{
+  const r=await evtHttp('/evt/fs','GET',4000);const j=await r.json();
+  const files=Array.isArray(j.files)?j.files:[];
+  const oldCnt=files.filter(f=>!f.own).length;
+  const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
+  let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
+  h+='<button class="btn" type="button" onclick="evtFs(0)">بروزرسانی فهرست</button> ';
+  if(oldCnt>0)h+='<button class="btn" type="button" onclick="evtClean()">حذف فایل‌های جامانده ('+evtFaNum(oldCnt)+')</button> ';
+  h+='<button class="btn" type="button" onclick="evtfmt()">فرمت کامل حافظهٔ ESP</button></span></div>';
+  if(!j.fs){
+   h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
+  }else{
+   h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFaNum(files.length+(+j.more||0))+'</b></div>';
+   if(!files.length)h+='<div style="color:var(--mu);margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
+   else{
+    h+='<div style="margin-top:6px;max-height:160px;overflow:auto;border-top:1px solid var(--ln);padding-top:4px">';
+    files.forEach(f=>{
+     const tag=f.own?'<span style="color:#2f9e63">فایل همین برنامه</span>':'<b style="color:#c9a227">جامانده از برنامهٔ قبلی</b>';
+     h+='<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--ln);padding:2px 0"><span dir="ltr">'+evtEsc(f.name)+'</span><span>'+evtKb(f.size)+' · '+tag+'</span></div>';
+    });
+    if(+j.more>0)h+='<div style="color:var(--mu)">+ '+evtFaNum(j.more)+' فایل دیگر</div>';
+    h+='</div>';
+   }
+  }
+  box.innerHTML=h;
+ }catch(e){box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
+}
+async function evtClean(){
+ if(!confirm('فقط فایل‌های جامانده از برنامه‌های قبلی پاک شوند؟ تنظیمات و تاریخچهٔ برنامهٔ فعلی حفظ می‌شوند.'))return;
+ const st=document.getElementById('evtSt');
+ try{
+  const r=await evtHttp('/evt/clean','POST',5000);
+  if(r.status===403){if(st)st.textContent='فقط ادمین اجازهٔ پاک‌سازی حافظه را دارد';return;}
+  const j=await r.json();
+  if(st)st.textContent=(j&&j.removed>0)?('پاک‌سازی انجام شد: '+evtFaNum(j.removed)+' فایل قدیمی حذف شد'):'فایل جامانده‌ای برای حذف نبود';
+ }catch(e){}
+ await evtFs(0);await evtDays();await evtFetch(1);
+}
+async function evtfmt(){
+ if(!confirm('کل حافظهٔ فلش ESP فرمت و همهٔ فایل‌های قبلی و تاریخچه پاک شوند؟ (حساب کاربری و وای‌فای حفظ می‌شوند)'))return;
+ const st=document.getElementById('evtSt');
+ try{
+  const r=await evtHttp('/evt/format','POST',8000);
+  if(r.status===403){if(st)st.textContent='فقط ادمین اجازهٔ فرمت حافظه را دارد';return;}
+  const t=(await r.text()).trim();
+  if(st)st.textContent=(t==='ok')?'حافظهٔ فلش ESP کامل فرمت و آماده شد':'فرمت حافظه انجام نشد';
+ }catch(e){if(st)st.textContent='فرمت حافظه ناموفق بود';}
+ await evtDays();await evtFetch(1);
+ const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
 }
 async function evtDays(){
  try{
-  const r=await fetch('/evt/days',{cache:'no-store'});
+  const r=await evtHttp('/evt/days','GET',3500);
   const t=(await r.text()).trim();
   const days=t?t.split(/\s+/):[];
   const sel=document.getElementById('evtDay');
@@ -2076,7 +2148,7 @@ async function evtDlAll(){
  if(!days.length){alert('تاریخچه‌ای برای دانلود نیست.');return;}
  let out='';
  for(const d of days){
-  const r=await fetch('/evt/dl?day='+d,{cache:'no-store'});
+  const r=await evtHttp('/evt/dl?day='+d,'GET',5000);
   out+='# '+evtDayFa(d)+'\n'+(await r.text());
  }
  const a=document.createElement('a');
@@ -2087,7 +2159,7 @@ async function evtClear(){
  if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟'))return;
  const st=document.getElementById('evtSt');
  try{
-  const r=await fetch('/evt/clr',{method:'POST',cache:'no-store'});
+  const r=await evtHttp('/evt/clr','POST',5000);
   let j={};try{j=await r.json();}catch(e){}
   const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
   /* [EN] v1.113: the answer says how many day files really went. "Cleared" is
@@ -2099,18 +2171,25 @@ async function evtClear(){
           نمی‌رسد دیگر موفق به نظر نرسد (گزارش کاربر ۲۰۲۶-۱۰-۲۸: ردیف‌هایی که
           پاک نمی‌شدند). */
   if(st){
-   if(r.status!==200)st.textContent='پاک نشد (پاسخ '+r.status+')';
+   if(r.status===403)st.textContent='فقط ادمین اجازهٔ پاک‌کردن تاریخچه را دارد';
+   else if(r.status!==200)st.textContent='پاک نشد (پاسخ '+r.status+')';
    else if(src!=='1')st.textContent='پاک نشد: حافظهٔ پنل سوار نشد؛ فقط رم پاک شد';
    else if((j&&j.removed)>0)st.textContent='پاک شد: '+evtFaNum(j.removed)+' روز';
    else st.textContent='چیزی برای پاک‌کردن نبود';
   }
-  await evtDays();evtFetch(1);
+  await evtDays();await evtFetch(1);
+  const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
  }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
+}
+async function evtTick(){
+ if(document.hidden||evtBusy)return;
+ evtBusy=true;
+ try{await evtDays();await evtFetch(0);}finally{evtBusy=false;}
 }
 evtClock().then(()=>evtDays()).then(()=>evtFetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
 addEventListener('online',()=>evtClock());
-setInterval(()=>{if(!document.hidden){evtDays();evtFetch(0);}},10000);
+setInterval(evtTick,10000);
 
 function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); setInterval(tickDiagClocks,1000); }
 window.addEventListener('DOMContentLoaded', init);

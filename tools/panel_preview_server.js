@@ -798,7 +798,7 @@ function telemetry() {
 const EVT_CHG_BOOT = 1, EVT_CHG_MAINS = 2, EVT_CHG_CHG1 = 4, EVT_CHG_CHG2 = 8,
       EVT_CHG_FAULT = 16, EVT_CHG_FLAGS = 32, EVT_CHG_BAND = 64, EVT_CHG_LINK = 128,
       EVT_CHG_MODE = 256, EVT_CHG_DEAD = 512, EVT_CHG_VSTEP = 1024;
-const EVT_NOTE_NONE = 0, EVT_NOTE_LINK_LOST = 2, EVT_NOTE_LINK_BACK = 3, EVT_NOTE_HEARTBEAT = 5;
+const EVT_NOTE_NONE = 0, EVT_NOTE_LINK_LOST = 2, EVT_NOTE_LINK_BACK = 3, EVT_NOTE_HEARTBEAT = 5, EVT_NOTE_MANUAL = 6;
 const EVT_MIN_MS = 2000, EVT_VSTEP_MV = 200, EVT_VSTEP_MIN_MS = 60000, EVT_MAX_ROWS = 2000;
 const EVT_HEADER = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,v24,vlow,vhigh,imb,dm,vin,v12,i1,i2,d1,d2';
 let evtRows = [];
@@ -907,9 +907,12 @@ const evtStartSec = Math.floor(Date.now() / 1000);
  * [FA] نسخهٔ ۱٫۱۰۹: شمارندهٔ ضربان فقط هنگام خدمت‌رسانی سرور می‌دود. در حالت
  *      خودآزمای قبلاً پروسه را برای همیشه زنده نگه می‌داشت و دروازهٔ نحویِ هاست
  *      را پس از خطِ «قبول» قفل می‌کرد. */
+let simForeignFiles = [
+    { name: "old_sketch_cfg.bin", size: 24576 }
+];
 function evtHeartbeatStart() {
     setInterval(() => {
-        if (evtLastRowOk && (Date.now() - evtLastRowMs) >= 21600000) evtQueue(0, EVT_NOTE_HEARTBEAT);
+        if (evtLastRowOk && (Date.now() - evtLastRowMs) >= 3600000) evtQueue(0, EVT_NOTE_HEARTBEAT);
     }, 60000);
 }
 
@@ -1131,11 +1134,64 @@ const server = http.createServer((req, res) => {
         return;
     }
     if (req.method === "POST" && url.pathname === "/evt/clr") {
+        const removed = evtDaysList().length;
         evtRows = [];
         evtHasPrev = false;
         evtLastRowOk = false;
         evtBooted = false;
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, { "Content-Type": "application/json", "X-Log-Fs": "1" });
+        res.end(JSON.stringify({ ok: 1, removed }));
+        return;
+    }
+    if (req.method === "GET" && url.pathname === "/evt/fs") {
+        const days = evtDaysList();
+        const files = days.map((d) => {
+            const rows = evtRows.filter((line) => String(evtDayOf(Number(line.split(",")[0]))) === d);
+            const size = Buffer.byteLength([EVT_HEADER].concat(rows).join("\n"), "utf8");
+            return { name: "evt-" + d + ".csv", size, own: 1 };
+        });
+        files.push({ name: "evt-clock.txt", size: 28, own: 1 });
+        if (benchSize > 0) {
+            files.push({ name: "benchlog.csv", size: benchSize, own: 1 });
+        }
+        for (const f of simForeignFiles) {
+            files.push({ name: f.name, size: f.size, own: 0 });
+        }
+        const used = files.reduce((s, x) => s + x.size, 0);
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used, files, fileBytes: used, more: 0 }));
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/clean") {
+        const removed = simForeignFiles.length;
+        const freed = simForeignFiles.reduce((s, x) => s + x.size, 0);
+        simForeignFiles = [];
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(JSON.stringify({ ok: 1, removed, freed }));
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/format") {
+        evtRows = [];
+        evtHasPrev = false;
+        evtLastRowOk = false;
+        evtBooted = false;
+        benchSize = 0;
+        simForeignFiles = [];
+        res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
+        res.end("ok");
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/snap") {
+        if (!evtLastT) telemetry();
+        const mask = evtPendingMask;
+        evtLastRowMs = 0;
+        evtLastRowOk = false;
+        evtLastStepMs = 0;
+        evtLastStepOk = false;
+        evtPendingMask = 0;
+        evtPendingNote = EVT_NOTE_NONE;
+        evtWrite(mask, EVT_NOTE_MANUAL, evtLastFlags, evtLastFl2, evtLastT);
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
         res.end('{"ok":1}');
         return;
     }

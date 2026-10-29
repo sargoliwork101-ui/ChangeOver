@@ -71,6 +71,12 @@ static void func__Esp_HttpRoot(void)
                    "panel HTML exceeds the transfer budget - split it or raise "
                    "ESP_PANEL_HTML_MAX_BYTES on purpose");
 
+    uint32_t uint32_t__startMs = (uint32_t)millis();
+#if defined(ESP8266)
+    ESP_WEB_SERVER_T__G__Server.keepAlive(false);
+#endif
+    ESP_WEB_SERVER_T__G__Server.client().setTimeout(ESP_HTTP_SEND_TIMEOUT_MS);
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Connection", "close");
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     ESP_WEB_SERVER_T__G__Server.send(200, "text/html", "");
@@ -80,6 +86,15 @@ static void func__Esp_HttpRoot(void)
          SIZE_T__OFFSET < SIZE_T__PANEL_BYTES;
          SIZE_T__OFFSET += SIZE_T__PANEL_CHUNK)
     {
+        if (ESP_WEB_SERVER_T__G__Server.client().connected() == false)
+        {
+            break;
+        }
+        if ((uint32_t)((uint32_t)millis() - uint32_t__startMs) > ESP_HTTP_ROOT_MAX_MS)
+        {
+            ESP_WEB_SERVER_T__G__Server.client().stop();
+            break;
+        }
         const size_t SIZE_T__REMAINING = SIZE_T__PANEL_BYTES - SIZE_T__OFFSET;
         const size_t SIZE_T__COUNT = (SIZE_T__REMAINING < SIZE_T__PANEL_CHUNK)
                                    ? SIZE_T__REMAINING : SIZE_T__PANEL_CHUNK;
@@ -134,8 +149,49 @@ static void func__Esp_HttpPing(void)
  */
 static void func__Esp_HttpFont(void)
 {
+#if defined(ESP8266)
+    ESP_WEB_SERVER_T__G__Server.keepAlive(false);
+#endif
+    ESP_WEB_SERVER_T__G__Server.client().setTimeout(ESP_HTTP_SEND_TIMEOUT_MS);
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Connection", "close");
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", ESP_HTTP_FONT_CACHE);
     ESP_WEB_SERVER_T__G__Server.send_P(200, "text/css", ESP_PANEL_FONT_CSS);
+}
+
+/**
+ * @brief  [EN] Clamp snprintf return into an existing used-bytes counter so
+ *              remaining buffer math can never wrap around.
+ *         [FA] جمع امن خروجی قالب‌بندی متنی با شمارندهٔ بافر تا تفریق ظرفیت
+ *              باقی‌مانده هرگز سرریز منفی ندهد.
+ * @‎param  size_t size_t__used [EN] current bytes / [FA]‎ بایت فعلی
+ * @‎param  int int__written [EN] snprintf return / [FA]‎ خروجی نوشتن
+ * @‎param  size_t size_t__cap [EN] buffer capacity / [FA]‎ ظرفیت کل بافر
+ * @‎return [EN] clamped used count / [FA]‎ شمارش مهارشده
+ */
+static size_t func__Esp_ClampJsonUsed(size_t size_t__used,
+                                      int int__written,
+                                      size_t size_t__cap)
+{
+    size_t size_t__limit;
+
+    if (size_t__cap == 0u)
+    {
+        return 0u;
+    }
+    size_t__limit = size_t__cap - 1u;
+    if (size_t__used >= size_t__limit)
+    {
+        return size_t__limit;
+    }
+    if (int__written <= 0)
+    {
+        return size_t__used;
+    }
+    if ((size_t)int__written >= (size_t__cap - size_t__used))
+    {
+        return size_t__limit;
+    }
+    return size_t__used + (size_t)int__written;
 }
 
 /**
@@ -257,34 +313,71 @@ static void func__Esp_HttpTelemetry(void)
                         ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
                         : 0xFFFFFFFFu));
 
+    size_t__used = func__Esp_ClampJsonUsed(0u,
+                                           (int)size_t__used,
+                                           ESP_JSON_BUFFER_SIZE);
+
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
         const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
-        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
-            "%s%lu", char__ptr_sep, (unsigned long)UINT32_T__G__TlmField[uint8_t__index]);
+        int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                    ESP_JSON_BUFFER_SIZE - size_t__used,
+                                    "%s%lu",
+                                    char__ptr_sep,
+                                    (unsigned long)UINT32_T__G__TlmField[uint8_t__index]);
+        size_t__used = func__Esp_ClampJsonUsed(size_t__used,
+                                               int__written,
+                                               ESP_JSON_BUFFER_SIZE);
     }
 
-    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used, "],\"p\":[");
+    {
+        int int__mid = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                ESP_JSON_BUFFER_SIZE - size_t__used,
+                                "],\"p\":[");
+        size_t__used = func__Esp_ClampJsonUsed(size_t__used,
+                                               int__mid,
+                                               ESP_JSON_BUFFER_SIZE);
+    }
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
         const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
+        int int__written;
         if (BOOL__G__ParamKnown[uint8_t__index])
         {
             /* [‎EN] Signed IDs 4..6 are two's complement on the wire / [FA]‎ شناسه‌های ۴ تا ۶ مکمل دو هستند */
             int32_t int32_t__value = (int32_t)UINT32_T__G__ParamApplied[uint8_t__index];
-            size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
-                "%s%ld", char__ptr_sep, (long)int32_t__value);
+            int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                    ESP_JSON_BUFFER_SIZE - size_t__used,
+                                    "%s%ld",
+                                    char__ptr_sep,
+                                    (long)int32_t__value);
         }
         else
         {
-            size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
-                "%snull", char__ptr_sep);
+            int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                    ESP_JSON_BUFFER_SIZE - size_t__used,
+                                    "%snull",
+                                    char__ptr_sep);
         }
+        size_t__used = func__Esp_ClampJsonUsed(size_t__used,
+                                               int__written,
+                                               ESP_JSON_BUFFER_SIZE);
     }
 
-    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used, "]}");
+    {
+        int int__tail = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                 ESP_JSON_BUFFER_SIZE - size_t__used,
+                                 "]}");
+        size_t__used = func__Esp_ClampJsonUsed(size_t__used,
+                                               int__tail,
+                                               ESP_JSON_BUFFER_SIZE);
+    }
     (void)size_t__used;
+#if defined(ESP8266)
+    ESP_WEB_SERVER_T__G__Server.keepAlive(false);
+#endif
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Connection", "close");
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
@@ -1012,6 +1105,7 @@ static void func__Esp_HttpEventFormat(void)
     (void)LittleFS.format();
     BOOL__G__FsOk = LittleFS.begin();
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
+    func__EspLog_ResetStateAfterFormat();
     if (BOOL__G__FsOk != false)
     {
         func__EspLog_Begin();
@@ -1165,3 +1259,60 @@ static void func__Esp_HttpEventClear(void)
                    "{\"ok\":1,\"removed\":%u}", (unsigned int)uint8_t__removed);
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+
+/**
+ * @brief  [EN] POST /evt/snap : write one state row unconditionally and zero
+ *              only the log timers.
+ *         [FA] مسیر ‎POST /evt/snap‎ : ثبت فوری یک ردیف از وضعیت فعلی بدون شرط
+ *              و صفر کردن فقط تایمرهای لاگ.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventSnap(void)
+{
+    bool bool__stored;
+
+    bool__stored = func__EspLog_SnapshotNow();
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":%u}", (bool__stored != false) ? 1u : 0u);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
+/* ==================== Flash inspection & cleanup routes ==================== */
+
+/**
+ * @brief  [EN] GET /evt/fs : inspect LittleFS capacity, used bytes, and all
+ *              root files (marking files left behind by older sketches).
+ *         [FA] مسیر وضعیت فلش: نمایش ظرفیت کل، حجم مصرف‌شده و فهرست همهٔ
+ *              فایل‌های موجود روی فلش به‌همراه تشخیص فایل‌های جامانده از قبل.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventFsStatus(void)
+{
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)func__EspLog_FsStatusJson(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
+/**
+ * @brief  [EN] POST /evt/clean : delete only files that do not belong to the
+ *              running firmware, freeing flash without touching active logs.
+ *         [FA] پاک‌سازی فقط فایل‌های جامانده از برنامه‌های قبلی، بدون حذف
+ *              تاریخچه یا لاگ‌های برنامهٔ فعلی.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpEventClean(void)
+{
+    uint32_t uint32_t__freed = 0u;
+    uint16_t uint16_t__removed;
+
+    uint16_t__removed = func__EspLog_CleanForeignFiles(&uint32_t__freed);
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":%u,\"removed\":%u,\"freed\":%lu}",
+                   (BOOL__G__FsOk != false) ? 1u : 0u,
+                   (unsigned int)uint16_t__removed,
+                   (unsigned long)uint32_t__freed);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+

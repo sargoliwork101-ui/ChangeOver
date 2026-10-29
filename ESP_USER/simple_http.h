@@ -88,10 +88,43 @@ static bool func__Simple_GetArg(const char *char__ptr_name, String &string__out)
 }
 
 /* ==================== صفحه اصلی ==================== */
+static size_t func__Simple_ClampJsonUsed(size_t size_t__used,
+                                         int int__written,
+                                         size_t size_t__cap)
+{
+    size_t size_t__limit;
+
+    if (size_t__cap == 0u)
+    {
+        return 0u;
+    }
+    size_t__limit = size_t__cap - 1u;
+    if (size_t__used >= size_t__limit)
+    {
+        return size_t__limit;
+    }
+    if (int__written <= 0)
+    {
+        return size_t__used;
+    }
+    if ((size_t)int__written >= (size_t__cap - size_t__used))
+    {
+        return size_t__limit;
+    }
+    return size_t__used + (size_t)int__written;
+}
+
 static void func__Simple_HttpRoot(void)
 {
+    uint32_t uint32_t__startMs = (uint32_t)millis();
+
     BOOL__G__BrowserSeen = true;
-    UINT32_T__G__LastBrowserPollMs = (uint32_t)millis();
+    UINT32_T__G__LastBrowserPollMs = uint32_t__startMs;
+#if defined(ESP8266)
+    SIMPLE_WEB_SERVER_T__G__Server.keepAlive(false);
+#endif
+    SIMPLE_WEB_SERVER_T__G__Server.client().setTimeout(SIMPLE_HTTP_SEND_TIMEOUT_MS);
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Connection", "close");
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/html", "");
@@ -99,10 +132,22 @@ static void func__Simple_HttpRoot(void)
     const size_t SIZE_T__BYTES = sizeof(SIMPLE_PANEL_HTML) - 1u;
     for (size_t SIZE_T__OFFSET = 0u; SIZE_T__OFFSET < SIZE_T__BYTES; SIZE_T__OFFSET += SIZE_T__CHUNK)
     {
+        if (SIMPLE_WEB_SERVER_T__G__Server.client().connected() == false)
+        {
+            break;
+        }
+        if ((uint32_t)((uint32_t)millis() - uint32_t__startMs) > SIMPLE_HTTP_ROOT_MAX_MS)
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.client().stop();
+            break;
+        }
         const size_t SIZE_T__REMAINING = SIZE_T__BYTES - SIZE_T__OFFSET;
         const size_t SIZE_T__COUNT = (SIZE_T__REMAINING < SIZE_T__CHUNK) ? SIZE_T__REMAINING : SIZE_T__CHUNK;
         SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_PANEL_HTML + SIZE_T__OFFSET, SIZE_T__COUNT);
         func__Simple_DrainSerial();
+#if defined(ESP8266) || defined(ESP32)
+        yield();
+#endif
     }
 }
 
@@ -157,28 +202,41 @@ static void func__Simple_HttpTelemetry(void)
         (unsigned long)(BOOL__G__HelloSeen ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
                                            : 0xFFFFFFFFu));
 
+    size_t__used = func__Simple_ClampJsonUsed(0u, (int)size_t__used, SIMPLE_JSON_BUFFER_SIZE);
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
         const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
-        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
+        int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
             SIMPLE_JSON_BUFFER_SIZE - size_t__used,
             "%s%lu", char__ptr_sep, (unsigned long)UINT32_T__G__TlmField[uint8_t__index]);
+        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__written, SIMPLE_JSON_BUFFER_SIZE);
     }
-    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
-        SIMPLE_JSON_BUFFER_SIZE - size_t__used, "],\"pv\":[");
+    {
+        int int__mid = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+            SIMPLE_JSON_BUFFER_SIZE - size_t__used, "],\"pv\":[");
+        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__mid, SIMPLE_JSON_BUFFER_SIZE);
+    }
 
     /* پارامترهای خود برد به همان ترتیبی که پنل انتظار دارد */
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_PARAM_UI_COUNT; uint8_t__index++)
     {
         const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
-        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
+        int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
             SIMPLE_JSON_BUFFER_SIZE - size_t__used,
             "%s%lu", char__ptr_sep,
             (unsigned long)func__Simple_BoardParam(UINT8_T__G__ParamUiIds[uint8_t__index]));
+        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__written, SIMPLE_JSON_BUFFER_SIZE);
     }
-    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
-        SIMPLE_JSON_BUFFER_SIZE - size_t__used, "]}");
-
+    {
+        int int__tail = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+            SIMPLE_JSON_BUFFER_SIZE - size_t__used, "]}");
+        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__tail, SIMPLE_JSON_BUFFER_SIZE);
+    }
+    (void)size_t__used;
+#if defined(ESP8266)
+    SIMPLE_WEB_SERVER_T__G__Server.keepAlive(false);
+#endif
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Connection", "close");
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
@@ -958,11 +1016,23 @@ static void func__Simple_HttpClockSet(void)
    هیچ‌وقت خودبه‌خود صدا زده نمی‌شود: فرمت تنها کاری است که تاریخچه را نابود می‌کند. */
 static void func__Simple_HttpEventFormat(void)
 {
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "text/plain", "admin");
+        return;
+    }
     (void)LittleFS.format();
     BOOL__G__FsOk = LittleFS.begin();
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
+    func__SimpleLog_ResetStateAfterFormat();
     if (BOOL__G__FsOk)
     {
+        /* بازنویسی تنظیمات فعال کاربران، وای‌فای، تم و ساعت روی فلش تازه */
+        func__Simple_AuthSave();
+        func__Simple_WifiSave();
+        func__Simple_ThemeSave();
+        UINT32_T__G__LastSavedTimeSec = 0u;
+        func__Simple_TimeSave();
         func__SimpleLog_Begin();
     }
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
@@ -1104,3 +1174,47 @@ static void func__Simple_HttpEventClear(void)
                                         String("{\"ok\":1,\"removed\":") +
                                         String((unsigned int)uint8_t__removed) + "}");
 }
+
+/* POST /evt/snap : ثبت فوری یک رکورد از وضعیت فعلی بدون شرط و صفر کردن فقط تایمرهای لاگ */
+static void func__Simple_HttpEventSnap(void)
+{
+    bool bool__stored;
+
+    bool__stored = func__SimpleLog_SnapshotNow();
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
+                   "{\"ok\":%u}", (bool__stored != false) ? 1u : 0u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
+/* ==================== بررسی و پاک‌سازی حافظهٔ فلش ==================== */
+
+/* GET /evt/fs : وضعیت ظرفیت فلش و فهرست همهٔ فایل‌های موجود */
+static void func__Simple_HttpEventFsStatus(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)func__SimpleLog_FsStatusJson(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__LogTailBuffer);
+}
+
+/* POST /evt/clean : حذف فقط فایل‌های جامانده از برنامه‌های قبلی (فقط ادمین) */
+static void func__Simple_HttpEventClean(void)
+{
+    uint32_t uint32_t__freed = 0u;
+    uint16_t uint16_t__removed;
+
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
+    uint16_t__removed = func__SimpleLog_CleanForeignFiles(&uint32_t__freed);
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
+                   "{\"ok\":%u,\"removed\":%u,\"freed\":%lu}",
+                   (BOOL__G__FsOk != false) ? 1u : 0u,
+                   (unsigned int)uint16_t__removed,
+                   (unsigned long)uint32_t__freed);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+

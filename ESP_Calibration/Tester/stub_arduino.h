@@ -132,11 +132,22 @@ extern StubSerial Serial;
 #define WIFI_OFF 0
 #define WIFI_AP 1
 #define WIFI_NONE_SLEEP 0
+struct IPAddress {
+    uint8_t octets[4];
+    IPAddress(void) { octets[0] = 0u; octets[1] = 0u; octets[2] = 0u; octets[3] = 0u; }
+    IPAddress(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
+        octets[0] = a; octets[1] = b; octets[2] = c; octets[3] = d;
+    }
+    uint8_t operator[](int idx) const {
+        return ((idx >= 0) && (idx < 4)) ? octets[idx] : 0u;
+    }
+};
 struct StubWiFi {
     int modeValue = WIFI_AP;
     int stationNum = 1;
     float outputPowerDbm = 20.5f;
     bool apActive = true;
+    bool routerDisabled = false;
     void persistent(bool) {}
     void mode(int m) {
         modeValue = m;
@@ -145,6 +156,10 @@ struct StubWiFi {
     void setSleepMode(int) {}
     void setSleep(bool) {}
     void setOutputPower(float dbm) { outputPowerDbm = dbm; }
+    bool softAPConfig(IPAddress, IPAddress gw, IPAddress) {
+        routerDisabled = (gw[0] == 0u) && (gw[1] == 0u) && (gw[2] == 0u) && (gw[3] == 0u);
+        return true;
+    }
     bool softAP(const char *, const char *) { apActive = true; return true; }
     bool softAPdisconnect(bool = false) { apActive = false; return true; }
     int softAPgetStationNum(void) { return stationNum; }
@@ -158,6 +173,12 @@ extern StubWiFi WiFi;
 #define HTTP_GET 1
 #define HTTP_POST 2
 struct StubFile;
+struct StubWebClient {
+    bool isConnected = true;
+    bool connected(void) const { return isConnected; }
+    void setTimeout(unsigned long) {}
+    void stop(void) { isConnected = false; }
+};
 
 struct StubWebServer {
     typedef void (*handler_t)(void);
@@ -168,6 +189,7 @@ struct StubWebServer {
        [FA] همهٔ سرصفحه‌های آخرین پاسخ، تا تست بتواند X-Log-Fs را بپرسد حتی
             وقتی sendHeader بعدی آخری را نوشته باشد. */
     std::map<std::string, std::string> headers;
+    StubWebClient currentClient;
     int lastCode = 0;
     std::string lastType, lastBody, lastHeaderKey, lastHeaderVal;
     int sendCount = 0;
@@ -179,6 +201,8 @@ struct StubWebServer {
     StubWebServer(int = 80) {}
     void begin(void) {}
     void handleClient(void) {}
+    StubWebClient &client(void) { return currentClient; }
+    void keepAlive(bool) {}
     void on(const char *path, handler_t h) { routes[std::make_pair(std::string(path), (int)HTTP_GET)] = h; }
     void on(const char *path, int method, handler_t h) { routes[std::make_pair(std::string(path), method)] = h; }
     void onNotFound(handler_t) {}
@@ -219,6 +243,7 @@ struct StubWebServer {
         std::map<std::pair<std::string, int>, handler_t>::iterator it =
             routes.find(std::make_pair(std::string(path), method));
         if (it == routes.end()) return false;
+        currentClient.isConnected = true;
         lastCode = 0; lastBody.clear(); headers.clear();
         it->second();
         return true;
@@ -340,28 +365,69 @@ struct StubDir {
 };
 typedef StubDir Dir;
 
+struct FSInfo {
+    size_t totalBytes = 0u;
+    size_t usedBytes = 0u;
+    size_t blockSize = 4096u;
+    size_t pageSize = 256u;
+    size_t maxOpenFiles = 5u;
+    size_t maxPathLength = 32u;
+};
+
+struct LittleFSConfig {
+    bool _autoFormat = true;
+    explicit LittleFSConfig(bool autoFormat = true) : _autoFormat(autoFormat) {}
+};
+
 struct StubFS {
     std::map<std::string, std::string> files;
     bool mounted = false;
+    bool autoFormatCfg = true;
+    bool slashlessDirNames = false;
+    size_t totalCapacityBytes = 2097152u;
     /* [EN] true = every write is refused, exactly like a full flash.
        [FA] روشن = هر نوشتن رد می‌شود، درست مثل فلش پر. */
     bool failWrites = false;
+    bool setConfig(const LittleFSConfig &cfg) { autoFormatCfg = cfg._autoFormat; return true; }
     bool begin(bool = false) { mounted = true; return true; }
     bool format(void) { files.clear(); return true; }
-    bool exists(const char *p) { return files.count(p) != 0; }
-    bool remove(const char *p) { return files.erase(p) > 0; }
+    bool info(FSInfo &out) const {
+        if (!mounted) return false;
+        size_t sum = 0u;
+        for (std::map<std::string, std::string>::const_iterator it = files.begin();
+             it != files.end(); ++it) {
+            sum += it->second.size();
+        }
+        out.totalBytes = totalCapacityBytes;
+        out.usedBytes = sum;
+        return true;
+    }
+    bool exists(const char *p) {
+        if (p == NULL) return false;
+        if (files.count(p) != 0) return true;
+        if (p[0] != '/') return files.count(std::string("/") + p) != 0;
+        return false;
+    }
+    bool remove(const char *p) {
+        if (p == NULL) return false;
+        if (files.erase(p) > 0) return true;
+        if (p[0] != '/') return files.erase(std::string("/") + p) > 0;
+        return false;
+    }
     StubDir openDir(const char *) {
         StubDir d;
         for (std::map<std::string, std::string>::const_iterator it = files.begin();
              it != files.end(); ++it) {
-            d.names.push_back(it->first);
+            std::string nm = it->first;
+            if (slashlessDirNames && !nm.empty() && nm[0] == '/') nm.erase(0, 1);
+            d.names.push_back(nm);
             d.sizes.push_back(it->second.size());
         }
         return d;
     }
     StubFile open(const char *p, const char *mode) {
         StubFile f;
-        std::string key(p);
+        std::string key = (p && p[0] != '/') ? (std::string("/") + p) : std::string(p ? p : "");
         if (mode && mode[0] == 'r') {
             if (!files.count(key)) return f;
         } else if (mode && mode[0] == 'w') {

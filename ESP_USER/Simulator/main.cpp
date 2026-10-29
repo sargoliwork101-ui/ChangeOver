@@ -74,6 +74,42 @@ bool SimLittleFS::begin(bool bool__formatOnFail)
 
 bool SimLittleFS::format(void)
 {
+    DIR *dir__handle = opendir(STD_STRING_T__G__FsRoot.c_str());
+    if (dir__handle != NULL)
+    {
+        struct dirent *entry__item;
+        while ((entry__item = readdir(dir__handle)) != NULL)
+        {
+            if (entry__item->d_name[0] == '.') { continue; }
+            std::string string__victim = STD_STRING_T__G__FsRoot + "/" + std::string(entry__item->d_name);
+            (void)::remove(string__victim.c_str());
+        }
+        closedir(dir__handle);
+    }
+    return true;
+}
+
+bool SimLittleFS::info(FSInfo &fsInfo__out)
+{
+    size_t size_t__used = 0u;
+    DIR *dir__handle = opendir(STD_STRING_T__G__FsRoot.c_str());
+    if (dir__handle != NULL)
+    {
+        struct dirent *entry__item;
+        while ((entry__item = readdir(dir__handle)) != NULL)
+        {
+            if (entry__item->d_name[0] == '.') { continue; }
+            struct stat struct_stat__st;
+            std::string string__p = STD_STRING_T__G__FsRoot + "/" + std::string(entry__item->d_name);
+            if (stat(string__p.c_str(), &struct_stat__st) == 0)
+            {
+                size_t__used += (size_t)struct_stat__st.st_size;
+            }
+        }
+        closedir(dir__handle);
+    }
+    fsInfo__out.totalBytes = 2097152u;
+    fsInfo__out.usedBytes = size_t__used;
     return true;
 }
 
@@ -116,8 +152,15 @@ SimDir SimLittleFS::openDir(const char *char__ptr_path)
             {
                 continue;
             }
-            /* مسیر داخل فلش با «/» شروع می‌شود، اسم واقعی فایل در پوشه نه */
-            dir__result.names.push_back("/" + std::string(entry__item->d_name));
+            struct stat struct_stat__st;
+            std::string string__p = string__full + "/" + std::string(entry__item->d_name);
+            size_t size_t__sz = (stat(string__p.c_str(), &struct_stat__st) == 0)
+                ? (size_t)struct_stat__st.st_size : 0u;
+            std::string string__nm = slashlessDirNames
+                ? std::string(entry__item->d_name)
+                : ("/" + std::string(entry__item->d_name));
+            dir__result.names.push_back(string__nm);
+            dir__result.sizes.push_back(size_t__sz);
         }
     }
     closedir(dir__handle);

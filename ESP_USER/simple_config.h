@@ -186,7 +186,12 @@
 #define SIMPLE_LOG_BAND_OFF_MV          21400u   /* ...و خروج از مرز فقط از بالای این ولتاژ */
 #define SIMPLE_LOG_VSTEP_MIN_MS         60000u   /* حداکثر یک ردیف گام ولتاژ در دقیقه */
 #define SIMPLE_LOG_VSTEP_MV             200u     /* پلهٔ ولتاژ پک که تغییر حساب می‌شود */
-#define SIMPLE_LOG_HEARTBEAT_MS         21600000u /* هر ۶ ساعت یک ردیف «زنده‌ام» */
+#define SIMPLE_LOG_HEARTBEAT_MS         3600000u  /* هر ۱ ساعت یک ردیف «زنده‌ام» */
+#define SIMPLE_LOG_DRAIN_RETRY_MS       30000u    /* فاصلهٔ ۳۰ ثانیه بین تلاش‌های تخلیهٔ رم */
+#define SIMPLE_HTTP_SEND_TIMEOUT_MS     1000u     /* سقف انتظار ارسال سوکت ۱ ثانیه */
+#define SIMPLE_HTTP_ROOT_MAX_MS         15000u    /* سقف ۱۵ ثانیه برای ارسال صفحهٔ اصلی */
+#define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
+#define SIMPLE_DIAG_FILE                "/diag.json"
 #define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u   /* از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
 #define SIMPLE_LOG_MIN_INTERVAL_MS      2000u    /* ادغام چند تغییر پشت‌سرهم در یک ردیف */
 /* [EN] A queued mains cut/return is written after this short coalescing
@@ -205,7 +210,7 @@
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
     "# batt_pct: درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵، کارخانه ۲۱۰۰۰..۲۹۰۰۰ میلی‌ولت) / battery percent from the discharge map\n" \
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
-    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat\n" \
+    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 
 /* ==================== پارامترهای خود برد ==================== */

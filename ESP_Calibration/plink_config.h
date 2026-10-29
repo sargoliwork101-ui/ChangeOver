@@ -459,7 +459,10 @@
         تاریخچه خالی دیده می‌شد (دستور کاربر ۲۰۲۶-۱۰-۲۷: «روشن است و باز هم
         چیزی نمی‌نویسد»). ۱۰ دقیقه = ۱۴۴ ردیف در روز، داخل سقف ۴۰۰ ردیف با جا
         برای رویدادهای واقعی. */
-#define ESP_LOG_HEARTBEAT_MS         600000u  /* [EN] 10 min / [FA] ۱۰ دقیقه */
+#define ESP_LOG_HEARTBEAT_MS         3600000u /* [EN] 1 h / [FA] ۱ ساعت */
+#define ESP_LOG_DRAIN_RETRY_MS       30000u   /* [EN] 30 s cooldown after a refused flash drain / [FA] فاصلهٔ ۳۰ ثانیه بین تلاش‌های تخلیهٔ رم */
+#define ESP_HTTP_SEND_TIMEOUT_MS     1000u    /* [EN] 1 s socket write timeout / [FA] سقف انتظار ارسال سوکت ۱ ثانیه */
+#define ESP_HTTP_ROOT_MAX_MS         15000u   /* [EN] 15 s ceiling for root page stream / [FA] سقف ۱۵ ثانیه برای ارسال صفحهٔ اصلی */
 #define ESP_LOG_TOTAL_BUDGET_BYTES     200000u   /* [EN] old days are dropped past this / [FA] از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
 #define ESP_LOG_MIN_INTERVAL_MS     2000u    /* [EN] merges a burst into one row / [FA] ادغام چند تغییر پشت‌سرهم */
 /* [EN] A queued mains cut/return is written after this short coalescing
@@ -488,7 +491,7 @@
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
     "# batt_pct: battery percent from the discharge map (param 74/75, factory 21,000..29,000 mV) / درصد باتری از نگاشت دشارژ\n" \
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
-    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full 5=heartbeat\n" \
+    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full 5=heartbeat 6=manual\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 
 /* [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of
@@ -505,7 +508,11 @@
    [FA] نسخهٔ ۱٫۱۱۳: کارت تاریخچه حالا می‌گوید پاک‌کردن واقعاً چه چیزی را برد و
         بروزرسانی فرم‌ور را نام می‌برد و حدود ۱ کیلوبایت HTML گران‌تر شد -
         عمداً بالا رفت. */
-#define ESP_PANEL_HTML_MAX_BYTES    483328u
+/* [EN] v1.114: adding the ESP flash memory inspector/cleaner UI and fetch
+        timeout guards added ~3 KB of HTML/JS - stepped +4 KiB on purpose.
+   [FA] افزودن پنجرهٔ بررسی و پاک‌سازی حافظهٔ فلش و نگهبان مهلت درخواست‌ها حدود
+        سه کیلوبایت به سند افزود - سقف آگاهانه چهار کیلوبایت پله خورد. */
+#define ESP_PANEL_HTML_MAX_BYTES    487424u
 
 /* ==================== Parser States ==================== */
 typedef enum

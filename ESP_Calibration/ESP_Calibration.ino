@@ -131,6 +131,9 @@ void setup(void)
 #else
     WiFi.setSleep(false);
 #endif
+    (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
+                            IPAddress(0, 0, 0, 0),
+                            IPAddress(255, 255, 255, 0));
     (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
 #if defined(ESP8266)
     WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
@@ -147,6 +150,7 @@ void setup(void)
             شدن فقط یعنی «ردیف‌ها در رم منتظرند» و فرمت یک دکمهٔ صریح در پنل
             است. */
 #if defined(ESP8266)
+    (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();
 #else
     BOOL__G__FsOk = LittleFS.begin(false);
@@ -182,7 +186,10 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Esp_HttpEventDays);
     ESP_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Esp_HttpEventDownload);
     ESP_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Esp_HttpEventClear);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/snap", HTTP_POST, func__Esp_HttpEventSnap);
     ESP_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Esp_HttpEventFormat);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Esp_HttpEventFsStatus);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Esp_HttpEventClean);
     ESP_WEB_SERVER_T__G__Server.begin();
 
     /* [EN] v1.93: restore the clock anchor and the day list for the history.

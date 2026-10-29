@@ -88,6 +88,8 @@ inline void delay(unsigned long unsigned_long__ms)
     usleep((useconds_t)(unsigned_long__ms * 1000u));
 }
 
+inline void yield(void) {}
+
 /* ==================== String ==================== */
 class String
 {
@@ -436,6 +438,7 @@ class SimDir
 {
 public:
     std::vector<std::string> names;
+    std::vector<size_t> sizes;
     size_t pos = 0;
     bool next(void)
     {
@@ -444,17 +447,41 @@ public:
         return true;
     }
     String fileName(void) const { return String(names[pos - 1u].c_str()); }
+    size_t fileSize(void) const
+    {
+        return ((pos - 1u) < sizes.size()) ? sizes[pos - 1u] : 0u;
+    }
 };
 
 /* [EN] the real LittleFS calls this type "Dir"; the program uses that name.
    [FA] نوع پوشه در LittleFS واقعی «Dir» نام دارد؛ برنامه همان نام را به کار می‌برد. */
 typedef SimDir Dir;
 
+struct FSInfo
+{
+    size_t totalBytes = 2097152u;
+    size_t usedBytes = 0u;
+    size_t blockSize = 4096u;
+    size_t pageSize = 256u;
+    size_t maxOpenFiles = 5u;
+    size_t maxPathLength = 32u;
+};
+
+struct LittleFSConfig
+{
+    bool _autoFormat = true;
+    explicit LittleFSConfig(bool bool__autoFormat = true) : _autoFormat(bool__autoFormat) {}
+};
+
 class SimLittleFS
 {
 public:
+    bool slashlessDirNames = false;
+    bool autoFormatCfg = true;
+    bool setConfig(const LittleFSConfig &cfg__value) { autoFormatCfg = cfg__value._autoFormat; return true; }
     bool begin(bool bool__formatOnFail = false);
     bool format(void);
+    bool info(FSInfo &fsInfo__out);
     File open(const char *char__ptr_path, const char *char__ptr_mode);
     bool remove(const char *char__ptr_path);
     bool exists(const char *char__ptr_path);
@@ -463,10 +490,34 @@ public:
 
 extern SimLittleFS LittleFS;
 
+#ifndef SIM_IPADDRESS_DEFINED
+#define SIM_IPADDRESS_DEFINED
+class IPAddress
+{
+public:
+    IPAddress() { octets[0] = octets[1] = octets[2] = octets[3] = 0u; }
+    IPAddress(uint8_t uint8_t__a, uint8_t uint8_t__b, uint8_t uint8_t__c, uint8_t uint8_t__d)
+    {
+        octets[0] = uint8_t__a;
+        octets[1] = uint8_t__b;
+        octets[2] = uint8_t__c;
+        octets[3] = uint8_t__d;
+    }
+    uint8_t operator[](int int__index) const
+    {
+        return ((int__index >= 0) && (int__index < 4)) ? octets[int__index] : 0u;
+    }
+
+private:
+    uint8_t octets[4];
+};
+#endif
+
 /* ==================== WiFi: فقط گزارش، بدون شبکه ==================== */
 class SimWiFi
 {
 public:
+    bool routerDisabled = false;
     void persistent(bool bool__enabled) { (void)bool__enabled; }
     void mode(int int__value)
     {
@@ -479,6 +530,14 @@ public:
     void setSleep(bool bool__enabled) { (void)bool__enabled; }
     void setSleepMode(int int__value) { (void)int__value; }
     void setOutputPower(float float__dbm) { outputPowerDbmValue = float__dbm; }
+    bool softAPConfig(IPAddress ip_address__local, IPAddress ip_address__gw, IPAddress ip_address__mask)
+    {
+        (void)ip_address__local;
+        (void)ip_address__mask;
+        routerDisabled = (ip_address__gw[0] == 0u) && (ip_address__gw[1] == 0u) &&
+                         (ip_address__gw[2] == 0u) && (ip_address__gw[3] == 0u);
+        return true;
+    }
     bool softAP(const char *char__ptr_ssid, const char *char__ptr_password)
     {
         ssidText = (char__ptr_ssid != NULL) ? char__ptr_ssid : "";

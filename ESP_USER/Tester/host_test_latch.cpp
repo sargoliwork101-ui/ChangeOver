@@ -41,6 +41,7 @@ typedef ESP8266WebServer esp_web_server_t;
 #include <sstream>
 #include <string>
 #include <dirent.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 /* ==================== نمونه‌های سراسری استاب‌ها ==================== */
@@ -56,7 +57,55 @@ static std::string func__T_FsPath(const char *char__ptr_path)
     return std::string("/tmp/changeover_simple_test_") + std::string(char__ptr_name);
 }
 bool SimLittleFS::begin(bool bool__formatOnFail) { (void)bool__formatOnFail; return true; }
-bool SimLittleFS::format(void) { return true; }
+bool SimLittleFS::format(void)
+{
+    static const std::string PREFIX = "changeover_simple_test_";
+    DIR *dir__handle = ::opendir("/tmp");
+    if (dir__handle != NULL)
+    {
+        struct dirent *entry__item;
+        while ((entry__item = ::readdir(dir__handle)) != NULL)
+        {
+            std::string string__name(entry__item->d_name);
+            if (string__name.compare(0u, PREFIX.size(), PREFIX) != 0)
+            {
+                continue;
+            }
+            std::string string__victim = std::string("/tmp/") + string__name;
+            (void)::unlink(string__victim.c_str());
+        }
+        ::closedir(dir__handle);
+    }
+    return true;
+}
+bool SimLittleFS::info(FSInfo &fsInfo__out)
+{
+    static const std::string PREFIX = "changeover_simple_test_";
+    size_t size_t__used = 0u;
+    DIR *dir__handle = ::opendir("/tmp");
+    if (dir__handle != NULL)
+    {
+        struct dirent *entry__item;
+        while ((entry__item = ::readdir(dir__handle)) != NULL)
+        {
+            std::string string__name(entry__item->d_name);
+            if (string__name.compare(0u, PREFIX.size(), PREFIX) != 0)
+            {
+                continue;
+            }
+            struct stat struct_stat__st;
+            std::string string__p = std::string("/tmp/") + string__name;
+            if (::stat(string__p.c_str(), &struct_stat__st) == 0)
+            {
+                size_t__used += (size_t)struct_stat__st.st_size;
+            }
+        }
+        ::closedir(dir__handle);
+    }
+    fsInfo__out.totalBytes = 2097152u;
+    fsInfo__out.usedBytes = size_t__used;
+    return true;
+}
 File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
 {
     return File(func__T_FsPath(char__ptr_path), char__ptr_mode);
@@ -93,8 +142,14 @@ SimDir SimLittleFS::openDir(const char *char__ptr_path)
             {
                 continue;
             }
-            /* مسیر داخل فلش با «/» شروع می‌شود، اسم واقعی فایل در /tmp نه */
-            dir__result.names.push_back("/" + string__name.substr(PREFIX.size()));
+            struct stat struct_stat__st;
+            std::string string__full = std::string("/tmp/") + string__name;
+            size_t size_t__sz = (::stat(string__full.c_str(), &struct_stat__st) == 0)
+                ? (size_t)struct_stat__st.st_size : 0u;
+            std::string string__base = string__name.substr(PREFIX.size());
+            /* مسیر داخل فلش با «/» شروع می‌شود، مگر در تست نام بدون خط مورب */
+            dir__result.names.push_back(slashlessDirNames ? string__base : ("/" + string__base));
+            dir__result.sizes.push_back(size_t__sz);
         }
     }
     ::closedir(dir__handle);
@@ -1250,7 +1305,13 @@ static void func__T_TestStateHistoryLog(void)
         func__T_Check(UINT8_T__G__LogRamCount == 1u,
                       "ردیفِ ردشده در رم منتظر می‌ماند");
 
-        /* فلش سالم شد: Tick همان ردیف را به فایل روز خودش می‌برد */
+        /* قبل از رسیدن فاصلهٔ ۳۰ ثانیه‌ای، Tick به فلش نمی‌کوبد */
+        func__SimpleLog_Tick();
+        func__T_Check(UINT8_T__G__LogRamCount == 1u,
+                      "پیش از گذشتن مهلت خنک‌شدن ۳۰ ثانیه‌ای، حلقهٔ اصلی به فلش نمی‌کوبد");
+
+        /* پس از گذشتن فاصلهٔ مجاز، فلش سالم شده و Tick ردیف را برمی‌گرداند */
+        UINT32_T__G__LogLastDrainMs = (uint32_t)millis() - SIMPLE_LOG_DRAIN_RETRY_MS - 10u;
         func__SimpleLog_Tick();
         func__T_Check(UINT8_T__G__LogRamCount == 0u,
                       "با سالم شدن فلش، ردیف منتظر به فایل روز برگردانده می‌شود");
@@ -1576,7 +1637,93 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
     func__SimpleLog_Begin();
     func__T_Check(BOOL__G__LogUpdatePending == false,
                   "پنلِ تازه‌فلش‌شده بی‌مهر قبلی، بروزرسانی حساب نمی‌شود");
+
+    /* ۵) زدن دکمهٔ «به‌روزرسانی» (POST /evt/snap): بدون هیچ شرطی یک رکورد ثبت
+          می‌کند (حتی در پنجرهٔ ۲ ثانیه و حتی در سقف پر بودن روز) و فقط تایمرهای
+          مربوط به لاگ را صفر می‌کند. */
     (void)func__SimpleLog_Clear();
+    func__Simple_TimeSet(1792756800u, false);
+    UINT16_T__G__LogRowsToday = SIMPLE_LOG_MAX_ROWS_PER_DAY;
+    BOOL__G__LogDayFull = true;
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+    BOOL__G__LogLastRowValid = true;
+    UINT32_T__G__LogLastStepMs = (uint32_t)millis();
+    BOOL__G__LogLastStepValid = true;
+    UINT32_T__G__LogMainsQueuedMs = (uint32_t)millis();
+    BOOL__G__LogMainsQueuedValid = true;
+    UINT32_T__G__LastDiagReqMs = 5151u;
+    UINT32_T__G__WifiBatteryIdleStartMs = 8282u;
+
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventSnap();
+    func__T_Check(BOOL__G__LogLastStepValid == false && UINT32_T__G__LogLastStepMs == 0u &&
+                  BOOL__G__LogMainsQueuedValid == false && UINT32_T__G__LogMainsQueuedMs == 0u,
+                  "زدن به‌روزرسانی تایمرهای مربوط به لاگ را صفر می‌کند");
+    func__T_Check(UINT32_T__G__LastDiagReqMs == 5151u &&
+                  UINT32_T__G__WifiBatteryIdleStartMs == 8282u,
+                  "زدن به‌روزرسانی به تایمرهای غیرِ لاگ دست نمی‌زند");
+
+    /* بار دوم بلافاصله (زیر ۲ ثانیه) هم باید رکورد دوم را ثبت کند */
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventSnap();
+    {
+        char char__tail[1024];
+        size_t size_t__hits = 0u;
+        size_t size_t__pos = 0u;
+
+        (void)func__SimpleLog_Tail(char__tail, sizeof char__tail, SIMPLE_LOG_DAY_AUTO, 30u);
+        std::string string__tail(char__tail);
+        while ((size_t__pos = string__tail.find(",0,6,", size_t__pos)) != std::string::npos)
+        {
+            size_t__hits++;
+            size_t__pos += 5u;
+        }
+        func__T_Check(size_t__hits == 2u,
+                      "دو بار زدن پیاپی دکمهٔ به‌روزرسانی دو رکورد دستی با note=6 ثبت می‌کند");
+    }
+    (void)func__SimpleLog_Clear();
+
+    /* بررسی ضربان ۱ ساعته، نام بدون اسلش ESP8266، پاک‌سازی فایل‌های جامانده و فرمت امن */
+    {
+        func__T_Check(SIMPLE_LOG_HEARTBEAT_MS == 3600000u,
+                      "ضربان دوره‌ای بدون تغییر دقیقاً ۱ ساعت (۳٬۶۰۰٬۰۰۰ میلی‌ثانیه) است");
+
+        LittleFS.slashlessDirNames = true;
+        BOOL__G__FsOk = true;
+        BOOL__G__LogScanValid = false;
+        {
+            File file__day = LittleFS.open("/evt-20261028.csv", "w");
+            if (file__day) { file__day.print("1792700000,1,1,0\n"); file__day.close(); }
+            File file__old = LittleFS.open("/leftover_old_fw.dat", "w");
+            if (file__old) { file__old.print("OLD_DATA_123456"); file__old.close(); }
+        }
+        func__T_Check(func__SimpleLog_ScanDays(true) >= 1u,
+                      "اسکن روزها نام بدون خط مورب ابتدایی در ESP8266 واقعی را می‌شناسد");
+
+        UINT8_T__G__CurrentRole = 1u; /* admin */
+        (void)snprintf(CHAR__G__CurrentUser, sizeof(CHAR__G__CurrentUser), "%s", "admin");
+        SIMPLE_WEB_SERVER_T__G__Server.simClear();
+        func__Simple_HttpEventFsStatus();
+        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("leftover_old_fw.dat") != std::string::npos &&
+                      SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"own\":0") != std::string::npos,
+                      "مسیر /evt/fs فایل جامانده از برنامه‌های قبلی را با own=0 نشان می‌دهد");
+
+        SIMPLE_WEB_SERVER_T__G__Server.simClear();
+        func__Simple_HttpEventClean();
+        func__T_Check(!LittleFS.exists("/leftover_old_fw.dat") && LittleFS.exists("/evt-20261028.csv"),
+                      "مسیر /evt/clean فقط فایل جاماندهٔ قدیمی را حذف می‌کند و لاگ برنامهٔ فعلی را نگه می‌دارد");
+
+        SIMPLE_WEB_SERVER_T__G__Server.simClear();
+        func__Simple_HttpEventFormat();
+        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody() == "ok" &&
+                      !LittleFS.exists("/evt-20261028.csv") &&
+                      LittleFS.exists(SIMPLE_USERS_FILE) &&
+                      LittleFS.exists(SIMPLE_WIFI_FILE),
+                      "فرمت کامل حافظهٔ ESP همهٔ لاگ‌ها و فایل‌های قدیمی را پاک و کاربران و وای‌فای را بازنویسی می‌کند");
+
+        LittleFS.slashlessDirNames = false;
+        (void)func__SimpleLog_Clear();
+    }
 }
 
 int main(void)

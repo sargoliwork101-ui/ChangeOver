@@ -380,9 +380,9 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       EVT_CHG_FAULT=16, EVT_CHG_FLAGS=32, EVT_CHG_BAND=64, EVT_CHG_LINK=128,
       EVT_CHG_MODE=256, EVT_CHG_DEAD=512, EVT_CHG_VSTEP=1024;
   var EVT_NOTE_NONE=0, EVT_NOTE_LOW_STOP=1, EVT_NOTE_LINK_LOST=2,
-      EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5;
+      EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5, EVT_NOTE_MANUAL=6;
   var EVT_MIN_MS=2000, EVT_VSTEP_MV=200, EVT_VSTEP_MIN_MS=60000,
-      EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=21600000, EVT_MAX_ROWS=2000;
+      EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=3600000, EVT_MAX_ROWS=2000;
   var evtRows=[], evtPendingMask=0, evtPendingNote=0, evtLastRowMs=0, evtLastRowOk=false,
       evtLastStepMs=0, evtLastStepOk=false, evtHasPrev=false, evtPrev=null,
       evtPrevV24=0, evtLinkDown=false, evtLastFrameMs=0, evtSeen=false,
@@ -604,8 +604,40 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       return jsonResponse(evtCsvText(dlRows), 200);
     }
     if (path === 'evt/clr') {
+      var rmDays = evtDaysList().length;
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
+      return jsonResponse('{"ok":1,"removed":' + rmDays + '}', 200);
+    }
+    if (path === 'evt/fs') {
+      var daysNow = evtDaysList();
+      var fsFiles = daysNow.map(function (d) { return { name: 'evt-' + d + '.csv', size: 1024, own: 1 }; });
+      fsFiles.push({ name: 'users.json', size: 164, own: 1 });
+      fsFiles.push({ name: 'wifi.json', size: 128, own: 1 });
+      var usedSum = fsFiles.reduce(function (s, x) { return s + x.size; }, 0);
+      return jsonResponse(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used: usedSum, files: fsFiles, fileBytes: usedSum, more: 0 }), 200);
+    }
+    if (path === 'evt/clean') {
+      if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
+      return jsonResponse('{"ok":1,"removed":0,"freed":0}', 200);
+    }
+    if (path === 'evt/format') {
+      if (mock.role !== 1) { return jsonResponse('admin', 403); }
+      evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
+      evtPersist();
+      return jsonResponse('ok', 200);
+    }
+    if (path === 'evt/snap') {
+      if (!evtLastT) {
+        var snapBuilt = buildTelemetry();
+        evtLastFlags = snapBuilt.flags; evtLastT = snapBuilt.t;
+      }
+      var snapMask = evtPendingMask;
+      evtLastRowMs = 0; evtLastRowOk = false;
+      evtLastStepMs = 0; evtLastStepOk = false;
+      evtSessionMs = Date.now();
+      evtPendingMask = 0; evtPendingNote = EVT_NOTE_NONE;
+      evtWrite(snapMask, EVT_NOTE_MANUAL, evtLastFlags, evtLastFl2, evtLastT);
       return jsonResponse('{"ok":1}', 200);
     }
     if (path === 'theme') { return jsonResponse('{"theme":' + mock.theme + '}'); }

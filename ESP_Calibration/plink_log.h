@@ -152,11 +152,9 @@ static bool     BOOL__G__LogBootRowPending = true;
         نوشتن‌های شکست‌خورده از آخرین نوشتن سالم. همین است که به صفحه اجازه
         می‌دهد «چیزی نشده» را از «نتوانستم بنویسم» جدا کند. */
 static uint8_t  UINT8_T__G__LogWriteFault = 0u;
-/* [EN] Rows the RAM ring had to throw away because a newer one arrived while the
-        flash was still down. Reported to the page (X-Log-Lost); never hidden.
-   [FA] ردیف‌هایی که حلقهٔ رم ناچار شد دور بریزد، چون ردیف تازه‌تری رسید و فلش
-        هنوز خراب بود. به صفحه گزارش می‌شود و هرگز پنهان نمی‌ماند. */
 static uint16_t UINT16_T__G__LogDroppedRows = 0u;
+static bool     BOOL__G__LogDrainWait = false;
+static uint32_t UINT32_T__G__LogLastDrainMs = 0u;
 
 /* ==================== Previous snapshot / وضعیت قبلی ==================== */
 static bool     BOOL__G__LogHasPrev = false;
@@ -258,6 +256,7 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_NOTE_LINK_BACK 3u
 #define ESP_LOG_NOTE_DAY_FULL  4u   /* [EN] the last row of a full day / [FA] آخرین ردیف یک روزِ پر */
 #define ESP_LOG_NOTE_HEARTBEAT 5u   /* [EN] nothing changed, the panel is alive / [FA] چیزی عوض نشد، پنل زنده است */
+#define ESP_LOG_NOTE_MANUAL    6u   /* [EN] manual refresh snapshot / [FA] ثبت فوری با زدن دکمهٔ به‌روزرسانی */
 
 #define ESP_LOG_PATH_MAX       24u
 /* [EN] One CSV row: 22 numbers, the widest possible being 22 x 10 digits plus
@@ -981,7 +980,9 @@ static bool     BOOL__G__LogScanValid = false;
 static bool func__EspLog_DayFromName(const char *char__ptr_name,
                                      uint32_t *uint32_t__ptr_day)
 {
-    uint8_t uint8_t__index = 0u;
+    const char *char__ptr_prefix = &ESP_LOG_FILE_PREFIX[1];
+    uint8_t uint8_t__nameIndex = 0u;
+    uint8_t uint8_t__prefixIndex = 0u;
     uint8_t uint8_t__digits = 0u;
     uint32_t uint32_t__day = 0u;
 
@@ -989,38 +990,81 @@ static bool func__EspLog_DayFromName(const char *char__ptr_name,
     {
         return false;
     }
-    while ((ESP_LOG_FILE_PREFIX[uint8_t__index] != '\0') &&
-           (char__ptr_name[uint8_t__index] == ESP_LOG_FILE_PREFIX[uint8_t__index]))
+    if (char__ptr_name[0] == '/')
     {
-        uint8_t__index++;
+        uint8_t__nameIndex = 1u;
     }
-    if (ESP_LOG_FILE_PREFIX[uint8_t__index] != '\0')
+    while ((char__ptr_prefix[uint8_t__prefixIndex] != '\0') &&
+           (char__ptr_name[uint8_t__nameIndex] == char__ptr_prefix[uint8_t__prefixIndex]))
+    {
+        uint8_t__nameIndex++;
+        uint8_t__prefixIndex++;
+    }
+    if (char__ptr_prefix[uint8_t__prefixIndex] != '\0')
     {
         return false;
     }
     while ((uint8_t__digits < 8u) &&
-           (char__ptr_name[uint8_t__index] >= '0') &&
-           (char__ptr_name[uint8_t__index] <= '9'))
+           (char__ptr_name[uint8_t__nameIndex] >= '0') &&
+           (char__ptr_name[uint8_t__nameIndex] <= '9'))
     {
         uint32_t__day = (uint32_t__day * 10u) +
-                        (uint32_t)(char__ptr_name[uint8_t__index] - '0');
+                        (uint32_t)(char__ptr_name[uint8_t__nameIndex] - '0');
         uint8_t__digits++;
-        uint8_t__index++;
+        uint8_t__nameIndex++;
     }
     if (uint8_t__digits != 8u)
     {
         return false;
     }
-    if ((char__ptr_name[uint8_t__index] != '.') ||
-        (char__ptr_name[uint8_t__index + 1u] != 'c') ||
-        (char__ptr_name[uint8_t__index + 2u] != 's') ||
-        (char__ptr_name[uint8_t__index + 3u] != 'v') ||
-        (char__ptr_name[uint8_t__index + 4u] != '\0'))
+    if ((char__ptr_name[uint8_t__nameIndex] != '.') ||
+        (char__ptr_name[uint8_t__nameIndex + 1u] != 'c') ||
+        (char__ptr_name[uint8_t__nameIndex + 2u] != 's') ||
+        (char__ptr_name[uint8_t__nameIndex + 3u] != 'v') ||
+        (char__ptr_name[uint8_t__nameIndex + 4u] != '\0'))
     {
         return false;
     }
     *uint32_t__ptr_day = uint32_t__day;
     return true;
+}
+
+/* ==================== Day scan helper / کمک‌تابع ثبت روز ==================== */
+
+/**
+ * @brief  [EN] Insert one discovered day file into the sorted cache.
+ *         [FA] افزودن یک فایل روز به حافظهٔ مرتب‌شدهٔ روزها.
+ * @‎param  const char *char__ptr_name [EN] file name / [FA]‎ نام فایل
+ * @‎param  uint32_t uint32_t__size [EN] file size in bytes / [FA]‎ حجم فایل به بایت
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_RecordDayEntry(const char *char__ptr_name,
+                                        uint32_t uint32_t__size)
+{
+    uint32_t uint32_t__day = 0u;
+    uint8_t uint8_t__slot;
+
+    if (func__EspLog_DayFromName(char__ptr_name, &uint32_t__day) == false)
+    {
+        return;
+    }
+    if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
+    {
+        return;
+    }
+    uint8_t__slot = UINT8_T__G__LogIndexCount;
+    while ((uint8_t__slot > 0u) &&
+           (UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] > uint32_t__day))
+    {
+        UINT32_T__G__LogIndexDay[uint8_t__slot] =
+            UINT32_T__G__LogIndexDay[uint8_t__slot - 1u];
+        UINT32_T__G__LogIndexBytes[uint8_t__slot] =
+            UINT32_T__G__LogIndexBytes[uint8_t__slot - 1u];
+        uint8_t__slot--;
+    }
+    UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__day;
+    UINT32_T__G__LogIndexBytes[uint8_t__slot] = uint32_t__size;
+    UINT8_T__G__LogIndexCount++;
 }
 
 /**
@@ -1032,10 +1076,10 @@ static bool func__EspLog_DayFromName(const char *char__ptr_name,
  *         [FA] پر کردن حافظهٔ روزها با یک بار خواندن پوشه، قدیمی‌تر اول. دو
  *              خانه بیش از سقف نگه‌داری خوانده می‌شود تا پاک‌سازی همیشه
  *              قدیمی‌ترین روز را ببیند و بتواند حذفش کند. صفحه‌ای که داخل
- *              ESP_LOG_SCAN_MIN_MS دوباره بپرسد، پاسخ را از حافظه می‌گیرد و
- *              به فلش دست نمی‌زند.
- * @‎param  bool bool__force [EN] true = read the flash now / [FA] درست = همین حالا از فلش بخوان
- * @return [EN] uint8_t number of days found / [FA]‎ تعداد روزهای پیداشده
+ *              پنجرهٔ کش دوباره بپرسد، پاسخ را از حافظه می‌گیرد و به فلش دست
+ *              نمی زند.
+ * @‎param  bool bool__force [EN] true = read the flash now / [FA]‎ درست = همین حالا از فلش بخوان
+ * @‎return [EN] uint8_t number of days found / [FA]‎ تعداد روزهای پیداشده
  */
 static uint8_t func__EspLog_ScanDays(bool bool__force)
 {
@@ -1057,39 +1101,41 @@ static uint8_t func__EspLog_ScanDays(bool bool__force)
     BOOL__G__LogScanValid = true;
     UINT8_T__G__LogIndexCount = 0u;
 
+#if defined(ESP32)
+    {
+        File file__root = LittleFS.open("/", "r");
+        if (file__root)
+        {
+            File file__entry = file__root.openNextFile();
+            while (file__entry)
+            {
+                func__EspLog_RecordDayEntry(file__entry.name(),
+                                            (uint32_t)file__entry.size());
+                file__entry.close();
+                if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
+                {
+                    break;
+                }
+                file__entry = file__root.openNextFile();
+            }
+            file__root.close();
+        }
+    }
+#else
     {
         Dir dir__root = LittleFS.openDir("/");
 
         while (dir__root.next())
         {
-            uint32_t uint32_t__day = 0u;
-            uint32_t uint32_t__size = (uint32_t)dir__root.fileSize();
-            uint8_t uint8_t__slot;
-
-            if (func__EspLog_DayFromName(dir__root.fileName().c_str(),
-                                         &uint32_t__day) == false)
-            {
-                continue;
-            }
+            func__EspLog_RecordDayEntry(dir__root.fileName().c_str(),
+                                        (uint32_t)dir__root.fileSize());
             if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
             {
-                break;   /* the trim below removes the oldest of what is here */
+                break;
             }
-            uint8_t__slot = UINT8_T__G__LogIndexCount;
-            while ((uint8_t__slot > 0u) &&
-                   (UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] > uint32_t__day))
-            {
-                UINT32_T__G__LogIndexDay[uint8_t__slot] =
-                    UINT32_T__G__LogIndexDay[uint8_t__slot - 1u];
-                UINT32_T__G__LogIndexBytes[uint8_t__slot] =
-                    UINT32_T__G__LogIndexBytes[uint8_t__slot - 1u];
-                uint8_t__slot--;
-            }
-            UINT32_T__G__LogIndexDay[uint8_t__slot] = uint32_t__day;
-            UINT32_T__G__LogIndexBytes[uint8_t__slot] = uint32_t__size;
-            UINT8_T__G__LogIndexCount++;
         }
     }
+#endif
     return UINT8_T__G__LogIndexCount;
 }
 
@@ -1397,6 +1443,8 @@ static void func__EspLog_DrainRam(void)
         if (func__EspLog_AppendRow(uint32_t__dayCode,
                                    CHAR__G__LogRamRow[uint8_t__oldest]) == false)
         {
+            BOOL__G__LogDrainWait = true;
+            UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
             return;   /* the flash is still not taking rows: keep them */
         }
         /* [EN] a drained row takes a slot in today's file like any other, so
@@ -1412,6 +1460,8 @@ static void func__EspLog_DrainRam(void)
         }
         UINT8_T__G__LogRamCount--;
     }
+    BOOL__G__LogDrainWait = false;
+    UINT8_T__G__LogWriteFault = 0u;
 }
 
 /* ==================== Row write / نوشتن ردیف ==================== */
@@ -1577,10 +1627,13 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     {
         if (bool__stored != false)
         {
+            BOOL__G__LogDrainWait = false;
             UINT8_T__G__LogWriteFault = 0u;   /* the flash works again */
         }
         else
         {
+            BOOL__G__LogDrainWait = true;
+            UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
             func__EspLog_FaultRaise();
         }
     }
@@ -2241,13 +2294,20 @@ static void func__EspLog_Tick(void)
         }
     }
 
-    /* [EN] Rows waiting in RAM go back to their day files as soon as the flash
-            takes writes again, without waiting for the next event.
-       [FA] ردیف‌های منتظر در رم، به‌محض اینکه فلش دوباره بنویسد، بی‌نیاز از
-            رویداد بعدی به فایل روزهای خودشان برمی‌گردند. */
+    /* [EN] Rows waiting in RAM go back to their day files when the flash takes
+            writes again, throttled by ESP_LOG_DRAIN_RETRY_MS after any refusal
+            so loop() never hammers SPI flash on every iteration.
+       [FA] ردیف‌های منتظر در رم با فاصلهٔ مجاز تلاش دوباره به فایل روزها
+            برگردانده می‌شوند تا در صورت پر بودن فلش، حلقهٔ اصلی در هر دور به
+            حافظهٔ فلش نکوبد. */
     if ((BOOL__G__FsOk != false) && (UINT8_T__G__LogRamCount != 0u))
     {
-        func__EspLog_DrainRam();
+        uint32_t uint32_t__sinceDrainMs = uint32_t__nowMs - UINT32_T__G__LogLastDrainMs;
+        if ((BOOL__G__LogDrainWait == false) ||
+            (uint32_t__sinceDrainMs >= ESP_LOG_DRAIN_RETRY_MS))
+        {
+            func__EspLog_DrainRam();
+        }
     }
 
     /* [EN] Link-silence row: after LINK_TIMEOUT_MS with no frame. If the
@@ -2332,6 +2392,50 @@ static void func__EspLog_Begin(void)
     /* [EN] read back what the world looked like before the power went off.
        [FA] خواندن دوبارهٔ این‌که پیش از قطع برق دنیا چه شکلی بود. */
     func__EspLog_LoadLastSnapshot();
+}
+
+/* ==================== Manual snapshot / ثبت دستی ==================== */
+
+/**
+ * @brief  [EN] Record one state row unconditionally when the user presses
+ *              Refresh, and zero only the log timers so every log window
+ *              restarts from this row (user order 2026-10-28).
+ *         [FA] ثبت فوری یک رکورد از وضعیت فعلی بدون هیچ شرطی هنگام زدن دکمهٔ
+ *              به‌روزرسانی، و صفر کردن فقط تایمرهای مربوط به لاگ تا همهٔ
+ *              بازه‌های زمانی لاگ از همین ردیف دوباره شروع شوند.
+ * @return [EN] bool stored / [FA]‎ ذخیره شد
+ */
+static bool func__EspLog_SnapshotNow(void)
+{
+    uint32_t uint32_t__nowMs;
+    uint16_t uint16_t__mask;
+    bool bool__stored;
+
+    uint32_t__nowMs = (uint32_t)millis();
+    uint16_t__mask = UINT16_T__G__LogPendingMask;
+
+    UINT32_T__G__LogLastRowMs = 0u;
+    BOOL__G__LogLastRowValid = false;
+    UINT32_T__G__LogLastStepMs = 0u;
+    BOOL__G__LogLastStepValid = false;
+    UINT32_T__G__LogMainsQueuedMs = 0u;
+    BOOL__G__LogMainsQueuedValid = false;
+    UINT32_T__G__LogLastClockSaveMs = uint32_t__nowMs;
+    UINT32_T__G__LogLastScanMs = 0u;
+    BOOL__G__LogScanValid = false;
+    if (BOOL__G__TlmSeen == false)
+    {
+        UINT32_T__G__LogSessionStartMs = uint32_t__nowMs;
+    }
+    UINT16_T__G__LogPendingMask = 0u;
+    UINT8_T__G__LogPendingNote = ESP_LOG_NOTE_NONE;
+    BOOL__A__LogForceRow = true;
+
+    bool__stored = func__EspLog_WriteRow(uint16_t__mask, ESP_LOG_NOTE_MANUAL);
+    BOOL__A__LogForceRow = false;
+    UINT32_T__G__LogLastScanMs = 0u;
+    BOOL__G__LogScanValid = false;
+    return bool__stored;
 }
 
 /* ==================== Read back / خواندن دوباره ==================== */
@@ -2678,10 +2782,12 @@ static uint8_t func__EspLog_Clear(void)
         }
     }
     UINT8_T__G__LogIndexCount = 0u;
+    BOOL__G__LogScanValid = false;
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
     BOOL__G__LogMarkerDone = false;
+    BOOL__G__LogDrainWait = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
     return uint8_t__removed;
@@ -2740,3 +2846,349 @@ static size_t func__EspLog_Days(char *char__out, size_t size_t__outSize)
     }
     return size_t__used;
 }
+
+/* ==================== Flash inspection & cleanup / بررسی و پاک‌سازی فلش ==================== */
+
+/**
+ * @brief  [EN] Check whether a root file name belongs to the current calibration
+ *              panel firmware (day CSV, clock anchor, or bench log).
+ *         [FA] بررسی اینکه آیا نام فایل متعلق به همین برنامهٔ فعلی پنل است یا
+ *              از برنامه‌های قبلی روی حافظهٔ فلش جا مانده است.
+ * @‎param  const char *char__ptr_name [EN] file name / [FA]‎ نام فایل
+ * @‎return [EN] bool true when owned by this firmware / [FA]‎ درست اگر متعلق به همین برنامه باشد
+ */
+static bool func__EspLog_IsOwnFile(const char *char__ptr_name)
+{
+    const char *char__ptr_base;
+    uint32_t uint32_t__day = 0u;
+
+    if ((char__ptr_name == NULL) || (char__ptr_name[0] == '\0'))
+    {
+        return false;
+    }
+    if (func__EspLog_DayFromName(char__ptr_name, &uint32_t__day) != false)
+    {
+        return true;
+    }
+    char__ptr_base = (char__ptr_name[0] == '/') ? &char__ptr_name[1] : char__ptr_name;
+    if (strcmp(char__ptr_base, &ESP_LOG_CLOCK_PATH[1]) == 0)
+    {
+        return true;
+    }
+    if (strcmp(char__ptr_base, &ESP_BENCHLOG_PATH[1]) == 0)
+    {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @brief  [EN] Copy a sanitized ASCII file name without leading slash into out.
+ *         [FA] رونوشت امن نام فایل بدون خط مورب ابتدایی برای قرار دادن در خروجی.
+ * @‎param  const char *char__ptr_src [EN] raw name / [FA]‎ نام خام
+ * @‎param  char *char__out [EN] destination / [FA]‎ مقصد
+ * @‎param  size_t size_t__outSize [EN] capacity / [FA]‎ ظرفیت بافر
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_SanitizeFileName(const char *char__ptr_src,
+                                          char *char__out,
+                                          size_t size_t__outSize)
+{
+    const char *char__ptr_base;
+    size_t size_t__idx = 0u;
+
+    if ((char__out == NULL) || (size_t__outSize == 0u))
+    {
+        return;
+    }
+    if (char__ptr_src == NULL)
+    {
+        char__out[0] = '\0';
+        return;
+    }
+    char__ptr_base = (char__ptr_src[0] == '/') ? &char__ptr_src[1] : char__ptr_src;
+    while ((char__ptr_base[size_t__idx] != '\0') &&
+           ((size_t__idx + 1u) < size_t__outSize))
+    {
+        char char__ch = char__ptr_base[size_t__idx];
+        if ((char__ch < 0x20) || (char__ch > 0x7E) ||
+            (char__ch == '"') || (char__ch == '\\'))
+        {
+            char__ch = '?';
+        }
+        char__out[size_t__idx] = char__ch;
+        size_t__idx++;
+    }
+    char__out[size_t__idx] = '\0';
+}
+
+/**
+ * @brief  [EN] Build a JSON summary of LittleFS capacity and root files so the
+ *              operator can inspect leftover files from older sketches.
+ *         [FA] ساخت خلاصهٔ وضعیت ظرفیت و فهرست فایل‌های فلش تا کاربر بتواند
+ *              حجم مصرف‌شده و فایل‌های جامانده از برنامه‌های قبلی را ببیند.
+ * @‎param  char *char__out [EN] JSON buffer / [FA]‎ بافر خروجی
+ * @‎param  size_t size_t__outSize [EN] buffer size / [FA]‎ اندازهٔ بافر
+ * @‎return [EN] size_t bytes written / [FA]‎ تعداد بایت نوشته‌شده
+ */
+static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
+{
+    uint32_t uint32_t__totalBytes = 0u;
+    uint32_t uint32_t__usedBytes = 0u;
+    uint32_t uint32_t__sumBytes = 0u;
+    uint16_t uint16_t__shown = 0u;
+    uint16_t uint16_t__more = 0u;
+    size_t size_t__used = 0u;
+    int int__written;
+
+    if ((char__out == NULL) || (size_t__outSize < 64u))
+    {
+        return 0u;
+    }
+    if (BOOL__G__FsOk != false)
+    {
+#if defined(ESP32)
+        uint32_t__totalBytes = (uint32_t)LittleFS.totalBytes();
+        uint32_t__usedBytes = (uint32_t)LittleFS.usedBytes();
+#else
+        FSInfo fsInfo__stat;
+        if (LittleFS.info(fsInfo__stat))
+        {
+            uint32_t__totalBytes = (uint32_t)fsInfo__stat.totalBytes;
+            uint32_t__usedBytes = (uint32_t)fsInfo__stat.usedBytes;
+        }
+#endif
+    }
+
+    int__written = snprintf(char__out, size_t__outSize,
+                            "{\"fs\":%u,\"mountFail\":%u,\"total\":%lu,\"used\":%lu,\"files\":[",
+                            (BOOL__G__FsOk != false) ? 1u : 0u,
+                            (BOOL__G__FsMountFailed != false) ? 1u : 0u,
+                            (unsigned long)uint32_t__totalBytes,
+                            (unsigned long)uint32_t__usedBytes);
+    if ((int__written <= 0) || ((size_t)int__written >= size_t__outSize))
+    {
+        char__out[0] = '\0';
+        return 0u;
+    }
+    size_t__used = (size_t)int__written;
+
+    if (BOOL__G__FsOk != false)
+    {
+#if defined(ESP32)
+        File file__root = LittleFS.open("/", "r");
+        if (file__root)
+        {
+            File file__entry = file__root.openNextFile();
+            while (file__entry)
+            {
+                char char__safeName[40];
+                const char *char__ptr_raw = file__entry.name();
+                uint32_t uint32_t__fsize = (uint32_t)file__entry.size();
+                bool bool__own = func__EspLog_IsOwnFile(char__ptr_raw);
+
+                uint32_t__sumBytes += uint32_t__fsize;
+                func__EspLog_SanitizeFileName(char__ptr_raw, char__safeName, sizeof(char__safeName));
+                if ((uint16_t__shown < 24u) && ((size_t__used + 96u) < size_t__outSize))
+                {
+                    int int__item = snprintf(&char__out[size_t__used],
+                                             size_t__outSize - size_t__used,
+                                             "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
+                                             (uint16_t__shown == 0u) ? "" : ",",
+                                             char__safeName,
+                                             (unsigned long)uint32_t__fsize,
+                                             (bool__own != false) ? 1u : 0u);
+                    if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
+                    {
+                        size_t__used += (size_t)int__item;
+                        uint16_t__shown++;
+                    }
+                }
+                else
+                {
+                    uint16_t__more++;
+                }
+                file__entry.close();
+                file__entry = file__root.openNextFile();
+            }
+            file__root.close();
+        }
+#else
+        Dir dir__root = LittleFS.openDir("/");
+        while (dir__root.next())
+        {
+            char char__safeName[40];
+            String string__raw = dir__root.fileName();
+            uint32_t uint32_t__fsize = (uint32_t)dir__root.fileSize();
+            bool bool__own = func__EspLog_IsOwnFile(string__raw.c_str());
+
+            uint32_t__sumBytes += uint32_t__fsize;
+            func__EspLog_SanitizeFileName(string__raw.c_str(), char__safeName, sizeof(char__safeName));
+            if ((uint16_t__shown < 24u) && ((size_t__used + 96u) < size_t__outSize))
+            {
+                int int__item = snprintf(&char__out[size_t__used],
+                                         size_t__outSize - size_t__used,
+                                         "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
+                                         (uint16_t__shown == 0u) ? "" : ",",
+                                         char__safeName,
+                                         (unsigned long)uint32_t__fsize,
+                                         (bool__own != false) ? 1u : 0u);
+                if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
+                {
+                    size_t__used += (size_t)int__item;
+                    uint16_t__shown++;
+                }
+            }
+            else
+            {
+                uint16_t__more++;
+            }
+        }
+#endif
+        if ((uint32_t__usedBytes == 0u) && (uint32_t__sumBytes > 0u))
+        {
+            uint32_t__usedBytes = uint32_t__sumBytes;
+        }
+    }
+
+    int__written = snprintf(&char__out[size_t__used],
+                            size_t__outSize - size_t__used,
+                            "],\"fileBytes\":%lu,\"more\":%u}",
+                            (unsigned long)uint32_t__sumBytes,
+                            (unsigned int)uint16_t__more);
+    if ((int__written > 0) && ((size_t__used + (size_t)int__written) < size_t__outSize))
+    {
+        size_t__used += (size_t)int__written;
+    }
+    return size_t__used;
+}
+
+/**
+ * @brief  [EN] Remove leftover files from older programs while keeping all
+ *              files owned by the running firmware intact.
+ *         [FA] حذف فایل‌های جامانده از برنامه‌های قبلی روی فلش بدون دست زدن به
+ *              فایل‌های متعلق به برنامهٔ فعلی.
+ * @‎param  uint32_t *uint32_t__ptr_freedBytes [EN] bytes freed / [FA]‎ بایت آزادشده
+ * @‎return [EN] uint16_t removed file count / [FA]‎ تعداد فایل حذف‌شده
+ */
+static uint16_t func__EspLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedBytes)
+{
+    uint16_t uint16_t__removed = 0u;
+    uint32_t uint32_t__freed = 0u;
+    uint8_t uint8_t__pass;
+
+    if (uint32_t__ptr_freedBytes != NULL)
+    {
+        *uint32_t__ptr_freedBytes = 0u;
+    }
+    if (BOOL__G__FsOk == false)
+    {
+        return 0u;
+    }
+    for (uint8_t__pass = 0u; uint8_t__pass < 8u; uint8_t__pass++)
+    {
+        char char__batch[8][40];
+        uint32_t uint32_t__sizes[8];
+        uint8_t uint8_t__count = 0u;
+        uint8_t uint8_t__idx;
+
+#if defined(ESP32)
+        File file__root = LittleFS.open("/", "r");
+        if (file__root)
+        {
+            File file__entry = file__root.openNextFile();
+            while (file__entry && (uint8_t__count < 8u))
+            {
+                const char *char__ptr_nm = file__entry.name();
+                if ((char__ptr_nm != NULL) && (func__EspLog_IsOwnFile(char__ptr_nm) == false))
+                {
+                    const char *char__ptr_base = (char__ptr_nm[0] == '/') ? &char__ptr_nm[1] : char__ptr_nm;
+                    (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "/%s", char__ptr_base);
+                    uint32_t__sizes[uint8_t__count] = (uint32_t)file__entry.size();
+                    uint8_t__count++;
+                }
+                file__entry.close();
+                file__entry = file__root.openNextFile();
+            }
+            if (file__entry)
+            {
+                file__entry.close();
+            }
+            file__root.close();
+        }
+#else
+        Dir dir__root = LittleFS.openDir("/");
+        while (dir__root.next() && (uint8_t__count < 8u))
+        {
+            String string__nm = dir__root.fileName();
+            if (func__EspLog_IsOwnFile(string__nm.c_str()) == false)
+            {
+                const char *char__ptr_base = (string__nm.c_str()[0] == '/')
+                    ? &string__nm.c_str()[1]
+                    : string__nm.c_str();
+                (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "/%s", char__ptr_base);
+                uint32_t__sizes[uint8_t__count] = (uint32_t)dir__root.fileSize();
+                uint8_t__count++;
+            }
+        }
+#endif
+        if (uint8_t__count == 0u)
+        {
+            break;
+        }
+        {
+            uint8_t uint8_t__passRemoved = 0u;
+            for (uint8_t__idx = 0u; uint8_t__idx < uint8_t__count; uint8_t__idx++)
+            {
+                bool bool__ok = LittleFS.remove(char__batch[uint8_t__idx]);
+                if (bool__ok == false)
+                {
+                    bool__ok = LittleFS.remove(&char__batch[uint8_t__idx][1]);
+                }
+                if (bool__ok != false)
+                {
+                    uint16_t__removed++;
+                    uint8_t__passRemoved++;
+                    uint32_t__freed += uint32_t__sizes[uint8_t__idx];
+                }
+            }
+            if (uint8_t__passRemoved == 0u)
+            {
+                break;
+            }
+        }
+    }
+    BOOL__G__LogScanValid = false;
+    if (uint32_t__ptr_freedBytes != NULL)
+    {
+        *uint32_t__ptr_freedBytes = uint32_t__freed;
+    }
+    return uint16_t__removed;
+}
+
+/**
+ * @brief  [EN] Reset cached day/RAM log counters after an explicit full format,
+ *              and re-persist the active phone clock if one was already known.
+ *         [FA] بازنشانی شمارنده‌های حافظهٔ موقت لاگ پس از فرمت کامل و ذخیرهٔ
+ *              دوبارهٔ ساعت معتبر گوشی روی فلش تازه.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLog_ResetStateAfterFormat(void)
+{
+    UINT8_T__G__LogIndexCount = 0u;
+    BOOL__G__LogScanValid = false;
+    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+    UINT16_T__G__LogRowsToday = 0u;
+    BOOL__G__LogDayFull = false;
+    BOOL__G__LogMarkerDone = false;
+    UINT8_T__G__LogRamHead = 0u;
+    UINT8_T__G__LogRamCount = 0u;
+    BOOL__G__LogDrainWait = false;
+    UINT8_T__G__LogWriteFault = 0u;
+    UINT16_T__G__LogDroppedRows = 0u;
+    if ((BOOL__G__FsOk != false) && (BOOL__G__LogClockValid != false))
+    {
+        func__EspLog_ClockSave();
+    }
+}
+

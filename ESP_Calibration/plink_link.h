@@ -1460,6 +1460,9 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         if (!BOOL__G__WifiApActive)
         {
             WiFi.mode(WIFI_AP);
+            (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
+                                    IPAddress(0, 0, 0, 0),
+                                    IPAddress(255, 255, 255, 0));
             (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
             BOOL__G__WifiApActive = true;
             bool__apJustCreated = true;
@@ -1511,6 +1514,9 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         if (!BOOL__G__WifiApActive)
         {
             WiFi.mode(WIFI_AP);
+            (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
+                                    IPAddress(0, 0, 0, 0),
+                                    IPAddress(255, 255, 255, 0));
             (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
             BOOL__G__WifiApActive = true;
             bool__apJustCreated = true;

@@ -446,7 +446,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bef767a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 22876f8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -473,14 +473,16 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="cd" id="logcd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر ده دقیقه هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
+<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر یک ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
 <div class="bqr">
-<label>روز<select id="evtday" onchange="evtfetch(1)"><option value="">امروز</option></select></label>
-<button class="sb" type="button" onclick="evtfetch(1)">به‌روزرسانی</button>
+<label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
+<button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
+<button class="sb" type="button" onclick="evtfs(1)">حافظهٔ ESP</button>
 <button class="sb" type="button" onclick="evtdl()">دانلود این روز</button>
 <button class="sb" type="button" onclick="evtdlall()">دانلود همهٔ روزها</button>
 <button class="sb sb2" type="button" onclick="evtclr()">پاک کردن تاریخچه</button>
 </div>
+<div id="evtfs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
 <div class="evtsum" id="evtsum"></div>
 <div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
 </div>
@@ -4271,10 +4273,21 @@ const EVT_FLAG=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌تو�
 const EVT_FL=[[1,'دادهٔ لحظه‌ای رسید','دادهٔ لحظه‌ای نرسید'],[2,'برق ورودی وصل شد','برق ورودی قطع شد'],
               [4,'اندازه‌گیری معتبر شد','اندازه‌گیری نامعتبر شد'],[8,'شارژر ۱ اجازه گرفت','شارژر ۱ از کار افتاد'],
               [16,'شارژر ۲ اجازه گرفت','شارژر ۲ از کار افتاد'],[32,'مود دستی روشن شد','مود دستی خاموش شد']];
+let evtBusy=false,evtClkBusy=false;
+async function evtHttp(u,m,ms){
+  const o={method:m||'GET',cache:'no-store'};
+  let ac=null,tm=0;
+  if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
+  try{return await fetch(u,o);}finally{if(tm)clearTimeout(tm);}
+}
 function evtNow(){return Math.floor(Date.now()/1000);}
-function evtClock(){
-  const tz=-new Date().getTimezoneOffset()*60;
-  return req('/clock?sec='+evtNow()+'&tz='+tz,'POST').catch(()=>{});
+async function evtClock(){
+  if(evtClkBusy)return;
+  evtClkBusy=true;
+  try{
+    const tz=-new Date().getTimezoneOffset()*60;
+    await evtHttp('/clock?sec='+evtNow()+'&tz='+tz,'POST',3000);
+  }catch(e){}finally{evtClkBusy=false;}
 }
 function evtDayCode(d){
   const p=n=>String(n).padStart(2,'0');
@@ -4370,6 +4383,7 @@ function evtRowText(r){
   /* [EN] v1.96 heartbeat: nothing happened, the panel is alive.
      [FA] ضربان: هیچ اتفاقی نیفتاد و پنل زنده است. */
   if(r.note===5){add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);}
+  if(r.note===6){add('ثبت دستی (به‌روزرسانی) — کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
   if(r.note===4){add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);}
   if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
   /* [EN] v1.109: every row also speaks the battery state - percent (stored
@@ -4442,7 +4456,7 @@ function evtRender(text,code,ram,src){
 async function evtfetch(manual){
   const day=($('evtday')&&$('evtday').value.trim())||'';
   try{
-    const r=await fetch('/evt'+(day?'?day='+encodeURIComponent(day):''),{cache:'no-store'});
+    const r=await evtHttp('/evt'+(day?'?day='+encodeURIComponent(day):''),'GET',4000);
     const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
     const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
     const ram=(src==='0'||src==='2'||src==='3');
@@ -4456,13 +4470,64 @@ async function evtfetch(manual){
     }
   }catch(e){ if($('evtst'))$('evtst').textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود'; }
 }
-function evtfmt(){
-  if(!confirm('همهٔ تاریخچه پاک شود؟'))return;
-  fetch('/evt/format',{method:'POST'}).then(()=>{evtDays();evtfetch(1);});
+async function evtsnap(){
+  if($('evtday'))$('evtday').value='';
+  try{await evtHttp('/evt/snap','POST',4000);}catch(e){}
+  await evtDays();await evtfetch(0);
+  const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
+}
+function evtKb(b){return evtFa(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
+async function evtfs(toggle){
+  const box=$('evtfs');if(!box)return;
+  if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
+  box.style.display='block';box.innerHTML='<span class="lb">در حال خواندن حافظهٔ ESP…</span>';
+  try{
+    const r=await evtHttp('/evt/fs','GET',4000);const j=await r.json();
+    const files=Array.isArray(j.files)?j.files:[];
+    const oldCnt=files.filter(f=>!f.own).length;
+    const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
+    let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
+    h+='<button class="sb" type="button" onclick="evtfs(0)">بروزرسانی فهرست</button> ';
+    if(oldCnt>0)h+='<button class="sb" type="button" onclick="evtclean()">حذف فایل‌های جامانده ('+evtFa(oldCnt)+')</button> ';
+    h+='<button class="sb sb2" type="button" onclick="evtfmt()">فرمت کامل حافظهٔ ESP</button></span></div>';
+    if(!j.fs){
+      h+='<div class="lb" style="color:#ffb4b4;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
+    }else{
+      h+='<div class="lb" style="margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFa(files.length+(+j.more||0))+'</b></div>';
+      if(!files.length)h+='<div class="lb" style="margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
+      else{
+        h+='<div style="margin-top:6px;max-height:160px;overflow:auto;border-top:1px solid var(--ln);padding-top:4px">';
+        files.forEach(f=>{
+          const tag=f.own?'<span class="lb" style="color:#9ff0c0">فایل همین برنامه</span>':'<b style="color:#ffe08a">جامانده از برنامهٔ قبلی</b>';
+          h+='<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed rgba(255,255,255,.06);padding:2px 0"><span dir="ltr">'+esc(f.name)+'</span><span>'+evtKb(f.size)+' · '+tag+'</span></div>';
+        });
+        if(+j.more>0)h+='<div class="lb">+ '+evtFa(j.more)+' فایل دیگر</div>';
+        h+='</div>';
+      }
+    }
+    box.innerHTML=h;
+  }catch(e){box.innerHTML='<span class="lb" style="color:#ffb4b4">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
+}
+async function evtclean(){
+  if(!confirm('فقط فایل‌های جامانده از برنامه‌های قبلی پاک شوند؟ تاریخچه و فایل‌های برنامهٔ فعلی دست‌نخورده می‌مانند.'))return;
+  try{
+    const r=await evtHttp('/evt/clean','POST',5000);const j=await r.json();
+    if($('evtst'))$('evtst').textContent=(j&&j.removed>0)?('پاک‌سازی انجام شد: '+evtFa(j.removed)+' فایل قدیمی حذف شد'):'فایل جامانده‌ای برای حذف نبود';
+  }catch(e){}
+  await evtfs(0);await evtDays();await evtfetch(1);
+}
+async function evtfmt(){
+  if(!confirm('کل حافظهٔ فلش ESP فرمت و همهٔ فایل‌های قبلی و تاریخچه پاک شوند؟ این کار برگشت‌پذیر نیست.'))return;
+  try{
+    const r=await evtHttp('/evt/format','POST',8000);const t=(await r.text()).trim();
+    if($('evtst'))$('evtst').textContent=(t==='ok')?'حافظهٔ فلش ESP کامل فرمت و آماده شد':'فرمت حافظه انجام نشد';
+  }catch(e){if($('evtst'))$('evtst').textContent='فرمت حافظه ناموفق بود';}
+  await evtDays();await evtfetch(1);
+  const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
 }
 async function evtDays(){
   try{
-    const r=await fetch('/evt/days',{cache:'no-store'});
+    const r=await evtHttp('/evt/days','GET',3500);
     const t=(await r.text()).trim();
     const days=t?t.split(/\s+/):[];
     const sel=$('evtday');
@@ -4491,7 +4556,7 @@ async function evtdlall(){
   if(!days.length){alert('تاریخچه‌ای برای دانلود نیست.');return;}
   let out='';
   for(const d of days){
-    const r=await fetch('/evt/dl?day='+d,{cache:'no-store'});
+    const r=await evtHttp('/evt/dl?day='+d,'GET',5000);
     out+='# '+evtDayFa(d)+'\n'+(await r.text());
   }
   const a=document.createElement('a');
@@ -4502,7 +4567,7 @@ async function evtclr(){
   if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟ این کار برگشت‌پذیر نیست.'))return;
   const st=$('evtst');
   try{
-    const r=await fetch('/evt/clr',{method:'POST',cache:'no-store'});
+    const r=await evtHttp('/evt/clr','POST',5000);
     let j={};try{j=await r.json();}catch(e){}
     const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
     /* [EN] v1.113: the answer says how many day files really went. "Cleared" is
@@ -4518,12 +4583,18 @@ async function evtclr(){
       else st.textContent='چیزی برای پاک‌کردن نبود';
     }
     await evtDays();await evtfetch(1);
+    const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
   }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
+}
+async function evtTick(){
+  if(document.hidden||evtBusy)return;
+  evtBusy=true;
+  try{await evtDays();await evtfetch(0);}finally{evtBusy=false;}
 }
 evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
 addEventListener('online',()=>evtClock());
-setInterval(()=>{if(!document.hidden){evtDays();evtfetch(0);}},10000);
+setInterval(evtTick,10000);
 
 setInterval(uview,250); /* v1.16: آینهٔ LED هر ۲۵۰ میلی‌ثانیه به‌روز می‌شود */
 </script></body></html>)HTML";
