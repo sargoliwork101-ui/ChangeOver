@@ -11,10 +11,12 @@
 #if defined(ESP8266)
   #include <ESP8266WiFi.h>
   #include <ESP8266WebServer.h>
+  #include <WiFiUdp.h>
   typedef ESP8266WebServer esp_web_server_t;
 #elif defined(ESP32)
   #include <WiFi.h>
   #include <WebServer.h>
+  #include <WiFiUdp.h>
   typedef WebServer esp_web_server_t;
 #else
   #error "برد ESP8266 یا ESP32 را انتخاب کنید"
@@ -41,13 +43,10 @@ void setup(void)
     Serial.begin(SIMPLE_LINK_BAUD_RATE, SERIAL_8N1);
 
     WiFi.persistent(false);
-    WiFi.mode(WIFI_AP);
 #if defined(ESP8266)
-    WiFi.setSleepMode(WIFI_NONE_SLEEP);
     (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();
 #else
-    WiFi.setSleep(false);
     BOOL__G__FsOk = LittleFS.begin(false);
 #endif
     /* فرمتِ خودکار هنگام خطای سوار شدن، کل تاریخچه را پاک می‌کند - همان
@@ -71,14 +70,10 @@ void setup(void)
     UINT32_T__G__ChargeCountCh1 = UINT32_T__G__PrevChargeCountCh1;
     UINT32_T__G__ChargeCountCh2 = UINT32_T__G__PrevChargeCountCh2;
 
-    (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
-                            IPAddress(0, 0, 0, 0),
-                            IPAddress(255, 255, 255, 0));
-    (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
+    func__Simple_StartSoftAp();
 #if defined(ESP8266)
     WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
 #endif
-    BOOL__G__WifiApActive = true;
     BOOL__G__WifiHighPower = true;
 
     SIMPLE_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Simple_HttpRoot);
@@ -119,6 +114,7 @@ void setup(void)
 void loop(void)
 {
     func__Simple_DrainSerial();
+    func__Simple_DnsTick();
     SIMPLE_WEB_SERVER_T__G__Server.handleClient();
     func__Simple_WifiPowerSaveTick((uint32_t)millis());
     func__Simple_ChartTick();

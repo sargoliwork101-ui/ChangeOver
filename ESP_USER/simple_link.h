@@ -709,6 +709,133 @@ static bool func__Simple_IsWifiClientConnected(uint32_t uint32_t__nowMs)
     return bool__stationConnected || bool__browserActive;
 }
 
+/* ==================== پاسخگوی فوری درگاه ۵۳ و راه‌اندازی یکپارچهٔ وای‌فای ==================== */
+static void func__Simple_DnsStart(void)
+{
+    if (BOOL__G__DnsRunning == false)
+    {
+        BOOL__G__DnsRunning = (WIFI_UDP_T__G__DnsUdp.begin(SIMPLE_WIFI_DNS_PORT) != 0u);
+    }
+}
+
+static void func__Simple_DnsStop(void)
+{
+    if (BOOL__G__DnsRunning != false)
+    {
+        WIFI_UDP_T__G__DnsUdp.stop();
+        BOOL__G__DnsRunning = false;
+    }
+}
+
+static void func__Simple_DnsTick(void)
+{
+    uint8_t uint8_t__handled = 0u;
+
+    if ((BOOL__G__WifiApActive == false) || (BOOL__G__DnsRunning == false))
+    {
+        return;
+    }
+    while (uint8_t__handled < 4u)
+    {
+        int int__pktLen = WIFI_UDP_T__G__DnsUdp.parsePacket();
+        uint8_t uint8_t__buf[256];
+        size_t size_t__readLen;
+        size_t size_t__replyLen = 12u;
+        uint16_t uint16_t__qdCount;
+
+        if (int__pktLen <= 0)
+        {
+            break;
+        }
+        uint8_t__handled++;
+        size_t__readLen = (size_t)WIFI_UDP_T__G__DnsUdp.read(uint8_t__buf, sizeof(uint8_t__buf));
+        if (size_t__readLen < 12u)
+        {
+            continue;
+        }
+        if ((uint8_t__buf[2] & 0x80u) != 0u)
+        {
+            continue;
+        }
+        uint16_t__qdCount = (uint16_t)(((uint16_t)uint8_t__buf[4] << 8) |
+                                       (uint16_t)uint8_t__buf[5]);
+        if (uint16_t__qdCount == 1u)
+        {
+            size_t size_t__pos = 12u;
+            bool bool__ok = false;
+
+            while (size_t__pos < size_t__readLen)
+            {
+                uint8_t uint8_t__lab = uint8_t__buf[size_t__pos];
+                if (uint8_t__lab == 0u)
+                {
+                    size_t__pos++;
+                    bool__ok = ((size_t__pos + 4u) <= size_t__readLen);
+                    break;
+                }
+                if (((uint8_t__lab & 0xC0u) != 0u) ||
+                    ((size_t__pos + 1u + (size_t)uint8_t__lab) >= size_t__readLen))
+                {
+                    break;
+                }
+                size_t__pos += (1u + (size_t)uint8_t__lab);
+            }
+            if (bool__ok != false)
+            {
+                size_t__replyLen = size_t__pos + 4u;
+            }
+            else
+            {
+                uint8_t__buf[4] = 0u;
+                uint8_t__buf[5] = 0u;
+            }
+        }
+        else
+        {
+            uint8_t__buf[4] = 0u;
+            uint8_t__buf[5] = 0u;
+        }
+        uint8_t__buf[2] = (uint8_t)(0x84u | (uint8_t__buf[2] & 0x01u));
+        uint8_t__buf[3] = 0x83u;
+        uint8_t__buf[6] = 0u;
+        uint8_t__buf[7] = 0u;
+        uint8_t__buf[8] = 0u;
+        uint8_t__buf[9] = 0u;
+        uint8_t__buf[10] = 0u;
+        uint8_t__buf[11] = 0u;
+        if (WIFI_UDP_T__G__DnsUdp.beginPacket(WIFI_UDP_T__G__DnsUdp.remoteIP(),
+                                              WIFI_UDP_T__G__DnsUdp.remotePort()) != 0)
+        {
+            (void)WIFI_UDP_T__G__DnsUdp.write(uint8_t__buf, size_t__replyLen);
+            (void)WIFI_UDP_T__G__DnsUdp.endPacket();
+        }
+    }
+}
+
+static void func__Simple_StartSoftAp(void)
+{
+    WiFi.mode(WIFI_AP);
+#if defined(ESP8266)
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+#else
+    WiFi.setSleep(false);
+#endif
+    (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
+                            IPAddress(0, 0, 0, 0),
+                            IPAddress(255, 255, 255, 0));
+    (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
+    BOOL__G__WifiApActive = true;
+    func__Simple_DnsStart();
+}
+
+static void func__Simple_StopSoftAp(void)
+{
+    func__Simple_DnsStop();
+    (void)WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+    BOOL__G__WifiApActive = false;
+}
+
 /* ==================== اعمال توان آنتن ====================
    یک جا، با یک پرچم آینه‌ای که همیشه وضعیت واقعاً اعمال‌شده را می‌گوید.
    چرا تابع جدا: هنگام ساخت/بازسازی اکسس‌پوینت باید توان دوباره نوشته شود
@@ -793,9 +920,7 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         }
         if (BOOL__G__WifiApActive)
         {
-            (void)WiFi.softAPdisconnect(true);
-            WiFi.mode(WIFI_OFF);
-            BOOL__G__WifiApActive = false;
+            func__Simple_StopSoftAp();
         }
         return;
     }
@@ -835,12 +960,7 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
         if (!BOOL__G__WifiApActive)
         {
-            WiFi.mode(WIFI_AP);
-            (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
-                                    IPAddress(0, 0, 0, 0),
-                                    IPAddress(255, 255, 255, 0));
-            (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
-            BOOL__G__WifiApActive = true;
+            func__Simple_StartSoftAp();
             bool__apJustCreated = true;
         }
 
@@ -891,12 +1011,7 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 
         if (!BOOL__G__WifiApActive)
         {
-            WiFi.mode(WIFI_AP);
-            (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
-                                    IPAddress(0, 0, 0, 0),
-                                    IPAddress(255, 255, 255, 0));
-            (void)WiFi.softAP(CHAR__G__WifiSsid, CHAR__G__WifiPass);
-            BOOL__G__WifiApActive = true;
+            func__Simple_StartSoftAp();
             bool__apJustCreated = true;
         }
         /* در چرخهٔ باتری هیچ بیننده‌ای نیست: همیشه توان کم. */
@@ -906,9 +1021,7 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     {
         if (BOOL__G__WifiApActive)
         {
-            (void)WiFi.softAPdisconnect(true);
-            WiFi.mode(WIFI_OFF);
-            BOOL__G__WifiApActive = false;
+            func__Simple_StopSoftAp();
         }
     }
 }

@@ -66,6 +66,7 @@
 #define SIMPLE_WIFI_CLIENT_REPORT_MS    1000u
 #define SIMPLE_WIFI_TX_MAX_DBM          20.5f
 #define SIMPLE_WIFI_TX_LOW_DBM          0.0f
+#define SIMPLE_WIFI_DNS_PORT            53u
 /* ==================== توان آنتن روی باتری (v1.112) ====================
    دستور کاربر ۲۰۲۶-۱۰-۲۵: «می‌توانی توان وای‌فای را کم کنی».
    چرا: تا نسخهٔ ۱٫۱۱۱ هر اتصال وای‌فای (حتی گوشی‌ای که یک بار به شبکه وصل شده و

@@ -156,10 +156,8 @@ SimDir SimLittleFS::openDir(const char *char__ptr_path)
             std::string string__p = string__full + "/" + std::string(entry__item->d_name);
             size_t size_t__sz = (stat(string__p.c_str(), &struct_stat__st) == 0)
                 ? (size_t)struct_stat__st.st_size : 0u;
-            std::string string__nm = slashlessDirNames
-                ? std::string(entry__item->d_name)
-                : ("/" + std::string(entry__item->d_name));
-            dir__result.names.push_back(string__nm);
+            /* شبیه‌سازی دقیق ESP8266 واقعی: dir.fileName() نام خام بدون «/» برمی‌گرداند */
+            dir__result.names.push_back(std::string(entry__item->d_name));
             dir__result.sizes.push_back(size_t__sz);
         }
     }

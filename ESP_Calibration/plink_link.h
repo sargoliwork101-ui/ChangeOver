@@ -1319,6 +1319,166 @@ static uint32_t func__Esp_ComputeBatteryPercent(void)
 }
 
 /**
+ * @brief  [EN] Start the non-blocking UDP port-53 NXDOMAIN responder so phones
+ *              and Windows laptops finish connectivity probing immediately
+ *              instead of stalling 3-7 s waiting for a silent DNS server.
+ *         [FA] راه‌اندازی پاسخگوی فوری عدم‌وجود دامنه روی درگاه ۵۳ تا ویندوز و
+ *              گوشی هنگام اتصال ۳ تا ۷ ثانیه منتظر سرور خاموش نمانند.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_DnsStart(void)
+{
+    if (BOOL__G__DnsRunning == false)
+    {
+        BOOL__G__DnsRunning = (WIFI_UDP_T__G__DnsUdp.begin(ESP_WIFI_DNS_PORT) != 0u);
+    }
+}
+
+/**
+ * @brief  [EN] Stop the UDP port-53 responder before turning SoftAP off.
+ *         [FA] بستن سوکت پاسخگوی درگاه ۵۳ پیش از خاموش کردن وای‌فای.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_DnsStop(void)
+{
+    if (BOOL__G__DnsRunning != false)
+    {
+        WIFI_UDP_T__G__DnsUdp.stop();
+        BOOL__G__DnsRunning = false;
+    }
+}
+
+/**
+ * @brief  [EN] Answer up to 4 pending DNS queries per loop pass with an
+ *              authoritative NXDOMAIN (RCODE=3) using a fixed stack buffer.
+ *         [FA] پاسخ فوری «دامنه وجود ندارد» به حداکثر ۴ پرسش درگاه ۵۳ در هر
+ *              چرخه با بافر ثابت پشته و بدون تخصیص پویا.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_DnsTick(void)
+{
+    uint8_t uint8_t__handled = 0u;
+
+    if ((BOOL__G__WifiApActive == false) || (BOOL__G__DnsRunning == false))
+    {
+        return;
+    }
+    while (uint8_t__handled < 4u)
+    {
+        int int__pktLen = WIFI_UDP_T__G__DnsUdp.parsePacket();
+        uint8_t uint8_t__buf[256];
+        size_t size_t__readLen;
+        size_t size_t__replyLen = 12u;
+        uint16_t uint16_t__qdCount;
+
+        if (int__pktLen <= 0)
+        {
+            break;
+        }
+        uint8_t__handled++;
+        size_t__readLen = (size_t)WIFI_UDP_T__G__DnsUdp.read(uint8_t__buf, sizeof(uint8_t__buf));
+        if (size_t__readLen < 12u)
+        {
+            continue;
+        }
+        /* Ignore DNS responses (QR=1) to prevent any UDP echo loop */
+        if ((uint8_t__buf[2] & 0x80u) != 0u)
+        {
+            continue;
+        }
+        uint16_t__qdCount = (uint16_t)(((uint16_t)uint8_t__buf[4] << 8) |
+                                       (uint16_t)uint8_t__buf[5]);
+        if (uint16_t__qdCount == 1u)
+        {
+            size_t size_t__pos = 12u;
+            bool bool__ok = false;
+
+            while (size_t__pos < size_t__readLen)
+            {
+                uint8_t uint8_t__lab = uint8_t__buf[size_t__pos];
+                if (uint8_t__lab == 0u)
+                {
+                    size_t__pos++;
+                    bool__ok = ((size_t__pos + 4u) <= size_t__readLen);
+                    break;
+                }
+                if (((uint8_t__lab & 0xC0u) != 0u) ||
+                    ((size_t__pos + 1u + (size_t)uint8_t__lab) >= size_t__readLen))
+                {
+                    break;
+                }
+                size_t__pos += (1u + (size_t)uint8_t__lab);
+            }
+            if (bool__ok != false)
+            {
+                size_t__replyLen = size_t__pos + 4u;
+            }
+            else
+            {
+                uint8_t__buf[4] = 0u;
+                uint8_t__buf[5] = 0u;
+            }
+        }
+        else
+        {
+            uint8_t__buf[4] = 0u;
+            uint8_t__buf[5] = 0u;
+        }
+        /* QR=1 (response), AA=1, preserve RD; RA=1, RCODE=3 (NXDOMAIN) */
+        uint8_t__buf[2] = (uint8_t)(0x84u | (uint8_t__buf[2] & 0x01u));
+        uint8_t__buf[3] = 0x83u;
+        uint8_t__buf[6] = 0u;
+        uint8_t__buf[7] = 0u;
+        uint8_t__buf[8] = 0u;
+        uint8_t__buf[9] = 0u;
+        uint8_t__buf[10] = 0u;
+        uint8_t__buf[11] = 0u;
+        if (WIFI_UDP_T__G__DnsUdp.beginPacket(WIFI_UDP_T__G__DnsUdp.remoteIP(),
+                                              WIFI_UDP_T__G__DnsUdp.remotePort()) != 0)
+        {
+            (void)WIFI_UDP_T__G__DnsUdp.write(uint8_t__buf, size_t__replyLen);
+            (void)WIFI_UDP_T__G__DnsUdp.endPacket();
+        }
+    }
+}
+
+/**
+ * @brief  [EN] Bring up SoftAP with radio sleep disabled, router advertisement
+ *              suppressed (0.0.0.0), and the fast NXDOMAIN responder bound.
+ *         [FA] راه‌اندازی یکپارچهٔ اکسس‌پوینت با خاموش کردن خواب رادیو، حذف
+ *              معرفی درگاه اینترنت و فعال کردن پاسخگوی فوری درگاه ۵۳.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_StartSoftAp(void)
+{
+    WiFi.mode(WIFI_AP);
+#if defined(ESP8266)
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+#else
+    WiFi.setSleep(false);
+#endif
+    (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
+                            IPAddress(0, 0, 0, 0),
+                            IPAddress(255, 255, 255, 0));
+    (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
+    BOOL__G__WifiApActive = true;
+    func__Esp_DnsStart();
+}
+
+/**
+ * @brief  [EN] Tear down SoftAP and its UDP port-53 socket cleanly.
+ *         [FA] خاموش کردن تمیز اکسس‌پوینت و بستن سوکت درگاه ۵۳.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_StopSoftAp(void)
+{
+    func__Esp_DnsStop();
+    (void)WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+    BOOL__G__WifiApActive = false;
+}
+
+/**
  * @brief  [EN] Apply one antenna level, once, through a mirror flag that always
  *              states what is really on the chip. AP creation forces a write
  *              because the previous level survives softAP().
@@ -1414,9 +1574,7 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         }
         if (BOOL__G__WifiApActive)
         {
-            (void)WiFi.softAPdisconnect(true);
-            WiFi.mode(WIFI_OFF);
-            BOOL__G__WifiApActive = false;
+            func__Esp_StopSoftAp();
         }
         return;
     }
@@ -1459,12 +1617,7 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
         if (!BOOL__G__WifiApActive)
         {
-            WiFi.mode(WIFI_AP);
-            (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
-                                    IPAddress(0, 0, 0, 0),
-                                    IPAddress(255, 255, 255, 0));
-            (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
-            BOOL__G__WifiApActive = true;
+            func__Esp_StartSoftAp();
             bool__apJustCreated = true;
         }
 
@@ -1513,12 +1666,7 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 
         if (!BOOL__G__WifiApActive)
         {
-            WiFi.mode(WIFI_AP);
-            (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
-                                    IPAddress(0, 0, 0, 0),
-                                    IPAddress(255, 255, 255, 0));
-            (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
-            BOOL__G__WifiApActive = true;
+            func__Esp_StartSoftAp();
             bool__apJustCreated = true;
         }
         /* [EN] Nobody is watching inside the duty cycle: low power only.
@@ -1529,9 +1677,7 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     {
         if (BOOL__G__WifiApActive)
         {
-            (void)WiFi.softAPdisconnect(true);
-            WiFi.mode(WIFI_OFF);
-            BOOL__G__WifiApActive = false;
+            func__Esp_StopSoftAp();
         }
     }
 }

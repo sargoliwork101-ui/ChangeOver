@@ -2896,10 +2896,11 @@ int main(void)
         check(LittleFS.autoFormatCfg == false,
               "ESP8266 LittleFS.setConfig(LittleFSConfig(false)) disables silent auto-format");
 
-        /* Real ESP8266 LittleFSDirImpl::fileName() returns names WITHOUT a
-           leading '/'. Verify ScanDays, /evt/fs, /evt/clean, and /evt/clr! */
+        /* Real ESP8266 LittleFSDirImpl::fileName() always returns bare names
+           WITHOUT a leading '/', while LittleFS.open/exists/remove strictly
+           receive canonical "/..." paths. Verify ScanDays, /evt/fs, /evt/clean,
+           and /evt/clr! */
         LittleFS.files.clear();
-        LittleFS.slashlessDirNames = true;
         BOOL__G__FsOk = true;
         BOOL__G__LogScanValid = false;
         LittleFS.files["/evt-20261028.csv"] = "1792700000,1,1,0,1,2,0,0,0,0,24000,12000,12000,0,0,24000,12000,0,0,0,0,37\n";
@@ -2907,15 +2908,16 @@ int main(void)
         LittleFS.files["/old_sketch_leftover.bin"] = std::string(4096u, 'Z');
 
         check(func__EspLog_ScanDays(true) == 1u,
-              "ScanDays finds evt-YYYYMMDD.csv even when Dir::fileName() omits leading '/'",
+              "ScanDays normalizes bare Dir::fileName() to canonical '/evt-YYYYMMDD.csv'",
               std::to_string(UINT8_T__G__LogIndexCount));
 
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt/fs", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
-              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"name\":\"old_sketch_leftover.bin\"") != std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"name\":\"/old_sketch_leftover.bin\"") != std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"name\":\"/evt-clock.txt\"") != std::string::npos &&
               ESP_WEB_SERVER_T__G__Server.lastBody.find("\"own\":0") != std::string::npos,
-              "GET /evt/fs exposes leftover files from previous sketches with own=0",
+              "GET /evt/fs reports canonical '/...' file names and marks leftover files own=0",
               ESP_WEB_SERVER_T__G__Server.lastBody);
 
         ESP_WEB_SERVER_T__G__Server.clearArgs();
@@ -2932,10 +2934,9 @@ int main(void)
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt/clr", HTTP_POST);
         check(!LittleFS.exists("/evt-20261028.csv"),
-              "POST /evt/clr deletes day files when Dir::fileName() omits leading '/'");
+              "POST /evt/clr deletes day files via canonical '/...' paths");
 
         /* DrainRam 30 s cooldown test */
-        LittleFS.slashlessDirNames = false;
         LittleFS.failWrites = true;
         BOOL__G__LogBootRowPending = false;
         UINT16_T__G__LogPendingMask = 0u;
@@ -2952,6 +2953,49 @@ int main(void)
         func__EspLog_Tick();
         check(UINT8_T__G__LogRamCount == 1u,
               "Log_Tick does not hammer flash before 30 s DrainRam cooldown elapses");
+
+        /* Preventive Wi-Fi #1 & #2: WIFI_NONE_SLEEP re-applied after WIFI_OFF -> WIFI_AP
+           and fast UDP port-53 NXDOMAIN reply without echoing QR=1 responses */
+        {
+            BOOL__G__TlmSeen = true;
+            UINT8_T__G__TlmFlags = 0u; /* battery */
+            UINT32_T__G__TlmField[15] = 22000u; /* <20% -> cutoff WIFI_OFF */
+            WiFi.stationNum = 0;
+            func__Esp_WifiPowerSaveTick(G_StubMillis);
+            check(!WiFi.apActive && !WiFi.sleepDisabled && !BOOL__G__DnsRunning,
+                  "WIFI_OFF battery cutoff stops SoftAP, resets sleep flag, and closes DNS UDP");
+
+            UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT; /* mains returns -> WIFI_AP */
+            func__Esp_WifiPowerSaveTick(G_StubMillis + 1000u);
+            check(WiFi.apActive && WiFi.sleepDisabled && BOOL__G__DnsRunning,
+                  "WIFI_OFF -> WIFI_AP wake re-applies WIFI_NONE_SLEEP and restarts port-53 responder");
+
+            /* Craft RFC 1035 query for "msftconnecttest.com" A IN (TXID 0xABCD) */
+            const uint8_t dnsQuery[] = {
+                0xABu, 0xCDu, 0x01u, 0x00u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+                15u, 'm','s','f','t','c','o','n','n','e','c','t','t','e','s','t',
+                3u, 'c','o','m', 0u,
+                0x00u, 0x01u, 0x00u, 0x01u
+            };
+            WIFI_UDP_T__G__DnsUdp.txPackets.clear();
+            WIFI_UDP_T__G__DnsUdp.feedPacket(
+                std::vector<uint8_t>(dnsQuery, dnsQuery + sizeof(dnsQuery)));
+            /* Also inject a QR=1 response packet to verify no echo loop */
+            uint8_t dnsResp[sizeof(dnsQuery)];
+            std::memcpy(dnsResp, dnsQuery, sizeof(dnsQuery));
+            dnsResp[2] = 0x81u;
+            WIFI_UDP_T__G__DnsUdp.feedPacket(
+                std::vector<uint8_t>(dnsResp, dnsResp + sizeof(dnsResp)));
+
+            func__Esp_DnsTick();
+            check(WIFI_UDP_T__G__DnsUdp.txPackets.size() == 1u &&
+                  WIFI_UDP_T__G__DnsUdp.txPackets[0].size() == sizeof(dnsQuery) &&
+                  WIFI_UDP_T__G__DnsUdp.txPackets[0][0] == 0xABu &&
+                  WIFI_UDP_T__G__DnsUdp.txPackets[0][1] == 0xCDu &&
+                  (WIFI_UDP_T__G__DnsUdp.txPackets[0][2] & 0x80u) != 0u &&
+                  (WIFI_UDP_T__G__DnsUdp.txPackets[0][3] & 0x0Fu) == 3u,
+                  "DnsTick answers queries immediately with RCODE=3 NXDOMAIN and ignores QR=1 responses");
+        }
         G_StubMillis += ESP_LOG_DRAIN_RETRY_MS;
         func__EspLog_Tick();
         check(UINT8_T__G__LogRamCount == 0u && UINT8_T__G__LogWriteFault == 0u,

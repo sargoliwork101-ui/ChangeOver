@@ -908,7 +908,7 @@ const evtStartSec = Math.floor(Date.now() / 1000);
  *      خودآزمای قبلاً پروسه را برای همیشه زنده نگه می‌داشت و دروازهٔ نحویِ هاست
  *      را پس از خطِ «قبول» قفل می‌کرد. */
 let simForeignFiles = [
-    { name: "old_sketch_cfg.bin", size: 24576 }
+    { name: "/old_sketch_cfg.bin", size: 24576 }
 ];
 function evtHeartbeatStart() {
     setInterval(() => {
@@ -1148,11 +1148,11 @@ const server = http.createServer((req, res) => {
         const files = days.map((d) => {
             const rows = evtRows.filter((line) => String(evtDayOf(Number(line.split(",")[0]))) === d);
             const size = Buffer.byteLength([EVT_HEADER].concat(rows).join("\n"), "utf8");
-            return { name: "evt-" + d + ".csv", size, own: 1 };
+            return { name: "/evt-" + d + ".csv", size, own: 1 };
         });
-        files.push({ name: "evt-clock.txt", size: 28, own: 1 });
+        files.push({ name: "/evt-clock.txt", size: 28, own: 1 });
         if (benchSize > 0) {
-            files.push({ name: "benchlog.csv", size: benchSize, own: 1 });
+            files.push({ name: "/benchlog.csv", size: benchSize, own: 1 });
         }
         for (const f of simForeignFiles) {
             files.push({ name: f.name, size: f.size, own: 0 });

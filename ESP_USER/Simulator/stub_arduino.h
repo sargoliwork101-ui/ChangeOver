@@ -476,7 +476,6 @@ struct LittleFSConfig
 class SimLittleFS
 {
 public:
-    bool slashlessDirNames = false;
     bool autoFormatCfg = true;
     bool setConfig(const LittleFSConfig &cfg__value) { autoFormatCfg = cfg__value._autoFormat; return true; }
     bool begin(bool bool__formatOnFail = false);
@@ -518,6 +517,7 @@ class SimWiFi
 {
 public:
     bool routerDisabled = false;
+    bool sleepDisabled = false;
     void persistent(bool bool__enabled) { (void)bool__enabled; }
     void mode(int int__value)
     {
@@ -525,10 +525,11 @@ public:
         if (int__value == WIFI_OFF)
         {
             apActive = false;
+            sleepDisabled = false;
         }
     }
-    void setSleep(bool bool__enabled) { (void)bool__enabled; }
-    void setSleepMode(int int__value) { (void)int__value; }
+    void setSleep(bool bool__enabled) { sleepDisabled = (!bool__enabled); }
+    void setSleepMode(int int__value) { sleepDisabled = (int__value == WIFI_NONE_SLEEP); }
     void setOutputPower(float float__dbm) { outputPowerDbmValue = float__dbm; }
     bool softAPConfig(IPAddress ip_address__local, IPAddress ip_address__gw, IPAddress ip_address__mask)
     {
@@ -568,6 +569,79 @@ private:
     std::string ssidText;
     std::string passwordText;
 };
+
+class SimWiFiUDP
+{
+public:
+    bool listening = false;
+    uint16_t boundPort = 0u;
+    IPAddress remoteIp = IPAddress(192, 168, 4, 100);
+    uint16_t remotePortVal = 53000u;
+    std::vector<std::vector<uint8_t> > rxPackets;
+    std::vector<uint8_t> curRx;
+    size_t curPos = 0u;
+    std::vector<std::vector<uint8_t> > txPackets;
+    std::vector<uint8_t> curTx;
+
+    uint8_t begin(uint16_t uint16_t__port)
+    {
+        boundPort = uint16_t__port;
+        listening = true;
+        return 1u;
+    }
+    void stop(void)
+    {
+        listening = false;
+        rxPackets.clear();
+        curRx.clear();
+        curPos = 0u;
+    }
+    int parsePacket(void)
+    {
+        if (!listening || rxPackets.empty()) return 0;
+        curRx = rxPackets.front();
+        rxPackets.erase(rxPackets.begin());
+        curPos = 0u;
+        return (int)curRx.size();
+    }
+    int read(uint8_t *uint8_t__ptr_buf, size_t size_t__len)
+    {
+        if (uint8_t__ptr_buf == NULL || curPos >= curRx.size()) return 0;
+        size_t size_t__avail = curRx.size() - curPos;
+        size_t size_t__n = (size_t__len < size_t__avail) ? size_t__len : size_t__avail;
+        for (size_t size_t__i = 0u; size_t__i < size_t__n; size_t__i++)
+        {
+            uint8_t__ptr_buf[size_t__i] = curRx[curPos + size_t__i];
+        }
+        curPos += size_t__n;
+        return (int)size_t__n;
+    }
+    IPAddress remoteIP(void) const { return remoteIp; }
+    uint16_t remotePort(void) const { return remotePortVal; }
+    int beginPacket(IPAddress, uint16_t)
+    {
+        if (!listening) return 0;
+        curTx.clear();
+        return 1;
+    }
+    size_t write(const uint8_t *uint8_t__ptr_buf, size_t size_t__len)
+    {
+        if (uint8_t__ptr_buf != NULL && size_t__len > 0u)
+        {
+            curTx.insert(curTx.end(), uint8_t__ptr_buf, uint8_t__ptr_buf + size_t__len);
+        }
+        return size_t__len;
+    }
+    int endPacket(void)
+    {
+        if (!listening) return 0;
+        txPackets.push_back(curTx);
+        curTx.clear();
+        return 1;
+    }
+    void feedPacket(const std::vector<uint8_t> &vec__pkt) { rxPackets.push_back(vec__pkt); }
+};
+typedef SimWiFiUDP WiFiUDP;
 
 extern SimWiFi WiFi;
 

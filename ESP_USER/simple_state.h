@@ -445,6 +445,8 @@ static uint32_t UINT32_T__G__CryptoNonce = 0u;   /* شمارندهٔ یکتای 
 
 /* ==================== وب سرور ==================== */
 static esp_web_server_t SIMPLE_WEB_SERVER_T__G__Server(SIMPLE_HTTP_PORT);
+static WiFiUDP WIFI_UDP_T__G__DnsUdp;
+static bool BOOL__G__DnsRunning = false;
 static char CHAR__G__JsonBuffer[SIMPLE_JSON_BUFFER_SIZE];
 static char CHAR__G__SessionIP[24] = {0};
 static uint32_t UINT32_T__G__LastBrowserPollMs = 0u;

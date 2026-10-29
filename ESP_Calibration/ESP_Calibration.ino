@@ -90,10 +90,12 @@
 #if defined(ESP8266)
   #include <ESP8266WiFi.h>
   #include <ESP8266WebServer.h>
+  #include <WiFiUdp.h>
   typedef ESP8266WebServer esp_web_server_t;
 #elif defined(ESP32)
   #include <WiFi.h>
   #include <WebServer.h>
+  #include <WiFiUdp.h>
   typedef WebServer esp_web_server_t;
 #else
   #error "Select an ESP8266 or ESP32 board / برد ESP8266 یا ESP32 را انتخاب کنید"
@@ -125,20 +127,10 @@ void setup(void)
     Serial.begin(ESP_LINK_BAUD_RATE, SERIAL_8N1);
 
     WiFi.persistent(false);
-    WiFi.mode(WIFI_AP);
-#if defined(ESP8266)
-    WiFi.setSleepMode(WIFI_NONE_SLEEP);
-#else
-    WiFi.setSleep(false);
-#endif
-    (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
-                            IPAddress(0, 0, 0, 0),
-                            IPAddress(255, 255, 255, 0));
-    (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
+    func__Esp_StartSoftAp();
 #if defined(ESP8266)
     WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
 #endif
-    BOOL__G__WifiApActive = true;
     BOOL__G__WifiHighPower = true;
 
     /* [EN] Mount WITHOUT formatting. An automatic format on a mount failure
@@ -216,6 +208,7 @@ void loop(void)
        [FA] دست‌دادن دوطرفه (v1.111): هر ۲ ثانیه HELLO؛ سکوت برد پرچم
        «لینک تأییدشده» را برمی‌دارد تا صفحه بگوید کدام طرف خراب است. */
     func__Esp_HandshakeTick((uint32_t)millis());
+    func__Esp_DnsTick();
     ESP_WEB_SERVER_T__G__Server.handleClient();
     func__Esp_WifiPowerSaveTick((uint32_t)millis());
     func__EspLog_Tick();

@@ -967,61 +967,99 @@ static uint32_t UINT32_T__G__LogLastScanMs = 0u;
 static bool     BOOL__G__LogScanValid = false;
 
 /**
- * @brief  [EN] Day code of one file name, or false when the name is not a day
- *              file. Only the day-file shape counts, so the clock file, the
- *              bench log and any leftover file are never read as days.
- *         [FA] کد روز از یک نام فایل، یا false وقتی نام، فایل روز نیست. فقط
- *              شکل نام فایل روز حساب می‌شود، پس فایل ساعت، لاگ بنچ و هر فایل
- *              جاماندهٔ دیگر هرگز به‌جای روز خوانده نمی‌شوند.
- * @‎param  const char *char__ptr_name [EN] name from the directory / [FA] نام از پوشه
- * @‎param  uint32_t *uint32_t__ptr_day [EN] output day code / [FA] کد روز خروجی
- * @return [EN] bool / [FA]‎ درست
+ * @brief  [EN] Convert a raw directory entry into a canonical root path that
+ *              always begins with '/'. Every internal log/FS routine uses this
+ *              single "/..." representation.
+ *         [FA] تبدیل نام خام خروجی پوشه به مسیر یکپارچهٔ ریشه که همیشه با «/»
+ *              آغاز می‌شود تا در تمام توابع برنامه فقط یک شکل مسیر وجود داشته باشد.
+ * @‎param  const char *char__ptr_entry [EN] directory entry / [FA]‎ نام خام از پوشه
+ * @‎param  char *char__outPath [EN] output buffer / [FA]‎ بافر مسیر خروجی
+ * @‎param  size_t size_t__outSize [EN] buffer capacity / [FA]‎ ظرفیت بافر
+ * @‎return [EN] bool true when valid / [FA]‎ درست در صورت معتبر بودن
  */
-static bool func__EspLog_DayFromName(const char *char__ptr_name,
-                                     uint32_t *uint32_t__ptr_day)
+static bool func__EspLog_ToRootPath(const char *char__ptr_entry,
+                                    char *char__outPath,
+                                    size_t size_t__outSize)
 {
-    const char *char__ptr_prefix = &ESP_LOG_FILE_PREFIX[1];
-    uint8_t uint8_t__nameIndex = 0u;
-    uint8_t uint8_t__prefixIndex = 0u;
-    uint8_t uint8_t__digits = 0u;
-    uint32_t uint32_t__day = 0u;
+    int int__n;
 
-    if ((char__ptr_name == NULL) || (uint32_t__ptr_day == NULL))
+    if ((char__outPath == NULL) || (size_t__outSize < 3u))
     {
         return false;
     }
-    if (char__ptr_name[0] == '/')
+    char__outPath[0] = '\0';
+    if ((char__ptr_entry == NULL) || (char__ptr_entry[0] == '\0'))
     {
-        uint8_t__nameIndex = 1u;
+        return false;
     }
-    while ((char__ptr_prefix[uint8_t__prefixIndex] != '\0') &&
-           (char__ptr_name[uint8_t__nameIndex] == char__ptr_prefix[uint8_t__prefixIndex]))
+    if (char__ptr_entry[0] == '/')
     {
-        uint8_t__nameIndex++;
-        uint8_t__prefixIndex++;
+        if (char__ptr_entry[1] == '\0')
+        {
+            return false;
+        }
+        int__n = snprintf(char__outPath, size_t__outSize, "%s", char__ptr_entry);
     }
-    if (char__ptr_prefix[uint8_t__prefixIndex] != '\0')
+    else
+    {
+        int__n = snprintf(char__outPath, size_t__outSize, "/%s", char__ptr_entry);
+    }
+    if ((int__n <= 1) || ((size_t)int__n >= size_t__outSize))
+    {
+        char__outPath[0] = '\0';
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief  [EN] Day code of one canonical root path ("/evt-YYYYMMDD.csv"), or
+ *              false when the path is not a day file.
+ *         [FA] استخراج کد روز از مسیر یکپارچهٔ ریشه («/‎evt-YYYYMMDD.csv‎»)، یا
+ *              نادرست اگر مسیر مربوط به فایل روز نباشد.
+ * @‎param  const char *char__ptr_path [EN] canonical‎ "/..." ‎path / [FA]‎ مسیر یکپارچه با «/»
+ * @‎param  uint32_t *uint32_t__ptr_day [EN] output day code / [FA]‎ کد روز خروجی
+ * @‎return [EN] bool / [FA]‎ درست
+ */
+static bool func__EspLog_DayFromName(const char *char__ptr_path,
+                                     uint32_t *uint32_t__ptr_day)
+{
+    const char *char__ptr_prefix = ESP_LOG_FILE_PREFIX;
+    uint8_t uint8_t__idx = 0u;
+    uint8_t uint8_t__digits = 0u;
+    uint32_t uint32_t__day = 0u;
+
+    if ((char__ptr_path == NULL) || (uint32_t__ptr_day == NULL))
+    {
+        return false;
+    }
+    while ((char__ptr_prefix[uint8_t__idx] != '\0') &&
+           (char__ptr_path[uint8_t__idx] == char__ptr_prefix[uint8_t__idx]))
+    {
+        uint8_t__idx++;
+    }
+    if (char__ptr_prefix[uint8_t__idx] != '\0')
     {
         return false;
     }
     while ((uint8_t__digits < 8u) &&
-           (char__ptr_name[uint8_t__nameIndex] >= '0') &&
-           (char__ptr_name[uint8_t__nameIndex] <= '9'))
+           (char__ptr_path[uint8_t__idx] >= '0') &&
+           (char__ptr_path[uint8_t__idx] <= '9'))
     {
         uint32_t__day = (uint32_t__day * 10u) +
-                        (uint32_t)(char__ptr_name[uint8_t__nameIndex] - '0');
+                        (uint32_t)(char__ptr_path[uint8_t__idx] - '0');
         uint8_t__digits++;
-        uint8_t__nameIndex++;
+        uint8_t__idx++;
     }
     if (uint8_t__digits != 8u)
     {
         return false;
     }
-    if ((char__ptr_name[uint8_t__nameIndex] != '.') ||
-        (char__ptr_name[uint8_t__nameIndex + 1u] != 'c') ||
-        (char__ptr_name[uint8_t__nameIndex + 2u] != 's') ||
-        (char__ptr_name[uint8_t__nameIndex + 3u] != 'v') ||
-        (char__ptr_name[uint8_t__nameIndex + 4u] != '\0'))
+    if ((char__ptr_path[uint8_t__idx] != '.') ||
+        (char__ptr_path[uint8_t__idx + 1u] != 'c') ||
+        (char__ptr_path[uint8_t__idx + 2u] != 's') ||
+        (char__ptr_path[uint8_t__idx + 3u] != 'v') ||
+        (char__ptr_path[uint8_t__idx + 4u] != '\0'))
     {
         return false;
     }
@@ -1109,8 +1147,14 @@ static uint8_t func__EspLog_ScanDays(bool bool__force)
             File file__entry = file__root.openNextFile();
             while (file__entry)
             {
-                func__EspLog_RecordDayEntry(file__entry.name(),
-                                            (uint32_t)file__entry.size());
+                char char__rootPath[40];
+                if (func__EspLog_ToRootPath(file__entry.name(),
+                                            char__rootPath,
+                                            sizeof(char__rootPath)) != false)
+                {
+                    func__EspLog_RecordDayEntry(char__rootPath,
+                                                (uint32_t)file__entry.size());
+                }
                 file__entry.close();
                 if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
                 {
@@ -1127,8 +1171,15 @@ static uint8_t func__EspLog_ScanDays(bool bool__force)
 
         while (dir__root.next())
         {
-            func__EspLog_RecordDayEntry(dir__root.fileName().c_str(),
-                                        (uint32_t)dir__root.fileSize());
+            char char__rootPath[40];
+            String string__entry = dir__root.fileName();
+            if (func__EspLog_ToRootPath(string__entry.c_str(),
+                                        char__rootPath,
+                                        sizeof(char__rootPath)) != false)
+            {
+                func__EspLog_RecordDayEntry(char__rootPath,
+                                            (uint32_t)dir__root.fileSize());
+            }
             if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
             {
                 break;
@@ -2850,32 +2901,30 @@ static size_t func__EspLog_Days(char *char__out, size_t size_t__outSize)
 /* ==================== Flash inspection & cleanup / بررسی و پاک‌سازی فلش ==================== */
 
 /**
- * @brief  [EN] Check whether a root file name belongs to the current calibration
- *              panel firmware (day CSV, clock anchor, or bench log).
- *         [FA] بررسی اینکه آیا نام فایل متعلق به همین برنامهٔ فعلی پنل است یا
- *              از برنامه‌های قبلی روی حافظهٔ فلش جا مانده است.
- * @‎param  const char *char__ptr_name [EN] file name / [FA]‎ نام فایل
+ * @brief  [EN] Check whether a canonical "/..." root path belongs to the
+ *              current calibration panel firmware.
+ *         [FA] بررسی اینکه آیا مسیر یکپارچهٔ ریشه («/...») متعلق به همین
+ *              برنامهٔ فعلی پنل است یا از برنامه‌های قبلی جا مانده است.
+ * @‎param  const char *char__ptr_path [EN] canonical‎ "/..." ‎path / [FA]‎ مسیر یکپارچه با «/»
  * @‎return [EN] bool true when owned by this firmware / [FA]‎ درست اگر متعلق به همین برنامه باشد
  */
-static bool func__EspLog_IsOwnFile(const char *char__ptr_name)
+static bool func__EspLog_IsOwnFile(const char *char__ptr_path)
 {
-    const char *char__ptr_base;
     uint32_t uint32_t__day = 0u;
 
-    if ((char__ptr_name == NULL) || (char__ptr_name[0] == '\0'))
+    if ((char__ptr_path == NULL) || (char__ptr_path[0] != '/'))
     {
         return false;
     }
-    if (func__EspLog_DayFromName(char__ptr_name, &uint32_t__day) != false)
+    if (func__EspLog_DayFromName(char__ptr_path, &uint32_t__day) != false)
     {
         return true;
     }
-    char__ptr_base = (char__ptr_name[0] == '/') ? &char__ptr_name[1] : char__ptr_name;
-    if (strcmp(char__ptr_base, &ESP_LOG_CLOCK_PATH[1]) == 0)
+    if (strcmp(char__ptr_path, ESP_LOG_CLOCK_PATH) == 0)
     {
         return true;
     }
-    if (strcmp(char__ptr_base, &ESP_BENCHLOG_PATH[1]) == 0)
+    if (strcmp(char__ptr_path, ESP_BENCHLOG_PATH) == 0)
     {
         return true;
     }
@@ -2883,9 +2932,9 @@ static bool func__EspLog_IsOwnFile(const char *char__ptr_name)
 }
 
 /**
- * @brief  [EN] Copy a sanitized ASCII file name without leading slash into out.
- *         [FA] رونوشت امن نام فایل بدون خط مورب ابتدایی برای قرار دادن در خروجی.
- * @‎param  const char *char__ptr_src [EN] raw name / [FA]‎ نام خام
+ * @brief  [EN] Copy a sanitized canonical "/..." path into out for JSON output.
+ *         [FA] رونوشت امن مسیر یکپارچهٔ «/...» برای قرار دادن در خروجی JSON.
+ * @‎param  const char *char__ptr_src [EN] canonical‎ "/..." ‎path / [FA]‎ مسیر یکپارچه
  * @‎param  char *char__out [EN] destination / [FA]‎ مقصد
  * @‎param  size_t size_t__outSize [EN] capacity / [FA]‎ ظرفیت بافر
  * @‎return [EN] None / [FA]‎ ندارد
@@ -2894,7 +2943,6 @@ static void func__EspLog_SanitizeFileName(const char *char__ptr_src,
                                           char *char__out,
                                           size_t size_t__outSize)
 {
-    const char *char__ptr_base;
     size_t size_t__idx = 0u;
 
     if ((char__out == NULL) || (size_t__outSize == 0u))
@@ -2906,11 +2954,10 @@ static void func__EspLog_SanitizeFileName(const char *char__ptr_src,
         char__out[0] = '\0';
         return;
     }
-    char__ptr_base = (char__ptr_src[0] == '/') ? &char__ptr_src[1] : char__ptr_src;
-    while ((char__ptr_base[size_t__idx] != '\0') &&
+    while ((char__ptr_src[size_t__idx] != '\0') &&
            ((size_t__idx + 1u) < size_t__outSize))
     {
-        char char__ch = char__ptr_base[size_t__idx];
+        char char__ch = char__ptr_src[size_t__idx];
         if ((char__ch < 0x20) || (char__ch > 0x7E) ||
             (char__ch == '"') || (char__ch == '\\'))
         {
@@ -2982,13 +3029,58 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
             File file__entry = file__root.openNextFile();
             while (file__entry)
             {
+                char char__rootPath[40];
                 char char__safeName[40];
-                const char *char__ptr_raw = file__entry.name();
                 uint32_t uint32_t__fsize = (uint32_t)file__entry.size();
-                bool bool__own = func__EspLog_IsOwnFile(char__ptr_raw);
 
+                if (func__EspLog_ToRootPath(file__entry.name(),
+                                            char__rootPath,
+                                            sizeof(char__rootPath)) != false)
+                {
+                    bool bool__own = func__EspLog_IsOwnFile(char__rootPath);
+                    uint32_t__sumBytes += uint32_t__fsize;
+                    func__EspLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));
+                    if ((uint16_t__shown < 24u) && ((size_t__used + 96u) < size_t__outSize))
+                    {
+                        int int__item = snprintf(&char__out[size_t__used],
+                                                 size_t__outSize - size_t__used,
+                                                 "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
+                                                 (uint16_t__shown == 0u) ? "" : ",",
+                                                 char__safeName,
+                                                 (unsigned long)uint32_t__fsize,
+                                                 (bool__own != false) ? 1u : 0u);
+                        if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
+                        {
+                            size_t__used += (size_t)int__item;
+                            uint16_t__shown++;
+                        }
+                    }
+                    else
+                    {
+                        uint16_t__more++;
+                    }
+                }
+                file__entry.close();
+                file__entry = file__root.openNextFile();
+            }
+            file__root.close();
+        }
+#else
+        Dir dir__root = LittleFS.openDir("/");
+        while (dir__root.next())
+        {
+            char char__rootPath[40];
+            char char__safeName[40];
+            String string__raw = dir__root.fileName();
+            uint32_t uint32_t__fsize = (uint32_t)dir__root.fileSize();
+
+            if (func__EspLog_ToRootPath(string__raw.c_str(),
+                                        char__rootPath,
+                                        sizeof(char__rootPath)) != false)
+            {
+                bool bool__own = func__EspLog_IsOwnFile(char__rootPath);
                 uint32_t__sumBytes += uint32_t__fsize;
-                func__EspLog_SanitizeFileName(char__ptr_raw, char__safeName, sizeof(char__safeName));
+                func__EspLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));
                 if ((uint16_t__shown < 24u) && ((size_t__used + 96u) < size_t__outSize))
                 {
                     int int__item = snprintf(&char__out[size_t__used],
@@ -3008,40 +3100,6 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
                 {
                     uint16_t__more++;
                 }
-                file__entry.close();
-                file__entry = file__root.openNextFile();
-            }
-            file__root.close();
-        }
-#else
-        Dir dir__root = LittleFS.openDir("/");
-        while (dir__root.next())
-        {
-            char char__safeName[40];
-            String string__raw = dir__root.fileName();
-            uint32_t uint32_t__fsize = (uint32_t)dir__root.fileSize();
-            bool bool__own = func__EspLog_IsOwnFile(string__raw.c_str());
-
-            uint32_t__sumBytes += uint32_t__fsize;
-            func__EspLog_SanitizeFileName(string__raw.c_str(), char__safeName, sizeof(char__safeName));
-            if ((uint16_t__shown < 24u) && ((size_t__used + 96u) < size_t__outSize))
-            {
-                int int__item = snprintf(&char__out[size_t__used],
-                                         size_t__outSize - size_t__used,
-                                         "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
-                                         (uint16_t__shown == 0u) ? "" : ",",
-                                         char__safeName,
-                                         (unsigned long)uint32_t__fsize,
-                                         (bool__own != false) ? 1u : 0u);
-                if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
-                {
-                    size_t__used += (size_t)int__item;
-                    uint16_t__shown++;
-                }
-            }
-            else
-            {
-                uint16_t__more++;
             }
         }
 #endif
@@ -3099,11 +3157,13 @@ static uint16_t func__EspLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedByte
             File file__entry = file__root.openNextFile();
             while (file__entry && (uint8_t__count < 8u))
             {
-                const char *char__ptr_nm = file__entry.name();
-                if ((char__ptr_nm != NULL) && (func__EspLog_IsOwnFile(char__ptr_nm) == false))
+                char char__rootPath[40];
+                if ((func__EspLog_ToRootPath(file__entry.name(),
+                                             char__rootPath,
+                                             sizeof(char__rootPath)) != false) &&
+                    (func__EspLog_IsOwnFile(char__rootPath) == false))
                 {
-                    const char *char__ptr_base = (char__ptr_nm[0] == '/') ? &char__ptr_nm[1] : char__ptr_nm;
-                    (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "/%s", char__ptr_base);
+                    (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "%s", char__rootPath);
                     uint32_t__sizes[uint8_t__count] = (uint32_t)file__entry.size();
                     uint8_t__count++;
                 }
@@ -3120,13 +3180,14 @@ static uint16_t func__EspLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedByte
         Dir dir__root = LittleFS.openDir("/");
         while (dir__root.next() && (uint8_t__count < 8u))
         {
+            char char__rootPath[40];
             String string__nm = dir__root.fileName();
-            if (func__EspLog_IsOwnFile(string__nm.c_str()) == false)
+            if ((func__EspLog_ToRootPath(string__nm.c_str(),
+                                         char__rootPath,
+                                         sizeof(char__rootPath)) != false) &&
+                (func__EspLog_IsOwnFile(char__rootPath) == false))
             {
-                const char *char__ptr_base = (string__nm.c_str()[0] == '/')
-                    ? &string__nm.c_str()[1]
-                    : string__nm.c_str();
-                (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "/%s", char__ptr_base);
+                (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "%s", char__rootPath);
                 uint32_t__sizes[uint8_t__count] = (uint32_t)dir__root.fileSize();
                 uint8_t__count++;
             }
@@ -3140,12 +3201,7 @@ static uint16_t func__EspLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedByte
             uint8_t uint8_t__passRemoved = 0u;
             for (uint8_t__idx = 0u; uint8_t__idx < uint8_t__count; uint8_t__idx++)
             {
-                bool bool__ok = LittleFS.remove(char__batch[uint8_t__idx]);
-                if (bool__ok == false)
-                {
-                    bool__ok = LittleFS.remove(&char__batch[uint8_t__idx][1]);
-                }
-                if (bool__ok != false)
+                if (LittleFS.remove(char__batch[uint8_t__idx]) != false)
                 {
                     uint16_t__removed++;
                     uint8_t__passRemoved++;

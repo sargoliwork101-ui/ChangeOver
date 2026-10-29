@@ -126,6 +126,7 @@
 #define ESP_WIFI_VIEWER_HOLD_MS     600000u   /* 10 minutes / ۱۰ دقیقه */
 #define ESP_WIFI_TX_MAX_DBM         20.5f
 #define ESP_WIFI_TX_LOW_DBM         0.0f
+#define ESP_WIFI_DNS_PORT           53u
 
 #define ESP_PARAM_WIFI_IDLE_LOW_POWER_MS  143u
 #define ESP_PARAM_WIFI_CYCLE_ON_MS        144u

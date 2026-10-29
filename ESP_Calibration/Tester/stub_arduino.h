@@ -148,13 +148,17 @@ struct StubWiFi {
     float outputPowerDbm = 20.5f;
     bool apActive = true;
     bool routerDisabled = false;
+    bool sleepDisabled = false;
     void persistent(bool) {}
     void mode(int m) {
         modeValue = m;
-        if (m == WIFI_OFF) apActive = false;
+        if (m == WIFI_OFF) {
+            apActive = false;
+            sleepDisabled = false;
+        }
     }
-    void setSleepMode(int) {}
-    void setSleep(bool) {}
+    void setSleepMode(int v) { sleepDisabled = (v == WIFI_NONE_SLEEP); }
+    void setSleep(bool en) { sleepDisabled = (!en); }
     void setOutputPower(float dbm) { outputPowerDbm = dbm; }
     bool softAPConfig(IPAddress, IPAddress gw, IPAddress) {
         routerDisabled = (gw[0] == 0u) && (gw[1] == 0u) && (gw[2] == 0u) && (gw[3] == 0u);
@@ -165,6 +169,64 @@ struct StubWiFi {
     int softAPgetStationNum(void) { return stationNum; }
 };
 extern StubWiFi WiFi;
+
+struct StubUdp {
+    bool listening = false;
+    uint16_t boundPort = 0u;
+    IPAddress remoteIp = IPAddress(192, 168, 4, 100);
+    uint16_t remotePortVal = 53000u;
+    std::deque<std::vector<uint8_t> > rxPackets;
+    std::vector<uint8_t> curRx;
+    size_t curPos = 0u;
+    std::vector<std::vector<uint8_t> > txPackets;
+    std::vector<uint8_t> curTx;
+
+    uint8_t begin(uint16_t port) {
+        boundPort = port;
+        listening = true;
+        return 1u;
+    }
+    void stop(void) {
+        listening = false;
+        rxPackets.clear();
+        curRx.clear();
+        curPos = 0u;
+    }
+    int parsePacket(void) {
+        if (!listening || rxPackets.empty()) return 0;
+        curRx = rxPackets.front();
+        rxPackets.pop_front();
+        curPos = 0u;
+        return (int)curRx.size();
+    }
+    int read(uint8_t *buf, size_t len) {
+        if (buf == NULL || curPos >= curRx.size()) return 0;
+        size_t avail = curRx.size() - curPos;
+        size_t n = (len < avail) ? len : avail;
+        for (size_t i = 0u; i < n; i++) buf[i] = curRx[curPos + i];
+        curPos += n;
+        return (int)n;
+    }
+    IPAddress remoteIP(void) const { return remoteIp; }
+    uint16_t remotePort(void) const { return remotePortVal; }
+    int beginPacket(IPAddress, uint16_t) {
+        if (!listening) return 0;
+        curTx.clear();
+        return 1;
+    }
+    size_t write(const uint8_t *buf, size_t len) {
+        if (buf != NULL && len > 0u) curTx.insert(curTx.end(), buf, buf + len);
+        return len;
+    }
+    int endPacket(void) {
+        if (!listening) return 0;
+        txPackets.push_back(curTx);
+        curTx.clear();
+        return 1;
+    }
+    void feedPacket(const std::vector<uint8_t> &pkt) { rxPackets.push_back(pkt); }
+};
+typedef StubUdp WiFiUDP;
 
 /* ---------------- web server: records the last response ------------------
    [EN] Handlers are registered by path and can be invoked by a test; args
@@ -383,7 +445,6 @@ struct StubFS {
     std::map<std::string, std::string> files;
     bool mounted = false;
     bool autoFormatCfg = true;
-    bool slashlessDirNames = false;
     size_t totalCapacityBytes = 2097152u;
     /* [EN] true = every write is refused, exactly like a full flash.
        [FA] روشن = هر نوشتن رد می‌شود، درست مثل فلش پر. */
@@ -403,23 +464,20 @@ struct StubFS {
         return true;
     }
     bool exists(const char *p) {
-        if (p == NULL) return false;
-        if (files.count(p) != 0) return true;
-        if (p[0] != '/') return files.count(std::string("/") + p) != 0;
-        return false;
+        if (p == NULL || p[0] != '/') return false;
+        return files.count(p) != 0;
     }
     bool remove(const char *p) {
-        if (p == NULL) return false;
-        if (files.erase(p) > 0) return true;
-        if (p[0] != '/') return files.erase(std::string("/") + p) > 0;
-        return false;
+        if (p == NULL || p[0] != '/') return false;
+        return files.erase(p) > 0;
     }
     StubDir openDir(const char *) {
         StubDir d;
         for (std::map<std::string, std::string>::const_iterator it = files.begin();
              it != files.end(); ++it) {
+            /* Real ESP8266 LittleFSDirImpl::fileName() returns _dirent.name (no leading '/') */
             std::string nm = it->first;
-            if (slashlessDirNames && !nm.empty() && nm[0] == '/') nm.erase(0, 1);
+            if (!nm.empty() && nm[0] == '/') nm.erase(0, 1);
             d.names.push_back(nm);
             d.sizes.push_back(it->second.size());
         }
@@ -427,7 +485,8 @@ struct StubFS {
     }
     StubFile open(const char *p, const char *mode) {
         StubFile f;
-        std::string key = (p && p[0] != '/') ? (std::string("/") + p) : std::string(p ? p : "");
+        if (p == NULL || p[0] != '/') return f;
+        std::string key(p);
         if (mode && mode[0] == 'r') {
             if (!files.count(key)) return f;
         } else if (mode && mode[0] == 'w') {

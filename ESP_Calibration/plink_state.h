@@ -85,4 +85,6 @@ static const uint8_t UINT8_T__G__TxOrder[ESP_PARAM_COUNT] = { 11, 12, 19, 16, 18
 
 /* ==================== HTTP ==================== */
 static esp_web_server_t ESP_WEB_SERVER_T__G__Server(ESP_HTTP_PORT);
+static WiFiUDP WIFI_UDP_T__G__DnsUdp;
+static bool BOOL__G__DnsRunning = false;
 static char CHAR__G__JsonBuffer[ESP_JSON_BUFFER_SIZE];

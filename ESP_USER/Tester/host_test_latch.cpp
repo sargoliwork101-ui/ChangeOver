@@ -108,14 +108,26 @@ bool SimLittleFS::info(FSInfo &fsInfo__out)
 }
 File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
 {
+    if ((char__ptr_path == NULL) || (char__ptr_path[0] != '/'))
+    {
+        return File(std::string(), "r");
+    }
     return File(func__T_FsPath(char__ptr_path), char__ptr_mode);
 }
 bool SimLittleFS::remove(const char *char__ptr_path)
 {
+    if ((char__ptr_path == NULL) || (char__ptr_path[0] != '/'))
+    {
+        return false;
+    }
     return (::unlink(func__T_FsPath(char__ptr_path).c_str()) == 0);
 }
 bool SimLittleFS::exists(const char *char__ptr_path)
 {
+    if ((char__ptr_path == NULL) || (char__ptr_path[0] != '/'))
+    {
+        return false;
+    }
     return (::access(func__T_FsPath(char__ptr_path).c_str(), F_OK) == 0);
 }
 
@@ -147,8 +159,8 @@ SimDir SimLittleFS::openDir(const char *char__ptr_path)
             size_t size_t__sz = (::stat(string__full.c_str(), &struct_stat__st) == 0)
                 ? (size_t)struct_stat__st.st_size : 0u;
             std::string string__base = string__name.substr(PREFIX.size());
-            /* مسیر داخل فلش با «/» شروع می‌شود، مگر در تست نام بدون خط مورب */
-            dir__result.names.push_back(slashlessDirNames ? string__base : ("/" + string__base));
+            /* شبیه‌سازی دقیق ESP8266 واقعی: dir.fileName() نام فایل را بدون «/» ابتدایی می‌دهد */
+            dir__result.names.push_back(string__base);
             dir__result.sizes.push_back(size_t__sz);
         }
     }
@@ -1683,12 +1695,11 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
     }
     (void)func__SimpleLog_Clear();
 
-    /* بررسی ضربان ۱ ساعته، نام بدون اسلش ESP8266، پاک‌سازی فایل‌های جامانده و فرمت امن */
+    /* بررسی ضربان ۱ ساعته، یکسان‌سازی مسیرهای با اسلش ابتدایی، پاک‌سازی فایل‌های جامانده و پیشگیری‌های وای‌فای */
     {
         func__T_Check(SIMPLE_LOG_HEARTBEAT_MS == 3600000u,
                       "ضربان دوره‌ای بدون تغییر دقیقاً ۱ ساعت (۳٬۶۰۰٬۰۰۰ میلی‌ثانیه) است");
 
-        LittleFS.slashlessDirNames = true;
         BOOL__G__FsOk = true;
         BOOL__G__LogScanValid = false;
         {
@@ -1698,15 +1709,15 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
             if (file__old) { file__old.print("OLD_DATA_123456"); file__old.close(); }
         }
         func__T_Check(func__SimpleLog_ScanDays(true) >= 1u,
-                      "اسکن روزها نام بدون خط مورب ابتدایی در ESP8266 واقعی را می‌شناسد");
+                      "اسکن روزها نام بدون اسلش دایرکتوری را به مسیر استاندارد تبدیل و شناسایی می‌کند");
 
         UINT8_T__G__CurrentRole = 1u; /* admin */
         (void)snprintf(CHAR__G__CurrentUser, sizeof(CHAR__G__CurrentUser), "%s", "admin");
         SIMPLE_WEB_SERVER_T__G__Server.simClear();
         func__Simple_HttpEventFsStatus();
-        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("leftover_old_fw.dat") != std::string::npos &&
+        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"name\":\"/leftover_old_fw.dat\"") != std::string::npos &&
                       SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"own\":0") != std::string::npos,
-                      "مسیر /evt/fs فایل جامانده از برنامه‌های قبلی را با own=0 نشان می‌دهد");
+                      "مسیر /evt/fs مسیرهای استاندارد با اسلش ابتدایی و own=0 را گزارش می‌دهد");
 
         SIMPLE_WEB_SERVER_T__G__Server.simClear();
         func__Simple_HttpEventClean();
@@ -1721,8 +1732,40 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
                       LittleFS.exists(SIMPLE_WIFI_FILE),
                       "فرمت کامل حافظهٔ ESP همهٔ لاگ‌ها و فایل‌های قدیمی را پاک و کاربران و وای‌فای را بازنویسی می‌کند");
 
-        LittleFS.slashlessDirNames = false;
         (void)func__SimpleLog_Clear();
+
+        /* بررسی اعمال مجدد WIFI_NONE_SLEEP پس از بیدار شدن از WIFI_OFF و پاسخ فوری NXDOMAIN درگاه ۵۳ */
+        {
+            BOOL__G__TlmSeen = true;
+            UINT8_T__G__TlmFlags = 0u;
+            UINT32_T__G__TlmField[15] = 22000u; /* زیر ۲۰٪ -> خاموشی کامل وای‌فای */
+            WiFi.setStationNum(0);
+            func__Simple_WifiPowerSaveTick(9000000u);
+            func__T_Check(!WiFi.isApActive() && !WiFi.sleepDisabled && !BOOL__G__DnsRunning,
+                          "در حالت WIFI_OFF رادیو خاموش و سوکت درگاه ۵۳ بسته می‌شود");
+
+            UINT8_T__G__TlmFlags = SIMPLE_TLM_FLAG_INPUT_PRESENT;
+            func__Simple_WifiPowerSaveTick(9001000u);
+            func__T_Check(WiFi.isApActive() && WiFi.sleepDisabled && BOOL__G__DnsRunning,
+                          "پس از بیدار شدن مجدد وای‌فای از WIFI_OFF، خواب رادیو دوباره غیرفعال و درگاه ۵۳ فعال می‌شود");
+
+            const uint8_t uint8_t__dnsQuery[] = {
+                0x12u, 0x34u, 0x01u, 0x00u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+                11u, 'c','o','n','n','e','c','t','t','e','s','t',
+                3u, 'c','o','m', 0u,
+                0x00u, 0x01u, 0x00u, 0x01u
+            };
+            WIFI_UDP_T__G__DnsUdp.txPackets.clear();
+            WIFI_UDP_T__G__DnsUdp.feedPacket(
+                std::vector<uint8_t>(uint8_t__dnsQuery, uint8_t__dnsQuery + sizeof(uint8_t__dnsQuery)));
+            func__Simple_DnsTick();
+            func__T_Check(WIFI_UDP_T__G__DnsUdp.txPackets.size() == 1u &&
+                          WIFI_UDP_T__G__DnsUdp.txPackets[0].size() == sizeof(uint8_t__dnsQuery) &&
+                          WIFI_UDP_T__G__DnsUdp.txPackets[0][0] == 0x12u &&
+                          WIFI_UDP_T__G__DnsUdp.txPackets[0][1] == 0x34u &&
+                          (WIFI_UDP_T__G__DnsUdp.txPackets[0][3] & 0x0Fu) == 3u,
+                          "پرسش درگاه ۵۳ فوراً با RCODE=3 NXDOMAIN پاسخ داده می‌شود تا اتصال معطل نماند");
+        }
     }
 }
 
