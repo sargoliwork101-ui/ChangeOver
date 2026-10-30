@@ -45,22 +45,36 @@
 /* ==================== Input voltage thresholds and hysteresis / آستانه‌ها و هیسترزیس ولتاژ ورودی ==================== */
 
 /**
- * @brief  [EN] Input voltage at or above which the input is considered connected, in millivolts.
- *         [FA] ولتاژ ورودی که از آن به بعد ورودی متصل در نظر گرفته می‌شود، بر حسب میلی‌ولت.
+ * @brief  [EN] Boot fallback for the shared healthy-input lower bound (panel q33).
+ *              With MODULE_FAULT=1 the live q33/q34 pair is read atomically from
+ *              Fault; this macro only mirrors the factory default for Fault-off.
+ *         [FA] پیش‌فرض بوت کف پنجرهٔ مشترک ورودی سالم (q33 پنل). با ‎MODULE_FAULT=1‎
+ *              جفت زندهٔ ‎q33/q34‎ اتمیک از Fault خوانده می‌شود؛ این ماکرو فقط
+ *              پیش‌فرض کارخانه برای ساخت بدون Fault است.
  */
 #define UI_INPUT_CONNECTED_THRESHOLD_MV 21000u
 
 /**
- * @brief  [EN] Hysteresis band for input connected/disconnected detection, in millivolts.
- *         [FA] پهنای هیسترزیس تشخیص وصل/قطع ورودی، بر حسب میلی‌ولت.
+ * @brief  [EN] Boot fallback for the shared healthy-input upper bound (panel q34).
+ *         [FA] پیش‌فرض بوت سقف پنجرهٔ مشترک ورودی سالم (q34 پنل).
  */
-#define UI_INPUT_HYSTERESIS_MV          1000u
+#define UI_INPUT_WINDOW_MAX_MV          28000u
 
 /**
- * @brief  [EN] Input voltage at or below which the input is considered disconnected, in millivolts.
- *         Derived from the connected threshold minus the hysteresis band.
- *         [FA] ولتاژ ورودی که از آن به پایین ورودی قطع در نظر گرفته می‌شود، بر حسب میلی‌ولت.
- *         از کم‌کردن هیسترزیس از آستانه وصل به دست می‌آید.
+ * @brief  [EN] Boot fallback Schmitt margin for input presence in Fault-off
+ *              builds, in millivolts. With MODULE_FAULT=1 the live shared
+ *              permission (panel q169/q170 margins) is used instead. The
+ *              scenario-1 OV alarm keeps its own q70/q71 hysteresis.
+ *         [FA] حاشیهٔ اشمیت پیش‌فرض بوت برای حضور ورودی در ساخت بدون Fault،
+ *              بر حسب میلی‌ولت. با ‎MODULE_FAULT=1‎ به‌جای آن از مجوز مشترک
+ *              زنده (حاشیه‌های پنل ‎q169/q170‎) استفاده می‌شود. آلارم
+ *              اضافه‌ولتاژ سناریو ۱ هیسترزیس ‎q70/q71‎ خود را دارد.
+ */
+#define UI_INPUT_HYSTERESIS_MV          500u
+
+/**
+ * @brief  [EN] Lower release threshold derived from the fallback connected bound.
+ *         [FA] آستانهٔ رهاسازی پایین مشتق از کف پیش‌فرض اتصال.
  */
 #define UI_INPUT_DISCONNECTED_THRESHOLD_MV \
     (UI_INPUT_CONNECTED_THRESHOLD_MV - UI_INPUT_HYSTERESIS_MV)

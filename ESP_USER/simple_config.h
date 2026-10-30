@@ -102,7 +102,7 @@
 #define SIMPLE_MSG_GET_PARAMS           0x02u
 #define SIMPLE_MSG_PARAM_REPORT         0x11u
 #define SIMPLE_MSG_PARAMS_BULK          0x12u
-#define SIMPLE_PARAM_COUNT              158u
+#define SIMPLE_PARAM_COUNT              171u
 #define SIMPLE_PARAM_ITEM_SIZE          5u     /* شناسه ۱ بایت + مقدار ۴ بایت */
 #define SIMPLE_PARAMS_REQ_MS            30000u /* فاصله درخواست پارامترها */
 
@@ -125,7 +125,11 @@
 #define SIMPLE_PARAM_WIFI_CYCLE_ON_MS       144u
 #define SIMPLE_PARAM_WIFI_CYCLE_OFF_MS      145u
 #define SIMPLE_PARAM_WIFI_BAT_CUTOFF_PCT    146u
-#define SIMPLE_PARAM_UI_COUNT           14u    /* تعداد پارامترهایی که پنل می‌خواند */
+#define SIMPLE_PARAM_INPUT_MIN_MV         33u
+#define SIMPLE_PARAM_INPUT_MAX_MV         34u
+#define SIMPLE_PARAM_INPUT_HYST_LOW_MV    169u
+#define SIMPLE_PARAM_INPUT_HYST_HIGH_MV   170u
+#define SIMPLE_PARAM_UI_COUNT           18u    /* تعداد پارامترهایی که پنل می‌خواند */
 
 /* ==================== وای‌فای ==================== */
 #define SIMPLE_WIFI_AP_SSID             "changeover_userpannel"

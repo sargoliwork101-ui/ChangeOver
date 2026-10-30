@@ -86,7 +86,7 @@ static_assert(SIM_TLM_DEAD_MASK == 28, "T_DEAD پنل = ۲۸");
 #define SIM_MSG_TIME_SYNC           0x30u
 #define SIM_MSG_DIAG_REQ            0x31u
 #define SIM_MSG_DIAG_DATA           0x32u
-#define SIM_PARAM_COUNT             147u
+#define SIM_PARAM_COUNT             171u
 #define SIM_PARAM_ITEM_SIZE         5u
 #define SIM_PARAMS_PER_FRAME        102u  /* سقف ۵۱۲ بایتی سند: (512-1)/5 */
 #define SIM_TLM_SIZE                128u
@@ -202,10 +202,37 @@ static const SimParamDefault SIM_PARAM_DEFAULT_TABLE[] =
     { 74u, 21000u }, { 75u, 29000u }, { 76u, 0u },
     { 77u, 100u }, { 78u, 95u }, { 79u, 5u }, { 80u, 2u }, { 81u, 2u }, { 82u, 3u },
     { 119u, 21000u }, { 120u, 29000u },
-    { 143u, 1800000u }, { 144u, 60000u }, { 145u, 120000u }, { 146u, 20u }
+    { 143u, 1800000u }, { 144u, 60000u }, { 145u, 120000u }, { 146u, 20u },
+    { 33u, 21000u }, { 34u, 28000u }, { 169u, 500u }, { 170u, 500u }
 };
 
 static bool BOOL__G__SimParamsReady = false;
+static bool BOOL__G__SimInputArmed = false;
+
+/* همان مجوز مشترک اشمیت ورودی: بیرون پنجرهٔ خام فوراً می‌افتد و برگشت
+   داخل کف+حاشیهٔ پایین تا سقف−حاشیهٔ بالا است. */
+inline bool func__Sim_InputPermitted(uint32_t uint32_t__inputMv)
+{
+    const uint32_t uint32_t__minMv = SIM_BOARD_STATE_T__G__Board.param[33u];
+    const uint32_t uint32_t__maxMv = SIM_BOARD_STATE_T__G__Board.param[34u];
+    uint32_t uint32_t__capMv = (uint32_t__maxMv - uint32_t__minMv) / 4u;
+    if (uint32_t__capMv > 3000u) { uint32_t__capMv = 3000u; }
+    uint32_t uint32_t__hl = SIM_BOARD_STATE_T__G__Board.param[169u];
+    uint32_t uint32_t__hh = SIM_BOARD_STATE_T__G__Board.param[170u];
+    if (uint32_t__hl > uint32_t__capMv) { uint32_t__hl = uint32_t__capMv; }
+    if (uint32_t__hh > uint32_t__capMv) { uint32_t__hh = uint32_t__capMv; }
+    if ((uint32_t__inputMv < uint32_t__minMv) || (uint32_t__inputMv > uint32_t__maxMv))
+    {
+        BOOL__G__SimInputArmed = false;
+    }
+    else if (!BOOL__G__SimInputArmed)
+    {
+        BOOL__G__SimInputArmed =
+            ((uint32_t__inputMv >= (uint32_t__minMv + uint32_t__hl)) &&
+             (uint32_t__inputMv <= (uint32_t__maxMv - uint32_t__hh)));
+    }
+    return BOOL__G__SimInputArmed;
+}
 
 inline void func__Sim_ParamsInit(void)
 {
@@ -320,7 +347,7 @@ inline void func__Sim_SendTlm(void)
         (uint32_t)(((float)uint32_t__ma1 * SIM_MA_PER_COUNT * SIM_UV_PER_COUNT) + 0.5f);
     const uint32_t uint32_t__shunt2Uv =
         (uint32_t)(((float)uint32_t__ma2 * SIM_MA_PER_COUNT * SIM_UV_PER_COUNT) + 0.5f);
-    const bool bool__inputPresent = (SIM_BOARD_STATE_T__G__Board.vInMv >= 21000u);
+    const bool bool__inputPresent = func__Sim_InputPermitted(SIM_BOARD_STATE_T__G__Board.vInMv);
 
     uint8_t__payload[0] = (uint8_t)(SIM_BOARD_STATE_T__G__Board.seq & 0xFFu);
     uint8_t__payload[1] = (uint8_t)((SIM_BOARD_STATE_T__G__Board.seq >> 8) & 0xFFu);
@@ -694,7 +721,7 @@ inline void func__Sim_Tick(uint32_t uint32_t__nowMs)
             SIM_BOARD_STATE_T__G__Board.boardTimeSec++;
         }
 
-        if ((SIM_BOARD_STATE_T__G__Board.vInMv >= 21000u) &&
+        if (func__Sim_InputPermitted(SIM_BOARD_STATE_T__G__Board.vInMv) &&
             ((SIM_BOARD_STATE_T__G__Board.state1 == 1u) || (SIM_BOARD_STATE_T__G__Board.state2 == 1u)))
         {
             SIM_BOARD_STATE_T__G__Board.totalChargeSec++;

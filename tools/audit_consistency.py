@@ -1033,7 +1033,7 @@ def sec_panel(ids):
     #      کلید شارژر ۱۶۶..۱۶۸ را برگرداند، هر سناریو تیک «فعال» خودش (۱۵۷+n)
     #      را داشته باشد، سناریوی ۴ جفتِ ۱۱۹/۱۲۰ خودش را، و فیلتر/کالیبراسیون
     #      جریان کلید کارخانهٔ خودشان را.
-    ok("id>=119&&id<=168" in P_PAN.replace(" ", ""),
+    ok("id>=119&&id<=170" in P_PAN.replace(" ", ""),
        "the pdflt default window no longer covers the whole CDEF table",
        "a default-less id can be neither shown nor factory-restored")
     ok("odef([166,167,168])" in P_PAN and
@@ -2157,6 +2157,54 @@ def sec_validation():
         ok((ROOT / runner).exists(), f"the syntax gate calls a missing runner: {runner}")
 
 
+def sec_input_schmitt():
+    """[EN] One shared input Schmitt policy: Fault owns q33/q34 + q169/q170,
+       publishes one permission, and every consumer reads that permission.
+       [FA] یک سیاست اشمیت ورودی مشترک: فالت مالک q33/q34 + q169/q170 است،
+       یک مجوز منتشر می‌کند و هر مصرف‌کننده همان مجوز را می‌خواند."""
+    flt_h = read("Firmware/Modules/Fault/fault.h")
+    flt_c = read("Firmware/Modules/Fault/fault.c")
+    ok(define(flt_h, "FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV") == 169,
+       "shared input hysteresis low id is not 169")
+    ok(define(flt_h, "FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV") == 170,
+       "shared input hysteresis high id is not 170")
+    ok(define(flt_h, "FAULT_INPUT_HYST_LOW_DEFAULT_MV") == 500 and
+       define(flt_h, "FAULT_INPUT_HYST_HIGH_DEFAULT_MV") == 500,
+       "shared input hysteresis default is not 500 mV")
+    ok(define(flt_h, "FAULT_INPUT_HYST_MAX_MV") == 3000,
+       "shared input hysteresis ceiling is not 3000 mV")
+    ok("func__Fault_GetInputPermission" in flt_c and
+       "func__Fault_UpdateInputPermission" in flt_c,
+       "Fault does not publish the shared input permission")
+
+    chg = read("Firmware/Modules/Charger/charger.c")
+    ok("func__Fault_GetInputPermission" in chg and
+       "bool__inputPermitted" in chg,
+       "charger does not consume the shared input permission")
+    mcu = read("Firmware/Modules/McuPowerPath/mcu_power_path.c")
+    ok("func__Fault_GetInputPermission" in mcu,
+       "McuPowerPath does not consume the shared input permission")
+    ui = read("Firmware/Modules/Ui/ui_led.c")
+    ok("func__Fault_GetInputPermission" in ui,
+       "Ui does not consume the shared input permission")
+
+    pan = read("ESP_Calibration/plink_panel.h")
+    ok('id="q169"' in pan and 'id="q170"' in pan,
+       "calibration panel is missing the shared hysteresis fields")
+    ok("a.u169" in pan and "a.u170" in pan,
+       "panel achk does not validate the shared hysteresis margins")
+    user_cfg = read("ESP_USER/simple_config.h")
+    ok("SIMPLE_PARAM_INPUT_HYST_LOW_MV" in user_cfg and
+       "SIMPLE_PARAM_INPUT_HYST_HIGH_MV" in user_cfg,
+       "ESP_USER mirror is missing the shared hysteresis ids")
+    sim = read("ESP_USER/Simulator/sim_board.h")
+    ok("func__Sim_InputPermitted" in sim,
+       "ESP_USER simulator does not mirror the shared input permission")
+    prev = read("tools/panel_preview_server.js")
+    ok("stepInputPermission" in prev,
+       "panel preview does not mirror the shared input permission")
+
+
 def main():
     ids = sec_ids()
     sec_counts()
@@ -2176,6 +2224,7 @@ def main():
     sec_simulator_mirror()
     sec_state_machine_docs()
     sec_panel_markup()
+    sec_input_schmitt()
 
     print("whole-program consistency audit")
     print("=" * 72)

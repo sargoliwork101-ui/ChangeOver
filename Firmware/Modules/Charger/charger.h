@@ -28,14 +28,14 @@
  *       Charger; numeric protections are never bypassed.
  *   1 = the per-channel control loop runs only when every explicit
  *       hardware condition is also satisfied (valid snapshot, installed
- *       channel, Vin ADC >= 22000 mV, valid battery sense, current
+ *       channel, Vin ADC inside the shared q33/q34 window, valid battery sense, current
  *       limits, JIT policy).
  * [FA] تنها کلید فعال‌سازی کلی Charger.
  *   ۰ = فقط اسکلت ‎safe-off: PWM‎ متوقف، رله NC بسته (‎safe-idle)‎، سیاست
  *       JIT/رله غیرفعال. پرچم‌های زمان اجرا دروازهٔ پنهان نیستند؛
  *       حفاظت‌های عددی هیچ‌وقت bypass نمی‌شوند.
  *   ۱ = حلقهٔ کنترل هر کانال فقط با برقراری همهٔ شرایط صریح سخت‌افزاری
- *       (snapshot معتبر، کانال نصب‌شده، Vin >= ۲۲۰۰۰mV، sense باتری
+ *       (snapshot معتبر، کانال نصب‌شده، Vin داخل پنجرهٔ مشترک ‎q33/q34‎، sense باتری
  *       معتبر، حدهای جریان، سیاست JIT) اجرا می‌شود.
  */
 #define CHG_MASTER_ENABLE             1u
@@ -100,7 +100,7 @@
  * 100 mA external source limit; do not raise until the transformer data
  * is measured and CHG_TRANSFORMER_KNOWN flips to 1. Never enters Absorb/
  * Float, never uses a 24 V pack setpoint, still gated by
- * CHG_MASTER_ENABLE=1, Vin >= 22000 mV and all numeric protections.
+ * CHG_MASTER_ENABLE=1, Vin inside the shared q33/q34 window and all numeric protections.
  * (With CHG_BRINGUP_TEST_ENABLE=1: gate/shunt waveforms scope-verified at
  * the 10% stage with a calibrated current path.)
  * [FA] مود صریح فقط-‎bring-up‎ و تنها راه سوئیچینگ با ‎CHG_TRANSFORMER_KNOWN=0‎:
@@ -109,7 +109,7 @@
  *      صفر)؛ شروع ۱٪، گام معمول ولی گیرهٔ CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE
  *      - مرحلهٔ فعلی حداکثر ۱۰٪ duty با حد ۱۰۰mA منبع خارجی؛ تا اندازه‌گیری
  *      ترانس و یک‌شدن CHG_TRANSFORMER_KNOWN بالاتر نرو. هرگز ‎Absorb/Float‎ و
- *      setpoint پک ۲۴V نه؛ همچنان گیت ‎CHG_MASTER_ENABLE=1‎، Vin >= ۲۲۰۰۰mV و
+ *      setpoint پک ۲۴V نه؛ همچنان گیت ‎CHG_MASTER_ENABLE=1‎، Vin داخل پنجرهٔ مشترک q33/q34 و
  *      همهٔ حفاظت‌های عددی. (شکل‌موج‌های ‎gate/shunt‎ در مرحلهٔ ۱۰٪ با اسکوپ
  *      تأیید و مسیر جریان کالیبره شده است.)
  */
@@ -176,7 +176,7 @@
  *      ramp, NO band regulation - one stable operating point to calibrate
  *      the measurement coefficients (scope MEAN at LM358 out, bench V/I
  *      vs. the firmware readings). All usual gates stay (snapshot,
- *      Vin >= 22000 mV, battery sense, JIT, >950 mA hard fault) and
+ *      Vin inside the shared q33/q34 window, battery sense, JIT, >950 mA hard fault) and
  *      switching stops while Vbat >= 14.4 V (no overcharge with regulation
  *      off). Set 0 to return to normal charge control.
  * [FA] تست موقت بنچ: دیوتی ثابت ۱۵٪، بدون رمپ و باند - یک نقطهٔ پایدار
@@ -323,8 +323,19 @@ _Static_assert(CHG_CURRENT_HARD_FAULT_DEFAULT_MA <= CHG_CURRENT_HARD_FAULT_MAX_M
                "factory default above its own ceiling");
 _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
                "calibrated edge must sit below the default trip");
-#define CHG_INPUT_VALID_MV           22000u
+/* [EN] Shared healthy-input Schmitt boot fallback. With MODULE_FAULT=1 the
+ *      live shared permission (panel q33/q34 window + q169/q170 re-arm margins)
+ *      is read through Fault_GetInputPermission; these macros mirror the same
+ *      factory defaults for the Fault-off build only. Leaving the raw window
+ *      still stops the charger immediately.
+ * [FA] پیش‌فرض بوت اشمیت مشترک ورودی سالم. با ‎MODULE_FAULT=1‎ مجوز مشترک زنده
+ *      (پنجرهٔ ‎q33/q34‎ + حاشیه‌های برگشت ‎q169/q170‎) از
+ *      Fault_GetInputPermission خوانده می‌شود؛ این ماکروها فقط پیش‌فرض کارخانه
+ *      برای ساخت بدون Fault هستند. خروج از پنجرهٔ خام همچنان شارژر را فوری
+ *      متوقف می‌کند. */
+#define CHG_INPUT_VALID_MV           21000u
 #define CHG_INPUT_VALID_MAX_MV       28000u
+#define CHG_INPUT_RECOVERY_HYSTERESIS_MV 500u
 /* [EN] v1.100 (user 2026-10-24): 10 healthy minutes with no hardware trip
    heal the JIT strike budget; the FINAL_FAULT latch stays boot-only.
    [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): ۱۰ دقیقه کارِ سالم بدون تریپ

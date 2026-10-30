@@ -124,20 +124,20 @@
  * [FA] یادداشت تاریخی v1.80: انتقال از چیدمان تک‌صفحه‌ای ۱۲۶جایی به بانک
  *      دوصفحه‌ای ۱۴۴جایی برای کنترل‌های چهرهٔ سناریوی ۶ فضا ساخت؛ قالب فعلی v12
  *      همین ظرفیت را برای توسعهٔ سناریوهای ۵/۶ و شناسه‌های ۱۳۷..۱۴۲ سناریوی ۷ نگه می‌دارد. */
-/* [EN] v1.87: 168 entries (12 + 168 x 8 + 4 = 1360 B) - still inside the
+/* [EN] 172 entries (12 + 172 x 8 + 4 = 1392 B) - still inside the
  *      2 KiB two-page bank. The seven scenario ticks take the persisted set
  *      to 163, so the old 160 cap had to grow; no version bump, the record
  *      still stores its own entry count. The active persisted set is now ids
- *      0..14, 20..168 except 72/73 and 76, plus runtime slots 200..203; the
+ *      0..14, 20..170 except 72/73 and 76, plus runtime slots 200..203; the
  *      thermal ids 166..168 raised the high-water mark and the 168-entry cap
  *      already covered them (v1.102).
- *      [FA] نسخهٔ ۱٫۸۷: ۱۶۸ جا (۱۳۶۰ بایت) که هنوز در بانک ۲KB جا می‌شود.
+ *      [FA] ۱۷۲ جا (۱۳۹۲ بایت) که هنوز در بانک ۲KB جا می‌شود.
  *      هفت تیک سناریو مجموعه را به ۱۶۳ رساند و سقف ۱۶۰ باید بزرگ می‌شد؛
  *      نسخهٔ قالب عوض نمی‌شود چون رکورد تعداد خودش را ذخیره می‌کند. مجموعهٔ فعال
- *      حالا شناسه‌های ۰..۱۴ و ۲۰..۱۶۸ است، به‌جز ۷۲/۷۳ و ۷۶، به‌علاوهٔ ۲۰۰..۲۰۳؛
- *      شناسه‌های حرارتی ۱۶۶..۱۶۸ (v1.102) سقف ماندگار را بالا بردند و سقف ۱۶۸جایی
- *      از قبل جا داشت. */
-#define ESP_LINK_NVM_ENTRY_MAX         168u
+ *      حالا شناسه‌های ۰..۱۴ و ۲۰..۱۷۰ است، به‌جز ۷۲/۷۳ و ۷۶، به‌علاوهٔ ۲۰۰..۲۰۳؛
+ *      شناسه‌های حرارتی ۱۶۶..۱۶۸ (v1.102) و حاشیه‌های مشترک اشمیت ورودی
+ *      ۱۶۹/۱۷۰ سقف ماندگار را بالا بردند؛ سقف جا ۱۷۲ است. */
+#define ESP_LINK_NVM_ENTRY_MAX         172u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -170,7 +170,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   168u /* [EN] v1.87 appends the per-scenario LED/beep ticks 158..164; v1.88 adds the scenario-8 rest floor 165; v1.102 appends the thermal-rest trio 166..168. / [FA] نسخهٔ ۱٫۸۷ تیک‌های هشدار سناریو ۱۵۸..۱۶۴ و نسخهٔ ۱٫۸۸ آستانهٔ استراحت ۱۶۵ و نسخهٔ ۱٫۱۰۲ مثلث استراحت حرارتی ۱۶۶..۱۶۸ را اضافه می‌کنند. */
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   170u /* [EN] v1.87 appends the per-scenario LED/beep ticks 158..164; v1.88 adds the scenario-8 rest floor 165; v1.102 appends the thermal-rest trio 166..168; the shared input Schmitt margins append 169/170. / [FA] نسخهٔ ۱٫۸۷ تیک‌های هشدار سناریو ۱۵۸..۱۶۴ و نسخهٔ ۱٫۸۸ آستانهٔ استراحت ۱۶۵ و نسخهٔ ۱٫۱۰۲ مثلث استراحت حرارتی ۱۶۶..۱۶۸ و حاشیه‌های مشترک اشمیت ورودی ۱۶۹/۱۷۰ را اضافه می‌کنند. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

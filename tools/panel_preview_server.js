@@ -242,7 +242,9 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               ms): trigger 600 = the old rule at the factory ceiling 650
               (0 = auto band-50), and the two durations are the 1 h / 10 min
               the employer set; 0 duration = off. */
-           600, 3600000, 600000];
+           600, 3600000, 600000,
+           /* Shared input Schmitt margins (ids 169/170), Fault-owned. */
+           500, 500];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -424,12 +426,35 @@ function clampParam(id, v) {
         case 166: return clampW(v, 0, 3000);
         case 167: return clampW(v, 0, 21600000);
         case 168: return clampW(v, 0, 3600000);
+        case 169: case 170: {
+            const cap = Math.min(3000, Math.floor((P[34] - P[33]) / 4));
+            return clampW(v, 0, cap);
+        }
         default:
             if (id >= 83 && id <= 92) {
                 return ((id - 83) % 5) >= 3 ? clampW(v, 10, 20000) : clampW(v, 0, 20000);
             }
             return v;
     }
+}
+
+/* [EN] One shared input Schmitt permission, mirroring Fault. Outside the raw
+ *      q33/q34 window it drops immediately; re-arm needs the panel margins
+ *      q169/q170 (each capped at span/4). Every simulated consumer uses it.
+ * [FA] یک مجوز مشترک اشمیت ورودی، آینهٔ فالت. بیرون پنجرهٔ خام ‎q33/q34‎
+ *      فوراً می‌افتد؛ بازگشت به حاشیه‌های پنل ‎q169/q170‎ نیاز دارد (هر کدام
+ *      حداکثر یک‌چهارم فاصله). همهٔ مصرف‌کننده‌های شبیه‌سازی از همین استفاده می‌کنند. */
+let inputArmed = false;
+function stepInputPermission(inputMv) {
+    const cap = Math.min(3000, Math.floor((P[34] - P[33]) / 4));
+    const hl = Math.min(P[169], cap);
+    const hh = Math.min(P[170], cap);
+    if (inputMv < P[33] || inputMv > P[34]) {
+        inputArmed = false;
+    } else if (!inputArmed) {
+        inputArmed = inputMv >= P[33] + hl && inputMv <= P[34] - hh;
+    }
+    return inputArmed;
 }
 
 /* one battery channel: firmware-like state machine, demo time-scale */
@@ -459,9 +484,10 @@ let ms = 0;
 
 /* [EN] Advance one channel by a 100 ms tick using the current input voltage.
  * [FA] وضعیت یک کانال را در یک گام ۱۰۰ میلی‌ثانیه‌ای با ولتاژ ورودی به‌روز می‌کند. */
-function stepChannel(c, phase, inputMv) {
+function stepChannel(c, phase, inputMv, inputPermitted) {
     const prof = { enter: P[21], absorb: P[20], float: P[23], reentry: P[24], imax: P[25], taper: P[26] };
-    if (inputMv < P[33] || inputMv > P[34]) {
+    if (inputPermitted === undefined) { inputPermitted = stepInputPermission(inputMv); }
+    if (!inputPermitted) {
         /* [EN] Mirror the firmware's INPUT_WAIT gate: no input, no PWM.
          * [FA] آینهٔ گیت INPUT_WAIT فرم‌ور: ورودی نامعتبر یعنی توقف شارژ. */
         c.state = 6;
@@ -637,7 +663,7 @@ function telemetry() {
     const cyc = ms % 60000;
     const inputBaseMv = demoInputMv(cyc);
     const inputMv = inputBaseMv + (P[4] | 0);
-    const inputValid = inputMv >= P[33] && inputMv <= P[34];
+    const inputValid = stepInputPermission(inputMv);
     for (let k = 0; k < 2; k++) {
         const previousState = ch[k].state;
         if (!inputValid) {
@@ -645,7 +671,7 @@ function telemetry() {
              * [FA] مثل فرم‌ور، آخرین زمان فعال پیش از توقف ثبت می‌شود. */
             updateDeadChargeCounter(latch, k, previousState, ms, P[126]);
         }
-        stepChannel(ch[k], k === 0 ? 0 : 2.1, inputMv);
+        stepChannel(ch[k], k === 0 ? 0 : 2.1, inputMv, inputValid);
         updateDeadChargeCounter(latch, k, ch[k].state, ms, P[126]);
     }
     const vlow = ch[1].v, vhigh = ch[0].v;
@@ -964,7 +990,7 @@ const server = http.createServer((req, res) => {
                  * as the real board's would after each write. v1.15: the
                  * same cascade (profile -> charger alarms -> fault alarms). */
                 for (const pid of [20, 21, 22, 23, 24, 25, 26, 35, 36, 37,
-                                   27, 28, 29, 30, 31, 32, 33, 34,
+                                   27, 28, 29, 30, 31, 32, 33, 34, 169, 170,
                                    38, 39, 40, 42, 43, 41, 44, 45, 46, 48, 49, 47,
                                    50, 51, 52, 53, 54, 55, 56, 57, 62, 63, 64, 65, 58, 59, 60, 61,
                                    66, 67, 68, 69, 70, 71, 74, 75, 76,
@@ -1210,6 +1236,7 @@ const server = http.createServer((req, res) => {
 /* [EN] Check invalid-input and long-pause recovery without starting the server.
  * [FA] توقف ورودی و بازیابی پس از مکث طولانی را بدون بالا آوردن سرور می‌سنجد. */
 function runPreviewSelfTests() {
+    inputArmed = false;
     for (const invalidMv of [15000, 29500]) {
         const channel = mkChannel();
         channel.state = 1;
@@ -1222,6 +1249,22 @@ function runPreviewSelfTests() {
         stepChannel(channel, 0, 24100);
         assert.strictEqual(channel.state, 0, "input recovery must restart through OFF");
     }
+
+    /* [EN] The shared Schmitt margin must gate recovery, not just the raw window.
+     * [FA] حاشیهٔ مشترک اشمیت باید برگشت را گیت کند، نه فقط پنجرهٔ خام. */
+    inputArmed = false;
+    const marginChannel = mkChannel();
+    marginChannel.state = 6;
+    stepChannel(marginChannel, 0, 21200);
+    assert.strictEqual(marginChannel.state, 6, "inside raw window but below the lower margin must stay INPUT_WAIT");
+    stepChannel(marginChannel, 0, 21500);
+    assert.strictEqual(marginChannel.state, 0, "clearing the lower margin must re-arm through OFF");
+    inputArmed = false;
+    marginChannel.state = 6;
+    stepChannel(marginChannel, 0, 27800);
+    assert.strictEqual(marginChannel.state, 6, "inside raw window but above the upper margin must stay INPUT_WAIT");
+    stepChannel(marginChannel, 0, 27500);
+    assert.strictEqual(marginChannel.state, 0, "clearing the upper margin must re-arm through OFF");
 
     const transition = { chargeSec: [10, 0], pauseAt: [null, null] };
     const channel = mkChannel();

@@ -503,6 +503,11 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             return func__Fault_SetAlarmParam(uint8_t__paramId,
                                              uint32_t__value,
                                              uint32_t__appliedValue);
+        case ESPLINK_PARAM_FAULT_INPUT_HYST_LOW_MV:
+        case ESPLINK_PARAM_FAULT_INPUT_HYST_HIGH_MV:
+            return func__Fault_SetInputHystParam(uint8_t__paramId,
+                                                 uint32_t__value,
+                                                 uint32_t__appliedValue);
 #endif
 #endif /* ESPLINK_HOST_TEST */
 
@@ -819,6 +824,10 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
         case ESPLINK_PARAM_FAULT_ALARM_INPUT_MAX_MV:
             return func__Fault_GetAlarmParam(uint8_t__paramId,
                                              uint32_t__value);
+        case ESPLINK_PARAM_FAULT_INPUT_HYST_LOW_MV:
+        case ESPLINK_PARAM_FAULT_INPUT_HYST_HIGH_MV:
+            return func__Fault_GetInputHystParam(uint8_t__paramId,
+                                                 uint32_t__value);
 #endif
 #endif /* ESPLINK_HOST_TEST */
 
@@ -1141,6 +1150,14 @@ _Static_assert(CHG_THERMAL_PARAM_FIRST_ID + CHG_THERMAL_PARAM_COUNT - 1u
                == CHG_THERMAL_PARAM_LAST_ID,
                "the thermal block has a hole in its wire-id range");
 #endif /* MODULE_CHARGER */
+#if MODULE_FAULT
+_Static_assert(ESPLINK_PARAM_FAULT_INPUT_HYST_LOW_MV == FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV,
+               "input hysteresis low id must match the Fault owner");
+_Static_assert(ESPLINK_PARAM_FAULT_INPUT_HYST_HIGH_MV == FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV,
+               "input hysteresis high id must match the Fault owner");
+_Static_assert(ESPLINK_PARAM_FAULT_INPUT_HYST_HIGH_MV < ESPLINK_PARAM_COUNT,
+               "ESPLINK_PARAM_COUNT must cover the shared input hysteresis pair");
+#endif /* MODULE_FAULT */
 
 #define ESPLINK_BULK_ITEM_SIZE   5u
 #define ESPLINK_BULK_MAX_ITEMS   \

@@ -284,12 +284,16 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     hEnt: PANEL.FULL_ENTER, hExit: PANEL.FULL_EXIT,
     cHyst: PANEL.CHG_HYST, rHyst: PANEL.RUN_HYST,
     rZero: PANEL.ZERO_EXIT, rOne: PANEL.ONE_EXIT,
-    cvmin: PANEL.CHG_VMIN, cvmax: PANEL.CHG_VMAX
+    cvmin: PANEL.CHG_VMIN, cvmax: PANEL.CHG_VMAX,
+    imin: PANEL.INPUT_CONN_THR, imax: PANEL.INPUT_WINDOW_MAX,
+    ihl: PANEL.INPUT_HYST_DEFAULT, ihh: PANEL.INPUT_HYST_DEFAULT
   };
+  var inputArmed = false;
   function boardParamsBody() {
     return ',"pvOk":1,"pv":[' + [board.gPer, board.gOff, board.yPer, board.yOn,
       board.vmin, board.vmax, board.hEnt, board.hExit, board.cHyst, board.rHyst,
-      board.rZero, board.rOne, board.cvmin, board.cvmax].join(',') + ']';
+      board.rZero, board.rOne, board.cvmin, board.cvmax,
+      board.imin, board.imax, board.ihl, board.ihh].join(',') + ']';
   }
   function changedParamQuery() {
     var query = '';
@@ -323,7 +327,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     return 0;
   }
   function modelCurrentMa(state) { return Math.round(modelDutyPermille(state) * 1.6); }
-  function inputPresent() { return sim.linkUp && (sim.vin >= PANEL.INPUT_CONN_THR); }
+  function inputPresent() {
+    if (!sim.linkUp) { return false; }
+    var cap = Math.max(0, Math.floor((board.imax - board.imin) / 4));
+    var hl = Math.min(board.ihl, cap), hh = Math.min(board.ihh, cap);
+    if (sim.vin < board.imin || sim.vin > board.imax) { inputArmed = false; }
+    else if (!inputArmed) { inputArmed = sim.vin >= board.imin + hl && sim.vin <= board.imax - hh; }
+    return inputArmed;
+  }
   function uptimeSec() { return Math.floor((Date.now() - counters.t0) / 1000) + 86400; }
 
   function buildTelemetry() {
@@ -956,6 +967,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
         sim.state1 = 1; sim.state2 = 0; sim.fault = 0; sim.deadMask = 0; sim.linkUp = true;
         board.vmin = PANEL.BAT_VMIN; board.vmax = PANEL.BAT_VMAX;
         board.cvmin = PANEL.CHG_VMIN; board.cvmax = PANEL.CHG_VMAX;
+        board.imin = PANEL.INPUT_CONN_THR; board.imax = PANEL.INPUT_WINDOW_MAX;
+        board.ihl = PANEL.INPUT_HYST_DEFAULT; board.ihh = PANEL.INPUT_HYST_DEFAULT; inputArmed = false;
      }]
     ].forEach(function (scenario) {
       var button = el('button', { 'class': 'btn sec' }, scenario[0]);
@@ -1010,7 +1023,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     if (out) {
       out.innerHTML =
         'ورودی: ' + (sim.vin / 1000).toFixed(2) + ' V (' +
-          (sim.vin >= PANEL.INPUT_CONN_THR ? 'وصل' : 'قطع') + ')' +
+          (inputPresent() ? 'وصل' : 'قطع') + ')' +
         ' | پک: ' + (sim.vpack / 1000).toFixed(2) + ' V = ' + vToPctPack(sim.vpack) + '٪' +
         '<br>نیم‌باتری پایین: ' + vToPctHalf(sim.vlow) + '٪ | بالا: ' + vToPctHalf(sim.vhigh) +
           '٪ | عدم تعادل: ' + Math.abs(sim.vhigh - sim.vlow) + ' mV' +
@@ -1080,7 +1093,7 @@ def main():
         die("spec has %d u32 fields but simple_config.h says %d" % (len(field_map), tlm_n))
     if tlm_size != 4 + 4 * tlm_n:
         die("simple_config.h: TLM size %d does not match %d fields" % (tlm_size, tlm_n))
-    for needed in ("INPUT_CONN_THR", "BAT_VMIN", "BAT_VMAX"):
+    for needed in ("INPUT_CONN_THR", "INPUT_WINDOW_MAX", "INPUT_HYST_DEFAULT", "BAT_VMIN", "BAT_VMAX"):
         if needed not in panel:
             die("simple_panel.h does not define %s" % needed)
 

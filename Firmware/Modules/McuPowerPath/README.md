@@ -1,7 +1,7 @@
 /**
  * @file    README.md
- * @brief   [EN] McuPowerPath module sheet: Q1 (PB5) self-supply with hysteresis 22000/21500, independent from Changeover Q17 (PB11).
- *          [FA] برگه ماژول McuPowerPath: تغذیهٔ MCU با Q1 (PB5) با هیسترزیس 22000/21500، مستقل از Changeover Q17 (PB11).
+ * @brief   [EN] McuPowerPath module sheet: Q1 (PB5) self-supply from the shared Fault input Schmitt permission (q33/q34 + q169/q170), independent from Changeover Q17 (PB11).
+ *          [FA] برگه ماژول McuPowerPath: تغذیهٔ MCU با Q1 (PB5) از مجوز مشترک اشمیت ورودی فالت (q33/q34 + q169/q170)، مستقل از Changeover Q17 (PB11).
  */
 
 # ماژول McuPowerPath
@@ -10,20 +10,22 @@
 
 پیاده‌سازی مستقل مسیر تغذیهٔ MCU با ترانزیستور Q1 روی PB5 (BSP_GPIO_BATTERY_SWITCH) فعال-Low؛ PB5 Low = باتری وصل، High = قطع. `MODULE_MCU_POWER_PATH=1` است و بدون تسک اختصاصی، فقط از تسک کنترل حدود 10ms اجرا می‌شود. PB11/Q17 کاملاً در اختیار Changeover می‌ماند و هیچ منطق Q1 به `changeover.c` یا `protection.c` اضافه نشده؛ `MODULE_PROTECTION=0` باقی می‌ماند.
 
-**هیسترزیس ورودی DC (فقط v_in، نه v_bat):**
+**پنجرهٔ مشترک ورودی سالم (فقط v_in، نه v_bat):**
 
-- `MCU_POWER_INPUT_QUALIFY_MV = 22000u` : ورودی برای احراز 5 ثانیه باید `>=22000mV` بماند تا `PB5 High` (قطع) شود.
-- `MCU_POWER_INPUT_RECONNECT_MV = 21500u` : اگر Q1 قبلاً قطع شده و `v_in < 21500mV` شود، باتری دوباره وصل (`PB5 Low`) و تایمر لغو می‌شود.
-- `MCU_POWER_INPUT_HYSTERESIS_MV = 500u` : ناحیه مرده `21500..21999mV` وضعیت فعلی Q1 را حفظ می‌کند (21.9V به‌تنهایی reconnect نمی‌کند).
-- `MCU_POWER_INPUT_STABLE_MS = 5000u` : زمان پیوسته لازم برای قطع پس از احراز.
+- تصمیم ولتاژی همان مجوز مشترک اشمیت Fault است (`func__Fault_GetInputPermission`). پنجرهٔ خام `q33/q34` و حاشیه‌های برگشت `q169/q170` از پنل تنظیم می‌شوند؛ پیش‌فرض کارخانه `21000..28000mV` و حاشیه‌ها `500/500mV` است.
+- بیرون `[q33,q34]` مجوز فوراً می‌افتد و باتری وصل (`PB5 Low`) می‌شود. برگشت فقط داخل `[q33+H_low, q34-H_high]` مجوز را مسلح می‌کند؛ با پیش‌فرض یعنی `21500..27500mV`.
+- `MCU_POWER_INPUT_STABLE_MS = 5000u` : تا مجوز مشترک درست است تایمر ۵ ثانیه می‌چرخد و سپس Q1 قطع می‌شود؛ با افتادن مجوز تایمر لغو و باتری وصل می‌شود.
+- snapshot نامعتبر Q1 را حفظ و تایمر را لغو می‌کند.
+- `MCU_POWER_INPUT_DEFAULT_MIN_MV` / `MAX_MV` و `MCU_POWER_INPUT_QUALIFY_MARGIN_MV` فقط پیش‌فرض بوتِ ساخت بدون Fault هستند.
 
 تغییر ولتاژ باتری هنگام ورودی معتبر تصمیم Q1 را عوض نمی‌کند. ورودی از طریق `BSP_GPIO_INPUT_24V_PRESENT` (PB4) با وقفه دو لبه: rising = ورودی وصل، falling = ورودی قطع. در وقفه PB4، اگر PB4 قطع را نشان داد فوراً PB5 Low و تایمر pending لغو می‌شود، سپس رویداد `BSP_EXTI_INPUT_DETECT` ثبت می‌گردد. فقط GPIO و پرچم volatile در ISR، بدون صف، mutex، تایمر RTOS، تاخیر یا ADC. تبدیل زمان فقط با `rtos_time.h` و بدون فرض `tick=1ms`.
 
-منطق (خلاصه هیسترزیس):
+منطق (خلاصه پنجرهٔ مشترک و حاشیه‌های داخلی):
 - بوت بدون ورودی DC: `PB5 Low` از `board_pins.h` و `MX_GPIO_Init` + `func__McuPowerPath_Init()` وصل می‌ماند.
-- بوت با ورودی `>=22000` پیوسته 5 ثانیه → `PB5 High` (قطع)؛ اگر `21500..21999` → تایمر لغو، Q1 حفظ؛ اگر `<21500` → `PB5 Low` (وصل).
-- وصل ورودی `>=22000` → شروع احراز 5 ثانیه؛ افت به `21.9V` قبل از 5 ثانیه → لغو تایمر، وصل بماند (عدم قطع).
-- پس از قطع (High): `21.9V` → همچنان High (وضعیت حفظ)؛ `<21500` (مثلاً 21.4V) → فوراً Low (وصل) و لغو تایمر؛ بازگشت به `>=22V` → دوباره 5 ثانیه qualification.
+- بوت با مجوز مشترک مسلح (`[q33+H_low, q34-H_high]`) پیوسته 5 ثانیه → `PB5 High` (قطع)؛ با افتادن مجوز → `PB5 Low` (وصل).
+- با پیش‌فرض کارخانه: برگشت `21500..27500mV`؛ افتادن بیرون `21000..28000mV`.
+- وصل ورودی واجد شرایط → شروع احراز 5 ثانیه؛ افتادن مجوز قبل از 5 ثانیه → لغو تایمر، وصل بماند.
+- پس از قطع (High): تا مجوز مشترک درست است قطع می‌ماند؛ بیرون رفتن از پنجرهٔ خام (`<21000` یا `>28000`) → فوراً Low (وصل) و لغو تایمر؛ بازگشت به باند برگشت → دوباره 5 ثانیه qualification.
 - قطع ناگهانی با falling PB4 → ISR فوراً Low بدون نیاز به ADC، لغو تایمر، MCU reset نمی‌شود.
 - `v_bat` تاثیری ندارد وقتی `v_in` معتبر است.
 
@@ -31,8 +33,8 @@
 
 | فایل | نقش |
 |---|---|
-| `mcu_power_path.h` / `mcu_power_path.c` | مالک انحصاری Q1/PB5 (BSP_GPIO_BATTERY_SWITCH) با `Init/Run/OnInputIrq`، ثابت‌های `MCU_POWER_INPUT_STABLE_MS=5000u`، `QUALIFY 22000u`، `RECONNECT 21500u`، `HYSTERESIS 500u`، فقط `rtos_time.h` و `measurement.h` (snapshot v_in)؛ ISR امن فقط GPIO و پرچم |
-| `McuPowerPath_Board_Validation.xlsx` | برگه اعتبارسنجی منطق و برد: نگاشت PB5/PB4/PB11، startup، ورودی 22V با 5s، هیسترزیس 21.9/21.5/<21.5، falling PB4 در ISR، بی‌اثری v_bat، regression Changeover |
+| `mcu_power_path.h` / `mcu_power_path.c` | مالک انحصاری Q1/PB5 (BSP_GPIO_BATTERY_SWITCH) با `Init/Run/OnInputIrq`، مجوز مشترک اشمیت Fault (`q33/q34` + `q169/q170`)، `MCU_POWER_INPUT_STABLE_MS=5000u`، فقط `rtos_time.h` و `fault.h`؛ ISR امن فقط GPIO و پرچم |
+| `McuPowerPath_Board_Validation.xlsx` | برگه اعتبارسنجی منطق و برد: نگاشت PB5/PB4/PB11، startup، مجوز مشترک اشمیت q33/q34 + q169/q170 با احراز 5s و لبه‌های پایین/بالا، falling PB4 در ISR، بی‌اثری v_bat، regression Changeover |
 | `../../Config/Inc/board_pins.h` | `PIN_SAFE_BAT_SWITCH_HIGH=0u` (Low امن برای Q1) و `PIN_BAT_SWITCH_ACTIVE_HIGH=0u`؛ PB11 مستقل و High امن |
 | `../../Bsp/Src/bsp_gpio.c` | منطق وارونگی active-low برای PB5، مقداردهی امن از `PIN_SAFE_*` |
 | `CubeIDE/Core/Src/main.c` | `MX_GPIO_Init()` latch `PB5 RESET Low` قبل از `HAL_GPIO_Init` و `PB11 SET High` مستقل |
@@ -49,7 +51,7 @@
 | نام | کار |
 |---|---|
 | `func__McuPowerPath_Init` | تایمر غیرفعال، `BatteryConnected=true`، `BSP_GPIO_BATTERY_SWITCH=true` (Low وصل)؛ قبل از تسک‌ها صدا زده شود |
-| `func__McuPowerPath_Run` | هر ~10ms از تسک کنترل با هیسترزیس v_in: <br>• `v_in >=22000` و باتری وصل → تایمر 5s شروع/ادامه، پس از 5s `BSP_GPIO_BATTERY_SWITCH=false` (High قطع)<br>• `21500 <= v_in <22000` → لغو تایمر، حفظ Q1 (21.9V به‌تنهایی reconnect نمی‌کند)<br>• `v_in <21500` → `BSP_GPIO_BATTERY_SWITCH=true` (Low وصل) و لغو تایمر<br>• `snapshot` نامعتبر → لغو تایمر، حفظ Q1 (زمان نامعتبر شمرده نشود)<br>• اگر Q1 قبلاً قطع و `>=22000` → قطع بماند، تایمر نچرخد<br>زمان با `osKernelGetTickCount` + `func__Rtos_TicksToMilliseconds` |
+| `func__McuPowerPath_Run` | هر ~10ms از تسک کنترل با پنجرهٔ مشترک v_in: <br>• `v_in` داخل `[q33+QM, q34-QM]` و باتری وصل → تایمر 5s شروع/ادامه، پس از 5s `BSP_GPIO_BATTERY_SWITCH=false` (High قطع)<br>• داخل نوار مرده نزدیک هر لبه → لغو تایمر، حفظ Q1<br>• بیرون `[q33+RM, q34-RM]` → `BSP_GPIO_BATTERY_SWITCH=true` (Low وصل) و لغو تایمر<br>• `snapshot` نامعتبر → لغو تایمر، حفظ Q1 (زمان نامعتبر شمرده نشود)<br>• اگر Q1 قبلاً قطع و داخل باند احراز → قطع بماند، تایمر نچرخد<br>زمان با `osKernelGetTickCount` + `func__Rtos_TicksToMilliseconds` |
 | `func__McuPowerPath_OnInputIrq` | امن در ISR: `Read PB4`؛ اگر `input_present==false` → فوراً `Write PB5 Low`، `BatteryConnected=true`، `TimerActive=false`؛ اگر `true` کاری نمی‌کند و `Run` احراز را آغاز می‌کند؛ فقط GPIO و پرچم volatile |
 | `HAL_GPIO_EXTI_Callback` (PB4) | `#if MODULE_MCU_POWER_PATH` هوک `OnInputIrq` سپس `func__BspExti_OnIrq(BSP_EXTI_INPUT_DETECT)` با ترتیب Low قبل از رویداد |
 
@@ -59,8 +61,8 @@
 
 | پایه منطقی | پایه فیزیکی | لیبل | نقش | HIGH یعنی (شماتیک) |
 |---|---|---|---|---|
-| `BSP_GPIO_BATTERY_SWITCH` | PB5 / پایه 41 | `MCU_BAT_SWITCH` / Q1 | مالک McuPowerPath؛ قطع/وصل مسیر باتری MCU | Low وصل (فعال Low)، High قطع امن پس از 5 ثانیه (هیسترزیس 500mV) |
-| `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | `MCU_INT_24_IN` | ورودی تشخیص Presence با EXTI دو لبه (BspExti) | High = ورودی حاضر (>=22V واجد)، Low = قطع (ISR فوراً PB5 Low) |
+| `BSP_GPIO_BATTERY_SWITCH` | PB5 / پایه 41 | `MCU_BAT_SWITCH` / Q1 | مالک McuPowerPath؛ قطع/وصل مسیر باتری MCU | Low وصل (فعال Low)، High قطع امن پس از 5 ثانیه داخل باند احراز مشترک |
+| `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | `MCU_INT_24_IN` | ورودی تشخیص Presence با EXTI دو لبه (BspExti) | High = ورودی حاضر (وتوی سخت‌افزاری)، Low = قطع (ISR فوراً PB5 Low) |
 | `BSP_GPIO_PROTECT_BATTERY` | PB11 | `MCU_LOW_BAT` / `MCU_PROTECT_BATT` | فقط Changeover Q17، High امن | **ممنوع: McuPowerPath تغییر نمی‌دهد** |
 | `BSP_GPIO_RELAY` | PB7 | `MCU_PROTECT_CHARGER` | فقط Charger/Relay | **ممنوع** |
 
@@ -70,10 +72,10 @@
 
 - راه‌اندازی: `PIN_SAFE_BAT_SWITCH_HIGH=0u` و در `MX_GPIO_Init` لچ `PB5 RESET Low` قبل از `HAL_GPIO_Init`؛ `func__BspGpio_Init` سپس `McuPowerPath_Init` دوباره Low امن را تضمین می‌کنند تا MCU بدون ورودی از باتری بوت شود.
 - `PB11` همیشه `PIN_SAFE_PROTECT_BATT_HIGH=1u` و `SET High` مستقل قبل از خروجی؛ هیچ منطقی PB5 و PB11 را به‌هم پیوند نمی‌دهد.
-- `Run` هیسترزیس: <br>• `v_in >=22000` → تایمر 5 ثانیه؛ `snapshot` نامعتبر یا `21500..21999` → لغو تایمر و حفظ Q1 (زمان نامعتبر/ناحیه مرده شمرده نشود).<br>• `v_in <21500` → وصل Low و لغو تایمر (حتی اگر قبلاً قطع بود).<br>• پس از قطع (High)، `21.9V` (21900) → همچنان High؛ تا `<21500` نرسد reconnect نشود.
+- `Run` پنجرهٔ مشترک: <br>• `v_in` داخل باند احراز `[q33+QM, q34-QM]` → تایمر 5 ثانیه؛ `snapshot` نامعتبر یا نوار مرده → لغو تایمر و حفظ Q1 (زمان نامعتبر/ناحیه مرده شمرده نشود).<br>• بیرون باند اتصال مجدد `[q33+RM, q34-RM]` → وصل Low و لغو تایمر (حتی اگر قبلاً قطع بود).<br>• پس از قطع (High)، ورود به نوار مرده → همچنان High؛ تا خروج از باند اتصال مجدد رخ ندهد reconnect نشود.
 - زمان‌گیری فقط با `osKernelGetTickCount()` و `func__Rtos_TicksToMilliseconds()` و بدون فرض `tick=1ms`.
 - ISR `OnInputIrq` فقط `BspGpio_Write` و پرچم volatile؛ بدون `TakeEvent`، صف، mutex، تایمر، تاخیر یا ADC؛ ترتیب: اول PB5 Low سپس ثبت رویداد.
-- اگر ورودی از ابتدا حاضر باشد، بوت با باتری سپس احراز 5 ثانیه `>=22000` بدون نیاز به لبه rising گمشده.
+- اگر ورودی از ابتدا حاضر باشد، بوت با باتری سپس احراز 5 ثانیه داخل باند احراز مشترک بدون نیاز به لبه rising گمشده.
 - `v_bat24` هیچ‌گاه تصمیم Q1 را در حضور `v_in` معتبر تغییر نمی‌دهد (تست hysteresis).
 
 ## درخت اتصال
@@ -101,7 +103,7 @@ rtos_app.c → func__Rtos_Start → osThreadNew(TaskControl) // when MODULE_MCU_
     func__McuPowerPath_Init() // before loop: battery connected
     for(;;)
       measurement_snapshot_t snap; (void)func__Measurement_GetSnapshot(&snap); // valid, v_in_mv
-      func__McuPowerPath_Run() // hysteresis v_in: >=22000 5s→High; 21500..21999 preserve+cancel; <21500→Low
+      func__McuPowerPath_Run() // shared q33/q34: qualify band 5s→High; dead-band preserve+cancel; outside reconnect band→Low
       func__Changeover_Evaluate(&snap, faults) // PB11 only, thresholds 21000/20800/21200, 3000ms unchanged
       func__Rtos_DelayMilliseconds(APP_CONFIG.control_period_ms) // ~10ms
 ```
@@ -112,14 +114,15 @@ rtos_app.c → func__Rtos_Start → osThreadNew(TaskControl) // when MODULE_MCU_
 mcu_power_path.c
   ├── bsp_gpio.h → func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true/false) // true=Low on, false=High off (owned)
   │               → func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) // PB4 level in ISR
-  ├── measurement.h → func__Measurement_GetSnapshot(&snap) // valid, v_in_mv (thresholds QUALIFY/RECONNECT for v_in)
+  ├── measurement.h → func__Measurement_GetSnapshot(&snap) // valid, v_in_mv
+  ├── fault.h → func__Fault_GetInputWindow(&min,&max) // shared q33/q34, atomic pair (MODULE_FAULT=1)
   ├── rtos_time.h → func__Rtos_TicksToMilliseconds(elapsed_ticks) + osKernelGetTickCount()
   └── cmsis_os2.h → osKernelGetTickCount()
 ```
 
 ## تستر
 
-`Tester/` — تست هاست مسیر تغذیهٔ MCU با ساعت و GPIO بدلی (۴۹ بررسی). اجرا با
+`Tester/` — تست هاست مسیر تغذیهٔ MCU با ساعت و GPIO بدلی (۶۷ بررسی). اجرا با
 `Tester/run_host_test_mcu_power_path.sh`؛ داخل `tools/check_firmware_syntax.sh` هم اجرا
 می‌شود. توضیح کامل در `Tester/README.md`.
 

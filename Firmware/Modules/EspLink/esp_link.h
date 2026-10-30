@@ -623,7 +623,14 @@
 #define ESPLINK_PARAM_CHG_THERMAL_CONTINUOUS_MS  167u  /* u32, ms, def 3600000, 0..21600000 (0 = rest off) */
 #define ESPLINK_PARAM_CHG_THERMAL_REST_MS        168u  /* u32, ms, def 600000, 0..3600000 (0 = rest off) */
 
-#define ESPLINK_PARAM_COUNT               169u
+/* [EN] Shared input Schmitt margins (user order 2026-10-30): ids 169/170
+   belong to the Fault module and are used by every input consumer.
+   [FA] حاشیه‌های مشترک اشمیت ورودی (دستور کاربر ۲۰۲۶-۱۰-۳۰): شناسه‌های
+   ۱۶۹/۱۷۰ متعلق به ماژول فالت‌اند و همهٔ مصرف‌کننده‌های ورودی از آن‌ها استفاده می‌کنند. */
+#define ESPLINK_PARAM_FAULT_INPUT_HYST_LOW_MV  169u  /* u32, mV, def 500, 0..3000 and <= (q34-q33)/4 */
+#define ESPLINK_PARAM_FAULT_INPUT_HYST_HIGH_MV 170u  /* u32, mV, def 500, 0..3000 and <= (q34-q33)/4 */
+
+#define ESPLINK_PARAM_COUNT               171u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

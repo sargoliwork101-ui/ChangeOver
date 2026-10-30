@@ -446,7 +446,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 22876f8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d6d53ba</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1023,10 +1023,12 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="sgx" id="s2">
 <div class="cd">
 <div class="hd"><b>پنجرهٔ ورودی سالم</b></div>
-<div class="sx">تشخیص «ورودی حاضر» فقط داخل این پنجره انجام می‌شود:<br><br><b>کف</b> = پایین‌ترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۱۰۰۰ میلی‌ولت).<br><b>سقف</b> = بالاترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۸۰۰۰ میلی‌ولت).<br>این دو همیشه دست‌کم ۱۰۰۰ میلی‌ولت از هم فاصله دارند.<br><b>بیرون پنجره:</b> شارژر کار نمی‌کند و منتظر ورودی می‌ماند.</div>
+<div class="sx">این چهار عدد، قانون مشترک «ورودی سالم» برای نمایشگر، مسیر تغذیهٔ خود میکرو و شارژر هستند:<br><br><b>کف</b> = پایین‌ترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۱۰۰۰ میلی‌ولت).<br><b>سقف</b> = بالاترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۸۰۰۰ میلی‌ولت).<br>این دو همیشه دست‌کم ۱۰۰۰ میلی‌ولت از هم فاصله دارند.<br><b>حاشیهٔ پایین/بالا</b> = فاصلهٔ برگشت از هر لبه (پیش‌فرض هر کدام ۵۰۰ میلی‌ولت).<br><b>بیرون پنجره:</b> مجوز مشترک فوراً می‌افتد؛ شارژر کار نمی‌کند، نمایشگر ورودی را سالم نمی‌داند و مسیر تغذیهٔ میکرو به باتری برمی‌گردد.<br><b>برگشت:</b> فقط وقتی ولتاژ داخل «کف + حاشیهٔ پایین» تا «سقف − حاشیهٔ بالا» بیاید همان مجوز دوباره مسلح می‌شود. هر دو حاشیه به یک‌چهارم فاصلهٔ کف/سقف محدود می‌شوند.<br>زمان‌بندی‌های اختصاصی سر جای خود می‌مانند: احراز ۵ ثانیهٔ میکرو و ثبات ۱۵ ثانیهٔ باتری در شارژر.<br>آلارم اضافه‌ولتاژ سناریوی ۱ هنوز جداست و با ۷۰/۷۱ تنظیم می‌شود.</div>
 <div class="bqr">
 <label>کف ورودی سالم (mV)<input type="number" id="q33" step="100" min="18000" max="24000"><span class="lb" id="a33"></span></label>
 <label>سقف ورودی سالم (mV)<input type="number" id="q34" step="100" min="24000" max="30000"><span class="lb" id="a34"></span></label>
+<label>حاشیهٔ پایین hysteresis (mV)<input type="number" id="q169" step="50" min="0" max="3000"><span class="lb" id="a169"></span></label>
+<label>حاشیهٔ بالای hysteresis (mV)<input type="number" id="q170" step="50" min="0" max="3000"><span class="lb" id="a170"></span></label>
 </div>
 
 </div>
@@ -1389,7 +1391,7 @@ $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c
  +
  '<div id="dbcnt"></div></div>';
 let ASB=null;
-ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),lat:$('asbb8'),ded:$('asbb9'),wk:$('asbb10'),box5:$('asb5'),mask:'',live:$('aslive'),tick:false};
+ASB={vinArmed:false,sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),lat:$('asbb8'),ded:$('asbb9'),wk:$('asbb10'),box5:$('asb5'),mask:'',live:$('aslive'),tick:false};
 /* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
    [FA] کنترل median/میانگین در تنظیمات است؛ صفحهٔ اصلی فقط جدول کاربردی ولتاژ/وضعیت و نمودار کانال‌ها را نگه می‌دارد. */
 
@@ -1672,8 +1674,8 @@ const PX={
  30:['ولتاژ بازگشت باتری','بالای این یعنی باتری دوباره وصل شده.'],
  31:['دیبانس نبود باتری','مدت لازم برای قطعی‌شدن تشخیص «نیست».'],
  32:['زمان ریکاوری','چقدر بعد از رفع مشکل صبر کند تا دوباره عادی شود.'],
- 33:['کمینهٔ ورودی سالم','زیر این ولتاژ، ورودی معتبر نیست و شارژ شروع نمی‌شود.'],
- 34:['بیشینهٔ ورودی سالم','بالای این، ورودی بیش از حد است و شارژ متوقف می‌شود.'],
+ 33:['کمینهٔ ورودی سالم','کف پنجرهٔ مشترک ورودی سالم برای نمایشگر، تغذیهٔ میکرو و شارژر. بیرون رفتن از پنجره مجوز مشترک را فوراً می‌اندازد؛ برگشت با حاشیهٔ پایین ۱۶۹ است.'],
+ 34:['بیشینهٔ ورودی سالم','سقف پنجرهٔ مشترک ورودی سالم برای نمایشگر، تغذیهٔ میکرو و شارژر. بالای این مجوز مشترک فوراً می‌افتد؛ برگشت با حاشیهٔ بالای ۱۷۰ است. آلارم اضافه‌ولتاژ سناریوی ۱ جداست (۷۰/۷۱).'],
  35:['Hard fault جریان','از این جریان رد شود، کانال فوراً خاموش می‌شود. آخرین خط دفاع.'],
  36:['قطع اضافه‌ولتاژ OV','از این ولتاژ رد شود، duty صفر می‌شود. پیش‌فرض کمی زیر سقف مطلق تا زودتر تصمیم بگیرد.'],
  37:['کف اعتبار باتری','زیر این ولتاژ، عدد باتری معتبر شمرده نمی‌شود.'],
@@ -1768,7 +1770,9 @@ const PX={
  164:['تیک هشدار سناریو 7 (خطای فنی)','۱ = چراغ و بوق این سناریو روشن باشد (پیش‌فرض)؛ ۰ = ساکت. تشخیص، قفل و محافظت دست نمی‌خورد.'],
  166:['آستانهٔ جریان استراحت','پیش‌فرض ۶۰۰ میلی‌آمپر است: همان قانون همیشگیِ «۵۰ کمتر از سقف شارژ سریع» (سقف کارخانه ۶۵۰). ساعت استراحت فقط وقتی جلو می‌رود که جریان شارژ سریع به این مقدار برسد یا بیشتر شود. اگر سقف شارژ سریع را زیاد عوض کردید این عدد را هم تنظیم کنید، یا صفر بگذارید تا همیشه خودکار ۵۰ کمتر از سقف بماند.'],
  167:['مدت شارژ تا استراحت','بعد از این مدت شارژ پیوسته با جریان بالای آستانه، کانال به استراحت حرارتی می‌رود. صفر = استراحت حرارتی خاموش.'],
- 168:['مدت استراحت حرارتی','هر استراحت این مدت طول می‌کشد و بعد شارژ از ابتدا (خاموش، بعد شارژ سریع) ادامه می‌یابد. صفر = خاموش.']};
+ 168:['مدت استراحت حرارتی','هر استراحت این مدت طول می‌کشد و بعد شارژ از ابتدا (خاموش، بعد شارژ سریع) ادامه می‌یابد. صفر = خاموش.'],
+ 169:['حاشیهٔ پایین hysteresis ورودی','بعد از افتادن مجوز مشترک، ولتاژ باید دست‌کم به این اندازه بالاتر از کف ۳۳ بیاید تا همهٔ مصرف‌کننده‌ها دوباره مسلح شوند. پیش‌فرض ۵۰۰؛ سقف مؤثر یک‌چهارم فاصلهٔ ۳۳/۳۴.'],
+ 170:['حاشیهٔ بالای hysteresis ورودی','بعد از افتادن مجوز مشترک، ولتاژ باید دست‌کم به این اندازه پایین‌تر از سقف ۳۴ بیاید تا همهٔ مصرف‌کننده‌ها دوباره مسلح شوند. پیش‌فرض ۵۰۰؛ سقف مؤثر یک‌چهارم فاصلهٔ ۳۳/۳۴.']};
 
 // [EN] v1.36 (user order: the chip tooltips must be EXPLICIT - plain
 //   language, real units, and what bigger vs smaller actually does. The
@@ -2056,7 +2060,7 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
    [FA] نسخهٔ ۱٫۸۷: سقف دوباره بالاترین شناسهٔ واقعی است (۱۶۴). هفت شناسهٔ
    آخر فیلد عددی ندارند و تیک «فعال» کارت ویرایششان می‌کند، ولی پشتیبان‌گیری
    و اعتبارسنجی روی همین فهرست می‌گردند. */
-const AIDS=[];for(let _i=27;_i<=168;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=170;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 
@@ -2075,7 +2079,7 @@ const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
    field, the card's «فعال» tick is their only editor.
    [FA] نسخهٔ ۱٫۸۷: شناسه‌های ۱۵۸..۱۶۴ تیک هشدار سناریوهای ۱..۷ هستند و
    پیش‌فرض همه «روشن» است؛ فیلد عددی ندارند و تنها ویرایشگرشان تیک «فعال» کارت است. */
-const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20,1,600000,60000,10000,500,50,3000,200,3,100,1,1,1,1,1,1,1,1,25000,600,3600000,600000];
+const CDEF=[21000,29000,1000,60000,1000,50,86400000,60000,0,600000,120,0,50,1,0,1,0,3,3000,200,3,100,1000,50,1800000,60000,120000,20,1,600000,60000,10000,500,50,3000,200,3,100,1,1,1,1,1,1,1,1,25000,600,3600000,600000,500,500];
 /* v1.71: شناسهٔ ۵۷ دیگر درصد نیست؛ مدت هر بوق بحرانی بر حسب ms است (۱۰۰۰۰ = همان صدای قبلی) */
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,10000,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
@@ -2105,6 +2109,14 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  else if(!(a.mn<=a.mx-1000))w.push({ids:[33,34],msg:'کف ورودی باید زیر سقف−۱۰۰۰ باشد (≤ '+(a.mx-1000)+')'});
  if(bad(a.mx,24000,30000))w.push({ids:[34],msg:'سقف ورودی باید ۲۴۰۰۰..۳۰۰۰۰ باشد'});
  else if(!(a.mx>=a.mn+1000))w.push({ids:[34,33],msg:'سقف ورودی باید بالای کف+۱۰۰۰ باشد (≥ '+(a.mn+1000)+')'});
+ /* v1.103: shared input Schmitt re-arm margins (q169/q170). The board clamps
+    each margin to min(3000, span/4); warn when the typed value is above the
+    live effective cap so the user sees the value the board will actually use. */
+ const inCap=Math.max(0,Math.floor((a.mx-a.mn)/4));
+ if(bad(a.u169,0,3000))w.push({ids:[169],msg:'حاشیهٔ پایین hysteresis باید ۰..۳۰۰۰ باشد'});
+ else if(a.u169>inCap)w.push({ids:[169,33,34],msg:'حاشیهٔ پایین به سقف مؤثر پنجره محدود می‌شود (≤ '+inCap+')'});
+ if(bad(a.u170,0,3000))w.push({ids:[170],msg:'حاشیهٔ بالای hysteresis باید ۰..۳۰۰۰ باشد'});
+ else if(a.u170>inCap)w.push({ids:[170,33,34],msg:'حاشیهٔ بالا به سقف مؤثر پنجره محدود می‌شود (≤ '+inCap+')'});
  if(bad(a.hd,a.imax+50,3000))w.push({ids:[35,25],msg:'Hard fault باید '+(a.imax+50)+'..۳۰۰۰ باشد (بالای Bulk+۵۰، هرگز بالای ۳۰۰۰)'});
  const olo=Math.max(14000,a.over+150);
  if(bad(a.ov,olo,15000))w.push({ids:[36,22],msg:'قطع OV باید '+olo+'..۱۵۰۰۰ باشد (بالای تجاوز+۱۵۰، هرگز بالای ۱۵۰۰۰)'});
@@ -2206,7 +2218,7 @@ function afill(){if(!D||!D.p)return;
  for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;
   if(document.activeElement!==e&&!(id in PEND)&&D.p[id]!=null)e.value=D.p[id];
   if(a&&!apend(id)&&!(id in PEND))a.textContent='';}}
-function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;qput(id,v);});afresh();}
+function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;qput(id,v);});odef([169,170]);afresh();}
 /* v1.22: پیش‌فرض کارخانهٔ PID سه‌مرحله‌ای — همان اعداد CHG_PID_* در charger.h */
 const PDEF=[12,1600,0,1000,1000,50,18000,0,10,1000];
 /* v1.22: نگهبان ترکیب PID — آینهٔ func__Charger_ClampPid روی برد به اضافهٔ دو
@@ -2458,9 +2470,13 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  const g=(id,fb)=>p[id]!=null?p[id]:fb;
  const vin=t[14];
  const mn=g(33,21000),mx=g(34,28000);
+ const cap=Math.max(0,Math.floor((mx-mn)/4));
+ const hl=Math.min(g(169,500),cap),hh=Math.min(g(170,500),cap);
  $('v0').textContent=v2(vin);$('v1').textContent=v2(t[15]);$('v2').textContent=v2(t[16]);
  const set=(k,txt,cls)=>{ASB.sp[k].textContent=txt;ASB.sp[k].className='tg '+cls;ASB.sr[k].className=cls==='g'?'rok':cls==='y'?'rwr':'rbd';};
- const vinOk=vin>=mn&&vin<=mx;
+ if(vin<mn||vin>mx)ASB.vinArmed=false;
+ else if(!ASB.vinArmed)ASB.vinArmed=vin>=mn+hl&&vin<=mx-hh;
+ const vinOk=ASB.vinArmed;
  set(0,vinOk?'سالم':'خارج از بازه',vinOk?'g':'r');
  set(1,'سالم','g');set(2,'سالم','g');
  /* کادر خطاهای قفل‌شده حالا قفل‌های ماژولی را هم نشان می‌دهد، پس کلید
@@ -2831,9 +2847,9 @@ const MDEF=[0,0,3000,3000,0,0,0,3,10];
 function pdflt(id){
  id=+id;
  /* v1.75: the window must always cover the whole CDEF table (v1.102 grew it
-    to 168 and 166..168 had no default until this line caught up). */
+    to 170 and 166..170 had no default until this line caught up). */
  if(id<=8)return MDEF[id];
- if(id>=119&&id<=168)return CDEF[id-119];
+ if(id>=119&&id<=170)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -3395,7 +3411,7 @@ function wmeas(m,act){
    شمارنده روی ۹۹ جا مانده بود و ستون‌ها جابه‌جا می‌شدند؛ حالا از تعداد واقعی می‌آید. */
 /* [EN] v1.87: must equal ESP_PARAM_COUNT; the CSV column count and every
    ‎per-id array are sized from it. [FA]‎ باید برابر تعداد پارامتر باشد. */
-const PN=169;
+const PN=171;
 /* [EN] Bench CSV column contract. [FA] قرارداد ستون‌های CSV بنچ. */
 function wset(){const P=[];for(let k=0;k<PN;k++)P.push(D.p[k]==null?'-':D.p[k]);return P.join(',');}
 let WSIG=null;

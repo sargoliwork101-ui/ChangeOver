@@ -739,9 +739,11 @@ static void func__all_off(void)
 /* ==================== Input connection state / وضعیت اتصال ورودی ==================== */
 
 /**
- * @brief  [EN] Stateful input-connected result used by the 20V/21V hysteresis.
- *         It starts disconnected as the safe default.
- *         [FA] نتیجه دارای وضعیت تشخیص اتصال ورودی با هیسترزیس ۲۰/۲۱ ولت.
+ * @brief  [EN] Stateful healthy-input result used by the shared q33/q34 window.
+ *         The lower edge keeps a 1 V release hysteresis; the upper edge releases
+ *         immediately. It starts disconnected as the safe default.
+ *         [FA] نتیجه دارای وضعیت ورودی سالم با پنجرهٔ مشترک ‎q33/q34‎.
+ *         لبهٔ پایین هیسترزیس رهاسازی ۱ ولت دارد؛ لبهٔ بالا فوراً رها می‌شود.
  *         مقدار اولیه برای حالت امن، قطع است.
  */
 static bool BOOL__G__UiInputPresent = false;
@@ -1304,22 +1306,22 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
 /* ==================== Input state update / به‌روزرسانی وضعیت ورودی ==================== */
 
 /**
- * @brief  [EN] Update input presence and input overvoltage state with hysteresis.
- *         Connected: input >= 21V. Disconnected: input <= 20V (fixed wiring band).
- *         Overvoltage enters above id 70 and clears at or below 70-71 (defaults 28V / 27V).
- *         [FA] وضعیت اتصال و خطای اضافه‌ولتاژ ورودی را با هیسترزیس به‌روز می‌کند.
- *         وصل: ورودی حداقل ۲۱ ولت. قطع: ورودی حداکثر ۲۰ ولت (باند ثابت).
- *         خطا: بالاتر از ۷۰ فعال و در ۷۰−۷۱ یا پایین‌تر پاک می‌شود (پیش‌فرض ۲۸/۲۷ ولت).
+ * @brief  [EN] Update input presence and input overvoltage state.
+ *         Presence uses the shared healthy-input window q33/q34 (Fault):
+ *         enter inside [q33,q34]; release below q33-1V or above q34 immediately.
+ *         Scenario-1 overvoltage keeps its own runtime pair q70/q71.
+ *         [FA] وضعیت حضور و اضافه‌ولتاژ ورودی را به‌روز می‌کند.
+ *         حضور از پنجرهٔ مشترک ورودی سالم ‎q33/q34 (Fault)‎ استفاده می‌کند:
+ *         ورود داخل [q33,q34]؛ رهاسازی زیر ‎q33-1V‎ یا بالای q34 فوراً.
+ *         اضافه‌ولتاژ سناریو ۱ جفت زمان‌اجرای مستقل ‎q70/q71‎ خود را دارد.
  * @param  uint32_t__inputVoltageMv [EN] Input voltage in mV / ولتاژ ورودی بر حسب میلی‌ولت
  */
 static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
 {
     /* [EN] v1.16: the overvoltage threshold (id 70) and its hysteresis
        (id 71) are runtime; clear = thresh - hyst, no underflow (71 <=
-       2000 < 24000 <= 70 by clamp). The 21 V / 20 V input-present band
-       stays a fixed wiring constant.
-       [FA] آستانه/هیسترزیس اضافه‌ولتاژ زمان‌اجرا (۷۰/۷۱)؛ باند اتصال
-       ورودی ثابت می‌ماند. */
+       2000 < 24000 <= 70 by clamp).
+       [FA] آستانه/هیسترزیس اضافه‌ولتاژ زمان‌اجرا (۷۰/۷۱)؛ پاک‌سازی = آستانه−هیسترزیس. */
     if (BOOL__G__UiInputOverVoltage == false)
     {
         if (uint32_t__inputVoltageMv > UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv)
@@ -1337,26 +1339,63 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
     }
     else
     {
-        /* [EN] Keep the overvoltage error in the 27V..28V hysteresis band.
-           [FA] خطای اضافه‌ولتاژ را در بازه هیسترزیس ۲۷ تا ۲۸ ولت حفظ کن. */
+        /* [EN] Keep the overvoltage error in its q70/q71 hysteresis band.
+           [FA] خطای اضافه‌ولتاژ را در باند هیسترزیس ‎q70/q71‎ حفظ کن. */
     }
 
-    if (BOOL__G__UiInputPresent == false)
+    /* [EN] Normal presence faces mirror the one shared Fault Schmitt flag.
+       The separate q70/q71 OV alarm above is unchanged. Between q34 and q70
+       the battery-run face may appear while the OV alarm is still off -
+       accepted consequence of sharing q33/q34.
+       [FA] چهره‌های عادی حضور از همان پرچم مشترک اشمیت فالت پیروی می‌کنند.
+       آلارم مستقل ‎q70/q71‎ بالا دست‌نخورده است. بین q34 و q70 ممکن است چهرهٔ
+       کارکرد باتری دیده شود در حالی که آلارم OV هنوز خاموش است؛ این پیامد
+       پذیرفته‌شدهٔ اشتراک ‎q33/q34‎ است. */
+#if MODULE_FAULT
     {
-        if (uint32_t__inputVoltageMv >= UI_INPUT_CONNECTED_THRESHOLD_MV)
+        bool bool__permissionValid = false;
+        bool bool__permitted = false;
+
+        if ((func__Fault_GetInputPermission(&bool__permissionValid, &bool__permitted) == true) &&
+            (bool__permissionValid != false))
         {
-            BOOL__G__UiInputPresent = true;
+            BOOL__G__UiInputPresent = bool__permitted;
+        }
+        else
+        {
+            BOOL__G__UiInputPresent = false;
         }
     }
-    else if (uint32_t__inputVoltageMv <= UI_INPUT_DISCONNECTED_THRESHOLD_MV)
+#else
     {
-        BOOL__G__UiInputPresent = false;
+        static bool BOOL__S__InputArmed = false;
+        uint32_t uint32_t__inputMinMv = UI_INPUT_CONNECTED_THRESHOLD_MV;
+        uint32_t uint32_t__inputMaxMv = UI_INPUT_WINDOW_MAX_MV;
+        uint32_t uint32_t__spanMv = uint32_t__inputMaxMv - uint32_t__inputMinMv;
+        uint32_t uint32_t__marginMv = UI_INPUT_HYSTERESIS_MV;
+
+        if (uint32_t__marginMv > (uint32_t__spanMv / 4u))
+        {
+            uint32_t__marginMv = uint32_t__spanMv / 4u;
+        }
+        if ((uint32_t__inputVoltageMv < uint32_t__inputMinMv) ||
+            (uint32_t__inputVoltageMv > uint32_t__inputMaxMv))
+        {
+            BOOL__S__InputArmed = false;
+        }
+        else if (BOOL__S__InputArmed == false)
+        {
+            BOOL__S__InputArmed =
+                ((uint32_t__inputVoltageMv >= (uint32_t__inputMinMv + uint32_t__marginMv)) &&
+                 (uint32_t__inputVoltageMv <= (uint32_t__inputMaxMv - uint32_t__marginMv)));
+        }
+        else
+        {
+            /* [EN] Armed: stay armed inside the raw window. [FA] مسلح: داخل پنجره خام مسلح بمان. */
+        }
+        BOOL__G__UiInputPresent = BOOL__S__InputArmed;
     }
-    else
-    {
-        /* [EN] Keep the previous connected state in the 20V..21V band.
-           [FA] وضعیت قبلی اتصال را در بازه ۲۰ تا ۲۱ ولت حفظ کن. */
-    }
+#endif
 }
 
 /* ==================== Scenario Input Overvoltage / سناریوی اضافه‌ولتاژ ورودی ==================== */

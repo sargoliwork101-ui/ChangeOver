@@ -7,16 +7,22 @@
  *              GPIO و snapshot بدلی رانده می‌شود.
  *
  * @note    [EN] What this module decides: whether the MCU runs from the
- *              battery or from the input. The battery is dropped only after
- *              the input has stayed at or above 22000 mV for 5 s AND the
- *              presence pin still agrees; it is restored immediately when
- *              the input falls under 21500 mV or the presence IRQ fires.
- *              The switch line is ACTIVE LOW: writing true means "battery
- *              on".
- *          [FA] تصمیم این ماژول: تغذیهٔ MCU از باتری یا از ورودی. باتری فقط
- *              وقتی برداشته می‌شود که ورودی ۵ ثانیه ≥ ۲۲۰۰۰ بماند و پایهٔ
- *              حضور هم تأیید کند؛ با افت زیر ۲۱۵۰۰ یا وقفهٔ حضور، فوراً
- *              برمی‌گردد. خط کلید ‎active-low‎ است: نوشتن true یعنی «باتری روشن».
+ *              battery or from the input. The healthy window is the shared
+ *              battery or from the input. The voltage decision is the one
+ *              shared Fault input Schmitt permission (panel q33/q34 window,
+ *              q169/q170 re-arm margins). With the factory 21000/28000 window
+ *              and 500/500 margins, the battery is dropped only after the
+ *              shared permission stays true for 5 s AND the presence pin still
+ *              agrees; it is restored immediately when the permission drops
+ *              (outside 21000..28000) or when the presence IRQ fires. The
+ *              switch line is ACTIVE LOW: writing true means "battery on".
+ *          [FA] تصمیم این ماژول: تغذیهٔ MCU از باتری یا از ورودی. تصمیم ولتاژی
+ *              همان مجوز مشترک اشمیت ورودی فالت است (پنجرهٔ ‎q33/q34‎ و
+ *              حاشیه‌های برگشت ‎q169/q170‎). با پنجرهٔ کارخانه ‎21000/28000‎ و
+ *              حاشیه‌های ۵۰۰/۵۰۰، باتری فقط وقتی برداشته می‌شود که مجوز مشترک
+ *              پنج ثانیه درست بماند و پایهٔ حضور هم تأیید کند؛ با افتادن مجوز
+ *              (بیرون ‎21000..28000‎) یا وقفهٔ حضور فوراً برمی‌گردد. خط کلید
+ *              ‎active-low‎ است: true یعنی «باتری روشن».
  */
 
 #include <stdio.h>
@@ -26,6 +32,7 @@
 #include "mcu_power_path.h"
 #include "bsp_gpio.h"
 #include "measurement.h"
+#include "fault.h"
 
 /* ==================== Check helper / کمک‌کنندهٔ بررسی ==================== */
 
@@ -46,6 +53,77 @@ static bool     BOOL__G__PresencePin      = true;
 static bool     BOOL__G__SnapshotOk       = true;
 static uint32_t UINT32_T__G__InputMv      = 24000u;
 static uint32_t UINT32_T__G__SwitchWrites = 0u;
+static uint32_t UINT32_T__G__WindowMinMv  = MCU_POWER_INPUT_DEFAULT_MIN_MV;
+static uint32_t UINT32_T__G__WindowMaxMv  = MCU_POWER_INPUT_DEFAULT_MAX_MV;
+static uint32_t UINT32_T__G__HystLowMv    = 500u;
+static uint32_t UINT32_T__G__HystHighMv   = 500u;
+static bool     BOOL__G__InputArmed       = false;
+
+/* [EN] Host stub of the shared Fault window. The production module reads the
+       live q33/q34 pair through this API; the test drives it directly.
+   [FA] بدل هاست پنجرهٔ مشترک Fault. ماژول محصول جفت زندهٔ ‎q33/q34‎ را از این
+       API می‌خواند؛ تست آن را مستقیم می‌راند. */
+bool func__Fault_GetInputWindow(uint32_t *uint32_t__minMv, uint32_t *uint32_t__maxMv)
+{
+    if ((uint32_t__minMv == NULL) || (uint32_t__maxMv == NULL))
+    {
+        return false;
+    }
+    *uint32_t__minMv = UINT32_T__G__WindowMinMv;
+    *uint32_t__maxMv = UINT32_T__G__WindowMaxMv;
+    return true;
+}
+
+/* [EN] Host stub of the shared Fault Schmitt permission. It mirrors the
+       production rule: outside the raw window drop at once; re-arm only
+       inside [min+H_low, max-H_high], each margin capped at span/4.
+   [FA] بدل هاست مجوز مشترک اشمیت فالت. همان قاعدهٔ محصول: بیرون پنجرهٔ خام
+       فوراً بیفت؛ فقط داخل [‎min+H_low, max-H_high]‎ مسلح شو، هر حاشیه حداکثر
+       یک‌چهارم فاصله. */
+bool func__Fault_GetInputPermission(bool *bool__snapshotValid, bool *bool__permitted)
+{
+    uint32_t uint32_t__capMv;
+    uint32_t uint32_t__hl;
+    uint32_t uint32_t__hh;
+
+    if ((bool__snapshotValid == NULL) || (bool__permitted == NULL))
+    {
+        return false;
+    }
+    *bool__snapshotValid = BOOL__G__SnapshotOk;
+    if (BOOL__G__SnapshotOk == false)
+    {
+        BOOL__G__InputArmed = false;
+        *bool__permitted = false;
+        return true;
+    }
+    uint32_t__capMv = (UINT32_T__G__WindowMaxMv - UINT32_T__G__WindowMinMv) / 4u;
+    if (uint32_t__capMv > 3000u)
+    {
+        uint32_t__capMv = 3000u;
+    }
+    uint32_t__hl = UINT32_T__G__HystLowMv;
+    uint32_t__hh = UINT32_T__G__HystHighMv;
+    if (uint32_t__hl > uint32_t__capMv) { uint32_t__hl = uint32_t__capMv; }
+    if (uint32_t__hh > uint32_t__capMv) { uint32_t__hh = uint32_t__capMv; }
+    if ((UINT32_T__G__InputMv < UINT32_T__G__WindowMinMv) ||
+        (UINT32_T__G__InputMv > UINT32_T__G__WindowMaxMv))
+    {
+        BOOL__G__InputArmed = false;
+    }
+    else if (BOOL__G__InputArmed == false)
+    {
+        BOOL__G__InputArmed =
+            ((UINT32_T__G__InputMv >= (UINT32_T__G__WindowMinMv + uint32_t__hl)) &&
+             (UINT32_T__G__InputMv <= (UINT32_T__G__WindowMaxMv - uint32_t__hh)));
+    }
+    else
+    {
+        /* [EN] Armed: stay armed inside the raw window. [FA] مسلح: داخل پنجره خام مسلح بمان. */
+    }
+    *bool__permitted = BOOL__G__InputArmed;
+    return true;
+}
 
 uint32_t osKernelGetTickCount(void);
 uint32_t osKernelGetTickCount(void)
@@ -138,6 +216,11 @@ static void func__Reset(uint32_t uint32_t__startTick)
     BOOL__G__SnapshotOk       = true;
     UINT32_T__G__InputMv      = 24000u;
     UINT32_T__G__SwitchWrites = 0u;
+    UINT32_T__G__WindowMinMv  = MCU_POWER_INPUT_DEFAULT_MIN_MV;
+    UINT32_T__G__WindowMaxMv  = MCU_POWER_INPUT_DEFAULT_MAX_MV;
+    UINT32_T__G__HystLowMv    = 500u;
+    UINT32_T__G__HystHighMv   = 500u;
+    BOOL__G__InputArmed       = false;
 
     func__McuPowerPath_Init();
 }
@@ -164,19 +247,18 @@ int main(void)
     CHECK(UINT32_T__G__SwitchWrites == 0u);
     CHECK(BOOL__G__BatterySwitch == false);
 
-    /* ---- 3. the input sagging under 21500 mV restores the battery at once ---- */
-    UINT32_T__G__InputMv = MCU_POWER_INPUT_RECONNECT_MV - 1u;
+    /* ---- 3. the input sagging under the raw lower edge restores the battery at once ---- */
+    UINT32_T__G__InputMv = (MCU_POWER_INPUT_DEFAULT_MIN_MV - 1u);
     func__RunMs(10u);
     CHECK(BOOL__G__BatterySwitch == true);
 
-    /* ---- 4. the hysteresis band (21500..21999) decides NOTHING ----
-       [EN] Inside the band the module neither drops nor restores, and the
-            5 s timer must not run - otherwise a slowly drifting input would
-            eventually drop the battery from inside the dead band.
-       [FA] داخل نوار هیسترزیس نه قطع و نه وصل، و تایمر ۵ ثانیه هم نباید
-            بدود؛ وگرنه ورودیِ آهسته‌رو از داخل نوار مرده باتری را برمی‌داشت. */
+    /* ---- 4. inside the raw window but below the re-arm margin: no drop ----
+       [EN] The shared permission is still false, so the 5 s timer must not
+            run and the battery stays connected.
+       [FA] مجوز مشترک هنوز نادرست است، پس تایمر ۵ ثانیه نباید بدود و باتری
+            وصل می‌ماند. */
     func__Reset(20000u);
-    UINT32_T__G__InputMv = MCU_POWER_INPUT_RECONNECT_MV + 100u;
+    UINT32_T__G__InputMv = (MCU_POWER_INPUT_DEFAULT_MIN_MV + 200u);
     UINT32_T__G__SwitchWrites = 0u;
     func__RunMs(30000u);
     CHECK(BOOL__G__BatterySwitch == true);
@@ -184,7 +266,7 @@ int main(void)
 
     /* [EN] Leaving the band upwards still needs a FULL fresh 5 s.
        [FA] خروج از نوار به بالا هم به ۵ ثانیهٔ کامل تازه نیاز دارد. */
-    UINT32_T__G__InputMv = MCU_POWER_INPUT_QUALIFY_MV;
+    UINT32_T__G__InputMv = (MCU_POWER_INPUT_DEFAULT_MIN_MV + 500u);
     func__RunMs(MCU_POWER_INPUT_STABLE_MS - 100u);
     CHECK(BOOL__G__BatterySwitch == true);
     func__RunMs(200u);
@@ -193,7 +275,7 @@ int main(void)
     /* ---- 5. a dip in the middle of the 5 s restarts the clock ---- */
     func__Reset(40000u);
     func__RunMs(3000u);
-    UINT32_T__G__InputMv = MCU_POWER_INPUT_RECONNECT_MV - 1u;
+    UINT32_T__G__InputMv = (MCU_POWER_INPUT_DEFAULT_MIN_MV - 1u);
     func__RunMs(100u);                                   /* [EN] timer killed */
     UINT32_T__G__InputMv = 24000u;
     func__RunMs(MCU_POWER_INPUT_STABLE_MS - 100u);
@@ -249,6 +331,73 @@ int main(void)
     func__RunMs(200u);
     CHECK(BOOL__G__BatterySwitch == false);
     CHECK(UINT32_T__G__FakeTick < 0xFFFFF000u);          /* [EN] really wrapped */
+
+    /* ---- 10. the shared upper edge reconnects the battery too ----
+       [EN] Factory window 21000..28000 with 500/500 re-arm margins:
+            permission drops above 28000; re-arm needs <=27500.
+       [FA] پنجرهٔ کارخانه ‎21000..28000‎ با حاشیه‌های برگشت ۵۰۰/۵۰۰:
+            مجوز بالای ۲۸۰۰۰ می‌افتد؛ برگشت به <=۲۷۵۰۰ نیاز دارد. */
+    func__Reset(140000u);
+    func__RunMs(MCU_POWER_INPUT_STABLE_MS + 100u);
+    CHECK(BOOL__G__BatterySwitch == false);
+    UINT32_T__G__InputMv = MCU_POWER_INPUT_DEFAULT_MAX_MV + 1u;
+    func__RunMs(10u);
+    CHECK(BOOL__G__BatterySwitch == true);
+
+    /* [EN] Inside the raw window but above the upper re-arm margin: the
+           shared permission is false, so the battery stays connected and the
+           timer does not run; clearing the margin needs a fresh 5 s.
+       [FA] داخل پنجرهٔ خام ولی بالای حاشیهٔ برگشت بالا: مجوز مشترک نادرست
+           است، پس باتری وصل می‌ماند و تایمر نمی‌دود؛ ردکردن حاشیه به ۵ ثانیهٔ
+           کامل تازه نیاز دارد. */
+    func__Reset(150000u);
+    UINT32_T__G__InputMv = MCU_POWER_INPUT_DEFAULT_MAX_MV - 200u;
+    UINT32_T__G__SwitchWrites = 0u;
+    func__RunMs(30000u);
+    CHECK(BOOL__G__BatterySwitch == true);
+    CHECK(UINT32_T__G__SwitchWrites == 0u);
+    UINT32_T__G__InputMv = MCU_POWER_INPUT_DEFAULT_MAX_MV - 500u;
+    func__RunMs(MCU_POWER_INPUT_STABLE_MS - 100u);
+    CHECK(BOOL__G__BatterySwitch == true);
+    func__RunMs(200u);
+    CHECK(BOOL__G__BatterySwitch == false);
+
+    /* ---- 11. a live panel window moves both edges ---- */
+    func__Reset(160000u);
+    UINT32_T__G__WindowMinMv = 22000u;
+    UINT32_T__G__WindowMaxMv = 26000u;
+    /* [EN] span=4000, margins 500/500: re-arm 22500..25500,
+           drop outside 22000..26000. 24000 qualifies.
+       [FA] فاصله=۴۰۰۰، حاشیه‌های ۵۰۰/۵۰۰: برگشت ‎22500..25500‎،
+           افتادن بیرون ‎22000..26000. 24000‎ احراز می‌شود. */
+    func__RunMs(MCU_POWER_INPUT_STABLE_MS + 100u);
+    CHECK(BOOL__G__BatterySwitch == false);
+    UINT32_T__G__InputMv = 26001u;
+    func__RunMs(10u);
+    CHECK(BOOL__G__BatterySwitch == true);
+    UINT32_T__G__InputMv = 21999u;
+    func__RunMs(10u);
+    CHECK(BOOL__G__BatterySwitch == true);
+
+    /* ---- 12. a narrow panel window clamps the margins, never inverts ---- */
+    func__Reset(170000u);
+    UINT32_T__G__WindowMinMv = 24000u;
+    UINT32_T__G__WindowMaxMv = 25000u;
+    /* [EN] span=1000 -> each margin caps at 250: re-arm 24250..24750,
+           drop outside 24000..25000.
+       [FA] فاصله=۱۰۰۰ ← هر حاشیه حداکثر ۲۵۰: برگشت ‎24250..24750‎،
+           افتادن بیرون ‎24000..25000‎. */
+    UINT32_T__G__InputMv = 24500u;
+    func__RunMs(MCU_POWER_INPUT_STABLE_MS + 100u);
+    CHECK(BOOL__G__BatterySwitch == false);
+    UINT32_T__G__InputMv = 25001u;
+    func__RunMs(10u);
+    CHECK(BOOL__G__BatterySwitch == true);
+    UINT32_T__G__InputMv = 24200u;
+    UINT32_T__G__SwitchWrites = 0u;
+    func__RunMs(30000u);
+    CHECK(BOOL__G__BatterySwitch == true);
+    CHECK(UINT32_T__G__SwitchWrites == 0u);
 
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;

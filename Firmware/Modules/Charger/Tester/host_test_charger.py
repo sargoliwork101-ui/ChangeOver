@@ -48,7 +48,7 @@ RAMP_UP_MS = 1000
 RAMP_DOWN_MS = 500
 DUTY_START = 10
 DUTY_STEP = 5
-INPUT_VALID_MV = 22000
+INPUT_VALID_MV = 21000
 
 
 def check(condition, message):
@@ -295,23 +295,25 @@ def test_jit_is_active_low_and_retry_captures_duty_before_stop():
           "CubeMX JIT pins must use falling-edge EXTI")
 
 
-def test_input_voltage_is_real_adc_22000mv():
+def test_input_voltage_uses_shared_fault_window():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
-    check(re.search(r"#define CHG_INPUT_VALID_MV\s+22000u", text_h),
-          "input validity threshold must be 22000 mV")
+    check(re.search(r"#define CHG_INPUT_VALID_MV\s+21000u", text_h),
+          "Fault-off input fallback must mirror the shared q33 factory default 21000 mV")
     check(re.search(r"#define CHG_INPUT_VALID_MAX_MV\s+28000u", text_h),
-          "input max must be 28000 mV per user order")
+          "Fault-off input fallback must mirror the shared q34 factory default 28000 mV")
+    check(re.search(r"#define CHG_INPUT_RECOVERY_HYSTERESIS_MV\s+500u", text_h),
+          "Fault-off charger fallback must keep the 500 mV boot Schmitt margin")
     check("measurement_snapshot_t__snap->v_in_mv" in text_c,
           "input must be checked from real ADC v_in_mv every cycle")
-    check("FAULT_ALARM_PARAM_INPUT_MIN_MV" in text_c and "FAULT_ALARM_PARAM_INPUT_MAX_MV" in text_c,
-          "input range must be panel-settable via fault alarm params 33/34")
-    check("func__Fault_GetAlarmParam" in text_c,
-          "charger must read panel input range via GetAlarmParam")
-    check("input_present == false" not in text_c or "bool__inputAdcValid" in text_c,
-          "PB4 digital input alone must not be the charge gate - use ADC range")
+    check("func__Fault_GetInputPermission" in text_c,
+          "charger must use the one shared Fault input Schmitt permission")
+    check("bool__inputPermitted" in text_c,
+          "stop, INPUT_WAIT recovery and every OFF->BULK start must share one flag")
+    check("input_present == false" not in text_c or "bool__inputPermitted" in text_c,
+          "PB4 digital input alone must not be the charge gate - use the shared ADC Schmitt")
     # Vin out of range path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
-    idx = text_c.find("bool__inputAdcValid == false")
+    idx = text_c.find("bool__inputPermitted == false")
     check(idx >= 0, "low-Vin gate must exist")
     snippet = text_c[idx:idx+3000]  # Include the timer servicing added for INPUT_WAIT
     check("func__Charger_SafeIdle();" in snippet, "out-of-range Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
@@ -334,7 +336,7 @@ def test_input_wait_services_dead_battery_pause_counter():
     [FA] در حالت انتظار ورودی ساعت مکث سناریوی ۶ باید به کار ادامه دهد."""
     text_c = CHARGER_C.read_text()
     eval_start = text_c.find("void func__Charger_Evaluate(")
-    invalid_start = text_c.find("if (bool__inputAdcValid == false)", eval_start)
+    invalid_start = text_c.find("if (bool__inputPermitted == false)", eval_start)
     invalid_end = text_c.find("#if MODULE_JITTER", invalid_start)
     check(eval_start >= 0 and invalid_start > eval_start and invalid_end > invalid_start,
           "charger input-invalid branch must be identifiable")
@@ -831,11 +833,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+169u", ino), "panel ESP_PARAM_COUNT must be 169 (v1.88 adds the scenario-8 rest floor 165, v1.102 the thermal trio 166..168)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+171u", ino), "panel ESP_PARAM_COUNT must be 171 (shared input Schmitt margins 169/170)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 169 and len(mx.group(1).split(",")) == 169,
-          "panel min/max tables must carry 169 entries (through the v1.102 thermal ids 166..168)")
+    check(mn and mx and len(mn.group(1).split(",")) == 171 and len(mx.group(1).split(",")) == 171,
+          "panel min/max tables must carry 171 entries (through the shared input Schmitt ids 169/170)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -910,8 +912,8 @@ def test_charge_profile_v112():
           "the data row must NOT repeat the 125 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 169 and "167, 168 };" in ino,
-          "TxOrder must list all 169 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 171 and "169, 170 };" in ino,
+          "TxOrder must list all 171 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     # [EN] v2 NAK (user approval 2026-10-12): a refused SET_PARAM is answered with PARAM_NAK.
     esp_h = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.h").read_text(encoding="utf-8")
     esp_c = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.c").read_text(encoding="utf-8")
@@ -1030,11 +1032,11 @@ def test_charger_persistence_v114():
     # [FA] با regex تطبیق می‌شود نه با فاصله‌گذاری دقیق: این تعریف‌ها ستونی
     #      تراز شده‌اند و رفتن از شناسهٔ دو رقمی به سه رقمی، چکِ رشتهٔ عینی را
     #      بی‌صدا می‌شکست بدون آن‌که ربطی به چیزی که می‌سنجید داشته باشد.
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+168u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+172u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+168u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
-          "persisted set = 0..14 + 20..168 (minus the retired 72/73 and the transient mute 76) + runtime slots 200..203 in 168 slots; v1.87 appends the scenario alarm ticks 158..164, v1.102 the thermal trio 166..168; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+170u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
+          "persisted set = 0..14 + 20..170 (minus the retired 72/73 and the transient mute 76) + runtime slots 200..203 in 172 slots; the shared input Schmitt margins 169/170 persist; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
     # [EN] v1.71 bumps 10 -> 11. This one is a MEANING bump, not a layout
     #      bump: ids 57 and 122 kept their slots but changed units (critical
     #      duty % -> critical per-beep ms, band-2 gap -> band-2 repeat
@@ -1049,8 +1051,8 @@ def test_charger_persistence_v114():
           "compiled defaults - the first boot after this upgrade is a factory-default boot")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 168 and i not in (72, 73, 76)) or 200 <= i <= 203}
-    check(persisted == set(range(15)) | (set(range(20, 169)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted and 147 in persisted and 157 in persisted and 164 in persisted and 165 in persisted and 166 in persisted and 168 in persisted,
+    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 170 and i not in (72, 73, 76)) or 200 <= i <= 203}
+    check(persisted == set(range(15)) | (set(range(20, 171)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted and 147 in persisted and 157 in persisted and 164 in persisted and 165 in persisted and 166 in persisted and 168 in persisted and 169 in persisted and 170 in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1660,9 +1662,9 @@ def test_manual_test_mode_v12():
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+169u", text_esph),
-          "param 19 = manual test mode; 169 params total (147 + scenario 8 ids 147..157 "
-          "+ v1.87 scenario alarm ticks 158..164 + v1.102 thermal rest 166..168)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+171u", text_esph),
+          "param 19 = manual test mode; 171 params total (147 + scenario 8 ids 147..157 "
+          "+ v1.87 scenario alarm ticks 158..164 + v1.102 thermal rest 166..168 + shared input Schmitt 169/170)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -1856,7 +1858,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 169, "TxOrder must carry all 169 ids")
+    check(tx and len(tx.group(1).split(",")) == 171, "TxOrder must carry all 171 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -2443,7 +2445,7 @@ def test_audit_batch_v116b():
           "bulk payload must be static (comm stack is 1 KiB) and sized to one chunk")
     check("NVM record too small for the persisted id set" in nvmc,
           "NVM must statically assert the record fits the WHOLE persisted id set (params + runtime slots)")
-    check("168 entries (12 + 168 x 8 + 4 = 1360 B)" in nvmh,
+    check("172 entries (12 + 172 x 8 + 4 = 1392 B)" in nvmh,
           "NVM record comment must state the true record capacity for the full persisted id set")
 
     # --- LUT hardening + dead-clamp cleanup ---
@@ -2555,10 +2557,15 @@ def test_flash_diet_pins_v116d():
         r"#define CHG_PROFILE_PARAM_[A-Z_0-9]+\s+(\d+)u", CHARGER_H.read_text()))
     check(chg_ids == list(range(20, 27)),
           f"charge-profile ids must be exactly dense 20..26, got {chg_ids}")
+    flt_text = FAULT_H.read_text()
     flt_ids = sorted(int(v) for v in re.findall(
-        r"#define FAULT_ALARM_PARAM_[A-Z_0-9]+\s+(\d+)u", FAULT_H.read_text()))
+        r"#define FAULT_ALARM_PARAM_(?!INPUT_HYST)[A-Z_0-9]+\s+(\d+)u", flt_text))
     check(flt_ids == list(range(27, 35)),
           f"fault-alarm ids must be exactly dense 27..34, got {flt_ids}")
+    flt_hyst_ids = sorted(int(v) for v in re.findall(
+        r"#define FAULT_ALARM_PARAM_INPUT_HYST_[A-Z_0-9]+\s+(\d+)u", flt_text))
+    check(flt_hyst_ids == [169, 170],
+          f"shared input Schmitt margins must be the separate ids 169/170, got {flt_hyst_ids}")
     # [EN] v1.49: the dense UI block is still 38..82; the charge-side percent
     #      map had to take 119/120 because 83..118 belong to other modules.
     # [FA] بلوک متراکم همان ۳۸..۸۲؛ نگاشت درصد سمت شارژ ۱۱۹/۱۲۰ را گرفت.
@@ -2681,8 +2688,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+169u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 169 (alarm ticks 158..164 + v1.88 rest floor 165)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+171u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 171 (shared input Schmitt margins 169/170)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -3096,7 +3103,7 @@ def test_min_select_handover_v124():
     cdef_m = re.search(r"const CDEF=\[([^\]]*)\]", ino)
     check(cdef_m, "the panel must define CDEF for the charge-side percent map")
     cdef = [x for x in cdef_m.group(1).split(",") if x.strip()]
-    check(len(cdef) == 50, f"CDEF must hold 50 ext defaults through the v1.102 thermal ids 166..168 (ids 119..168), got {len(cdef)}")
+    check(len(cdef) == 52, f"CDEF must hold 52 ext defaults through the shared input Schmitt ids 169/170 (ids 119..170), got {len(cdef)}")
     top = 83 + len(pdef) - 1 + len(ldef) + len(idef) + len(cdef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be
@@ -4361,10 +4368,10 @@ def test_v1102_thermal_rest_panel_adjustable():
         check(rng is not None and int(rng.group(1)) == dflt and
               int(rng.group(2)) == lo and int(rng.group(3)) == hi,
               name + " must document def %d, %d..%d" % (dflt, lo, hi))
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+169u", esp_h),
-          "ESP_PARAM_COUNT must reach 169")
-    check(re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+168u", nvm_h),
-          "the NVM persisted window must reach id 168 (COUNT - 1)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+171u", esp_h),
+          "ESP_PARAM_COUNT must reach 171")
+    check(re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+170u", nvm_h),
+          "the NVM persisted window must reach id 170 (COUNT - 1)")
 
     # 6) Panel: the thermal card is in s0 with all three boxes.
     check("استراحت حرارتی" in panel and 'id="q166"' in panel and
@@ -4379,8 +4386,8 @@ def test_v1102_thermal_rest_panel_adjustable():
     #    window that stops at 165 leaves 166..168 with no default at all.
     check("odef([166,167,168])" in panel and re.search(r"function qdef\(\)\{.*?odef\(\[166,167,168\]\)", panel),
           "the charger factory key must restore the thermal trio 166..168")
-    check("id>=119&&id<=168" in panel.replace(" ", ""),
-          "the pdflt default window must cover the whole CDEF table (through 168)")
+    check("id>=119&&id<=170" in panel.replace(" ", ""),
+          "the pdflt default window must cover the whole CDEF table (through 170)")
     mdef = re.search(r"const MDEF=\[([^\]]*)\]", panel)
     check(mdef and [int(x) for x in mdef.group(1).split(",")] == [0, 0, 3000, 3000, 0, 0, 0, 3, 10],
           "MDEF must hold the real firmware defaults of ids 0..8 (offsets 0, gains 3000, windows 3/10)")
@@ -4520,6 +4527,20 @@ bool func__Fault_GetAlarmParam(uint8_t id, uint32_t *val)
     if (id == FAULT_ALARM_PARAM_INPUT_MAX_MV) { *val = 28000u; return true; }
     if (id == FAULT_ALARM_PARAM_DISCONNECT_DEB_MS) { *val = 150u; return true; }
     return false;
+}
+bool func__Fault_GetInputWindow(uint32_t *min_mv, uint32_t *max_mv)
+{
+    if ((min_mv == NULL) || (max_mv == NULL)) { return false; }
+    *min_mv = 21000u;
+    *max_mv = 28000u;
+    return true;
+}
+bool func__Fault_GetInputPermission(bool *snapshot_valid, bool *permitted)
+{
+    if ((snapshot_valid == NULL) || (permitted == NULL)) { return false; }
+    *snapshot_valid = true;
+    *permitted = true;
+    return true;
 }
 
 bool func__Imbalance_ChargerGateClosed(void) { return false; }
@@ -4741,6 +4762,20 @@ bool func__Fault_GetAlarmParam(uint8_t id, uint32_t *val)
     if (id == FAULT_ALARM_PARAM_INPUT_MAX_MV) { *val = 28000u; return true; }
     if (id == FAULT_ALARM_PARAM_DISCONNECT_DEB_MS) { *val = 150u; return true; }
     return false;
+}
+bool func__Fault_GetInputWindow(uint32_t *min_mv, uint32_t *max_mv)
+{
+    if ((min_mv == NULL) || (max_mv == NULL)) { return false; }
+    *min_mv = 21000u;
+    *max_mv = 28000u;
+    return true;
+}
+bool func__Fault_GetInputPermission(bool *snapshot_valid, bool *permitted)
+{
+    if ((snapshot_valid == NULL) || (permitted == NULL)) { return false; }
+    *snapshot_valid = true;
+    *permitted = true;
+    return true;
 }
 
 bool func__Imbalance_ChargerGateClosed(void) { return false; }
@@ -5040,7 +5075,7 @@ def main():
         test_min_valid_battery_is_sense_not_setpoint,
         test_battery_voltage_upper_cutoff_applies_before_any_control,
         test_jit_is_active_low_and_retry_captures_duty_before_stop,
-        test_input_voltage_is_real_adc_22000mv,
+        test_input_voltage_uses_shared_fault_window,
         test_input_recovery_restarts_with_safe_duty,
         test_input_wait_services_dead_battery_pause_counter,
         test_manual_dead_battery_reset_clears_live_timer,

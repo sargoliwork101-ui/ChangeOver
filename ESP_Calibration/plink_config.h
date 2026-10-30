@@ -148,7 +148,7 @@
          شکل بوق باند ۲، ۱۲۳..۱۲۴ cadence چراغ عدم‌توازن، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵
          سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵، ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد
          و ۱۴۳..۱۴۶ تنظیمات وای‌فای و مصرف باتری. */
-#define ESP_PARAM_COUNT            169u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; 143..146 own Wi-Fi power saving. v1.87 appends 158..164 = the per-scenario LED/beep enable ticks (scenarios 1..7). / [FA] نسخه ۱٫۸۵ با ۱۴۶ تمام می‌شد؛ نسخهٔ ۱٫۸۷ شناسه‌های ۱۵۸..۱۶۴ (تیک هشدار سناریوهای ۱..۷) را اضافه می‌کند. */
+#define ESP_PARAM_COUNT            171u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; 143..146 own Wi-Fi power saving. v1.87 appends 158..164 = the per-scenario LED/beep enable ticks (scenarios 1..7). / [FA] نسخه ۱٫۸۵ با ۱۴۶ تمام می‌شد؛ نسخهٔ ۱٫۸۷ شناسه‌های ۱۵۸..۱۶۴ (تیک هشدار سناریوهای ۱..۷) را اضافه می‌کند. */
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
 
@@ -262,7 +262,7 @@
     "#            wb_rest_floor_mv\n" \
     "#  [settings10] scn1_alarm,scn2_alarm,scn3_alarm,scn4_alarm,\n" \
     "#            scn5_alarm,scn6_alarm,scn7_alarm\n" \
-    "#  [settings11] thr_trig_ma,thr_cont_ms,thr_rest_ms\n" \
+    "#  [settings11] thr_trig_ma,thr_cont_ms,thr_rest_ms,in_hyst_low_mv,in_hyst_high_mv\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -478,6 +478,13 @@
 #define ESP_LOG_MAINS_FLUSH_MS       250u    /* سقف انتظار ردیف برق شهر */
 #define ESP_LOG_LINK_TIMEOUT_MS     5000u    /* [EN] no frame = link lost / [FA] بی‌فریم یعنی قطع ارتباط */
 #define ESP_LOG_CLOCK_SAVE_MS       600000u  /* [EN] clock to flash every 10 min / [FA] ذخیرهٔ ساعت هر ۱۰ دقیقه */
+/* [EN] After a panel power cycle, a restored board anchor gives the first
+        HELLO_ACK a bounded chance to recover the time spent unpowered. A
+        silent board never blocks the boot row for longer than this.
+   [FA] پس از خاموش‌روشن پنل، لنگر بازیابی‌شدهٔ برد به نخستین پاسخ دست‌دادن
+        فرصت محدودی می‌دهد تا مدت خاموشی را جبران کند. برد ساکت هرگز ردیف بوت
+        را بیش از این مدت متوقف نمی‌کند. */
+#define ESP_LOG_BOOT_CLOCK_GRACE_MS 10000u   /* [EN] 10 s / [FA] ۱۰ ثانیه */
 /* [EN] A phone time that would move the clock BACKWARD by more than this is
         refused: two phones, a wrong timezone or a manual clock change must not
         rewind the day and split the history into two files with the same rows
@@ -513,7 +520,11 @@
         timeout guards added ~3 KB of HTML/JS - stepped +4 KiB on purpose.
    [FA] افزودن پنجرهٔ بررسی و پاک‌سازی حافظهٔ فلش و نگهبان مهلت درخواست‌ها حدود
         سه کیلوبایت به سند افزود - سقف آگاهانه چهار کیلوبایت پله خورد. */
-#define ESP_PANEL_HTML_MAX_BYTES    487424u
+/* [EN] The shared input Schmitt card (q169/q170 + help + defaults) added about
+        0.7 KB of HTML/JS - stepped +4 KiB on purpose, guard unchanged.
+   [FA] کارت اشمیت مشترک ورودی (۱۶۹/۱۷۰ + راهنما + پیش‌فرض‌ها) حدود ۰٫۷ کیلوبایت
+        ‎HTML/JS‎ افزود - سقف آگاهانه چهار کیلوبایت پله خورد و نگهبان سر جایش است. */
+#define ESP_PANEL_HTML_MAX_BYTES    491520u
 
 /* ==================== Parser States ==================== */
 typedef enum

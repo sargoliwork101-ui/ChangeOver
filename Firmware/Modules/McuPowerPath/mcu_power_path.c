@@ -2,9 +2,14 @@
  * @file    mcu_power_path.c
  * @brief   [EN] MCU self-supply path via Q1 (PB5) - owns battery switch independent from Changeover.
  *              PB5 (active-low): true->Low=on, false->High=off. PB11 remains Changeover-only.
- *              Hysteresis: qualify v_in >=22000 for 5000ms → Q1 off (High); reconnect v_in <21500 → Q1 on (Low);
- *              21500..21999 → cancel pending timer, preserve Q1; PB4 falling edge immediate Low in ISR.
- *          [FA] مسیر تغذیه MCU با Q1 (PB5) - مستقل از Changeover. هیسترزیس ‎22000/21500‎.
+ *              Healthy input window is the shared panel pair q33/q34 (Fault).
+ *              Internal margins: qualify inside [q33+QM, q34-QM] for 5000ms → Q1 off (High);
+ *              outside [q33+RM, q34-RM] → Q1 on (Low); between → cancel pending timer, preserve Q1;
+ *              PB4 falling edge immediate Low in ISR.
+ *          [FA] مسیر تغذیه MCU با Q1 (PB5) - مستقل از Changeover. پنجرهٔ ورودی سالم
+ *              همان جفت مشترک پنل ‎q33/q34 (Fault)‎ است. حاشیه‌های داخلی:
+ *              داخل [‎q33+QM, q34-QM]‎ برای 5000ms ← قطع؛ بیرون [‎q33+RM, q34-RM]‎ ← وصل؛
+ *              بین این دو نوار مرده؛ لبهٔ نزولی PB4 فوراً در ISR وصل می‌کند.
  */
 
 #include "mcu_power_path.h"
@@ -16,8 +21,12 @@
 #include "rtos_time.h"
 #include "cmsis_os2.h"
 
+#if MODULE_FAULT
+#include "fault.h"
+#endif
+
 /* ==================== Constants / ثابت‌ها ==================== */
-/* Uses MCU_POWER_INPUT_STABLE_MS, QUALIFY_MV, RECONNECT_MV, HYSTERESIS_MV from header. */
+/* Uses MCU_POWER_INPUT_STABLE_MS and the internal qualify/reconnect margins from header. */
 
 /* ==================== Internal state / وضعیت داخلی ==================== */
 /* ISR-safe: accessed from both ISR (OnInputIrq) and task (Run). */
@@ -101,13 +110,15 @@ void func__McuPowerPath_OnInputIrq(void)
 /* ==================== McuPowerPath Run / ارزیابی دوره‌ای ==================== */
 
 /**
- * @brief  [EN] Periodic qualification (~10 ms): v_in >= 22000 for 5 s =>
- *         Q1 off; 21500..21999 => cancel timer, preserve Q1; < 21500 =>
- *         Q1 on. Battery voltage is irrelevant while the input is valid;
- *         PB4 falling is still handled in the ISR.
- *         [FA] سنجش دوره‌ای (~۱۰ms) با هیسترزیس: ‎v_in >= 22000‎ برای ۵s ←
- *         قطع؛ ۲۱۵۰۰..۲۱۹۹۹ ← لغو تایمر و حفظ Q1؛ < 21500 ← وصل. ولتاژ
- *         باتری بی‌اثر است و لبهٔ PB4 همچنان در ISR مدیریت می‌شود.
+ * @brief  [EN] Periodic qualification (~10 ms) on the shared Fault input
+ *         Schmitt permission. While the shared permission is true the 5 s
+ *         timer runs and then Q1 opens; when it is false Q1 closes again.
+ *         Invalid snapshot preserves Q1 and cancels the timer. PB4 falling
+ *         is still handled immediately in the ISR.
+ *         [FA] سنجش دوره‌ای (~۱۰ms) روی مجوز مشترک اشمیت ورودی فالت. تا وقتی
+ *         مجوز مشترک درست است تایمر ۵ ثانیه می‌چرخد و سپس Q1 باز می‌شود؛
+ *         وقتی نادرست است Q1 دوباره بسته می‌شود. snapshot نامعتبر Q1 را حفظ
+ *         و تایمر را لغو می‌کند. لبهٔ نزولی PB4 همچنان فوری در ISR مدیریت می‌شود.
  */
 void func__McuPowerPath_Run(void)
 {
@@ -116,37 +127,73 @@ void func__McuPowerPath_Run(void)
 #else
     /* [EN] Determine DC input band via measured bus voltage with hysteresis.
      * [FA] باند ورودی DC را با ولتاژ باس و هیسترزیس تعیین می‌کنیم. */
-    bool bool__inputQualify = false;   /* v_in >= QUALIFY (22000) */
-    bool bool__inputLow     = false;   /* v_in < RECONNECT (21500) */
+    bool bool__inputQualify = false;
+    bool bool__inputLow     = false;
     uint32_t uint32_t__nowTick;
 
 #if MODULE_MEASUREMENT
-    measurement_snapshot_t measurement_snapshot_t__snap;
-    bool                   bool__snapshotUsable;
+    bool bool__snapshotUsable;
 
-    bool__snapshotUsable =
-        ((func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) != false) &&
-         (measurement_snapshot_t__snap.valid != false));
-
-    if (bool__snapshotUsable != false)
+#if MODULE_FAULT
     {
-        if (measurement_snapshot_t__snap.v_in_mv >= MCU_POWER_INPUT_QUALIFY_MV)
+        bool bool__permissionValid = false;
+        bool bool__permitted = false;
+
+        /* [EN] The shared Fault Schmitt flag is the only voltage decision.
+           The 5 s qualification below still runs, but it runs on exactly the
+           same permission the charger and UI use. Invalid snapshot preserves
+           Q1; a released permission reconnects the battery.
+           [FA] پرچم مشترک اشمیت فالت تنها تصمیم ولتاژی است. احراز ۵ ثانیه‌ای
+           پایین همچنان اجرا می‌شود، اما روی همان مجوزی که شارژر و UI استفاده
+           می‌کنند. snapshot نامعتبر Q1 را حفظ می‌کند؛ مجوز رهاشده باتری را
+           وصل می‌کند. */
+        bool__snapshotUsable =
+            ((func__Fault_GetInputPermission(&bool__permissionValid, &bool__permitted) == true) &&
+             (bool__permissionValid != false));
+        if (bool__snapshotUsable != false)
         {
-            bool__inputQualify = true;
-        }
-        else if (measurement_snapshot_t__snap.v_in_mv < MCU_POWER_INPUT_RECONNECT_MV)
-        {
-            bool__inputLow = true;
-        }
-        else
-        {
-            /* [EN] Hysteresis dead-band 21500..21999: preserve current Q1, cancel pending timer.
-             * [FA] ناحیه هیسترزیس ‎21500..21999‎: تایمر لغو و وضعیت Q1 حفظ شود. */
-            bool__inputQualify = false;
-            bool__inputLow     = false;
+            bool__inputQualify = bool__permitted;
+            bool__inputLow     = (bool__permitted == false);
         }
     }
-    else
+#else
+    {
+        measurement_snapshot_t measurement_snapshot_t__snap;
+        static bool BOOL__S__InputArmed = false;
+        uint32_t uint32_t__spanMv = MCU_POWER_INPUT_DEFAULT_MAX_MV - MCU_POWER_INPUT_DEFAULT_MIN_MV;
+        uint32_t uint32_t__marginMv = MCU_POWER_INPUT_QUALIFY_MARGIN_MV;
+
+        if (uint32_t__marginMv > (uint32_t__spanMv / 4u))
+        {
+            uint32_t__marginMv = uint32_t__spanMv / 4u;
+        }
+        bool__snapshotUsable =
+            ((func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) != false) &&
+             (measurement_snapshot_t__snap.valid != false));
+        if (bool__snapshotUsable != false)
+        {
+            if ((measurement_snapshot_t__snap.v_in_mv < MCU_POWER_INPUT_DEFAULT_MIN_MV) ||
+                (measurement_snapshot_t__snap.v_in_mv > MCU_POWER_INPUT_DEFAULT_MAX_MV))
+            {
+                BOOL__S__InputArmed = false;
+            }
+            else if (BOOL__S__InputArmed == false)
+            {
+                BOOL__S__InputArmed =
+                    ((measurement_snapshot_t__snap.v_in_mv >= (MCU_POWER_INPUT_DEFAULT_MIN_MV + uint32_t__marginMv)) &&
+                     (measurement_snapshot_t__snap.v_in_mv <= (MCU_POWER_INPUT_DEFAULT_MAX_MV - uint32_t__marginMv)));
+            }
+            else
+            {
+                /* [EN] Armed: stay armed inside the raw window. [FA] مسلح: داخل پنجره خام مسلح بمان. */
+            }
+            bool__inputQualify = BOOL__S__InputArmed;
+            bool__inputLow     = (BOOL__S__InputArmed == false);
+        }
+    }
+#endif
+
+    if (bool__snapshotUsable == false)
     {
         /* [EN] Snapshot invalid: cannot qualify nor reconnect by voltage; preserve Q1, cancel pending timer.
          *      Timer is not counted while invalid (like Changeover snapshot-first).
@@ -173,12 +220,14 @@ void func__McuPowerPath_Run(void)
     /* ==================== Hysteresis band handling ==================== */
     if (bool__inputQualify != false)
     {
-        /* [EN] Band >=22000: qualify for 5s disconnect.
-         * [FA] باند >=22000: واجد شرایط 5 ثانیه برای قطع. */
+        /* [EN] Inside the shared qualify band: qualify for 5s disconnect.
+         * [FA] داخل باند احراز مشترک: واجد شرایط ۵ ثانیه برای قطع. */
         if (BOOL__G__BatteryConnected == false)
         {
-            /* [EN] Already disconnected after prior qualification; stay off, no timer (hysteresis prevents 21.9V reconnect).
-             * [FA] قبلاً قطع شده؛ قطع بماند و تایمر نچرخد. */
+            /* [EN] Already disconnected after prior qualification; stay off,
+             *      no timer (the internal dead-band prevents edge chatter).
+             * [FA] قبلاً قطع شده؛ قطع بماند و تایمر نچرخد (نوار مرده داخلی
+             *      جلوی لرزش لبه را می‌گیرد). */
             BOOL__G__McuPowerTimerActive = false;
             return;
         }
@@ -231,9 +280,10 @@ void func__McuPowerPath_Run(void)
     }
     else if (bool__inputLow != false)
     {
-        /* [EN] Band <21500: reconnect battery (also covers falling PB4 via ISR, but ADC path needs it too).
+        /* [EN] Outside the shared reconnect band: reconnect battery (also
+         *      covers falling PB4 via ISR, but ADC path needs it too).
          *      Cancel pending disconnect timer.
-         * [FA] باند <21500: باتری دوباره وصل و تایمر لغو. */
+         * [FA] بیرون باند اتصال مجدد مشترک: باتری دوباره وصل و تایمر لغو. */
         if (BOOL__G__McuPowerTimerActive != false)
         {
             BOOL__G__McuPowerTimerActive = false;
@@ -249,9 +299,11 @@ void func__McuPowerPath_Run(void)
     }
     else
     {
-        /* [EN] Hysteresis dead-band 21500..21999 or invalid snapshot: cancel pending timer, preserve Q1.
-         *      Important: do NOT reconnect merely because voltage fell from 22000 to 21900.
-         * [FA] ناحیه مرده هیسترزیس یا snapshot نامعتبر: تایمر لغو و Q1 حفظ؛ 21.9V به‌تنهایی reconnect نکند. */
+        /* [EN] Hysteresis dead-band near either shared edge, or invalid
+         *      snapshot: cancel pending timer, preserve Q1. Do NOT reconnect
+         *      merely because voltage moved inside the dead-band.
+         * [FA] ناحیه مرده هیسترزیس نزدیک هر لبهٔ مشترک یا snapshot نامعتبر:
+         *      تایمر لغو و Q1 حفظ؛ ورود به نوار مرده به‌تنهایی reconnect نکند. */
         if (BOOL__G__McuPowerTimerActive != false)
         {
             BOOL__G__McuPowerTimerActive = false;

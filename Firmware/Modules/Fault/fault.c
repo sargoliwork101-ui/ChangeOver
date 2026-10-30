@@ -62,6 +62,25 @@ static volatile fault_alarm_t FAULT_ALARM_T__G__Alarm =
     FAULT_INPUT_PRESENT_MAX_MV
 };
 
+/* [EN] Shared input Schmitt margins (ids 169/170) live outside the dense
+   27..34 alarm word block so the indexed Set/Get contract and its layout
+   asserts stay unchanged. They are flash-persisted through EspLink like the
+   rest of the alarm set.
+   [FA] حاشیه‌های مشترک اشمیت ورودی (۱۶۹/۱۷۰) بیرون بلوک فشردهٔ ۲۷..۳۴
+   نگه داشته می‌شوند تا قرارداد نمایه‌ای ‎Set/Get‎ و assertهای چیدمان دست‌نخورده
+   بماند. مثل بقیهٔ مجموعهٔ آلارم از راه EspLink در فلش ماندگارند. */
+static volatile uint32_t UINT32_T__G__InputHystLowMv  = FAULT_INPUT_HYST_LOW_DEFAULT_MV;
+static volatile uint32_t UINT32_T__G__InputHystHighMv = FAULT_INPUT_HYST_HIGH_DEFAULT_MV;
+
+/* [EN] One published input permission for every consumer. Fault_Evaluate
+   refreshes it before any manual-mode / invalid-snapshot early return, so
+   charger, MCU power path and UI never freeze on a stale input decision.
+   [FA] یک مجوز ورودی منتشرشده برای همهٔ مصرف‌کننده‌ها. Fault_Evaluate آن را
+   پیش از هر بازگشت زودهنگام مود دستی / snapshot نامعتبر تازه می‌کند تا
+   شارژر، مسیر تغذیهٔ MCU و UI روی تصمیم ورودی کهنه قفل نکنند. */
+static volatile bool BOOL__G__InputSnapshotValid = false;
+static volatile bool BOOL__G__InputPermitted     = false;
+
 /* ==================== Fault_ClampAlarms (internal) ==================== */
 
 /**
@@ -178,6 +197,32 @@ static void func__Fault_ClampAlarms(void)
     {
         FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv =
             FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv + 1000u;
+    }
+
+    /* [EN] The shared Schmitt margins follow the live window: each is
+       clamped to 0..3000 mV and to one quarter of the q33/q34 span, so the
+       inner re-arm band can never invert even at the minimum 1000 mV span.
+       [FA] حاشیه‌های مشترک اشمیت از پنجرهٔ زنده پیروی می‌کنند: هر کدام به
+       ۰..۳۰۰۰ میلی‌ولت و یک‌چهارم فاصلهٔ ‎q33/q34‎ گیره می‌شود تا باند
+       داخلی بازگشت حتی در کمینه فاصلهٔ ۱۰۰۰ میلی‌ولت هرگز وارونه نشود. */
+    {
+        uint32_t uint32_t__spanMv =
+            FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv -
+            FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv;
+        uint32_t uint32_t__capMv = uint32_t__spanMv / 4u;
+
+        if (uint32_t__capMv > FAULT_INPUT_HYST_MAX_MV)
+        {
+            uint32_t__capMv = FAULT_INPUT_HYST_MAX_MV;
+        }
+        if (UINT32_T__G__InputHystLowMv > uint32_t__capMv)
+        {
+            UINT32_T__G__InputHystLowMv = uint32_t__capMv;
+        }
+        if (UINT32_T__G__InputHystHighMv > uint32_t__capMv)
+        {
+            UINT32_T__G__InputHystHighMv = uint32_t__capMv;
+        }
     }
 }
 
@@ -331,6 +376,216 @@ bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
     return true;
 }
 
+/* ==================== Fault_GetInputWindow ==================== */
+
+/**
+ * @brief  [EN] Copy the shared healthy-input window (ids 33/34) under one
+ *              scheduler lock so a consumer never sees a new lower bound with
+ *              an old upper bound while the panel is writing the pair.
+ *         [FA] پنجرهٔ مشترک ورودی سالم (۳۳/۳۴) را زیر یک قفل زمان‌بند کپی
+ *              می‌کند تا مصرف‌کننده هنگام نوشتن پنل، کف جدید را با سقف قدیمی
+ *              نبیند.
+ * @param  uint32_t__minMv [EN] Out: lower bound, mV / خروجی: کف، میلی‌ولت
+ * @param  uint32_t__maxMv [EN] Out: upper bound, mV / خروجی: سقف، میلی‌ولت
+ * @return bool [EN] true when both outputs were written / اگر هر دو نوشته شد true
+ */
+bool func__Fault_GetInputWindow(uint32_t *uint32_t__minMv,
+                                uint32_t *uint32_t__maxMv)
+{
+    int32_t int32_t__savedKernelLock;
+
+    if ((uint32_t__minMv == NULL) || (uint32_t__maxMv == NULL))
+    {
+        return false;
+    }
+
+    int32_t__savedKernelLock = osKernelLock();
+    *uint32_t__minMv = FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv;
+    *uint32_t__maxMv = FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv;
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+    return true;
+}
+
+/* ==================== Fault_SetInputHystParam ==================== */
+
+/**
+ * @brief  [EN] Write one shared input Schmitt margin (ids 169/170). The raw
+ *              request is clamped to 0..FAULT_INPUT_HYST_MAX_MV, then the
+ *              whole alarm set is re-clamped so the live q33/q34 span also
+ *              caps each margin at span/4. The applied value is read back.
+ *         [FA] نوشتن یکی از حاشیه‌های مشترک اشمیت ورودی (۱۶۹/۱۷۰). درخواست
+ *              خام به ۰..FAULT_INPUT_HYST_MAX_MV گیره می‌شود، سپس کل مجموعه
+ *              دوباره گیره می‌خورد تا فاصلهٔ زندهٔ ‎q33/q34‎ نیز هر حاشیه را
+ *              به ‎span/4‎ محدود کند. مقدار اعمال‌شده بازخوانی می‌شود.
+ */
+bool func__Fault_SetInputHystParam(uint8_t uint8_t__paramId,
+                                   uint32_t uint32_t__value,
+                                   uint32_t *uint32_t__appliedValue)
+{
+    int32_t int32_t__savedKernelLock;
+
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+    if ((uint8_t__paramId != FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV) &&
+        (uint8_t__paramId != FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV))
+    {
+        return false;
+    }
+
+    int32_t__savedKernelLock = osKernelLock();
+    if (uint32_t__value > FAULT_INPUT_HYST_MAX_MV)
+    {
+        uint32_t__value = FAULT_INPUT_HYST_MAX_MV;
+    }
+    if (uint8_t__paramId == FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV)
+    {
+        UINT32_T__G__InputHystLowMv = uint32_t__value;
+    }
+    else
+    {
+        UINT32_T__G__InputHystHighMv = uint32_t__value;
+    }
+    func__Fault_ClampAlarms();
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+    return func__Fault_GetInputHystParam(uint8_t__paramId, uint32_t__appliedValue);
+}
+
+/* ==================== Fault_GetInputHystParam ==================== */
+
+/**
+ * @brief  [EN] Read one live shared input Schmitt margin (ids 169/170).
+ *         [FA] خواندن یک حاشیهٔ زندهٔ مشترک اشمیت ورودی (۱۶۹/۱۷۰).
+ */
+bool func__Fault_GetInputHystParam(uint8_t uint8_t__paramId,
+                                   uint32_t *uint32_t__value)
+{
+    int32_t int32_t__savedKernelLock;
+
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+    if ((uint8_t__paramId != FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV) &&
+        (uint8_t__paramId != FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV))
+    {
+        return false;
+    }
+
+    int32_t__savedKernelLock = osKernelLock();
+    *uint32_t__value = (uint8_t__paramId == FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV)
+                           ? UINT32_T__G__InputHystLowMv
+                           : UINT32_T__G__InputHystHighMv;
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+    return true;
+}
+
+/* ==================== Fault_GetInputPermission ==================== */
+
+/**
+ * @brief  [EN] Copy the last published shared input decision under one lock.
+ *         [FA] آخرین تصمیم مشترک ورودی منتشرشده را زیر یک قفل کپی می‌کند.
+ */
+bool func__Fault_GetInputPermission(bool *bool__snapshotValid,
+                                    bool *bool__permitted)
+{
+    int32_t int32_t__savedKernelLock;
+
+    if ((bool__snapshotValid == NULL) || (bool__permitted == NULL))
+    {
+        return false;
+    }
+
+    int32_t__savedKernelLock = osKernelLock();
+    *bool__snapshotValid = BOOL__G__InputSnapshotValid;
+    *bool__permitted     = BOOL__G__InputPermitted;
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+    return true;
+}
+
+/* ==================== Fault_UpdateInputPermission (internal) ==================== */
+
+/**
+ * @brief  [EN] Refresh the one shared Schmitt permission from the latest
+ *              measurement snapshot. Outside [q33,q34] permission drops
+ *              immediately; from the released state it re-arms only inside
+ *              [q33+H_low, q34-H_high]. Invalid snapshots publish
+ *              valid=false / permitted=false so every consumer fails closed.
+ *         [FA] تنها مجوز مشترک اشمیت را از تازه‌ترین snapshot اندازه‌گیری
+ *              تازه می‌کند. بیرون ‎[q33,q34]‎ مجوز فوراً می‌افتد؛ از حالت
+ *              رهاشده فقط داخل ‎[q33+H_low, q34-H_high]‎ دوباره مسلح می‌شود.
+ *              snapshot نامعتبر ‎valid=false / permitted=false‎ منتشر می‌کند
+ *              تا همهٔ مصرف‌کننده‌ها بسته بمانند.
+ */
+static void func__Fault_UpdateInputPermission(const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    int32_t  int32_t__savedKernelLock;
+    uint32_t uint32_t__minMv;
+    uint32_t uint32_t__maxMv;
+    uint32_t uint32_t__hystLowMv;
+    uint32_t uint32_t__hystHighMv;
+    uint32_t uint32_t__inputMv;
+    bool     bool__permitted;
+
+    if ((measurement_snapshot_t__snap == NULL) ||
+        (measurement_snapshot_t__snap->valid == false))
+    {
+        int32_t__savedKernelLock = osKernelLock();
+        BOOL__G__InputSnapshotValid = false;
+        BOOL__G__InputPermitted     = false;
+        if (int32_t__savedKernelLock >= 0)
+        {
+            (void)osKernelRestoreLock(int32_t__savedKernelLock);
+        }
+        return;
+    }
+
+    int32_t__savedKernelLock = osKernelLock();
+    uint32_t__minMv      = FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv;
+    uint32_t__maxMv      = FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv;
+    uint32_t__hystLowMv  = UINT32_T__G__InputHystLowMv;
+    uint32_t__hystHighMv = UINT32_T__G__InputHystHighMv;
+    uint32_t__inputMv    = measurement_snapshot_t__snap->v_in_mv;
+    bool__permitted      = BOOL__G__InputPermitted;
+
+    if ((uint32_t__inputMv < uint32_t__minMv) ||
+        (uint32_t__inputMv > uint32_t__maxMv))
+    {
+        bool__permitted = false;
+    }
+    else if (bool__permitted == false)
+    {
+        bool__permitted =
+            ((uint32_t__inputMv >= (uint32_t__minMv + uint32_t__hystLowMv)) &&
+             (uint32_t__inputMv <= (uint32_t__maxMv - uint32_t__hystHighMv)));
+    }
+    else
+    {
+        /* [EN] Already armed: stay armed anywhere inside the raw window.
+           [FA] مسلح است: در هر جای پنجرهٔ خام مسلح می‌ماند. */
+    }
+
+    BOOL__G__InputSnapshotValid = true;
+    BOOL__G__InputPermitted     = bool__permitted;
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+}
+
 /* ==================== Fault_OnSupervisionChange ==================== */
 
 /**
@@ -406,6 +661,8 @@ void func__Fault_Init(void)
     BOOL__G__BatteryAbsentForReset   = false;
     BOOL__G__BatteryAbsentCh0        = false;
     BOOL__G__BatteryAbsentCh1        = false;
+    BOOL__G__InputSnapshotValid      = false;
+    BOOL__G__InputPermitted          = false;
 }
 
 /**
@@ -508,6 +765,14 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
 
     uint32_t__nowTick = osKernelGetTickCount();
 
+    /* [EN] Refresh the shared input Schmitt BEFORE the manual-mode and
+       invalid-snapshot early returns, so charger / MCU / UI never keep a
+       stale input permission while battery debounce is frozen.
+       [FA] اشمیت مشترک ورودی را پیش از بازگشت‌های زودهنگام مود دستی و
+       snapshot نامعتبر تازه کن تا شارژر / ‎MCU / UI‎ هنگام فریز دبانس باتری
+       مجوز ورودی کهنه نگه ندارند. */
+    func__Fault_UpdateInputPermission(measurement_snapshot_t__snap);
+
     /* [EN] Manual test mode: battery conditions suspended - freeze every
        debounce (nothing new latches, nothing clears); the charger clears
        BAT_LOST on entering the mode and detectors restart on exit.
@@ -550,10 +815,11 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     bool__highHalfInstalled = ((CHG_INSTALLED_CHANNEL_MASK & (1u << 0u)) != 0u);
     bool__lowHalfInstalled  = ((CHG_INSTALLED_CHANNEL_MASK & (1u << 1u)) != 0u);
 
-    /* [EN] Case-2 gate: input present and in range (21..28 V).
-       [FA] گِیت حالت دوم: ورودی حاضر و در بازه سالم ۲۱ تا ۲۸ ولت. */
-    bool__inputOk = ((measurement_snapshot_t__snap->v_in_mv >= FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv) &&
-                     (measurement_snapshot_t__snap->v_in_mv <= FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv));
+    /* [EN] Case-2 gate: the same shared Schmitt permission every other
+       input consumer uses (already refreshed above from this snapshot).
+       [FA] گِیت حالت دوم: همان مجوز مشترک اشمیت که همهٔ مصرف‌کننده‌های
+       ورودی استفاده می‌کنند (بالا از همین snapshot تازه شده است). */
+    bool__inputOk = BOOL__G__InputPermitted;
 
     /* [EN] Case 1: a half pumped above the disconnect threshold (flyback
        signature of a cut battery wire while charging). v1.21 (user order

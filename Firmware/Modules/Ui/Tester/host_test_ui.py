@@ -1158,6 +1158,23 @@ def main():
     assert_equal(battery_voltage_to_percent(28000),87,"28000->87% now: (28000-21000)*100/(29000-21000) since the 100% ceiling moved 28->29 V")
     assert_equal(battery_voltage_to_percent(24500),43,"24500->43% now: (24500-21000)*100/(29000-21000) with the 29 V ceiling")
     print("Voltage mapping PASS")
+    ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
+    ui_led_h = open(os.path.join(BASE_DIR, "ui_led.h"), "r", encoding="utf-8", errors="ignore").read()
+    assert_true(re.search(r"#define\s+UI_INPUT_CONNECTED_THRESHOLD_MV\s+21000u", ui_led_h) is not None,
+                "UI input fallback floor matches the shared q33 factory default")
+    assert_true("UI_INPUT_WINDOW_MAX_MV" in ui_led_h and "28000u" in ui_led_h,
+                "UI input fallback ceiling matches the shared q34 factory default")
+    assert_true("func__Fault_GetInputPermission(&bool__permissionValid, &bool__permitted)" in ui_led_c,
+                "UI presence mirrors the one shared Fault input Schmitt permission")
+    assert_true("BOOL__G__UiInputPresent = bool__permitted;" in ui_led_c,
+                "UI presence follows the shared permission, not a private window")
+    assert_true("BOOL__G__UiInputPresent = false;" in ui_led_c,
+                "UI presence fails closed when the shared snapshot is invalid")
+    assert_true("UI_ALARM_PARAM_OV_THRESH_MV" in ui_led_h and
+                "UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv" in ui_led_c and
+                "UI_ALARM_T__G__Alarm.uint32_t__ovHystMv" in ui_led_c,
+                "scenario-1 OV alarm remains on its own q70/q71 pair")
+    print("Shared input window contract PASS")
     on,off=green_timing(57)
     assert_true(on+off==UI_BLINK_PERIOD_MS,"green on+off period")
     assert_true(off>=UI_GREEN_MIN_OFF_MS,"green off min")

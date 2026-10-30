@@ -135,6 +135,14 @@ static uint32_t UINT32_T__G__LogBootDead = 0u;
 static uint8_t  UINT8_T__G__LogBootFl = 0u;
 static uint32_t UINT32_T__G__LogLastClockSaveMs = 0u;
 static bool     BOOL__G__LogClockSavedOnce = false;
+/* [EN] A restored board anchor needs one fresh HELLO_ACK before the first row
+        is stamped. The wait is bounded so a silent board still gets its boot
+        row, and a browser clock can release it early.
+   [FA] لنگر بازیابی‌شدهٔ برد پیش از مهر اولین ردیف به یک پاسخ تازهٔ دست‌دادن
+        نیاز دارد. انتظار کران‌دار است تا برد ساکت هم ردیف بوت بگیرد و ساعت
+        مرورگر بتواند زودتر آن را آزاد کند. */
+static bool     BOOL__G__LogBootClockPending = false;
+static uint32_t UINT32_T__G__LogBootMs = 0u;
 
 /* ==================== Open day / روز باز ==================== */
 /* [EN] The sentinel says "no day opened yet". Day 0 is a real day: the day of a
@@ -373,6 +381,42 @@ static void func__EspLog_NoteBoardTime(uint32_t uint32_t__boardUptimeSec)
     BOOL__G__LogAnchorBoardValid = true;
 }
 
+/* ==================== Boot clock grace / مهلت ساعت بوت ==================== */
+
+/**
+ * @brief  [EN] May the first automatic row be stamped now? A restored board
+ *              anchor waits for one live uptime answer, but never longer than
+ *              ESP_LOG_BOOT_CLOCK_GRACE_MS. No saved anchor means no wait.
+ *         [FA] آیا اولین ردیف خودکار الان مهر بخورد؟ لنگر بازیابی‌شدهٔ برد
+ *              منتظر یک پاسخ زندهٔ آپتایم می‌ماند، اما نه بیش از مهلت بوت.
+ *              بدون لنگر ذخیره‌شده، انتظاری نیست.
+ * @‎param  uint32_t uint32_t__nowMs [EN] current millis(), ms / [FA]‎ میلی‌ثانیهٔ فعلی
+ * @‎return [EN] bool ready / [FA]‎ آمادهٔ نوشتن
+ */
+static bool func__EspLog_BootClockReady(uint32_t uint32_t__nowMs)
+{
+    uint32_t uint32_t__waitedMs;
+
+    if (BOOL__G__LogBootClockPending == false)
+    {
+        return true;
+    }
+    if ((BOOL__G__LogBoardAlive != false) ||
+        (BOOL__G__LogClockValid == false) ||
+        (BOOL__G__LogAnchorBoardValid == false))
+    {
+        BOOL__G__LogBootClockPending = false;
+        return true;
+    }
+    uint32_t__waitedMs = uint32_t__nowMs - UINT32_T__G__LogBootMs;
+    if (uint32_t__waitedMs >= ESP_LOG_BOOT_CLOCK_GRACE_MS)
+    {
+        BOOL__G__LogBootClockPending = false;
+        return true;
+    }
+    return false;
+}
+
 /**
  * @brief  [EN] Local day number (days since 1970-01-01) of an epoch second.
  *         [FA] شمارهٔ روز محلی (روز از ۱۹۷۰-۰۱-۰۱) برای یک ثانیهٔ یونیکس.
@@ -531,11 +575,26 @@ static void func__EspLog_ClockSave(void)
             «دوباره روشن شد» را از «فرم‌ور تازه فلش شد» تشخیص دهد (دستور کاربر
             ۲۰۲۶-۱۰-۲۸). سوار همان فایلی است که از قبل هست و با پاک‌کردن
             تاریخچه هم پاک نمی‌شود، پس فایل تازه‌ای لازم نیست. */
-    (void)snprintf(char__line, sizeof(char__line), "%lu,%ld,%lu,%u\n",
-                   (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec,
-                   (unsigned long)((BOOL__G__LogAnchorBoardValid != false) ?
-                                   UINT32_T__G__LogAnchorBoardSec : 0u),
-                   (unsigned int)ESP_ESP_FW_VERSION);
+    /* [EN] Save a matched pair: this wall second belongs to the board uptime
+            received most recently. Saving the old anchor uptime here would
+            count the interval since that anchor twice after the next boot.
+            With no live board answer there is no trustworthy pair, so 0.
+       [FA] یک جفت هم‌لحظه ذخیره می‌شود: این ثانیهٔ ساعت به آخرین آپتایم دریافتی
+            برد تعلق دارد. ذخیرهٔ آپتایم لنگر قدیمی، فاصله از آن لنگر را
+            پس از بوت بعدی دو بار می‌شمرد. بدون پاسخ زندهٔ برد جفت معتبری نیست،
+            پس صفر نوشته می‌شود. */
+    {
+        uint32_t uint32_t__boardUptimeSec = 0u;
+
+        if ((BOOL__G__LogBoardAlive != false) && (UINT32_T__G__LogBoardNowSec != 0u))
+        {
+            uint32_t__boardUptimeSec = UINT32_T__G__LogBoardNowSec;
+        }
+        (void)snprintf(char__line, sizeof(char__line), "%lu,%ld,%lu,%u\n",
+                       (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec,
+                       (unsigned long)uint32_t__boardUptimeSec,
+                       (unsigned int)ESP_ESP_FW_VERSION);
+    }
     (void)file__clock.print(char__line);
     file__clock.close();
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
@@ -720,12 +779,28 @@ static void func__EspLog_FwStampWrite(uint32_t uint32_t__version)
     }
     string__content.trim();
     int32_t__start = func__EspLog_FieldStart(string__content, 4u);
-    /* [EN] keep the three fields before the stamp; with no fourth field the
-            whole line is kept.
-       [FA] سه فیلد پیش از مهر نگه داشته می‌شود؛ اگر فیلد چهارم نبود، کل خط. */
-    string__firstThree = (int32_t__start > 1) ?
-                         string__content.substring(0, (size_t)(int32_t__start - 1)) :
-                         String("0,0,0");
+    /* [EN] Keep the clock fields that already exist. A legacy three-field line
+            is kept whole; a two-field line gets an explicit zero board anchor
+            so the firmware stamp can never be mistaken for an uptime.
+       [FA] فیلدهای موجود ساعت حفظ می‌شوند. خط سه‌فیلدی قدیمی کامل می‌ماند و
+            خط دو‌فیلدی یک لنگر برد صریح صفر می‌گیرد تا مهر نسخه هرگز به‌جای
+            آپتایم خوانده نشود. */
+    if (int32_t__start > 1)
+    {
+        string__firstThree = string__content.substring(0, (size_t)(int32_t__start - 1));
+    }
+    else if (func__EspLog_FieldStart(string__content, 3u) > 1)
+    {
+        string__firstThree = string__content;
+    }
+    else if (func__EspLog_FieldStart(string__content, 2u) > 1)
+    {
+        string__firstThree = string__content + String(",0");
+    }
+    else
+    {
+        string__firstThree = String("0,0,0");
+    }
     file__clock = LittleFS.open(ESP_LOG_CLOCK_PATH, "w");
     if (!file__clock)
     {
@@ -836,6 +911,11 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
     {
         BOOL__G__LogAnchorBoardValid = false;
     }
+    /* [EN] An accepted browser clock is an absolute time source too, so it
+            releases any boot-row grace wait immediately.
+       [FA] ساعت پذیرفته‌شدهٔ مرورگر هم منبع زمان مطلق است، پس انتظار مهلت
+            بوت را فوراً آزاد می‌کند. */
+    BOOL__G__LogBootClockPending = false;
     /* [EN] v1.110 (finding of the line-by-line review, 2026-10-28): the page
             sets the clock on every poll - once a minute - and this function
             saved the anchor every time, so the flash was written 1440 times a
@@ -2007,6 +2087,19 @@ static bool func__EspLog_FlushDue(uint32_t uint32_t__nowMs)
     uint32_t uint32_t__sinceRowMs;
     uint32_t uint32_t__sinceMainsMs;
 
+    /* [EN] The first automatic row of a restored session waits for the boot
+            clock grace; queued changes ride with the boot row instead of
+            being stamped with the stale flash clock.
+       [FA] اولین ردیف خودکار نشست بازیابی‌شده منتظر مهلت ساعت بوت می‌ماند؛
+            تغییرهای صف‌شده به‌جای مهر ساعت کهنه، همراه ردیف بوت می‌روند. */
+    if (func__EspLog_BootClockReady(uint32_t__nowMs) == false)
+    {
+        return false;
+    }
+    if (BOOL__G__LogBootRowPending != false)
+    {
+        return false;
+    }
     if (BOOL__G__LogLastRowValid == false)
     {
         return true;
@@ -2277,7 +2370,7 @@ static void func__EspLog_OnFrame(void)
  */
 static void func__EspLog_Tick(void)
 {
-    uint32_t uint32_t__nowMs;
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
 
     /* [EN] Boot row FIRST and with no board at all: the panel log is the
           witness of the panel itself, so a session with a silent board still
@@ -2286,9 +2379,14 @@ static void func__EspLog_Tick(void)
        [FA] اول ردیف بوت، آن هم بدون هیچ بردی: لاگِ پنل شاهدِ خودِ پنل است،
           پس نشستِ بدون برد هم تاریخچهٔ خودش را شروع می‌کند (۲۰۲۶-۱۰-۲۴).
           این ردیف وضعیتِ آخرین اجرا و خطرناک‌بودن آن را هم می‌برد. */
-    if (BOOL__G__LogBootRowPending != false)
+    if ((BOOL__G__LogBootRowPending != false) &&
+        (func__EspLog_BootClockReady(uint32_t__nowMs) != false))
     {
-        uint16_t uint16_t__mask = ESP_LOG_CHG_BOOT;
+        /* [EN] Changes queued during the boot-clock grace ride with this row,
+                so none of them is stamped with the stale flash clock.
+           [FA] تغییرهای صف‌شده در مهلت ساعت بوت همراه همین ردیف می‌روند تا
+                هیچ‌کدام با ساعت کهنهٔ فلش مهر نخورند. */
+        uint16_t uint16_t__mask = (uint16_t)(ESP_LOG_CHG_BOOT | UINT16_T__G__LogPendingMask);
 
         BOOL__G__LogBootRowPending = false;
         UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
@@ -2414,6 +2512,8 @@ static void func__EspLog_Tick(void)
 static void func__EspLog_Begin(void)
 {
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
+    UINT32_T__G__LogBootMs = (uint32_t)millis();
+    BOOL__G__LogBootClockPending = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
     if (BOOL__G__FsOk == false)
@@ -2431,6 +2531,16 @@ static void func__EspLog_Begin(void)
         (void)LittleFS.remove(ESP_LOG_LEGACY_INDEX_PATH);
     }
     func__EspLog_ClockLoad();
+    /* [EN] Only a restored, matched board anchor needs the first live answer.
+            A fresh flash, a two-field legacy clock, or an already live board
+            starts writing immediately.
+       [FA] فقط لنگر بردِ بازیابی‌شده و هم‌لحظه به نخستین پاسخ زنده نیاز دارد.
+            فلش تازه، ساعت قدیمی دو‌فیلدی، یا بردی که همین حالا زنده است
+            بی‌درنگ نوشتن را شروع می‌کند. */
+    BOOL__G__LogBootClockPending =
+        ((BOOL__G__LogClockValid != false) &&
+         (BOOL__G__LogAnchorBoardValid != false) &&
+         (BOOL__G__LogBoardAlive == false));
     /* [EN] v1.113: was this flash a new firmware? The stamp lives in the clock
             file, so it survives both a restart and a history clear.
        [FA] نسخهٔ ۱٫۱۱۳: آیا این فلش، فرم‌ور تازه‌ای بود؟ مهر در فایل ساعت است،

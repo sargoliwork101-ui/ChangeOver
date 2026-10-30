@@ -87,6 +87,19 @@
 #define FAULT_BAT_RECOVER_MS              1000u
 #define FAULT_INPUT_PRESENT_MIN_MV        21000u
 #define FAULT_INPUT_PRESENT_MAX_MV        28000u
+/* [EN] Shared input Schmitt margins, panel ids 169/170. Boot defaults are
+ *      500 mV on each edge; the live values are clamped to 0..3000 mV and
+ *      to one quarter of the live q33/q34 span so the re-arm band never
+ *      inverts. All input consumers use the same published permission.
+ * [FA] حاشیه‌های مشترک اشمیت ورودی، شناسه‌های ۱۶۹/۱۷۰. پیش‌فرض بوت هر لبه
+ *      ۵۰۰ میلی‌ولت است؛ مقدار زنده به ۰..۳۰۰۰ میلی‌ولت و یک‌چهارم فاصلهٔ
+ *      ‎q33/q34‎ گیره می‌شود تا باند بازگشت هرگز وارونه نشود. همهٔ
+ *      مصرف‌کننده‌های ورودی از همان مجوز منتشرشده استفاده می‌کنند. */
+#define FAULT_INPUT_HYST_LOW_DEFAULT_MV     500u
+#define FAULT_INPUT_HYST_HIGH_DEFAULT_MV    500u
+#define FAULT_INPUT_HYST_MAX_MV            3000u
+#define FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV  169u
+#define FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV 170u
 
 /**
  * @brief  [EN] Clear all fault bits.
@@ -217,6 +230,69 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
  */
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);
+
+/**
+ * @brief  [EN] Read the shared healthy-input window (panel ids 33/34) as one
+ *              atomic pair. UI input indication, the MCU self-supply path and
+ *              the charger permission all use this same lower/upper reference;
+ *              each consumer keeps its own internal hysteresis and timing.
+ *         [FA] پنجرهٔ مشترک ورودی سالم (شناسه‌های ۳۳/۳۴) را به‌صورت یک جفت
+ *              اتمیک می‌خواند. نمایش ورودی در UI، مسیر خودتغذیهٔ MCU و مجوز
+ *              شارژر هر سه از همین کف/سقف مشترک استفاده می‌کنند؛ هر مصرف‌کننده
+ *              هیسترزیس و زمان‌بندی داخلی خودش را نگه می‌دارد.
+ * @param  uint32_t__minMv [EN] Out: lower healthy input bound, mV / خروجی: کف ورودی سالم
+ * @param  uint32_t__maxMv [EN] Out: upper healthy input bound, mV / خروجی: سقف ورودی سالم
+ * @return bool [EN] true when both outputs were written / اگر هر دو خروجی نوشته شد true
+ */
+bool func__Fault_GetInputWindow(uint32_t *uint32_t__minMv,
+                                uint32_t *uint32_t__maxMv);
+
+/**
+ * @brief  [EN] Write one shared input Schmitt margin (panel ids 169/170).
+ *              The value is clamped to 0..FAULT_INPUT_HYST_MAX_MV and to one
+ *              quarter of the live q33/q34 span; the applied value is read
+ *              back. Changing q33/q34 re-clamps both margins as well.
+ *         [FA] نوشتن یکی از حاشیه‌های مشترک اشمیت ورودی (شناسه‌های ۱۶۹/۱۷۰).
+ *              مقدار به ۰..FAULT_INPUT_HYST_MAX_MV و یک‌چهارم فاصلهٔ زندهٔ
+ *              ‎q33/q34‎ گیره می‌شود و مقدار اعمال‌شده بازخوانی می‌گردد.
+ *              تغییر ‎q33/q34‎ نیز هر دو حاشیه را دوباره گیره می‌زند.
+ * @param  uint8_t__paramId [EN] 169 or 170 / شناسه
+ * @param  uint32_t__value [EN] Requested margin, mV / حاشیهٔ درخواستی
+ * @param  uint32_t__appliedValue [EN] Required applied value out / خروجی الزامی
+ * @return bool [EN] true when the id was accepted / شناسه پذیرفته شد
+ */
+bool func__Fault_SetInputHystParam(uint8_t uint8_t__paramId,
+                                   uint32_t uint32_t__value,
+                                   uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one live shared input Schmitt margin (169/170).
+ *         [FA] خواندن یک حاشیهٔ زندهٔ مشترک اشمیت ورودی (۱۶۹/۱۷۰).
+ * @param  uint8_t__paramId [EN] 169 or 170 / شناسه
+ * @param  uint32_t__value [EN] Value out, mV / خروجی مقدار
+ * @return bool [EN] true when the id was accepted / شناسه پذیرفته شد
+ */
+bool func__Fault_GetInputHystParam(uint8_t uint8_t__paramId,
+                                   uint32_t *uint32_t__value);
+
+/**
+ * @brief  [EN] Read the shared input permission published by the last
+ *              Fault_Evaluate() pass. The rule is one Schmitt trigger for
+ *              every consumer: permission drops immediately outside
+ *              [q33,q34] and re-arms only inside
+ *              [q33+H_low, q34-H_high]. snapshotValid=false means the ADC
+ *              snapshot was not trustworthy and permission is false.
+ *         [FA] مجوز مشترک ورودی را که آخرین پاس Fault_Evaluate منتشر کرده
+ *              می‌خواند. قاعده برای همهٔ مصرف‌کننده‌ها یک اشمیت است: بیرون
+ *              ‎[q33,q34]‎ مجوز فوراً می‌افتد و فقط داخل
+ *              ‎[q33+H_low, q34-H_high]‎ دوباره مسلح می‌شود.
+ *              ‎snapshotValid=false‎ یعنی snapshot معتبر نبوده و مجوز false است.
+ * @param  bool__snapshotValid [EN] Out: last snapshot was valid / خروجی: اعتبار snapshot
+ * @param  bool__permitted [EN] Out: shared Schmitt permission / خروجی: مجوز مشترک
+ * @return bool [EN] true when both outputs were written / اگر هر دو خروجی نوشته شد true
+ */
+bool func__Fault_GetInputPermission(bool *bool__snapshotValid,
+                                    bool *bool__permitted);
 
 /**
  * @brief  [EN] Re-apply the fault module's own hard windows after a

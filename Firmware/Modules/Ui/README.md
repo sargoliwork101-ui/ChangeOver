@@ -34,8 +34,16 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 ## سناریوهای توافق‌شده UI
 
 ### قواعد ورودی
-- `Input >=21000` وصل، `<=20000` قطع، 20-21V حفظ. `UI_INPUT_HYSTERESIS_MV 1000`.
-- ثابت‌ها: `CONNECTED_THRESHOLD 21000`, `DISCONNECTED 20000`.
+- حضور ورودیِ سالم از همان مجوز مشترک اشمیت Fault خوانده می‌شود
+  (`func__Fault_GetInputPermission`): بیرون `[q33,q34]` فوراً قطع؛ برگشت فقط
+  داخل `[q33+H_low, q34-H_high]` با حاشیه‌های قابل‌تنظیم پنل `q169/q170`
+  (پیش‌فرض `500/500mV`). پیش‌فرض پنجره `21000..28000mV` است.
+  `UI_INPUT_HYSTERESIS_MV 500` فقط پیش‌فرض بوتِ ساخت بدون Fault است.
+- آلارم اضافه‌ولتاژ سناریو ۱ همچنان جفت مستقل `q70/q71` خودش را دارد.
+  بین `q34` و `q70` ممکن است چهرهٔ کارکرد باتری دیده شود در حالی که آلارم OV
+  هنوز خاموش است؛ این پیامد پذیرفته‌شدهٔ اشتراک `q33/q34` است.
+- ثابت‌های `UI_INPUT_CONNECTED_THRESHOLD_MV 21000` و `UI_INPUT_WINDOW_MAX_MV 28000`
+  فقط پیش‌فرض بوتِ ساخت بدون Fault هستند.
 
 ### سناریو ۱: InputOk (non-blocking + فول هیسترزیس)
 - شرط: ورودی وصل **و** `ChargingFullActive` (خام 100 وارد، تا <95 حفظ). `Input 24V Battery 29V → سبز ثابت`
@@ -43,7 +51,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 - خروج به Charging فقط وقتی خام <95.
 
 ### سناریو ۲: BatteryRun (2% + 0/1 + فاز-حفاظ)
-- شرط: ورودی قطع (`<=20000`). `0V/19V → BatteryRun`
+- شرط: مجوز مشترک ورودی قطع (بیرون پنجرهٔ `q33/q34` یا هنوز مسلح‌نشده). `0V/19V → BatteryRun`
 - سبز چشمک با `stablePercent`: `remaining=100-stable`, `periodPer=10ms`, `greenOff=remaining*per(min10)`, `greenOn=1000-greenOff`. مثال 25V `56/57/58→stable57→Off430 On570` ثابت.
 - هیسترزیس: `stable0→raw>=2→1`, `stable1 raw0→0 >=3→2 else1`, `>=2 diff>=2→raw`.
 - 0% <1% → 10s یک‌بار سپس LED خاموش؛ 1% → سه‌بوق 20s با چشمک سبز کوتاه؛ نویز 0↔1 restart نمی‌کند.
@@ -258,7 +266,7 @@ Reset/Init، LED/بوق خاموش `flag false`, `stable 0 uninit`, `chargingSta
 task_ui 10ms → GetSnapshot → Ui_Tick
  ├─ !valid → safe-off + phase reset
  ├─ flag 21000/21200
- ├─ input 20/21V + overvoltage 27/28V
+ ├─ input shared q33/q34 (lower 1V release) + overvoltage q70/q71
  ├─ OverVoltage → red50%+buzzer10s
  ├─ !InputPresent → BatteryRun stable2%+0/1 → green preserve + buzzer
  ├─ InputPresent + raw100→FullActive→InputOk non-blocking

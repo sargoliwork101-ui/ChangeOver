@@ -503,7 +503,7 @@ static void func__Charger_FinalDisconnectIdle(void)
 
 /**
  * @brief  [EN] Decide whether mains/input voltage is present so the final-fault
- *              NC relay coil must stay energized. Unlike bool__inputAdcValid,
+ *              NC relay coil must stay energized. Unlike bool__inputPermitted,
  *              there is no upper voltage cap: overvoltage input must still hold
  *              the relay open. When the ADC snapshot is not yet valid, fall back
  *              to the hardware input-presence GPIO.
@@ -522,12 +522,18 @@ static bool func__Charger_IsInputPresentForRelay(
 #if MODULE_FAULT
     {
         uint32_t uint32_t__panelMin = 0u;
+        uint32_t uint32_t__panelMax = 0u;
 
-        if (func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV,
-                                      &uint32_t__panelMin) == true)
+        /* [EN] Relay presence uses the shared lower bound only; the upper
+           bound must NOT release the NC coil during an overvoltage.
+           [FA] حضور رله فقط از کف مشترک استفاده می‌کند؛ سقف نباید کویل NC را
+           در اضافه‌ولتاژ رها کند. */
+        if (func__Fault_GetInputWindow(&uint32_t__panelMin,
+                                       &uint32_t__panelMax) == true)
         {
             uint32_t__inputMinMv = uint32_t__panelMin;
         }
+        (void)uint32_t__panelMax;
     }
 #endif
 
@@ -3269,7 +3275,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     uint32_t uint32_t__nowTick;
     uint8_t uint8_t__channelIndex;
     bool bool__anyFinalFault;
-    bool bool__inputAdcValid;
+    bool bool__inputPermitted;
     bool bool__controlAllowed;
 
     (void)app_state_t__state;
@@ -3561,27 +3567,58 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
-    {
-        uint32_t uint32_t__inputMinMv = CHG_INPUT_VALID_MV;
-        uint32_t uint32_t__inputMaxMv = CHG_INPUT_VALID_MAX_MV;
-
+    /* [EN] One shared input permission for stop, INPUT_WAIT recovery and every
+       OFF->BULK start (normal, fixed-duty, manual, bringup). Fault owns the
+       Schmitt rule and the panel-adjustable margins q169/q170; the charger no
+       longer keeps a separate restart margin. Fault-off builds use the same
+       rule with the compiled boot defaults.
+       [FA] یک مجوز مشترک ورودی برای توقف، برگشت INPUT_WAIT و هر شروع
+       ‎OFF->BULK (‎عادی، دیوتی ثابت، دستی، bringup). فالت مالک قاعدهٔ اشمیت و
+       حاشیه‌های قابل‌تنظیم پنل ‎q169/q170‎ است؛ شارژر دیگر حاشیهٔ برگشت جدا
+       ندارد. ساخت بدون Fault همان قاعده را با پیش‌فرض بوت کامپایل استفاده می‌کند. */
 #if MODULE_FAULT
-        uint32_t uint32_t__panelMin = 0u;
-        uint32_t uint32_t__panelMax = 0u;
+    {
+        bool bool__snapshotValid = false;
+        bool bool__permitted = false;
 
-        if (func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV, &uint32_t__panelMin) == true)
+        if ((func__Fault_GetInputPermission(&bool__snapshotValid, &bool__permitted) == true) &&
+            (bool__snapshotValid != false))
         {
-            uint32_t__inputMinMv = uint32_t__panelMin;
+            bool__inputPermitted = bool__permitted;
         }
-        if (func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, &uint32_t__panelMax) == true)
+        else
         {
-            uint32_t__inputMaxMv = uint32_t__panelMax;
+            bool__inputPermitted = false;
         }
-#endif
-
-        bool__inputAdcValid = ((measurement_snapshot_t__snap->v_in_mv >= uint32_t__inputMinMv) &&
-                               (measurement_snapshot_t__snap->v_in_mv <= uint32_t__inputMaxMv));
     }
+#else
+    {
+        static bool BOOL__S__InputArmed = false;
+        uint32_t uint32_t__spanMv = CHG_INPUT_VALID_MAX_MV - CHG_INPUT_VALID_MV;
+        uint32_t uint32_t__marginMv = CHG_INPUT_RECOVERY_HYSTERESIS_MV;
+
+        if (uint32_t__marginMv > (uint32_t__spanMv / 4u))
+        {
+            uint32_t__marginMv = uint32_t__spanMv / 4u;
+        }
+        if ((measurement_snapshot_t__snap->v_in_mv < CHG_INPUT_VALID_MV) ||
+            (measurement_snapshot_t__snap->v_in_mv > CHG_INPUT_VALID_MAX_MV))
+        {
+            BOOL__S__InputArmed = false;
+        }
+        else if (BOOL__S__InputArmed == false)
+        {
+            BOOL__S__InputArmed =
+                ((measurement_snapshot_t__snap->v_in_mv >= (CHG_INPUT_VALID_MV + uint32_t__marginMv)) &&
+                 (measurement_snapshot_t__snap->v_in_mv <= (CHG_INPUT_VALID_MAX_MV - uint32_t__marginMv)));
+        }
+        else
+        {
+            /* [EN] Armed: stay armed inside the raw window. [FA] مسلح: داخل پنجره خام مسلح بمان. */
+        }
+        bool__inputPermitted = BOOL__S__InputArmed;
+    }
+#endif
 
     /* [EN] Connection-settle bookkeeping for every installed channel
        (user refinement 2026-09-19): the 15-second count must START FROM THE
@@ -3670,7 +3707,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
-    if (bool__inputAdcValid == false)
+    if (bool__inputPermitted == false)
     {
         /* [EN] Account for the last active interval before SafeIdle. Then
            stamp INPUT_WAIT and service its pause timer on every control pass;
@@ -3760,12 +3797,21 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
                 CHG_STATE_INPUT_WAIT)
             {
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
-                    CHG_STATE_OFF;
-                func__Charger_ClearAbsorbWindow(
-                    &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex]);
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
+                /* [EN] The shared Schmitt permission already includes the
+                   panel-adjustable re-arm margins, so INPUT_WAIT leaves only
+                   when the same flag that gates every OFF->BULK start is true.
+                   [FA] مجوز مشترک اشمیت از قبل حاشیه‌های قابل‌تنظیم پنل را
+                   دارد، پس INPUT_WAIT فقط وقتی خارج می‌شود که همان پرچمِ
+                   گِیتِ هر شروع ‎OFF->BULK‎ درست باشد. */
+                if (bool__inputPermitted == true)
+                {
+                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                        CHG_STATE_OFF;
+                    func__Charger_ClearAbsorbWindow(
+                        &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex]);
+                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
+                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
+                }
             }
 
             if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==

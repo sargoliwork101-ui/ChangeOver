@@ -1960,6 +1960,36 @@ function testFixRules(win, doc) {
     win.PEND = {};
 }
 
+function testInputSchmittPanel(win, doc) {
+    const savedP = Object.assign({}, win.D.p);
+    const savedT = win.D.t.slice();
+    win.D.p[33] = 21000; win.D.p[34] = 28000;
+    win.D.p[169] = 500; win.D.p[170] = 500;
+    doc.getElementById('q169').value = '';
+    doc.getElementById('q170').value = '';
+    check(!win.achk().some(w => w.ids.indexOf(169) >= 0 || w.ids.indexOf(170) >= 0),
+          'factory shared input hysteresis margins pass achk');
+    doc.getElementById('q169').value = '3000';
+    check(win.achk().some(w => w.ids.indexOf(169) >= 0),
+          'achk warns when the lower margin exceeds the live span/4 cap');
+    doc.getElementById('q169').value = '';
+    win.eval('ASB.vinArmed = false');
+    win.D.t[14] = 21200; win.astat();
+    check(win.eval('ASB.vinArmed') === false,
+          'astat does not arm inside the raw window below the lower re-arm margin');
+    win.D.t[14] = 21500; win.astat();
+    check(win.eval('ASB.vinArmed') === true,
+          'astat arms at the lower re-arm edge');
+    win.D.t[14] = 21200; win.astat();
+    check(win.eval('ASB.vinArmed') === true,
+          'astat stays armed inside the raw window after re-arm');
+    win.D.t[14] = 20999; win.astat();
+    check(win.eval('ASB.vinArmed') === false,
+          'astat drops immediately outside the raw window');
+    win.D.p = savedP; win.D.t = savedT; win.eval('ASB.vinArmed = false');
+    win.pundo();
+}
+
 /* ==================== Runner / اجراکننده ==================== */
 
 const dom = loadPanel();
@@ -2515,6 +2545,7 @@ setTimeout(async () => {
         testNakWarning(win, doc);
         await testManualDutyKeys(win, doc);
         testWifiPowerSaveTab(win, doc);
+        testInputSchmittPanel(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);

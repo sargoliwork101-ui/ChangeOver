@@ -744,7 +744,7 @@ loadTheme();
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
-const INPUT_CONN_THR=21000, INPUT_DISC_THR=20000, INPUT_OV_THR=28000, INPUT_OV_CLEAR=27000;
+const INPUT_CONN_THR=21000, INPUT_WINDOW_MAX=28000, INPUT_HYST_DEFAULT=500, INPUT_OV_THR=28000, INPUT_OV_CLEAR=27000;
 const BAT_VMIN=21000, BAT_VMAX=29000, HALF_VMIN=10500, HALF_VMAX=14500;
 const CHG_VMIN=21000, CHG_VMAX=29000;
 const RUN_HYST=2, CHG_HYST=5, ZERO_EXIT=2, ONE_EXIT=3, FULL_ENTER=100, FULL_EXIT=95;
@@ -758,14 +758,16 @@ const GREEN_PERIOD=1000, GREEN_MIN_OFF=10, YELLOW_PERIOD=1000, YELLOW_MIN_ON=150
 let brd={gPer:GREEN_PERIOD, gOff:GREEN_MIN_OFF, yPer:YELLOW_PERIOD, yOn:YELLOW_MIN_ON,
          vmin:BAT_VMIN, vmax:BAT_VMAX, halfMin:HALF_VMIN, halfMax:HALF_VMAX,
          hEnt:FULL_ENTER, hExit:FULL_EXIT, cHyst:CHG_HYST, rHyst:RUN_HYST,
-         rZero:ZERO_EXIT, rOne:ONE_EXIT, cvmin:CHG_VMIN, cvmax:CHG_VMAX};
+         rZero:ZERO_EXIT, rOne:ONE_EXIT, cvmin:CHG_VMIN, cvmax:CHG_VMAX,
+         imin:INPUT_CONN_THR, imax:INPUT_WINDOW_MAX, ihl:INPUT_HYST_DEFAULT, ihh:INPUT_HYST_DEFAULT};
 function updBoardParams(pv){
- if(!pv || pv.length<14) return;
+ if(!pv || pv.length<18) return;
  let num=function(i){ let v=parseInt(pv[i],10); return isNaN(v)?0:v; };
  let gPer=num(0), gOff=num(1), yPer=num(2), yOn=num(3);
  let vmin=num(4), vmax=num(5), hEnt=num(6), hExit=num(7);
  let cHyst=num(8), rHyst=num(9), rZero=num(10), rOne=num(11);
  let cvmin=num(12), cvmax=num(13);
+ let imin=num(14), imax=num(15), ihl=num(16), ihh=num(17);
  if(gPer>0) brd.gPer=gPer;
  if(gOff>=0) brd.gOff=gOff;
  if(yPer>0) brd.yPer=yPer;
@@ -778,6 +780,9 @@ function updBoardParams(pv){
  if(rZero>=0) brd.rZero=rZero;
  if(rOne>=0) brd.rOne=rOne;
  if(cvmin>0 && cvmax>cvmin){ brd.cvmin=cvmin; brd.cvmax=cvmax; }
+ if(imin>0 && imax>imin){ brd.imin=imin; brd.imax=imax; }
+ if(ihl>=0) brd.ihl=ihl;
+ if(ihh>=0) brd.ihh=ihh;
 }
 
 function vToPctMap(v, vmin, vmax){ if(v<=vmin) return 0; if(v>=vmax) return 100; return Math.floor(((v-vmin)*100)/(vmax-vmin)); }
@@ -974,12 +979,14 @@ function updInputState(vIn, gpioFlag){
   if(vIn<=INPUT_OV_CLEAR) g_inputOV=false;
  }
  if(vIn>0){
-  if(g_inputState===null){
-   g_inputState=(vIn>=INPUT_CONN_THR);
-  } else if(!g_inputState && vIn>=INPUT_CONN_THR){
-   g_inputState=true;
-  } else if(g_inputState && vIn<=INPUT_DISC_THR){
+  /* همان اشمیت مشترک فرم‌ور: بیرون پنجرهٔ خام فوراً قطع؛ برگشت فقط با
+     حاشیه‌های پایین/بالای خوانده‌شده از برد (هر کدام حداکثر یک‌چهارم فاصله). */
+  const cap=Math.max(0,Math.floor((brd.imax-brd.imin)/4));
+  const hl=Math.min(brd.ihl,cap),hh=Math.min(brd.ihh,cap);
+  if(vIn<brd.imin || vIn>brd.imax){
    g_inputState=false;
+  } else if(g_inputState===null || g_inputState===false){
+   g_inputState=(vIn>=brd.imin+hl && vIn<=brd.imax-hh);
   }
  } else {
   if(g_inputState===null) g_inputState=!!gpioFlag;

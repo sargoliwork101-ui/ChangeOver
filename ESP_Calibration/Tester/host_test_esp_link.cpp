@@ -197,6 +197,77 @@ static std::vector<uint8_t> tlm_payload_field(uint16_t seq, uint32_t v24,
     return p;
 }
 
+/**
+ * @brief  [EN] Simulate a panel power cycle without erasing its flash. Only the
+ *              clock/history RAM state is reset; the board uptime is supplied
+ *              separately by a real HELLO_ACK frame.
+ *         [FA] چرخهٔ خاموش‌روشن پنل بدون پاک‌کردن فلش؛ فقط حالت موقت ساعت و
+ *              تاریخچه بازنشانی می‌شود و آپتایم برد را پاسخ واقعی دست‌دادن می‌آورد.
+ * @return [EN] None / [FA] ندارد
+ */
+static void reset_clock_test_boot(void)
+{
+    G_StubMillis = 0u;
+    BOOL__G__FsOk = true;
+    LittleFS.failWrites = false;
+    BOOL__G__LogClockValid = false;
+    UINT32_T__G__LogAnchorSec = 0u;
+    UINT32_T__G__LogAnchorMs = 0u;
+    INT32_T__G__LogTzSec = 0;
+    UINT32_T__G__LogHighWaterSec = 0u;
+    UINT32_T__G__LogAnchorBoardSec = 0u;
+    BOOL__G__LogAnchorBoardValid = false;
+    UINT32_T__G__LogBoardNowSec = 0u;
+    BOOL__G__LogBoardAlive = false;
+    BOOL__G__LogClockJumpPending = false;
+    BOOL__G__LogClockSavedOnce = false;
+    UINT32_T__G__LogLastClockSaveMs = 0u;
+    BOOL__G__LogBootRowPending = true;
+    BOOL__G__LogUpdatePending = false;
+    BOOL__A__LogForceRow = false;
+    BOOL__G__LogHasPrev = false;
+    BOOL__G__LogBootSnapValid = false;
+    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+    UINT16_T__G__LogRowsToday = 0u;
+    BOOL__G__LogDayFull = false;
+    BOOL__G__LogMarkerDone = false;
+    UINT16_T__G__LogPendingMask = 0u;
+    UINT8_T__G__LogPendingNote = ESP_LOG_NOTE_NONE;
+    BOOL__G__LogMainsQueuedValid = false;
+    UINT32_T__G__LogLastRowMs = 0u;
+    BOOL__G__LogLastRowValid = false;
+    BOOL__G__LogLinkDown = false;
+    UINT8_T__G__LogRamHead = 0u;
+    UINT8_T__G__LogRamCount = 0u;
+    BOOL__G__LogDrainWait = false;
+    UINT8_T__G__LogWriteFault = 0u;
+    UINT16_T__G__LogDroppedRows = 0u;
+    UINT8_T__G__LogIndexCount = 0u;
+    BOOL__G__LogScanValid = false;
+    BOOL__G__TlmSeen = false;
+    UINT32_T__G__LastTlmMs = 0u;
+    BOOL__G__HelloSeen = false;
+    UINT32_T__G__BoardUptimeSec = 0u;
+}
+
+/**
+ * @brief  [EN] Feed a checksum-valid HELLO_ACK carrying board uptime in seconds.
+ *         [FA] پاسخ معتبر دست‌دادن با آپتایم برد به ثانیه وارد می‌کند.
+ * @param  uint32_t uptimeSec [EN] board uptime, s / [FA] آپتایم برد به ثانیه
+ * @return [EN] None / [FA] ندارد
+ */
+static void feed_board_uptime(uint32_t uptimeSec)
+{
+    std::vector<uint8_t> ack;
+    ack.push_back((uint8_t)ESP_LINK_PROTOCOL_VERSION);
+    ack.push_back((uint8_t)ESP_ESP_FW_VERSION);
+    ack.push_back(0x0Fu);
+    ack.push_back(0u);
+    append_u32(ack, uptimeSec);
+    ack.resize(ESP_HELLO_ACK_LEN, 0u);
+    feed(build_frame(ESP_MSG_HELLO_ACK, ack));
+}
+
 /* ======================================================================== */
 int main(void)
 {
@@ -2546,6 +2617,9 @@ int main(void)
         BOOL__G__LogLinkDown = false; UINT16_T__G__LogPendingMask = 0u;
         BOOL__G__LogLastStepValid = false; UINT8_T__G__LogPrevBand = 0u;
         BOOL__G__LogBootSnapValid = false; BOOL__G__LogClockValid = true;
+        /* This block owns a phone-only clock: no restored board anchor, so
+           the boot-clock grace must not hold its change rows. */
+        BOOL__G__LogAnchorBoardValid = false; BOOL__G__LogBoardAlive = false;
         INT32_T__G__LogTzSec = 12600; UINT32_T__G__LogAnchorSec = 1792756800u;
         UINT32_T__G__LogAnchorMs = (uint32_t)millis();
         UINT32_T__G__LogHighWaterSec = 1792756800u;
@@ -3002,6 +3076,172 @@ int main(void)
               "after 30 s cooldown, Log_Tick drains RAM ring and clears write fault");
 
         LittleFS.files.clear();
+    }
+
+    /* ---- 51. battery sleep: paired clock save, first HELLO, legacy file -----
+       [EN] A ten-hour CH_PD cycle must not stamp the first row with the stale
+            flash clock, and a saved wall second must travel with the board
+            uptime of that same instant. A legacy three-field clock file must
+            survive a firmware stamp rewrite. The no-board path still writes
+            after a bounded grace period; it is never disabled.
+       [FA] خاموشی ده‌ساعته نباید اولین ردیف را با ساعت کهنهٔ فلش مهر بزند و
+            ثانیهٔ ذخیره‌شده باید با آپتایم برد در همان لحظه جفت شود. فایل ساعت
+            سه‌فیلدی قدیمی هم باید بازنویسی مهر نسخه را سالم بگذراند. مسیر بدون
+            برد پس از مهلت محدود همچنان می‌نویسد و هرگز غیرفعال نمی‌شود. */
+    {
+        const uint32_t baseSec = 1792756800u;
+        const uint32_t offlineSec = 36000u;
+        char dayPath[32];
+
+        /* A legacy three-field file: no firmware stamp yet. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] =
+            std::string("1792756800,12600,1000\n");
+        func__EspLog_Begin();
+        check(func__EspLog_FwStampRead() == (uint32_t)ESP_ESP_FW_VERSION,
+              "legacy clock: the firmware stamp is added");
+        check(BOOL__G__LogClockValid &&
+              UINT32_T__G__LogAnchorSec == baseSec &&
+              UINT32_T__G__LogAnchorBoardSec == 1000u,
+              "legacy clock: adding the stamp keeps the wall second and board anchor",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
+        check(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)].find("1792756800,12600,1000,") == 0u,
+              "legacy clock: the original three fields stay verbatim");
+
+        /* A two-field legacy file has no board anchor; the stamp must not
+           become that anchor by accident. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] =
+            std::string("1792756800,12600\n");
+        func__EspLog_Begin();
+        check(BOOL__G__LogClockValid && !BOOL__G__LogAnchorBoardValid &&
+              UINT32_T__G__LogAnchorBoardSec == 0u,
+              "two-field legacy clock: the firmware stamp is not mistaken for uptime");
+
+        /* Save one hour after the original anchor: the pair must advance
+           together, not wall time alone. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        feed_board_uptime(1000u);
+        check(func__EspLog_TimeSet(baseSec, 12600),
+              "paired save: the browser sets the initial wall clock");
+        G_StubMillis = 3600000u;
+        feed_board_uptime(4600u);
+        check(func__EspLog_NowSec() == baseSec + 3600u,
+              "paired save: one hour of board uptime is one wall hour");
+        func__EspLog_ClockSave();
+        {
+            const std::string saved = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+            check(row_field(saved, 0u, 0u) == (long)(baseSec + 3600u),
+                  "paired save: the current wall second is written");
+            check(row_field(saved, 0u, 2u) == 4600L,
+                  "paired save: the board uptime belonging to that second is written",
+                  saved);
+        }
+
+        /* The panel is unpowered for ten hours; the STM32 keeps counting.
+           No browser request is made anywhere in this sequence. */
+        reset_clock_test_boot();
+        func__EspLog_Begin();
+        check(BOOL__G__LogClockValid && BOOL__G__LogAnchorBoardValid,
+              "ten-hour wake: the saved pair is restored");
+        func__EspLog_Tick();
+        check(BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 0u,
+              "ten-hour wake: the boot row waits for the first board uptime");
+        func__EspLog_Queue(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE);
+        check(UINT16_T__G__LogRowsToday == 0u && UINT16_T__G__LogPendingMask != 0u,
+              "ten-hour wake: an early change is queued, not stamped with the stale clock");
+
+        G_StubMillis = 2000u;
+        feed_board_uptime(4600u + offlineSec);
+        check(func__EspLog_NowSec() == baseSec + 3600u + offlineSec,
+              "ten-hour wake: the first HELLO_ACK recovers exactly the missing time",
+              std::to_string(func__EspLog_NowSec()));
+        func__EspLog_Tick();
+        check(!BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 1u,
+              "ten-hour wake: one boot row is written after the answer");
+        (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        {
+            const std::string day = LittleFS.files[std::string(dayPath)];
+            check(row_field(day, 0u, 0u) == (long)(baseSec + 3600u + offlineSec),
+                  "ten-hour wake: the boot row carries the recovered real time",
+                  day);
+            check((row_field(day, 0u, 2u) & (long)ESP_LOG_CHG_BOOT) != 0L &&
+                  (row_field(day, 0u, 2u) & (long)ESP_LOG_CHG_MAINS) != 0L,
+                  "ten-hour wake: the queued change rides with the boot row");
+        }
+
+        /* A silent board must not block storage forever. */
+        reset_clock_test_boot();
+        func__EspLog_Begin();
+        G_StubMillis = 9999u;
+        func__EspLog_Tick();
+        check(BOOL__G__LogBootRowPending,
+              "silent board: the boot row is still inside the grace window");
+        G_StubMillis = 10000u;
+        func__EspLog_Tick();
+        check(!BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 1u,
+              "silent board: the boot row is written once the grace window ends");
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "silent board: the grace fallback does not duplicate the boot row");
+
+        /* A browser arriving during the grace window is an absolute time
+           source too, so it releases the row immediately. */
+        {
+            const std::string savedClock = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+            reset_clock_test_boot();
+            LittleFS.files.clear();
+            LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] = savedClock;
+        }
+        func__EspLog_Begin();
+        check(func__EspLog_TimeSet(baseSec + 50000u, 12600),
+              "browser during grace: its clock is accepted");
+        func__EspLog_Tick();
+        check(!BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 1u,
+              "browser during grace: the boot row need not wait for HELLO");
+        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 2u) == 0L,
+              "browser during grace: no stale board uptime is saved with the new time");
+
+        /* An update row remains mandatory even with a full day and no board;
+           only its timestamp gets the bounded grace window. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] =
+            std::string("1792756800,12600,1000,1\n");
+        func__EspLog_Begin();
+        UINT16_T__G__LogRowsToday = ESP_LOG_MAX_ROWS_PER_DAY;
+        BOOL__G__LogDayFull = true;
+        G_StubMillis = 10000u;
+        func__EspLog_Tick();
+        (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        check(LittleFS.files[std::string(dayPath)].find(",4097,") != std::string::npos,
+              "update after grace: the forced boot-plus-update row is still written");
+
+        /* With no saved clock at all, day-zero storage stays immediate. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        func__EspLog_Begin();
+        func__EspLog_Tick();
+        check(LittleFS.exists("/evt-00000000.csv"),
+              "no saved clock: day-zero storage does not wait for a board");
+
+        /* A board reset cannot recreate absolute time from uptime alone.
+           Verify the honest fallback: no rewind and a fresh running anchor. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] =
+            std::string("1792756800,12600,4600\n");
+        func__EspLog_Begin();
+        feed_board_uptime(5u);
+        check(BOOL__G__LogAnchorBoardValid && UINT32_T__G__LogAnchorBoardSec == 5u,
+              "board reset: a fresh uptime anchor is taken");
+        check(func__EspLog_NowSec() >= baseSec,
+              "board reset: the last known time is never rewound");
     }
 
     std::cout << std::string(70, '=') << "\n";

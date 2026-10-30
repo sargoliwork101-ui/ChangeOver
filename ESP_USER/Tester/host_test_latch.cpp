@@ -1478,7 +1478,7 @@ static void func__T_TestHandshake(void)
     uint8_t__payload[8] = 0x34u;             /* فریم سالم از دید برد = 52 */
     uint8_t__payload[12] = 0u;               /* خطای CRC برد = 0 */
     uint8_t__payload[13] = 0u;
-    uint8_t__payload[16] = (uint8_t)(169u & 0xFFu);  /* تعداد پارامتر */
+    uint8_t__payload[16] = (uint8_t)(171u & 0xFFu);  /* تعداد پارامتر */
     uint8_t__payload[18] = (uint8_t)(100u & 0xFFu);  /* دورهٔ تله‌متری ۱۰۰ms */
     uint16_t__len = func__T_MakeFrame(uint8_t__frame, SIMPLE_MSG_HELLO_ACK,
                                       uint8_t__payload, (uint16_t)SIMPLE_HELLO_ACK_LEN);
@@ -1490,7 +1490,7 @@ static void func__T_TestHandshake(void)
     func__T_Check(UINT32_T__G__BoardRxFrames == 52u, "تعداد فریم سالمِ دیده‌شده توسط برد خوانده می‌شود");
     func__T_Check(UINT16_T__G__BoardCrcErrors == 0u && UINT16_T__G__BoardVerErrors == 0u,
                   "خطای CRC و ناهم‌نسخگی برد (صفر = ارتباط درست) خوانده می‌شود");
-    func__T_Check(UINT16_T__G__BoardParamCount == 169u && UINT16_T__G__BoardPeriodMs == 100u,
+    func__T_Check(UINT16_T__G__BoardParamCount == 171u && UINT16_T__G__BoardPeriodMs == 100u,
                   "تعداد پارامتر و دورهٔ تله‌متری برد خوانده می‌شود");
     func__T_Check(UINT32_T__G__HelloAckCount == 1u, "پاسخ‌های برد شمرده می‌شوند");
 

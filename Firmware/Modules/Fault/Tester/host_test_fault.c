@@ -8,9 +8,11 @@
  *
  * @note    [EN] Covers the mask API, the two battery-lost detectors with
  *              their debounces, the recovery path, the manual-test freeze,
- *              the alarm-parameter clamps and the tick wrap.
+ *              the alarm-parameter clamps, the shared input-window getter
+ *              and the tick wrap.
  *          [FA] پوشش: API ماسک، دو آشکارساز قطع باتری با دبانس، مسیر
- *              بازیابی، فریز مود تست دستی، گیرهٔ پارامترهای آلارم و سرریز تیک.
+ *              بازیابی، فریز مود تست دستی، گیرهٔ پارامترهای آلارم، getter
+ *              پنجرهٔ مشترک ورودی و سرریز تیک.
  */
 
 #include <stdio.h>
@@ -157,6 +159,8 @@ static void func__RunMs(uint32_t uint32_t__milliseconds)
 int main(void)
 {
     uint32_t uint32_t__value;
+    uint32_t uint32_t__minMv;
+    uint32_t uint32_t__maxMv;
 
     printf("== Fault host test ==\n");
 
@@ -361,6 +365,150 @@ int main(void)
        [FA] شناسه‌ای که مال این ماژول نیست باید رد شود، نه بی‌صدا بلعیده. */
     CHECK(func__Fault_SetAlarmParam(200u, 1u, &uint32_t__value) == false);
     CHECK(func__Fault_GetAlarmParam(200u, &uint32_t__value) == false);
+
+    /* ---- 7b. shared healthy-input window getter (q33/q34) ----
+       [EN] NULL outputs are refused; the factory pair is returned; a panel
+            write is clamped and read back as one consistent pair.
+       [FA] خروجی NULL رد می‌شود؛ جفت کارخانه برگردانده می‌شود؛ نوشتن پنل
+            گیره می‌خورد و به‌صورت یک جفت سازگار خوانده می‌شود. */
+    func__Reset(65000u);
+    CHECK(func__Fault_GetInputWindow(NULL, &uint32_t__maxMv) == false);
+    CHECK(func__Fault_GetInputWindow(&uint32_t__minMv, NULL) == false);
+    CHECK(func__Fault_GetInputWindow(&uint32_t__minMv, &uint32_t__maxMv) == true);
+    CHECK(uint32_t__minMv == FAULT_INPUT_PRESENT_MIN_MV);
+    CHECK(uint32_t__maxMv == FAULT_INPUT_PRESENT_MAX_MV);
+
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV, 22000u, &uint32_t__value));
+    CHECK(uint32_t__value == 22000u);
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, 27000u, &uint32_t__value));
+    CHECK(uint32_t__value == 27000u);
+    CHECK(func__Fault_GetInputWindow(&uint32_t__minMv, &uint32_t__maxMv) == true);
+    CHECK(uint32_t__minMv == 22000u);
+    CHECK(uint32_t__maxMv == 27000u);
+
+    /* [EN] The 1000 mV minimum separation is enforced whichever edge moves.
+       [FA] فاصلهٔ کمینهٔ ۱۰۰۰ میلی‌ولت از هر طرف که جابه‌جا شود اعمال می‌شود. */
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, 22500u, &uint32_t__value));
+    CHECK(uint32_t__value >= 23000u);
+    CHECK(func__Fault_GetInputWindow(&uint32_t__minMv, &uint32_t__maxMv) == true);
+    CHECK(uint32_t__maxMv >= (uint32_t__minMv + 1000u));
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV, 21000u, &uint32_t__value));
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, 28000u, &uint32_t__value));
+
+    /* ---- 7c. shared input Schmitt margins + one published permission ----
+       [EN] q169/q170 are panel-settable, clamped to 0..3000 and span/4.
+            The permission drops outside q33/q34 and re-arms only inside the
+            inner band; invalid snapshots publish false. Manual mode still
+            refreshes the permission even though battery debounce freezes.
+       [FA] ‎q169/q170‎ قابل‌تنظیم پنل‌اند و به ۰..۳۰۰۰ و یک‌چهارم فاصله گیره
+            می‌خورند. مجوز بیرون ‎q33/q34‎ می‌افتد و فقط داخل باند داخلی
+            برمی‌گردد؛ snapshot نامعتبر false منتشر می‌کند. مود دستی هم مجوز
+            را تازه می‌کند هرچند دبانس باتری فریز است. */
+    func__Reset(66000u);
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV, 21000u, &uint32_t__value));
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, 28000u, &uint32_t__value));
+    CHECK(func__Fault_SetInputHystParam(FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV, 500u, &uint32_t__value));
+    CHECK(uint32_t__value == 500u);
+    CHECK(func__Fault_SetInputHystParam(FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV, 500u, &uint32_t__value));
+    CHECK(uint32_t__value == 500u);
+    CHECK(func__Fault_GetInputHystParam(FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV, &uint32_t__value));
+    CHECK(uint32_t__value == 500u);
+    CHECK(func__Fault_SetInputHystParam(99u, 500u, &uint32_t__value) == false);
+    CHECK(func__Fault_GetInputHystParam(99u, &uint32_t__value) == false);
+
+    {
+        bool bool__valid = true;
+        bool bool__permitted = true;
+
+        CHECK(func__Fault_GetInputPermission(NULL, &bool__permitted) == false);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, NULL) == false);
+
+        /* [EN] Boot/released: 21200 is inside the raw window but below the
+           lower re-arm margin, so the shared permission stays false.
+           [FA] بوت/رها: ۲۱۲۰۰ داخل پنجره خام ولی زیر حاشیه برگشت پایین است،
+           پس مجوز مشترک false می‌ماند. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 21200u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__valid == true);
+        CHECK(bool__permitted == false);
+
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 21500u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == true);
+
+        /* [EN] Armed: 21200 again stays armed until the raw edge is crossed.
+           [FA] مسلح: ۲۱۲۰۰ دوباره مسلح می‌ماند تا از لبه خام عبور کند. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 21200u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == true);
+
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 20999u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == false);
+
+        /* [EN] Upper edge is symmetric: drop above 28000, re-arm at 27500.
+           [FA] لبه بالا متقارن است: افتادن بالای ۲۸۰۰۰، برگشت در ۲۷۵۰۰. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 27500u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == true);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 27800u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == true);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 28001u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == false);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 27800u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == false);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 27500u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__permitted == true);
+
+        /* [EN] Invalid snapshot fails closed and is reported as invalid.
+           [FA] snapshot نامعتبر بسته می‌ماند و نامعتبر گزارش می‌شود. */
+        MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__valid == false);
+        CHECK(bool__permitted == false);
+        MEASUREMENT_SNAPSHOT_T__G__Snap.valid = true;
+
+        /* [EN] Manual mode freezes battery debounce but NOT the shared input
+           permission, so the charger cannot keep a stale input decision.
+           [FA] مود دستی دبانس باتری را فریز می‌کند ولی مجوز مشترک ورودی را
+           نه، تا شارژر تصمیم ورودی کهنه نگه ندارد. */
+        BOOL__G__ManualTestActive = true;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 20000u;
+        func__Fault_Evaluate(&MEASUREMENT_SNAPSHOT_T__G__Snap);
+        CHECK(func__Fault_GetInputPermission(&bool__valid, &bool__permitted));
+        CHECK(bool__valid == true);
+        CHECK(bool__permitted == false);
+        BOOL__G__ManualTestActive = false;
+    }
+
+    /* [EN] Narrow window caps each margin at span/4; the applied read-back
+           reports the cap, and widening the window does not invert anything.
+       [FA] پنجره باریک هر حاشیه را به یک‌چهارم فاصله محدود می‌کند؛ بازخوانی
+           همان سقف را گزارش می‌دهد و پهن‌کردن پنجره چیزی را وارونه نمی‌کند. */
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV, 24000u, &uint32_t__value));
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, 25000u, &uint32_t__value));
+    CHECK(func__Fault_SetInputHystParam(FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV, 3000u, &uint32_t__value));
+    CHECK(uint32_t__value == 250u);
+    CHECK(func__Fault_SetInputHystParam(FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV, 3000u, &uint32_t__value));
+    CHECK(uint32_t__value == 250u);
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV, 21000u, &uint32_t__value));
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, 28000u, &uint32_t__value));
+    CHECK(func__Fault_SetInputHystParam(FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV, 500u, &uint32_t__value));
+    CHECK(func__Fault_SetInputHystParam(FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV, 500u, &uint32_t__value));
 
     /* ---- 8. the 49.7-day tick wrap must not break a debounce ----
        [EN] Start the absent debounce just before the counter wraps.
