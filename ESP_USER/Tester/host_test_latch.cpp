@@ -642,6 +642,112 @@ static void func__T_TestStm32TimeAndChartScheduling(void)
                   "نقطهٔ بعدی نمودارها بر اساس ثانیهٔ واقعی میکرو (حتی پس از ریست millis) ثبت شد");
 }
 
+/* ==================== نمودار با تله‌متری کهنه: صفر با زمان درست ==================== */
+static void func__T_TestChartZeroOnStaleTelemetry(void)
+{
+    uint32_t uint32_t__baseSec = 1790000000u;
+    uint8_t uint8_t__lastSlot;
+
+    (void)printf("\n== نمودار با تله‌متری کهنه: صفر با زمان درست ==\n");
+
+    func__Simple_ChartsClear();
+    func__Simple_TimeSet(uint32_t__baseSec, false);
+
+    BOOL__G__TlmSeen = true;
+    UINT8_T__G__TlmFlags = SIMPLE_TLM_FLAG_INPUT_PRESENT;
+    UINT32_T__G__TlmField[14] = 24000u;
+    UINT32_T__G__TlmField[15] = 25500u;
+    UINT32_T__G__TlmField[17] = 12500u;
+    UINT32_T__G__TlmField[18] = 13000u;
+    UINT32_T__G__TlmField[19] = 0x40u;
+    UINT32_T__G__TlmField[25] = 7u;
+    UINT32_T__G__LastLocalFaultMask = 0u;
+    UINT8_T__G__DiagErrorCount = 0u;
+    BOOL__G__LastLocalInputValid = true;
+    BOOL__G__LastLocalInputPresent = true;
+    BOOL__G__LocalPowerOffActive = false;
+    UINT8_T__G__PowerEventCount = 0u;
+
+    /* آخرین فریم آن‌قدر قدیمی است که دیگر دادهٔ تازه حساب نشود */
+    UINT32_T__G__LastTlmMs = (uint32_t)millis() - (SIMPLE_LINK_TIMEOUT_MS + 100u);
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    func__Simple_ChartTick();
+
+    uint8_t__lastSlot = (uint8_t)((UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - 1u) % SIMPLE_CHART_HISTORY_SIZE);
+    func__T_Check((UINT8_T__G__ChartCount == 1u) &&
+                  (UINT32_T__G__ChartVin[uint8_t__lastSlot] == 0u) &&
+                  (UINT32_T__G__ChartVpack[uint8_t__lastSlot] == 0u) &&
+                  (UINT32_T__G__ChartPct[uint8_t__lastSlot] == 0u) &&
+                  (UINT32_T__G__ChartImb[uint8_t__lastSlot] == 0u),
+                  "تله‌متری کهنه در نمودار کوتاه به‌جای عددهای قبلی صفر می‌نشیند");
+    func__T_Check((UINT8_T__G__Chart1D_Count == 1u) &&
+                  (UINT32_T__G__Chart1D_Pct[0] == 0u) &&
+                  (UINT32_T__G__Chart1D_Vin[0] == 0u) &&
+                  (UINT32_T__G__Chart1D_Vpack[0] == 0u) &&
+                  (UINT32_T__G__Chart1D_Time[0] >= uint32_t__baseSec) &&
+                  (UINT32_T__G__Chart1D_Time[0] <= (uint32_t__baseSec + 1u)),
+                  "نقطهٔ صفر با زمان واقعی همان لحظه ذخیره می‌شود، نه زمان فریم کهنه");
+    func__T_Check((UINT8_T__G__Chart7D_Count == 1u) &&
+                  (UINT8_T__G__Chart1M_Count == 1u) &&
+                  (UINT8_T__G__Chart3M_Count == 1u) &&
+                  (UINT32_T__G__Chart7D_Pct[0] == 0u) &&
+                  (UINT32_T__G__Chart1M_Pct[0] == 0u) &&
+                  (UINT32_T__G__Chart3M_Pct[0] == 0u) &&
+                  (UINT32_T__G__Chart7D_Vin[0] == 0u) &&
+                  (UINT32_T__G__Chart1M_Vin[0] == 0u) &&
+                  (UINT32_T__G__Chart3M_Vin[0] == 0u) &&
+                  (UINT32_T__G__Chart7D_Vpack[0] == 0u) &&
+                  (UINT32_T__G__Chart1M_Vpack[0] == 0u) &&
+                  (UINT32_T__G__Chart3M_Vpack[0] == 0u),
+                  "هر چهار بازهٔ زمان‌دار جای بی‌داده را صفر می‌گیرند");
+    func__T_Check((UINT8_T__G__PowerEventCount == 0u) &&
+                  (BOOL__G__LastLocalInputPresent != false),
+                  "دادهٔ کهنه رویداد قطع برق محلی نمی‌سازد");
+    func__T_Check((UINT8_T__G__DiagErrorCount == 0u) &&
+                  (UINT32_T__G__LastLocalFaultMask == 0u),
+                  "دادهٔ کهنه خطای محلی نمی‌سازد");
+
+    /* فریم تازه برمی‌گردد، ولی هنوز گام بعدی نمودار زمان‌دار نرسیده است */
+    UINT32_T__G__LastTlmMs = (uint32_t)millis();
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    func__Simple_ChartTick();
+    uint8_t__lastSlot = (uint8_t)((UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - 1u) % SIMPLE_CHART_HISTORY_SIZE);
+    func__T_Check((UINT8_T__G__ChartCount == 2u) &&
+                  (UINT32_T__G__ChartVin[uint8_t__lastSlot] == 24000u) &&
+                  (UINT32_T__G__ChartVpack[uint8_t__lastSlot] == 25500u) &&
+                  (UINT8_T__G__Chart1D_Count == 1u),
+                  "با فریم تازه عددهای واقعی برمی‌گردند و نقطهٔ زمان‌دار زودتر از گام خودش ساخته نمی‌شود");
+
+    /* یک گام کامل جلو می‌رویم تا نقطهٔ تازهٔ زمان‌دار هم ساخته شود */
+    func__Simple_TimeSet(uint32_t__baseSec + 60u, false);
+    UINT32_T__G__LastTlmMs = (uint32_t)millis();
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    func__Simple_ChartTick();
+    func__T_Check((UINT8_T__G__Chart1D_Count == 2u) &&
+                  (UINT32_T__G__Chart1D_Pct[1] > 0u) &&
+                  (UINT32_T__G__Chart1D_Vin[1] == 24000u) &&
+                  (UINT32_T__G__Chart1D_Vpack[1] == 25500u) &&
+                  (UINT32_T__G__Chart1D_Time[1] >= (uint32_t__baseSec + 60u)),
+                  "پس از صفرِ بی‌داده، نقطهٔ تازه با زمان درست ثبت می‌شود");
+
+    /* اگر برد از اول هم دیده نشده باشد، باز هم جای خالی داده صفر است */
+    func__Simple_ChartsClear();
+    BOOL__G__TlmSeen = false;
+    func__Simple_TimeSet(uint32_t__baseSec + 120u, false);
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    func__Simple_ChartTick();
+    func__T_Check((UINT8_T__G__Chart1D_Count == 1u) &&
+                  (UINT32_T__G__Chart1D_Pct[0] == 0u) &&
+                  (UINT32_T__G__Chart1D_Vin[0] == 0u) &&
+                  (UINT32_T__G__Chart1D_Vpack[0] == 0u) &&
+                  (UINT32_T__G__Chart1D_Time[0] >= (uint32_t__baseSec + 120u)),
+                  "بردِ هرگز دیده‌نشده هم نقطهٔ صفرِ زمان‌دار می‌گیرد");
+
+    func__Simple_ChartsClear();
+    BOOL__G__TlmSeen = false;
+    UINT32_T__G__LastTlmMs = 0u;
+}
+
 /* ==================== ۷) ذخیرهٔ وضعیت کانال‌ها در خطا و پاک‌سازی تاریخچه ==================== */
 static void func__T_TestDiagStatePersistenceAndClear(void)
 {
@@ -1780,6 +1886,7 @@ int main(void)
     func__T_TestWifiPowerSave();
     func__T_TestWifiViewerPower();
     func__T_TestStm32TimeAndChartScheduling();
+    func__T_TestChartZeroOnStaleTelemetry();
     func__T_TestDiagStatePersistenceAndClear();
     func__T_TestAuthAdminProtection();
     func__T_TestStateHistoryLog();

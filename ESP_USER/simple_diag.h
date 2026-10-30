@@ -343,38 +343,54 @@ static void func__Simple_ChartTick(void)
     if ((uint32_t__now - UINT32_T__G__LastChartMs) < 5000u) return;
     UINT32_T__G__LastChartMs = uint32_t__now;
 
-    if (!BOOL__G__TlmSeen) return;
+    /* داده فقط وقتی تازه است که هم قاب دیده شده باشد و هم از آخرین قاب کمتر از
+       مهلت لینک گذشته باشد. اگر داده تازه نیست، عددهای قبلی تکرار نمی‌شوند:
+       جای آن‌ها صفر با زمان همین لحظه ثبت می‌شود تا جای بی‌داده روی نمودار
+       معلوم بماند. زمان از ساعت پنل می‌آید؛ ساعت نامعتبر زمان جعلی نمی‌سازد. */
+    bool bool__tlmFresh = (BOOL__G__TlmSeen != false) &&
+        (((uint32_t)(uint32_t__now - UINT32_T__G__LastTlmMs)) <= SIMPLE_LINK_TIMEOUT_MS);
 
-    uint32_t uint32_t__vin = UINT32_T__G__TlmField[14];
-    uint32_t uint32_t__vpackRaw = UINT32_T__G__TlmField[15];
-    uint32_t uint32_t__vLow = UINT32_T__G__TlmField[17];
-    uint32_t uint32_t__vHigh = UINT32_T__G__TlmField[18];
-    uint32_t uint32_t__vpack = uint32_t__vpackRaw; /* برد اصلی درصد را از V24 می‌گیرد - چشمک سبز - نه جمع Vlow+Vhigh */
-
-    /* درصد فول/خالی از پارامترهای خود برد خوانده می‌شود (۷۴/۷۵)، همان‌هایی که
-       چراغ سبز برد با آن‌ها چشمک می‌زند؛ و مثل خود برد اول با سقف نگاشت شارژ
-       (۱۲۰) گیره می‌شود. */
-    uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
-    uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
-    uint32_t uint32_t__vMaxChgMv = func__Simple_BoardParam(SIMPLE_PARAM_CHG_PCT_VMAX_MV);
-    uint32_t uint32_t__vpackClamped = uint32_t__vpackRaw;
-    if (uint32_t__vpackClamped > uint32_t__vMaxChgMv)
-    {
-        uint32_t__vpackClamped = uint32_t__vMaxChgMv;
-    }
+    uint32_t uint32_t__vin = 0u;
+    uint32_t uint32_t__vpack = 0u;
     uint32_t uint32_t__pct = 0u;
-    if ((uint32_t__vMaxMv > uint32_t__vMinMv) && (uint32_t__vpackClamped >= uint32_t__vMinMv))
+    uint32_t uint32_t__imb = 0u;
+
+    if (bool__tlmFresh)
     {
-        uint32_t__pct = ((uint32_t__vpackClamped - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
-        if (uint32_t__pct > 100u)
+        uint32_t__vin = UINT32_T__G__TlmField[14];
+        uint32_t__vpack = UINT32_T__G__TlmField[15]; /* برد اصلی درصد را از V24 می‌گیرد - چشمک سبز - نه جمع Vlow+Vhigh */
+        uint32_t__imb = UINT32_T__G__TlmField[25];
+
+        /* درصد فول/خالی از پارامترهای خود برد خوانده می‌شود (۷۴/۷۵)، همان‌هایی که
+           چراغ سبز برد با آن‌ها چشمک می‌زند؛ و مثل خود برد اول با سقف نگاشت شارژ
+           (۱۲۰) گیره می‌شود. */
+        uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
+        uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
+        uint32_t uint32_t__vMaxChgMv = func__Simple_BoardParam(SIMPLE_PARAM_CHG_PCT_VMAX_MV);
+        uint32_t uint32_t__vpackClamped = uint32_t__vpack;
+        if (uint32_t__vpackClamped > uint32_t__vMaxChgMv)
         {
-            uint32_t__pct = 100u;
+            uint32_t__vpackClamped = uint32_t__vMaxChgMv;
+        }
+        if ((uint32_t__vMaxMv > uint32_t__vMinMv) && (uint32_t__vpackClamped >= uint32_t__vMinMv))
+        {
+            uint32_t__pct = ((uint32_t__vpackClamped - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
+            if (uint32_t__pct > 100u)
+            {
+                uint32_t__pct = 100u;
+            }
         }
     }
-    uint32_t uint32_t__imb = UINT32_T__G__TlmField[25];
+
     func__Simple_ChartAdd(uint32_t__vin, uint32_t__vpack, uint32_t__pct, uint32_t__imb);
     func__Simple_ChartAddTimed(uint32_t__pct, uint32_t__vin, uint32_t__vpack);
 
+    /* صفرِ بی‌داده فقط برای نمودار است؛ خطا و قطع برق محلی فقط از دادهٔ تازه
+       ساخته می‌شوند تا سکوت برد رویداد جعلی نسازد. */
+    if (!bool__tlmFresh) return;
+
+    uint32_t uint32_t__vLow = UINT32_T__G__TlmField[17];
+    uint32_t uint32_t__vHigh = UINT32_T__G__TlmField[18];
     uint32_t uint32_t__faultMask = UINT32_T__G__TlmField[19];
     if (uint32_t__faultMask != 0u)
     {
