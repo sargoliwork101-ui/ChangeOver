@@ -2,7 +2,19 @@
    هر روز یک فایل CSV روی فلش خود پنل؛ ردیف فقط وقتی نوشته می‌شود که چیزی
    واقعاً عوض شده باشد. هر ردیف همان لحظه بسته می‌شود تا قطع باتری آخرین ردیف
    را از بین نبرد.
-   ترتیب include: بعد از simple_state.h و پیش از simple_link.h. */
+   ترتیب include: بعد از simple_state.h و پیش از simple_link.h.
+
+   [EN] v1.118 rewrite: the calendar day is resolved BEFORE the daily row cap.
+        A full yesterday can never block today's file, on battery or with Wi-Fi
+        off. Tick also opens the new day file at rollover, so the day exists even
+        before the first event. All public names, CSV columns and file names are
+        kept so old files and the unchanged UI stay readable.
+   [FA] بازنویسی نسخهٔ ۱٫۱۱۸: روز تقویمی پیش از سقف ردیف روز تعیین می‌شود.
+        روزِ پرِ دیروز هرگز نمی‌تواند فایل امروز را ببندد، نه روی باتری و نه با
+        وای‌فای خاموش. Tick هم هنگام چرخش روز فایل روز تازه را باز می‌کند تا روز
+        حتی پیش از اولین رویداد وجود داشته باشد. همهٔ نام‌های عمومی، ستون‌های CSV
+        و نام فایل‌ها حفظ شده‌اند تا فایل‌های قبلی و رابط کاربری دست‌نخورده خوانا
+        بمانند. */
 
 #include <string.h>
 
@@ -15,11 +27,10 @@ static uint16_t UINT16_T__G__LogRowsToday = 0u;
 static bool     BOOL__G__LogDayFull = false;
 static bool     BOOL__G__LogBootRowPending = true;
 /* [EN] 0 = the last flash write was verified. Anything else = failed writes
-        since the last good one. Same fix as the technical panel (2026-10-27):
-        a refused write must be reported, not swallowed.
+        since the last good one. A refused write must be reported, not swallowed.
    [FA] صفر یعنی آخرین نوشتن روی فلش تأیید شد. هر مقدار دیگر یعنی تعداد
-        نوشتن‌های شکست‌خورده از آخرین نوشتن سالم. همان اصلاح پنل فنی
-        (۲۰۲۶-۱۰-۲۷): نوشتن ردشده باید گزارش شود، نه بی‌صدا دور ریخته. */
+        نوشتن‌های شکست‌خورده از آخرین نوشتن سالم. نوشتن ردشده باید گزارش شود،
+        نه بی‌صدا دور ریخته. */
 static uint8_t  UINT8_T__G__LogWriteFault = 0u;
 /* [EN] Rows the RAM ring had to throw away because a newer one arrived while the
         flash was still refusing. Counted and shown, never silently forgotten.
@@ -29,24 +40,17 @@ static uint16_t UINT16_T__G__LogDroppedRows = 0u;
 /* [EN] the day-full marker is written once per day.
    [FA] ردیف نشانهٔ «سقف روز پر شد» یک‌بار در روز نوشته می‌شود. */
 static bool     BOOL__G__LogMarkerDone = false;
+/* [EN] The active day file has its header and a repaired tail. It is separate
+        from the day code: the calendar day changes even when flash refuses.
+   [FA] فایل روز فعال سرستون و دنبالهٔ تعمیرشده دارد. این از کد روز جداست:
+        روز تقویمی حتی وقتی فلش نمی‌پذیرد عوض می‌شود. */
+static bool     BOOL__G__LogDayFileReady = false;
 
 /* ==================== وضعیت قبلی و تغییر در انتظار ==================== */
 static bool     BOOL__G__LogHasPrev = false;
 static uint8_t  UINT8_T__G__LogPrevMains = 0u;
-/* [EN] v1.95: the board's general byte (hand mode, snapshot, valid
-        measurement) is logged too, so a mode change is an event.
-   [FA] نسخهٔ ۱٫۹۵: بایت عمومی برد (مود دستی، snapshot، معتبر بودن
-        اندازه‌گیری) هم ثبت می‌شود تا تغییر مود یک رویداد باشد. */
 static uint8_t  UINT8_T__G__LogPrevFl = 0u;
-/* [EN] v1.95: the condemned-battery verdict is a state too, and it is
-        NOT in the fault mask - it has its own field on the wire.
-   [FA] حکم باتری خراب هم یک وضعیت است و در بیت‌های خطا نیست؛
-        فیلد خودش را روی سیم دارد. */
 static uint32_t UINT32_T__G__LogPrevDead = 0u;
-/* [EN] v1.96: the pack voltage itself is a change trigger, in visible
-        steps - that is what draws the charge curve in the log.
-   [FA] نسخهٔ ۱٫۹۶: خودِ ولتاژ پک هم محرک تغییر است، با گام محسوس -
-        همان چیزی که منحنی شارژ را در لاگ می‌کشد. */
 static uint32_t UINT32_T__G__LogPrevV24 = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg1 = 0u;
 static uint8_t  UINT8_T__G__LogPrevChg2 = 0u;
@@ -61,23 +65,14 @@ static uint32_t UINT32_T__G__LogMainsQueuedMs = 0u;
 static uint32_t UINT32_T__G__LogLastRowMs = 0u;
 static bool     BOOL__G__LogLastRowValid = false;
 static bool     BOOL__G__LogLinkDown = false;
-/* لحظهٔ نوشتن ردیف بوتِ همین نشست؛ تایمرِ «برد ساکت است» از همین لحظه
-   می‌شمارد، حتی اگر هیچ فریمی از برد نرسیده باشد. */
 static uint32_t UINT32_T__G__LogSessionStartMs = 0u;
-/* لحظهٔ آخرین ردیف گام ولتاژ، تا باری که روشن و خاموش می‌شود گام را به
-   چشمک‌زدن تبدیل نکند. */
 static uint32_t UINT32_T__G__LogLastStepMs = 0u;
 static bool     BOOL__G__LogLastStepValid = false;
 
 /* ==================== فهرست روزها ==================== */
-/* [EN] The list is read from the DIRECTORY, not from a remembered index: a day
-        file the index did not know about was invisible in the picker, could
-        never be deleted by "clear history", and still came back through the
-        automatic "today" read. The scan cache below only saves flash reads
-        inside one page refresh.
-   [FA] فهرست از «خود پوشه» خوانده می‌شود، نه از فهرستی که به یاد سپرده شده:
-        فایل روزی که فهرست نمی‌شناخت نه در انتخاب‌گر دیده می‌شد، نه با «پاک
-        کردن تاریخچه» پاک می‌شد، و باز هم از راه خواندن خودکار «امروز» برمی‌گشت.
+/* [EN] The list is read from the DIRECTORY, not from a remembered index. The
+        scan cache only saves flash reads inside one page refresh.
+   [FA] فهرست از «خود پوشه» خوانده می‌شود، نه از فهرستی که به یاد سپرده شده.
         حافظهٔ زیر فقط برای این است که یک بار باز شدن صفحه چند بار فلش نخواند. */
 static uint32_t UINT32_T__G__LogIndexDay[SIMPLE_LOG_MAX_DAYS + 2u];
 static uint8_t  UINT8_T__G__LogIndexCount = 0u;
@@ -92,8 +87,6 @@ static bool     BOOL__G__LogUpdatePending = false;
    [FA] یک‌بارمصرف: ردیف بعدی سقف روز را هم نادیده می‌گیرد. */
 static bool     BOOL__A__LogForceRow = false;
 static char     CHAR__G__LogRamRow[SIMPLE_LOG_RAM_ROWS][SIMPLE_LOG_RAM_ROW_MAX];
-/* [EN] the lost-row count as text, for the X-Log-Lost header.
-   [FA] شمار ردیف‌های ازدست‌رفته به‌صورت متن، برای سرسطر X-Log-Lost. */
 static char     CHAR__G__LogLostText[8];
 static uint8_t  UINT8_T__G__LogRamHead = 0u;
 static uint8_t  UINT8_T__G__LogRamCount = 0u;
@@ -284,6 +277,13 @@ static void func__SimpleLog_RecordDayEntry(const char *char__ptr_name)
     {
         return;
     }
+    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    {
+        if (UINT32_T__G__LogIndexDay[uint8_t__slot] == uint32_t__day)
+        {
+            return;
+        }
+    }
     if (UINT8_T__G__LogIndexCount >= (SIMPLE_LOG_MAX_DAYS + 2u))
     {
         return;
@@ -379,7 +379,7 @@ static uint8_t func__SimpleLog_ScanDays(bool bool__force)
     return UINT8_T__G__LogIndexCount;
 }
 
-/* ==================== فهرست روزها ==================== */
+/* ==================== کمک‌های نوشتن ==================== */
 
 /* [EN] Write one text piece and report whether every byte landed: File::print
         already returns the count it really wrote, so a full flash is visible.
@@ -414,15 +414,6 @@ static void func__SimpleLog_FaultRaise(void)
         UINT8_T__G__LogWriteFault++;
     }
 }
-
-/* [EN] v1.113: the two index functions are gone. The day list is the folder
-        itself now (func__SimpleLog_ScanDays), so it can never disagree with
-        what is really on the flash: the old "/evt-days.txt" was the reason a
-        day file could exist, stay undeletable and never be listed.
-   [FA] نسخهٔ ۱٫۱۱۳: دو تابع فهرست حذف شدند. فهرست روزها حالا خودِ پوشه است
-        (‎func__SimpleLog_ScanDays‎)، پس هرگز با آنچه واقعاً روی فلش است
-        اختلاف ندارد: همان «‎/evt-days.txt‎» باعث می‌شد فایل روزی وجود داشته
-        باشد، پاک نشود و در فهرست هم نیاید. */
 
 /* ==================== مهر نسخهٔ فرم‌ور / firmware stamp ==================== */
 /**
@@ -500,6 +491,7 @@ static void func__SimpleLog_FwStampWrite(uint32_t uint32_t__version)
     String string__content;
     int32_t int32_t__pos;
     int32_t int32_t__end;
+    bool bool__ok;
 
     if (BOOL__G__FsOk == false)
     {
@@ -551,16 +543,46 @@ static void func__SimpleLog_FwStampWrite(uint32_t uint32_t__version)
     File file__write = LittleFS.open(SIMPLE_TIME_FILE, "w");
     if (!file__write)
     {
+        func__SimpleLog_FaultRaise();
         return;
     }
-    file__write.print("{\"ts\":");
-    file__write.print((unsigned long)uint32_t__savedSec);
-    file__write.print(",\"tz\":");
-    file__write.print((long)int32_t__savedTz);
-    file__write.print(",\"fw\":");
-    file__write.print((unsigned long)uint32_t__version);
-    file__write.print("}");
+    bool__ok = func__SimpleLog_FileText(file__write, "{\"ts\":");
+    if (bool__ok != false)
+    {
+        char char__num[24];
+        (void)snprintf(char__num, sizeof(char__num), "%lu", (unsigned long)uint32_t__savedSec);
+        bool__ok = func__SimpleLog_FileText(file__write, char__num);
+    }
+    if (bool__ok != false)
+    {
+        bool__ok = func__SimpleLog_FileText(file__write, ",\"tz\":");
+    }
+    if (bool__ok != false)
+    {
+        char char__num[24];
+        (void)snprintf(char__num, sizeof(char__num), "%ld", (long)int32_t__savedTz);
+        bool__ok = func__SimpleLog_FileText(file__write, char__num);
+    }
+    if (bool__ok != false)
+    {
+        bool__ok = func__SimpleLog_FileText(file__write, ",\"fw\":");
+    }
+    if (bool__ok != false)
+    {
+        char char__num[24];
+        (void)snprintf(char__num, sizeof(char__num), "%lu", (unsigned long)uint32_t__version);
+        bool__ok = func__SimpleLog_FileText(file__write, char__num);
+    }
+    if (bool__ok != false)
+    {
+        bool__ok = func__SimpleLog_FileText(file__write, "}");
+    }
     file__write.close();
+    if (bool__ok == false)
+    {
+        func__SimpleLog_FaultRaise();
+        return;
+    }
     UINT32_T__G__LastSavedTimeSec = uint32_t__savedSec;
     INT32_T__G__LastSavedTzSec = int32_t__savedTz;
 }
@@ -672,69 +694,164 @@ static uint16_t func__SimpleLog_CountRows(const char *char__ptr_path)
     return uint16_t__rows;
 }
 
-/* پایین‌تر تعریف می‌شود؛ باز کردن فایل روز، دنبالهٔ خراب را تعمیر می‌کند. */
-static bool func__SimpleLog_RepairTail(const char *char__ptr_path);
+/* [EN] A power cut in the middle of a row leaves no closing newline, so the next
+        append would glue a good row onto a broken one and make BOTH unreadable.
+   [FA] قطع برق وسط یک ردیف، پایان‌بند را جا می‌گذارد؛ در آن حالت ردیف بعدی به
+        ردیف خراب می‌چسبد و هر دو ناخوانا می‌شوند. */
+static bool func__SimpleLog_RepairTail(const char *char__ptr_path)
+{
+    bool bool__needsNewline = false;
 
-static bool func__SimpleLog_OpenDay(void)
+    {
+        File file__read = LittleFS.open(char__ptr_path, "r");
+        if (file__read)
+        {
+            uint32_t uint32_t__size = (uint32_t)file__read.size();
+            if (uint32_t__size > 0u)
+            {
+                if ((file__read.seek(uint32_t__size - 1u) == false) ||
+                    (file__read.read() != '\n'))
+                {
+                    bool__needsNewline = true;
+                }
+            }
+            file__read.close();
+        }
+    }
+    if (bool__needsNewline == false)
+    {
+        return true;
+    }
+    {
+        File file__append = LittleFS.open(char__ptr_path, "a");
+        if (!file__append)
+        {
+            func__SimpleLog_FaultRaise();
+            return false;
+        }
+        bool__needsNewline = func__SimpleLog_FileText(file__append, "\n");
+        file__append.close();
+    }
+    if (bool__needsNewline == false)
+    {
+        func__SimpleLog_FaultRaise();
+    }
+    return bool__needsNewline;
+}
+
+/* [EN] Make one day file usable: create it with the CSV header if it is new or
+        empty, otherwise repair a torn tail. It does NOT touch the active-day
+        counters, so the RAM drain can prepare an older day without resetting
+        today.
+   [FA] آماده‌سازی فایل یک روز: اگر تازه یا خالی است با سرستون CSV ساخته می‌شود،
+        وگرنه دنبالهٔ پاره تعمیر می‌شود. شمارنده‌های روز فعال را دست نمی‌زند تا
+        تخلیهٔ رم بتواند روز قدیمی‌تر را بدون ریست امروز آماده کند. */
+static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
-    bool bool__isNew;
     bool bool__ok = true;
-    bool bool__alreadyIndexed = false;
-    uint32_t uint32_t__dayCode;
-    uint8_t uint8_t__slot;
+    uint32_t uint32_t__size = 0u;
 
     if (BOOL__G__FsOk == false)
     {
         return false;
     }
-    uint32_t__dayCode = func__SimpleLog_TodayCode();
-    if (uint32_t__dayCode == UINT32_T__G__LogDayCode)
-    {
-        return true;
-    }
-
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
-    bool__isNew = (LittleFS.exists(char__ptr_path) == false);
-    File file__day = LittleFS.open(char__ptr_path, "a");
-    if (!file__day)
     {
-        return false;
-    }
-    if (bool__isNew)
-    {
-        bool__ok = func__SimpleLog_FileText(file__day, SIMPLE_LOG_HEADER);
-    }
-    file__day.close();
-    if ((bool__ok != false) && (bool__isNew == false))
-    {
-        bool__ok = func__SimpleLog_RepairTail(char__ptr_path);
+        File file__day = LittleFS.open(char__ptr_path, "a");
+        if (!file__day)
+        {
+            func__SimpleLog_FaultRaise();
+            return false;
+        }
+        uint32_t__size = (uint32_t)file__day.size();
+        if (uint32_t__size == 0u)
+        {
+            bool__ok = func__SimpleLog_FileText(file__day, SIMPLE_LOG_HEADER);
+        }
+        file__day.close();
     }
     if (bool__ok == false)
     {
         func__SimpleLog_FaultRaise();
+        return false;
     }
-
-    UINT32_T__G__LogDayCode = uint32_t__dayCode;
-    UINT16_T__G__LogRowsToday = func__SimpleLog_CountRows(char__ptr_path);
-    BOOL__G__LogDayFull = (UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY);
-    BOOL__G__LogMarkerDone = BOOL__G__LogDayFull;
-
-    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    if (uint32_t__size > 0u)
     {
-        if (UINT32_T__G__LogIndexDay[uint8_t__slot] == uint32_t__dayCode)
-        {
-            bool__alreadyIndexed = true;
-        }
-    }
-    if ((bool__alreadyIndexed == false) &&
-        (UINT8_T__G__LogIndexCount < (SIMPLE_LOG_MAX_DAYS + 2u)))
-    {
-        UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = uint32_t__dayCode;
-        UINT8_T__G__LogIndexCount++;
-        func__SimpleLog_TrimDays();
+        bool__ok = func__SimpleLog_RepairTail(char__ptr_path);
     }
     return bool__ok;
+}
+
+/* [EN] Resolve the calendar day FIRST. A new day resets the cap counters even if
+        the flash then refuses the file; the row will fall back to RAM instead of
+        being blocked by yesterday's cap. With forcePrepare=false a failed prepare
+        is retried only after the drain cooldown, so Tick cannot hammer a full
+        flash every loop.
+   [FA] اول روز تقویمی تعیین می‌شود. روز تازه شمارنده‌های سقف را صفر می‌کند حتی
+        اگر فلش فایل را رد کند؛ ردیف به‌جای ماندن پشت سقف دیروز به رم می‌رود.
+        با forcePrepare=false تلاش ناموفق فقط پس از مهلت خنک‌شدن تکرار می‌شود تا
+        Tick هر دور به فلش پر نکوبد. */
+static bool func__SimpleLog_ResolveDay(bool bool__forcePrepare)
+{
+    uint32_t uint32_t__today;
+    bool bool__newDay;
+    bool bool__ok;
+    char char__ptr_path[SIMPLE_LOG_PATH_MAX];
+
+    uint32_t__today = func__SimpleLog_TodayCode();
+    bool__newDay = (uint32_t__today != UINT32_T__G__LogDayCode);
+    if (bool__newDay != false)
+    {
+        UINT32_T__G__LogDayCode = uint32_t__today;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogDayFileReady = false;
+        BOOL__G__LogScanValid = false;
+    }
+    if (BOOL__G__FsOk == false)
+    {
+        BOOL__G__LogDayFileReady = false;
+        return false;
+    }
+    if ((BOOL__G__LogDayFileReady != false) && (bool__newDay == false))
+    {
+        return true;
+    }
+    if ((bool__newDay == false) && (bool__forcePrepare == false) &&
+        (BOOL__G__LogDrainWait != false) &&
+        ((uint32_t)((uint32_t)millis() - UINT32_T__G__LogLastDrainMs) < SIMPLE_LOG_DRAIN_RETRY_MS))
+    {
+        return false;
+    }
+
+    bool__ok = func__SimpleLog_PrepareDayFile(uint32_t__today);
+    BOOL__G__LogDayFileReady = bool__ok;
+    if (bool__ok == false)
+    {
+        BOOL__G__LogDrainWait = true;
+        UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
+        return false;
+    }
+
+    if (bool__newDay != false)
+    {
+        func__SimpleLog_PathOf(char__ptr_path, uint32_t__today);
+        UINT16_T__G__LogRowsToday = func__SimpleLog_CountRows(char__ptr_path);
+        BOOL__G__LogDayFull = (UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY);
+        BOOL__G__LogMarkerDone = BOOL__G__LogDayFull;
+        (void)func__SimpleLog_ScanDays(true);
+        func__SimpleLog_RecordDayEntry(char__ptr_path);
+        func__SimpleLog_TrimDays();
+    }
+    return true;
+}
+
+/* Kept for callers/tests that used the old name: open/switch today's file. */
+static bool func__SimpleLog_OpenDay(void)
+{
+    return func__SimpleLog_ResolveDay(true);
 }
 
 /* ==================== نوشتن ردیف ==================== */
@@ -809,53 +926,6 @@ static void func__SimpleLog_RamPush(const char *char__row)
     }
 }
 
-/* [EN] A power cut in the middle of a row leaves no closing newline, so the next
-        append would glue a good row onto a broken one and make BOTH unreadable.
-        Runs once, when a day file is opened.
-   [FA] قطع برق وسط یک ردیف، پایان‌بند را جا می‌گذارد؛ در آن حالت ردیف بعدی به
-        ردیف خراب می‌چسبد و هر دو ناخوانا می‌شوند. یک‌بار هنگام باز شدن فایل
-        روز اجرا می‌شود. */
-static bool func__SimpleLog_RepairTail(const char *char__ptr_path)
-{
-    bool bool__needsNewline = false;
-
-    {
-        File file__read = LittleFS.open(char__ptr_path, "r");
-        if (file__read)
-        {
-            uint32_t uint32_t__size = (uint32_t)file__read.size();
-            if (uint32_t__size > 0u)
-            {
-                if ((file__read.seek(uint32_t__size - 1u) == false) ||
-                    (file__read.read() != '\n'))
-                {
-                    bool__needsNewline = true;
-                }
-            }
-            file__read.close();
-        }
-    }
-    if (bool__needsNewline == false)
-    {
-        return true;
-    }
-    {
-        File file__append = LittleFS.open(char__ptr_path, "a");
-        if (!file__append)
-        {
-            func__SimpleLog_FaultRaise();
-            return false;
-        }
-        bool__needsNewline = func__SimpleLog_FileText(file__append, "\n");
-        file__append.close();
-    }
-    if (bool__needsNewline == false)
-    {
-        func__SimpleLog_FaultRaise();
-    }
-    return bool__needsNewline;
-}
-
 /* [EN] THE one append path: one verified row plus its newline into one day file.
    [FA] تنها مسیر نوشتن: یک ردیف تأییدشده به‌همراه پایان‌بندش در فایل یک روز. */
 static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *char__row)
@@ -911,30 +981,44 @@ static uint32_t func__SimpleLog_RowEpoch(const char *char__row)
     return uint32_t__value;
 }
 
+/* [EN] The day a stored row belongs to, by its OWN epoch and the current tz.
+   [FA] روزی که یک ردیف ذخیره‌شده به آن تعلق دارد، با زمان خودش و افق فعلی. */
+static uint32_t func__SimpleLog_RowDayCode(const char *char__row)
+{
+    uint32_t uint32_t__epoch = func__SimpleLog_RowEpoch(char__row);
+    uint32_t uint32_t__localSec;
+
+    if (uint32_t__epoch < SIMPLE_TIME_VALID_MIN)
+    {
+        return 0u;
+    }
+    uint32_t__localSec = uint32_t__epoch + (uint32_t)INT32_T__G__LogTzSec;
+    return func__SimpleLog_DateCode(uint32_t__localSec / 86400u);
+}
+
 /* [EN] Move the rows the RAM ring is holding back into the day files they belong
         to (each row by its OWN epoch). Oldest first; it stops at the first
-        refusal and keeps the rest.
+        refusal and keeps the rest. Each target day is prepared first so a file
+        created by the drain still has its CSV header and a repaired tail.
    [FA] برگرداندن ردیف‌های منتظر در رم به فایل روزِ خودشان (هر ردیف با زمان
-        خودش). از قدیمی‌ترین شروع می‌شود و با اولین رد شدن می‌ایستد. */
+        خودش). از قدیمی‌ترین شروع می‌شود و با اولین رد شدن می‌ایستد. هر روز
+        مقصد اول آماده می‌شود تا فایلی که تخلیه می‌سازد هم سرستون CSV و دنبالهٔ
+        سالم داشته باشد. */
 static void func__SimpleLog_DrainRam(void)
 {
     while (UINT8_T__G__LogRamCount > 0u)
     {
         uint8_t uint8_t__oldest;
-        uint32_t uint32_t__epoch;
         uint32_t uint32_t__dayCode;
 
         uint8_t__oldest = (uint8_t)((UINT8_T__G__LogRamHead + SIMPLE_LOG_RAM_ROWS -
                                      UINT8_T__G__LogRamCount) % SIMPLE_LOG_RAM_ROWS);
-        uint32_t__epoch = func__SimpleLog_RowEpoch(CHAR__G__LogRamRow[uint8_t__oldest]);
-        if (uint32_t__epoch >= SIMPLE_TIME_VALID_MIN)
+        uint32_t__dayCode = func__SimpleLog_RowDayCode(CHAR__G__LogRamRow[uint8_t__oldest]);
+        if (func__SimpleLog_PrepareDayFile(uint32_t__dayCode) == false)
         {
-            uint32_t uint32_t__localSec = uint32_t__epoch + (uint32_t)INT32_T__G__LogTzSec;
-            uint32_t__dayCode = func__SimpleLog_DateCode(uint32_t__localSec / 86400u);
-        }
-        else
-        {
-            uint32_t__dayCode = 0u;
+            BOOL__G__LogDrainWait = true;
+            UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
+            return;
         }
         if (func__SimpleLog_AppendRow(uint32_t__dayCode,
                                       CHAR__G__LogRamRow[uint8_t__oldest]) == false)
@@ -947,6 +1031,10 @@ static void func__SimpleLog_DrainRam(void)
             (UINT16_T__G__LogRowsToday < 0xFFFFu))
         {
             UINT16_T__G__LogRowsToday++;
+            if (UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY)
+            {
+                BOOL__G__LogDayFull = true;
+            }
         }
         UINT8_T__G__LogRamCount--;
     }
@@ -954,32 +1042,18 @@ static void func__SimpleLog_DrainRam(void)
     UINT8_T__G__LogWriteFault = 0u;
 }
 
-static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
+/* [EN] Build the one CSV row format. Kept in a single place so the day-full
+        marker and normal rows can never drift apart.
+   [FA] ساخت قالب един ردیف CSV. یک‌جا نگه داشته می‌شود تا نشانهٔ سقف روز و
+        ردیف عادی هرگز از هم جدا نیفتند. */
+static void func__SimpleLog_BuildRow(char *char__ptr_out, size_t size_t__outSize,
+                                     uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
 {
-    char char__ptr_path[SIMPLE_LOG_PATH_MAX];
-    char char__row[256];
-    uint32_t uint32_t__nowSec;
-    uint32_t uint32_t__uptimeSec;
-    uint8_t uint8_t__mains;
-    bool bool__stored = false;
+    uint32_t uint32_t__nowSec = func__Simple_NowSec();
+    uint32_t uint32_t__uptimeSec = (uint32_t)(millis() / 1000u);
+    uint8_t uint8_t__mains = ((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u;
 
-    /* [EN] v1.113: a forced row (the firmware-update row) ignores this cap as
-            well - the user asked for it "with no conditions".
-       [FA] نسخهٔ ۱٫۱۱۳: ردیف اجباری (ردیف بروزرسانی فرم‌ور) این سقف را هم
-            نادیده می‌گیرد - دستور کاربر «بدون در نظر گرفتن شرط‌ها» بود. */
-    if ((BOOL__A__LogForceRow == false) &&
-        ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
-         (BOOL__G__LogDayFull != false)))
-    {
-        BOOL__G__LogDayFull = true;
-        return false;
-    }
-
-    uint32_t__nowSec = func__Simple_NowSec();
-    uint32_t__uptimeSec = (uint32_t)(millis() / 1000u);
-    uint8_t__mains = ((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u;
-
-    (void)snprintf(char__row, sizeof(char__row),
+    (void)snprintf(char__ptr_out, size_t__outSize,
                    "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
                    (unsigned long)uint32_t__nowSec,
                    (unsigned long)uint32_t__uptimeSec,
@@ -1003,34 +1077,65 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
                    (unsigned long)UINT32_T__G__TlmField[5],
                    (unsigned long)UINT32_T__G__TlmField[12],
                    (unsigned long)func__SimpleLog_Pct(UINT32_T__G__TlmField[15]));
+}
+
+static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
+{
+    char char__row[256];
+    bool bool__stored = false;
+    bool bool__force;
+
+    /* [EN] DAY FIRST, CAP SECOND. This is the v1.118 fix: yesterday's full cap
+            must never be consulted before today's day has been resolved.
+       [FA] اول روز، بعد سقف. اصلاح نسخهٔ ۱٫۱۱۸: سقف پر دیروز هرگز نباید پیش از
+            تعیین روز امروز بررسی شود. */
+    (void)func__SimpleLog_ResolveDay(true);
+
+    bool__force = BOOL__A__LogForceRow;
+    if ((bool__force == false) &&
+        ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
+         (BOOL__G__LogDayFull != false)))
+    {
+        BOOL__G__LogDayFull = true;
+        return false;
+    }
+
+    func__SimpleLog_BuildRow(char__row, sizeof(char__row), uint16_t__changeMask, uint8_t__note);
 
     if (BOOL__G__FsOk != false)
     {
-        if (func__SimpleLog_OpenDay() != false)
+        /* [EN] Older RAM rows go first. If the drain still cannot finish, the
+                new row queues behind them instead of overtaking history.
+           [FA] ردیف‌های قدیمی‌تر رم اول می‌روند. اگر تخلیه هنوز تمام نمی‌شود،
+                ردیف تازه پشت آن‌ها صف می‌شود نه جلوی تاریخچه. */
+        if (UINT8_T__G__LogRamCount != 0u)
         {
-            if ((BOOL__A__LogForceRow == false) &&
-                ((UINT16_T__G__LogRowsToday >= SIMPLE_LOG_MAX_ROWS_PER_DAY) ||
-                 (BOOL__G__LogDayFull != false)))
-            {
-                BOOL__G__LogDayFull = true;
-                return false;
-            }
-            /* [EN] the flash takes rows again: the ones waiting in RAM go
-                    first, so the history keeps its order.
-               [FA] فلش دوباره ردیف می‌پذیرد: اول ردیف‌های منتظر در رم
-                    می‌روند تا ترتیب تاریخچه حفظ شود. */
-            if (UINT8_T__G__LogRamCount != 0u)
-            {
-                func__SimpleLog_DrainRam();
-            }
+            func__SimpleLog_DrainRam();
+        }
+        if (UINT8_T__G__LogRamCount != 0u)
+        {
+            func__SimpleLog_RamPush(char__row);
+            BOOL__G__LogDrainWait = true;
+            UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
+        }
+        else if (BOOL__G__LogDayFileReady != false)
+        {
             bool__stored = func__SimpleLog_AppendRow(UINT32_T__G__LogDayCode, char__row);
+            if (bool__stored == false)
+            {
+                func__SimpleLog_RamPush(char__row);
+            }
+        }
+        else
+        {
+            func__SimpleLog_RamPush(char__row);
         }
     }
-
-    if ((bool__stored == false) || (BOOL__G__FsOk == false))
+    else
     {
         func__SimpleLog_RamPush(char__row);
     }
+
     if (BOOL__G__FsOk != false)
     {
         if (bool__stored != false)
@@ -1042,7 +1147,6 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
         {
             BOOL__G__LogDrainWait = true;
             UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
-            func__SimpleLog_FaultRaise();
         }
     }
 
@@ -1077,37 +1181,19 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
             که می‌گوید «سقف پر شد». بدون آن، روزِ پر شبیه پنلِ مرده دیده
             می‌شود. */
     if ((bool__stored != false) && (BOOL__G__LogMarkerDone == false) &&
-        (UINT16_T__G__LogRowsToday == (SIMPLE_LOG_MAX_ROWS_PER_DAY - 1u)))
+        (UINT16_T__G__LogRowsToday >= (SIMPLE_LOG_MAX_ROWS_PER_DAY - 1u)))
     {
-        char char__marker[256];
-
         BOOL__G__LogMarkerDone = true;
-        (void)snprintf(char__marker, sizeof(char__marker),
-                       "%lu,%lu,0,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
-                       (unsigned long)func__Simple_NowSec(),
-                       (unsigned long)((uint32_t)millis() / 1000u),
-                       (unsigned int)SIMPLE_LOG_NOTE_DAY_FULL,
-                       (unsigned int)(((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u),
-                       (unsigned int)UINT8_T__G__TlmFlags,
-                       (unsigned long)UINT32_T__G__TlmField[6],
-                       (unsigned long)UINT32_T__G__TlmField[13],
-                       (unsigned long)UINT32_T__G__TlmField[19],
-                       (unsigned int)UINT8_T__G__TlmFlags2,
-                       (unsigned long)UINT32_T__G__TlmField[15],
-                       (unsigned long)UINT32_T__G__TlmField[17],
-                       (unsigned long)UINT32_T__G__TlmField[18],
-                       (unsigned long)UINT32_T__G__TlmField[25],
-                       (unsigned long)UINT32_T__G__TlmField[28],
-                       (unsigned long)UINT32_T__G__TlmField[14],
-                       (unsigned long)UINT32_T__G__TlmField[16],
-                       (unsigned long)UINT32_T__G__TlmField[3],
-                       (unsigned long)UINT32_T__G__TlmField[10],
-                       (unsigned long)UINT32_T__G__TlmField[5],
-                       (unsigned long)UINT32_T__G__TlmField[12],
-                       (unsigned long)func__SimpleLog_Pct(UINT32_T__G__TlmField[15]));
-        if (func__SimpleLog_AppendRow(UINT32_T__G__LogDayCode, char__marker) != false)
+        if (UINT16_T__G__LogRowsToday == (SIMPLE_LOG_MAX_ROWS_PER_DAY - 1u))
         {
-            UINT16_T__G__LogRowsToday++;
+            char char__marker[256];
+
+            func__SimpleLog_BuildRow(char__marker, sizeof(char__marker), 0u,
+                                     SIMPLE_LOG_NOTE_DAY_FULL);
+            if (func__SimpleLog_AppendRow(UINT32_T__G__LogDayCode, char__marker) != false)
+            {
+                UINT16_T__G__LogRowsToday++;
+            }
         }
         BOOL__G__LogDayFull = true;
     }
@@ -1248,11 +1334,9 @@ static void func__SimpleLog_DetectChanges(void)
         uint8_t__band = (UINT32_T__G__TlmField[15] < SIMPLE_LOG_CUT_BAND_MV) ? 1u : 0u;
     }
     /* [EN] every state bit of the general byte except the input-present
-            bit, which already has its own change bit: snapshot, valid
-            measurement, both charger enables and hand mode.
+            bit, which already has its own change bit.
        [FA] همهٔ بیت‌های وضعیتِ بایت عمومی جز بیت برق ورودی، که بیت تغییر
-            خودش را دارد: snapshot، معتبر بودن اندازه‌گیری، اجازهٔ هر دو
-            شارژر و مود دستی. */
+            خودش را دارد. */
     uint8_t__fl = (uint8_t)(UINT8_T__G__TlmFlags & 0x3Du);
     uint32_t__dead = UINT32_T__G__TlmField[28];
 
@@ -1305,19 +1389,13 @@ static void func__SimpleLog_DetectChanges(void)
     }
     /* [EN] a step of the pack voltage, either way. A row written anyway
             carries the step for free; only a step-sole row is limited to one
-            a minute.
+            a minute, except a rise while discharging (user order v1.109).
        [FA] یک پلهٔ ولتاژ پک، بالا یا پایین. ردیفی که به هر حال نوشته می‌شود
             گام را مجانی با خود می‌برد؛ فقط ردیفی که تنها دلیلش گام است به
-            یکی در دقیقه محدود می‌شود. */
+            یکی در دقیقه محدود می‌شود، جز بالا آمدن در دشارژ (دستور ۱٫۱۰۹). */
     if (func__SimpleLog_AbsDiff(UINT32_T__G__TlmField[15],
                                 UINT32_T__G__LogPrevV24) >= SIMPLE_LOG_VSTEP_MV)
     {
-        /* [EN] v1.109 user order: while the mains are OFF (discharge) every
-                RISE of the pack is recorded as its own row - the one-a-minute
-                throttle stays only for falls and for charging.
-           [FA] دستور کاربر نسخهٔ ۱٫۱۰۹: وقتی برق شهر قطع است (دشارژ) هر
-                «بالا آمدن» پک در ردیف خودش ثبت می‌شود؛ محدودیتِ یکی در دقیقه
-                فقط برای پایین‌رفتن و برای شارژ می‌ماند. */
         bool bool__riseInDischarge = ((uint8_t__mains == 0u) &&
                                       (UINT32_T__G__TlmField[15] > UINT32_T__G__LogPrevV24));
         if ((uint16_t__mask != 0u) ||
@@ -1366,14 +1444,6 @@ static void func__SimpleLog_OnFrame(void)
         BOOL__G__LogLinkDown = false;
         func__SimpleLog_Queue(SIMPLE_LOG_CHG_LINK, SIMPLE_LOG_NOTE_LINK_BACK);
     }
-
-    /* [EN] The boot row no longer waits for a board frame (user order
-          2026-10-24: "if the board was not connected it logged nothing -
-          it must log"). It is written by Tick() at start-up; here only the
-          state-change detection runs.
-       [FA] ردیف بوت دیگر منتظر فریم برد نمی‌ماند (دستور ۲۰۲۶-۱۰-۲۴: «اگر برد
-          وصل نبود لاگ نمی‌گرفت - باید بگیرد»). ردیف را Tick() در شروع
-          می‌نویسد؛ اینجا فقط تشخیص تغییر وضعیت اجرا می‌شود. */
     func__SimpleLog_DetectChanges();
 }
 
@@ -1381,11 +1451,17 @@ static void func__SimpleLog_Tick(void)
 {
     uint32_t uint32_t__nowMs;
 
+    /* [EN] The calendar day is resolved on every tick, before the boot row and
+            before any cap. At midnight this creates the new day file even if no
+            event has arrived yet; on battery or with Wi-Fi off it is the same.
+       [FA] روز تقویمی در هر تیک، پیش از ردیف بوت و پیش از هر سقف، تعیین می‌شود.
+            نیمه‌شب همین‌جا فایل روز تازه ساخته می‌شود حتی اگر هنوز رویدادی
+            نرسیده باشد؛ روی باتری یا با وای‌فای خاموش فرقی ندارد. */
+    (void)func__SimpleLog_ResolveDay(false);
+
     /* [EN] Boot row FIRST and with no board at all: the panel log is the
-          witness of the panel itself, so a session with a silent board still
-          starts its own record (user order 2026-10-24).
-       [FA] اول ردیف بوت، آن هم بدون هیچ بردی: لاگِ پنل شاهدِ خودِ پنل است،
-          پس نشستِ بدون برد هم تاریخچهٔ خودش را شروع می‌کند (۲۰۲۶-۱۰-۲۴). */
+          witness of the panel itself.
+       [FA] اول ردیف بوت، آن هم بدون هیچ بردی: لاگِ پنل شاهدِ خودِ پنل است. */
     if (BOOL__G__LogBootRowPending != false)
     {
         uint16_t uint16_t__mask = SIMPLE_LOG_CHG_BOOT;
@@ -1393,21 +1469,10 @@ static void func__SimpleLog_Tick(void)
         BOOL__G__LogBootRowPending = false;
         UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
         UINT8_T__G__LogPrevNote = func__SimpleLog_LoadLastDanger();
-        /* [EN] v1.113 (user order 2026-10-28: "every time I do an update one
-                record must be written, with no conditions at all, and only the
-                log timers zeroed"). The update joins the boot row, so one
-                switch-on gives one row. The timers of the log are zeroed just
-                before it: the merge window, the step throttle and the "last
-                row" clock all start again from this row, so nothing that
-                happened before the update can swallow it or push it into a
-                merged line.
-           [FA] نسخهٔ ۱٫۱۱۳ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «هر وقت بروزرسانی را زدم یک
-                رکورد ضبط بشه، بدون در نظر گرفتن شرط‌ها، و فقط تایمرهای مربوط
-                به لاگ صفر بشه»). بروزرسانی با ردیف بوت یکی می‌شود، پس یک
-                روشن‌شدن یک ردیف می‌دهد. تایمرهای لاگ درست پیش از آن صفر
-                می‌شوند: پنجرهٔ ادغام، محدودیت گام ولتاژ و ساعتِ «آخرین ردیف»
-                از همین ردیف دوباره شروع می‌کنند تا هیچ چیزِ پیش از بروزرسانی
-                نه آن را ببلعد و نه با ردیف دیگری ادغامش کند. */
+        /* [EN] v1.113: the update joins the boot row, so one switch-on gives one
+                row. Only log timers are zeroed just before it.
+           [FA] نسخهٔ ۱٫۱۱۳: بروزرسانی با ردیف بوت یکی می‌شود، پس یک روشن‌شدن یک
+                ردیف می‌دهد. فقط تایمرهای لاگ درست پیش از آن صفر می‌شوند. */
         if (BOOL__G__LogUpdatePending != false)
         {
             BOOL__G__LogUpdatePending = false;
@@ -1429,12 +1494,6 @@ static void func__SimpleLog_Tick(void)
     func__SimpleLog_FlushPending();
 
     uint32_t__nowMs = (uint32_t)millis();
-    /* [EN] Link-silence row: after LINK_TIMEOUT_MS with no frame. If the
-          board has never spoken, the clock runs from the session start, so
-          "no board" is written too - not only "board left".
-       [FA] ردیف سکوت ارتباط: پس از چند میلی‌ثانیه بدون فریم. اگر برد هرگز
-          حرفی نزده باشد، ساعت از شروع نشست می‌شمارد تا «برد نیست» هم ثبت
-          شود، نه فقط «برد رفت». */
     /* [EN] rows waiting in RAM go back to their day files as soon as the flash
             takes writes again, without waiting for the next event.
        [FA] ردیف‌های منتظر در رم، به‌محض اینکه فلش دوباره بنویسد، بی‌نیاز از
@@ -1487,12 +1546,11 @@ static void func__SimpleLog_Begin(void)
 {
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
+    BOOL__G__LogDayFileReady = false;
     if (BOOL__G__FsOk == false)
     {
         return;
     }
-    /* [EN] v1.113: read the folder, not a remembered index.
-       [FA] نسخهٔ ۱٫۱۱۳: پوشه خوانده می‌شود، نه یک فهرست به‌یادسپرده. */
     (void)func__SimpleLog_ScanDays(true);
     func__SimpleLog_FwCheck();
 }
@@ -1541,11 +1599,9 @@ static bool func__SimpleLog_SnapshotNow(void)
 }
 
 /* [EN] Where does the window of the newest rows start? It walks BACKWARD from
-        the end of the file, so the buffer limit is spent on the NEWEST rows:
-        a busy day shows its last rows, never its first ones.
+        the end of the file, so the buffer limit is spent on the NEWEST rows.
    [FA] پنجرهٔ جدیدترین ردیف‌ها از کجا شروع می‌شود؟ از انتهای فایل عقب‌عقب
-        می‌رود، پس سقف بافر خرجِ جدیدترین ردیف‌ها می‌شود: روز شلوغ ردیف‌های
-        آخرش را نشان می‌دهد، نه ردیف‌های اولش. */
+        می‌رود، پس سقف بافر خرجِ جدیدترین ردیف‌ها می‌شود. */
 static uint32_t func__SimpleLog_TailStart(File &file__day,
                                           uint32_t uint32_t__size,
                                           uint16_t uint16_t__maxRows,
@@ -1571,10 +1627,6 @@ static uint32_t func__SimpleLog_TailStart(File &file__day,
             return 0u;
         }
         uint32_t__bytes++;
-        /* [EN] the last character of a normal file closes the newest row; it
-                is not a row of its own.
-           [FA] آخرین کاراکتر فایل عادی، جدیدترین ردیف را می‌بندد؛ خودش ردیف
-                نیست. */
         if ((int__ch == '\n') && (uint32_t__bytes > 1u))
         {
             uint32_t__lines++;
@@ -1593,8 +1645,6 @@ static uint32_t func__SimpleLog_TailStart(File &file__day,
 
     if ((bool__cutMidRow != false) && (uint32_t__offset > 0u))
     {
-        /* [EN] the budget ran out inside a row: drop that half row.
-           [FA] بودجه وسط یک ردیف تمام شد: همان نیم‌ردیف دور ریخته می‌شود. */
         while (uint32_t__offset < uint32_t__size)
         {
             int int__ch;
@@ -1615,30 +1665,61 @@ static uint32_t func__SimpleLog_TailStart(File &file__day,
 }
 
 /* [EN] The newest rows that never reached the flash, straight from the RAM ring.
-   [FA] جدیدترین ردیف‌هایی که به فلش نرسیدند، مستقیم از حلقهٔ رم. */
-static size_t func__SimpleLog_TailRam(char *char__ptr_out, size_t size_t__outSize,
-                                      uint16_t uint16_t__maxLines)
+        If filterDay is true only rows belonging to uint32_t__dayCode are copied,
+        so an older day never borrows today's pending rows.
+   [FA] جدیدترین ردیف‌هایی که به فلش نرسیدند، مستقیم از حلقهٔ رم. اگر filterDay
+        درست باشد فقط ردیف‌های همان روز کپی می‌شوند تا روز قدیمی‌تر ردیف‌های
+        امروز را قرض نگیرد. */
+static size_t func__SimpleLog_TailRamFiltered(char *char__ptr_out, size_t size_t__outSize,
+                                              uint16_t uint16_t__maxLines,
+                                              uint32_t uint32_t__dayCode, bool bool__filterDay)
 {
     size_t size_t__used = 0u;
     uint8_t uint8_t__start;
     uint8_t uint8_t__count = UINT8_T__G__LogRamCount;
     uint8_t uint8_t__item;
+    uint8_t uint8_t__matching = 0u;
+    uint8_t uint8_t__skip = 0u;
+    uint8_t uint8_t__seen = 0u;
 
     if (uint8_t__count == 0u)
     {
         return 0u;
     }
     uint8_t__start = (uint8_t)((UINT8_T__G__LogRamHead + SIMPLE_LOG_RAM_ROWS - uint8_t__count) % SIMPLE_LOG_RAM_ROWS);
-    if ((uint16_t)uint8_t__count > uint16_t__maxLines)
+    /* [EN] Count the rows of the requested day first, then skip the oldest ones
+            so the buffer always carries the NEWEST matching rows.
+       [FA] اول ردیف‌های روز خواسته‌شده شمرده می‌شوند، بعد قدیمی‌ترین‌ها رد
+            می‌شوند تا بافر همیشه جدیدترین ردیف‌های همان روز را ببرد. */
+    for (uint8_t__item = 0u; uint8_t__item < uint8_t__count; uint8_t__item++)
     {
-        uint8_t uint8_t__drop = (uint8_t)((uint16_t)uint8_t__count - uint16_t__maxLines);
-        uint8_t__start = (uint8_t)((uint8_t__start + uint8_t__drop) % SIMPLE_LOG_RAM_ROWS);
-        uint8_t__count = (uint8_t)uint16_t__maxLines;
+        uint8_t uint8_t__slot = (uint8_t)((uint8_t__start + uint8_t__item) % SIMPLE_LOG_RAM_ROWS);
+        if ((bool__filterDay == false) ||
+            (func__SimpleLog_RowDayCode(CHAR__G__LogRamRow[uint8_t__slot]) == uint32_t__dayCode))
+        {
+            uint8_t__matching++;
+        }
+    }
+    if ((uint16_t)uint8_t__matching > uint16_t__maxLines)
+    {
+        uint8_t__skip = (uint8_t)((uint16_t)uint8_t__matching - uint16_t__maxLines);
     }
     for (uint8_t__item = 0u; uint8_t__item < uint8_t__count; uint8_t__item++)
     {
         uint8_t uint8_t__slot = (uint8_t)((uint8_t__start + uint8_t__item) % SIMPLE_LOG_RAM_ROWS);
-        size_t size_t__len = strlen(CHAR__G__LogRamRow[uint8_t__slot]);
+        size_t size_t__len;
+
+        if ((bool__filterDay != false) &&
+            (func__SimpleLog_RowDayCode(CHAR__G__LogRamRow[uint8_t__slot]) != uint32_t__dayCode))
+        {
+            continue;
+        }
+        if (uint8_t__seen < uint8_t__skip)
+        {
+            uint8_t__seen++;
+            continue;
+        }
+        size_t__len = strlen(CHAR__G__LogRamRow[uint8_t__slot]);
         if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
         {
             break;
@@ -1652,6 +1733,13 @@ static size_t func__SimpleLog_TailRam(char *char__ptr_out, size_t size_t__outSiz
     return size_t__used;
 }
 
+static size_t func__SimpleLog_TailRam(char *char__ptr_out, size_t size_t__outSize,
+                                      uint16_t uint16_t__maxLines)
+{
+    return func__SimpleLog_TailRamFiltered(char__ptr_out, size_t__outSize,
+                                           uint16_t__maxLines, 0u, false);
+}
+
 /* [EN] With no day file at all the RAM ring is the only history - but only when
         a write really failed; an empty day must stay empty.
    [FA] وقتی فایل روزی نیست حلقهٔ رم تنها تاریخچه است - اما فقط وقتی نوشتن
@@ -1659,15 +1747,13 @@ static size_t func__SimpleLog_TailRam(char *char__ptr_out, size_t size_t__outSiz
 static size_t func__SimpleLog_TailRamOnly(char *char__ptr_out, size_t size_t__outSize,
                                           uint16_t uint16_t__maxLines, bool bool__isToday)
 {
-    /* [EN] The RAM ring only ever holds today's rows, so an older day must not
-            borrow them; and without a write fault the emptiness is real.
-       [FA] حلقهٔ رم فقط ردیف‌های امروز را دارد، پس روز قدیمی‌تر نباید آن‌ها را
-            قرض بگیرد؛ و بدون خرابیِ نوشتن، خالی‌بودن واقعی است. */
     if ((UINT8_T__G__LogWriteFault == 0u) || (bool__isToday == false))
     {
         return 0u;
     }
-    return func__SimpleLog_TailRam(char__ptr_out, size_t__outSize, uint16_t__maxLines);
+    return func__SimpleLog_TailRamFiltered(char__ptr_out, size_t__outSize,
+                                           uint16_t__maxLines,
+                                           func__SimpleLog_TodayCode(), true);
 }
 
 static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
@@ -1684,21 +1770,9 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
     }
     char__ptr_out[0] = '\0';
 
-    /* [EN] v1.112 (user order 2026-10-28: mirror the log fixes): one refused
-            write used to hide the whole day file behind the RAM ring, so a card
-            with hundreds of rows showed a handful. The file is read first and
-            the rows that never reached the flash follow it.
-       [FA] نسخهٔ ۱٫۱۱۲ (دستور کاربر ۲۰۲۶-۱۰-۲۸: بازتاب اصلاح‌های لاگ): یک
-            نوشتنِ ردشده کل فایل روز را پشت حلقهٔ رم پنهان می‌کرد، پس کارتی با
-            صدها ردیف چند ردیف نشان می‌داد. اول فایل خوانده می‌شود و
-            ردیف‌هایی که به فلش نرسیدند پشت آن می‌آیند. */
     bool__isToday = ((uint32_t__dayCode == SIMPLE_LOG_DAY_AUTO) ||
                      (uint32_t__dayCode == 0u) ||
                      (uint32_t__dayCode == func__SimpleLog_TodayCode()));
-    /* [EN] No file system at all: the RAM ring is the whole history, so today's
-            rows are served as they are.
-       [FA] فایل‌سیستم نیست: حلقهٔ رم تمام تاریخچه است، پس ردیف‌های امروز
-            همان‌طور که هستند خوانده می‌شوند. */
     if (BOOL__G__FsOk == false)
     {
         return func__SimpleLog_TailRam(char__ptr_out, size_t__outSize,
@@ -1781,15 +1855,17 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
     file__day.close();
 
     /* [EN] the rows that failed to reach the flash are newer than everything in
-            the file, so they are appended, not substituted.
+            the file, so they are appended, not substituted - but only the rows
+            that belong to the day being read.
        [FA] ردیف‌هایی که به فلش نرسیدند از هر چه در فایل است جدیدترند، پس
-            پشت آن‌ها می‌آیند، نه به‌جای آن‌ها. */
+            پشت آن‌ها می‌آیند، نه به‌جای آن‌ها - اما فقط ردیف‌های همان روز. */
     if ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u) &&
         ((size_t__used + 2u) < size_t__outSize))
     {
-        size_t__used += func__SimpleLog_TailRam(&char__ptr_out[size_t__used],
-                                                size_t__outSize - size_t__used,
-                                                uint16_t__maxLines);
+        size_t__used += func__SimpleLog_TailRamFiltered(&char__ptr_out[size_t__used],
+                                                       size_t__outSize - size_t__used,
+                                                       uint16_t__maxLines,
+                                                       uint32_t__chosen, true);
     }
     return size_t__used;
 }
@@ -1799,6 +1875,7 @@ static uint8_t func__SimpleLog_Clear(void)
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     uint8_t uint8_t__slot;
     uint8_t uint8_t__removed = 0u;
+    uint8_t uint8_t__pass;
 
     UINT8_T__G__LogRamHead = 0u;
     UINT8_T__G__LogRamCount = 0u;
@@ -1808,24 +1885,34 @@ static uint8_t func__SimpleLog_Clear(void)
         BOOL__G__LogDayFull = false;
         return 0u;
     }
-    /* [EN] v1.113 (user report 2026-10-28: "a pile of «panel switched on» rows
-            that the panel cannot delete"): the folder is scanned right here, so
-            EVERY day file goes - also the ones the old "/evt-days.txt" index
-            had forgotten. Those were the rows that survived the button, stayed
-            visible through the automatic "today" read and could never be
-            removed again.
-       [FA] نسخهٔ ۱٫۱۱۳ (گزارش کاربر ۲۰۲۶-۱۰-۲۸: «یک سری «پنل روشن شد» در حافظه
-            هست که پاک نمی‌شود»): همین‌جا پوشه خوانده می‌شود، پس «هر» فایل روز
-            می‌رود - از جمله آن‌هایی که فهرست قدیمی «‎/evt-days.txt‎» فراموش
-            کرده بود. همان‌ها ردیف‌هایی بودند که بعد از زدن دکمه می‌ماندند، از
-            راه خواندن خودکار «امروز» دیده می‌شدند و دیگر هرگز پاک نمی‌شدند. */
-    (void)func__SimpleLog_ScanDays(true);
-    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    /* [EN] The folder is scanned in passes, so EVERY day file goes - also the
+            ones an old index had forgotten, and also more than one cache page.
+       [FA] پوشه در چند گذر خوانده می‌شود تا «هر» فایل روز برود - هم آن‌هایی که
+            فهرست قدیمی فراموش کرده بود و هم بیش از یک صفحهٔ حافظه. */
+    for (uint8_t__pass = 0u; uint8_t__pass < 8u; uint8_t__pass++)
     {
-        func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__slot]);
-        if (LittleFS.remove(char__ptr_path))
+        uint8_t uint8_t__passRemoved = 0u;
+
+        (void)func__SimpleLog_ScanDays(true);
+        if (UINT8_T__G__LogIndexCount == 0u)
         {
-            uint8_t__removed++;
+            break;
+        }
+        for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+        {
+            func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__slot]);
+            if (LittleFS.remove(char__ptr_path))
+            {
+                if (uint8_t__removed < 0xFFu)
+                {
+                    uint8_t__removed++;
+                }
+                uint8_t__passRemoved++;
+            }
+        }
+        if (uint8_t__passRemoved == 0u)
+        {
+            break;
         }
     }
     (void)LittleFS.remove(SIMPLE_LOG_INDEX_PATH);
@@ -1836,6 +1923,7 @@ static uint8_t func__SimpleLog_Clear(void)
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
     BOOL__G__LogMarkerDone = false;
+    BOOL__G__LogDayFileReady = false;
     BOOL__G__LogDrainWait = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
@@ -1854,12 +1942,6 @@ static size_t func__SimpleLog_Days(char *char__ptr_out, size_t size_t__outSize)
     char__ptr_out[0] = '\0';
     if (BOOL__G__FsOk == false)
     {
-        /* [EN] v1.112: today is the only day that can exist without a file
-                system. The list stayed empty until the first row arrived, so
-                the day picker showed nothing at all.
-           [FA] نسخهٔ ۱٫۱۱۲: بی فایل‌سیستم تنها روزی که می‌تواند باشد امروز است.
-                فهرست تا رسیدن اولین ردیف خالی می‌ماند و انتخاب‌گر روز هیچ چیز
-                نشان نمی‌داد. */
         if (size_t__outSize >= 12u)
         {
             int int__ramWritten = snprintf(char__ptr_out, size_t__outSize, "%08lu",
@@ -2203,10 +2285,10 @@ static void func__SimpleLog_ResetStateAfterFormat(void)
     UINT16_T__G__LogRowsToday = 0u;
     BOOL__G__LogDayFull = false;
     BOOL__G__LogMarkerDone = false;
+    BOOL__G__LogDayFileReady = false;
     UINT8_T__G__LogRamHead = 0u;
     UINT8_T__G__LogRamCount = 0u;
     BOOL__G__LogDrainWait = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
 }
-

@@ -2032,6 +2032,141 @@ static void func__T_TestSingleSessionPolicy(void)
     func__T_ClearCookie();
 }
 
+/* ==================== چرخش روز روی باتری (v1.118) ====================
+   گزارش کاربر: وقتی پنل روی باتری به روز بعد می‌رود، فایل روز تازه ساخته
+   نمی‌شود. علت اثبات‌شده: سقف ۴۰۰ ردیفِ روز قبل، پیش از باز کردن روز تازه
+   بررسی می‌شد و همان‌جا جلوی هر ردیف غیر اجباری را می‌گرفت. این آزمون‌ها
+   همان مسیر را با وای‌فای خاموش و بدون برق شهر می‌آزمایند. */
+static void func__T_TestLogMidnightRollover(void)
+{
+    (void)printf("\n== چرخش روز تاریخچه روی باتری ==\n");
+
+    const uint32_t uint32_t__oldEpoch = 1792756800u;
+    const uint32_t uint32_t__newEpoch = uint32_t__oldEpoch + 86400u;
+    char char__oldPath[SIMPLE_LOG_PATH_MAX];
+    char char__newPath[SIMPLE_LOG_PATH_MAX];
+
+    /* روز قبل را با همان هستهٔ واقعی پر می‌کند: ردیف بوت + نوشتن تا سقف. */
+    auto func__T_RolloverSetup = [&](bool bool__fillPreviousDay)
+    {
+        (void)func__SimpleLog_Clear();
+        (void)LittleFS.remove(SIMPLE_TIME_FILE);
+        func__Simple_TimeSet(uint32_t__oldEpoch, false);
+        INT32_T__G__LogTzSec = 12600;
+        BOOL__G__FsOk = true;
+        SIM_BOOL__G__RefuseWrites = false;
+        WiFi.mode(WIFI_OFF);
+        UINT8_T__G__TlmFlags = 0u;                 /* برق شهر نیست = باتری */
+        UINT32_T__G__TlmField[15] = 24000u;
+        BOOL__G__TlmSeen = true;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        UINT8_T__G__LogIndexCount = 0u;
+        BOOL__G__LogScanValid = false;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogHasPrev = false;
+        BOOL__G__LogBootRowPending = true;
+        BOOL__G__LogLastRowValid = false;
+        BOOL__G__LogLinkDown = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__LogPendingNote = 0u;
+        BOOL__G__LogMainsQueuedValid = false;
+        UINT8_T__G__LogRamHead = 0u;
+        UINT8_T__G__LogRamCount = 0u;
+        BOOL__G__LogDrainWait = false;
+        UINT8_T__G__LogWriteFault = 0u;
+        UINT16_T__G__LogDroppedRows = 0u;
+        func__SimpleLog_PathOf(char__oldPath, func__SimpleLog_TodayCode());
+        func__SimpleLog_PathOf(char__newPath, func__SimpleLog_DateCode((uint32_t__newEpoch + 12600u) / 86400u));
+        (void)LittleFS.remove(char__newPath);
+        func__SimpleLog_Tick();                    /* ردیف بوت روز قبل */
+        if (bool__fillPreviousDay)
+        {
+            for (uint16_t uint16_t__k = 0u; uint16_t__k < SIMPLE_LOG_MAX_ROWS_PER_DAY; uint16_t__k++)
+            {
+                (void)func__SimpleLog_WriteRow(0u, SIMPLE_LOG_NOTE_NONE);
+            }
+        }
+        /* شبِ بی‌رویداد: نه صف ادغام، نه ضربانِ رسیده، نه سکوت لینک. */
+        BOOL__G__LogBootRowPending = false;
+        UINT16_T__G__LogPendingMask = 0u;
+        UINT8_T__G__LogPendingNote = 0u;
+        BOOL__G__LogMainsQueuedValid = false;
+        BOOL__G__LogLinkDown = false;
+        BOOL__G__TlmSeen = true;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        BOOL__G__LogLastRowValid = true;
+    };
+
+    /* ۱) روز قبل پر، باتری، وای‌فای خاموش: خودِ چرخش روز باید فایل تازه را بسازد. */
+    func__T_RolloverSetup(true);
+    func__T_Check(UINT16_T__G__LogRowsToday == SIMPLE_LOG_MAX_ROWS_PER_DAY && BOOL__G__LogDayFull,
+                  "روز قبل واقعاً به سقف ۴۰۰ ردیف رسیده است");
+    func__Simple_TimeSet(uint32_t__newEpoch, false);
+    func__SimpleLog_Tick();
+    func__T_Check(LittleFS.exists(char__newPath),
+                  "با رسیدن روز بعد روی باتری و وای‌فای خاموش، فایل روز تازه ساخته می‌شود");
+    func__T_Check(UINT32_T__G__LogDayCode == func__SimpleLog_TodayCode() &&
+                  UINT16_T__G__LogRowsToday == 0u && !BOOL__G__LogDayFull,
+                  "سقف و شمارندهٔ روز قبل به روز تازه منتقل نمی‌شود");
+    func__T_Check(func__SimpleLog_CountRows(char__oldPath) == SIMPLE_LOG_MAX_ROWS_PER_DAY,
+                  "فایل روز قبل دست‌نخورده و همان ۴۰۰ ردیف می‌ماند");
+
+    /* ۲) همان حالت، با ضربان رسیده: اولین ردیف روز تازه باید بنشیند. */
+    func__T_RolloverSetup(true);
+    func__Simple_TimeSet(uint32_t__newEpoch, false);
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_HEARTBEAT_MS - 10u;
+    func__SimpleLog_Tick();
+    func__T_Check(LittleFS.exists(char__newPath) &&
+                  func__SimpleLog_CountRows(char__newPath) == 1u &&
+                  UINT16_T__G__LogRowsToday == 1u,
+                  "اولین ضربان روز تازه روی باتری، در فایل همان روز نوشته می‌شود");
+
+    /* ۳) روز قبل پر نیست: باتری/وای‌فای خاموش هرگز مانع ساخت فایل نیست. */
+    func__T_RolloverSetup(false);
+    func__Simple_TimeSet(uint32_t__newEpoch, false);
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_HEARTBEAT_MS - 10u;
+    func__SimpleLog_Tick();
+    func__T_Check(LittleFS.exists(char__newPath) &&
+                  func__SimpleLog_CountRows(char__newPath) == 1u,
+                  "با روز قبلِ پر نشده هم باتری و وای‌فای خاموش فایل روز تازه را می‌سازند");
+
+    /* ۴) فلش درستِ لحظهٔ چرخش را رد کند: روز عوض می‌شود، ردیف به رم می‌رود،
+          و با سالم شدن فلش به فایل روز خودش برمی‌گردد. */
+    func__T_RolloverSetup(true);
+    func__Simple_TimeSet(uint32_t__newEpoch, false);
+    SIM_BOOL__G__RefuseWrites = true;
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_HEARTBEAT_MS - 10u;
+    func__SimpleLog_Tick();
+    func__T_Check(UINT32_T__G__LogDayCode == func__SimpleLog_TodayCode() &&
+                  !BOOL__G__LogDayFull && UINT8_T__G__LogRamCount >= 1u &&
+                  UINT8_T__G__LogWriteFault != 0u,
+                  "رد شدن فلش در نیمه‌شب، روز را عوض می‌کند و ردیف را در رم نگه می‌دارد");
+    SIM_BOOL__G__RefuseWrites = false;
+    UINT32_T__G__LogLastDrainMs = (uint32_t)millis() - SIMPLE_LOG_DRAIN_RETRY_MS - 10u;
+    func__SimpleLog_Tick();
+    func__T_Check(UINT8_T__G__LogRamCount == 0u &&
+                  LittleFS.exists(char__newPath) &&
+                  func__SimpleLog_CountRows(char__newPath) >= 1u,
+                  "با سالم شدن فلش، ردیف نیمه‌شب به فایل روز تازه برمی‌گردد");
+
+    /* ۵) ثبت دستی هم در روز تازه باید بی‌قید و شرط بنشیند. */
+    func__T_RolloverSetup(true);
+    func__Simple_TimeSet(uint32_t__newEpoch, false);
+    (void)func__SimpleLog_SnapshotNow();
+    func__T_Check(LittleFS.exists(char__newPath) &&
+                  func__SimpleLog_CountRows(char__newPath) == 1u,
+                  "ثبت دستی پس از چرخش روز، فایل روز تازه را می‌سازد و می‌نویسد");
+
+    (void)func__SimpleLog_Clear();
+    SIM_BOOL__G__RefuseWrites = false;
+    WiFi.mode(WIFI_AP);
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2050,6 +2185,7 @@ int main(void)
     func__T_TestStateHistoryLog();
     func__T_TestHandshake();
     func__T_TestClearOrphansAndUpdateRow();
+    func__T_TestLogMidnightRollover();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

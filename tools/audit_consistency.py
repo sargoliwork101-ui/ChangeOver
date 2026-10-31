@@ -2339,8 +2339,8 @@ def sec_charge_csv():
     runner = read("ESP_USER/Tester/run_simple_tests.sh")
     ok("host_test_csv.js" in runner, "ESP_USER runner does not run the CSV test")
     cfg = read("ESP_USER/simple_config.h")
-    ok(define(cfg, "SIMPLE_ESP_FW_VERSION") == 117,
-       "ESP_USER firmware version is not 117 after the CSV column removal")
+    ok(define(cfg, "SIMPLE_ESP_FW_VERSION") == 118,
+       "ESP_USER firmware version is not 118 after the log rollover rewrite")
 
 
 def sec_docs_current():
@@ -2359,7 +2359,7 @@ def sec_docs_current():
     spec = read("ESP_AGENT_SPEC.md")
     ok("171" in spec and "0..170" in spec, "spec does not state the 171-id wire range")
     readme = read("README.md")
-    ok("v1.117" in readme, "root README does not state ESP_USER v1.117")
+    ok("v1.118" in readme, "root README does not state ESP_USER v1.118")
     user = read("ESP_USER/README.md")
     ok("مدت" not in user or "حذف" in user,
        "ESP_USER README still promises a charge-duration CSV column")
@@ -2372,6 +2372,31 @@ def sec_docs_current():
     pins = read("Firmware/Config/Inc/board_pins.h")
     ok(define(pins, "PIN_PROTECT_BATT_ACTIVE_HIGH") == 1,
        "PB11 protect polarity macro changed; docs must be re-audited")
+
+
+def sec_log_rollover():
+    """[EN] The daily log must resolve the calendar day before the row cap, so a
+       full yesterday cannot block today's file on battery / Wi-Fi off.
+       [FA] لاگ روزانه باید روز تقویمی را پیش از سقف ردیف تعیین کند تا روز پر
+       دیروز روی باتری / وای‌فای خاموش فایل امروز را نبندد."""
+    log = read("ESP_USER/simple_log.h")
+    ok("func__SimpleLog_ResolveDay" in log, "log day resolver is missing")
+    m = re.search(r"static bool func__SimpleLog_WriteRow\((.*?)\n\}", log, re.S)
+    ok(m is not None, "log WriteRow is missing")
+    if m:
+        body = m.group(1)
+        day = body.find("func__SimpleLog_ResolveDay")
+        cap = body.find("SIMPLE_LOG_MAX_ROWS_PER_DAY")
+        ok(day >= 0 and cap >= 0 and day < cap,
+           "log WriteRow checks the daily cap before resolving the day")
+    tick = re.search(r"static void func__SimpleLog_Tick\(void\)(.*?)\n\}", log, re.S)
+    ok(tick is not None and "func__SimpleLog_ResolveDay" in tick.group(1),
+       "log Tick does not open the new day at rollover")
+    test = read("ESP_USER/Tester/host_test_latch.cpp")
+    ok("func__T_TestLogMidnightRollover" in test,
+       "midnight rollover regression test is missing")
+    ok("WIFI_OFF" in test and "SIMPLE_LOG_MAX_ROWS_PER_DAY" in test,
+       "rollover test does not cover battery/Wi-Fi-off with a full previous day")
 
 
 def main():
@@ -2399,6 +2424,7 @@ def main():
     sec_diag_clock()
     sec_charge_csv()
     sec_docs_current()
+    sec_log_rollover()
 
     print("whole-program consistency audit")
     print("=" * 72)
