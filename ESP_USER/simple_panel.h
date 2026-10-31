@@ -900,12 +900,14 @@ function voltCsvData(){
          rows:csvRowsFromColumns(tm,[{title:'ولتاژ ورودی (میلی‌ولت)',values:vin},{title:'ولتاژ پک (میلی‌ولت)',values:vpack}]), count:vin.length};
 }
 function chargeCsvData(){
+ /* فقط زمان و کانالِ شارژ کامل خروجی گرفته می‌شود؛ مدت هر شارژ اندازه‌گیری
+    نمی‌شود و ستون آن به درخواست کاربر حذف شده است. تاریخچه دست‌نخورده می‌ماند. */
  let events=(window._lastChargeHistory||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
- let tm=[], ch=[], dur=[];
- for(let i=0;i<events.length;i++){ tm.push(events[i].ts); ch.push(events[i].ch); dur.push(events[i].dur||0); }
+ let tm=[], ch=[];
+ for(let i=0;i<events.length;i++){ tm.push(events[i].ts); ch.push(events[i].ch); }
  let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
  return {name:'changeover-sharzh-'+csvFileStamp(last)+'.csv',
-         rows:csvRowsFromColumns(tm,[{title:'کانال',values:ch},{title:'مدت (ثانیه)',values:dur}]), count:events.length};
+         rows:csvRowsFromColumns(tm,[{title:'کانال',values:ch}]), count:events.length};
 }
 function exportCsv(kind){
  let data=(kind==='pct')?pctCsvData():(kind==='volt')?voltCsvData():chargeCsvData();

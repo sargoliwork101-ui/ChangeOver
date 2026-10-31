@@ -124,7 +124,7 @@ rtos_app.c → TaskControl → task_control.c
 
 - `imbalance.h`, `imbalance.c` — منطق و پارامترها
 - `Tester/host_test_imbalance.c`, `Tester/run_host_test_imbalance.sh` —
-  تست هاست منطق ماژول (۳۸۲۲ بررسی، با `-Werror`)؛ شامل بازپخش NVM و پوشش
+  تست هاست منطق ماژول (۳۸۸۹ بررسی، با `-Werror`)؛ شامل بازپخش NVM و پوشش
   شناسه‌های ۱۲۳/۱۲۴.
 - `Tester/host_test_battery_swap.c`, `Tester/run_host_test_battery_swap.sh` —
   رگرسیون یکپارچهٔ Fault→TaskControl→Imbalance (۱۳۰ بررسی + بررسی اتصال

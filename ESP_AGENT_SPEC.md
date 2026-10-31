@@ -1,6 +1,6 @@
 # ESP-Link Agent Spec — current contract
 
-Status date: 2026-10-11. This is the single handoff document for the ESP panel and the
+Status date: 2026-10-31. This is the single handoff document for the ESP panel and the
 STM32 firmware pair. Where the code and this text disagree, the code wins and this file
 must be corrected. Older version history was removed; it lives in `git log`.
 
@@ -18,11 +18,11 @@ must be corrected. Older version history was removed; it lives in `git log`.
 
 Authoritative endpoint contract for the current firmware/panel pair:
 
-- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 169`; ordinary wire ids are `0..168`.
+- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 171`; ordinary wire ids are `0..170`.
 - `PARAMS_BULK` is chunked at the 512-byte payload ceiling: at most 102
   `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
-- NVM format is version `12`, with capacity `168` entries. Persisted settings are
-  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..168` except retired `72/73` and transient session mute `76`,
+- NVM format is version `12`, with capacity `172` entries. Persisted settings are
+  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..170` except derived `70`, retired `72/73` and transient session mute `76`,
   plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
   and is not an NVM setting.
 - Scenario 7 is the technical board/power-stage fault face, and ids `143..146` configure Wi-Fi battery power saving:
@@ -50,7 +50,7 @@ its six settings are exposed to the panel. This is the single current contract.
 Ids `147..157` configure scenario 8 (weak-battery verdict), `158..164` are the
 per-scenario alarm on/off ticks (the «فعال» tick of scenario cards 1..7), `165`
 sets the rest-voltage floor that makes a re-cut count as weakness, and
-`166..168` configure the charging thermal rest:
+`166..168` configure the charging thermal rest, and `169/170` are the shared input Schmitt return margins:
 
 | ID | Name | Type | Unit | Default | Range | Meaning |
 |---:|---|---|---|---:|---|---|
@@ -70,6 +70,14 @@ sets the rest-voltage floor that makes a re-cut count as weakness, and
 | 166 | `CHG_THERMAL_TRIGGER_MA` | u32 | mA | 600 | 0..3000 | Thermal-rest current threshold; 0 = auto (bulkMax - 50) |
 | 167 | `CHG_THERMAL_CONTINUOUS_MS` | u32 | ms | 3600000 | 0..21600000 | Continuous charge at/above the threshold that triggers the rest; 0 = rest off |
 | 168 | `CHG_THERMAL_REST_MS` | u32 | ms | 600000 | 0..3600000 | Thermal rest length; 0 = rest off |
+| 169 | `FAULT_INPUT_HYST_LOW_MV` | u32 | mV | 500 | 0..3000 and <= (q34-q33)/4 | Shared lower return margin |
+| 170 | `FAULT_INPUT_HYST_HIGH_MV` | u32 | mV | 500 | 0..3000 and <= (q34-q33)/4 | Shared upper return margin |
+
+The shared input permission is owned by Fault: outside `[q33,q34]` it releases
+immediately; it re-arms only inside `[q33+q169, q34-q170]`. Charger, UI and
+McuPowerPath consume that one permission. The OV alarm threshold is derived from
+`q34`; id `70` is a read-only mirror and is not persisted. Only `q71` (OV clear
+hysteresis) remains separately adjustable.
 
 
 ## 2. Battery-current chain (current)
@@ -203,7 +211,7 @@ calibration campaign and a silently wrong number there is worse than no number:
 | 0x01 | ESP→STM | SET_PARAM | `[id:u8][value:u32 LE]` (5 bytes) |
 | 0x02 | ESP→STM | GET_PARAMS | empty (len = 0) |
 | 0x03 | — | *(reserved, not handled)* | Was a v1.3 one-shot calibration command. The panel stopped sending it in v1.7 and the STM32 handler was carried dead for six versions - 172 source lines - until it overflowed the 62 KB flash budget by 92 bytes and was removed. The id stays RESERVED: reusing it would make an older panel's frames silently misinterpreted instead of harmlessly ignored. Calibrate by reading the raw ADC counts in the telemetry and writing coefficients back as ordinary SET_PARAM. Old targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
-| 0x10 | STM→ESP | TLM_LIVE | **104 bytes**, layout below (84 until v1.25; +5 u32 raw calibration fields) |
+| 0x10 | STM→ESP | TLM_LIVE | **128 bytes**, layout in section 15 (historical sizes: 84, then 104, then 116) |
 | 0x40 | ESP→STM | HELLO (v1.111) | `[wireVer:u8][espFw:u8][role:u8][flags:u8][uptimeSec:u32 LE]` (8 bytes). Sent every 2 s by BOTH panels. `role` 1 = user panel, 2 = calibration panel; `flags` bit0 = telemetry already seen, bit1 = a browser is polling. A HELLO with the wrong wire version or fewer than 8 bytes is refused, so a corrupted frame can never fake a link |
 | 0x41 | STM→ESP | HELLO_ACK (v1.111) | 24 bytes: `[wireVer:u8][boardFw:u8][moduleFlags:u8][reserved:u8][boardUptime:u32][framesAccepted:u32][crcErrors:u16][versionErrors:u16][paramCount:u16][commPeriodMs:u16][echoedEspUptime:u32]`. `framesAccepted` is the board's OWN count of CRC-good frames it heard from the ESP - a dead ESP→STM direction shows 0 while telemetry still pours out. `moduleFlags` bit0 NVM loaded, bit1 charger, bit2 imbalance, bit3 diag. The board drops the "link" verdict after 6 s of silence and counts one loss; the next HELLO lifts it again with no reboot. Bit 0x40 of the TLM_LIVE flag byte carries the same verdict, so "frames arrive" and "the pair shook hands" are two separate indicators. A HELLO has NO other side effect: it must never be treated as "a user is connected" or it would reset the battery idle timer every 2 s and cancel the whole Wi-Fi power-saving schedule |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
@@ -308,7 +316,7 @@ once sent, they must stay there and survive power loss." Scope: EVERY
 settable parameter EXCEPT the transient test modes - that is ids 0..14
 (offsets, gains, filters, charger enables, duty ceilings), 20..26
 (charge profile), 27..37 (alarms, since v1.15), 38..75 (UI cadence,
-since v1.16) and every later settable block through 168 (PID/limits,
+since v1.16) and every later settable block through 170 (PID/limits,
 imbalance, dead/weak battery, scenario ticks, Wi-Fi policy and the
 charging thermal rest). The fixed-duty ids
 15..18, manual test id 19 and the panel-session mute 76 (since v1.16b)
@@ -334,14 +342,14 @@ its automatic mode and the buzzer unmuted.
   overwriting records. Driver: `Firmware/Bsp/Src/bsp_flash.c` (direct
   RM0008 FPEC register sequences - no HAL flash sources needed).
 - Record (esp_link_nvm.c): magic "CHO1" + version + wrap-around u16
-  sequence + up to 77 {id, value} slots + CRC32 over everything before it.
+  sequence + up to 172 {id, value} slots + CRC32 over everything before it.
   A record containing any non-persisted id is rejected WHOLE. v1.15 bumps
   the version 1 -> 2, v1.16 bumps it 2 -> 3, v1.16b bumps it 3 -> 4
   (id 76 turns transient, so v3 records may carry it): upgrading LOSES
   a set saved by the previous version - both boards reflash together
   and the panel re-sends the set.
-- Power-cut safety (ping-pong): each save erases the page that does NOT
-  hold the newest record, then programs the new record there and verifies
+- Power-cut safety (ping-pong): each save erases the two 1 KiB pages of the
+  bank that does NOT hold the newest record, then programs the new record there and verifies
   by read-back. A cut during erase or program can never destroy the
   previous good record; boot picks the CRC-valid record with the newest
   sequence (int16 difference, wrap-safe).
@@ -363,8 +371,8 @@ its automatic mode and the buzzer unmuted.
   applied.
 - Save path: a successful SET_PARAM of a persisted id arms a dirty flag;
   `func__EspLink_Run` calls `func__EspLink_NvmTick` every comm period and
-  saves ~1.5 s (15 runs) after the LAST change - one page erase + program
-  per burst, not per keystroke. A failed verify retries up to 3 times,
+  saves ~1.5 s (15 runs) after the LAST change - one two-page bank erase +
+  program per burst, not per keystroke. A failed verify retries up to 3 times,
   then the save PARKS (no erase loop on a worn page): the value stays dirty in RAM
   and nothing is discarded. The next persisted change, or the reset flush before
   a LUT reset, tries again.
@@ -1018,7 +1026,7 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 
 1. Boot UART at 921600 8N1 and wait for the first `TLM_LIVE` frame.
 2. Send `GET_PARAMS`, merge all `PARAMS_BULK` chunks, and expose the current
-   **143** ordinary parameters (`0..142`); never display the historical 19/20
+   **171** ordinary parameters (`0..170`); never display the historical 19/20
    count as the active schema.
 3. For every numeric control, show the exact firmware min/max directly below
    the input. Import values are clamped/reported; invalid ids, retired ids and
@@ -1071,7 +1079,7 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 ## 18. Current activation state (STM32 side)
 
 `MODULE_ESP = 1` is enabled in `Firmware/Config/Inc/modules_enable.h`; the
-current EspLink build therefore includes the 143-id map, v2 frames, chunked
+current EspLink build therefore includes the 171-id map, v2 frames, chunked
 `PARAMS_BULK`, NVM v12 and the scenario-7 controls. The host ESP suite compiles
 this path with sanitizers and reports **97/97 PASS**. This is a host result, not
 an assertion that UART, WiFi, flash or a physical board was exercised.

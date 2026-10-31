@@ -204,7 +204,7 @@ rtos_app.c → TaskControl → task_control.c
       └─ bsp_pwm / bsp_gpio
 ```
 
-`Tester/host_test_charger.py` فقط policy و source contract را بررسی می‌کند (۵۱ تست، شامل تشخیص و lockout سناریوی ۷، قرارداد مود دستی و پین‌های LUT). PASS شدن
+`Tester/host_test_charger.py` فقط policy و source contract را بررسی می‌کند (۵۸ تست، شامل تشخیص و lockout سناریوی ۷، قرارداد مود دستی و پین‌های LUT). PASS شدن
 host یا syntax به‌تنهایی مجوز اتصال باتری، اثبات waveform واقعی MCU یا تأیید
 LM393/رله نیست. شارژر اکنون با `CHG_MASTER_ENABLE=1` فعال است (تصمیم کاربر
 ۲۰۲۶-۰۹-۲۲)؛ تست‌های سخت‌افزاری جدید باید با منبع ورودی محدودشده، پایش جریان و

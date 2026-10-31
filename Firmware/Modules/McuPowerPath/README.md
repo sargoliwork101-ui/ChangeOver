@@ -44,14 +44,14 @@
 | `../../Rtos/Src/rtos_app.c` | شرط ساخت تسک کنترل شامل `MODULE_MCU_POWER_PATH` |
 | `../../../CubeIDE/STM32CubeIDE/.cproject` | افزودن `Firmware/Modules/McuPowerPath` به include های Debug/Release |
 
-`changeover.c/.h`، آستانه‌های 21000/20800/21200 و تایمر 3000ms، و منطق PB11 به‌هیچ‌وجه تغییر نکرده؛ PB5 در Changeover ممنوع است؛ `Documentation/State.xlsx` بدون تغییر.
+`changeover.c/.h`، آستانه‌های 21000/20800/21200 و تایمر 3000ms، و منطق PB11 به‌هیچ‌وجه تغییر نکرده؛ PB5 در Changeover ممنوع است؛ اسناد مرجع با کد فعلی همگام می‌شوند.
 
 ## توابع
 
 | نام | کار |
 |---|---|
 | `func__McuPowerPath_Init` | تایمر غیرفعال، `BatteryConnected=true`، `BSP_GPIO_BATTERY_SWITCH=true` (Low وصل)؛ قبل از تسک‌ها صدا زده شود |
-| `func__McuPowerPath_Run` | هر ~10ms از تسک کنترل با پنجرهٔ مشترک v_in: <br>• `v_in` داخل `[q33+QM, q34-QM]` و باتری وصل → تایمر 5s شروع/ادامه، پس از 5s `BSP_GPIO_BATTERY_SWITCH=false` (High قطع)<br>• داخل نوار مرده نزدیک هر لبه → لغو تایمر، حفظ Q1<br>• بیرون `[q33+RM, q34-RM]` → `BSP_GPIO_BATTERY_SWITCH=true` (Low وصل) و لغو تایمر<br>• `snapshot` نامعتبر → لغو تایمر، حفظ Q1 (زمان نامعتبر شمرده نشود)<br>• اگر Q1 قبلاً قطع و داخل باند احراز → قطع بماند، تایمر نچرخد<br>زمان با `osKernelGetTickCount` + `func__Rtos_TicksToMilliseconds` |
+| `func__McuPowerPath_Run` | هر ~10ms از تسک کنترل با پنجرهٔ مشترک v_in: <br>• مجوز مشترک Fault درست و باتری وصل → تایمر 5s شروع/ادامه، پس از 5s `BSP_GPIO_BATTERY_SWITCH=false` (High قطع)<br>• مجوز هنوز مسلح نشده ولی داخل پنجرهٔ خام → لغو تایمر، حفظ Q1<br>• مجوز مشترک رهاشده → `BSP_GPIO_BATTERY_SWITCH=true` (Low وصل) و لغو تایمر<br>• `snapshot` نامعتبر → لغو تایمر، حفظ Q1 (زمان نامعتبر شمرده نشود)<br>• اگر Q1 قبلاً قطع و داخل باند احراز → قطع بماند، تایمر نچرخد<br>زمان با `osKernelGetTickCount` + `func__Rtos_TicksToMilliseconds` |
 | `func__McuPowerPath_OnInputIrq` | امن در ISR: `Read PB4`؛ اگر `input_present==false` → فوراً `Write PB5 Low`، `BatteryConnected=true`، `TimerActive=false`؛ اگر `true` کاری نمی‌کند و `Run` احراز را آغاز می‌کند؛ فقط GPIO و پرچم volatile |
 | `HAL_GPIO_EXTI_Callback` (PB4) | `#if MODULE_MCU_POWER_PATH` هوک `OnInputIrq` سپس `func__BspExti_OnIrq(BSP_EXTI_INPUT_DETECT)` با ترتیب Low قبل از رویداد |
 
@@ -72,7 +72,7 @@
 
 - راه‌اندازی: `PIN_SAFE_BAT_SWITCH_HIGH=0u` و در `MX_GPIO_Init` لچ `PB5 RESET Low` قبل از `HAL_GPIO_Init`؛ `func__BspGpio_Init` سپس `McuPowerPath_Init` دوباره Low امن را تضمین می‌کنند تا MCU بدون ورودی از باتری بوت شود.
 - `PB11` همیشه `PIN_SAFE_PROTECT_BATT_HIGH=1u` و `SET High` مستقل قبل از خروجی؛ هیچ منطقی PB5 و PB11 را به‌هم پیوند نمی‌دهد.
-- `Run` پنجرهٔ مشترک: <br>• `v_in` داخل باند احراز `[q33+QM, q34-QM]` → تایمر 5 ثانیه؛ `snapshot` نامعتبر یا نوار مرده → لغو تایمر و حفظ Q1 (زمان نامعتبر/ناحیه مرده شمرده نشود).<br>• بیرون باند اتصال مجدد `[q33+RM, q34-RM]` → وصل Low و لغو تایمر (حتی اگر قبلاً قطع بود).<br>• پس از قطع (High)، ورود به نوار مرده → همچنان High؛ تا خروج از باند اتصال مجدد رخ ندهد reconnect نشود.
+- `Run` پنجرهٔ مشترک: <br>• `v_in` با مجوز مشترک مسلح → تایمر 5 ثانیه؛ `snapshot` نامعتبر یا نوار مرده → لغو تایمر و حفظ Q1 (زمان نامعتبر/ناحیه مرده شمرده نشود).<br>• با مجوز مشترک رهاشده → وصل Low و لغو تایمر (حتی اگر قبلاً قطع بود).<br>• پس از قطع (High)، رفتن به نوار مردهٔ داخلی → همچنان High؛ تا مسلح‌شدن دوبارهٔ مجوز مشترک reconnect نشود.
 - زمان‌گیری فقط با `osKernelGetTickCount()` و `func__Rtos_TicksToMilliseconds()` و بدون فرض `tick=1ms`.
 - ISR `OnInputIrq` فقط `BspGpio_Write` و پرچم volatile؛ بدون `TakeEvent`، صف، mutex، تایمر، تاخیر یا ADC؛ ترتیب: اول PB5 Low سپس ثبت رویداد.
 - اگر ورودی از ابتدا حاضر باشد، بوت با باتری سپس احراز 5 ثانیه داخل باند احراز مشترک بدون نیاز به لبه rising گمشده.
@@ -103,7 +103,7 @@ rtos_app.c → func__Rtos_Start → osThreadNew(TaskControl) // when MODULE_MCU_
     func__McuPowerPath_Init() // before loop: battery connected
     for(;;)
       measurement_snapshot_t snap; (void)func__Measurement_GetSnapshot(&snap); // valid, v_in_mv
-      func__McuPowerPath_Run() // shared q33/q34: qualify band 5s→High; dead-band preserve+cancel; outside reconnect band→Low
+      func__McuPowerPath_Run() // shared Fault permission: permitted 5s→High; not armed preserve+cancel; released→Low
       func__Changeover_Evaluate(&snap, faults) // PB11 only, thresholds 21000/20800/21200, 3000ms unchanged
       func__Rtos_DelayMilliseconds(APP_CONFIG.control_period_ms) // ~10ms
 ```
@@ -115,7 +115,7 @@ mcu_power_path.c
   ├── bsp_gpio.h → func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true/false) // true=Low on, false=High off (owned)
   │               → func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) // PB4 level in ISR
   ├── measurement.h → func__Measurement_GetSnapshot(&snap) // valid, v_in_mv
-  ├── fault.h → func__Fault_GetInputWindow(&min,&max) // shared q33/q34, atomic pair (MODULE_FAULT=1)
+  ├── fault.h → func__Fault_GetInputPermission(&valid,&permitted) // shared Schmitt permission (MODULE_FAULT=1)
   ├── rtos_time.h → func__Rtos_TicksToMilliseconds(elapsed_ticks) + osKernelGetTickCount()
   └── cmsis_os2.h → osKernelGetTickCount()
 ```

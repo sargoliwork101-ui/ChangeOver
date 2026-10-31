@@ -20,7 +20,6 @@
 | `flash_lock.c` | سیاست یک‌بارمصرف؛ هیچ حالتی ذخیره نمی‌کند |
 | `Tester/host_test_flash_lock.c` | تست هاست با BSP بدلی (سطح، نوشتن، ریست) |
 | `Tester/run_host_test_flash_lock.sh` | اجراکنندهٔ همان تست؛ داخل دروازهٔ syntax |
-| `flashlock_process.html` | صفحهٔ فرآیند (ساختهٔ `tools/make_process_pages.py`) |
 
 تسک ندارد: یک‌بار در `func__App_Init` و پیش از شروع زمان‌بند صدا زده می‌شود، چون
 پاک‌کردن بلوک option byte مثل پاک‌کردن صفحهٔ فلش، fetch کد را نگه می‌دارد.

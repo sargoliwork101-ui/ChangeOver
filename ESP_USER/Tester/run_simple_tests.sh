@@ -15,7 +15,7 @@ BUILD_DIRECTORY="${SIMPLE_TEST_BUILD:-/tmp/changeover_simple_tests}"
 BINARY="${BUILD_DIRECTORY}/host_test_latch"
 mkdir -p "${BUILD_DIRECTORY}"
 
-echo "[1/5] پارس اسکریپت خود پنل (نگهبان صفحهٔ سفید)"
+echo "[1/6] پارس اسکریپت خود پنل (نگهبان صفحهٔ سفید)"
 # همان کاری که ممیزی برای پنل فنی می‌کند: قبل از هر چیز، جاوااسکریپت درون
 # simple_panel.h به یک پارسر JS سپرده می‌شود. صفحه‌ای که اسکریپتش پارس نشود،
 # روی برد سفید می‌ماند و هیچ تست متنی این را نمی‌بیند.
@@ -40,7 +40,7 @@ else
     echo "  هشدار: node پیدا نشد - بررسی پارس JS رد شد"
 fi
 
-echo "[2/5] کامپایل تست هاست پنل ساده"
+echo "[2/6] کامپایل تست هاست پنل ساده"
 # -Wno-unused-function/-variable: هدرهای برنامه پر از تابع و جدول‌های static
 # هستند که این تست آن‌ها را صدا نمی‌زند؛ خود برنامه روی برد همه را استفاده
 # می‌کند و همان‌جا با -Wall -Wextra تمیز کامپایل می‌شود.
@@ -59,12 +59,12 @@ g++ \
     -o "${BINARY}" \
     "${DIRECTORY}/host_test_latch.cpp"
 
-echo "[3/5] اجرا"
+echo "[3/6] اجرا"
 export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 export ASAN_OPTIONS="detect_leaks=0"
 "${BINARY}"
 
-echo "[4/5] تست رفتاری آلارم اضافه‌ولتاژ (DOM)"
+echo "[4/6] تست رفتاری آلارم اضافه‌ولتاژ (DOM)"
 # [EN] Optional: needs node + jsdom + the generated preview. SKIP when absent.
 # [FA] اختیاری: به node و jsdom و پیش‌نمایش ساخته‌شده نیاز دارد؛ نبودن یعنی SKIP.
 if command -v node >/dev/null 2>&1 && [ -f "${DIRECTORY}/../simple_preview.html" ]; then
@@ -77,11 +77,23 @@ else
     echo "  SKIP: node یا simple_preview.html موجود نیست"
 fi
 
-echo "[5/5] تست ساعت زندهٔ کارت آمار (DOM)"
+echo "[5/6] تست ساعت زندهٔ کارت آمار (DOM)"
 # زمان کل شارژ در بی‌کاری/داده کهنه جلو نمی‌رود؛ کارکرد برد جداست.
 if command -v node >/dev/null 2>&1 && [ -f "${DIRECTORY}/../simple_preview.html" ]; then
     if node -e "require('jsdom')" >/dev/null 2>&1; then
         node "${DIRECTORY}/host_test_diag_clock.js" || exit 1
+    else
+        echo "  SKIP: jsdom نصب نیست"
+    fi
+else
+    echo "  SKIP: node یا simple_preview.html موجود نیست"
+fi
+
+echo "[6/6] تست خروجی تاریخچهٔ شارژ (DOM)"
+# ستون مدت حذف شده؛ زمان، کانال و خروجی درصد/ولتاژ باید حفظ شوند.
+if command -v node >/dev/null 2>&1 && [ -f "${DIRECTORY}/../simple_preview.html" ]; then
+    if node -e "require('jsdom')" >/dev/null 2>&1; then
+        node "${DIRECTORY}/host_test_csv.js" || exit 1
     else
         echo "  SKIP: jsdom نصب نیست"
     fi

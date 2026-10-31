@@ -2311,6 +2311,69 @@ def sec_diag_clock():
        "ESP_USER test runner does not run the diag-clock DOM test")
 
 
+def sec_charge_csv():
+    """[EN] Charge-history CSV is time+channel only; the duration column was
+       removed by user order and must not come back through a preview mirror.
+       [FA] CSV تاریخچهٔ شارژ فقط زمان و کانال دارد؛ ستون مدت به دستور کاربر
+       حذف شده و نباید از آینهٔ پیش‌نمایش برگردد."""
+    panel = read("ESP_USER/simple_panel.h")
+    m = re.search(r"function chargeCsvData\(\)\{(.*?)\n\}", panel, re.S)
+    ok(m is not None, "ESP_USER chargeCsvData is missing")
+    if m:
+        body = m.group(1)
+        ok("title:'مدت" not in body and "مدت (ثانیه)" not in body,
+           "charge CSV still has a duration column header")
+        ok("events[i].dur" not in body and ".dur" not in body,
+           "charge CSV still reads the legacy duration field")
+        ok("csvRowsFromColumns(tm,[{title:'کانال',values:ch}])" in body,
+           "charge CSV is not exactly time columns + channel")
+    for rel in ("ESP_USER/simple_preview.html", "ESP_USER/index.html",
+                "ESP_USER/simple_panel_clean.html"):
+        body = read(rel)
+        mm = re.search(r"function chargeCsvData\(\)\{(.*?)\n\}", body, re.S)
+        ok(mm is not None and "title:'مدت" not in mm.group(1)
+           and "مدت (ثانیه)" not in mm.group(1) and ".dur" not in mm.group(1),
+           f"{rel} charge CSV mirror still has the duration column")
+    test = read("ESP_USER/Tester/host_test_csv.js")
+    ok("ALL ESP_USER CSV TESTS PASSED" in test, "ESP_USER CSV DOM test is missing")
+    runner = read("ESP_USER/Tester/run_simple_tests.sh")
+    ok("host_test_csv.js" in runner, "ESP_USER runner does not run the CSV test")
+    cfg = read("ESP_USER/simple_config.h")
+    ok(define(cfg, "SIMPLE_ESP_FW_VERSION") == 117,
+       "ESP_USER firmware version is not 117 after the CSV column removal")
+
+
+def sec_docs_current():
+    """[EN] A few high-risk documentation facts are pinned to the code so the
+       next edit cannot silently leave the old number behind.
+       [FA] چند fact پرخطر مستندات به کد میخ می‌شوند تا عدد کهنه بی‌صدا نماند."""
+    esp = read("Firmware/Modules/EspLink/esp_link.h")
+    nvm = read("Firmware/Modules/EspLink/esp_link_nvm.h")
+    cal = read("ESP_Calibration/plink_config.h")
+    n = define(esp, "ESPLINK_PARAM_COUNT")
+    ok(n == 171, "wire parameter count is not 171")
+    ok(define(cal, "ESP_PARAM_COUNT") == n, "calibration panel param count drifted")
+    ok(define(nvm, "ESP_LINK_NVM_ENTRY_MAX") == 172, "NVM entry capacity is not 172")
+    ok(define(nvm, "ESP_LINK_NVM_DERIVED_ID_OV_THRESH") == 70,
+       "derived OV id is not 70")
+    spec = read("ESP_AGENT_SPEC.md")
+    ok("171" in spec and "0..170" in spec, "spec does not state the 171-id wire range")
+    readme = read("README.md")
+    ok("v1.117" in readme, "root README does not state ESP_USER v1.117")
+    user = read("ESP_USER/README.md")
+    ok("مدت" not in user or "حذف" in user,
+       "ESP_USER README still promises a charge-duration CSV column")
+    co = read("Firmware/Modules/Changeover/README.md")
+    ok("High = Q17 روشن" in co or "High = قطع" in co,
+       "Changeover README does not state PB11 High = cut")
+    bsp = read("Firmware/Bsp/README.md")
+    ok("High = قطع" in bsp and "Low = وصل" in bsp,
+       "BSP README PB11 polarity is wrong")
+    pins = read("Firmware/Config/Inc/board_pins.h")
+    ok(define(pins, "PIN_PROTECT_BATT_ACTIVE_HIGH") == 1,
+       "PB11 protect polarity macro changed; docs must be re-audited")
+
+
 def main():
     ids = sec_ids()
     sec_counts()
@@ -2334,6 +2397,8 @@ def main():
     sec_ov_single_source()
     sec_single_session()
     sec_diag_clock()
+    sec_charge_csv()
+    sec_docs_current()
 
     print("whole-program consistency audit")
     print("=" * 72)

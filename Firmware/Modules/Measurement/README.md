@@ -27,14 +27,14 @@
 | `../../Bsp/Src/bsp_measurement.c` / `bsp_measurement.h` | کالیبراسیون مخصوص مدار برد؛ مرجع ADC، تقسیم مقاومتی، گین و شانت در این Port هستند |
 | `../../Config/Inc/app_types.h` | `measurement_snapshot_t` مشترک بین ماژول‌ها |
 | `../../Config/Inc/modules_enable.h` | کلید `MODULE_MEASUREMENT` |
-| `../../../CubeMX/CubeIDE.ioc` | ADC1 (CH1/2/3/5/7) + DMA1_Ch1 circular N=10 + کلاک ADC 12MHz |
+| `../../../CubeMX/CubeIDE.ioc` | ADC1 (CH1/2/3/5/7 + VREFINT) + DMA1_Ch1 circular دو فریم شش‌کاناله (N=12) + کلاک ADC 12MHz |
 
 ## توابع
 
 | نام | کار |
 |---|---|
 | `func__Measurement_Init` | snapshot را صفر می‌کند؛ `valid = false` |
-| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد (جریان‌ها = نمونهٔ سنکرون وسط ON از پورت برد)، اول فیلترها را روی شمارش خام اجرا می‌کند (جریان هر کانال: مدین-۳ → میانگین متحرک ۱۰تایی؛ ولتاژ باتری: مدین-۵ روی شمارش خام V24/V12) و بعد به mV/mA تبدیل می‌کند؛ جریان هر کانال بعد از تبدیل chain-mA از LUT توانی بنچ خودش رد می‌شود (توان mW ÷ ولتاژ زندهٔ باتری = mA واقعی باتری، `iest`)؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ پس از سه فریم کامل و پایدار `valid = true` می‌شود |
+| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد (جریان‌ها = نمونهٔ سنکرون وسط ON از پورت برد)، اول فیلترها را روی شمارش خام اجرا می‌کند (جریان هر کانال: مدین-۳ → میانگین متحرک ۱۰تایی؛ ولتاژ باتری: مدین-۵ روی شمارش خام V24/V12) و بعد به mV/mA تبدیل می‌کند؛ جریان هر کانال از جدول بنچ روی محور شمارش خام به mA باتری تبدیل می‌شود؛ اگر جدول نباشد، خط گین/آفست BSP استفاده می‌شود؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ پس از سه فریم کامل و پایدار `valid = true` می‌شود |
 | `func__Measurement_GetSnapshot` | کپی آخرین snapshot؛ `NULL` یا نامعتبر → `false` |
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
@@ -111,11 +111,11 @@ task_measurement.c
   bsp_measurement.h/c      کالیبراسیون مخصوص مدار برد
 ```
 
-حافظه: بافر DMA = 2×5×2 = 20 بایت استاتیک؛ استک تسک `TASK_STACK_MEASUREMENT` = 192 word (768 بایت) — بعد از Build، مصرف کل RAM/Flash را از Map file چک کنید (قانون مدیریت حافظه). بک‌اند سنکرون ADC2 در پورت برد حدود ۵۰ بایت RAM استاتیک اضافه می‌کند (هندل خصوصی `ADC_HANDLETYPEDEF__G__HadcSync` در `bsp_adc.c`)؛ بافرهای فیلتر جریان هم با هر دو کلید روشن RAM استاتیک اضافه می‌کنند — پنجرهٔ میانگین `۲×MEASUREMENT_CURRENT_AVERAGE_WINDOW(۳۰۰)×4` = **۲۴۰۰ بایت** + تاریخچهٔ مدین `۲×۱۵×4` = ۱۲۰ بایت + شمارنده‌ها — و با خاموش‌کردن هر کلید کاملاً از کامپایل خارج می‌شوند؛ مصرف دقیق بعد از Build واقعی CubeIDE از Map file ثبت شود.
+حافظه: بافر DMA = 2×6×2 = 24 بایت استاتیک؛ استک تسک `TASK_STACK_MEASUREMENT` = 192 word (768 بایت) — بعد از Build، مصرف کل RAM/Flash را از Map file چک کنید (قانون مدیریت حافظه). بک‌اند سنکرون ADC2 در پورت برد حدود ۵۰ بایت RAM استاتیک اضافه می‌کند (هندل خصوصی `ADC_HANDLETYPEDEF__G__HadcSync` در `bsp_adc.c`)؛ بافرهای فیلتر جریان هم با هر دو کلید روشن RAM استاتیک اضافه می‌کنند — پنجرهٔ میانگین `۲×MEASUREMENT_CURRENT_AVERAGE_WINDOW(۳۰۰)×4` = **۲۴۰۰ بایت** + تاریخچهٔ مدین `۲×۱۵×4` = ۱۲۰ بایت + شمارنده‌ها — و با خاموش‌کردن هر کلید کاملاً از کامپایل خارج می‌شوند؛ مصرف دقیق بعد از Build واقعی CubeIDE از Map file ثبت شود.
 
 ## تستر
 
-`Tester/` — تست هاست زنجیرهٔ اندازه‌گیری با فریم ADC مصنوعی (۲۸۶ بررسی). اجرا با
+`Tester/` — تست هاست زنجیرهٔ اندازه‌گیری با فریم ADC مصنوعی (۸۹۳ بررسی). اجرا با
 `Tester/run_host_test_measurement.sh`؛ داخل `tools/check_firmware_syntax.sh` هم اجرا
 می‌شود. توضیح کامل در `Tester/README.md`.
 

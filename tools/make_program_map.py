@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 [EN] Build Documentation/Program_Map.xlsx - the whole program on tables: every
-     source file and its role, every function with its own @brief, all 143 ESP
+     source file and its role, every function with its own @brief, all 171 ESP
      wire ids with type/unit/default/range/persisted flag, the MCU pin map with
      polarity and safe level, the on-chip flash map, and the gates that check
      all of it.
@@ -19,7 +19,7 @@
      the workbook: the «راهنما» sheet records where each column comes from.
 
 [FA] ساخت فایل Documentation/Program_Map.xlsx - کل برنامه روی جدول: هر فایل
-     سورس و نقش آن، هر تابع با @brief خودش، همهٔ ۱۴۳ شناسهٔ سیم ESP با
+     سورس و نقش آن، هر تابع با @brief خودش، همهٔ ۱۷۱ شناسهٔ سیم ESP با
      نوع/واحد/پیش‌فرض/بازه/ماندگاری، نگاشت پایه‌های MCU با قطبیت و سطح امن،
      نقشهٔ فلش داخلی، و دروازه‌هایی که همهٔ این‌ها را چک می‌کنند.
 
@@ -287,6 +287,7 @@ def build_params():
     ret_a = numdef("ESP_LINK_NVM_RETIRED_ID_FIRST")
     ret_b = numdef("ESP_LINK_NVM_RETIRED_ID_LAST")
     transient = numdef("ESP_LINK_NVM_TRANSIENT_ID_MUTE")
+    derived_ov = numdef("ESP_LINK_NVM_DERIVED_ID_OV_THRESH")
     slot_min = numdef("ESP_LINK_NVM_SLOT_MIN_ID")
     slot_max = numdef("ESP_LINK_NVM_SLOT_MAX_ID")
     version = numdef("ESP_LINK_NVM_VERSION")
@@ -319,6 +320,8 @@ def build_params():
             persisted = "بازنشسته"
         if transient is not None and pid == transient:
             persisted = "گذرا"
+        if derived_ov is not None and pid == derived_ov:
+            persisted = "مشتق (ذخیره نمی‌شود)"
         rows.append([str(pid), name, typ, unit, default, rng, persisted,
                      f"NVM v{version}", "ok" if persisted == "بله" else "idle"])
     for sid in range(slot_min or 200, (slot_max or 203) + 1):

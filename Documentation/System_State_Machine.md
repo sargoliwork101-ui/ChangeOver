@@ -16,6 +16,7 @@ stateDiagram-v2
     BATTERY --> SAFE: v<20800 OR low-battery latch (set <21000, cleared >=21200), 3000ms
     INPUT --> SAFE: same cut condition, 3000ms
     SAFE --> INPUT: input stable 30000ms && v>=21200, confirm 3000ms
+    SAFE --> BATTERY: no mains, rest peak>=q165, healthy hold q150, v>=21200, confirm 3000ms
     BATTERY --> BATTERY: valid mapping
     INPUT --> INPUT: valid mapping
     SAFE --> SAFE: invalid/fault preserve

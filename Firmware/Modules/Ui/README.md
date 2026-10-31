@@ -22,8 +22,8 @@
 - فرمول حفظ: `remaining=100-chargingStable`, `yellowOn=remaining*period/100(min10)`, `yellowOff=1000-yellowOn` با `chargingStable` نه خام.
 
 **هیسترزیس فول InputOk/Charging:**
-- `UI_CHARGING_FULL_ENTER_PERCENT 100u` ورود به InputOk فقط وقتی خام به 100٪ برسد.
-- `UI_CHARGING_FULL_EXIT_PERCENT 95u` ماندن در InputOk تا خام <95٪، سپس Charging. جلوگیری پرش اطراف 29V (سقف فول ۲۰۲۶-۰۹-۲۰ از ۲۸ به ۲۹V رفت).
+- اتمام شارژر (`IsChargeComplete`) چهرهٔ فول را وارد می‌کند؛ تا وقتی کانالی واقعاً پمپ می‌کند یا استراحت حرارتی است، چهرهٔ شارژ برمی‌گردد.
+- وقتی چیزی پمپ نمی‌کند، لچ ولتاژی خام ۱۰۰٪ وارد و زیر ۹۵٪ خارج می‌شود (`UI_CHARGING_FULL_ENTER_PERCENT` / `EXIT`). جلوگیری پرش اطراف 29V (سقف فول ۲۰۲۶-۰۹-۲۰ از ۲۸ به ۲۹V رفت).
 
 **پایداری فاز:** سبز BatteryRun و زرد Charging هرکدام phase/OnMs/OffMs/startTick مستقل. تغییر stable **فاز reset نمی‌کند**؛ زمان جدید از مرز بعدی. فقط ورود/خروج واقعی سناریو، `invalid/NULL` یا `Init` ریست کامل.
 
@@ -77,7 +77,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 - `>q34` ورود، `<=q34−q71` پاک، بین این دو حفظ. سبز ثابت زرد خاموش قرمز 50% 1s بوق 1s هر 10s. پیش‌فرض: `q34=28000 q71=1000`.
 
 ### سناریو ۵: BatLost (قطع باتری - از پرچم متمرکز Fault)
-- **شرط:** فقط قفل‌بودن `FAULT_CHARGER_BAT_LOST` (مالکیت Set/Clear با ماژول Fault؛ UI فقط می‌خواند و هیچ لچی ندارد). هر دو حالت شناسایی Fault اینجا نمایش داده می‌شوند: پمپ >14.8V حین شارژ یا نبود باتری با ورودی سالم (هر دو نیم <6V به‌مدت ۱s).
+- **شرط:** فقط قفل‌بودن `FAULT_CHARGER_BAT_LOST` (مالکیت Set/Clear با ماژول Fault؛ UI فقط می‌خواند و هیچ لچی ندارد). هر دو حالت شناسایی Fault اینجا نمایش داده می‌شوند: پمپ همان نیم بالای حد قطع حین شارژ، یا یکی از دو نیم زیر آستانهٔ نبود (پیش‌فرض ۶V) با ورودی سالم به‌مدت ۱s.
 - **الگو (توافق ۲۰۲۶-۰۹-۱۹):** سبز ثابت (ورودی حاضر است)، زرد خاموش، **قرمز چشمک‌تند ۵۰/۵۰ در دوره ۱s** (متمایز از پالس باریک اضافه‌ولتاژ) و **بوق: ۳ بیپ کوتاه + مکث**، دوره تکرار ۳s (پنجره بیپ ۹۰۰ms، گپ ۱۰۰ms بین بیپ‌ها). `UI_BAT_LOST_*` در `ui_led.h`.
 - **جدایی از بوق بحرانی BatteryRun:** آن فقط با ورودی قطع اجرا می‌شود و این پرچم فقط در دنیای ورودی-حاضر ست می‌شود؛ در `Ui_Tick` این سناریو **بعد از OverVoltage و قبل از همه سناریوهای نرمال** چک و return می‌شود و خود helperِ `BatteryRun` هم نگهبان مستقیم دارد، پس حتی فراخوانی مستقیم هم نمی‌تواند بوق ممتد باتری خالی را شروع کند.
 - **خروج:** با پاک‌شدن پرچم توسط Fault (باتری برگشت + ۱s پایدار)، سناریوی اصلی خودبه‌خود برمی‌گردد؛ پاک‌سازی بوق را همان سناریو بعدی با tick صفر انجام می‌دهد.
@@ -91,7 +91,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 این دو امضا برقرار باشد:
 
 1. اتصال‌کوتاه/سوختن: رلهٔ شارژر باز، duty واقعی PWM برابر صفر و JIT ثبت‌شده؛
-2. قطع‌شدن/سوختن: duty واقعی بیشتر از `200‰` (`>20%`) و جریان همان کانال صفر.
+2. قطع‌شدن/سوختن: duty واقعی بیشتر از `200‰` (`>20%`)، جریان همان کانال صفر و ولتاژ باتری همان کانال دست‌کم ۶V (تا نبود باتری، خطای فنی نسازد).
 
 در حالت فعال، هر سه خروجی `red/green/yellow` از یک متغیر phase مشترک استفاده
 می‌کنند؛ بنابراین هم‌زمان روشن و خاموش می‌شوند. چهار پارامتر بوق و دو پارامتر
@@ -174,17 +174,17 @@ cadence LED مستقل‌اند و از ids سناریوی ۵ (`132/133`) یا �
 
 ### خلاصه انتخاب
 ```
-TechnicalFault → خطای فنی برد (سه LED با یک phase)
-else if OverVoltage → خطا
-else if Fault&FAULT_CHARGER_BAT_LOST → BatLost
-else if weak-battery verdict && !InputPresent → سناریوی ۸ (قرمز چشمک‌زن + بوق)
-else if !InputPresent && battery path blocked → همهٔ چراغ‌ها و بوق خاموش (v1.89)
-else if !InputPresent → BatteryRun (2%+0/1 stable)
-else if InputPresent:
-  Update Full hysteresis (raw100→InputOk, <95→Charging)
-  if FullActive → InputOk
-  else Charging (5% stable)
-invalid/NULL → safe-off flag false phase reset
+invalid/NULL → safe-off
+TechnicalFault → خطای فنی برد
+Imbalance latch → سناریوی ۵
+DeadBattery verdict → سناریوی ۶
+OverVoltage → سناریوی ۱
+Fault&FAULT_CHARGER_BAT_LOST → BatLost
+weak-battery verdict && !InputPresent → سناریوی ۸
+!InputPresent && battery path blocked → همه خاموش
+!InputPresent → BatteryRun
+InputPresent && thermal rest → سبز ثابت + زرد ۱s پنجاه‌درصد
+InputPresent → فول/شارژ با اولویت اعلام خود شارژر
 BoardTest → یک‌بار قرمز/زرد/سبز + بوق
 ```
 
