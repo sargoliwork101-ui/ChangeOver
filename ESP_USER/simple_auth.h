@@ -734,62 +734,126 @@ static void func__Simple_AuthLoad(void)
     }
 }
 
-/* ==================== ورود - با IP سشن ==================== */
-static bool func__Simple_AuthLogin(const char *char__ptr_name, const char *char__ptr_pass)
-{
-    int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
+/* ==================== نشست یکتا ====================
+   فقط یک ورود فعال نگه داشته می‌شود. ورود با دسترسی بالاتر جای ورود پایین‌تر
+   را می‌گیرد؛ ورود هم‌سطح یا پایین‌تر رد می‌شود و ورود فعلی دست‌نخورده می‌ماند.
+   شناسهٔ نشست در کوکی مرورگر است تا دستگاه دیگر نه خود را واردشده ببیند و نه
+   بتواند نشست فعلی را با یک درخواست بی‌کوکی باطل کند. */
 
-    if (int32_t__index < 0) return false;
-    if (!func__Simple_VerifyUserPass(char__ptr_name, char__ptr_pass)) return false;
-
-    (void)strncpy(CHAR__G__CurrentUser, char__ptr_name, SIMPLE_USER_NAME_MAX);
-    CHAR__G__CurrentUser[SIMPLE_USER_NAME_MAX] = '\0';
-    UINT8_T__G__CurrentRole = SIMPLE_USER_T__G__Users[int32_t__index].role;
-    UINT32_T__G__SessionStartMs = (uint32_t)millis();
-    /* ذخیره IP کلاینت برای سشن */
-    IPAddress ip__client = SIMPLE_WEB_SERVER_T__G__Server.client().remoteIP();
-    (void)snprintf(CHAR__G__SessionIP, sizeof(CHAR__G__SessionIP), "%u.%u.%u.%u", ip__client[0], ip__client[1], ip__client[2], ip__client[3]);
-    /* ورود شد ⇒ این روشن‌بودن «بدون ورود» نبوده؛ پرچم بازیابی پاک می‌شود */
-    BOOL__G__SessionHadLogin = true;
-    func__Simple_RecoveryDisarm();
-    return true;
-}
-
-/* ==================== خروج ==================== */
 static void func__Simple_AuthLogout(void)
 {
     CHAR__G__CurrentUser[0] = '\0';
     UINT8_T__G__CurrentRole = 0u;
     UINT32_T__G__SessionStartMs = 0u;
-    CHAR__G__SessionIP[0] = '\0';
+    CHAR__G__SessionToken[0] = '\0';
 }
 
-/* ==================== چک سشن - با IP ==================== */
-static bool func__Simple_SessionValid(void)
+static bool func__Simple_SessionActive(void)
 {
+    uint32_t uint32_t__now;
+
     if (CHAR__G__CurrentUser[0] == '\0') return false;
-    uint32_t uint32_t__now = (uint32_t)millis();
+    if (CHAR__G__SessionToken[0] == '\0') return false;
+    uint32_t__now = (uint32_t)millis();
     if ((uint32_t__now - UINT32_T__G__SessionStartMs) > SIMPLE_SESSION_TIMEOUT_MS)
     {
         func__Simple_AuthLogout();
         return false;
     }
-    // بررسی IP سشن - اگر IP عوض شده، سشن نامعتبر (جلوگیری از hijack ساده)
-    IPAddress ip__now = SIMPLE_WEB_SERVER_T__G__Server.client().remoteIP();
-    char char__ipNow[24];
-    (void)snprintf(char__ipNow, sizeof(char__ipNow), "%u.%u.%u.%u", ip__now[0], ip__now[1], ip__now[2], ip__now[3]);
-    // اگر IP ذخیره شده خالی نیست و متفاوت است، سشن را باطل کن (به جز 0.0.0.0 در تست)
-    if (CHAR__G__SessionIP[0] != '\0' && strcmp(CHAR__G__SessionIP, char__ipNow) != 0)
-    {
-        // در حالت AP معمولاً IP ثابت 192.168.4.x است - اگر عوض شد، لاگ اوت
-        // برای سادگی در AP، فقط اگر هر دو IP معتبر باشند چک کن
-        if (ip__now[0] != 0u)
-        {
-            func__Simple_AuthLogout();
-            return false;
-        }
-    }
     return true;
+}
+
+static void func__Simple_SessionTokenMake(char *char__ptr_out)
+{
+    uint8_t uint8_t__msg[16];
+    uint8_t uint8_t__hash[32];
+    uint32_t uint32_t__nonce;
+    uint32_t uint32_t__nowMs;
+    uint32_t uint32_t__nowUs;
+    uint32_t uint32_t__chip;
+    uint8_t uint8_t__i;
+
+    if (!BOOL__G__CryptoKeyReady)
+    {
+        func__Simple_CryptoKeyInit();
+    }
+    UINT32_T__G__CryptoNonce = (UINT32_T__G__CryptoNonce + 1u) ^ (uint32_t)millis() ^ (uint32_t)micros();
+    uint32_t__nonce = UINT32_T__G__CryptoNonce;
+    uint32_t__nowMs = (uint32_t)millis();
+    uint32_t__nowUs = (uint32_t)micros();
+    uint32_t__chip = func__Simple_ChipId();
+    for (uint8_t__i = 0u; uint8_t__i < 4u; uint8_t__i++)
+    {
+        uint8_t__msg[uint8_t__i] = (uint8_t)((uint32_t__nonce >> (8u * (3u - uint8_t__i))) & 0xFFu);
+        uint8_t__msg[uint8_t__i + 4u] = (uint8_t)((uint32_t__nowMs >> (8u * (3u - uint8_t__i))) & 0xFFu);
+        uint8_t__msg[uint8_t__i + 8u] = (uint8_t)((uint32_t__nowUs >> (8u * (3u - uint8_t__i))) & 0xFFu);
+        uint8_t__msg[uint8_t__i + 12u] = (uint8_t)((uint32_t__chip >> (8u * (3u - uint8_t__i))) & 0xFFu);
+    }
+    func__Simple_HmacSha256(UINT8_T__G__CryptoKey, SIMPLE_CRYPTO_KEY_LEN,
+                            uint8_t__msg, sizeof(uint8_t__msg), uint8_t__hash);
+    func__Simple_CryptoToHex(uint8_t__hash, 32u, char__ptr_out);
+}
+
+static bool func__Simple_SessionCookieRead(char *char__ptr_out, size_t size_t__cap)
+{
+    String string__cookie = SIMPLE_WEB_SERVER_T__G__Server.header("Cookie");
+    String string__key = String(SIMPLE_SESSION_COOKIE);
+    string__key += "=";
+    int int__pos = string__cookie.indexOf(string__key);
+    int int__start;
+    int int__end;
+    String string__token;
+
+    if (int__pos < 0) return false;
+    if ((int__pos > 0) && (string__cookie[int__pos - 1] != ' ') && (string__cookie[int__pos - 1] != ';'))
+    {
+        return false;
+    }
+    int__start = int__pos + (int)string__key.length();
+    int__end = string__cookie.indexOf(';', int__start);
+    string__token = (int__end < 0) ? string__cookie.substring(int__start)
+                                   : string__cookie.substring(int__start, int__end);
+    string__token.trim();
+    if (string__token.length() != SIMPLE_SESSION_TOKEN_LEN) return false;
+    if (size_t__cap <= SIMPLE_SESSION_TOKEN_LEN) return false;
+    (void)strncpy(char__ptr_out, string__token.c_str(), SIMPLE_SESSION_TOKEN_LEN);
+    char__ptr_out[SIMPLE_SESSION_TOKEN_LEN] = '\0';
+    return true;
+}
+
+static bool func__Simple_SessionValid(void)
+{
+    char char__token[SIMPLE_SESSION_TOKEN_LEN + 1u];
+
+    if (!func__Simple_SessionActive()) return false;
+    if (!func__Simple_SessionCookieRead(char__token, sizeof(char__token))) return false;
+    return (strcmp(char__token, CHAR__G__SessionToken) == 0);
+}
+
+/* ==================== ورود - یک نشست فعال ==================== */
+static int32_t func__Simple_AuthLogin(const char *char__ptr_name, const char *char__ptr_pass)
+{
+    int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
+    uint8_t uint8_t__newRole;
+
+    if (int32_t__index < 0) return 0;
+    if (!func__Simple_VerifyUserPass(char__ptr_name, char__ptr_pass)) return 0;
+    uint8_t__newRole = SIMPLE_USER_T__G__Users[int32_t__index].role;
+
+    if (func__Simple_SessionActive() && (uint8_t__newRole <= UINT8_T__G__CurrentRole))
+    {
+        return -1;
+    }
+
+    (void)strncpy(CHAR__G__CurrentUser, char__ptr_name, SIMPLE_USER_NAME_MAX);
+    CHAR__G__CurrentUser[SIMPLE_USER_NAME_MAX] = '\0';
+    UINT8_T__G__CurrentRole = uint8_t__newRole;
+    UINT32_T__G__SessionStartMs = (uint32_t)millis();
+    func__Simple_SessionTokenMake(CHAR__G__SessionToken);
+    /* ورود شد ⇒ این روشن‌بودن «بدون ورود» نبوده؛ پرچم بازیابی پاک می‌شود */
+    BOOL__G__SessionHadLogin = true;
+    func__Simple_RecoveryDisarm();
+    return 1;
 }
 
 /* ==================== آیا ادمین ==================== */

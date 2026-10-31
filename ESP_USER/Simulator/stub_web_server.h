@@ -78,6 +78,19 @@ private:
     IPAddress address;
 };
 
+inline std::string func__Sim_LowerHeader(const char *char__ptr_text)
+{
+    std::string string__out = (char__ptr_text != NULL) ? char__ptr_text : "";
+    for (size_t size_t__i = 0u; size_t__i < string__out.size(); size_t__i++)
+    {
+        if ((string__out[size_t__i] >= 'A') && (string__out[size_t__i] <= 'Z'))
+        {
+            string__out[size_t__i] = (char)(string__out[size_t__i] + ('a' - 'A'));
+        }
+    }
+    return string__out;
+}
+
 typedef void (*SimHttpHandler)(void);
 typedef bool (*SimResponseRewriter)(const char *char__ptr_uri, std::string &string__body);
 
@@ -117,6 +130,37 @@ public:
         if ((char__ptr_name != NULL) && (char__ptr_value != NULL))
         {
             headers[char__ptr_name] = char__ptr_value;
+        }
+    }
+    void collectHeaders(const char *char__ptr_keys[], size_t size_t__count)
+    {
+        collectedHeaders.clear();
+        for (size_t size_t__i = 0u; size_t__i < size_t__count; size_t__i++)
+        {
+            if (char__ptr_keys[size_t__i] != NULL)
+            {
+                collectedHeaders.push_back(char__ptr_keys[size_t__i]);
+            }
+        }
+    }
+    String header(const char *char__ptr_name) const
+    {
+        if (char__ptr_name == NULL) { return String(); }
+        std::string string__key = func__Sim_LowerHeader(char__ptr_name);
+        std::map<std::string, std::string>::const_iterator iterator__found = requestHeaders.find(string__key);
+        return (iterator__found == requestHeaders.end()) ? String() : String(iterator__found->second);
+    }
+    void simSetHeader(const char *char__ptr_name, const char *char__ptr_value)
+    {
+        if (char__ptr_name == NULL) { return; }
+        std::string string__key = func__Sim_LowerHeader(char__ptr_name);
+        if ((char__ptr_value == NULL) || (char__ptr_value[0] == '\0'))
+        {
+            requestHeaders.erase(string__key);
+        }
+        else
+        {
+            requestHeaders[string__key] = char__ptr_value;
         }
     }
     void setContentLength(size_t size_t__length) { declaredLength = size_t__length; }
@@ -182,6 +226,7 @@ public:
         return (iterator__found != headers.end()) ? iterator__found->second : std::string();
     }
     const std::string &simBody(void) const { return responseBody; }
+    int simStatus(void) const { return status; }
 
 private:
     struct Route
@@ -211,6 +256,8 @@ private:
     std::string contentType = "text/plain";
     std::string responseBody;
     std::map<std::string, std::string> headers;
+    std::map<std::string, std::string> requestHeaders;
+    std::vector<std::string> collectedHeaders;
     size_t declaredLength = 0u;
     IPAddress clientAddress;
     SimResponseRewriter rewriter = NULL;
@@ -423,6 +470,7 @@ inline void SimWebServerT::clearRequest(void)
 {
     args.clear();
     headers.clear();
+    requestHeaders.clear();
     requestUriText.clear();
     queryText.clear();
     responseBody.clear();
@@ -462,6 +510,25 @@ inline void SimWebServerT::parseRequest(const std::string &string__raw)
 
     std::string string__headerBlock =
         string__raw.substr(size_t__lineEnd + 2u, size_t__headerEnd - size_t__lineEnd - 2u);
+    size_t size_t__lineStart = 0u;
+    while (size_t__lineStart < string__headerBlock.size())
+    {
+        size_t size_t__lineEnd2 = string__headerBlock.find("\r\n", size_t__lineStart);
+        if (size_t__lineEnd2 == std::string::npos) { size_t__lineEnd2 = string__headerBlock.size(); }
+        std::string string__line = string__headerBlock.substr(size_t__lineStart, size_t__lineEnd2 - size_t__lineStart);
+        size_t size_t__colon = string__line.find(':');
+        if (size_t__colon != std::string::npos)
+        {
+            std::string string__key = func__Sim_LowerHeader(string__line.substr(0u, size_t__colon).c_str());
+            std::string string__value = string__line.substr(size_t__colon + 1u);
+            size_t size_t__first = string__value.find_first_not_of(" \t");
+            size_t size_t__last = string__value.find_last_not_of(" \t");
+            string__value = (size_t__first == std::string::npos) ? "" :
+                string__value.substr(size_t__first, size_t__last - size_t__first + 1u);
+            requestHeaders[string__key] = string__value;
+        }
+        size_t__lineStart = size_t__lineEnd2 + 2u;
+    }
     bool bool__formBody =
         string__headerBlock.find("application/x-www-form-urlencoded") != std::string::npos;
     std::string string__body = string__raw.substr(size_t__headerEnd + 4u);
@@ -509,6 +576,7 @@ inline void SimWebServerT::writeResponse(int int__fd)
         case 401: string__statusText = "401 Unauthorized"; break;
         case 403: string__statusText = "403 Forbidden"; break;
         case 404: string__statusText = "404 Not Found"; break;
+        case 409: string__statusText = "409 Conflict"; break;
         default:  string__statusText = "200 OK"; status = 200; break;
     }
 

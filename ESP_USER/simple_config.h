@@ -39,7 +39,7 @@
 #define SIMPLE_HELLO_INTERVAL_MS        2000u
 #define SIMPLE_HELLO_TIMEOUT_MS         6000u
 #define SIMPLE_ESP_ROLE_USER            1u
-#define SIMPLE_ESP_FW_VERSION           112u
+#define SIMPLE_ESP_FW_VERSION           115u
 #define SIMPLE_TLM_FLAG_LINK_OK         0x40u
 
 #define SIMPLE_MSG_TLM_LIVE             0x10u
@@ -165,6 +165,8 @@
 #define SIMPLE_USER_PASS_MIN            4u     /* کوتاه‌ترین رمز قابل قبول در فرم تغییر رمز */
 #define SIMPLE_USERS_FILE               "/users.json"
 #define SIMPLE_SESSION_TIMEOUT_MS       1800000u
+#define SIMPLE_SESSION_COOKIE           "co_sess"
+#define SIMPLE_SESSION_TOKEN_LEN        64u
 
 /* ==================== زمان ==================== */
 #define SIMPLE_TIME_FILE                "/time.json"

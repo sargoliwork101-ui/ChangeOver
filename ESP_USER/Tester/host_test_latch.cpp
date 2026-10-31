@@ -186,6 +186,60 @@ static void func__T_Check(bool bool__condition, const char *char__ptr_what)
     }
 }
 
+/* ==================== کمک‌تابع‌های نشست ==================== */
+static void func__T_ClearCookie(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("Cookie", "");
+}
+
+static void func__T_UseTokenCookie(void)
+{
+    std::string string__cookie = std::string(SIMPLE_SESSION_COOKIE) + "=" + CHAR__G__SessionToken;
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("Cookie", string__cookie.c_str());
+}
+
+static void func__T_UseCookie(const std::string &string__token)
+{
+    if (string__token.empty())
+    {
+        func__T_ClearCookie();
+    }
+    else
+    {
+        std::string string__cookie = std::string(SIMPLE_SESSION_COOKIE) + "=" + string__token;
+        SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("Cookie", string__cookie.c_str());
+    }
+}
+
+static int32_t func__T_Login(const char *char__ptr_name, const char *char__ptr_pass)
+{
+    int32_t int32_t__result = func__Simple_AuthLogin(char__ptr_name, char__ptr_pass);
+    if (int32_t__result == 1)
+    {
+        func__T_UseTokenCookie();
+    }
+    else
+    {
+        func__T_ClearCookie();
+    }
+    return int32_t__result;
+}
+
+static std::string func__T_CookieFromHeader(void)
+{
+    std::string string__header = SIMPLE_WEB_SERVER_T__G__Server.simHeader("Set-Cookie");
+    std::string string__key = std::string(SIMPLE_SESSION_COOKIE) + "=";
+    size_t size_t__pos = string__header.find(string__key);
+    size_t size_t__start;
+    size_t size_t__end;
+
+    if (size_t__pos == std::string::npos) return "";
+    size_t__start = size_t__pos + string__key.size();
+    size_t__end = string__header.find(';', size_t__start);
+    return (size_t__end == std::string::npos) ? string__header.substr(size_t__start)
+                                              : string__header.substr(size_t__start, size_t__end - size_t__start);
+}
+
 /* ==================== کمک‌تابع‌ها ==================== */
 static uint8_t func__T_PendingCount(void)
 {
@@ -798,7 +852,9 @@ static void func__T_TestAuthAdminProtection(void)
     BOOL__G__FsOk = LittleFS.begin();
     func__Simple_CryptoKeyInit();
     func__Simple_AuthDefaults();
-    (void)func__Simple_AuthLogin("admin", "admin");
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+    (void)func__T_Login("admin", "admin");
 
     /* تلاش برای تنزل دادن ادمین اصلی به کاربر ساده (role=0) باید نقش ادمین (1) را حفظ کند */
     (void)func__Simple_AddUser("admin", "newadminpass", 0u);
@@ -1817,8 +1873,13 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
         func__T_Check(func__SimpleLog_ScanDays(true) >= 1u,
                       "اسکن روزها نام بدون اسلش دایرکتوری را به مسیر استاندارد تبدیل و شناسایی می‌کند");
 
-        UINT8_T__G__CurrentRole = 1u; /* admin */
+        /* نشست ادمین واقعی با کوکی، نه فقط مقداردهی دستی نام/نقش */
+        func__Simple_AuthLogout();
         (void)snprintf(CHAR__G__CurrentUser, sizeof(CHAR__G__CurrentUser), "%s", "admin");
+        UINT8_T__G__CurrentRole = 1u;
+        UINT32_T__G__SessionStartMs = (uint32_t)millis();
+        func__Simple_SessionTokenMake(CHAR__G__SessionToken);
+        func__T_UseTokenCookie();
         SIMPLE_WEB_SERVER_T__G__Server.simClear();
         func__Simple_HttpEventFsStatus();
         func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"name\":\"/leftover_old_fw.dat\"") != std::string::npos &&
@@ -1875,6 +1936,102 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
     }
 }
 
+/* ==================== نشست یکتا: اولویت دسترسی بالاتر ==================== */
+static void func__T_TestSingleSessionPolicy(void)
+{
+    std::string string__cookieA;
+    std::string string__cookieB;
+
+    (void)printf("\n== نشست یکتا: ورود هم‌سطح رد، دسترسی بالاتر جایگزین ==\n");
+    /* تست هاست setup() را صدا نمی‌زند؛ مسیرهای HTTP خود برنامه اینجا ثبت می‌شوند */
+    SIMPLE_WEB_SERVER_T__G__Server.on("/login", HTTP_POST, func__Simple_HttpLogin);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/logout", HTTP_POST, func__Simple_HttpLogout);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Simple_HttpTelemetry);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_GET, func__Simple_HttpUsers);
+    BOOL__G__FsOk = LittleFS.begin();
+    func__Simple_CryptoKeyInit();
+    func__Simple_AuthDefaults();
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+
+    func__T_Check(func__T_Login("admin", "admin") == 1, "ادمین برای ساخت کاربرهای آزمون وارد می‌شود");
+    func__T_Check(func__Simple_AddUser("viewer1", "view1234", 0u), "کاربر سادهٔ یک ساخته شد");
+    func__T_Check(func__Simple_AddUser("viewer2", "view1234", 0u), "کاربر سادهٔ دو ساخته شد");
+    func__T_Check(func__Simple_AddUser("admin2", "admin1234", 1u), "ادمین دوم ساخته شد");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/logout", HTTP_POST);
+    func__T_Check(!func__Simple_SessionActive(), "خروج ادمین نشست را بست");
+
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=viewer1&pass=view1234");
+    string__cookieA = func__T_CookieFromHeader();
+    func__T_Check((SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200) && !string__cookieA.empty(),
+                  "ورود کاربر سادهٔ یک کوکی نشست گرفت");
+
+    func__T_UseCookie(string__cookieA);
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/t", HTTP_GET);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"user\":\"viewer1\"") != std::string::npos,
+                  "تله‌متری با کوکی صاحب نشست، نام خودش را می‌بیند");
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/t", HTTP_GET);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"user\":\"\"") != std::string::npos,
+                  "تله‌متری بدون کوکی، هیچ نام کاربری را نشان نمی‌دهد");
+
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=viewer2&pass=view1234");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 409,
+                  "ورود هم‌سطح سادهٔ دو با 409 رد می‌شود");
+    func__T_Check(strcmp(CHAR__G__CurrentUser, "viewer1") == 0,
+                  "ورود هم‌سطح، کاربر فعلی را عوض نمی‌کند");
+    func__T_UseCookie(string__cookieA);
+    func__T_Check(func__Simple_SessionValid(), "کوکی کاربر قبلی پس از ورود هم‌سطح هنوز معتبر است");
+
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=viewer1&pass=wrong");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 401,
+                  "رمز غلط 401 می‌گیرد");
+    func__T_Check(strcmp(CHAR__G__CurrentUser, "viewer1") == 0,
+                  "رمز غلط نشست فعلی را خراب نمی‌کند");
+
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=admin&pass=admin");
+    string__cookieB = func__T_CookieFromHeader();
+    func__T_Check((SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200) && !string__cookieB.empty() &&
+                  (string__cookieB != string__cookieA),
+                  "ادمین با دسترسی بالاتر جای کاربر ساده را می‌گیرد و کوکی تازه می‌سازد");
+    func__T_UseCookie(string__cookieA);
+    func__T_Check(!func__Simple_SessionValid(), "کوکی کاربر سادهٔ قبلی پس از جایگزینی باطل است");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/users", HTTP_GET);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403,
+                  "کوکی باطل‌شده دسترسی ادمین ندارد");
+
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=admin2&pass=admin1234");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 409,
+                  "ورود ادمین هم‌سطح دوم رد می‌شود");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=viewer1&pass=view1234");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 409,
+                  "ورود کاربر ساده هنگام فعال بودن ادمین رد می‌شود");
+
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/logout", HTTP_POST);
+    func__T_Check(func__Simple_SessionActive(), "خروج بدون کوکی، نشست ادمین را نمی‌بندد");
+    func__T_UseCookie(string__cookieA);
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/logout", HTTP_POST);
+    func__T_Check(func__Simple_SessionActive(), "خروج با کوکی باطل، نشست ادمین را نمی‌بندد");
+    func__T_UseCookie(string__cookieB);
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/logout", HTTP_POST);
+    func__T_Check(!func__Simple_SessionActive(), "خروج با کوکی صاحب نشست، نشست را می‌بندد");
+
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=viewer1&pass=view1234");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200, "پس از خروج، ورود جدید ممکن است");
+    UINT32_T__G__SessionStartMs = (uint32_t)millis() - SIMPLE_SESSION_TIMEOUT_MS - 1u;
+    func__T_Check(!func__Simple_SessionActive(), "پایان مهلت، نشست را می‌بندد");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=viewer2&pass=view1234");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200, "پس از پایان مهلت، ورود هم‌سطح جدید ممکن است");
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -1888,6 +2045,7 @@ int main(void)
     func__T_TestStm32TimeAndChartScheduling();
     func__T_TestChartZeroOnStaleTelemetry();
     func__T_TestDiagStatePersistenceAndClear();
+    func__T_TestSingleSessionPolicy();
     func__T_TestAuthAdminProtection();
     func__T_TestStateHistoryLog();
     func__T_TestHandshake();

@@ -2252,6 +2252,44 @@ def sec_ov_single_source():
        "ESP_USER simulator does not derive id 70 from q34")
 
 
+def sec_single_session():
+    """[EN] One active login: equal/lower role is rejected, higher role preempts,
+       and the session cookie identifies the owner.
+       [FA] یک ورود فعال: هم‌سطح/پایین‌تر رد، بالاتر جایگزین، کوکی صاحب نشست."""
+    cfg = read("ESP_USER/simple_config.h")
+    ok(re.search(r'#define\s+SIMPLE_SESSION_COOKIE\s+"co_sess"', cfg) is not None,
+       "ESP_USER session cookie name is missing")
+    ok(define(cfg, "SIMPLE_SESSION_TOKEN_LEN") == 64,
+       "ESP_USER session token length is not 64 hex chars")
+    state = read("ESP_USER/simple_state.h")
+    ok("CHAR__G__SessionToken" in state,
+       "ESP_USER state is missing the single-session token")
+    auth = read("ESP_USER/simple_auth.h")
+    ok("uint8_t__newRole <= UINT8_T__G__CurrentRole" in auth,
+       "ESP_USER login does not reject equal/lower role while a session is active")
+    ok("func__Simple_SessionCookieRead" in auth and "strcmp(char__token, CHAR__G__SessionToken)" in auth,
+       "ESP_USER session validation is not cookie-owner based")
+    http = read("ESP_USER/simple_http.h")
+    ok("int32_t__login == -1" in http and "409" in http,
+       "ESP_USER login handler does not return busy/conflict for rejected login")
+    ok("Set-Cookie" in http and "HttpOnly" in http,
+       "ESP_USER login/logout does not set a HttpOnly session cookie")
+    ok("bool__authed = func__Simple_SessionValid()" in http,
+       "ESP_USER telemetry does not gate user/role by the session cookie")
+    ino = read("ESP_USER/ESP_USER.ino")
+    ok("collectHeaders" in ino and '"Cookie"' in ino,
+       "ESP_USER web server does not collect the Cookie header")
+    sim = read("ESP_USER/Simulator/stub_web_server.h")
+    ok("String header(" in sim and "simSetHeader" in sim,
+       "ESP_USER simulator web server lacks request-header support")
+    test = read("ESP_USER/Tester/host_test_latch.cpp")
+    ok("func__T_TestSingleSessionPolicy" in test,
+       "ESP_USER host tests do not cover the single-session policy")
+    prev = read("ESP_USER/make_simple_preview.py")
+    ok("newRole <= mock.role" in prev and "409" in prev,
+       "ESP_USER offline preview does not mirror the single-session login policy")
+
+
 def main():
     ids = sec_ids()
     sec_counts()
@@ -2273,6 +2311,7 @@ def main():
     sec_panel_markup()
     sec_input_schmitt()
     sec_ov_single_source()
+    sec_single_session()
 
     print("whole-program consistency audit")
     print("=" * 72)

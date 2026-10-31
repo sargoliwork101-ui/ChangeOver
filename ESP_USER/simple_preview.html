@@ -774,7 +774,12 @@ code,pre,.mono{font-family:Vazirmatn !important}
       var defaultPass = (user === 'admin') ? 'admin' : ((user === 'viewer') ? 'viewer' : null);
       var expected = (mock.userPass && user === mock.user) ? mock.userPass : defaultPass;
       if (expected !== null && pass === expected) {
-        mock.user = user; mock.role = (user === 'admin') ? 1 : 0;
+        var newRole = (user === 'admin') ? 1 : 0;
+        /* نشست یکتا: هم‌سطح یا پایین‌تر رد؛ فقط دسترسی بالاتر جایگزین می‌شود */
+        if (mock.user && newRole <= mock.role) {
+          return jsonResponse('{"ok":0,"e":"busy","msg":"یک ورود فعال هست؛ فقط دسترسی بالاتر می‌تواند جای آن را بگیرد"}', 409);
+        }
+        mock.user = user; mock.role = newRole;
         return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + '}');
       }
       return jsonResponse('{"ok":0,"e":"wrong"}', 401);

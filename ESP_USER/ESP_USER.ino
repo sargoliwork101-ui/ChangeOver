@@ -107,6 +107,10 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Simple_HttpEventFormat);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Simple_HttpEventFsStatus);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Simple_HttpEventClean);
+    {
+        static const char *char__ptr_headerKeys[] = {"Cookie"};
+        SIMPLE_WEB_SERVER_T__G__Server.collectHeaders(char__ptr_headerKeys, 1u);
+    }
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
 

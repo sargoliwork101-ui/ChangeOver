@@ -433,6 +433,7 @@ static uint8_t UINT8_T__G__UserCount = 0u;
 static char CHAR__G__CurrentUser[SIMPLE_USER_NAME_MAX + 1] = {0};
 static uint8_t UINT8_T__G__CurrentRole = 0u;
 static uint32_t UINT32_T__G__SessionStartMs = 0u;
+static char CHAR__G__SessionToken[SIMPLE_SESSION_TOKEN_LEN + 1u] = {0};
 
 /* ==================== بازیابی رمز ادمین ====================
    SessionHadLogin: در همین بوت کسی وارد شده (پرچم بازیابی پاک می‌شود)
@@ -458,7 +459,6 @@ static esp_web_server_t SIMPLE_WEB_SERVER_T__G__Server(SIMPLE_HTTP_PORT);
 static WiFiUDP WIFI_UDP_T__G__DnsUdp;
 static bool BOOL__G__DnsRunning = false;
 static char CHAR__G__JsonBuffer[SIMPLE_JSON_BUFFER_SIZE];
-static char CHAR__G__SessionIP[24] = {0};
 static uint32_t UINT32_T__G__LastBrowserPollMs = 0u;
 static bool BOOL__G__BrowserSeen = false;
 

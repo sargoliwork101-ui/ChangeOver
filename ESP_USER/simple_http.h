@@ -158,6 +158,9 @@ static void func__Simple_HttpTelemetry(void)
     uint32_t uint32_t__ageMs = uint32_t__nowMs - UINT32_T__G__LastTlmMs;
     uint32_t uint32_t__panelTimeSec = func__Simple_NowSec();
     bool bool__online = BOOL__G__TlmSeen && (uint32_t__ageMs <= SIMPLE_LINK_TIMEOUT_MS);
+    bool bool__authed = func__Simple_SessionValid();
+    const char *char__ptr_user = bool__authed ? CHAR__G__CurrentUser : "";
+    uint8_t uint8_t__role = bool__authed ? UINT8_T__G__CurrentRole : 0u;
     uint8_t uint8_t__index;
     size_t size_t__used;
 
@@ -180,8 +183,8 @@ static void func__Simple_HttpTelemetry(void)
         (unsigned long)UINT32_T__G__RxCrcError,
         (unsigned long)UINT32_T__G__RxVersionMismatch,
         (UINT8_T__G__TlmFlags & 0x02u) ? 1u : 0u,
-        CHAR__G__CurrentUser,
-        (unsigned int)UINT8_T__G__CurrentRole,
+        char__ptr_user,
+        (unsigned int)uint8_t__role,
         (unsigned int)UINT8_T__G__Theme,
         (unsigned long)uint32_t__panelTimeSec,
         (unsigned long)uint32_t__panelTimeSec,
@@ -523,11 +526,25 @@ static void func__Simple_HttpLogin(void)
         return;
     }
 
-    if (func__Simple_AuthLogin(string__user.c_str(), string__pass.c_str()))
+    int32_t int32_t__login = func__Simple_AuthLogin(string__user.c_str(), string__pass.c_str());
+    if (int32_t__login == 1)
     {
         char char__buf[128];
+        char char__cookie[160];
+        (void)snprintf(char__cookie, sizeof(char__cookie),
+                       "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%lu",
+                       SIMPLE_SESSION_COOKIE, CHAR__G__SessionToken,
+                       (unsigned long)(SIMPLE_SESSION_TIMEOUT_MS / 1000u));
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Set-Cookie", char__cookie);
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
         (void)snprintf(char__buf, sizeof(char__buf), "{\"ok\":1,\"user\":\"%s\",\"role\":%u}", CHAR__G__CurrentUser, (unsigned int)UINT8_T__G__CurrentRole);
         SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
+    }
+    else if (int32_t__login == -1)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+        SIMPLE_WEB_SERVER_T__G__Server.send(409, "application/json",
+            "{\"ok\":0,\"e\":\"busy\",\"msg\":\"یک ورود فعال هست؛ فقط دسترسی بالاتر می‌تواند جای آن را بگیرد\"}");
     }
     else
     {
@@ -538,7 +555,13 @@ static void func__Simple_HttpLogin(void)
 /* ==================== خروج ==================== */
 static void func__Simple_HttpLogout(void)
 {
-    func__Simple_AuthLogout();
+    if (func__Simple_SessionValid())
+    {
+        func__Simple_AuthLogout();
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Set-Cookie",
+        SIMPLE_SESSION_COOKIE "=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
 
