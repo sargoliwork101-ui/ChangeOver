@@ -2290,6 +2290,27 @@ def sec_single_session():
        "ESP_USER offline preview does not mirror the single-session login policy")
 
 
+def sec_diag_clock():
+    """[EN] The live charge clock advances only with active charging and fresh
+       telemetry; board uptime is independent.
+       [FA] ساعت شارژ فقط با شارژ فعال و داده تازه جلو می‌رود؛ کارکرد برد جداست."""
+    panel = read("ESP_USER/simple_panel.h")
+    ok("g_diagChargeAccumMs" in panel and "g_diagChargeTickAt" in panel,
+       "ESP_USER panel lacks a separate charge-clock accumulator")
+    ok("g_tlmReceiveAt=Date.now()" in panel,
+       "ESP_USER panel does not timestamp received telemetry for the charge clock")
+    ok("g_isCharging && tlmFresh" in panel,
+       "ESP_USER charge clock is not gated by active charging and fresh telemetry")
+    ok("g_diagBase.charge+Math.floor(g_diagChargeAccumMs/1000)" in panel,
+       "ESP_USER charge clock does not add only the gated accumulator")
+    test = read("ESP_USER/Tester/host_test_diag_clock.js")
+    ok("ALL ESP_USER DIAG CLOCK TESTS PASSED" in test,
+       "ESP_USER diag-clock DOM test is missing")
+    runner = read("ESP_USER/Tester/run_simple_tests.sh")
+    ok("host_test_diag_clock.js" in runner,
+       "ESP_USER test runner does not run the diag-clock DOM test")
+
+
 def main():
     ids = sec_ids()
     sec_counts()
@@ -2312,6 +2333,7 @@ def main():
     sec_input_schmitt()
     sec_ov_single_source()
     sec_single_session()
+    sec_diag_clock()
 
     print("whole-program consistency audit")
     print("=" * 72)

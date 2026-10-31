@@ -1534,6 +1534,7 @@ function setBatFill(id, pct, status, gradOverride){
 }
 function render(data){
  lastData=data;
+ g_tlmReceiveAt=Date.now(); /* تازگی داده برای ساعت شارژ؛ قطع fetch یعنی داده کهنه */
  updBoardParams(data.pv); /* پارامترهای خود برد پیش از هر محاسبه‌ای */
  let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
  let vPack=vPackRaw; /* برد اصلی درصد را از V24 (v_bat24_mv) می‌گیرد - چشمک سبز - نه از جمع Vlow+Vhigh */
@@ -1736,15 +1737,26 @@ function render(data){
 }
 
 /* ==================== ساعت‌های زندهٔ کارت آمار ====================
-   دیاگ هر ۵ ثانیه می‌آید؛ بین دو دیاگ همین تابع هر ثانیه عدد را جلو می‌برد
-   تا «زمان کل شارژ» و «کارکرد برد» زنده و شمرده‌شده دیده شوند. */
+   دیاگ هر ۵ ثانیه می‌آید. «کارکرد برد» بین دو دیاگ جلو می‌رود، ولی
+   «زمان کل شارژ» فقط وقتی جلو می‌رود که شارژ فعال و تله‌متری تازه باشد.
+   در بی‌کاری، قطع لینک یا کهنه‌شدن داده، عدد شارژ ثابت می‌ماند تا الکی
+   بالا نرود و بعد برنگردد. */
 let g_diagBase=null;
+let g_diagChargeAccumMs=0;
+let g_diagChargeTickAt=0;
+let g_tlmReceiveAt=0;
 function tickDiagClocks(){
  if(!g_diagBase) return;
- if(document.hidden) return;
- let extra=Math.floor((Date.now()-g_diagBase.at)/1000);
- setTxt('stChargeTime', fmtSecLive(g_diagBase.charge+extra));
+ let now=Date.now();
+ if(document.hidden){ g_diagChargeTickAt=now; return; }
+ let extra=Math.floor((now-g_diagBase.at)/1000);
  setTxt('stUptime', fmtSecLive(g_diagBase.uptime+extra));
+ let chargeDelta=now-g_diagChargeTickAt;
+ g_diagChargeTickAt=now;
+ if(chargeDelta<0) chargeDelta=0;
+ let tlmFresh=lastData && lastData.on && ((now-g_tlmReceiveAt)<=2500);
+ if(g_isCharging && tlmFresh) g_diagChargeAccumMs+=chargeDelta;
+ setTxt('stChargeTime', fmtSecLive(g_diagBase.charge+Math.floor(g_diagChargeAccumMs/1000)));
 }
 function renderDiag(j){
  if(!j) return;
@@ -1752,9 +1764,13 @@ function renderDiag(j){
     صفر» اشتباه نشود؛ همان لحظهٔ رسیدن دیاگ اول، ساعت زنده راه می‌افتد */
  if(!j.valid){
   g_diagBase=null;
+  g_diagChargeAccumMs=0;
   setTxt('stChargeTime', '--'); setTxt('stUptime', '--');
  } else {
-  g_diagBase={at:Date.now(), charge:(j.totalChargeSec||0), uptime:(j.uptimeSec||0)};
+  let now=Date.now();
+  g_diagBase={at:now, charge:(j.totalChargeSec||0), uptime:(j.uptimeSec||0)};
+  g_diagChargeAccumMs=0;
+  g_diagChargeTickAt=now;
   tickDiagClocks();
  }
  let elCount=document.getElementById('stChargeCount'); if(elCount) elCount.textContent=j.chargeCount||'--';
