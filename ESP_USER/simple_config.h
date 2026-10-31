@@ -129,7 +129,8 @@
 #define SIMPLE_PARAM_INPUT_MAX_MV         34u
 #define SIMPLE_PARAM_INPUT_HYST_LOW_MV    169u
 #define SIMPLE_PARAM_INPUT_HYST_HIGH_MV   170u
-#define SIMPLE_PARAM_UI_COUNT           18u    /* تعداد پارامترهایی که پنل می‌خواند */
+#define SIMPLE_PARAM_OV_HYST_MV          71u
+#define SIMPLE_PARAM_UI_COUNT           19u    /* تعداد پارامترهایی که پنل می‌خواند */
 
 /* ==================== وای‌فای ==================== */
 #define SIMPLE_WIFI_AP_SSID             "changeover_userpannel"

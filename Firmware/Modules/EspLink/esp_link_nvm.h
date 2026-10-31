@@ -128,13 +128,13 @@
  *      2 KiB two-page bank. The seven scenario ticks take the persisted set
  *      to 163, so the old 160 cap had to grow; no version bump, the record
  *      still stores its own entry count. The active persisted set is now ids
- *      0..14, 20..170 except 72/73 and 76, plus runtime slots 200..203; the
+ *      0..14, 20..170 except 70 (derived), 72/73 and 76, plus runtime slots 200..203; the
  *      thermal ids 166..168 raised the high-water mark and the 168-entry cap
  *      already covered them (v1.102).
  *      [FA] ۱۷۲ جا (۱۳۹۲ بایت) که هنوز در بانک ۲KB جا می‌شود.
  *      هفت تیک سناریو مجموعه را به ۱۶۳ رساند و سقف ۱۶۰ باید بزرگ می‌شد؛
  *      نسخهٔ قالب عوض نمی‌شود چون رکورد تعداد خودش را ذخیره می‌کند. مجموعهٔ فعال
- *      حالا شناسه‌های ۰..۱۴ و ۲۰..۱۷۰ است، به‌جز ۷۲/۷۳ و ۷۶، به‌علاوهٔ ۲۰۰..۲۰۳؛
+ *      حالا شناسه‌های ۰..۱۴ و ۲۰..۱۷۰ است، به‌جز ۷۰ (مشتق)، ۷۲/۷۳ و ۷۶، به‌علاوهٔ ۲۰۰..۲۰۳؛
  *      شناسه‌های حرارتی ۱۶۶..۱۶۸ (v1.102) و حاشیه‌های مشترک اشمیت ورودی
  *      ۱۶۹/۱۷۰ سقف ماندگار را بالا بردند؛ سقف جا ۱۷۲ است. */
 #define ESP_LINK_NVM_ENTRY_MAX         172u
@@ -181,6 +181,10 @@
 #define ESP_LINK_NVM_RETIRED_ID_FIRST        72u
 #define ESP_LINK_NVM_RETIRED_ID_LAST         73u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
+/* [EN] v1.104: id 70 is a read-only mirror of the shared q34 upper input
+   limit. It is derived at runtime, never independently stored.
+   [FA] شناسهٔ ۷۰ آینهٔ فقط‌خواندنی q34 است و هرگز جداگانه ذخیره نمی‌شود. */
+#define ESP_LINK_NVM_DERIVED_ID_OV_THRESH      70u
 /* [EN] Imbalance runtime slots (scenario 5, v10): persisted but NEVER user
  *      parameters - the module itself writes them; the panel never draws and
  *      never backs them up.

@@ -528,7 +528,7 @@ def ui_clamp_mirror(s):
          "runDoubleCount": (0, 10), "runTriCount": (0, 10), "runGapMs": (0, 5000),
          "greenPeriodMs": (100, 10000), "greenMinOffMs": (0, 10000),
          "yellowPeriodMs": (100, 10000), "yellowMinOnMs": (0, 10000),
-         "ovThreshMv": (24000, 32000), "ovHystMv": (0, 2000),
+         "ovHystMv": (0, 2000),
          "retiredLowBatThreshMv": (0, 0), "retiredLowBatClearMv": (0, 0),
          "pctVminMv": (15000, 25000), "pctVmaxMv": (25000, 32000),
          "buzzerMute": (0, 1), "chgFullEnterPct": (1, 100), "chgFullExitPct": (0, 100),
@@ -722,7 +722,7 @@ def run_ui_alarm_tests():
                 "both maps share one formula")
     assert_true("uint32_t__ovThreshMv" in ui_led_c
                 and "uint32_t__lowBatThreshMv" not in ui_led_c,
-                "the OV threshold is live (70) and the retired 72/73 window is gone")
+                "the OV threshold word is reserved padding and the retired 72/73 window is gone")
     assert_true("APP_CONFIG.ui_blink_period_ms" not in ui_led_c
                 and "APP_CONFIG.ui_charging_blink_period_ms" not in ui_led_c,
                 "no scenario reads blink periods from APP_CONFIG anymore")
@@ -758,8 +758,8 @@ def run_ui_alarm_tests():
                     label + " green windows")
         assert_true(100 <= s["yellowPeriodMs"] <= 10000 and 0 <= s["yellowMinOnMs"] <= 10000,
                     label + " yellow windows")
-        assert_true(24000 <= s["ovThreshMv"] <= 32000 and 0 <= s["ovHystMv"] <= 2000
-                    and s["ovHystMv"] < s["ovThreshMv"], label + " OV thresh (no underflow)")
+        assert_true(s["ovThreshMv"] == 28000, label + " OV thresh word is reserved (never written)")
+        assert_true(0 <= s["ovHystMv"] <= 2000, label + " OV hysteresis window")
         assert_true(s["retiredLowBatThreshMv"] == 0
                     and s["retiredLowBatClearMv"] == 0,
                     label + " retired low-battery words stay zero")
@@ -777,6 +777,7 @@ def run_ui_alarm_tests():
     for trial in range(2000):
         r = {}
         for f in fields:
+            if f == "ovThreshMv": r[f] = 28000; continue
             if "Pct" in f or "Duty" in f: r[f] = random.randint(0, 150)
             elif "Count" in f or "Mute" in f or "mute" in f: r[f] = random.randint(0, 15)
             elif "Mv" in f: r[f] = random.randint(0, 40000)
@@ -1028,7 +1029,7 @@ int main(void)
             { 64u, 0u, 10u, 0u }, { 65u, 0u, 5000u, 0u },
             { 66u, 100u, 10000u, 0u }, { 67u, 0u, 10000u, 0u },
             { 68u, 100u, 10000u, 0u }, { 69u, 0u, 10000u, 0u },
-            { 70u, 24000u, 32000u, 0u }, { 71u, 0u, 2000u, 0u },
+            { 71u, 0u, 2000u, 0u },
             { 74u, 15000u, 25000u, 0u }, { 75u, 25000u, 32000u, 0u },
             { 76u, 0u, 1u, 0u },
             { 77u, 1u, 100u, 0u }, { 78u, 0u, 100u, 0u },
@@ -1063,6 +1064,10 @@ int main(void)
         {
             return 22;
         }
+        /* v1.104: id 70 is a read-only mirror of q34; writes must be rejected */
+        if (func__Ui_SetAlarmParam(70u, 30000u, &prev)) { return 23; }
+        /* GetAlarmParam(70) must return the fallback ceiling in Fault-off builds */
+        if (!func__Ui_GetAlarmParam(70u, &prev) || prev != UI_INPUT_WINDOW_MAX_MV) { return 24; }
     }
     return 0;
 }
@@ -1171,9 +1176,9 @@ def main():
     assert_true("BOOL__G__UiInputPresent = false;" in ui_led_c,
                 "UI presence fails closed when the shared snapshot is invalid")
     assert_true("UI_ALARM_PARAM_OV_THRESH_MV" in ui_led_h and
-                "UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv" in ui_led_c and
+                "func__Fault_GetInputWindow" in ui_led_c and
                 "UI_ALARM_T__G__Alarm.uint32_t__ovHystMv" in ui_led_c,
-                "scenario-1 OV alarm remains on its own q70/q71 pair")
+                "scenario-1 OV threshold = shared q34; only hysteresis q71 is independent")
     print("Shared input window contract PASS")
     on,off=green_timing(57)
     assert_true(on+off==UI_BLINK_PERIOD_MS,"green on+off period")

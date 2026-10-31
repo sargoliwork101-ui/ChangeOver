@@ -240,6 +240,16 @@ int main(void)
     require_check(g_erase_attempts == 8u,
                   "a transient edit does not schedule an NVM save");
 
+    /* [EN] v1.104: id 70 is a derived read-only mirror of q34; it must not
+       be persisted and must not wake the save machine.
+       [FA] شناسهٔ ۷۰ آینهٔ مشتق q34 است؛ نه ذخیره می‌شود نه ذخیره‌ساز را بیدار می‌کند. */
+    require_check(func__EspLink_NvmParamPersisted(70u) == false,
+                  "derived OV threshold id 70 is not persisted");
+    func__EspLink_NvmMarkDirty(70u);
+    tick_until_exhausted();
+    require_check(g_erase_attempts == 8u,
+                  "a derived-id edit does not schedule an NVM save");
+
     /* ==== full persistence cycle (user bug 2026-10-07) ====
        [EN] "Settings revert after a board reset" - the RESTORE path had
             never been tested (this file used to stub flash as always

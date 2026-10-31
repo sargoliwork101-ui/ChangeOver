@@ -495,7 +495,10 @@ inline void func__Sim_SendDiagSet(void)
 inline void func__Sim_SendParamReport(uint8_t uint8_t__id)
 {
     uint8_t uint8_t__payload[SIM_PARAM_ITEM_SIZE];
-    uint32_t uint32_t__value = SIM_BOARD_STATE_T__G__Board.param[uint8_t__id];
+    /* id 70 is a read-only mirror of the shared upper input limit (id 34) */
+    uint32_t uint32_t__value = (uint8_t__id == 70u)
+        ? SIM_BOARD_STATE_T__G__Board.param[34u]
+        : SIM_BOARD_STATE_T__G__Board.param[uint8_t__id];
 
     uint8_t__payload[0] = uint8_t__id;
     uint8_t__payload[1] = (uint8_t)(uint32_t__value & 0xFFu);
@@ -537,7 +540,9 @@ inline void func__Sim_SendParamsBulk(void)
         {
             uint8_t uint8_t__id = (uint8_t)(uint32_t__start + uint32_t__item);
             uint16_t uint16_t__offset = (uint16_t)(1u + (uint32_t__item * SIM_PARAM_ITEM_SIZE));
-            uint32_t uint32_t__value = SIM_BOARD_STATE_T__G__Board.param[uint8_t__id];
+            uint32_t uint32_t__value = (uint8_t__id == 70u)
+                ? SIM_BOARD_STATE_T__G__Board.param[34u]
+                : SIM_BOARD_STATE_T__G__Board.param[uint8_t__id];
 
             uint8_t__payload[uint16_t__offset] = uint8_t__id;
             uint8_t__payload[uint16_t__offset + 1u] = (uint8_t)(uint32_t__value & 0xFFu);
@@ -598,6 +603,7 @@ inline void func__Sim_HandleEspFrame(const uint8_t *uint8_t__ptr_payload,
         else if (uint8_t__id == 201u) { SIM_BOARD_STATE_T__G__Board.imbLatchedCycles = uint32_t__value; }
         else if (uint8_t__id == 200u) { SIM_BOARD_STATE_T__G__Board.imbEvents = uint32_t__value; }
         else if (uint8_t__id == 203u) { SIM_BOARD_STATE_T__G__Board.deadMask = uint32_t__value & 0x03u; }
+        else if (uint8_t__id == 70u) { return; /* read-only mirror of id 34 */ }
         else if (uint8_t__id < SIM_PARAM_COUNT) { SIM_BOARD_STATE_T__G__Board.param[uint8_t__id] = uint32_t__value; }
         else { return; }   /* شناسهٔ ناشناخته: بی‌صدا رد می‌شود */
 

@@ -2205,6 +2205,53 @@ def sec_input_schmitt():
        "panel preview does not mirror the shared input permission")
 
 
+def sec_ov_single_source():
+    """[EN] v1.104 user order: the OV alarm threshold IS the shared upper input
+       limit (q34). It must not be editable from a second place; only the
+       hysteresis (q71) stays adjustable. id 70 is a read-only mirror.
+       [FA] دستور کاربر: آستانهٔ آلارم اضافه‌ولتاژ همان سقف مشترک ورودی (q34)
+       است و نباید از جای دوم تغییر کند؛ فقط هیسترزیس (q71) تنظیم می‌شود.
+       شناسهٔ ۷۰ آینهٔ فقط‌خواندنی است."""
+    ui = read("Firmware/Modules/Ui/ui_led.c")
+    ok("if (uint8_t__paramId == UI_ALARM_PARAM_OV_THRESH_MV)" in ui and
+       ui.count("if (uint8_t__paramId == UI_ALARM_PARAM_OV_THRESH_MV)") >= 2,
+       "Ui must both reject writes to id 70 and derive reads from q34")
+    ok("uint32_t__ovThreshMv = uint32_t__maxMv" in ui,
+       "Ui OV trip threshold is not derived from the shared upper input limit")
+    ok("func__Fault_GetInputWindow" in ui,
+       "Ui does not read the live shared input window for the OV threshold")
+
+    nvm_h = read("Firmware/Modules/EspLink/esp_link_nvm.h")
+    nvm_c = read("Firmware/Modules/EspLink/esp_link_nvm.c")
+    ok(define(nvm_h, "ESP_LINK_NVM_DERIVED_ID_OV_THRESH") == 70,
+       "NVM derived-id define for the OV threshold is missing or wrong")
+    ok("ESP_LINK_NVM_DERIVED_ID_OV_THRESH" in nvm_c,
+       "NVM does not exclude the derived OV threshold id from persistence")
+
+    pan = read("ESP_Calibration/plink_panel.h")
+    ok('id="q70"' in pan and "readonly" in pan.split('id="q70"')[1][:200],
+       "calibration panel q70 is not a read-only mirror")
+    ok('id="ovjmp"' in pan and "function ovjump()" in pan,
+       "calibration panel is missing the one-click jump to the q34 field")
+    ok("id!==70&&id!==72&&id!==73&&id!==76" in pan,
+       "panel backup set still includes the derived id 70")
+    ok("n===70)continue" in pan,
+       "panel pending-restore still accepts the derived id 70")
+
+    user = read("ESP_USER/simple_panel.h")
+    ok("const ovThr=brd.imax" in user and "ovClr=brd.imax-brd.ovHyst" in user,
+       "ESP_USER OV threshold/clear are not derived from the board limits")
+    ok("حد ۲۸ ولت" not in user and "حد 28 ولت" not in user,
+       "ESP_USER still shows a fixed 28 V warning text")
+    cfg = read("ESP_USER/simple_config.h")
+    ok(define(cfg, "SIMPLE_PARAM_OV_HYST_MV") == 71,
+       "ESP_USER OV hysteresis id is not 71")
+
+    sim = read("ESP_USER/Simulator/sim_board.h")
+    ok("(uint8_t__id == 70u)" in sim and "param[34u]" in sim,
+       "ESP_USER simulator does not derive id 70 from q34")
+
+
 def main():
     ids = sec_ids()
     sec_counts()
@@ -2225,6 +2272,7 @@ def main():
     sec_state_machine_docs()
     sec_panel_markup()
     sec_input_schmitt()
+    sec_ov_single_source()
 
     print("whole-program consistency audit")
     print("=" * 72)

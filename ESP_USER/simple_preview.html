@@ -372,7 +372,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
   var SCALES = {"mv_per_count_24": 8.864468864468865, "mv_per_count_12": 4.8823313940961, "mv_per_count_adc": 0.8058608058608059, "vrefint_counts": 1489, "vdda_mv": 3300};          /* میلی‌ولت بر شمارش ADC (یا null) */
   var WIFI_SSID = "changeover_userpannel";
   var WIFI_PASS = "123456789";
-  var PANEL = {"WP": 2, "T_VIN": 14, "T_V24": 15, "T_VLOW": 17, "T_VHIGH": 18, "T_FAULT": 19, "T_STATE1": 6, "T_STATE2": 13, "T_IMB": 25, "T_DEAD": 28, "FAULT_ADC": 1, "FAULT_BAT_LOST": 1, "FAULT_TECH": 1, "INPUT_CONN_THR": 21000, "INPUT_WINDOW_MAX": 28000, "INPUT_HYST_DEFAULT": 500, "INPUT_OV_THR": 28000, "INPUT_OV_CLEAR": 27000, "BAT_VMIN": 21000, "BAT_VMAX": 29000, "HALF_VMIN": 10500, "HALF_VMAX": 14500, "CHG_VMIN": 21000, "CHG_VMAX": 29000, "RUN_HYST": 2, "CHG_HYST": 5, "ZERO_EXIT": 2, "ONE_EXIT": 3, "FULL_ENTER": 100, "FULL_EXIT": 95, "GREEN_PERIOD": 1000, "GREEN_MIN_OFF": 10, "YELLOW_PERIOD": 1000, "YELLOW_MIN_ON": 150, "YELLOW_MIN_REMAIN": 2, "CHART_PAD_L": 34, "CHART_PAD_R": 8, "CHART_PAD_T": 8, "CHART_PAD_B": 8};            /* ثابت‌های عددی خود پنل */
+  var PANEL = {"WP": 2, "T_VIN": 14, "T_V24": 15, "T_VLOW": 17, "T_VHIGH": 18, "T_FAULT": 19, "T_STATE1": 6, "T_STATE2": 13, "T_IMB": 25, "T_DEAD": 28, "FAULT_ADC": 1, "FAULT_BAT_LOST": 1, "FAULT_TECH": 1, "INPUT_CONN_THR": 21000, "INPUT_WINDOW_MAX": 28000, "INPUT_HYST_DEFAULT": 500, "OV_HYST_DEFAULT": 1000, "BAT_VMIN": 21000, "BAT_VMAX": 29000, "HALF_VMIN": 10500, "HALF_VMAX": 14500, "CHG_VMIN": 21000, "CHG_VMAX": 29000, "RUN_HYST": 2, "CHG_HYST": 5, "ZERO_EXIT": 2, "ONE_EXIT": 3, "FULL_ENTER": 100, "FULL_EXIT": 95, "GREEN_PERIOD": 1000, "GREEN_MIN_OFF": 10, "YELLOW_PERIOD": 1000, "YELLOW_MIN_ON": 150, "YELLOW_MIN_REMAIN": 2, "CHART_PAD_L": 34, "CHART_PAD_R": 8, "CHART_PAD_T": 8, "CHART_PAD_B": 8};            /* ثابت‌های عددی خود پنل */
   var BOOT = {"vin": 24000, "vpack": 25500, "vlow": 12500, "vhigh": 13000};              /* نقطهٔ شروع اسلایدرها */
   var MA_PER_COUNT = 0.877670;
   var UV_PER_COUNT = 8.774;
@@ -396,14 +396,15 @@ code,pre,.mono{font-family:Vazirmatn !important}
     rZero: PANEL.ZERO_EXIT, rOne: PANEL.ONE_EXIT,
     cvmin: PANEL.CHG_VMIN, cvmax: PANEL.CHG_VMAX,
     imin: PANEL.INPUT_CONN_THR, imax: PANEL.INPUT_WINDOW_MAX,
-    ihl: PANEL.INPUT_HYST_DEFAULT, ihh: PANEL.INPUT_HYST_DEFAULT
+    ihl: PANEL.INPUT_HYST_DEFAULT, ihh: PANEL.INPUT_HYST_DEFAULT,
+    ovHyst: PANEL.OV_HYST_DEFAULT
   };
   var inputArmed = false;
   function boardParamsBody() {
     return ',"pvOk":1,"pv":[' + [board.gPer, board.gOff, board.yPer, board.yOn,
       board.vmin, board.vmax, board.hEnt, board.hExit, board.cHyst, board.rHyst,
       board.rZero, board.rOne, board.cvmin, board.cvmax,
-      board.imin, board.imax, board.ihl, board.ihh].join(',') + ']';
+      board.imin, board.imax, board.ihl, board.ihh, board.ovHyst].join(',') + ']';
   }
   function changedParamQuery() {
     var query = '';
@@ -1078,7 +1079,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
         board.vmin = PANEL.BAT_VMIN; board.vmax = PANEL.BAT_VMAX;
         board.cvmin = PANEL.CHG_VMIN; board.cvmax = PANEL.CHG_VMAX;
         board.imin = PANEL.INPUT_CONN_THR; board.imax = PANEL.INPUT_WINDOW_MAX;
-        board.ihl = PANEL.INPUT_HYST_DEFAULT; board.ihh = PANEL.INPUT_HYST_DEFAULT; inputArmed = false;
+        board.ihl = PANEL.INPUT_HYST_DEFAULT; board.ihh = PANEL.INPUT_HYST_DEFAULT;
+        board.ovHyst = PANEL.OV_HYST_DEFAULT; inputArmed = false;
      }]
     ].forEach(function (scenario) {
       var button = el('button', { 'class': 'btn sec' }, scenario[0]);
@@ -1546,7 +1548,7 @@ loadTheme();
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
-const INPUT_CONN_THR=21000, INPUT_WINDOW_MAX=28000, INPUT_HYST_DEFAULT=500, INPUT_OV_THR=28000, INPUT_OV_CLEAR=27000;
+const INPUT_CONN_THR=21000, INPUT_WINDOW_MAX=28000, INPUT_HYST_DEFAULT=500, OV_HYST_DEFAULT=1000;
 const BAT_VMIN=21000, BAT_VMAX=29000, HALF_VMIN=10500, HALF_VMAX=14500;
 const CHG_VMIN=21000, CHG_VMAX=29000;
 const RUN_HYST=2, CHG_HYST=5, ZERO_EXIT=2, ONE_EXIT=3, FULL_ENTER=100, FULL_EXIT=95;
@@ -1561,15 +1563,15 @@ let brd={gPer:GREEN_PERIOD, gOff:GREEN_MIN_OFF, yPer:YELLOW_PERIOD, yOn:YELLOW_M
          vmin:BAT_VMIN, vmax:BAT_VMAX, halfMin:HALF_VMIN, halfMax:HALF_VMAX,
          hEnt:FULL_ENTER, hExit:FULL_EXIT, cHyst:CHG_HYST, rHyst:RUN_HYST,
          rZero:ZERO_EXIT, rOne:ONE_EXIT, cvmin:CHG_VMIN, cvmax:CHG_VMAX,
-         imin:INPUT_CONN_THR, imax:INPUT_WINDOW_MAX, ihl:INPUT_HYST_DEFAULT, ihh:INPUT_HYST_DEFAULT};
+         imin:INPUT_CONN_THR, imax:INPUT_WINDOW_MAX, ihl:INPUT_HYST_DEFAULT, ihh:INPUT_HYST_DEFAULT, ovHyst:OV_HYST_DEFAULT};
 function updBoardParams(pv){
- if(!pv || pv.length<18) return;
+ if(!pv || pv.length<19) return;
  let num=function(i){ let v=parseInt(pv[i],10); return isNaN(v)?0:v; };
  let gPer=num(0), gOff=num(1), yPer=num(2), yOn=num(3);
  let vmin=num(4), vmax=num(5), hEnt=num(6), hExit=num(7);
  let cHyst=num(8), rHyst=num(9), rZero=num(10), rOne=num(11);
  let cvmin=num(12), cvmax=num(13);
- let imin=num(14), imax=num(15), ihl=num(16), ihh=num(17);
+ let imin=num(14), imax=num(15), ihl=num(16), ihh=num(17), ovHyst=num(18);
  if(gPer>0) brd.gPer=gPer;
  if(gOff>=0) brd.gOff=gOff;
  if(yPer>0) brd.yPer=yPer;
@@ -1585,6 +1587,7 @@ function updBoardParams(pv){
  if(imin>0 && imax>imin){ brd.imin=imin; brd.imax=imax; }
  if(ihl>=0) brd.ihl=ihl;
  if(ihh>=0) brd.ihh=ihh;
+ if(ovHyst>=0) brd.ovHyst=ovHyst;
 }
 
 function vToPctMap(v, vmin, vmax){ if(v<=vmin) return 0; if(v>=vmax) return 100; return Math.floor(((v-vmin)*100)/(vmax-vmin)); }
@@ -1775,10 +1778,11 @@ function updFull(raw){
  return g_fullActive;
 }
 function updInputState(vIn, gpioFlag){
+ const ovThr=brd.imax, ovClr=brd.imax-brd.ovHyst;
  if(!g_inputOV){
-  if(vIn>INPUT_OV_THR) g_inputOV=true;
+  if(vIn>ovThr) g_inputOV=true;
  } else {
-  if(vIn<=INPUT_OV_CLEAR) g_inputOV=false;
+  if(vIn<=ovClr) g_inputOV=false;
  }
  if(vIn>0){
   /* همان اشمیت مشترک فرم‌ور: بیرون پنجرهٔ خام فوراً قطع؛ برگشت فقط با
@@ -2464,7 +2468,7 @@ function render(data){
  else if(fault & FAULT_BAT_LOST){ stTxt='باتری قطع شده'; ssTxt='سیم باتری را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
  else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='برد نیاز به بررسی دارد'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
  else if(fault & FAULT_ADC){ stTxt='در حال بررسی'; ssTxt='سنسورها در حال کالیبره'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد ۲۸ ولت'; }
+ else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد '+(brd.imax/1000).toFixed(1)+' ولت'; }
  else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; }
  else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری را تعویض کنید'; }
  else if(isWeak){ stTxt='باتری ضعیف'; ssTxt='حکم قفل است - باتری بار را تحمل نمی‌کند'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='حکم باتری ضعیف: مسیر باتری بسته مانده؛ با شارژ و استراحت سالم خودش پاک می‌شود'; }

@@ -2062,7 +2062,7 @@ def test_ui_mirror_v116():
     # [FA] خط توضیح بازه‌ها حذف شد (باز هم کهنه شده بود)؛ آنچه باید بماند خود
     #      ساز و کار است: XIDS فهرست را از AIDS می‌سازد.
     check("XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino
-          and "AIDS.forEach(id=>{if(id!==72&&id!==73&&id!==76)XIDS.push(id);});" in ino,
+          and "AIDS.forEach(id=>{if(id!==70&&id!==72&&id!==73&&id!==76)XIDS.push(id);});" in ino,
           "v1.16c (user order: ONE backup for the whole settings): all persisted ids "
           "0..14 + 20..75 + 77..136 (with 132/133 imbalance beep, 134/135 dead-battery beep and 136 clean-FLOAT-cycle threshold; slots 200..203 stay board-only). "
           "XIDS extends itself from AIDS, so the limits block "

@@ -217,7 +217,7 @@ static void func__Ui_ClampAlarms(void)
         {   5000u,     0u, 0u, 0u }, /* [EN] 5: beep gap 0..5000 / [FA] ۵: گپ بوق */
         { 120000u,     0u, 0u, 0u }, /* [EN] 6: crit total dur 0..120000 / [FA] ۶: مدت بحرانی */
         {  10000u,     0u, 0u, 0u }, /* [EN] 7: min on/off 0..10000 / [FA] ۷: کف روشن/خاموش */
-        {  32000u, 24000u, 0u, 0u }, /* [EN] 8: ovThreshMv 24000..32000 / [FA] ۸: آستانه اضافه‌ولتاژ */
+        {      0u,     0u, 0u, 1u }, /* [EN] 8: reserved (OV threshold = live q34) / [FA] ۸: رزرو (آستانه = q34 زنده) */
         {   2000u,     0u, 0u, 0u }, /* [EN] 9: ovHystMv 0..2000 / [FA] ۹: هیسترزیس اضافه‌ولتاژ */
         {      0u,     0u, 0u, 1u }, /* [EN] 10: retired padding / [FA] ۱۰: واژهٔ بازنشسته */
         {  25000u, 15000u, 0u, 0u }, /* [EN] 11: pct Vmin 15000..25000 / [FA] ۱۱: کف نگاشت درصد */
@@ -460,6 +460,14 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
        [FA] قفل زمان‌بند سمت نویسنده: امروز عملاً افزونه (خواننده پایین‌تر
        از نویسنده است) ولی ست ۴۶فیلدی را در برابر جابه‌جایی آیندهٔ
        اولویت‌ها می‌بندد. */
+    /* [EN] v1.104: id 70 is a read-only mirror of the shared q34 upper input
+       limit. Writes are rejected so the threshold cannot diverge from q34.
+       [FA] شناسهٔ ۷۰ آینهٔ فقط‌خواندنی q34 است؛ نوشتن رد می‌شود. */
+    if (uint8_t__paramId == UI_ALARM_PARAM_OV_THRESH_MV)
+    {
+        return false;
+    }
+
     int32_t__savedKernelLock = osKernelLock();
 
     /* [EN] Indexed store (flash diet 2026-09-27: the 39-case switch cost
@@ -500,6 +508,27 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
     if (uint32_t__value == NULL)
     {
         return false;
+    }
+
+    /* [EN] v1.104: id 70 mirrors the live shared upper input limit (q34).
+       [FA] شناسهٔ ۷۰ آینهٔ زندهٔ سقف مشترک ورودی (q34) است. */
+    if (uint8_t__paramId == UI_ALARM_PARAM_OV_THRESH_MV)
+    {
+#if MODULE_FAULT
+        uint32_t uint32_t__minMv = 0u;
+        uint32_t uint32_t__maxMv = 0u;
+        if (func__Fault_GetInputWindow(&uint32_t__minMv, &uint32_t__maxMv) == true)
+        {
+            *uint32_t__value = uint32_t__maxMv;
+        }
+        else
+        {
+            *uint32_t__value = UI_INPUT_WINDOW_MAX_MV;
+        }
+#else
+        *uint32_t__value = UI_INPUT_WINDOW_MAX_MV;
+#endif
+        return true;
     }
 
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
@@ -1309,29 +1338,47 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
  * @brief  [EN] Update input presence and input overvoltage state.
  *         Presence uses the shared healthy-input window q33/q34 (Fault):
  *         enter inside [q33,q34]; release below q33-1V or above q34 immediately.
- *         Scenario-1 overvoltage keeps its own runtime pair q70/q71.
+ *         Scenario-1 OV threshold = live q34; only hysteresis q71 is adjustable.
  *         [FA] وضعیت حضور و اضافه‌ولتاژ ورودی را به‌روز می‌کند.
- *         حضور از پنجرهٔ مشترک ورودی سالم ‎q33/q34 (Fault)‎ استفاده می‌کند:
- *         ورود داخل [q33,q34]؛ رهاسازی زیر ‎q33-1V‎ یا بالای q34 فوراً.
- *         اضافه‌ولتاژ سناریو ۱ جفت زمان‌اجرای مستقل ‎q70/q71‎ خود را دارد.
+ *         حضور از پنجرهٔ مشترک ورودی سالم ‎q33/q34 (Fault)‎ استفاده می‌کند.
+ *         آستانهٔ اضافه‌ولتاژ = q34 زنده؛ فقط هیسترزیس q71 تنظیم‌شدنی است.
  * @param  uint32_t__inputVoltageMv [EN] Input voltage in mV / ولتاژ ورودی بر حسب میلی‌ولت
  */
 static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
 {
-    /* [EN] v1.16: the overvoltage threshold (id 70) and its hysteresis
-       (id 71) are runtime; clear = thresh - hyst, no underflow (71 <=
-       2000 < 24000 <= 70 by clamp).
-       [FA] آستانه/هیسترزیس اضافه‌ولتاژ زمان‌اجرا (۷۰/۷۱)؛ پاک‌سازی = آستانه−هیسترزیس. */
+    /* [EN] v1.104 (user order): the OV threshold IS the shared upper input
+       limit (q34). Only the hysteresis (q71) remains independently adjustable.
+       clear = q34 - q71; no underflow because q34 >= 24000 and q71 <= 2000.
+       [FA] آستانهٔ اضافه‌ولتاژ همان سقف مشترک ورودی (q34) است. فقط هیسترزیس
+       (q71) مستقل تنظیم می‌شود. پاک‌سازی = q34 − q71. */
+    uint32_t uint32_t__ovThreshMv;
+#if MODULE_FAULT
+    {
+        uint32_t uint32_t__minMv = 0u;
+        uint32_t uint32_t__maxMv = 0u;
+        if (func__Fault_GetInputWindow(&uint32_t__minMv, &uint32_t__maxMv) == true)
+        {
+            uint32_t__ovThreshMv = uint32_t__maxMv;
+        }
+        else
+        {
+            uint32_t__ovThreshMv = UI_INPUT_WINDOW_MAX_MV;
+        }
+    }
+#else
+    uint32_t__ovThreshMv = UI_INPUT_WINDOW_MAX_MV;
+#endif
+
     if (BOOL__G__UiInputOverVoltage == false)
     {
-        if (uint32_t__inputVoltageMv > UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv)
+        if (uint32_t__inputVoltageMv > uint32_t__ovThreshMv)
         {
             BOOL__G__UiInputOverVoltage = true;
             UINT32_T__G__UiInputOverVoltageStartTick = osKernelGetTickCount();
         }
     }
     else if (uint32_t__inputVoltageMv <=
-             (UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv -
+             (uint32_t__ovThreshMv -
               UI_ALARM_T__G__Alarm.uint32_t__ovHystMv))
     {
         BOOL__G__UiInputOverVoltage = false;
@@ -1339,18 +1386,14 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
     }
     else
     {
-        /* [EN] Keep the overvoltage error in its q70/q71 hysteresis band.
-           [FA] خطای اضافه‌ولتاژ را در باند هیسترزیس ‎q70/q71‎ حفظ کن. */
+        /* [EN] Keep the OV alarm in its q34/q71 hysteresis band.
+           [FA] خطای اضافه‌ولتاژ را در باند هیسترزیس ‎q34/q71‎ حفظ کن. */
     }
 
     /* [EN] Normal presence faces mirror the one shared Fault Schmitt flag.
-       The separate q70/q71 OV alarm above is unchanged. Between q34 and q70
-       the battery-run face may appear while the OV alarm is still off -
-       accepted consequence of sharing q33/q34.
+       The OV alarm above now uses the same q34 as its threshold (v1.104).
        [FA] چهره‌های عادی حضور از همان پرچم مشترک اشمیت فالت پیروی می‌کنند.
-       آلارم مستقل ‎q70/q71‎ بالا دست‌نخورده است. بین q34 و q70 ممکن است چهرهٔ
-       کارکرد باتری دیده شود در حالی که آلارم OV هنوز خاموش است؛ این پیامد
-       پذیرفته‌شدهٔ اشتراک ‎q33/q34‎ است. */
+       آلارم اضافه‌ولتاژ حالا از همان q34 به‌عنوان آستانه استفاده می‌کند. */
 #if MODULE_FAULT
     {
         bool bool__permissionValid = false;

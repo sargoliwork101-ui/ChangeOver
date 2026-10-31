@@ -39,9 +39,9 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
   داخل `[q33+H_low, q34-H_high]` با حاشیه‌های قابل‌تنظیم پنل `q169/q170`
   (پیش‌فرض `500/500mV`). پیش‌فرض پنجره `21000..28000mV` است.
   `UI_INPUT_HYSTERESIS_MV 500` فقط پیش‌فرض بوتِ ساخت بدون Fault است.
-- آلارم اضافه‌ولتاژ سناریو ۱ همچنان جفت مستقل `q70/q71` خودش را دارد.
-  بین `q34` و `q70` ممکن است چهرهٔ کارکرد باتری دیده شود در حالی که آلارم OV
-  هنوز خاموش است؛ این پیامد پذیرفته‌شدهٔ اشتراک `q33/q34` است.
+- آلارم اضافه‌ولتاژ سناریو ۱ آستانه‌اش را از همان سقف مشترک `q34` می‌گیرد
+  (v1.104). فقط هیسترزیس `q71` مستقل تنظیم می‌شود. شناسهٔ ۷۰ آینهٔ
+  فقط‌خواندنی `q34` است؛ نوشتن به آن رد می‌شود و در NVM ذخیره نمی‌گردد.
 - ثابت‌های `UI_INPUT_CONNECTED_THRESHOLD_MV 21000` و `UI_INPUT_WINDOW_MAX_MV 28000`
   فقط پیش‌فرض بوتِ ساخت بدون Fault هستند.
 
@@ -74,7 +74,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 - زرد فاز-محور: `YellowOn/Off`, `phaseStartTick`, `OnMs/OffMs` حفظ فاز روی تغییر stable، بدون delay 1s. `CHARGING_BLINK_PERIOD 1000`, `YELLOW_MIN_ON 150`.
 
 ### سناریو ۴: InputOverVoltage
-- `>28000` ورود، `<=27000` پاک، 27-28V حفظ. سبز ثابت زرد خاموش قرمز 50% 1s بوق 1s هر 10s. `THRESHOLD 28000 HYSTERESIS 1000`.
+- `>q34` ورود، `<=q34−q71` پاک، بین این دو حفظ. سبز ثابت زرد خاموش قرمز 50% 1s بوق 1s هر 10s. پیش‌فرض: `q34=28000 q71=1000`.
 
 ### سناریو ۵: BatLost (قطع باتری - از پرچم متمرکز Fault)
 - **شرط:** فقط قفل‌بودن `FAULT_CHARGER_BAT_LOST` (مالکیت Set/Clear با ماژول Fault؛ UI فقط می‌خواند و هیچ لچی ندارد). هر دو حالت شناسایی Fault اینجا نمایش داده می‌شوند: پمپ >14.8V حین شارژ یا نبود باتری با ورودی سالم (هر دو نیم <6V به‌مدت ۱s).
@@ -266,7 +266,7 @@ Reset/Init، LED/بوق خاموش `flag false`, `stable 0 uninit`, `chargingSta
 task_ui 10ms → GetSnapshot → Ui_Tick
  ├─ !valid → safe-off + phase reset
  ├─ flag 21000/21200
- ├─ input shared q33/q34 (lower 1V release) + overvoltage q70/q71
+ ├─ input shared q33/q34 (Schmitt margins q169/q170) + overvoltage threshold=q34, hyst=q71
  ├─ OverVoltage → red50%+buzzer10s
  ├─ !InputPresent → BatteryRun stable2%+0/1 → green preserve + buzzer
  ├─ InputPresent + raw100→FullActive→InputOk non-blocking

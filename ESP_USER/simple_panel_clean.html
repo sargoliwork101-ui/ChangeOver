@@ -741,7 +741,7 @@ loadTheme();
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
-const INPUT_CONN_THR=21000, INPUT_WINDOW_MAX=28000, INPUT_HYST_DEFAULT=500, INPUT_OV_THR=28000, INPUT_OV_CLEAR=27000;
+const INPUT_CONN_THR=21000, INPUT_WINDOW_MAX=28000, INPUT_HYST_DEFAULT=500, OV_HYST_DEFAULT=1000;
 const BAT_VMIN=21000, BAT_VMAX=29000, HALF_VMIN=10500, HALF_VMAX=14500;
 const CHG_VMIN=21000, CHG_VMAX=29000;
 const RUN_HYST=2, CHG_HYST=5, ZERO_EXIT=2, ONE_EXIT=3, FULL_ENTER=100, FULL_EXIT=95;
@@ -756,15 +756,15 @@ let brd={gPer:GREEN_PERIOD, gOff:GREEN_MIN_OFF, yPer:YELLOW_PERIOD, yOn:YELLOW_M
          vmin:BAT_VMIN, vmax:BAT_VMAX, halfMin:HALF_VMIN, halfMax:HALF_VMAX,
          hEnt:FULL_ENTER, hExit:FULL_EXIT, cHyst:CHG_HYST, rHyst:RUN_HYST,
          rZero:ZERO_EXIT, rOne:ONE_EXIT, cvmin:CHG_VMIN, cvmax:CHG_VMAX,
-         imin:INPUT_CONN_THR, imax:INPUT_WINDOW_MAX, ihl:INPUT_HYST_DEFAULT, ihh:INPUT_HYST_DEFAULT};
+         imin:INPUT_CONN_THR, imax:INPUT_WINDOW_MAX, ihl:INPUT_HYST_DEFAULT, ihh:INPUT_HYST_DEFAULT, ovHyst:OV_HYST_DEFAULT};
 function updBoardParams(pv){
- if(!pv || pv.length<18) return;
+ if(!pv || pv.length<19) return;
  let num=function(i){ let v=parseInt(pv[i],10); return isNaN(v)?0:v; };
  let gPer=num(0), gOff=num(1), yPer=num(2), yOn=num(3);
  let vmin=num(4), vmax=num(5), hEnt=num(6), hExit=num(7);
  let cHyst=num(8), rHyst=num(9), rZero=num(10), rOne=num(11);
  let cvmin=num(12), cvmax=num(13);
- let imin=num(14), imax=num(15), ihl=num(16), ihh=num(17);
+ let imin=num(14), imax=num(15), ihl=num(16), ihh=num(17), ovHyst=num(18);
  if(gPer>0) brd.gPer=gPer;
  if(gOff>=0) brd.gOff=gOff;
  if(yPer>0) brd.yPer=yPer;
@@ -780,6 +780,7 @@ function updBoardParams(pv){
  if(imin>0 && imax>imin){ brd.imin=imin; brd.imax=imax; }
  if(ihl>=0) brd.ihl=ihl;
  if(ihh>=0) brd.ihh=ihh;
+ if(ovHyst>=0) brd.ovHyst=ovHyst;
 }
 
 function vToPctMap(v, vmin, vmax){ if(v<=vmin) return 0; if(v>=vmax) return 100; return Math.floor(((v-vmin)*100)/(vmax-vmin)); }
@@ -970,10 +971,11 @@ function updFull(raw){
  return g_fullActive;
 }
 function updInputState(vIn, gpioFlag){
+ const ovThr=brd.imax, ovClr=brd.imax-brd.ovHyst;
  if(!g_inputOV){
-  if(vIn>INPUT_OV_THR) g_inputOV=true;
+  if(vIn>ovThr) g_inputOV=true;
  } else {
-  if(vIn<=INPUT_OV_CLEAR) g_inputOV=false;
+  if(vIn<=ovClr) g_inputOV=false;
  }
  if(vIn>0){
   /* همان اشمیت مشترک فرم‌ور: بیرون پنجرهٔ خام فوراً قطع؛ برگشت فقط با
@@ -1659,7 +1661,7 @@ function render(data){
  else if(fault & FAULT_BAT_LOST){ stTxt='باتری قطع شده'; ssTxt='سیم باتری را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
  else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='برد نیاز به بررسی دارد'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
  else if(fault & FAULT_ADC){ stTxt='در حال بررسی'; ssTxt='سنسورها در حال کالیبره'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد ۲۸ ولت'; }
+ else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد '+(brd.imax/1000).toFixed(1)+' ولت'; }
  else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; }
  else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری را تعویض کنید'; }
  else if(isWeak){ stTxt='باتری ضعیف'; ssTxt='حکم قفل است - باتری بار را تحمل نمی‌کند'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='حکم باتری ضعیف: مسیر باتری بسته مانده؛ با شارژ و استراحت سالم خودش پاک می‌شود'; }

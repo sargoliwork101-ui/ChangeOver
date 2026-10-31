@@ -64,7 +64,7 @@
  * @brief  [EN] Boot fallback Schmitt margin for input presence in Fault-off
  *              builds, in millivolts. With MODULE_FAULT=1 the live shared
  *              permission (panel q169/q170 margins) is used instead. The
- *              scenario-1 OV alarm keeps its own q70/q71 hysteresis.
+ *              scenario-1 OV alarm uses the shared q34 as threshold and q71 as hysteresis.
  *         [FA] حاشیهٔ اشمیت پیش‌فرض بوت برای حضور ورودی در ساخت بدون Fault،
  *              بر حسب میلی‌ولت. با ‎MODULE_FAULT=1‎ به‌جای آن از مجوز مشترک
  *              زنده (حاشیه‌های پنل ‎q169/q170‎) استفاده می‌شود. آلارم
@@ -82,10 +82,14 @@
 /* ==================== Input overvoltage error constants / ثابت‌های خطای اضافه‌ولتاژ ورودی ==================== */
 
 /**
- * @brief  [EN] Input voltage above which the overvoltage error is activated, in millivolts.
- *         The comparison is strict: values greater than this threshold activate the error.
- *         [FA] ولتاژ ورودی که بیشتر از آن خطای اضافه‌ولتاژ فعال می‌شود، بر حسب میلی‌ولت.
- *         مقایسه strict است؛ مقدار بزرگ‌تر از این آستانه خطا را فعال می‌کند.
+ * @brief  [EN] Boot fallback for the OV alarm threshold in Fault-off builds.
+ *              With MODULE_FAULT=1 the live threshold is the shared upper input
+ *              limit (panel q34) read atomically from Fault; this macro is only
+ *              the compile-time default for builds without Fault.
+ *         [FA] پیش‌فرض بوت آستانهٔ اضافه‌ولتاژ در ساخت بدون Fault. با
+ *              ‎MODULE_FAULT=1‎ آستانهٔ زنده همان سقف مشترک ورودی (q34 پنل)
+ *              است که اتمیک از Fault خوانده می‌شود؛ این ماکرو فقط پیش‌فرض
+ *              کامپایل برای ساخت بدون Fault است.
  */
 #define UI_INPUT_OVERVOLTAGE_THRESHOLD_MV 28000u
 
@@ -96,10 +100,10 @@
 #define UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV 1000u
 
 /**
- * @brief  [EN] Input voltage at or below which the overvoltage error is cleared, in millivolts.
- *         Derived from the overvoltage threshold minus its hysteresis band.
- *         [FA] ولتاژ ورودی که از آن به پایین خطای اضافه‌ولتاژ پاک می‌شود، بر حسب میلی‌ولت.
- *         از کم‌کردن هیسترزیس خطا از آستانه اضافه‌ولتاژ به دست می‌آید.
+ * @brief  [EN] Boot fallback clear point (Fault-off builds only). At runtime
+ *              clear = live q34 - q71 hysteresis.
+ *         [FA] نقطهٔ پاک‌سازی پیش‌فرض بوت (فقط ساخت بدون Fault). در زمان اجرا
+ *              پاک‌سازی = q34 زنده − هیسترزیس q71.
  */
 #define UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV \
     (UI_INPUT_OVERVOLTAGE_THRESHOLD_MV - UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV)
@@ -691,7 +695,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_GREEN_MIN_OFF_MS    67u  /* ms, 0..66 */
 #define UI_ALARM_PARAM_YELLOW_PERIOD_MS    68u  /* ms, 100..10000 */
 #define UI_ALARM_PARAM_YELLOW_MIN_ON_MS   69u  /* ms, 0..68 */
-#define UI_ALARM_PARAM_OV_THRESH_MV        70u  /* mV, 24000..32000 */
+#define UI_ALARM_PARAM_OV_THRESH_MV        70u  /* read-only mirror of shared q34; writes rejected */
 #define UI_ALARM_PARAM_OV_HYST_MV          71u  /* mV, 0..2000 */
 /* [EN] v1.74 (user order: "this must not sit among the LED scenarios - it
    belongs to changeover, that is where we need it, and we do not need it in
@@ -810,6 +814,9 @@ typedef struct
     uint32_t uint32_t__greenMinOffMs;
     uint32_t uint32_t__yellowPeriodMs;
     uint32_t uint32_t__yellowMinOnMs;
+    /* [EN] v1.104: reserved padding - the OV threshold is now the live shared
+       q34 read from Fault; this word is never read or written at runtime.
+       [FA] واژهٔ رزرو - آستانهٔ اضافه‌ولتاژ حالا q34 زندهٔ مشترک است. */
     uint32_t uint32_t__ovThreshMv;
     uint32_t uint32_t__ovHystMv;
     /* [EN] v1.74: the two retired low-battery words stay as reserved padding

@@ -44,7 +44,7 @@ _Static_assert((ESP_LINK_NVM_RETIRED_ID_FIRST == ESPLINK_PARAM_RETIRED_LOWBAT_FI
 
 _Static_assert((((ESP_LINK_NVM_PERSISTED_ID_MAX_LOW + 1u) +
                  (ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH -
-                  ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH + 1u - 1u) +
+                  ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH + 1u - 2u) +
                  (ESP_LINK_NVM_SLOT_MAX_ID - ESP_LINK_NVM_SLOT_MIN_ID + 1u)) <=
                 (uint32_t)ESP_LINK_NVM_ENTRY_MAX),
                "NVM record too small for the persisted id set");
@@ -147,6 +147,14 @@ bool func__EspLink_NvmParamPersisted(uint8_t uint8_t__paramId)
        v1.74: شناسه‌های بازنشستهٔ ۷۲/۷۳ هم ذخیره نمی‌شوند. */
     if ((uint8_t__paramId >= ESP_LINK_NVM_RETIRED_ID_FIRST) &&
         (uint8_t__paramId <= ESP_LINK_NVM_RETIRED_ID_LAST))
+    {
+        return false;
+    }
+
+    /* [EN] v1.104: id 70 is derived from the shared q34 at runtime; it is
+       never independently persisted.
+       [FA] شناسهٔ ۷۰ از q34 مشتق می‌شود و جداگانه ذخیره نمی‌شود. */
+    if (uint8_t__paramId == ESP_LINK_NVM_DERIVED_ID_OV_THRESH)
     {
         return false;
     }

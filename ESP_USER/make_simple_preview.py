@@ -286,14 +286,15 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     rZero: PANEL.ZERO_EXIT, rOne: PANEL.ONE_EXIT,
     cvmin: PANEL.CHG_VMIN, cvmax: PANEL.CHG_VMAX,
     imin: PANEL.INPUT_CONN_THR, imax: PANEL.INPUT_WINDOW_MAX,
-    ihl: PANEL.INPUT_HYST_DEFAULT, ihh: PANEL.INPUT_HYST_DEFAULT
+    ihl: PANEL.INPUT_HYST_DEFAULT, ihh: PANEL.INPUT_HYST_DEFAULT,
+    ovHyst: PANEL.OV_HYST_DEFAULT
   };
   var inputArmed = false;
   function boardParamsBody() {
     return ',"pvOk":1,"pv":[' + [board.gPer, board.gOff, board.yPer, board.yOn,
       board.vmin, board.vmax, board.hEnt, board.hExit, board.cHyst, board.rHyst,
       board.rZero, board.rOne, board.cvmin, board.cvmax,
-      board.imin, board.imax, board.ihl, board.ihh].join(',') + ']';
+      board.imin, board.imax, board.ihl, board.ihh, board.ovHyst].join(',') + ']';
   }
   function changedParamQuery() {
     var query = '';
@@ -968,7 +969,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
         board.vmin = PANEL.BAT_VMIN; board.vmax = PANEL.BAT_VMAX;
         board.cvmin = PANEL.CHG_VMIN; board.cvmax = PANEL.CHG_VMAX;
         board.imin = PANEL.INPUT_CONN_THR; board.imax = PANEL.INPUT_WINDOW_MAX;
-        board.ihl = PANEL.INPUT_HYST_DEFAULT; board.ihh = PANEL.INPUT_HYST_DEFAULT; inputArmed = false;
+        board.ihl = PANEL.INPUT_HYST_DEFAULT; board.ihh = PANEL.INPUT_HYST_DEFAULT;
+        board.ovHyst = PANEL.OV_HYST_DEFAULT; inputArmed = false;
      }]
     ].forEach(function (scenario) {
       var button = el('button', { 'class': 'btn sec' }, scenario[0]);
@@ -1093,7 +1095,7 @@ def main():
         die("spec has %d u32 fields but simple_config.h says %d" % (len(field_map), tlm_n))
     if tlm_size != 4 + 4 * tlm_n:
         die("simple_config.h: TLM size %d does not match %d fields" % (tlm_size, tlm_n))
-    for needed in ("INPUT_CONN_THR", "INPUT_WINDOW_MAX", "INPUT_HYST_DEFAULT", "BAT_VMIN", "BAT_VMAX"):
+    for needed in ("INPUT_CONN_THR", "INPUT_WINDOW_MAX", "INPUT_HYST_DEFAULT", "OV_HYST_DEFAULT", "BAT_VMIN", "BAT_VMAX"):
         if needed not in panel:
             die("simple_panel.h does not define %s" % needed)
 

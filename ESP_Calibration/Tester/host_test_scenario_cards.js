@@ -223,11 +223,28 @@ function testStructure(win, doc) {
 function testOvervoltage(win, doc) {
     console.log('\nscenario 1 - overvoltage / اضافه‌ولتاژ');
 
-    typeInto(win, doc, 'q70', 28000);
+    /* v1.104: the OV threshold IS the shared upper input limit (q34).
+       q70 is a read-only mirror with a one-click jump link to q34. */
+    typeInto(win, doc, 'q34', 28000);
     typeInto(win, doc, 'q71', 1000);
     const line = textOf(doc, 's1v');
     check(line.includes('28000') && line.includes('27000'),
-        'enter is the threshold and exit is threshold minus hysteresis', line);
+        'enter is the shared ceiling and exit is ceiling minus hysteresis', line);
+    const ovMirror = doc.getElementById('q70');
+    check(ovMirror && ovMirror.readOnly && ovMirror.value === '28000',
+        'q70 is a read-only mirror of q34', ovMirror && ovMirror.value);
+    const ovLink = doc.getElementById('ovjmp');
+    check(ovLink && ovLink.tagName === 'A',
+        'the OV threshold has a jump link to the real ceiling field');
+    if (ovLink) {
+        ovLink.click();
+        check(doc.activeElement === doc.getElementById('q34'),
+            'one click on the link lands focus on the editable q34 field');
+    }
+    typeInto(win, doc, 'q34', 27000);
+    check(textOf(doc, 's1v').includes('27000') && textOf(doc, 's1v').includes('26000'),
+        'editing the shared ceiling moves the OV alarm and its clear point', textOf(doc, 's1v'));
+    typeInto(win, doc, 'q34', 28000);
 
     /* [EN] Red blink: on = period * duty / 100. 1000 ms at 50% = 500/500.
        [FA] چشمک قرمز: روشن = دوره × duty ÷ ۱۰۰. */
@@ -933,8 +950,8 @@ function testSimulator(win, doc) {
           || doc.getElementById('simp5').type === 'range',
           'no leftover low-battery voltage slider on card 5');
 
-    /* Card 1 (v1.57): the over-voltage alarm follows threshold 70 / hyst 71. */
-    typeInto(win, doc, 'q70', 29000);
+    /* Card 1 (v1.104): the over-voltage alarm follows the shared ceiling 34 / hyst 71. */
+    typeInto(win, doc, 'q34', 29000);
     typeInto(win, doc, 'q71', 500);
     doc.getElementById('simp1').value = 26000;
     win.simrun();

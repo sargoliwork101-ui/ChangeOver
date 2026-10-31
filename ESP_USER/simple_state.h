@@ -173,6 +173,7 @@ static uint32_t func__Simple_BoardParamDefault(uint8_t uint8_t__id)
         case SIMPLE_PARAM_INPUT_MAX_MV:         return 28000u;
         case SIMPLE_PARAM_INPUT_HYST_LOW_MV:    return 500u;
         case SIMPLE_PARAM_INPUT_HYST_HIGH_MV:   return 500u;
+        case SIMPLE_PARAM_OV_HYST_MV:           return 1000u;
         default:                            return 0u;
     }
 }
@@ -224,7 +225,8 @@ static const uint8_t UINT8_T__G__ParamUiIds[SIMPLE_PARAM_UI_COUNT] =
     SIMPLE_PARAM_INPUT_MIN_MV,      /* 14 */
     SIMPLE_PARAM_INPUT_MAX_MV,      /* 15 */
     SIMPLE_PARAM_INPUT_HYST_LOW_MV, /* 16 */
-    SIMPLE_PARAM_INPUT_HYST_HIGH_MV /* 17 */
+    SIMPLE_PARAM_INPUT_HYST_HIGH_MV, /* 17 */
+    SIMPLE_PARAM_OV_HYST_MV          /* 18 */
 };
 
 static bool func__Simple_IsUiParamId(uint8_t uint8_t__id)
