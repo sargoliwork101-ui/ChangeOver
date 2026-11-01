@@ -7,7 +7,6 @@
  *      the Changeover host test uses a fake BSP, so a flipped active level
  *      would have shipped silently (audit 2026-10-20 found exactly that for
  *      JITTER1/JITTER2, both active-low from the LM393).
- *
  *      The production file is compiled unchanged; only HAL_GPIO_ReadPin /
  *      HAL_GPIO_WritePin are replaced below by a one-pin world, and the
  *      Cortex intrinsics by host_stub_cortex.h. Every check states a HARDWARE
@@ -19,39 +18,15 @@
  *        - PROTECT_BATTERY active-high: PB11 High -> Q17 on -> GATE_ON_OFF
  *          low -> series Q15/Q16 off, so the cut is a physical High
  *          (audit 2026-10-22: this one was declared active-low)
- *
- * [FA] تست هاست برای پورت واقعی پایه‌های برد (bsp_gpio.c). این فایل تنها
- *      جایی است که سیگنال منطقی به پایه و سطح فیزیکی تبدیل می‌شود، پس تنها
- *      جایی است که قطبیت ورودی می‌تواند غلط باشد. تا امروز این قطبیت روی
- *      هیچ ماشینی اجرا نمی‌شد: تست هاست Changeover از BSP بدلی استفاده
- *      می‌کند، بنابراین سطح فعالِ برعکس بی‌صدا به برد می‌رسید (ممیزی
- *      ۲۰۲۶-۱۰-۲۰ دقیقاً همین را برای ‎JITTER1/JITTER2‎ پیدا کرد؛ هر دو از
- *      LM393 فعال-پایین هستند).
- *
- *      فایل محصول بدون تغییر کامپایل می‌شود؛ فقط ‎HAL_GPIO_ReadPin‎ و
- *      ‎HAL_GPIO_WritePin‎ پایین با دنیای تک‌پایه بدل می‌شوند و intrinsic‌های
- *      کورتکس با host_stub_cortex.h. هر چک یک «واقعیت سخت‌افزاری» از شماتیک
- *      را می‌گوید، نه تکرار ماکرو را:
- *        - ‎JITTER1/JITTER2‎: خروجی ‎open-collector LM393 ->‎ تریپ = سطح پایین
- *        - INPUT_24V_PRESENT: خروجی اپتو -> حضور = سطح بالا
- *        - ‎BUZZER‎ فعال-بالا
- *        - ‎BATTERY_SWITCH‎ فعال-پایین: زنجیرهٔ ‎Q1/Q2/Q3‎ با سطح بالا قطع می‌کند
- *        - ‎PROTECT_BATTERY‎ فعال-بالا: با سطح بالا ‎Q17‎ روشن و
- *          ‎GATE_ON_OFF‎ پایین می‌شود و جفت ‎Q15/Q16‎ می‌بندد؛ پس قطع
- *          یعنی سطح فیزیکی بالا (ممیزی ۲۰۲۶-۱۰-۲۲: قبلاً فعال-پایین اعلام شده بود)
  */
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "stm32f1xx_hal.h"
 #include "bsp_gpio.h"
-#include "board_pins.h"   /* [EN] pin numbers checked below / [FA] شمارهٔ پایه‌های چک‌شده */
+#include "board_pins.h"
 #include "host_stub_cortex.h"
-
 /* [EN] The one-pin world the fakes below read and write. */
-/* [FA] دنیای تک‌پایه‌ای که بدل‌های پایین می‌خوانند و می‌نویسند. */
 static GPIO_PinState GPIO_PinState__G__ReadLevel = GPIO_PIN_RESET;
 static int32_t INT32_T__G__WriteCount = 0;
 static GPIO_TypeDef *GPIO_TypeDef__G__LastPort = 0;
@@ -59,10 +34,8 @@ static uint16_t UINT16_T__G__LastPin = 0u;
 static GPIO_PinState GPIO_PinState__G__LastLevel = GPIO_PIN_RESET;
 static int32_t INT32_T__G__CheckCount = 0;
 static int32_t INT32_T__G__FailCount = 0;
-
 /**
  * [EN] Fake input: returns whatever level the current test case set.
- * [FA] ورودی بدلی: همان سطحی را برمی‌گرداند که سناریوی جاری گذاشته است.
  */
 GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
 {
@@ -70,10 +43,8 @@ GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
     (void)GPIO_Pin;
     return GPIO_PinState__G__ReadLevel;
 }
-
 /**
  * [EN] Fake output: records the port, pin and level of the last write.
- * [FA] خروجی بدلی: پورت و پایه و سطح آخرین نوشتن را ثبت می‌کند.
  */
 void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState)
 {
@@ -82,7 +53,6 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState Pin
     UINT16_T__G__LastPin = GPIO_Pin;
     GPIO_PinState__G__LastLevel = PinState;
 }
-
 #define CHECK(condition)                                                       \
     do {                                                                       \
         INT32_T__G__CheckCount++;                                               \
@@ -91,96 +61,75 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState Pin
             printf("FAIL line %d: %s\n", __LINE__, #condition);                 \
         }                                                                       \
     } while (0)
-
 /**
  * [EN] Runs the polarity checklist: inputs against their real active level,
  *      outputs against theirs, and the rule that an input can never be driven.
- * [FA] چک‌لیست قطبیت را اجرا می‌کند: ورودی‌ها با سطح فعال واقعی خودشان،
- *      خروجی‌ها با سطح خودشان، و قاعدهٔ اینکه ورودی هرگز نوشته نمی‌شود.
  */
 int main(void)
 {
     /* --- LM393 trip inputs: asserted means PHYSICAL LOW --- */
-    /* [FA] ورودی‌های تریپ LM393: تریپ یعنی سطح فیزیکی پایین. */
     GPIO_PinState__G__ReadLevel = GPIO_PIN_RESET;
     CHECK(func__BspGpio_Read(BSP_GPIO_JITTER1) == true);
     CHECK(func__BspGpio_Read(BSP_GPIO_JITTER2) == true);
-
     GPIO_PinState__G__ReadLevel = GPIO_PIN_SET;
     CHECK(func__BspGpio_Read(BSP_GPIO_JITTER1) == false);
     CHECK(func__BspGpio_Read(BSP_GPIO_JITTER2) == false);
-
     /* --- 24 V presence: asserted means PHYSICAL HIGH --- */
-    /* [FA] حضور ۲۴ ولت: حضور یعنی سطح فیزیکی بالا. */
     GPIO_PinState__G__ReadLevel = GPIO_PIN_SET;
     CHECK(func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) == true);
-
     GPIO_PinState__G__ReadLevel = GPIO_PIN_RESET;
     CHECK(func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) == false);
-
     /* --- outputs keep their own polarity --- */
-    /* [FA] خروجی‌ها قطبیت خودشان را نگه می‌دارند. */
     INT32_T__G__WriteCount = 0;
     func__BspGpio_Write(BSP_GPIO_BUZZER, true);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_SET);
-
     INT32_T__G__WriteCount = 0;
     func__BspGpio_Write(BSP_GPIO_BUZZER, false);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_RESET);
-
-    /* [EN] PROTECT_BATTERY is active-high: a logical cut must drive the pin
+    /*
+ * [EN] PROTECT_BATTERY is active-high: a logical cut must drive the pin
      *      HIGH physically (Q17 on, GATE_ON_OFF low, Q15/Q16 off). A logical
      *      "connect" must drive it LOW. Audit 2026-10-22: the old expectation
      *      here was RESET, i.e. it encoded the wrong polarity and stayed green.
-     * [FA] خط حفاظت باتری فعال-بالا است: «قطع» منطقی باید پایه را فیزیکی بالا
-     *      ببرد و «وصل» منطقی باید پایین ببرد. ممیزی ۲۰۲۶-۱۰-۲۲: انتظار قبلی
-     *      این تست سطح پایین بود، یعنی همان قطبیت غلط را تأیید می‌کرد. */
+ */
     INT32_T__G__WriteCount = 0;
     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_SET);
-
     INT32_T__G__WriteCount = 0;
     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_RESET);
-
     INT32_T__G__WriteCount = 0;
     func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_SET);
-
     /* --- inputs are NOT writable --- */
-    /* [FA] ورودی‌ها نوشتنی نیستند. */
     INT32_T__G__WriteCount = 0;
     func__BspGpio_Write(BSP_GPIO_JITTER1, true);
     func__BspGpio_Write(BSP_GPIO_JITTER2, true);
     func__BspGpio_Write(BSP_GPIO_INPUT_24V_PRESENT, true);
     CHECK(INT32_T__G__WriteCount == 0);
-
     /* --- atomic cut helper keeps its meaning --- */
-    /* [EN] The helper always drives BATTERY_SWITCH (active-low): input present
+    /*
+ * [EN] The helper always drives BATTERY_SWITCH (active-low): input present
      *      -> deasserted (physical high) = path cut, and it reports true;
      *      input gone -> asserted (physical low) = battery kept, reports false.
-     * [FA] کمک‌تابع همیشه ‎BATTERY_SWITCH‎ را می‌زند (فعال-پایین): ورودی حاضر
-     *      -> غیرفعال (سطح بالا) یعنی قطع و true؛ ورودی رفته -> فعال (سطح
-     *      پایین) یعنی باتری وصل و false. */
+ */
     GPIO_PinState__G__ReadLevel = GPIO_PIN_SET;
     INT32_T__G__WriteCount = 0;
     CHECK(func__BspGpio_DisconnectBatteryPathIfInputPresent() == true);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(UINT16_T__G__LastPin == PIN_BAT_SWITCH_PIN);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_SET);
-
     GPIO_PinState__G__ReadLevel = GPIO_PIN_RESET;
     INT32_T__G__WriteCount = 0;
     CHECK(func__BspGpio_DisconnectBatteryPathIfInputPresent() == false);
     CHECK(INT32_T__G__WriteCount == 1);
     CHECK(UINT16_T__G__LastPin == PIN_BAT_SWITCH_PIN);
     CHECK(GPIO_PinState__G__LastLevel == GPIO_PIN_RESET);
-
     printf("checks: %ld, fails: %ld\n", (long)INT32_T__G__CheckCount,
            (long)INT32_T__G__FailCount);
     return (INT32_T__G__FailCount == 0) ? 0 : 1;

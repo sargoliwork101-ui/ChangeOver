@@ -2,13 +2,11 @@
    Included by ESP_Calibration.ino (single translation unit, order matters).
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Byte Helpers ==================== */
-
 /**
  * @brief  [EN] Read a little-endian u32 from a byte buffer.
- *         [FA] خواندن عدد u32 اندیان‌کوچک از بافر بایتی.
- * @param  uint8_t__ptr_buffer [EN] Source buffer, at least offset+4 bytes / [FA]‎ بافر مبدا، حداقل ‎offset+4‎ بایت
- * @param  uint8_t__offset     [EN] Byte offset, 0..108 (payload max 112) / [FA]‎ آفست بایتی، ۰ تا ۱۰۸ (حداکثر payload ۱۱۲)
- * @return [EN] Decoded value / [FA]‎ مقدار رمزگشایی‌شده
+* @param uint8_t__ptr_buffer Source buffer, at least offset+4 bytes / offset+4
+* @param uint8_t__offset Byte offset, 0..108 (payload max 112) / ( payload )
+* @return Decoded value /
  */
 static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t uint8_t__offset)
 {
@@ -20,22 +18,17 @@ static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t ui
     uint32_t uint32_t__highHalf = uint32_t__byte2 | uint32_t__byte3;
     return uint32_t__lowHalf | uint32_t__highHalf;
 }
-
 /* ==================== Frame Transmit ==================== */
-
 /**
  * @brief  [EN] CRC-16/CCITT-FALSE, identical to the firmware's implementation.
  *              Both sides must agree bit for bit or every frame is rejected.
- *         [‎FA] CRC-16/CCITT-FALSE‎، عیناً مثل پیاده‌سازی فرم‌ور. هر دو طرف باید
- *              بیت‌به‌بیت یکی باشند وگرنه هر فریمی رد می‌شود.
- * @param  uint16_t__crc  [EN] Running value / مقدار جاری
- * @param  uint8_t__byte  [EN] Next byte / بایت بعدی
- * @return uint16_t [EN] Updated CRC / CRC‎ به‌روزشده
+* @param uint16_t__crc Running value /
+* @param uint8_t__byte Next byte /
+* @return uint16_t Updated CRC / CRC
  */
 static uint16_t func__Esp_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
 {
     uint8_t uint8_t__bit;
-
     uint16_t__crc = (uint16_t)(uint16_t__crc ^ ((uint16_t)uint8_t__byte << 8));
     for (uint8_t__bit = 0u; uint8_t__bit < 8u; uint8_t__bit++)
     {
@@ -50,12 +43,11 @@ static uint16_t func__Esp_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
     }
     return uint16_t__crc;
 }
-
-/* [EN] Link health, surfaced to the page. A version mismatch means the STM32
-   and this panel were flashed out of step - the failure that used to look
-   exactly like a dead cable.
-   [FA] سلامت لینک، نمایش‌داده‌شده در صفحه. ناهم‌نسخگی یعنی STM32 و این پنل
-   ناهماهنگ فلش شده‌اند - خرابی‌ای که قبلاً عیناً شبیه کابل قطع به نظر می‌رسید. */
+/*
+ * [EN] Link health, surfaced to the page. A version mismatch means the STM32
+ * and this panel were flashed out of step - the failure that used to look
+ * exactly like a dead cable.
+ */
 static uint32_t UINT32_T__G__RxCrcError = 0u;
 /* [EN] v2 NAK: how many SET_PARAM were refused, and the last id and reason. */
 static uint32_t UINT32_T__G__NakCount = 0u;
@@ -64,33 +56,30 @@ static uint8_t  UINT8_T__G__NakReason = 0u;
 static uint32_t UINT32_T__G__RxVersionMismatch = 0u;
 static uint16_t UINT16_T__G__RxCrc = 0u;
 static uint8_t  UINT8_T__G__RxCrcLow = 0u;
-
-/* [EN] Two-sided handshake state (v1.111). Everything here is proven by a real
-   HELLO_ACK that the board sent; nothing is inferred from telemetry alone.
-   [FA] وضعیت دست‌دادن دوطرفه (v1.111). هر مقدار این‌جا با یک HELLO_ACK واقعی
-   از برد اثبات می‌شود؛ هیچ‌کدام از تله‌متری تنها حدس زده نمی‌شود. */
-static bool     BOOL__G__HelloSeen = false;       /* [EN] fresh ACK in hand / [FA] پاسخ تازه داریم */
-static uint32_t UINT32_T__G__LastHelloAckMs = 0u; /* [EN] time of last ACK / [FA] زمان آخرین پاسخ */
-static uint32_t UINT32_T__G__LastHelloTxMs = 0u;  /* [EN] time of last HELLO sent / [FA] زمان آخرین HELLO */
-static uint32_t UINT32_T__G__HelloAckCount = 0u;  /* [EN] ACKs received / [FA] پاسخ‌های دریافتی */
-static uint32_t UINT32_T__G__HelloLossCount = 0u; /* [EN] link drops seen / [FA] قطع‌های دیده‌شده */
-static uint8_t  UINT8_T__G__BoardProtoVersion = 0u; /* [EN] board wire version / [FA] نسخهٔ سیم برد */
-static uint8_t  UINT8_T__G__BoardFwVersion = 0u;   /* [EN] board firmware version / [FA] نسخهٔ فرم‌ور برد */
-static uint8_t  UINT8_T__G__BoardFlags = 0u;       /* [EN] modules compiled in / [FA] ماژول‌های فعال برد */
-static uint32_t UINT32_T__G__BoardUptimeSec = 0u;  /* [EN] board uptime, seconds / [FA] آپتایم برد به ثانیه */
-static uint32_t UINT32_T__G__BoardRxFrames = 0u;   /* [EN] good frames the board saw / [FA] فریم سالم از دید برد */
-static uint16_t UINT16_T__G__BoardCrcErrors = 0u;  /* [EN] board-side CRC rejects / [FA] خطای CRC از دید برد */
-static uint16_t UINT16_T__G__BoardVerErrors = 0u;  /* [EN] board-side version rejects / [FA] ناهم‌نسخگی از دید برد */
-static uint16_t UINT16_T__G__BoardParamCount = 0u; /* [EN] board parameter count / [FA] تعداد پارامتر برد */
-static uint16_t UINT16_T__G__BoardPeriodMs = 0u;   /* [EN] board telemetry period / [FA] دورهٔ تله‌متری برد */
-
+/*
+ * [EN] Two-sided handshake state (v1.111). Everything here is proven by a real
+ * HELLO_ACK that the board sent; nothing is inferred from telemetry alone.
+ */
+static bool     BOOL__G__HelloSeen = false;
+static uint32_t UINT32_T__G__LastHelloAckMs = 0u;
+static uint32_t UINT32_T__G__LastHelloTxMs = 0u;
+static uint32_t UINT32_T__G__HelloAckCount = 0u;
+static uint32_t UINT32_T__G__HelloLossCount = 0u;
+static uint8_t  UINT8_T__G__BoardProtoVersion = 0u;
+static uint8_t  UINT8_T__G__BoardFwVersion = 0u;
+static uint8_t  UINT8_T__G__BoardFlags = 0u;
+static uint32_t UINT32_T__G__BoardUptimeSec = 0u;
+static uint32_t UINT32_T__G__BoardRxFrames = 0u;
+static uint16_t UINT16_T__G__BoardCrcErrors = 0u;
+static uint16_t UINT16_T__G__BoardVerErrors = 0u;
+static uint16_t UINT16_T__G__BoardParamCount = 0u;
+static uint16_t UINT16_T__G__BoardPeriodMs = 0u;
 /**
  * @brief  [EN] Build and write one frame: AA 55 type len payload xor.
- *         [FA] ساخت و ارسال یک فریم: AA 55 type len payload xor.
- * @param  uint8_t__type        [EN] Message type (0x01 SET_PARAM / 0x02 GET_PARAMS) / [FA]‎ نوع پیام (0x01 یا 0x02)
- * @param  uint8_t__ptr_payload [EN] Payload bytes, may be NULL when len = 0 / [FA]‎ بایت‌های payload؛ برای طول صفر می‌تواند NULL باشد
- * @param  uint16_t__len        [EN] Payload length, 0..512 bytes, u16 LE on the wire (SET frames use 5) / [FA]‎ طول payload، ۰ تا ۵۱۲ بایت (فریم SET پنج بایت است)
- * @return [EN] None / [FA]‎ ندارد
+* @param uint8_t__type Message type (0x01 SET_PARAM / 0x02 GET_PARAMS) / (0x01 0x02)
+* @param uint8_t__ptr_payload Payload bytes, may be NULL when len = 0 / payload NULL
+* @param uint16_t__len Payload length, 0..512 bytes, u16 LE on the wire (SET frames use 5) / payload ( SET )
+* @return None /
  */
 static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__ptr_payload, uint16_t uint16_t__len)
 {
@@ -99,12 +88,10 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
     uint8_t uint8_t__lenHi = (uint8_t)((uint16_t__len >> 8) & 0xFFu);
     uint16_t uint16_t__crc = (uint16_t)ESP_LINK_CRC16_INIT;
     uint16_t uint16_t__index;
-
     if (uint16_t__len > ESP_LINK_MAX_PAYLOAD)
     {
         return;
     }
-
     UINT8_T__A__Frame[0] = ESP_LINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = ESP_LINK_SOF_BYTE1;
     UINT8_T__A__Frame[2] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
@@ -115,35 +102,30 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
     uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__type);
     uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__lenLo);
     uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__lenHi);
-
     for (uint16_t__index = 0u; uint16_t__index < uint16_t__len; uint16_t__index++)
     {
         uint8_t uint8_t__byte = uint8_t__ptr_payload[uint16_t__index];
         UINT8_T__A__Frame[ESP_LINK_HEADER_SIZE + uint16_t__index] = uint8_t__byte;
         uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__byte);
     }
-
     uint16_t uint16_t__crcPosition = (uint16_t)(ESP_LINK_HEADER_SIZE + uint16_t__len);
     UINT8_T__A__Frame[uint16_t__crcPosition] = (uint8_t)(uint16_t__crc & 0xFFu);
     UINT8_T__A__Frame[uint16_t__crcPosition + 1u] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
     uint16_t uint16_t__frameSize = (uint16_t)(uint16_t__crcPosition + ESP_LINK_CRC_SIZE);
-
     (void)Serial.write(UINT8_T__A__Frame, uint16_t__frameSize);
     UINT32_T__G__LastTxMs = (uint32_t)millis();
-    /* [EN] Every valid frame feeds the STM32 dead-man, so it also counts as the keepalive.
-       [FA] هر فریم معتبر deadman STM32 را تغذیه می‌کند، پس keepalive هم حساب می‌شود. */
+    /*
+ * [EN] Every valid frame feeds the STM32 dead-man, so it also counts as the keepalive.
+ */
     UINT32_T__G__LastKeepaliveMs = UINT32_T__G__LastTxMs;
 }
-
-/* ==================== v1.66 direct LUT push / ارسال مستقیم جدول ==================== */
-
-/* [EN] Last LUT_ACK the board sent, exposed to the browser by GET /lut. The
-   push is a HANDSHAKE, not a fire-and-forget: the panel only offers the
-   reboot after the board has echoed the same CRC32 and the active point pairs
-   have matched the staged table.
-   [FA] آخرین LUT_ACK برد که با ‎GET /lut‎ به مرورگر می‌رسد. ارسال یک
-   «دست‌دادن» است نه رهاکردن: پنل فقط پس از CRC یکسان و تطبیق جفت‌مقدارهای
-   فعال با جدول چیده‌شده ریست را پیشنهاد می‌دهد. */
+/* ==================== v1.66 direct LUT push ==================== */
+/*
+ * [EN] Last LUT_ACK the board sent, exposed to the browser by GET /lut. The
+ * push is a HANDSHAKE, not a fire-and-forget: the panel only offers the
+ * reboot after the board has echoed the same CRC32 and the active point pairs
+ * have matched the staged table.
+ */
 static uint8_t  UINT8_T__G__LutAckStage = 0u;
 static uint8_t  UINT8_T__G__LutAckStatus = 0u;
 static uint8_t  UINT8_T__G__LutAckPoints1 = 0u;
@@ -152,33 +134,28 @@ static uint32_t UINT32_T__G__LutAckCrc32 = 0u;
 static uint32_t UINT32_T__G__LutAckMs = 0u;
 static uint32_t UINT32_T__G__LutAckCount = 0u;
 static uint32_t UINT32_T__G__LutSentCrc32 = 0u;
-
-/* [EN] v1.67 link audit, finding L1 - the push MUST be paced.
-   The STM32 receives on a 256-byte circular DMA ring that the comm task
-   drains on its own period. v1.66 wrote BEGIN + CHUNK + CHUNK + COMMIT
-   back to back: about 430 bytes at 921600 baud, i.e. the whole burst lands
-   in under 5 ms and overruns the 256-byte ring before the board can read
-   it. The second chunk was being silently overwritten, so a two-channel
-   table would fail its CRC (safe, but the feature would simply never work).
-   The fix: one frame at a time, the next only after the board's LUT_ACK for
-   the previous one, with a timeout, retries and a visible error. That also
-   makes the push robust against a genuinely lost frame.
-   [FA] ممیزی لینک نسخه ۱.۶۷، یافتهٔ L1 - ارسال باید «گام‌به‌گام» باشد.
-   STM32 روی حلقهٔ DMA ۲۵۶ بایتی دریافت می‌کند و تسک ارتباط آن را با دورهٔ
-   خودش خالی می‌کند. نسخه ۱.۶۶ چهار فریم (حدود ۴۳۰ بایت) را پشت‌سرهم
-   می‌نوشت: در کمتر از ۵ میلی‌ثانیه و پیش از خواندهشدن، حلقه سرریز می‌کرد و
-   تکهٔ دوم بی‌صدا پاک می‌شد. حالا هر فریم فقط پس از LUT_ACK فریم قبلی
-   فرستاده می‌شود، با مهلت، تکرار و خطای قابل‌دیدن. */
+/*
+ * [EN] v1.67 link audit, finding L1 - the push MUST be paced.
+ * The STM32 receives on a 256-byte circular DMA ring that the comm task
+ * drains on its own period. v1.66 wrote BEGIN + CHUNK + CHUNK + COMMIT
+ * back to back: about 430 bytes at 921600 baud, i.e. the whole burst lands
+ * in under 5 ms and overruns the 256-byte ring before the board can read
+ * it. The second chunk was being silently overwritten, so a two-channel
+ * table would fail its CRC (safe, but the feature would simply never work).
+ * The fix: one frame at a time, the next only after the board's LUT_ACK for
+ * the previous one, with a timeout, retries and a visible error. That also
+ * makes the push robust against a genuinely lost frame.
+ */
 #define ESP_LUT_TX_ACK_TIMEOUT_MS       600u
-/* [EN] COMMIT erases and programs a flash page on the board, which stalls it
-   for tens of ms; give that step a much longer leash.
-   [FA] کامیت یک صفحهٔ فلش را پاک و برنامه می‌کند و ده‌ها میلی‌ثانیه برد را
-   متوقف می‌کند؛ مهلت این مرحله بلندتر است. */
+/*
+ * [EN] COMMIT erases and programs a flash page on the board, which stalls it
+ * for tens of ms; give that step a much longer leash.
+ */
 #define ESP_LUT_TX_COMMIT_TIMEOUT_MS    2500u
 #define ESP_LUT_TX_RETRY_MAX            3u
-
-/* [EN] Staged table (filled by POST /lut, sent by func__Esp_LutTxPump).
-   [FA] جدول چیده‌شده که ‎POST /lut‎ پر می‌کند و pump می‌فرستد. */
+/*
+ * [EN] Staged table (filled by POST /lut, sent by func__Esp_LutTxPump).
+ */
 static uint32_t UINT32_T__G__LutCounts1[ESP_LUT_POINTS_MAX];
 static uint32_t UINT32_T__G__LutMa1[ESP_LUT_POINTS_MAX];
 static uint32_t UINT32_T__G__LutCounts2[ESP_LUT_POINTS_MAX];
@@ -186,23 +163,23 @@ static uint32_t UINT32_T__G__LutMa2[ESP_LUT_POINTS_MAX];
 static uint8_t  UINT8_T__G__LutTxCount1 = 0u;
 static uint8_t  UINT8_T__G__LutTxCount2 = 0u;
 static uint32_t UINT32_T__G__LutTxCrc32 = 0u;
-/* [EN] 0 = idle, 1 = BEGIN, 2 = chunk ch1, 3 = chunk ch2, 4 = COMMIT.
-   [FA] ۰ بیکار، ۱ شروع، ۲ تکهٔ کانال۱، ۳ تکهٔ کانال۲، ۴ کامیت. */
+/*
+ * [EN] 0 = idle, 1 = BEGIN, 2 = chunk ch1, 3 = chunk ch2, 4 = COMMIT.
+ */
 static uint8_t  UINT8_T__G__LutTxStage = 0u;
 static uint8_t  UINT8_T__G__LutTxRetry = 0u;
 static bool     BOOL__G__LutTxWaiting = false;
 static uint32_t UINT32_T__G__LutTxSentMs = 0u;
 static uint32_t UINT32_T__G__LutTxAckMark = 0u;
-/* [EN] 0 = none, 1 = no answer (link/board), 2 = board refused the step.
-   [FA] ۰ بدون خطا، ۱ بی‌پاسخ، ۲ رد شده توسط برد. */
+/*
+ * [EN] 0 = none, 1 = no answer (link/board), 2 = board refused the step.
+ */
 static uint8_t  UINT8_T__G__LutTxError = 0u;
-
-/* [EN] Active-table readback requested by POST /lut/read. The arrays hold
-   values returned by STM32, never values reconstructed from the panel's
-   proposal; this distinction is what makes the before/after comparison real.
-   [FA] بازخوانی جدول فعال که ‎/lut/read‎ درخواست می‌کند. آرایه‌ها مقدارهایی
-   هستند که STM32 برگردانده، نه مقدار بازسازی‌شده از پیشنهاد پنل؛ همین تفاوت
-   مقایسهٔ واقعی قبل/بعد را ممکن می‌کند. */
+/*
+ * [EN] Active-table readback requested by POST /lut/read. The arrays hold
+ * values returned by STM32, never values reconstructed from the panel's
+ * proposal; this distinction is what makes the before/after comparison real.
+ */
 static uint32_t UINT32_T__G__LutReadCounts1[ESP_LUT_POINTS_MAX];
 static uint32_t UINT32_T__G__LutReadMa1[ESP_LUT_POINTS_MAX];
 static uint32_t UINT32_T__G__LutReadCounts2[ESP_LUT_POINTS_MAX];
@@ -214,10 +191,8 @@ static bool     BOOL__G__LutReadPending = false;
 static bool     BOOL__G__LutReadReady = false;
 static uint8_t  UINT8_T__G__LutReadError = 0u;
 static uint32_t UINT32_T__G__LutReadMs = 0u;
-
 /**
  * @brief  [EN] Append one little-endian u32 to a payload buffer.
- *         [FA] افزودن یک u32 لیتل‌اندین به بافر payload.
  */
 static uint16_t func__Esp_PutU32(uint8_t *uint8_t__ptr_buffer, uint16_t uint16_t__offset, uint32_t uint32_t__value)
 {
@@ -227,15 +202,11 @@ static uint16_t func__Esp_PutU32(uint8_t *uint8_t__ptr_buffer, uint16_t uint16_t
     uint8_t__ptr_buffer[uint16_t__offset + 3u] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
     return (uint16_t)(uint16_t__offset + 4u);
 }
-
-/* ==================== LUT read request / درخواست بازخوانی LUT ==================== */
-
+/* ==================== LUT read request / LUT ==================== */
 /**
  * @brief  [EN] Start one active-table readback request. It owns no staged
  *              table and is refused while a push is in flight.
- *         [FA] یک درخواست بازخوانی جدول فعال را شروع می‌کند. این درخواست
- *              جدول چیده‌شده را دست نمی‌زند و هنگام ارسال push رد می‌شود.
- * @‎return [EN] true when the request was sent / [FA]‎ درست اگر درخواست ارسال شد
+* @return true when the request was sent /
  */
 static bool func__Esp_LutReadStart(void)
 {
@@ -243,7 +214,6 @@ static bool func__Esp_LutReadStart(void)
     {
         return false;
     }
-
     UINT8_T__G__LutReadCount1 = 0u;
     UINT8_T__G__LutReadCount2 = 0u;
     UINT8_T__G__LutReadMask = 0u;
@@ -254,15 +224,12 @@ static bool func__Esp_LutReadStart(void)
     func__Esp_WriteFrame(ESP_MSG_LUT_READ, NULL, 0u);
     return true;
 }
-
 /**
  * @brief  [EN] Store one STM32 LUT_DATA frame and mark readback ready after
  *              both channels have arrived.
- *         [FA] یک فریم ‎LUT_DATA‎ از STM32 را ذخیره می‌کند و بعد از رسیدن هر
- *              دو کانال، بازخوانی را آماده اعلام می‌کند.
- * @‎param  uint8_t__ptr_payload [EN] Data payload / [FA] payload‎ داده
- * @‎param  uint16_t__length [EN] Payload length in bytes / [FA]‎ طول payload برحسب بایت
- * @‎return [EN] None / [FA]‎ ندارد
+* @param uint8_t__ptr_payload Data payload / payload
+* @param uint16_t__length Payload length in bytes / payload
+* @return None /
  */
 static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
                                    uint16_t uint16_t__length)
@@ -276,28 +243,24 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
     uint32_t *uint32_t__ptr_chain;
     uint32_t *uint32_t__ptr_battery;
     uint8_t uint8_t__mask;
-
     if (!BOOL__G__LutReadPending)
     {
-        /* [EN] Do not let an unsolicited/stale response overwrite a complete
-           readback; only a response to the current request is authoritative.
-           [FA] پاسخ ناخواسته/کهنه نباید بازخوانی کامل را overwrite کند؛ فقط
-           پاسخِ درخواست جاری معتبر است. */
+        /*
+ * [EN] Do not let an unsolicited/stale response overwrite a complete
+ * readback; only a response to the current request is authoritative.
+ */
         return;
     }
-
     if (uint16_t__length < 3u)
     {
         UINT8_T__G__LutReadError = 1u;
         BOOL__G__LutReadPending = false;
         return;
     }
-
     uint8_t__channel = uint8_t__ptr_payload[0];
     uint8_t__first = uint8_t__ptr_payload[1];
     uint8_t__count = uint8_t__ptr_payload[2];
     uint16_t__expected = (uint16_t)(3u + (8u * (uint16_t)uint8_t__count));
-
     if ((uint8_t__channel < 1u) || (uint8_t__channel > 2u) ||
         (uint8_t__first != 0u) ||
         (uint8_t__count > (uint8_t)ESP_LUT_POINTS_MAX) ||
@@ -307,7 +270,6 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
         BOOL__G__LutReadPending = false;
         return;
     }
-
     if (uint8_t__channel == 1u)
     {
         uint32_t__ptr_chain = UINT32_T__G__LutReadCounts1;
@@ -318,7 +280,6 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
         uint32_t__ptr_chain = UINT32_T__G__LutReadCounts2;
         uint32_t__ptr_battery = UINT32_T__G__LutReadMa2;
     }
-
     uint16_t__offset = 3u;
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
     {
@@ -328,7 +289,6 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
             uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
         uint16_t__offset = (uint16_t)(uint16_t__offset + 8u);
     }
-
     if (uint8_t__channel == 1u)
     {
         UINT8_T__G__LutReadCount1 = uint8_t__count;
@@ -340,7 +300,6 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
         uint8_t__mask = 2u;
     }
     UINT8_T__G__LutReadMask = (uint8_t)(UINT8_T__G__LutReadMask | uint8_t__mask);
-
     if (UINT8_T__G__LutReadMask == 3u)
     {
         BOOL__G__LutReadPending = false;
@@ -348,25 +307,20 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
         UINT32_T__G__LutReadMs = (uint32_t)millis();
     }
 }
-
 /**
  * @brief  [EN] Confirm that the latest readback is the exact point table that
  *              the last push staged, not merely a matching count or CRC.
- *         [FA] تأیید می‌کند که آخرین بازخوانی دقیقاً جدول نقطه‌ایِ آخرین ارسال
- *              است، نه فقط جدول با تعداد یا CRC مشابه.
- * @‎return [EN] true on a complete point-by-point match / [FA]‎ درست برای تطبیق کامل
+* @return true on a complete point-by-point match /
  */
 static bool func__Esp_LutReadMatchesStaged(void)
 {
     uint8_t uint8_t__index;
-
     if ((!BOOL__G__LutReadReady) ||
         (UINT8_T__G__LutReadCount1 != UINT8_T__G__LutTxCount1) ||
         (UINT8_T__G__LutReadCount2 != UINT8_T__G__LutTxCount2))
     {
         return false;
     }
-
     for (uint8_t__index = 0u; uint8_t__index < UINT8_T__G__LutTxCount1; uint8_t__index++)
     {
         if ((UINT32_T__G__LutReadCounts1[uint8_t__index] != UINT32_T__G__LutCounts1[uint8_t__index]) ||
@@ -385,12 +339,10 @@ static bool func__Esp_LutReadMatchesStaged(void)
     }
     return true;
 }
-
 /**
  * @brief  [EN] Send one channel's staged points as a single LUT_CHUNK
  *              (3 + 8 x N bytes; N <= 24 keeps it at 195 bytes, well inside
  *              the 512-byte frame ceiling).
- *         [FA] ارسال نقاط یک کانال در یک LUT_CHUNK.
  */
 static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uint32_t__ptr_counts,
                                    const uint32_t *uint32_t__ptr_batteryMa, uint8_t uint8_t__count)
@@ -398,37 +350,29 @@ static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uin
     uint8_t UINT8_T__A__Payload[3u + (8u * ESP_LUT_POINTS_MAX)];
     uint16_t uint16_t__used = 3u;
     uint8_t uint8_t__index;
-
     if ((uint8_t__count == 0u) || (uint8_t__count > (uint8_t)ESP_LUT_POINTS_MAX))
     {
         return;
     }
-
     UINT8_T__A__Payload[0] = uint8_t__channel;
-    UINT8_T__A__Payload[1] = 0u;   /* [EN] first index / اندیس شروع */
+    UINT8_T__A__Payload[1] = 0u;
     UINT8_T__A__Payload[2] = uint8_t__count;
-
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
     {
         uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_counts[uint8_t__index]);
         uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_batteryMa[uint8_t__index]);
     }
-
     func__Esp_WriteFrame(ESP_MSG_LUT_CHUNK, UINT8_T__A__Payload, uint16_t__used);
 }
-
 /**
  * @brief  [EN] Stage a whole table for sending. Nothing goes out here: the
  *              frames are released one at a time by func__Esp_LutTxPump as
  *              the board acknowledges them (see finding L1 above). Any push
  *              in flight is replaced.
- *         [FA] چیدن کل جدول برای ارسال. اینجا چیزی فرستاده نمی‌شود؛ فریم‌ها
- *              را pump یکی‌یکی و پس از تأیید برد می‌فرستد (یافتهٔ L1 بالا).
- *              اگر ارسالی در جریان باشد جایش را می‌گیرد.
- * @param  uint8_t__count1 [EN] Points staged for channel 1, 0..24 / [FA]‎ نقاط کانال ۱
- * @param  uint8_t__count2 [EN] Points staged for channel 2, 0..24 / [FA]‎ نقاط کانال ۲
- * @param  uint32_t__crc32 [EN] CRC32 the browser computed / [FA] CRC32‎ مرورگر
- * @return [EN] None / [FA]‎ ندارد
+* @param uint8_t__count1 Points staged for channel 1, 0..24 /
+* @param uint8_t__count2 Points staged for channel 2, 0..24 /
+* @param uint32_t__crc32 CRC32 the browser computed / CRC32
+* @return None /
  */
 static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count2,
                                  uint32_t uint32_t__crc32)
@@ -442,10 +386,10 @@ static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count
     UINT8_T__G__LutTxError = 0u;
     BOOL__G__LutTxWaiting = false;
     UINT32_T__G__LutTxAckMark = UINT32_T__G__LutAckCount;
-    /* [EN] A new push invalidates the previous readback; reset may only use
-       data that belongs to this transaction.
-       [FA] ارسال تازه بازخوانی قبلی را نامعتبر می‌کند؛ ریست فقط باید از دادهٔ
-       همین تراکنش استفاده کند. */
+    /*
+ * [EN] A new push invalidates the previous readback; reset may only use
+ * data that belongs to this transaction.
+ */
     UINT8_T__G__LutReadCount1 = 0u;
     UINT8_T__G__LutReadCount2 = 0u;
     UINT8_T__G__LutReadMask = 0u;
@@ -454,7 +398,6 @@ static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count
     UINT8_T__G__LutReadError = 0u;
     UINT32_T__G__LutReadMs = 0u;
 }
-
 /**
  * @brief  [EN] Advance the staged push by at most one frame per call: send
  *              the current step, then wait for its LUT_ACK before the next.
@@ -463,37 +406,28 @@ static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count
  *              with error 1 so the panel can say so instead of hanging on a
  *              spinner. A step the board refuses (status != 0) stops it with
  *              error 2 - a half-written table is never committed.
- *         [FA] پیش‌بردن ارسال، حداکثر یک فریم در هر فراخوانی: ارسال مرحلهٔ
- *              جاری و بعد انتظار برای LUT_ACK همان مرحله. مرحلهٔ بی‌پاسخ تا
- *              ESP_LUT_TX_RETRY_MAX بار تکرار و سپس با خطای ۱ متوقف می‌شود
- *              تا پنل بتواند خطا را بگوید نه اینکه بچرخد. مرحلهٔ ردشده
- *              (status غیر صفر) با خطای ۲ متوقف می‌شود.
- * @return [EN] true while a push owns the link / [FA]‎ تا وقتی ارسال جدول لینک را در اختیار دارد
+* @return true while a push owns the link /
  */
 static bool func__Esp_LutTxPump(void)
 {
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     uint8_t uint8_t__expectStage;
     uint32_t uint32_t__timeoutMs;
-
     if (UINT8_T__G__LutTxStage == 0u)
     {
         return false;
     }
-
     uint8_t__expectStage = (UINT8_T__G__LutTxStage == 1u) ? 1u :
                            ((UINT8_T__G__LutTxStage == 4u) ? 3u : 2u);
     uint32_t__timeoutMs = (UINT8_T__G__LutTxStage == 4u) ? ESP_LUT_TX_COMMIT_TIMEOUT_MS
                                                          : ESP_LUT_TX_ACK_TIMEOUT_MS;
-
     if (BOOL__G__LutTxWaiting)
     {
-        /* [EN] The ACK must be NEW and describe the step we are waiting for.
-           Matching the echoed point counts as well means a duplicate ACK
-           caused by a retry cannot be mistaken for the next step's answer.
-           [FA] تأیید باید «تازه» باشد و همان مرحله را توصیف کند. مقایسهٔ
-           تعداد نقاط بازگشتی باعث می‌شود تأیید تکراریِ ناشی از ارسال مجدد،
-           پاسخ مرحلهٔ بعد شمرده نشود. */
+        /*
+ * [EN] The ACK must be NEW and describe the step we are waiting for.
+ * Matching the echoed point counts as well means a duplicate ACK
+ * caused by a retry cannot be mistaken for the next step's answer.
+ */
         bool bool__fresh = (UINT32_T__G__LutAckCount != UINT32_T__G__LutTxAckMark) &&
                            (UINT8_T__G__LutAckStage == uint8_t__expectStage);
         if (bool__fresh && (UINT8_T__G__LutTxStage == 2u))
@@ -504,7 +438,6 @@ static bool func__Esp_LutTxPump(void)
         {
             bool__fresh = (UINT8_T__G__LutAckPoints2 == UINT8_T__G__LutTxCount2);
         }
-
         if (bool__fresh)
         {
             if (UINT8_T__G__LutAckStatus != 0u)
@@ -517,8 +450,9 @@ static bool func__Esp_LutTxPump(void)
             BOOL__G__LutTxWaiting = false;
             UINT8_T__G__LutTxRetry = 0u;
             UINT8_T__G__LutTxStage++;
-            /* [EN] Skip the chunk of a channel that was sent as 0 points.
-               [FA] پرش از تکهٔ کانالی که صفر نقطه دارد. */
+            /*
+ * [EN] Skip the chunk of a channel that was sent as 0 points.
+ */
             if ((UINT8_T__G__LutTxStage == 2u) && (UINT8_T__G__LutTxCount1 == 0u))
             {
                 UINT8_T__G__LutTxStage = 3u;
@@ -529,7 +463,7 @@ static bool func__Esp_LutTxPump(void)
             }
             if (UINT8_T__G__LutTxStage > 4u)
             {
-                UINT8_T__G__LutTxStage = 0u;   /* [EN] committed / [FA] کامیت شد */
+                UINT8_T__G__LutTxStage = 0u;
                 return false;
             }
         }
@@ -550,7 +484,6 @@ static bool func__Esp_LutTxPump(void)
             BOOL__G__LutTxWaiting = false;
         }
     }
-
     if (UINT8_T__G__LutTxStage == 1u)
     {
         uint8_t UINT8_T__A__Begin[2];
@@ -574,33 +507,26 @@ static bool func__Esp_LutTxPump(void)
         (void)func__Esp_PutU32(UINT8_T__A__Commit, 0u, UINT32_T__G__LutTxCrc32);
         func__Esp_WriteFrame(ESP_MSG_LUT_COMMIT, UINT8_T__A__Commit, 4u);
     }
-
     UINT32_T__G__LutTxAckMark = UINT32_T__G__LutAckCount;
     UINT32_T__G__LutTxSentMs = uint32_t__nowMs;
     BOOL__G__LutTxWaiting = true;
     return true;
 }
-
 /**
  * @brief  [EN] Ask the board to reboot so every module starts from the new
  *              table. The literal 'R','S','T','!' magic means a stray frame
  *              can never restart a charging board by accident.
- *         [FA] درخواست ریست برد تا همهٔ ماژول‌ها با جدول جدید شروع کنند.
- *              مجیک متنی یعنی فریم سرگردان نمی‌تواند تصادفی برد در حال شارژ
- *              را ریست کند.
  */
 static void func__Esp_SendLutReset(void)
 {
     uint8_t UINT8_T__A__Payload[4] = { (uint8_t)'R', (uint8_t)'S', (uint8_t)'T', (uint8_t)'!' };
     func__Esp_WriteFrame(ESP_MSG_LUT_RESET, UINT8_T__A__Payload, 4u);
 }
-
 /**
  * @brief  [EN] Send SET_PARAM [id:u8][value:u32 LE].
- *         [FA] ارسال SET_PARAM با قالب [id:u8][value:u32 LE].
- * @param  uint8_t__id     [EN] Parameter ID, 0..82 (83 params since v1.17) / [FA]‎ شناسه پارامتر، ۰ تا ۸۲ (۸۳ پارامتر از نسخه ۱.۱۷)
- * @param  uint32_t__value [EN] Raw wire value (signed IDs as two's complement) / [FA]‎ مقدار خام (شناسه‌های علامت‌دار به صورت مکمل دو)
- * @return [EN] None / [FA]‎ ندارد
+* @param uint8_t__id Parameter ID, 0..82 (83 params since v1.17) / ( .)
+* @param uint32_t__value Raw wire value (signed IDs as two's complement) / ( )
+* @return None /
  */
 static void func__Esp_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
 {
@@ -612,40 +538,31 @@ static void func__Esp_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value
     UINT8_T__A__Payload[4] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
     func__Esp_WriteFrame(ESP_MSG_SET_PARAM, UINT8_T__A__Payload, ESP_LINK_PARAM_ITEM_SIZE);
 }
-
 /**
  * @brief  [EN] Send at most one queued command per ESP_LINK_TX_INTERVAL_MS
  *              (priority order UINT8_T__G__TxOrder), plus the manual-mode keepalive or, with no
  *              browser, the manual-exit request (ID 19 = 0). Never blocks.
- *         [FA] ارسال حداکثر یک فرمان صف‌شده در هر ESP_LINK_TX_INTERVAL_MS
- *              (به ترتیب اولویت UINT8_T__G__TxOrder) و keepalive مود دستی یا، بدون مرورگر، درخواست
- *              خروج از مود دستی (‎ID 19 = 0)‎. هیچ‌وقت مسدود نمی‌کند.
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_PumpTx(void)
 {
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     uint32_t uint32_t__elapsedMs = uint32_t__nowMs - UINT32_T__G__LastTxMs;
     uint8_t uint8_t__step;
-
-    /* [EN] A LUT push owns the link while it runs (a few hundred ms at most):
-       its frames are big, and interleaving a SET_PARAM between a chunk and
-       its ACK is exactly how the board's RX ring would be overrun again.
-       Parameter writes stay queued and go out right after; nothing is lost.
-       [FA] تا وقتی ارسال جدول در جریان است لینک در اختیار اوست (حداکثر چند
-       صد میلی‌ثانیه): فریم‌هایش بزرگ‌اند و گذاشتن یک SET_PARAM بین تکه و
-       تأییدش دقیقاً همان سرریز حلقهٔ گیرنده است. فرمان‌های پارامتری در صف
-       می‌مانند و بلافاصله بعد فرستاده می‌شوند. */
+    /*
+ * [EN] A LUT push owns the link while it runs (a few hundred ms at most):
+ * its frames are big, and interleaving a SET_PARAM between a chunk and
+ * its ACK is exactly how the board's RX ring would be overrun again.
+ * Parameter writes stay queued and go out right after; nothing is lost.
+ */
     if (func__Esp_LutTxPump())
     {
         return;
     }
-
     if (uint32_t__elapsedMs < ESP_LINK_TX_INTERVAL_MS)
     {
         return;
     }
-
     for (uint8_t__step = 0u; uint8_t__step < ESP_PARAM_COUNT; uint8_t__step++)
     {
         uint8_t uint8_t__id = UINT8_T__G__TxOrder[uint8_t__step];
@@ -656,9 +573,6 @@ static void func__Esp_PumpTx(void)
             return;
         }
     }
-
-    /* صف ریست قفل‌ها بعد از صف پارامترها می‌رود تا نوشتن عددهای کاربر پشت
-       یک ریست دستی نماند؛ همان نرخ و همان فاصله، یک فریم در هر نوبت. */
     for (uint8_t__step = 0u; uint8_t__step < ESP_SLOT_QUEUE_LEN; uint8_t__step++)
     {
         if (BOOL__G__SlotQueuePending[uint8_t__step])
@@ -669,62 +583,50 @@ static void func__Esp_PumpTx(void)
             return;
         }
     }
-
-    /* [EN] Manual-mode keepalive: every ESP_LINK_KEEPALIVE_MS while manual is active (b5 or param 19),
-            whether or not a browser is polling (spec section 19: from every tab and in the background).
-       [FA] keepalive مود دستی: هر ESP_LINK_KEEPALIVE_MS تا وقتی مود دستی فعال است (b5 یا پارامتر ۱۹)،
-            چه مرورگری poll کند چه نه (بخش 19 سند: از هر تب و در پس‌زمینه). */
+    /*
+ * [EN] Manual-mode keepalive: every ESP_LINK_KEEPALIVE_MS while manual is active (b5 or param 19),
+ * whether or not a browser is polling (spec section 19: from every tab and in the background).
+ */
     bool bool__flagManual = ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_MANUAL_MODE) != 0u);
     bool bool__paramManual = BOOL__G__ParamKnown[ESP_PARAM_MANUAL_TEST_MODE] &&
                              (UINT32_T__G__ParamApplied[ESP_PARAM_MANUAL_TEST_MODE] != 0u);
     bool bool__manualActive = bool__flagManual || bool__paramManual;
-
-    /* [EN] Closed-panel guard: no /t poll for ESP_LINK_BROWSER_LOST_MS -> the keepalive is replaced by
-            SET ID 19 = 0, repeated every ESP_LINK_KEEPALIVE_MS until the STM32 reports manual off
-            (a lost frame is simply retried). A throttled background tab still polls about once per
-            second and is not affected.
-       [FA] محافظ پنل بسته: اگر ESP_LINK_BROWSER_LOST_MS هیچ /t خوانده نشود، به‌جای keepalive فرمان
-            ‎ID 19 = 0‎ هر ESP_LINK_KEEPALIVE_MS تکرار می‌شود تا STM32 خاموشی مود دستی را گزارش کند
-            (فریم گم‌شده دوباره فرستاده می‌شود). تب پس‌زمینه با throttle هنوز حدود هر ثانیه می‌خواند. */
-    /* [EN] No browser since boot counts as lost: an ESP reset while the STM32 is in manual mode
-            must not keep the mode alive for 10 s without anyone watching.
-       [FA] نبودن مرورگر از بوت هم «ازدست‌رفته» حساب می‌شود: ری‌استارت ESP وسط مود دستی نباید
-            مود را ۱۰ ثانیه بدون ناظر زنده نگه دارد. */
+    /*
+ * [EN] Closed-panel guard: no /t poll for ESP_LINK_BROWSER_LOST_MS -> the keepalive is replaced by
+ * SET ID 19 = 0, repeated every ESP_LINK_KEEPALIVE_MS until the STM32 reports manual off
+ * (a lost frame is simply retried). A throttled background tab still polls about once per
+ * second and is not affected.
+ */
+    /*
+ * [EN] No browser since boot counts as lost: an ESP reset while the STM32 is in manual mode
+ * must not keep the mode alive for 10 s without anyone watching.
+ */
     uint32_t uint32_t__browserAgeMs = uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs;
     bool bool__browserLost = (!BOOL__G__BrowserSeen) || (uint32_t__browserAgeMs >= ESP_LINK_BROWSER_LOST_MS);
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     bool bool__keepaliveDue = bool__manualActive && (uint32_t__keepaliveAgeMs >= ESP_LINK_KEEPALIVE_MS);
-
     if (bool__keepaliveDue && bool__browserLost)
     {
         func__Esp_SendSetParam(ESP_PARAM_MANUAL_TEST_MODE, 0u);
         return;
     }
-
-    /* [EN] Periodic parameter refresh: the seq-restart detector is blind while the
-            sequence counter sits in its wrap window (0xFF00..0xFFFF), so a board reboot
-            inside that ~26 s window (once per ~109 min) would leave the applied-value
-            table stale forever. One GET_PARAMS every ESP_LINK_PARAM_REFRESH_MS keeps the
-            display truthful; it does NOT re-apply user parameters (that only happens on
-            a detected restart, so a JIT-parked channel can never be re-armed by this).
-       [FA] نوسازی دوره‌ای پارامترها: تشخیص‌گر ری‌استارت در پنجرهٔ wrap شمارندهٔ seq
-            (‎0xFF00..0xFFFF)‎ کور است؛ ریبوت برد در همین پنجرهٔ ~۲۶ ثانیه‌ای (یک‌بار در
-            هر ~۱۰۹ دقیقه) جدول مقادیر اعمال‌شده را برای همیشه کهنه می‌گذارد. یک
-            GET_PARAMS هر ESP_LINK_PARAM_REFRESH_MS نمایش را راست‌نگه می‌دارد؛
-            پارامترهای کاربر را دوباره اعمال نمی‌کند (فقط بعد از ری‌استارتِ
-            تشخیص‌شده؛ پس هیچ‌وقت کانال پارک‌شدهٔ JIT را مسلح نمی‌کند). */
-    /* [EN] v1.54 (user order 2026-10-05: "the panel no longer displays the
-            board's LED/buzzer state, so stop asking the board for things
-            nobody needs"): the refresh exists only to keep a WATCHED page
-            truthful, so it is now skipped while no browser is polling. With
-            the tab closed the STM32 is never asked to dump its 123-value
-            parameter table again; the first poll after a gap re-arms it, so
-            whoever opens the page still sees fresh applied values.
-       [FA] نوسازی دوره‌ای فقط برای راست‌نگه‌داشتن صفحه‌ای است که کسی تماشا
-            می‌کند؛ پس تا وقتی مرورگری poll نمی‌کند انجام نمی‌شود و برد دیگر
-            مجبور نیست جدول ۱۲۳ مقداری را بی‌خود بفرستد. اولین poll بعد از
-            وقفه دوباره مسلحش می‌کند، پس هرکس صفحه را باز کند مقدار تازه
-            می‌بیند. */
+    /*
+ * [EN] Periodic parameter refresh: the seq-restart detector is blind while the
+ * sequence counter sits in its wrap window (0xFF00..0xFFFF), so a board reboot
+ * inside that ~26 s window (once per ~109 min) would leave the applied-value
+ * table stale forever. One GET_PARAMS every ESP_LINK_PARAM_REFRESH_MS keeps the
+ * display truthful; it does NOT re-apply user parameters (that only happens on
+ * a detected restart, so a JIT-parked channel can never be re-armed by this).
+ */
+    /*
+ * [EN] v1.54 (user order 2026-10-05: "the panel no longer displays the
+ * board's LED/buzzer state, so stop asking the board for things
+ * nobody needs"): the refresh exists only to keep a WATCHED page
+ * truthful, so it is now skipped while no browser is polling. With
+ * the tab closed the STM32 is never asked to dump its 123-value
+ * parameter table again; the first poll after a gap re-arms it, so
+ * whoever opens the page still sees fresh applied values.
+ */
     if (bool__browserLost)
     {
         UINT32_T__G__LastParamRefreshMs = uint32_t__nowMs - ESP_LINK_PARAM_REFRESH_MS;
@@ -736,34 +638,27 @@ static void func__Esp_PumpTx(void)
     }
     else
     {
-        /* [‎EN] MISRA 15.7 / [FA]‎ شاخهٔ پایانی */
     }
-
     if (bool__keepaliveDue)
     {
         BOOL__G__TxGetPending = true;
     }
-
     if (BOOL__G__TxGetPending)
     {
         BOOL__G__TxGetPending = false;
         func__Esp_WriteFrame(ESP_MSG_GET_PARAMS, NULL, 0u);
     }
 }
-
 /* ==================== Frame Receive ==================== */
-
 /**
  * @brief  [EN] Store one parameter value reported by the STM32 (applied value).
- *         [FA] ذخیره مقدار اعمال‌شده یک پارامتر که STM32 گزارش داده است.
- * @param  uint8_t__ptr_item [EN] 5-byte item [id][value LE] / [FA]‎ آیتم ۵ بایتی [id][value LE]
- * @return [EN] None / [FA]‎ ندارد
+* @param uint8_t__ptr_item 5-byte item [id][value LE] / [id][value LE]
+* @return None /
  */
 static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
 {
     uint8_t uint8_t__id = uint8_t__ptr_item[0];
     uint32_t uint32_t__value = func__Esp_ReadU32(uint8_t__ptr_item, 1u);
-
     if (uint8_t__id < ESP_PARAM_COUNT)
     {
         UINT32_T__G__ParamApplied[uint8_t__id] = uint32_t__value;
@@ -771,15 +666,11 @@ static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
     }
     else if ((uint8_t__id >= ESP_SLOT_FIRST_ID) && (uint8_t__id <= ESP_SLOT_LAST_ID))
     {
-        /* گزارش یک اسلات ریست: همین جواب، تأیید نشستن مقدار روی برد است.
-           مقدار اعمال‌شده ذخیره و خانهٔ همان درخواست از صف آزاد می‌شود. */
         uint8_t uint8_t__index;
-
         UINT8_T__G__SlotLastId    = uint8_t__id;
         UINT32_T__G__SlotLastValue = uint32_t__value;
         BOOL__G__SlotLastKnown    = true;
         UINT32_T__G__SlotReportCount++;
-
         for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
         {
             if (BOOL__G__SlotQueuePending[uint8_t__index] &&
@@ -791,36 +682,30 @@ static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
     }
     else
     {
-        /* شناسهٔ بیرون از هر دو جدول: بی‌صدا رد می‌شود. */
     }
 }
-
 /**
  * @brief  [EN] Add the just-stored TLM frame to the bench statistics window.
- *         [FA] افزودن فریم TLM تازه ذخیره‌شده به پنجرهٔ آمار بنچ.
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_StatAccumulate(void)
 {
     uint8_t uint8_t__index;
-
     if (UINT32_T__G__StatCount >= ESP_STAT_MAX_FRAMES)
     {
         return;
     }
-
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
         uint32_t uint32_t__value = UINT32_T__G__TlmField[uint8_t__index];
         UINT32_T__G__StatLast[uint8_t__index] = uint32_t__value;
         bool bool__first = (UINT32_T__G__StatCount == 0u);
-        /* [EN] Full-program audit: saturate instead of wrapping. A field
-           that sits near its ceiling for the whole 60000-frame window
-           (e.g. a dead-battery elapsed counter near 24 h at 1 Hz) would
-           otherwise wrap the sum and corrupt the bench average.
-           [FA] ممیزی کل برنامه: اشباع به‌جای سرریز چرخشی. فیلدی که کل پنجرهٔ
-           ۶۰۰۰۰ فریمی نزدیک سقفش بنشیند (مثل شمارندهٔ باتری خراب نزدیک
-           ۲۴ ساعت) جمع را می‌چرخاند و میانگین بنچ را خراب می‌کرد. */
+        /*
+ * [EN] Full-program audit: saturate instead of wrapping. A field
+ * that sits near its ceiling for the whole 60000-frame window
+ * (e.g. a dead-battery elapsed counter near 24 h at 1 Hz) would
+ * otherwise wrap the sum and corrupt the bench average.
+ */
         if ((UINT32_MAX - UINT32_T__G__StatSum[uint8_t__index]) < uint32_t__value)
         {
             UINT32_T__G__StatSum[uint8_t__index] = UINT32_MAX;
@@ -838,17 +723,14 @@ static void func__Esp_StatAccumulate(void)
             UINT32_T__G__StatMax[uint8_t__index] = uint32_t__value;
         }
     }
-
     UINT32_T__G__StatFaultOr |= UINT32_T__G__TlmField[ESP_STAT_FAULT_FIELD];
     UINT16_T__G__StatSeq = UINT16_T__G__TlmSeq;
     UINT8_T__G__StatFlags = UINT8_T__G__TlmFlags;
     UINT32_T__G__StatCount++;
 }
-
 /**
  * @brief  [EN] Send one HELLO so the board proves it hears us (v1.111).
- *         [FA] ارسال یک HELLO تا برد ثابت کند حرف ما را می‌شنود (v1.111).
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_SendHello(void)
 {
@@ -856,18 +738,16 @@ static void func__Esp_SendHello(void)
     uint32_t uint32_t__uptimeSec = (uint32_t)((uint32_t)millis() / 1000u);
     uint8_t uint8_t__flags = 0u;
     uint8_t uint8_t__index;
-
-    /* [EN] Flags say what this panel knows: bit0 telemetry seen, bit1 a browser
-       is polling. The board stores them but never acts on them.
-       [FA] پرچم‌ها می‌گویند این پنل چه می‌داند: بیت۰ تله‌متری دیده شد،
-       بیت۱ مرورگری در حال پرسش است. برد آن‌ها را نگه می‌دارد اما کاری با آن‌ها ندارد. */
+    /*
+ * [EN] Flags say what this panel knows: bit0 telemetry seen, bit1 a browser
+ * is polling. The board stores them but never acts on them.
+ */
     if (BOOL__G__TlmSeen) { uint8_t__flags |= 0x01u; }
     if (BOOL__G__BrowserSeen &&
         ((uint32_t)((uint32_t)millis() - UINT32_T__G__LastBrowserPollMs) < ESP_LINK_BROWSER_LOST_MS))
     {
         uint8_t__flags |= 0x02u;
     }
-
     UINT8_T__A__Payload[0] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
     UINT8_T__A__Payload[1] = (uint8_t)ESP_ESP_FW_VERSION;
     UINT8_T__A__Payload[2] = (uint8_t)ESP_ESP_ROLE_CALIBRATION;
@@ -877,16 +757,13 @@ static void func__Esp_SendHello(void)
         UINT8_T__A__Payload[4u + uint8_t__index] =
             (uint8_t)((uint32_t__uptimeSec >> (8u * uint8_t__index)) & 0xFFu);
     }
-
     func__Esp_WriteFrame((uint8_t)ESP_MSG_HELLO, UINT8_T__A__Payload, (uint16_t)ESP_HELLO_LEN);
     UINT32_T__G__LastHelloTxMs = (uint32_t)millis();
 }
-
 /**
  * @brief  [EN] Store the board's answer: its identity plus its own receive health.
- *         [FA] ذخیرهٔ پاسخ برد: هویت خودش به‌همراه سلامت دریافت خودش.
- * @param  uint8_t__ptr_payload [EN] 24 payload bytes / [FA]‎ ۲۴ بایت payload
- * @return [EN] None / [FA]‎ ندارد
+* @param uint8_t__ptr_payload 24 payload bytes / payload
+* @return None /
  */
 static void func__Esp_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
 {
@@ -903,25 +780,22 @@ static void func__Esp_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
                                                (uint16_t)((uint16_t)uint8_t__ptr_payload[17] << 8));
     UINT16_T__G__BoardPeriodMs    = (uint16_t)((uint16_t)uint8_t__ptr_payload[18] |
                                                (uint16_t)((uint16_t)uint8_t__ptr_payload[19] << 8));
-    /* [EN] Bytes 20..23 echo our uptime; used only to pair request and answer.
-       [FA] بایت‌های ۲۰..۲۳ آپتایم ما را بازمی‌گردانند؛ فقط برای جفت‌کردن پرسش و پاسخ. */
-
-    /* [EN] Hand the board's own uptime to the log: it is the only clock that
-            kept running while this panel was off (user order 2026-10-27).
-       [FA] آپتایم خود برد به لاگ داده می‌شود: تنها ساعتی که وقتی این پنل خاموش
-            بود هم شمرد (دستور کاربر ۲۰۲۶-۱۰-۲۷). */
+    /*
+ * [EN] Bytes 20..23 echo our uptime; used only to pair request and answer.
+ */
+    /*
+ * [EN] Hand the board's own uptime to the log: it is the only clock that
+ * kept running while this panel was off (user order 2026-10-27).
+ */
     func__EspLog_NoteBoardTime(UINT32_T__G__BoardUptimeSec);
-
     UINT32_T__G__LastHelloAckMs = (uint32_t)millis();
     BOOL__G__HelloSeen = true;
     UINT32_T__G__HelloAckCount++;
 }
-
 /**
  * @brief  [EN] Handshake clock: send HELLO on cadence, drop the link when silent.
- *         [FA] ساعت دست‌دادن: ارسال HELLO روی دوره، و اعلام قطع در سکوت برد.
- * @param  uint32_t__nowMs [EN] current millis(), 0..2^32-1 ms / [FA]‎ millis فعلی، ۰ تا ۲^۳۲-۱
- * @return [EN] None / [FA]‎ ندارد
+* @param uint32_t__nowMs current millis(), 0..2^32-1 ms / millis ^-
+* @return None /
  */
 static void func__Esp_HandshakeTick(uint32_t uint32_t__nowMs)
 {
@@ -936,40 +810,33 @@ static void func__Esp_HandshakeTick(uint32_t uint32_t__nowMs)
         UINT32_T__G__HelloLossCount++;
     }
 }
-
 /**
  * @brief  [EN] Dispatch one checksum-valid frame from the STM32.
- *         [FA] پردازش یک فریم معتبر (checksum درست) دریافتی از STM32.
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_HandleFrame(void)
 {
     const uint8_t *uint8_t__ptr_payload = UINT8_T__G__RxPayload;
     uint8_t uint8_t__index;
-
     if ((UINT8_T__G__RxType == ESP_MSG_TLM_LIVE) && (UINT16_T__G__RxLen == ESP_LINK_TLM_SIZE))
     {
         uint16_t uint16_t__seqLow = (uint16_t)uint8_t__ptr_payload[0];
         uint16_t uint16_t__seqHigh = (uint16_t)((uint16_t)uint8_t__ptr_payload[1] << 8);
         uint16_t uint16_t__seq = (uint16_t)(uint16_t__seqLow | uint16_t__seqHigh);
-
-        /* [EN] First frame or STM32 restart (seq jumps back): refresh the parameter table.
-           [FA] اولین فریم یا ری‌استارت STM32 (عقب‌گرد seq): جدول پارامترها دوباره خوانده شود. */
+        /*
+ * [EN] First frame or STM32 restart (seq jumps back): refresh the parameter table.
+ */
         bool bool__seqRestart = BOOL__G__TlmSeen && (uint16_t__seq < UINT16_T__G__TlmSeq) && (UINT16_T__G__TlmSeq < 0xFF00u);
         if ((!BOOL__G__TlmSeen) || bool__seqRestart)
         {
             BOOL__G__TxGetPending = true;
         }
-
-        /* [EN] STM32 flash-persists ids 0..14 + 20..75 (v1.14 NVM), so the
-                re-send below only matters for the transient test modes
-                15..19 (+76): re-send values the user set in this session.
-                Manual test mode (ID 19) is never re-enabled automatically.
-           [FA] STM32 شناسه‌های ۰..۱۴، ۲۰..۷۵ و ۷۷..۸۲ را روی فلش نگه می‌دارد (NVM
-                نسخهٔ ۱.۱۴)، پس ارسال مجدد زیر فقط برای مودهای گذرای تست
-                ۱۵..۱۹ (+۷۶) لازم است: مقادیری که کاربر در این نشست داده
-                دوباره ارسال شوند. مود تست دستی (شناسه ۱۹) هیچ‌وقت خودکار
-                روشن نمی‌شود. */
+        /*
+ * [EN] STM32 flash-persists ids 0..14 + 20..75 (v1.14 NVM), so the
+ * re-send below only matters for the transient test modes
+ * 15..19 (+76): re-send values the user set in this session.
+ * Manual test mode (ID 19) is never re-enabled automatically.
+ */
         if (bool__seqRestart)
         {
             for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
@@ -981,33 +848,33 @@ static void func__Esp_HandleFrame(void)
                 }
             }
         }
-
         for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
         {
             uint8_t uint8_t__fieldBytes = (uint8_t)(uint8_t__index * 4u);
             uint8_t uint8_t__offset = (uint8_t)(ESP_LINK_TLM_FIELD_OFFSET + uint8_t__fieldBytes);
             UINT32_T__G__TlmField[uint8_t__index] = func__Esp_ReadU32(uint8_t__ptr_payload, uint8_t__offset);
         }
-
         UINT16_T__G__TlmSeq = uint16_t__seq;
         UINT8_T__G__TlmFlags = uint8_t__ptr_payload[2];
-        /* [EN] v1.43: byte 3 = imbalance scenario 5 status bits.
-           [FA] بایت ۳: بیت‌های وضعیت سناریوی ۵ عدم‌توازن. */
+        /*
+ * [EN] v1.43: byte 3 = imbalance scenario 5 status bits.
+ */
         UINT8_T__G__TlmFlags2 = uint8_t__ptr_payload[3];
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;
         func__Esp_StatAccumulate();
-        /* [EN] v1.93: the state history watches every decoded frame and writes
-              a row only when something really changed.
-           [FA] نسخهٔ ۱٫۹۳: تاریخچهٔ وضعیت هر فریم را می‌بیند و فقط وقتی چیزی
-              واقعاً عوض شده باشد یک ردیف می‌نویسد. */
+        /*
+ * [EN] v1.93: the state history watches every decoded frame and writes
+ * a row only when something really changed.
+ */
         func__EspLog_OnFrame();
     }
     else if (UINT8_T__G__RxType == ESP_MSG_HELLO_ACK)
     {
-        /* [EN] Exact length only: a half-written answer must not claim the link.
-           [FA] فقط طول درست: پاسخ نیمه‌نوشته نباید لینک را تأیید کند. */
+        /*
+ * [EN] Exact length only: a half-written answer must not claim the link.
+ */
         if (UINT16_T__G__RxLen == (uint16_t)ESP_HELLO_ACK_LEN)
         {
             func__Esp_HandleHelloAck(uint8_t__ptr_payload);
@@ -1023,9 +890,6 @@ static void func__Esp_HandleFrame(void)
         UINT8_T__G__NakId = uint8_t__ptr_payload[0];
         UINT8_T__G__NakReason = uint8_t__ptr_payload[1];
         UINT32_T__G__NakCount++;
-
-        /* برد یک درخواست ریست را رد کرد: جدا شمرده می‌شود تا پنل بگوید
-           «رد شد» نه «در راه است». */
         if ((UINT8_T__G__NakId >= ESP_SLOT_FIRST_ID) && (UINT8_T__G__NakId <= ESP_SLOT_LAST_ID))
         {
             UINT32_T__G__SlotNakCount++;
@@ -1033,9 +897,10 @@ static void func__Esp_HandleFrame(void)
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
     {
-        /* [EN] v1.16: 77 items need u16 offsets (52 x 5 already overflows u8);
-           v1.17: 83 items, same count-driven loop.
-           [FA] نسخه ۱.۱۶: ۷۷ آیتم آفست u16 می‌خواهد؛ نسخه ۱.۱۷: ۸۳ آیتم با همان حلقه. */
+        /*
+ * [EN] v1.16: 77 items need u16 offsets (52 x 5 already overflows u8);
+ * v1.17: 83 items, same count-driven loop.
+ */
         uint8_t uint8_t__count = uint8_t__ptr_payload[0];
         uint16_t uint16_t__item;
         for (uint16_t__item = 0u; uint16_t__item < (uint16_t)uint8_t__count; uint16_t__item++)
@@ -1051,11 +916,11 @@ static void func__Esp_HandleFrame(void)
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_LUT_ACK) && (UINT16_T__G__RxLen == 8u))
     {
-        /* [EN] v1.66: the board's answer to one LUT push step. Stored, not
-           acted on: the browser polls GET /lut and decides, because only it
-           knows which table it asked for.
-           [FA] پاسخ برد به یک مرحلهٔ ارسال جدول. فقط ذخیره می‌شود؛ تصمیم با
-           مرورگر است چون فقط او می‌داند چه جدولی خواسته. */
+        /*
+ * [EN] v1.66: the board's answer to one LUT push step. Stored, not
+ * acted on: the browser polls GET /lut and decides, because only it
+ * knows which table it asked for.
+ */
         UINT8_T__G__LutAckStage = uint8_t__ptr_payload[0];
         UINT8_T__G__LutAckStatus = uint8_t__ptr_payload[1];
         UINT8_T__G__LutAckPoints1 = uint8_t__ptr_payload[2];
@@ -1066,38 +931,32 @@ static void func__Esp_HandleFrame(void)
     }
     else if (UINT8_T__G__RxType == ESP_MSG_LUT_DATA)
     {
-        /* [EN] Active values are stored separately from the push ACK. The
-           browser must compare these pairs; a point count or CRC alone is not
-           a value readback. Store also sees short frames so truncation becomes
-           an explicit readback error instead of a silent timeout.
-           [FA] مقدارهای فعال جدا از ACK ارسال ذخیره می‌شوند. پنل باید همین
-           جفت‌مقدارها را مقایسه کند؛ تعداد یا CRC به‌تنهایی بازخوانی مقدار نیست.
-           فریم کوتاه هم به Store می‌رسد تا خطای صریح باشد نه timeout خاموش. */
+        /*
+ * [EN] Active values are stored separately from the push ACK. The
+ * browser must compare these pairs; a point count or CRC alone is not
+ * a value readback. Store also sees short frames so truncation becomes
+ * an explicit readback error instead of a silent timeout.
+ */
         func__Esp_StoreLutData(uint8_t__ptr_payload, UINT16_T__G__RxLen);
     }
     else
     {
-        /* [‎EN] Unknown type or wrong length: drop / [FA]‎ نوع ناشناخته یا طول نادرست: دور ریخته می‌شود */
     }
 }
-
-/* [EN] Preserve AA as a possible SOF0 on every parser error. This mirrors
-   the firmware parser: if an error byte is AA, the next 55 can complete a
-   frame immediately; discarding AA would lose that frame.
-   [FA] در هر خطای پارسر AA را به‌عنوان SOF0 احتمالی حفظ می‌کنیم. این با
-   پارسر firmware یکسان است: اگر بایت خطا AA باشد، 55 بعدی می‌تواند فوراً
-   فریم بسازد؛ دور انداختن AA آن فریم را گم می‌کند. */
+/*
+ * [EN] Preserve AA as a possible SOF0 on every parser error. This mirrors
+ * the firmware parser: if an error byte is AA, the next 55 can complete a
+ * frame immediately; discarding AA would lose that frame.
+ */
 static void func__Esp_ResyncFromByte(uint8_t uint8_t__byte)
 {
     ESP_RX_STATE_T__G__RxState =
         (uint8_t__byte == ESP_LINK_SOF_BYTE0) ? ESP_RX_WAIT_SOF1 : ESP_RX_WAIT_SOF0;
 }
-
 /**
  * @brief  [EN] Feed one received byte to the frame parser; resyncs on AA 55.
- *         [FA] دادن یک بایت دریافتی به پارسر فریم؛ با AA 55 همگام‌سازی مجدد می‌کند.
- * @param  uint8_t__byte [EN] Received byte, 0..255 / [FA]‎ بایت دریافتی، ۰ تا ۲۵۵
- * @return [EN] None / [FA]‎ ندارد
+* @param uint8_t__byte Received byte, 0..255 /
+* @return None /
  */
 static void func__Esp_ParseByte(uint8_t uint8_t__byte)
 {
@@ -1109,7 +968,6 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
                 ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF1;
             }
             break;
-
         case ESP_RX_WAIT_SOF1:
             if (uint8_t__byte == ESP_LINK_SOF_BYTE1)
             {
@@ -1121,16 +979,14 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             }
             else
             {
-                /* [‎EN] AA AA: stay waiting for 55 / [FA] AA AA‎: منتظر 55 بمان */
             }
             break;
-
         case ESP_RX_WAIT_VERSION:
-            /* [EN] A frame from a firmware we do not speak. Counted and dropped,
-               so the page can say "the two boards were flashed out of step"
-               instead of showing an empty panel with no explanation.
-               [FA] فریمی از فرم‌وری که نمی‌شناسیم. شمرده و رها می‌شود تا صفحه
-               بتواند بگوید «دو برد ناهماهنگ فلش شده‌اند» به‌جای نمایش پنل خالی. */
+            /*
+ * [EN] A frame from a firmware we do not speak. Counted and dropped,
+ * so the page can say "the two boards were flashed out of step"
+ * instead of showing an empty panel with no explanation.
+ */
             if (uint8_t__byte != (uint8_t)ESP_LINK_PROTOCOL_VERSION)
             {
                 UINT32_T__G__RxVersionMismatch++;
@@ -1142,26 +998,24 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
                 ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_TYPE;
             }
             break;
-
         case ESP_RX_WAIT_TYPE:
             UINT8_T__G__RxType = uint8_t__byte;
             UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_LEN_LO;
             break;
-
         case ESP_RX_WAIT_LEN_LO:
             UINT16_T__G__RxLen = (uint16_t)uint8_t__byte;
             UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_LEN_HI;
             break;
-
         case ESP_RX_WAIT_LEN_HI:
             UINT16_T__G__RxLen = (uint16_t)(UINT16_T__G__RxLen | ((uint16_t)((uint16_t)uint8_t__byte << 8)));
             UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             if (UINT16_T__G__RxLen > ESP_LINK_MAX_PAYLOAD)
             {
-                /* [EN] Keep an AA high length byte as the next SOF0.
-                   [FA] بایت high طول اگر AA است، SOF0 بعدی نگه داشته شود. */
+                /*
+ * [EN] Keep an AA high length byte as the next SOF0.
+ */
                 func__Esp_ResyncFromByte(uint8_t__byte);
             }
             else
@@ -1170,7 +1024,6 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
                 ESP_RX_STATE_T__G__RxState = (UINT16_T__G__RxLen == 0u) ? ESP_RX_WAIT_CRC_LO : ESP_RX_WAIT_PAYLOAD;
             }
             break;
-
         case ESP_RX_WAIT_PAYLOAD:
             UINT8_T__G__RxPayload[UINT16_T__G__RxIndex] = uint8_t__byte;
             UINT16_T__G__RxIndex++;
@@ -1180,12 +1033,10 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
                 ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_CRC_LO;
             }
             break;
-
         case ESP_RX_WAIT_CRC_LO:
             UINT8_T__G__RxCrcLow = uint8_t__byte;
             ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_CRC_HI;
             break;
-
         case ESP_RX_WAIT_CRC_HI:
             if (((uint16_t)(((uint16_t)uint8_t__byte << 8) | (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__RxCrc)
             {
@@ -1195,17 +1046,16 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             {
                 UINT32_T__G__RxCrcError++;
             }
-            /* [EN] CRC-HI can itself be AA, so retain it for AA 55 recovery.
-               [‎FA] CRC-HI‎ ممکن است خود AA باشد؛ برای بازیابی AA 55 نگهش دار. */
+            /*
+ * [EN] CRC-HI can itself be AA, so retain it for AA 55 recovery.
+ */
             func__Esp_ResyncFromByte(uint8_t__byte);
             break;
-
         default:
             func__Esp_ResyncFromByte(uint8_t__byte);
             break;
     }
 }
-
 /**
  * @brief  [EN] Drain every pending UART byte into the frame parser without
  *              blocking. Called from loop() AND from the long HTTP send
@@ -1216,14 +1066,7 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
  *              lost mid-frame and every lost frame lands in the panel's
  *              yellow "rejected by CRC" counter. Draining inside the send
  *              loop keeps the ring empty and the link lossless.
- *         [FA] تخلیهٔ همهٔ بایت‌های منتظر UART در پارسر، بدون بلوکه‌شدن.
- *              از ‎loop()‎ و «همچنین» از مسیرهای طولانی ارسال HTTP صدا
- *              می‌شود: STM32 هر ‎100ms‎ تله‌متری می‌فرستد، پس وقتی یک پاسخ
- *              چندثانیه‌ای (صفحهٔ ‎~375KB‎ یا دانلود لاگ بنچ) هندلر را مشغول
- *              نگه داشته، حلقهٔ RX پر و بایت‌ها وسط فریم گم می‌شوند و هر فریم
- *              گم‌شده در شمارندهٔ زرد «رد شده با CRC» پنل می‌نشیند. تخلیه داخل
- *              حلقهٔ ارسال، حلقهٔ RX را خالی و لینک را بی‌اتلاف نگه می‌دارد.
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_DrainSerial(void)
 {
@@ -1236,23 +1079,17 @@ static void func__Esp_DrainSerial(void)
         }
     }
 }
-
 /* ==================== Hybrid Wi-Fi Power-Saving ==================== */
-
 /**
  * @brief  [EN] Send the 1-byte ESPLINK_MSG_WIFI_CLIENT_STATE (0x33) frame to
  *              the STM32 without disturbing the SET_PARAM TX rate limiter.
- *         [FA] ارسال فریم یک‌بایتی وضعیت اتصال کاربر وای‌فای (۰x۳۳) به STM32
- *              بدون تغییر تایمر فاصلهٔ ارسال SET_PARAM.
  * @param  bool__connected [EN] true when a Wi-Fi client is active /
- *                         [FA] در صورت حضور کاربر true و در غیر این صورت false
  */
 static void func__Esp_SendWifiClientState(bool bool__connected)
 {
     uint8_t UINT8_T__A__Frame[9];
     uint8_t uint8_t__stateByte = bool__connected ? 1u : 0u;
     uint16_t uint16_t__crc = (uint16_t)ESP_LINK_CRC16_INIT;
-
     UINT8_T__A__Frame[0] = ESP_LINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = ESP_LINK_SOF_BYTE1;
     UINT8_T__A__Frame[2] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
@@ -1269,16 +1106,11 @@ static void func__Esp_SendWifiClientState(bool bool__connected)
     UINT8_T__A__Frame[8] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
     (void)Serial.write(UINT8_T__A__Frame, 9u);
 }
-
 /**
  * @brief  [EN] Check whether a user is connected to the Wi-Fi AP or actively
  *              polling the HTTP panel.
- *         [FA] بررسی متصل بودن کاربر به اکسس‌پوینت وای‌فای یا باز بودن پنل در
- *              مرورگر.
  * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
- *                         [FA] زمان فعلی بر حسب میلی‌ثانیه
  * @return [EN] true if a client is connected, false otherwise /
- *         [FA] در صورت حضور کاربر true و در غیر این صورت false
  */
 static bool func__Esp_IsWifiClientConnected(uint32_t uint32_t__nowMs)
 {
@@ -1287,7 +1119,6 @@ static bool func__Esp_IsWifiClientConnected(uint32_t uint32_t__nowMs)
         ((uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) < ESP_LINK_BROWSER_LOST_MS);
     return bool__stationConnected || bool__browserActive;
 }
-
 static uint32_t func__Esp_GetWifiParam(uint8_t uint8_t__id, uint32_t uint32_t__defaultValue)
 {
     if ((uint8_t__id < ESP_PARAM_COUNT) && BOOL__G__ParamKnown[uint8_t__id])
@@ -1296,13 +1127,11 @@ static uint32_t func__Esp_GetWifiParam(uint8_t uint8_t__id, uint32_t uint32_t__d
     }
     return uint32_t__defaultValue;
 }
-
 static uint32_t func__Esp_ComputeBatteryPercent(void)
 {
     uint32_t uint32_t__vBat24Mv = UINT32_T__G__TlmField[15];
     uint32_t uint32_t__vMinMv = func__Esp_GetWifiParam(74u, 21000u);
     uint32_t uint32_t__vMaxMv = func__Esp_GetWifiParam(75u, 29000u);
-
     if ((!BOOL__G__TlmSeen) || (uint32_t__vBat24Mv == 0u) || (uint32_t__vMaxMv <= uint32_t__vMinMv))
     {
         return 100u;
@@ -1317,14 +1146,11 @@ static uint32_t func__Esp_ComputeBatteryPercent(void)
     }
     return ((uint32_t__vBat24Mv - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
 }
-
 /**
  * @brief  [EN] Start the non-blocking UDP port-53 NXDOMAIN responder so phones
  *              and Windows laptops finish connectivity probing immediately
  *              instead of stalling 3-7 s waiting for a silent DNS server.
- *         [FA] راه‌اندازی پاسخگوی فوری عدم‌وجود دامنه روی درگاه ۵۳ تا ویندوز و
- *              گوشی هنگام اتصال ۳ تا ۷ ثانیه منتظر سرور خاموش نمانند.
- * @‎return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_DnsStart(void)
 {
@@ -1333,11 +1159,9 @@ static void func__Esp_DnsStart(void)
         BOOL__G__DnsRunning = (WIFI_UDP_T__G__DnsUdp.begin(ESP_WIFI_DNS_PORT) != 0u);
     }
 }
-
 /**
  * @brief  [EN] Stop the UDP port-53 responder before turning SoftAP off.
- *         [FA] بستن سوکت پاسخگوی درگاه ۵۳ پیش از خاموش کردن وای‌فای.
- * @‎return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_DnsStop(void)
 {
@@ -1347,18 +1171,14 @@ static void func__Esp_DnsStop(void)
         BOOL__G__DnsRunning = false;
     }
 }
-
 /**
  * @brief  [EN] Answer up to 4 pending DNS queries per loop pass with an
  *              authoritative NXDOMAIN (RCODE=3) using a fixed stack buffer.
- *         [FA] پاسخ فوری «دامنه وجود ندارد» به حداکثر ۴ پرسش درگاه ۵۳ در هر
- *              چرخه با بافر ثابت پشته و بدون تخصیص پویا.
- * @‎return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_DnsTick(void)
 {
     uint8_t uint8_t__handled = 0u;
-
     if ((BOOL__G__WifiApActive == false) || (BOOL__G__DnsRunning == false))
     {
         return;
@@ -1370,7 +1190,6 @@ static void func__Esp_DnsTick(void)
         size_t size_t__readLen;
         size_t size_t__replyLen = 12u;
         uint16_t uint16_t__qdCount;
-
         if (int__pktLen <= 0)
         {
             break;
@@ -1392,7 +1211,6 @@ static void func__Esp_DnsTick(void)
         {
             size_t size_t__pos = 12u;
             bool bool__ok = false;
-
             while (size_t__pos < size_t__readLen)
             {
                 uint8_t uint8_t__lab = uint8_t__buf[size_t__pos];
@@ -1441,13 +1259,10 @@ static void func__Esp_DnsTick(void)
         }
     }
 }
-
 /**
  * @brief  [EN] Bring up SoftAP with radio sleep disabled, router advertisement
  *              suppressed (0.0.0.0), and the fast NXDOMAIN responder bound.
- *         [FA] راه‌اندازی یکپارچهٔ اکسس‌پوینت با خاموش کردن خواب رادیو، حذف
- *              معرفی درگاه اینترنت و فعال کردن پاسخگوی فوری درگاه ۵۳.
- * @‎return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_StartSoftAp(void)
 {
@@ -1464,11 +1279,9 @@ static void func__Esp_StartSoftAp(void)
     BOOL__G__WifiApActive = true;
     func__Esp_DnsStart();
 }
-
 /**
  * @brief  [EN] Tear down SoftAP and its UDP port-53 socket cleanly.
- *         [FA] خاموش کردن تمیز اکسس‌پوینت و بستن سوکت درگاه ۵۳.
- * @‎return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Esp_StopSoftAp(void)
 {
@@ -1477,17 +1290,13 @@ static void func__Esp_StopSoftAp(void)
     WiFi.mode(WIFI_OFF);
     BOOL__G__WifiApActive = false;
 }
-
 /**
  * @brief  [EN] Apply one antenna level, once, through a mirror flag that always
  *              states what is really on the chip. AP creation forces a write
  *              because the previous level survives softAP().
- *         [FA] یک سطح توان آنتن را یک‌بار و از یک جا اعمال می‌کند، با پرچمی
- *              آینه‌ای که همیشه وضعیت واقعی چیپ را می‌گوید. ساخت دوبارهٔ
- *              اکسس‌پوینت نوشتن را اجبار می‌کند، چون سطح قبلی روی چیپ می‌ماند.
- * @param  bool__high  [EN] true = maximum TX power / [FA]‎ درست = توان بیشینه
- * @param  bool__force [EN] true = write even if the flag agrees / [FA]‎ درست = نوشتن حتی با موافقت پرچم
- * @return [EN] None / [FA]‎ ندارد
+* @param bool__high true = maximum TX power / =
+* @param bool__force true = write even if the flag agrees / =
+* @return None /
  */
 static void func__Esp_ApplyTxPower(bool bool__high, bool bool__force)
 {
@@ -1500,7 +1309,6 @@ static void func__Esp_ApplyTxPower(bool bool__high, bool bool__force)
 #endif
     BOOL__G__WifiHighPower = bool__high;
 }
-
 /**
  * @brief  [EN] Hybrid Wi-Fi TX power and battery duty-cycling tick:
  *              - Mains input present: AP stays ON at maximum TX power (20.5 dBm).
@@ -1514,17 +1322,7 @@ static void func__Esp_ApplyTxPower(bool bool__high, bool bool__force)
  *                  at low TX power (10 dBm).
  *                * After initial window: AP cycles OFF/ON (default 2 minutes
  *                  OFF / 1 minute ON) at low TX power until a user connects.
- *         [FA] گام مدیریت ترکیبی قدرت آنتن و چرخهٔ خاموش/روشن وای‌فای روی باتری:
- *              - در حضور برق ورودی: روشنِ دائم با بیشترین قدرت آنتن (۲۰٫۵ dBm).
- *              - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪ با ۲٪ hysteresis):
- *                خاموش شدن کامل اکسس‌پوینت تا رسیدن به ۲۲٪ یا وصل شدن برق ورودی.
- *              - روی باتری بالای حد قطع با حضور کاربر: روشنِ دائم با بیشترین
- *                قدرت آنتن.
- *              - روی باتری بالای حد قطع و بدون کاربر: در بازهٔ اولیه (پیش‌فرض
- *                ۳۰ دقیقه) روشن با قدرت آنتن پایین (۱۰ dBm) و پس از آن چرخهٔ
- *                خاموش/روشن با قدرت آنتن پایین تا زمان اتصال کاربر.
  * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
- *                         [FA] زمان فعلی بر حسب میلی‌ثانیه
  */
 static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 {
@@ -1541,7 +1339,6 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     uint32_t uint32_t__batCutoffPct = func__Esp_GetWifiParam(
         ESP_PARAM_WIFI_BAT_CUTOFF_PCT, ESP_WIFI_BAT_CUTOFF_PCT);
     uint32_t uint32_t__batteryPct = func__Esp_ComputeBatteryPercent();
-
     if (bool__inputPresent || (uint32_t__batCutoffPct == 0u))
     {
         BOOL__G__WifiBatCutoffLatched = false;
@@ -1562,7 +1359,6 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             BOOL__G__WifiBatCutoffLatched = false;
         }
     }
-
     if ((!bool__inputPresent) && BOOL__G__WifiBatCutoffLatched)
     {
         BOOL__G__WifiClientConnected = false;
@@ -1578,9 +1374,7 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         }
         return;
     }
-
     BOOL__G__WifiClientConnected = bool__clientConnected;
-
     if ((UINT8_T__G__LutTxStage == 0u) &&
         (((!bool__inputPresent) &&
           ((bool__clientConnected != BOOL__G__WifiLastReportedConnected) ||
@@ -1592,8 +1386,6 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         BOOL__G__WifiLastReportedConnected = bool__clientConnected;
         UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
     }
-
-    /* [‎EN] v1.112: remember when a device joined (0 = none). / [FA]‎ نسخهٔ ۱٫۱۱۲: زمان وصل شدن دستگاه. */
     if (bool__stationConnected)
     {
         if (UINT32_T__G__WifiStationSinceMs == 0u)
@@ -1605,14 +1397,12 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     {
         UINT32_T__G__WifiStationSinceMs = 0u;
     }
-
     if (bool__inputPresent || bool__clientConnected)
     {
         bool bool__apJustCreated = false;
         bool bool__viewerActive;
         bool bool__newcomer;
         bool bool__wantHighPower;
-
         BOOL__G__WifiBatteryIdleTracking = false;
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
         if (!BOOL__G__WifiApActive)
@@ -1620,13 +1410,11 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             func__Esp_StartSoftAp();
             bool__apJustCreated = true;
         }
-
-        /* [EN] Maximum TX only when it is worth the battery: mains present, a
-           fresh HTTP request (someone is watching), or a device that joined
-           inside the viewer window. Otherwise the AP stays on at low power.
-           [FA] توان بیشینه فقط وقتی می‌ارزد: برق شهر، درخواست تازهٔ HTTP
-           (کسی تماشا می‌کند)، یا دستگاهی که داخل بازهٔ تماشاگر وصل شده است.
-           در غیر این صورت اکسس‌پوینت روشن می‌ماند ولی با توان کم. */
+        /*
+ * [EN] Maximum TX only when it is worth the battery: mains present, a
+ * fresh HTTP request (someone is watching), or a device that joined
+ * inside the viewer window. Otherwise the AP stays on at low power.
+ */
         bool__viewerActive = BOOL__G__BrowserSeen &&
             ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) <
              (uint32_t)ESP_WIFI_VIEWER_HOLD_MS);
@@ -1635,20 +1423,16 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             ((uint32_t)(uint32_t__nowMs - UINT32_T__G__WifiStationSinceMs) <
              (uint32_t)ESP_WIFI_VIEWER_HOLD_MS);
         bool__wantHighPower = bool__inputPresent || bool__viewerActive || bool__newcomer;
-
         func__Esp_ApplyTxPower(bool__wantHighPower, bool__apJustCreated);
         return;
     }
-
     if (!BOOL__G__WifiBatteryIdleTracking)
     {
         BOOL__G__WifiBatteryIdleTracking = true;
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
     }
-
     uint32_t uint32_t__idleElapsedMs = uint32_t__nowMs - UINT32_T__G__WifiBatteryIdleStartMs;
     bool bool__shouldApBeOn = true;
-
     if ((uint32_t__idleElapsedMs >= uint32_t__idleLowPowerMs) &&
         (uint32_t__cycleOffMs > 0u))
     {
@@ -1659,18 +1443,17 @@ static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             uint32_t__afterIdleMs % uint32_t__cyclePeriodMs;
         bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= uint32_t__cycleOffMs);
     }
-
     if (bool__shouldApBeOn)
     {
         bool bool__apJustCreated = false;
-
         if (!BOOL__G__WifiApActive)
         {
             func__Esp_StartSoftAp();
             bool__apJustCreated = true;
         }
-        /* [EN] Nobody is watching inside the duty cycle: low power only.
-           [FA] در چرخهٔ باتری کسی تماشا نمی‌کند: فقط توان کم. */
+        /*
+ * [EN] Nobody is watching inside the duty cycle: low power only.
+ */
         func__Esp_ApplyTxPower(false, bool__apJustCreated);
     }
     else

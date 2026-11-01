@@ -31,38 +31,26 @@
      محدودیت‌ها صریح‌اند: فراخوانی غیرمستقیم دنبال نمی‌شود (فهرستشان چاپ
      می‌شود)، بازگشتی گزارش می‌شود و اعداد clang هستند نه gcc بازوی واقعی.
 """
-
 import re
 import sys
 import tempfile
 from pathlib import Path
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-
 import measure_flash as MF  # noqa: E402  (same sources, same includes, one source of truth)
-
 LD = (ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld").read_text()
 RTOS_APP_C = (ROOT / "Firmware/Rtos/Src/rtos_app.c").read_text()
 RTOS_CONFIG_H = (ROOT / "Firmware/Config/Inc/rtos_config.h").read_text()
-
 # [EN] A context switch pushes the callee-saved registers the hardware did not:
 #      8 hardware-stacked words + 8 software-stacked words = 64 B on top of the
-#      task's own deepest frame. [FA] تعویض کانتکست ۶۴ بایت روی پشتهٔ تسک.
 CONTEXT_BYTES = 64
-
-
 def ram_length_bytes():
     m = re.search(r"RAM\s+\(xrw\)\s*: ORIGIN = 0x[0-9A-Fa-f]+,\s*LENGTH = (\d+)K", LD)
     return int(m.group(1)) * 1024
-
-
 def linker_reserves():
     heap = int(re.search(r"_Min_Heap_Size\s*=\s*(0x[0-9A-Fa-f]+)", LD).group(1), 16)
     stack = int(re.search(r"_Min_Stack_Size\s*=\s*(0x[0-9A-Fa-f]+)", LD).group(1), 16)
     return heap, stack
-
-
 def task_roots():
     """[EN] entry function -> (task name, stack bytes). / [FA] ریشهٔ هر تسک."""
     sizes = {m.group(1): int(m.group(2))
@@ -77,19 +65,14 @@ def task_roots():
     return {m.group(1): attr[m.group(2)]
             for m in re.finditer(r"osThreadNew\((\w+),\s*NULL,\s*&OS_THREAD_ATTR_T__G__(\w+)\)",
                                  RTOS_APP_C)}
-
-
 def isr_roots():
     it_c = (ROOT / "CubeIDE/Core/Src/stm32f1xx_it.c").read_text()
     return sorted(set(re.findall(r"^void\s+(\w+_(?:IRQ)?Handler)\(void\)", it_c, re.M)))
-
-
 def analyse_image(elf_path):
     """[EN] frames{}, calls{}, indirect[] from the linked Thumb image.
        [FA] قاب‌ها، گراف فراخوانی و فراخوانی‌های غیرمستقیم از ایمیج."""
     from elftools.elf.elffile import ELFFile
     import capstone
-
     with open(elf_path, "rb") as fh:
         elf = ELFFile(fh)
         funcs = []           # (addr, size, name)
@@ -104,12 +87,10 @@ def analyse_image(elf_path):
         for sec in elf.iter_sections():
             if sec.name.startswith(".text") and sec["sh_type"] == "SHT_PROGBITS":
                 blobs.append((sec["sh_addr"], sec.data()))
-
     funcs.sort()
     by_addr = {a: n for a, _, n in funcs}
     md = capstone.Cs(capstone.CS_ARCH_ARM, capstone.CS_MODE_THUMB)
     md.detail = False
-
     frames, calls, indirect = {}, {}, set()
     for addr, size, name in funcs:
         code = None
@@ -134,9 +115,6 @@ def analyse_image(elf_path):
                 #      leading 0 of "#0x208" and reported a 520-byte frame as
                 #      0 - the exact kind of quiet undercount this tool exists
                 #      to prevent, found while writing it.
-                # [FA] ایمدیِیت گاهی هگز و گاهی دهدهی چاپ می‌شود؛ الگوی ساده،
-                #      قاب ۵۲۰ بایتی را صفر می‌خواند - همان کم‌شماری خاموشی که
-                #      این ابزار برای جلوگیری از آن نوشته شده.
                 m = re.search(r"#(0x[0-9a-fA-F]+|\d+)", ops)
                 if m:
                     frame += int(m.group(1), 0)
@@ -155,8 +133,6 @@ def analyse_image(elf_path):
         frames[name] = max(frames.get(name, 0), frame)
         calls[name] = callees - {"?", None}
     return frames, calls, sorted(indirect)
-
-
 def deepest(root, frames, calls, seen=()):
     if root in seen:
         return 0, [root + " <recursion>"], True
@@ -168,8 +144,6 @@ def deepest(root, frames, calls, seen=()):
         if size > best:
             best, best_chain = size, chain
     return frame + best, [f"{root}({frame})"] + best_chain, rec
-
-
 def main():
     try:
         import capstone  # noqa: F401
@@ -177,7 +151,6 @@ def main():
         print("SKIP: python3 -m pip install capstone - the stack walk needs a "
               "Thumb disassembler (RAM totals still require the link below)")
         return 0
-
     ram_total = ram_length_bytes()
     heap, main_stack = linker_reserves()
     with tempfile.TemporaryDirectory(prefix="ram_measure_") as tmp:
@@ -188,7 +161,6 @@ def main():
         if not elf.exists():
             print("LINK FAILED - cannot measure RAM")
             return 1
-
         from elftools.elf.elffile import ELFFile
         bss = data = 0
         with open(elf, "rb") as fh:
@@ -199,9 +171,7 @@ def main():
                     bss += sec["sh_size"]
                 elif sec.name.startswith(".data") and ".rel" not in sec.name:
                     data += sec["sh_size"]
-
         frames, calls, indirect = analyse_image(elf)
-
         print("RAM budget / بودجهٔ RAM")
         print("=" * 74)
         print(f"device RAM                                   : {ram_total:7d} B")
@@ -212,7 +182,6 @@ def main():
         free = ram_total - data - bss - heap - main_stack
         print(f"FREE                                         : {free:7d} B")
         print()
-
         print("worst-case stack depth per task / بدترین عمق پشتهٔ هر تسک")
         print("=" * 74)
         tight = []
@@ -227,7 +196,6 @@ def main():
                   + ("  [recursion]" if rec else ""))
             print("        " + " -> ".join(chain[:9]))
         print()
-
         print("worst-case interrupt depth / بدترین عمق وقفه")
         print("=" * 74)
         isr_worst, isr_chain, isr_name = 0, [], "-"
@@ -239,13 +207,11 @@ def main():
               f"whatever it preempts - add it to every row above)")
         print("        " + " -> ".join(isr_chain[:9]))
         print()
-
         if indirect:
             print("functions making INDIRECT calls (not followed by this tool, "
                   "judge by hand):")
             print("  " + ", ".join(indirect[:20]) + (" ..." if len(indirect) > 20 else ""))
             print()
-
         if free < 0:
             print("RAM OVERFLOW")
             return 1
@@ -256,7 +222,5 @@ def main():
             return 1
         print("RAM AND STACK BUDGET OK / بودجهٔ RAM و پشته سالم است")
         return 0
-
-
 if __name__ == "__main__":
     sys.exit(main())

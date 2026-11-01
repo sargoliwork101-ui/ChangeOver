@@ -11,7 +11,6 @@ import pathlib
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "Documentation" / "Overall_Validation.xlsx"
 FONT = "Vazirmatn"
@@ -20,7 +19,6 @@ INPUT = "FFF2CC"
 THIN = Side(style="thin", color="B4C6E7")
 BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 STATUSES = ["در انتظار", "انجام شد", "قبول", "رد", "مسدود", "نیاز به تکرار"]
-
 MODULES = [
     ("CalLut", "کالیبراسیون (CalLut)", "CalLut_Validation.xlsx"),
     ("Changeover", "قطع‌ووصل خروجی (Changeover)", "Changeover_Board_Validation.xlsx"),
@@ -38,16 +36,12 @@ MODULES = [
     ("Ui", "چراغ و بوق (UI)", "UI_Board_Validation.xlsx"),
 ]
 LAYERS = ["برنامه تست", "تست‌های برنامه‌نویسی", "تست‌های آزمایشگاهی"]
-
-
 def find_header(ws):
     for r in range(1, 8):
         vals = {c.column: (str(c.value).strip() if c.value else "") for c in ws[r]}
         if any("شناسه" in v or v == "ردیف" for v in vals.values()):
             return r, {v: col for col, v in vals.items() if v}
     return None, {}
-
-
 def sheet_stats(path):
     """counts per layer + priority/status counts of the practical sheet."""
     wb = openpyxl.load_workbook(path, data_only=False)
@@ -70,8 +64,6 @@ def sheet_stats(path):
                                     status[v] += 1
         counts[layer] = n
     return counts, top, status
-
-
 def stage1_rows(path, module_fa):
     wb = openpyxl.load_workbook(path)
     out = []
@@ -86,8 +78,6 @@ def stage1_rows(path, module_fa):
             out.append((str(ws.cell(r, 1).value), module_fa,
                         str(ws.cell(r, heads.get("دسته", 2)).value or "")))
     return out
-
-
 def style_title(ws, text, ncols):
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncols)
     c = ws.cell(1, 1, text)
@@ -95,8 +85,6 @@ def style_title(ws, text, ncols):
     c.fill = PatternFill("solid", fgColor=TITLE)
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 30
-
-
 def style_header(ws, row, ncols):
     for col in range(1, ncols + 1):
         c = ws.cell(row, col)
@@ -104,12 +92,8 @@ def style_header(ws, row, ncols):
         c.fill = PatternFill("solid", fgColor=HEAD)
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         c.border = BORDER
-
-
 def build():
     wb = openpyxl.Workbook()
-
-    # ---------- نمای کلی ----------
     ws = wb.active
     ws.title = "نمای کلی"
     ws.sheet_view.rightToLeft = True
@@ -180,8 +164,6 @@ def build():
     widths = [6, 30, 16, 9, 13, 13, 12] + [11] * 6 + [14]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
-
-    # ---------- مرحله اول ----------
     ws2 = wb.create_sheet("مرحله اول")
     ws2.sheet_view.rightToLeft = True
     ws2.sheet_properties.tabColor = "C00000"
@@ -206,8 +188,6 @@ def build():
         r += 1
     for i, w in enumerate([6, 12, 30, 44, 16], start=1):
         ws2.column_dimensions[get_column_letter(i)].width = w
-
-    # ---------- راهنما ----------
     ws3 = wb.create_sheet("راهنما", 0)
     ws3.sheet_view.rightToLeft = True
     ws3.sheet_properties.tabColor = "7F7F7F"
@@ -236,11 +216,8 @@ def build():
         r += 1
     ws3.column_dimensions["A"].width = 20
     ws3.column_dimensions["B"].width = 95
-
     wb.calculation.fullCalcOnLoad = True
     wb.save(OUT)
     print("wrote", OUT.relative_to(ROOT), "| stage1:", len(stage1))
-
-
 if __name__ == "__main__":
     build()

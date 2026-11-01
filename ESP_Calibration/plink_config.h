@@ -3,35 +3,32 @@
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Link Constants ==================== */
 #define ESP_LINK_BAUD_RATE          921600u
-/* [EN] RX ring headroom. The panel page/bench-log handlers drain the ring
-       from inside their send loops (func__Esp_DrainSerial), but streamFile
-       and other WebServer internals cannot be drained from; 2048 gives
-       ~2 s of telemetry headroom at the 100 ms cadence, so a blocking
-       stretch no longer costs frames (1024 overflowed on slow clients and
-       every lost frame showed up as the panel's yellow CRC warning).
-   [FA] حاشیهٔ حلقهٔ RX. هندلرهای صفحه/لاگ بنچ حلقه را از داخل حلقهٔ ارسال
-       تخلیه می‌کنند ‎(func__Esp_DrainSerial)‎، ولی ‎streamFile‎ و بخش‌های
-       داخلی وب‌سرور از بیرون قابل تخلیه نیستند؛ ‎2048‎ حدود ‎2s‎ حاشیه با
-       کادانس ‎100ms‎ می‌دهد تا یک کشیدگی بلوکه‌کننده دیگر فریم هزینه نکند. */
+/*
+ * [EN] RX ring headroom. The panel page/bench-log handlers drain the ring
+ * from inside their send loops (func__Esp_DrainSerial), but streamFile
+ * and other WebServer internals cannot be drained from; 2048 gives
+ * ~2 s of telemetry headroom at the 100 ms cadence, so a blocking
+ * stretch no longer costs frames (1024 overflowed on slow clients and
+ * every lost frame showed up as the panel's yellow CRC warning).
+ */
 #define ESP_LINK_RX_BUFFER_SIZE     2048u
 #define ESP_LINK_SOF_BYTE0          0xAAu
 #define ESP_LINK_SOF_BYTE1          0x55u
-/* [EN] v2 frame, must stay byte-identical to the firmware's esp_link.h:
-       SOF0 SOF1 VER TYPE LEN_LO LEN_HI [payload] CRC_LO CRC_HI
-   [FA] فریم نسخهٔ ۲؛ باید بایت‌به‌بایت با esp_link.h فرم‌ور یکی بماند. */
+/*
+ * [EN] v2 frame, must stay byte-identical to the firmware's esp_link.h:
+ * SOF0 SOF1 VER TYPE LEN_LO LEN_HI [payload] CRC_LO CRC_HI
+ */
 #define ESP_LINK_PROTOCOL_VERSION   2u
 #define ESP_LINK_HEADER_SIZE        6u   /* SOF0 + SOF1 + ver + type + len_lo + len_hi */
 #define ESP_LINK_CRC_SIZE           2u
 #define ESP_LINK_CRC16_INIT         0xFFFFu
 #define ESP_LINK_CRC16_POLY         0x1021u
-/* [EN] Current v2 link: PARAMS_BULK uses a u16 length and a 512-byte
-         payload ceiling. Each chunk carries at most 102 id/value items
-         (`1 + 102 x 5 = 511` payload bytes); the 143-id parameter space is
-         therefore sent in multiple chunks. Both boards MUST flash together.
-         / [FA] لینک v2 فعلی: طول PARAMS_BULK شانزده‌بیتی و سقف payload برابر
-         ۵۱۲ بایت است. هر تکه حداکثر ۱۰۲ جفت شناسه/مقدار می‌برد (۱ + ۱۰۲×۵ =
-         ۵۱۱ بایت) و فضای ۱۴۳شناسه‌ای در چند تکه ارسال می‌شود. هر دو برد باید
-         با هم فلش شوند. */
+/*
+ * [EN] Current v2 link: PARAMS_BULK uses a u16 length and a 512-byte
+ * payload ceiling. Each chunk carries at most 102 id/value items
+ * (`1 + 102 x 5 = 511` payload bytes); the 143-id parameter space is
+ * therefore sent in multiple chunks. Both boards MUST flash together.
+ */
 #define ESP_LINK_MAX_PAYLOAD        512u
 #define ESP_LINK_TLM_SIZE          128u
 #define ESP_LINK_TLM_FIELD_OFFSET   4u
@@ -42,22 +39,19 @@
 #define ESP_LINK_KEEPALIVE_MS       1000u
 #define ESP_LINK_BROWSER_LOST_MS    10000u
 #define ESP_LINK_PARAM_REFRESH_MS   30000u
-
 /* ==================== Message Types ==================== */
 #define ESP_MSG_SET_PARAM           0x01u
 #define ESP_MSG_GET_PARAMS          0x02u
 #define ESP_MSG_TLM_LIVE            0x10u
 #define ESP_MSG_PARAM_REPORT        0x11u
-/* [‎EN] v2 NAK: STM -> panel, payload [id:u8][reason:u8]. [FA] NAK‎ نسخهٔ ۲. */
 #define ESP_MSG_PARAM_NAK           0x15u
 #define ESP_MSG_PARAMS_BULK         0x12u
-/* [EN] v1.66 direct LUT push (user order 2026-10-05). Mirror of the STM32
-   ESPLINK_MSG_LUT_* ids - the table gets its OWN messages and its OWN flash
-   block on the board, so it never travels as parameters and never touches
-   the parameter record.
-   [FA] ارسال مستقیم جدول (v1.66): آینهٔ شناسه‌های STM32. جدول پیام‌های خودش و
-   بلوک فلش خودش را دارد، پس هرگز به شکل پارامتر سفر نمی‌کند و رکورد
-   پارامترها را دست نمی‌زند. */
+/*
+ * [EN] v1.66 direct LUT push (user order 2026-10-05). Mirror of the STM32
+ * ESPLINK_MSG_LUT_* ids - the table gets its OWN messages and its OWN flash
+ * block on the board, so it never travels as parameters and never touches
+ * the parameter record.
+ */
 #define ESP_MSG_LUT_BEGIN           0x04u
 #define ESP_MSG_LUT_CHUNK           0x05u
 #define ESP_MSG_LUT_COMMIT          0x06u
@@ -66,15 +60,13 @@
 #define ESP_MSG_LUT_ACK             0x13u
 #define ESP_MSG_LUT_DATA            0x14u
 #define ESP_MSG_WIFI_CLIENT_STATE   0x33u
-/* [EN] Two-sided handshake (v1.111, user order 2026-10-25): this panel sends
-   HELLO every ESP_HELLO_INTERVAL_MS; the board answers HELLO_ACK carrying its
-   own receive health, so "frames arrive" and "the pair really talks both ways"
-   are no longer the same indicator. ESP_HELLO_TIMEOUT_MS is how long a fresh
-   answer keeps the link counted as confirmed.
-   [FA] دست‌دادن دوطرفه (v1.111، دستور کاربر ۲۰۲۶-۱۰-۲۵): این پنل هر
-   ESP_HELLO_INTERVAL_MS یک HELLO می‌فرستد و برد با HELLO_ACK جواب می‌دهد و
-   سلامت دریافت خودش را می‌گوید؛ پس «فریم می‌آید» و «دوطرفه حرف می‌زنیم» دو
-   نشانگر جدا می‌شوند. ESP_HELLO_TIMEOUT_MS مدت اعتبار پاسخ تازه است. */
+/*
+ * [EN] Two-sided handshake (v1.111, user order 2026-10-25): this panel sends
+ * HELLO every ESP_HELLO_INTERVAL_MS; the board answers HELLO_ACK carrying its
+ * own receive health, so "frames arrive" and "the pair really talks both ways"
+ * are no longer the same indicator. ESP_HELLO_TIMEOUT_MS is how long a fresh
+ * answer keeps the link counted as confirmed.
+ */
 #define ESP_MSG_HELLO               0x40u
 #define ESP_MSG_HELLO_ACK           0x41u
 #define ESP_HELLO_LEN               8u
@@ -83,27 +75,23 @@
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
 #define ESP_ESP_FW_VERSION          112u
-/* [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
-   [FA] بیت ۶ بایت پرچم تله‌متری: برد تأیید می‌کند دست‌دادن انجام شده است. */
+/*
+ * [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
+ */
 #define ESP_TLM_FLAG_LINK_OK        0x40u
-/* [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
-   [FA] سقف نقاط هر کانال، برابر CAL_LUT_POINTS_MAX روی برد. */
+/*
+ * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
+ */
 #define ESP_LUT_POINTS_MAX          24u
-
-/* [EN] Hybrid Wi-Fi power-saving and antenna TX power constants:
+/*
+ * [EN] Hybrid Wi-Fi power-saving and antenna TX power constants:
  *      - Mains input present OR user connected: AP stays ON at maximum TX
  *        power (20.5 dBm).
  *      - On battery with no user connected:
  *        * First 30 minutes (1800000 ms): AP stays ON at low TX power (0 dBm).
  *        * After 30 minutes: AP cycles 2 minutes OFF (120000 ms) and 1 minute
  *          ON (60000 ms) at low TX power until a user connects.
- * [FA] ثوابت سناریوی ترکیبی کاهش مصرف و قدرت آنتن وای‌فای:
- *      - در زمان وجود برق ورودی یا اتصال کاربر: روشنِ دائم با بیشترین قدرت
- *        آنتن (۲۰٫۵ دسی‌بل‌میلی‌وات).
- *      - روی باتری و بدون اتصال کاربر:
- *        * ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): روشن با قدرت آنتن پایین (۰ dBm).
- *        * پس از ۳۰ دقیقه: چرخهٔ ۲ دقیقه خاموش (۱۲۰۰۰۰ میلی‌ثانیه) و ۱ دقیقه
- *          روشن (۶۰۰۰۰ میلی‌ثانیه) با قدرت آنتن پایین تا زمان اتصال کاربر. */
+ */
 #define ESP_TLM_FLAG_INPUT_PRESENT  0x02u
 #define ESP_WIFI_IDLE_LOW_POWER_MS  1800000u
 #define ESP_WIFI_CYCLE_ON_MS        60000u
@@ -111,100 +99,73 @@
 #define ESP_WIFI_CYCLE_PERIOD_MS    180000u
 #define ESP_WIFI_BAT_CUTOFF_PCT     20u
 #define ESP_WIFI_CLIENT_REPORT_MS   1000u
-/* [EN] v1.112 (user order 2026-10-25: "you may lower the Wi-Fi power"): on
-         battery the antenna stays at maximum only while somebody is really
-         watching the panel (a fresh HTTP request) or a device has just joined
-         the AP. After that the AP stays ON at low TX power. Before this, an
-         associated-but-idle phone kept the radio at 20.5 dBm forever and ate
-         the battery the power schedule was meant to save. Mains: always max.
-   [FA] نسخهٔ ۱٫۱۱۲ (دستور کاربر ۲۰۲۶-۱۰-۲۵: «می‌توانی توان وای‌فای را کم کنی»):
-         روی باتری، توان آنتن تنها وقتی بیشینه است که کسی واقعاً پنل را ببیند
-         (درخواست تازهٔ HTTP) یا دستگاهی همین حالا به شبکه وصل شده باشد. پس از
-         آن، اکسس‌پوینت روشن می‌ماند ولی با توان کم. پیش از این، گوشیِ وصل ولی
-         بی‌کار رادیو را تا بی‌نهایت روی ‎20.5 dBm‎ نگه می‌داشت و همان باتری‌ای
-         را می‌خورد که برنامهٔ کاهش مصرف می‌خواست نجات دهد. با برق شهر همیشه بیشینه. */
-#define ESP_WIFI_VIEWER_HOLD_MS     600000u   /* 10 minutes / ۱۰ دقیقه */
+/*
+ * [EN] v1.112 (user order 2026-10-25: "you may lower the Wi-Fi power"): on
+ * battery the antenna stays at maximum only while somebody is really
+ * watching the panel (a fresh HTTP request) or a device has just joined
+ * the AP. After that the AP stays ON at low TX power. Before this, an
+ * associated-but-idle phone kept the radio at 20.5 dBm forever and ate
+ * the battery the power schedule was meant to save. Mains: always max.
+ */
+#define ESP_WIFI_VIEWER_HOLD_MS     600000u
 #define ESP_WIFI_TX_MAX_DBM         20.5f
 #define ESP_WIFI_TX_LOW_DBM         0.0f
 #define ESP_WIFI_DNS_PORT           53u
-
 #define ESP_PARAM_WIFI_IDLE_LOW_POWER_MS  143u
 #define ESP_PARAM_WIFI_CYCLE_ON_MS        144u
 #define ESP_PARAM_WIFI_CYCLE_OFF_MS       145u
 #define ESP_PARAM_WIFI_BAT_CUTOFF_PCT     146u
-
 /* ==================== Parameter Constants ==================== */
-/* [EN] Current parameter map: ids 20..26 = shared charge profile; 27..37 =
-         Fault/Charger supervision; 38..82 = UI cadence and hysteresis;
-         83..92 = two-loop CC/CV PID; 93..107 = charger limits; 108..118 =
-         imbalance scenario 5; 119..120 = charge-side percent map;
-         121..122 = band-2 beep shape; 123..124 = imbalance LED cadence;
-         125..131 and 134..135 = dead-battery scenario 6; 132..133 and 136
-         = imbalance extensions; 137..142 = technical board fault scenario 7;
-         and 143..146 = Wi-Fi battery power-saving settings.
-         / [FA] نقشهٔ فعلی پارامترها: ۲۰..۲۶ پروفایل شارژ، ۲۷..۳۷ نظارت ‎Fault/Charger‎،
-         ۳۸..۸۲ cadence و hysteresis رابط، ۸۳..۹۲ PID دوحلقه‌ای، ۹۳..۱۰۷ حدهای
-         شارژر، ۱۰۸..۱۱۸ سناریوی ۵، ۱۱۹..۱۲۰ نگاشت درصد سمت شارژ، ۱۲۱..۱۲۲
-         شکل بوق باند ۲، ۱۲۳..۱۲۴ cadence چراغ عدم‌توازن، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵
-         سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵، ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد
-         و ۱۴۳..۱۴۶ تنظیمات وای‌فای و مصرف باتری. */
-#define ESP_PARAM_COUNT            171u /* [EN] v1.85 ends at Wi-Fi battery cutoff id 146; 143..146 own Wi-Fi power saving. v1.87 appends 158..164 = the per-scenario LED/beep enable ticks (scenarios 1..7). / [FA] نسخه ۱٫۸۵ با ۱۴۶ تمام می‌شد؛ نسخهٔ ۱٫۸۷ شناسه‌های ۱۵۸..۱۶۴ (تیک هشدار سناریوهای ۱..۷) را اضافه می‌کند. */
+/*
+ * [EN] Current parameter map: ids 20..26 = shared charge profile; 27..37 =
+ * Fault/Charger supervision; 38..82 = UI cadence and hysteresis;
+ * 83..92 = two-loop CC/CV PID; 93..107 = charger limits; 108..118 =
+ * imbalance scenario 5; 119..120 = charge-side percent map;
+ * 121..122 = band-2 beep shape; 123..124 = imbalance LED cadence;
+ * 125..131 and 134..135 = dead-battery scenario 6; 132..133 and 136
+ * = imbalance extensions; 137..142 = technical board fault scenario 7;
+ * and 143..146 = Wi-Fi battery power-saving settings.
+ */
+#define ESP_PARAM_COUNT            171u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
-
-/* ==================== ریست دستی قفل‌ها (اسلات‌های زمان‌اجرا) ==================== */
-/* اسلات‌های زمان‌اجرای STM32 پارامتر کاربر نیستند و در جدول پارامترها جا
-   ندارند (جدول ۱۴۳ شناسه دارد): ۲۰۰ = شمارندهٔ رویداد عدم‌توازن، ۲۰۱ = سیکل‌های
-   پس از قفل، ۲۰۲ = پرچم قفل عدم‌توازن و ۲۰۳ = ماسک حکم باتری خراب. خود برد
-   همین شناسه‌ها را از مسیر معمول می‌پذیرد، مقدار را اعمال می‌کند و در فلش
-   ذخیره می‌کند؛ پس برای «ریست» یک صف کوچک جدا کافی است و جدول پارامترها و
-   بازه‌های گیرهٔ آن دست‌نخورده می‌مانند. مقدار صفر یعنی پاک. */
 #define ESP_SLOT_QUEUE_LEN          5u
 #define ESP_SLOT_EVENTS_ID          200u
 #define ESP_SLOT_CYCLES_ID          201u
 #define ESP_SLOT_LATCH_ID           202u
 #define ESP_SLOT_DEAD_MASK_ID       203u
-/* [EN] v1.86: scenario-8 reset key. The STM owns the weak-battery verdict in
+/*
+ * [EN] v1.86: scenario-8 reset key. The STM owns the weak-battery verdict in
  *      RAM, so this slot is a command (write 0 = drop it) and nothing on the
  *      board stores it.
- *      [FA] نسخهٔ ۱٫۸۶: کلید ریست سناریوی ۸. حکم باتری ضعیف در RAM برد است،
- *      پس این اسلات یک فرمان است (نوشتن صفر = پاک‌شدن) و چیزی ذخیره نمی‌شود. */
+ */
 #define ESP_SLOT_WEAK_RESET_ID      204u
 #define ESP_SLOT_FIRST_ID           ESP_SLOT_EVENTS_ID
 #define ESP_SLOT_LAST_ID            ESP_SLOT_WEAK_RESET_ID
-
 /* ==================== CAL_REFERENCE (removed from the panel in v1.7) ==================== */
-/* [EN] The v1.6 CAL card was dropped in the v1.7 simplification (user order 2026-09-25): the panel
-        no longer sends CAL_REFERENCE. The STM32 handler stays in the firmware, unused and harmless.
-   [FA] کارت CAL در ساده‌سازی نسخهٔ ۱.۷ حذف شد (دستور کاربر ۲۰۲۶-۰۹-۲۵): پنل دیگر CAL_REFERENCE
-        نمی‌فرستد. handler آن در فریم‌ور STM32 مانده است؛ بی‌استفاده و بی‌ضرر. */
-
+/*
+ * [EN] The v1.6 CAL card was dropped in the v1.7 simplification (user order 2026-09-25): the panel
+ * no longer sends CAL_REFERENCE. The STM32 handler stays in the firmware, unused and harmless.
+ */
 /* ==================== Bench Statistics Window (spec 4) ==================== */
-/* [EN] The browser polls /t only every 300 ms, so the bench tools read EVERY TLM frame (10 Hz) through
-        this window: POST /m restarts it (and queues one GET_PARAMS so the logged parameters are the live
-        ones), GET /m reads it. All 20 t[] fields are tracked (ch1 0..6, ch2 7..13, Vin 14, V24 15, V12 16,
-        Vlow 17, Vhigh 18, faults 19): sum / min / max / last frame; faults are also ORed over the window;
-        seq and flags are the last frame's. The count stops at 60000 frames (100 min) so u32 sums never wrap.
-   [FA] مرورگر فقط هر ۳۰۰‎ms /t‎ را می‌خواند؛ پس ابزارهای بنچ تک‌تک فریم‌های TLM (۱۰ هرتز) را از این پنجره
-        می‌گیرند: ‎POST /m‎ آن را از نو شروع می‌کند (و یک GET_PARAMS صف می‌کند تا پارامترهای ثبت‌شده همان مقادیر
-        زنده باشند) و ‎GET /m‎ آن را می‌خواند. هر ۲۰ فیلد t[] دنبال می‌شود (کانال ۱ ‎0..6‎، کانال ۲ ‎7..13‎، Vin 14،
-        V24 15، V12 16، Vlow 17، Vhigh 18، خطاها 19): مجموع / کمینه / بیشینه / آخرین فریم؛ خطاها در کل پنجره
-        OR هم می‌شوند؛ seq و flags مال آخرین فریم‌اند. شمارش در ۶۰۰۰۰ فریم (۱۰۰ دقیقه) می‌ایستد تا مجموع u32 سرریز نشود. */
+/*
+ * [EN] The browser polls /t only every 300 ms, so the bench tools read EVERY TLM frame (10 Hz) through
+ * this window: POST /m restarts it (and queues one GET_PARAMS so the logged parameters are the live
+ * ones), GET /m reads it. All 20 t[] fields are tracked (ch1 0..6, ch2 7..13, Vin 14, V24 15, V12 16,
+ * Vlow 17, Vhigh 18, faults 19): sum / min / max / last frame; faults are also ORed over the window;
+ * seq and flags are the last frame's. The count stops at 60000 frames (100 min) so u32 sums never wrap.
+ */
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
-
 /* ==================== Bench Data Log File (spec 4, CSV v3: 56 data columns per row + a one-off settings line (was 149 repeated every row)) ==================== */
-/* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
-        raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
-        (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
-        of spec 4; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
-        Arduino IDE: pick a flash layout WITH a file system. ESP8266-01S (1 MB): LittleFS next to the ~414 KB panel and the
-        sketch may not fit. NOT measured yet - check the sketch size in the IDE before relying on this log. ESP32 default is fine.
-   [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
-        و عددهای مولتی‌متر می‌سازد و به /‎benchlog/add‎ می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 4؛ نسخهٔ ۱.۲۶ آن ۱۴۹ را به ۵۶ ستون داده به‌اضافهٔ ۹۳ تنظیم که یک‌بار نوشته می‌شود تقسیم کرد - v1.12: +۷ پارامتر profile شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/hysteresis، v1.24: +۱۰ پارامتر PID دوحلقه‌ای، v1.25: +۵ ستون شمارش خام برای کالیبراسیون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
-        اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
-        ‎ESP8266-01S (۱ مگابایت): LittleFS کنار پنل ~۴۱۴ کیلوبایتی و اسکچ شاید جا نشود. هنوز اندازه‌گیری نشده - پیش از تکیه بر این گزارش، اندازهٔ اسکچ را در IDE ببینید. ESP32 پیش‌فرض کافی است. */
+/*
+ * [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
+ * raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
+ * (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
+ * of spec 4; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+ * Arduino IDE: pick a flash layout WITH a file system. ESP8266-01S (1 MB): LittleFS next to the ~414 KB panel and the
+ * sketch may not fit. NOT measured yet - check the sketch size in the IDE before relying on this log. ESP32 default is fine.
+ */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
 #define ESP_BENCHLOG_MAX_BYTES      102400u
 #define ESP_BENCHLOG_MAX_POST       1536u
@@ -273,14 +234,14 @@
     "#           dmm_i_bat2_ma,note\n" \
     "# run <n> browser_ts=<ISO from the panel page> scenario=<BAT1|BAT2|BOTH>\n" \
     "#  duty_list=<...>\n"
-
 /* ==================== Wi-Fi / HTTP Constants ==================== */
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
 #define ESP_WIFI_AP_PASS            "123456789"
 #define ESP_HTTP_PORT               80
 #define ESP_JSON_BUFFER_SIZE        2624u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.24: p[93] adds 10 PID values, ~1.1 KB; v1.28: p[108] limits; v1.43: p[119] + t[28] + fl2 adds ~120 B */
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
-/* [EN] Ceiling for the web panel, checked by a static_assert in plink_http.h.
+/*
+ * [EN] Ceiling for the web panel, checked by a static_assert in plink_http.h.
  *      The panel is streamed from PROGMEM in small HTTP chunks and was 118 KB
  *      when this project started; it is ~414 KB now and nothing ever stopped
  *      it growing. Chunking keeps a stalled ESP8266 client from losing the
@@ -298,202 +259,106 @@
  *      ESP8266-01S (1 MB flash) the page is the largest single block of flash;
  *      the HTTP response is chunked so transfer size is
  *      not confused with one giant socket write.
- * [FA] سقف پنل وب، با static_assert در plink_http.h بررسی می‌شود. پنل با یک
- *      send_P می‌رود و اول کار ۱۱۸ کیلوبایت بود؛ حالا ۱۹۴ است و هیچ‌چیز جلوی
- *      رشدش را نگرفته بود. روی ESP8266 یعنی حدود ۱۴۰ نوشتن پیاپی TCP، و لینکِ
- *      گیرکرده انتقال را هر جا که باشد می‌برد — مرورگر صفحه‌ای بدون انتهایش را
- *      نشان می‌دهد، یعنی بدون زیرصفحه‌های تنظیمات و اسکریپت‌ها. ۲۰۸ کیلوبایت
- *      سقف، افزودنی بزرگ بعدی را به خطای بیلد تبدیل می‌کند که باید آگاهانه
- *      جواب داده شود. نسخهٔ ۱٫۴۳ (دستور کاربر ۲۰۲۶-۱۰-۰۴: کارت سناریوی شارژ
- *      یک صفحهٔ کاربردی شود — تعریف فول، آوردن حد ولتاژ کنارش و نمایش حساب
- *      چشمک زرد) همان جواب است: صفحه حدود ۸ کیلوبایت بیشتر از پلهٔ ۲۰۸ لازم
- *      داشت، و نسخهٔ ۱٫۴۴ همین کار را برای پنج کارت سناریوی باقی‌مانده کرد
- *      (شرط ورود، تنظیم‌های شماره‌دار و اعداد محاسبه‌شده‌ای که برد به‌کار
- *      می‌برد) که ~۱۶ کیلوبایت دیگر خواست؛ پس پله در دو حرکت عمدی از ۲۰۸ به
- *      ۲۲۴ و بعد ۲۵۶ کیلوبایت رفت — هر دو پای یک دستور مشخص، نه رانش.
- *      سقف فعلی ۴۱۶۰۰۰ بایت (حدود ۴۱۴ کیلوبایت) است؛ روی ‎ESP8266-01S‎ با ۱ مگابایت
- *      فلش، صفحه بزرگ‌ترین بلوک فلش است.
- *
- *      v1.52 (دستور کاربر ۲۰۲۶-۱۰-۰۵: یک کلید سراسری برای ارسال تنظیمات و
- *      پیام تأیید بعد از دست‌دادن، به‌علاوهٔ شبیه‌ساز زندهٔ کارت‌ها در v1.51)
- *      حدود ۱۲ کیلوبایت دیگر لازم داشت؛ پله یک حرکت عمدی دیگر از ۲۵۶ به
- *      ۲۷۲ کیلوبایت رفت — باز هم پای یک دستور مشخص، نه رانش.
  *      v1.52 (user order): the global send button, its handshake report and
  *      the v1.51 per-card simulator needed ~12 KiB more, so the ceiling was
  *      deliberately stepped 256 KiB -> 272 KiB.
- *
- *      v1.57 (دستور کاربر ۲۰۲۶-۱۰-۰۵: «پشتیبان‌گیری را کامل کن» و
- *      «کالیبراسیون را مستقیم از داده‌برداری بنچ با تأیید کاربر روی برد
- *      بریز») شناسنامهٔ فایل پشتیبان، عبور دادن فایل از قوانین مشترک، و
- *      کارت کالیبراسیون خودکار (برازش کمترین‌مربعات، پیش‌نمایش مقدار فعلی/
- *      پیشنهادی، هشدار کیفیت و پشتیبان خودکار پیش از نوشتن) حدود ۱۳
- *      کیلوبایت لازم داشت؛ پله یک حرکت عمدی دیگر از ۲۷۲ به ۲۸۸ کیلوبایت.
  *      v1.57 (user order): the backup identity stamp and the bench
  *      auto-calibration card needed ~13 KiB, so the ceiling was deliberately
  *      stepped 272 KiB -> 288 KiB.
- *
- *      v1.61 (دستور کاربر ۲۰۲۶-۱۰-۰۵: «شرط‌ها را توی پنل بیاور و خطا را به
- *      کاربر بگو» و «یک خروجی بده که در کد میکرو کپی کنم») فهرست شرط‌های
- *      قابل‌خواندن و تولیدکنندهٔ کد calibration.h حدود ۸ کیلوبایت لازم
- *      داشت؛ پله یک حرکت عمدی دیگر از ۲۸۸ به ۳۲۰ کیلوبایت.
  *      v1.61 (user order): the on-page rule check-list and the firmware
  *      snippet generator needed ~8 KiB, so the ceiling was deliberately
  *      stepped 288 KiB -> 320 KiB.
- *
- *      ‎v1.70/v1.71 (‎دستور کاربر ۲۰۲۶-۱۰-۰۵: «نتیجهٔ ارسال باید کامل نشان داده
- *      شود و بپرسد دوباره بفرستم» و «باندهای دشارژ را یک‌شکل کن؛ فقط گپ
- *      مشترک باشد») کارت ماندگار نتیجهٔ ارسال و یک‌دست‌کردن چهار باند دشارژ
- *      حدود ۱ کیلوبایت از سقف ۳۲۰ جلو زد؛ پله یک حرکت عمدی دیگر از ۳۲۰ به
- *      ۳۳۶ کیلوبایت.
  *      v1.70/v1.71 (user order): the persistent send-result card and the
  *      uniform four-band discharge form went ~1 KiB past the 320 KiB step,
  *      so the ceiling was deliberately stepped 320 KiB -> 336 KiB.
- *
  *      v1.78..v1.84 (user orders: scenario 6's checklist, real checkboxes,
  *      independent lamp/beep controls, and the complete scenario-7 card)
  *      expanded the markup beyond the old 352 KiB step. The transfer budget
  *      is now an explicit 384000-byte ceiling, with headroom for the generated
  *      page while keeping the source/audit stamp mandatory.
- *      [FA] چک‌لیست سناریوی ۶، چک‌باکس‌های واقعی، تنظیم مستقل چراغ/بوق و
- *      کارت کامل سناریوی ۷ از سقف قدیمی ۳۵۲ کیلوبایت عبور کردند؛ سقف انتقال
- *      اکنون صریحاً ۳۸۴۰۰۰ بایت است و ممیزی stamp و اندازه همچنان اجباری است.
- *
  *      2026-10-07 (programmer pass: RTL comment hygiene restored by the
  *      project's own fix_rtl_comments.py): the mandatory U+200E direction
  *      marks inside the Persian explanation text pushed the served markup 8
  *      bytes past the 375 KiB step (384008). The ceiling is deliberately
  *      stepped 375 KiB to 376 KiB (384000 to 385024); behaviour, chunked
  *      transfer and the stamp/size audit are unchanged.
- *
- *      [FA] ۲۰۲۶-۱۰-۰۷ (پاس برنامه‌نویس: بهداشت کامنت راست‌به‌چپ با خود ابزار
- *      پروژه احیا شد): علامت‌های جهت اجباری داخل متن توضیح فارسی، مارک‌آپ را
- *      ۸ بایت از پلهٔ ۳۷۵ کیلوبایت جلو زد (۳۸۴۰۰۸). سقف عمداً از ۳۷۵ به ۳۷۶
- *      کیلوبایت (۳۸۴۰۰۰ به ۳۸۵۰۲۴) پله خورد؛ رفتار، انتقال تکه‌ای و ممیزی
- *      مهر/اندازه بدون تغییر است.
- *
  *      2026-10-08 the scoped calibration review and per-row keep/apply
  *      controls add served markup; the deliberate guard is stepped to
  *      416000 bytes so the chunked page still has build-time headroom.
- *      [FA] در ۲۰۲۶-۱۰-۰۸ ممیزی دامنه‌دار کالیبراسیون و کنترل حفظ/اعمال
- *      ردیفی به مارک‌آپ افزوده شد؛ سقف عمداً با حاشیه به ۴۱۶۰۰۰ بایت
- *      پله خورد تا صفحهٔ chunked در بیلد جا داشته باشد.
- *
- *      در ۲۰۲۶-۱۰-۱۵ سه چراغ همیشه‌روشن خطای صفحهٔ اول (قفل عدم‌توازن، حکم
- *      باتری خراب، خطای فنی شارژر) با کلیک به تنظیمات، به‌همراه چراغ اپیزود
- *      جاری به مارک‌آپ اضافه شد؛ سقف عمداً با حاشیه به ۴۱۷۷۹۲ بایت پله خورد
- *      تا صفحهٔ chunked در بیلد جا داشته باشد.
- *
- *      همان روز دکمه‌های ریست دستی قفل‌ها (سناریو ۵ و ۶) و ردیف وضعیت
- *      کنارشان آمد؛ اندازهٔ صفحه به ۴۱۹۸۶۶ بایت رسید و سقف با حاشیه به
- *      ۴۲۱۸۸۸ بایت پله خورد - پلهٔ قبلی فقط ۲KB فاصله داشت و مارک‌آپ هر
- *      افزودنی بعدی بی‌دلیل دروازه را می‌شکست.
- *
- *      همان روز دو کلید ریست کارت‌های قفل تمام‌عرض شدند؛ کاربر خواست به
- *      اندازهٔ عرض صفحه باشند، نه یک خانهٔ گرید. متن وضعیت کنار هر کلید هم
- *      تمام‌عرض شد تا زیر کلیدش بنشیند. اندازهٔ صفحه به ۴۲۱۶۷۴ بایت رسید و
- *      سقف عمداً با حاشیه به ۴۲۵۹۸۴ بایت (۴۱۶ کیلوبایت) پله خورد تا مارک‌آپ
- *      افزودنی بعدی بی‌دلیل دروازه را نشکند.
- *      در نسخهٔ ۱٫۸۵ تب تنظیمات «وای‌فای و مصرف باتری» (شناسه‌های ۱۴۳..۱۴۶) به
- *      دستور کاربر اضافه شد و سقف با حاشیه به ۴۳۴۱۷۶ بایت (۴۲۴ کیلوبایت)
- *      پله خورد.
- *      در نسخهٔ ۱٫۸۶ کارت سناریوی ۸ (باتری ضعیف: یازده شناسهٔ ۱۴۷..۱۵۷،
- *      چک‌لیست و اعتبارسنجی) به دستور کاربر اضافه شد و صفحه به ۴۳۸۹۳۶ بایت
- *      رسید؛ سقف عمداً با حاشیه به ۴۴۲۳۶۸ بایت (۴۳۲ کیلوبایت) پله خورد.
- *      سپس نمایش زندهٔ حکم باتری ضعیف (چراغ همیشه‌سوار در نوار خطاها، خط
- *      وضعیت داخل کارت ۸ و خلاصهٔ چهره) اضافه شد و صفحه به ۴۴۲۹۱۴ بایت
- *      رسید؛ سقف با حاشیه به ۴۴۶۴۶۴ بایت (۴۳۶ کیلوبایت) پله خورد.
- *      در نسخهٔ ۱٫۸۷ نوار «چه وقت پاک می‌شود؟» به هر هشت کارت سناریو اضافه شد
- *      (دستور کاربر) و صفحه به ۴۵۰۴۶۵ بایت رسید؛ سقف عمداً با حاشیهٔ ~۸ کیلوبایت
- *      به ۴۵۸۷۵۲ بایت (۴۴۸ کیلوبایت) پله خورد.
  */
-/* ==================== Live state history log / تاریخچهٔ وضعیت ==================== */
-/* [EN] v1.93 (user order 2026-10-23): every panel keeps a state history on its
-        own flash, one small CSV per calendar day of the phone that opened it.
-        A row is written only when something really changed (mains, charger
-        step, fault mask, latch flags, battery near the cut band, link lost /
-        back, board restarted) - a steady board writes nothing, so the flash is
-        not worn out and the file stays readable. Each row is opened, written
-        and CLOSED immediately: if the panel loses power at the battery cut,
-        the last row is already on flash.
-   [FA] نسخهٔ ۱٫۹۳ (دستور کاربر ۲۰۲۶-۱۰-۲۳): هر پنل تاریخچهٔ وضعیت را روی فلش
-        خودش نگه می‌دارد، روزی یک فایل کوچک به تاریخ همان گوشی/کامپیوتری که
-        پنل را باز کرده. ردیف فقط وقتی نوشته می‌شود که واقعاً چیزی عوض شده باشد
-        (برق شهر، مرحلهٔ شارژ، خطا، قفل‌ها، نزدیک‌شدن باتری به مرز قطع، قطع و
-        برگشت ارتباط، روشن‌شدن دوبارهٔ برد) - برد آرام هیچ ردیفی نمی‌نویسد، پس
-        فلش فرسوده نمی‌شود و فایل خوانا می‌ماند. هر ردیف همان لحظه باز، نوشته و
-        بسته می‌شود: اگر پنل سر قطع باتری برق را از دست بدهد، آخرین ردیف از قبل
-        روی فلش است. */
-#define ESP_LOG_MAX_DAYS            30u      /* [EN] keep / [FA] نگه‌داری چند روز */
-#define ESP_LOG_MAX_ROWS_PER_DAY    400u     /* [EN] per day cap / [FA] سقف ردیف هر روز */
-#define ESP_LOG_TAIL_LINES          30u      /* [EN] rows the panel shows / [FA] ردیف نمایشی */
-#define ESP_LOG_DAY_AUTO            0xFFFFFFFFu /* انتخاب خودکار روز جاری یا آخرین روز موجود */
-#define ESP_LOG_DAY_ZERO            0xFFFFFFFEu /* انتخاب صریح فایل روز بدون ساعت (00000000) */
-#define ESP_LOG_RAM_ROWS            16u      /* حلقهٔ موقت در رم وقتی فایل‌سیستم فلش غیرفعال باشد */
-#define ESP_LOG_RAM_ROW_MAX         160u     /* سقف طول یک ردیف در حلقهٔ رم */
-/* [EN] v1.110 (user order 2026-10-28: "why not take it from the log file
-        itself?"): the day list is no longer a file. It is read from the day
-        files themselves, so one directory scan this often is all it costs -
-        a page that asks every 10 s gets the cache, not a flash walk.
-   [FA] نسخهٔ ۱٫۱۱۰ (دستور کاربر ۲۰۲۶-۱۰-۲۸: «چرا از خود فایل لاگ برنمی‌داری؟»):
-        فهرست روزها دیگر فایل نیست و از خود فایل‌های روز خوانده می‌شود؛ یک بار
-        خواندن پوشه در هر بازهٔ زیر تمام هزینه‌اش است - صفحه‌ای که هر ۱۰ ثانیه
-        می‌پرسد پاسخ را از حافظه می‌گیرد، نه از فلش. */
+/* ==================== Live state history log ==================== */
+/*
+ * [EN] v1.93 (user order 2026-10-23): every panel keeps a state history on its
+ * own flash, one small CSV per calendar day of the phone that opened it.
+ * A row is written only when something really changed (mains, charger
+ * step, fault mask, latch flags, battery near the cut band, link lost /
+ * back, board restarted) - a steady board writes nothing, so the flash is
+ * not worn out and the file stays readable. Each row is opened, written
+ * and CLOSED immediately: if the panel loses power at the battery cut,
+ * the last row is already on flash.
+ */
+#define ESP_LOG_MAX_DAYS            30u
+#define ESP_LOG_MAX_ROWS_PER_DAY    400u
+#define ESP_LOG_TAIL_LINES          30u
+#define ESP_LOG_DAY_AUTO            0xFFFFFFFFu
+#define ESP_LOG_DAY_ZERO            0xFFFFFFFEu
+#define ESP_LOG_RAM_ROWS            16u
+#define ESP_LOG_RAM_ROW_MAX         160u
+/*
+ * [EN] v1.110 (user order 2026-10-28: "why not take it from the log file
+ * itself?"): the day list is no longer a file. It is read from the day
+ * files themselves, so one directory scan this often is all it costs -
+ * a page that asks every 10 s gets the cache, not a flash walk.
+ */
 #define ESP_LOG_SCAN_MIN_MS         3000u
-/* [EN] What the old firmware left behind: it is never read again, only deleted
-        on boot so it stops taking flash.
-   [FA] چیزی که نسخهٔ قدیمی جا گذاشته: دیگر خوانده نمی‌شود و فقط سر روشن شدن
-        حذف می‌شود تا جای فلش نگیرد. */
+/*
+ * [EN] What the old firmware left behind: it is never read again, only deleted
+ * on boot so it stops taking flash.
+ */
 #define ESP_LOG_LEGACY_INDEX_PATH   "/evt-days.txt"
-#define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"  /* [EN] phone clock anchor / [FA] لنگر ساعت گوشی */
+#define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"
 #define ESP_LOG_FILE_PREFIX         "/evt-"
-#define ESP_LOG_CUT_BAND_MV         21200u   /* [EN] battery "near the cut" line: entered below / [FA] مرز «نزدیک قطع» باتری: ورود از زیر */
-#define ESP_LOG_BAND_OFF_MV         21400u   /* [EN] ...and left only above this / [FA] ...و خروج فقط از بالای این */
-#define ESP_LOG_VSTEP_MIN_MS        60000u   /* [EN] at most one step row a minute / [FA] حداکثر یک ردیف گام در دقیقه */
-#define ESP_LOG_VSTEP_MV             200u     /* [EN] pack step that counts as a change / [FA] پلهٔ ولتاژ پک که تغییر حساب می‌شود */
-/* [EN] One "still alive" row this often when nothing at all has changed. It was
-        6 h, which meant a pack lying quietly on battery produced ONE row a
-        session and the history looked empty (user order 2026-10-27: "it is on
-        and it still writes nothing"). 10 min = 144 rows a day, inside the 400
-        rows a day cap with room for real events.
-   [FA] هر این مدت یک ردیف «زنده‌ام» وقتی هیچ چیز عوض نشده باشد. قبلاً ۶ ساعت
-        بود، یعنی پکی که آرام روی باتری می‌خوابید در هر نشست یک ردیف می‌داد و
-        تاریخچه خالی دیده می‌شد (دستور کاربر ۲۰۲۶-۱۰-۲۷: «روشن است و باز هم
-        چیزی نمی‌نویسد»). ۱۰ دقیقه = ۱۴۴ ردیف در روز، داخل سقف ۴۰۰ ردیف با جا
-        برای رویدادهای واقعی. */
-#define ESP_LOG_HEARTBEAT_MS         3600000u /* [EN] 1 h / [FA] ۱ ساعت */
-#define ESP_LOG_DRAIN_RETRY_MS       30000u   /* [EN] 30 s cooldown after a refused flash drain / [FA] فاصلهٔ ۳۰ ثانیه بین تلاش‌های تخلیهٔ رم */
-#define ESP_HTTP_SEND_TIMEOUT_MS     1000u    /* [EN] 1 s socket write timeout / [FA] سقف انتظار ارسال سوکت ۱ ثانیه */
-#define ESP_HTTP_ROOT_MAX_MS         15000u   /* [EN] 15 s ceiling for root page stream / [FA] سقف ۱۵ ثانیه برای ارسال صفحهٔ اصلی */
-#define ESP_LOG_TOTAL_BUDGET_BYTES     200000u   /* [EN] old days are dropped past this / [FA] از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
-#define ESP_LOG_MIN_INTERVAL_MS     2000u    /* [EN] merges a burst into one row / [FA] ادغام چند تغییر پشت‌سرهم */
-/* [EN] A queued mains cut/return is written after this short coalescing
-        window (not the full merge window): the board may cut the panel's
-        power the same instant (battery saver) and the row must reach the
-        flash first (user order 2026-10-24: "the log must be complete").
-        Repeat flips inside the window still ride along in ONE row.
-   [FA] ردیفِ قطع/وصل برق شهر پس از همین پنجرهٔ کوتاه نوشته می‌شود (نه کل
-        پنجرهٔ ادغام): برد ممکن است همان لحظه (صرفه‌جویی باتری) برق پنل را
-        ببرد و ردیف باید اول به فلش برسد (دستور کاربر ۲۰۲۶-۱۰-۲۴: «لاگ باید
-        کامل باشد»). پرش‌های تند داخل همین پنجره هنوز در یک ردیف ادغام می‌شوند. */
-#define ESP_LOG_MAINS_FLUSH_MS       250u    /* سقف انتظار ردیف برق شهر */
-#define ESP_LOG_LINK_TIMEOUT_MS     5000u    /* [EN] no frame = link lost / [FA] بی‌فریم یعنی قطع ارتباط */
-#define ESP_LOG_CLOCK_SAVE_MS       600000u  /* [EN] clock to flash every 10 min / [FA] ذخیرهٔ ساعت هر ۱۰ دقیقه */
-/* [EN] After a panel power cycle, a restored board anchor gives the first
-        HELLO_ACK a bounded chance to recover the time spent unpowered. A
-        silent board never blocks the boot row for longer than this.
-   [FA] پس از خاموش‌روشن پنل، لنگر بازیابی‌شدهٔ برد به نخستین پاسخ دست‌دادن
-        فرصت محدودی می‌دهد تا مدت خاموشی را جبران کند. برد ساکت هرگز ردیف بوت
-        را بیش از این مدت متوقف نمی‌کند. */
-#define ESP_LOG_BOOT_CLOCK_GRACE_MS 10000u   /* [EN] 10 s / [FA] ۱۰ ثانیه */
-/* [EN] A phone time that would move the clock BACKWARD by more than this is
-        refused: two phones, a wrong timezone or a manual clock change must not
-        rewind the day and split the history into two files with the same rows
-        again. Same order as the simple panel, which uses 300 s.
-   [FA] زمانی که ساعت را بیش از این مقدار عقب ببرد رد می‌شود: دو گوشی، منطقهٔ
-        زمانی اشتباه یا تغییر دستی ساعت نباید روز را عقب ببرد و تاریخچه را دو
-        تکه کند. همان مرتبهٔ پنل ساده که ۳۰۰ ثانیه است. */
+#define ESP_LOG_CUT_BAND_MV         21200u
+#define ESP_LOG_BAND_OFF_MV         21400u
+#define ESP_LOG_VSTEP_MIN_MS        60000u
+#define ESP_LOG_VSTEP_MV             200u
+/*
+ * [EN] One "still alive" row this often when nothing at all has changed. It was
+ * 6 h, which meant a pack lying quietly on battery produced ONE row a
+ * session and the history looked empty (user order 2026-10-27: "it is on
+ * and it still writes nothing"). 10 min = 144 rows a day, inside the 400
+ * rows a day cap with room for real events.
+ */
+#define ESP_LOG_HEARTBEAT_MS         3600000u
+#define ESP_LOG_DRAIN_RETRY_MS       30000u
+#define ESP_HTTP_SEND_TIMEOUT_MS     1000u
+#define ESP_HTTP_ROOT_MAX_MS         15000u
+#define ESP_LOG_TOTAL_BUDGET_BYTES     200000u
+#define ESP_LOG_MIN_INTERVAL_MS     2000u
+/*
+ * [EN] A queued mains cut/return is written after this short coalescing
+ * window (not the full merge window): the board may cut the panel's
+ * power the same instant (battery saver) and the row must reach the
+ * flash first (user order 2026-10-24: "the log must be complete").
+ * Repeat flips inside the window still ride along in ONE row.
+ */
+#define ESP_LOG_MAINS_FLUSH_MS       250u
+#define ESP_LOG_LINK_TIMEOUT_MS     5000u
+#define ESP_LOG_CLOCK_SAVE_MS       600000u
+/*
+ * [EN] After a panel power cycle, a restored board anchor gives the first
+ * HELLO_ACK a bounded chance to recover the time spent unpowered. A
+ * silent board never blocks the boot row for longer than this.
+ */
+#define ESP_LOG_BOOT_CLOCK_GRACE_MS 10000u
+/*
+ * [EN] A phone time that would move the clock BACKWARD by more than this is
+ * refused: two phones, a wrong timezone or a manual clock change must not
+ * rewind the day and split the history into two files with the same rows
+ * again. Same order as the simple panel, which uses 300 s.
+ */
 #define ESP_LOG_CLOCK_REWIND_SEC    120u
-#define ESP_LOG_CLOCK_VALID_MIN     1700000000u /* [EN] below this the phone time is junk / [FA] کمتر از این یعنی زمان بی‌معنی */
+#define ESP_LOG_CLOCK_VALID_MIN     1700000000u
 #define ESP_LOG_HEADER \
     "# state history / تاریخچهٔ وضعیت\n" \
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
@@ -501,31 +366,24 @@
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
     "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full 5=heartbeat 6=manual\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
-
-/* [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of
-        the page took the markup to 464752 bytes, so this deliberate guard is
-        stepped 448 KiB -> 464 KiB, with ~10 KiB of headroom.
-   [FA] در نسخهٔ ۱٫۹۳ کارت «تاریخچهٔ وضعیت» (لاگ روزانهٔ تغییرها با ساعت گوشی) به
-        پایین صفحه اضافه شد و مارک‌آپ به ۴۶۴۷۵۲ بایت رسید؛ سقف عمداً با
-        حاشیهٔ ~۱۰ کیلوبایت به ۴۶۴ کیلوبایت پله خورد. */
-/* افزودن نشان درصد پر بودن هر باتری روی دشارژ در صفحهٔ اول مارک‌آپ را به
-   ۴۷۷٬۹۶۸ بایت رساند؛ سقف آگاهانه ۲ کیلوبایت پله خورد (۴۷۹٬۲۳۲ بایت) و
-   نگهبان سر جایش می‌ماند. */
-/* [EN] v1.113: the history card now says what a clear really deleted and names
-        a firmware update, which costs about 1 KB of HTML - raised on purpose.
-   [FA] نسخهٔ ۱٫۱۱۳: کارت تاریخچه حالا می‌گوید پاک‌کردن واقعاً چه چیزی را برد و
-        بروزرسانی فرم‌ور را نام می‌برد و حدود ۱ کیلوبایت HTML گران‌تر شد -
-        عمداً بالا رفت. */
-/* [EN] v1.114: adding the ESP flash memory inspector/cleaner UI and fetch
-        timeout guards added ~3 KB of HTML/JS - stepped +4 KiB on purpose.
-   [FA] افزودن پنجرهٔ بررسی و پاک‌سازی حافظهٔ فلش و نگهبان مهلت درخواست‌ها حدود
-        سه کیلوبایت به سند افزود - سقف آگاهانه چهار کیلوبایت پله خورد. */
-/* [EN] The shared input Schmitt card (q169/q170 + help + defaults) added about
-        0.7 KB of HTML/JS - stepped +4 KiB on purpose, guard unchanged.
-   [FA] کارت اشمیت مشترک ورودی (۱۶۹/۱۷۰ + راهنما + پیش‌فرض‌ها) حدود ۰٫۷ کیلوبایت
-        ‎HTML/JS‎ افزود - سقف آگاهانه چهار کیلوبایت پله خورد و نگهبان سر جایش است. */
+/*
+ * [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of
+ * the page took the markup to 464752 bytes, so this deliberate guard is
+ * stepped 448 KiB -> 464 KiB, with ~10 KiB of headroom.
+ */
+/*
+ * [EN] v1.113: the history card now says what a clear really deleted and names
+ * a firmware update, which costs about 1 KB of HTML - raised on purpose.
+ */
+/*
+ * [EN] v1.114: adding the ESP flash memory inspector/cleaner UI and fetch
+ * timeout guards added ~3 KB of HTML/JS - stepped +4 KiB on purpose.
+ */
+/*
+ * [EN] The shared input Schmitt card (q169/q170 + help + defaults) added about
+ * 0.7 KB of HTML/JS - stepped +4 KiB on purpose, guard unchanged.
+ */
 #define ESP_PANEL_HTML_MAX_BYTES    491520u
-
 /* ==================== Parser States ==================== */
 typedef enum
 {

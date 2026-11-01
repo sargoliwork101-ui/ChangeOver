@@ -51,20 +51,6 @@
  *               The v1.6 extras (CAL card, manual tests B/C/D, correction/analysis tab, engineer mode)
  *               were removed except the manual-duty card above; nothing was ever calibrated
  *               automatically and the wire protocol (SET_PARAM / GET_PARAMS / TLM) is unchanged.
- *          [FA] پل ‎ESP-Link‎ سمت ESP: تبادل فریم باینری با STM32 روی UART (921600 8N1، مطابق
- *               ESP_AGENT_SPEC.md نسخهٔ ۱.۴) و یک پنل وب دارک راست‌به‌چپ با فونت وزیرمتن و «دو» تب
- *               (کارت duty دستی از ۱.۱۰ در تب پنل؛ سقف duty، نمونه‌های نمودار، حذف صبر و مقسم پک هم در ۱.۱۰):
- *               ۱) پنل: ولتاژهای مشترک (با کالیبراسیون آفست از مولتی‌متر)، فیلتر جریان (median ۱..۱۵،
- *                  میانگین ۱..۳۰۰) و یک ستون برای هر شارژر: وضعیت زنده، زنجیرهٔ اندازه‌گیری با فرمول
- *                  زنده، نمودار فیلتر و دکمهٔ قطع شارژر.
- *               ۲) داده‌برداری بنچ (بخش ‎5.6): SOLO1/SOLO2/BOTH‎ با فهرست duty دلخواه و جلو رفتن فقط
- *                  با دکمهٔ کاربر. اصلاح ۱.۷ (دستور کاربر ۲۰۲۶-۰۹-۲۵): پنجرهٔ آمار با باز شدن فرم
- *                  مولتی‌متر صفر می‌شود و «همان لحظهٔ زدن ثبت» خوانده می‌شود تا ردیف CSV با عددهای
- *                  واردشده هم‌لحظه باشد، نه یک پنجرهٔ کهنه؛ ستون sample_ms مدت واقعی همان پنجره است.
- *                  یک ردیف ۸۹ستونی برای هر مرحله در LittleFS به نام /benchlog.csv، دانلود با ‎GET /benchlog‎.
- *               اضافات نسخهٔ ۱.۶ (کارت CAL، تست‌های دستی ‎B/C/D‎، تب اصلاح/تحلیل، حالت مهندس) حذف شدند؛
- *               هیچ کالیبراسیونی خودکار اعمال نمی‌شود و پروتکل سیمی (‎SET/GET/TLM)‎ دست‌نخورده و دوطرفه است.
- *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
  *               Wi-Fi AP "ChangeOver-ESP", password "123456789", panel at http://192.168.4.1
@@ -75,17 +61,7 @@
  *               sends ID 19 = 0 every 1 s until the STM32 reports manual off, so a closed panel never
  *               leaves a channel on an unregulated duty; the STM32 3 s dead-man still covers an ESP
  *               hang or a broken link.
- *          [FA] سیم‌بندی: PA9 به RX ماژول، PA10 به TX ماژول، زمین مشترک.
- *               پایه ‎CH_PD/EN‎ را STM32 (PA8) کنترل می‌کند؛ این برنامه به آن دست نمی‌زند.
- *               وای‌فای "‎ChangeOver-ESP‎" با رمز "123456789"، پنل در http://192.168.4.1
- *               بدون اینترنت: فقط تبادل داده بین MCU و ESP (فلش فقط برای فایل ثبت بنچ استفاده می‌شود).
- *               مود تست دستی (شناسه ۱۹): تا وقتی مود دستی فعال است (پرچم b5 یا پارامتر ۱۹) هر ۱ ثانیه
- *               یک GET_PARAMS فرستاده می‌شود، حتی با تب پس‌زمینه (بخش 19 سند). ایمنی: اگر ۱۰ ثانیه
- *               هیچ مرورگری /t را نخواند (یا از بوت ESP هنوز نخوانده باشد)، ESP هر ۱ ثانیه شناسهٔ ۱۹ = 0 را
- *               می‌فرستد تا STM32 خاموشی مود دستی را گزارش کند؛ پس پنل بسته هرگز کانال را روی duty بدون
- *               تنظیم رها نمی‌کند. هنگ ESP یا قطع لینک را ‎dead-man‎ سه‌ثانیه‌ای STM32 پوشش می‌دهد.
  */
-
 /* ==================== Board Includes ==================== */
 #if defined(ESP8266)
   #include <ESP8266WiFi.h>
@@ -100,11 +76,9 @@
 #else
   #error "Select an ESP8266 or ESP32 board / برد ESP8266 یا ESP32 را انتخاب کنید"
 #endif
-
 #include <LittleFS.h>
 #include <stdint.h>
 #include <stdbool.h>
-
 /* Modules (single translation unit, included in this order): */
 #include "plink_config.h"
 #include "plink_params.h"
@@ -115,32 +89,26 @@
 #include "plink_link.h"
 #include "plink_http.h"
 /* ==================== Arduino Entry Points ==================== */
-
 /**
  * @brief  [EN] Start UART link, Wi-Fi AP and HTTP server. CH_PD is left untouched.
- *         [FA] راه‌اندازی لینک UART، اکسس‌پوینت وای‌فای و وب‌سرور. پایه CH_PD دست‌نخورده می‌ماند.
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 void setup(void)
 {
     Serial.setRxBufferSize(ESP_LINK_RX_BUFFER_SIZE);
     Serial.begin(ESP_LINK_BAUD_RATE, SERIAL_8N1);
-
     WiFi.persistent(false);
     func__Esp_StartSoftAp();
 #if defined(ESP8266)
     WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
 #endif
     BOOL__G__WifiHighPower = true;
-
-    /* [EN] Mount WITHOUT formatting. An automatic format on a mount failure
-            deletes the whole history - that is the "I came back and nothing was
-            saved" report. A failed mount now only means "rows wait in RAM", and
-            formatting is an explicit button in the panel.
-       [FA] سوار کردن بدون فرمت. فرمتِ خودکار هنگام خطای سوار شدن کل تاریخچه را
-            پاک می‌کند - همان «برگشتم و دیدم چیزی ذخیره نشده». حالا خطای سوار
-            شدن فقط یعنی «ردیف‌ها در رم منتظرند» و فرمت یک دکمهٔ صریح در پنل
-            است. */
+    /*
+ * [EN] Mount WITHOUT formatting. An automatic format on a mount failure
+ * deletes the whole history - that is the "I came back and nothing was
+ * saved" report. A failed mount now only means "rows wait in RAM", and
+ * formatting is an explicit button in the panel.
+ */
 #if defined(ESP8266)
     (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();
@@ -148,7 +116,6 @@ void setup(void)
     BOOL__G__FsOk = LittleFS.begin(false);
 #endif
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
-
     ESP_WEB_SERVER_T__G__Server.on("/ping", HTTP_GET, func__Esp_HttpPing);
     ESP_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Esp_HttpRoot);
     ESP_WEB_SERVER_T__G__Server.on("/f.css", HTTP_GET, func__Esp_HttpFont);
@@ -156,23 +123,22 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/s", HTTP_POST, func__Esp_HttpSetParam);
     ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_POST, func__Esp_HttpStatReset);
     ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_GET, func__Esp_HttpStatRead);
-    /* [EN] v1.85: the direct LUT push and point readback live on their own
-       routes, exactly as the table lives in its own flash block on the board.
-       [FA] v1.85: ارسال مستقیم و بازخوانی نقاط جدول مسیرهای خودشان را دارند،
-       همان‌طور که روی برد بلوک فلش خود جدول جداست. */
+    /*
+ * [EN] v1.85: the direct LUT push and point readback live on their own
+ * routes, exactly as the table lives in its own flash block on the board.
+ */
     ESP_WEB_SERVER_T__G__Server.on("/lut", HTTP_POST, func__Esp_HttpLutPush);
     ESP_WEB_SERVER_T__G__Server.on("/lut", HTTP_GET, func__Esp_HttpLutStatus);
     ESP_WEB_SERVER_T__G__Server.on("/lut/read", HTTP_POST, func__Esp_HttpLutRead);
     ESP_WEB_SERVER_T__G__Server.on("/lut/reset", HTTP_POST, func__Esp_HttpLutReset);
-    /* ریست دستی قفل‌ها: خواندن وضعیت صف و درخواست ریست (سناریو ۵ یا ۶). */
     ESP_WEB_SERVER_T__G__Server.on("/latch", HTTP_GET, func__Esp_HttpLatchState);
     ESP_WEB_SERVER_T__G__Server.on("/latch/reset", HTTP_POST, func__Esp_HttpLatchReset);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog", HTTP_GET, func__Esp_HttpBenchLogGet);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/add", HTTP_POST, func__Esp_HttpBenchLogAdd);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/clear", HTTP_POST, func__Esp_HttpBenchLogClear);
-    /* [EN] v1.93 state history: phone clock, tail read, day list, download, clear.
-       [FA] نسخهٔ ۱٫۹۳ تاریخچهٔ وضعیت: ساعت گوشی، خواندن آخرین ردیف‌ها، فهرست
-       روزها، دانلود و پاک کردن. */
+    /*
+ * [EN] v1.93 state history: phone clock, tail read, day list, download, clear.
+ */
     ESP_WEB_SERVER_T__G__Server.on("/clock", HTTP_POST, func__Esp_HttpClockSet);
     ESP_WEB_SERVER_T__G__Server.on("/evt", HTTP_GET, func__Esp_HttpEventLog);
     ESP_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Esp_HttpEventDays);
@@ -183,30 +149,27 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Esp_HttpEventFsStatus);
     ESP_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Esp_HttpEventClean);
     ESP_WEB_SERVER_T__G__Server.begin();
-
-    /* [EN] v1.93: restore the clock anchor and the day list for the history.
-       [FA] نسخهٔ ۱٫۹۳: بازگرداندن لنگر ساعت و فهرست روزها برای تاریخچه. */
+    /*
+ * [EN] v1.93: restore the clock anchor and the day list for the history.
+ */
     func__EspLog_Begin();
 }
-
 /**
  * @brief  [EN] Non-blocking loop: drain UART, send queued command, serve HTTP.
- *         [FA] حلقه غیرمسدودکننده: خالی کردن UART، ارسال فرمان صف‌شده، پاسخ به HTTP.
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 void loop(void)
 {
-    /* [EN] Same drain the HTTP send paths call - one implementation, two
-       callers, so the parser sees every byte exactly once.
-       [FA] همان تخلیه‌ای که مسیرهای ارسال HTTP هم صدا می‌زنند - یک پیاده‌سازی،
-       دو فراخوان؛ پارسر هر بایت را دقیقاً یک‌بار می‌بیند. */
+    /*
+ * [EN] Same drain the HTTP send paths call - one implementation, two
+ * callers, so the parser sees every byte exactly once.
+ */
     func__Esp_DrainSerial();
-
     func__Esp_PumpTx();
-    /* [EN] Two-sided handshake (v1.111): HELLO every 2 s; a silent board drops
-       the confirmed-link flag, so the page can name the side that failed.
-       [FA] دست‌دادن دوطرفه (v1.111): هر ۲ ثانیه HELLO؛ سکوت برد پرچم
-       «لینک تأییدشده» را برمی‌دارد تا صفحه بگوید کدام طرف خراب است. */
+    /*
+ * [EN] Two-sided handshake (v1.111): HELLO every 2 s; a silent board drops
+ * the confirmed-link flag, so the page can name the side that failed.
+ */
     func__Esp_HandshakeTick((uint32_t)millis());
     func__Esp_DnsTick();
     ESP_WEB_SERVER_T__G__Server.handleClient();

@@ -2,7 +2,6 @@
  * @file   stub_arduino.h
  * @brief  [EN] Just enough Arduino / ESP8266 surface for the REAL ESP sources
  *              to compile and run on a PC.
- *
  *         The ESP program had no compile check and no test of any kind: the
  *         host syntax script never looked at ESP_Calibration/, so every edit
  *         to the link protocol, the HTTP handlers or the parameter table was
@@ -11,28 +10,15 @@
  *         behaviour the firmware actually depends on and nothing else, so a
  *         test passing here means the firmware's own logic is right, not
  *         that a clever fake agreed with it.
- *
  *         What is faked: Serial (a byte queue both ways), the web server
  *         (records what a handler sent, plays back query arguments),
  *         LittleFS (an in-memory file), WiFi, millis and String. What is
  *         real: every line of plink_config.h, plink_params.h, plink_state.h,
  *         plink_link.h and plink_http.h, compiled exactly as the board
  *         compiles them.
- *
- * @brief  [FA] کمینهٔ لازم از Arduino / ESP8266 تا سورس واقعی ESP روی PC
- *              کامپایل و اجرا شود.
- *
- *         برنامهٔ ESP نه چک کامپایل داشت نه هیچ تستی: اسکریپت syntax هاست
- *         اصلاً به ESP_Calibration/ نگاه نمی‌کرد، پس هر تغییر در پروتکل لینک،
- *         هندلرهای HTTP یا جدول پارامترها مستقیم روی برد می‌رفت و همان‌جا
- *         دستی پیدا می‌شد. این استاب‌ها همین شکاف را می‌بندند. عمداً نازک‌اند:
- *         فقط رفتاری را پیاده می‌کنند که فرم‌ور واقعاً به آن تکیه دارد، تا
- *         قبول‌شدن یک تست یعنی منطق خود فرم‌ور درست است، نه اینکه یک تقلبِ
- *         زیرک با آن موافقت کرده.
  */
 #ifndef STUB_ARDUINO_H
 #define STUB_ARDUINO_H
-
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -41,25 +27,21 @@
 #include <vector>
 #include <deque>
 #include <map>
-
 /* ---------------- board selection: the tests target the ESP8266 path ----- */
 #ifndef ESP8266
 #define ESP8266 1
 #endif
-
 /* ---------------- PROGMEM is plain memory on a PC ----------------------- */
 #define PROGMEM
 #define PGM_P const char *
 #define F(x) (x)
 #define SERIAL_8N1 0
 #define CONTENT_LENGTH_UNKNOWN ((size_t)-1)
-
 /* ---------------- a monotonic clock the test drives --------------------- */
 extern unsigned long G_StubMillis;
 inline unsigned long millis(void) { return G_StubMillis; }
 inline void delay(unsigned long ms) { G_StubMillis += ms; }
 inline void yield(void) {}
-
 /* ---------------- String: only what the firmware uses ------------------- */
 class String {
 public:
@@ -99,11 +81,11 @@ public:
         return String(s.substr(a, b - a));
     }
 };
-
-/* ---------------- Serial: a queue in each direction ---------------------
-   [EN] rx is what the STM32 "sent" to the ESP, tx is what the ESP wrote
-        back. A test fills rx, pumps the firmware, and reads tx.
-   [FA] rx چیزی است که STM32 به ESP «فرستاده» و tx چیزی که ESP نوشته. */
+/*
+ * ---------------- Serial: a queue in each direction ---------------------
+ * [EN] rx is what the STM32 "sent" to the ESP, tx is what the ESP wrote
+ * back. A test fills rx, pumps the firmware, and reads tx.
+ */
 struct StubSerial {
     std::deque<uint8_t> rx;
     std::vector<uint8_t> tx;
@@ -127,7 +109,6 @@ struct StubSerial {
     void feed(const std::vector<uint8_t> &v) { rx.insert(rx.end(), v.begin(), v.end()); }
 };
 extern StubSerial Serial;
-
 /* ---------------- WiFi ---------------------------------------------------*/
 #define WIFI_OFF 0
 #define WIFI_AP 1
@@ -169,7 +150,6 @@ struct StubWiFi {
     int softAPgetStationNum(void) { return stationNum; }
 };
 extern StubWiFi WiFi;
-
 struct StubUdp {
     bool listening = false;
     uint16_t boundPort = 0u;
@@ -180,7 +160,6 @@ struct StubUdp {
     size_t curPos = 0u;
     std::vector<std::vector<uint8_t> > txPackets;
     std::vector<uint8_t> curTx;
-
     uint8_t begin(uint16_t port) {
         boundPort = port;
         listening = true;
@@ -227,11 +206,11 @@ struct StubUdp {
     void feedPacket(const std::vector<uint8_t> &pkt) { rxPackets.push_back(pkt); }
 };
 typedef StubUdp WiFiUDP;
-
-/* ---------------- web server: records the last response ------------------
-   [EN] Handlers are registered by path and can be invoked by a test; args
-        are fed in beforehand, and whatever the handler sends is captured.
-   [FA] هندلرها با مسیر ثبت می‌شوند و تست می‌تواند صدایشان بزند. */
+/*
+ * ---------------- web server: records the last response ------------------
+ * [EN] Handlers are registered by path and can be invoked by a test; args
+ * are fed in beforehand, and whatever the handler sends is captured.
+ */
 #define HTTP_GET 1
 #define HTTP_POST 2
 struct StubFile;
@@ -241,15 +220,14 @@ struct StubWebClient {
     void setTimeout(unsigned long) {}
     void stop(void) { isConnected = false; }
 };
-
 struct StubWebServer {
     typedef void (*handler_t)(void);
     std::map<std::pair<std::string, int>, handler_t> routes;
     std::map<std::string, std::string> args;
-    /* [EN] every header of the last answer, so a test can ask for
-            X-Log-Fs even when a later sendHeader overwrote the last one.
-       [FA] همهٔ سرصفحه‌های آخرین پاسخ، تا تست بتواند X-Log-Fs را بپرسد حتی
-            وقتی sendHeader بعدی آخری را نوشته باشد. */
+    /*
+ * [EN] every header of the last answer, so a test can ask for
+ * X-Log-Fs even when a later sendHeader overwrote the last one.
+ */
     std::map<std::string, std::string> headers;
     StubWebClient currentClient;
     int lastCode = 0;
@@ -259,7 +237,6 @@ struct StubWebServer {
         std::map<std::string, std::string>::iterator it = headers.find(std::string(k));
         return (it == headers.end()) ? std::string() : it->second;
     }
-
     StubWebServer(int = 80) {}
     void begin(void) {}
     void handleClient(void) {}
@@ -295,8 +272,9 @@ struct StubWebServer {
     /* test helpers */
     void setArg(const char *n, const char *v) { args[n] = v; }
     void clearArgs(void) { args.clear(); }
-    /* [EN] query argument for the next call, so /clock?sec=.. can be tested.
-       [FA] پارامتر پرس‌وجو برای فراخوانی بعدی، تا /clock?sec=.. قابل تست باشد. */
+    /*
+ * [EN] query argument for the next call, so /clock?sec=.. can be tested.
+ */
     void addArg(const char *k, const char *v) { args[k] = v; }
     bool has(const char *path, int method) {
         return routes.count(std::make_pair(std::string(path), method)) != 0;
@@ -312,18 +290,15 @@ struct StubWebServer {
     }
 };
 typedef StubWebServer ESP8266WebServer;
-
 /* ---------------- LittleFS: one in-memory file ---------------------------*/
 struct StubFile {
     std::string *buf = nullptr;
-    /* [EN] Set by StubFS::failWrites: a real File::print returns the bytes it
-            really wrote, and a full flash returns 0. Without this switch no
-            host test could ever exercise the path that the user's panel was
-            stuck in ("the flash refused the row and nobody noticed").
-       [FA] با StubFS::failWrites روشن می‌شود: print روی برد واقعی تعداد بایت
-            نوشته‌شده را برمی‌گرداند و فلش پر صفر می‌دهد. بدون این کلید هیچ
-            تست هاستی نمی‌توانست همان مسیری را بیازماید که پنل کاربر در آن
-            گیر کرده بود («فلش ردیف را نپذیرفت و کسی ندید»). */
+    /*
+ * [EN] Set by StubFS::failWrites: a real File::print returns the bytes it
+ * really wrote, and a full flash returns 0. Without this switch no
+ * host test could ever exercise the path that the user's panel was
+ * stuck in ("the flash refused the row and nobody noticed").
+ */
     const bool *fail = nullptr;
     size_t pos = 0;
     bool ok = false;
@@ -403,16 +378,13 @@ struct StubFile {
     void close(void) {}
 };
 typedef StubFile File;
-
-/* ---------------- Dir: the directory scan the log relies on --------------
-   [EN] The program does not keep a list of its days any more; it reads the
-        directory. So the stub must walk it the way ESP8266 does: next()
-        advances and says whether an entry is there, fileName() names it and
-        fileSize() gives the size the retention needs.
-   [FA] برنامه دیگر فهرست روزهایش را نگه نمی‌دارد و پوشه را می‌خواند. پس
-        استاب باید مثل ESP8266 راه برود: next() جلو می‌رود و می‌گوید خانه‌ای
-        هست، fileName() نامش را می‌دهد و fileSize() حجمی را که پاک‌سازی
-        قدیمی‌ها لازم دارد. */
+/*
+ * ---------------- Dir: the directory scan the log relies on --------------
+ * [EN] The program does not keep a list of its days any more; it reads the
+ * directory. So the stub must walk it the way ESP8266 does: next()
+ * advances and says whether an entry is there, fileName() names it and
+ * fileSize() gives the size the retention needs.
+ */
 struct StubDir {
     std::vector<std::string> names;
     std::vector<size_t> sizes;
@@ -426,7 +398,6 @@ struct StubDir {
     size_t fileSize(void) const { return sizes[pos - 1]; }
 };
 typedef StubDir Dir;
-
 struct FSInfo {
     size_t totalBytes = 0u;
     size_t usedBytes = 0u;
@@ -435,19 +406,18 @@ struct FSInfo {
     size_t maxOpenFiles = 5u;
     size_t maxPathLength = 32u;
 };
-
 struct LittleFSConfig {
     bool _autoFormat = true;
     explicit LittleFSConfig(bool autoFormat = true) : _autoFormat(autoFormat) {}
 };
-
 struct StubFS {
     std::map<std::string, std::string> files;
     bool mounted = false;
     bool autoFormatCfg = true;
     size_t totalCapacityBytes = 2097152u;
-    /* [EN] true = every write is refused, exactly like a full flash.
-       [FA] روشن = هر نوشتن رد می‌شود، درست مثل فلش پر. */
+    /*
+ * [EN] true = every write is refused, exactly like a full flash.
+ */
     bool failWrites = false;
     bool setConfig(const LittleFSConfig &cfg) { autoFormatCfg = cfg._autoFormat; return true; }
     bool begin(bool = false) { mounted = true; return true; }
@@ -508,7 +478,5 @@ inline size_t StubWebServer::streamFile(StubFile &f, const char *type)
     sendCount++;
     return lastBody.size();
 }
-
 extern StubFS LittleFS;
-
 #endif /* STUB_ARDUINO_H */

@@ -1,10 +1,5 @@
-/* simple_config.h - تنظیمات پنل ساده کاربر
-   فقط فارسی - این پوشه استثنای قانون دو زبانه است */
-
 #ifndef SIMPLE_CONFIG_H
 #define SIMPLE_CONFIG_H
-
-/* ==================== لینک سریال ==================== */
 #define SIMPLE_LINK_BAUD_RATE           921600u
 #define SIMPLE_LINK_RX_BUFFER_SIZE      2048u
 #define SIMPLE_LINK_SOF_BYTE0           0xAAu
@@ -19,19 +14,6 @@
 #define SIMPLE_LINK_TLM_FIELD_OFFSET    4u
 #define SIMPLE_LINK_TLM_FIELD_COUNT     31u
 #define SIMPLE_LINK_TIMEOUT_MS          1500u
-
-/* ==================== انواع پیام ==================== */
-/* دست‌دادن دوطرفه (v1.111، دستور کاربر ۲۰۲۶-۱۰-۲۵)
-   دستور: «باید برد با ESP یک هندشیک داشته باشد که بفهمم با هم ارتباط گرفته‌اند
-   و آن ارتباط درست بوده».
-   - ESP هر SIMPLE_HELLO_INTERVAL_MS یک فریم HELLO می‌فرستد.
-   - برد فوراً HELLO_ACK می‌دهد و در آن می‌گوید: نسخهٔ سیم، نسخهٔ فرم‌ور خودش،
-     چند فریم سالم از ESP شنیده، چند خطای CRC و چند ناهم‌نسخگی داشته، چند
-     پارامتر می‌شناسد و دورهٔ تله‌متری‌اش چقدر است.
-   - پنل تنها وقتی «ارتباط دوطرفه سالم» نشان می‌دهد که پاسخِ تازه رسیده باشد
-     (SIMPLE_HELLO_TIMEOUT_MS). این‌طور «تله‌متری می‌آید» با «حرف‌زدن دوطرفه»
-     اشتباه گرفته نمی‌شود و خرابیِ مسیر ESP→برد از خرابیِ وای‌فای جدا دیده
-     می‌شود. */
 #define SIMPLE_MSG_HELLO                0x40u
 #define SIMPLE_MSG_HELLO_ACK            0x41u
 #define SIMPLE_HELLO_LEN                8u
@@ -41,21 +23,11 @@
 #define SIMPLE_ESP_ROLE_USER            1u
 #define SIMPLE_ESP_FW_VERSION           118u
 #define SIMPLE_TLM_FLAG_LINK_OK         0x40u
-
 #define SIMPLE_MSG_TLM_LIVE             0x10u
 #define SIMPLE_MSG_TIME_SYNC            0x30u
 #define SIMPLE_MSG_DIAG_REQ             0x31u
 #define SIMPLE_MSG_DIAG_DATA            0x32u
 #define SIMPLE_MSG_WIFI_CLIENT_STATE    0x33u
-
-/* ==================== سناریوی کاهش مصرف وای‌فای روی باتری ====================
-   - در زمان وجود برق ورودی: وای‌فای روشنِ دائم با بیشترین قدرت آنتن.
-   - روی باتری با درصد زیر حد قطع (پیش‌فرض ۲۰٪): خاموش شدن کامل و روشن نشدن.
-   - روی باتری بالای حد قطع با حضور کاربر: روشنِ دائم با بیشترین قدرت آنتن.
-   - روی باتری بالای حد قطع و بدون اتصال کاربر:
-     * ۳۰ دقیقهٔ اول (۱۸۰۰۰۰۰ میلی‌ثانیه): روشن با قدرت آنتن پایین.
-     * پس از ۳۰ دقیقه: چرخهٔ ۲ دقیقه خاموش (۱۲۰۰۰۰ میلی‌ثانیه) و ۱ دقیقه روشن
-       (۶۰۰۰۰ میلی‌ثانیه) با قدرت آنتن پایین تا زمان اتصال کاربر. */
 #define SIMPLE_TLM_FLAG_INPUT_PRESENT   0x02u
 #define SIMPLE_WIFI_IDLE_LOW_POWER_MS   1800000u
 #define SIMPLE_WIFI_CYCLE_ON_MS         60000u
@@ -67,22 +39,10 @@
 #define SIMPLE_WIFI_TX_MAX_DBM          20.5f
 #define SIMPLE_WIFI_TX_LOW_DBM          0.0f
 #define SIMPLE_WIFI_DNS_PORT            53u
-/* ==================== توان آنتن روی باتری (v1.112) ====================
-   دستور کاربر ۲۰۲۶-۱۰-۲۵: «می‌توانی توان وای‌فای را کم کنی».
-   چرا: تا نسخهٔ ۱٫۱۱۱ هر اتصال وای‌فای (حتی گوشی‌ای که یک بار به شبکه وصل شده و
-   پنلش بسته است) «کاربر وصل» حساب می‌شد و توان آنتن تا بی‌نهایت روی بیشینه
-   می‌ماند؛ یعنی روی باتری همیشه پرتوان بودیم. اکنون روی باتری، توان بیشینه فقط
-   وقتی است که کسی واقعاً پنل را می‌بیند (درخواست HTTP تازه) یا همین حالا به
-   شبکه وصل شده است. پس از این مدت، اکسس‌پوینت روشن می‌ماند ولی با توان کم.
-   برق شهر: همیشه بیشینه (هزینهٔ باتری ندارد). */
-#define SIMPLE_WIFI_VIEWER_HOLD_MS      600000u   /* ۱۰ دقیقه */
-
-/* ==================== ریست دستی قفل‌ها ====================
-   اسلات‌های زمان‌اجرای STM32 (شمارندهٔ رویداد و سیکل عدم‌توازن، پرچم قفل،
-   ماسک حکم باتری خراب، ریست حکم باتری ضعیف) شناسهٔ ۲۰۰..۲۰۴ دارند و پارامتر کاربر نیستند؛ فقط
-   از مسیر SET_PARAM نوشته می‌شوند و مقدار صفر یعنی پاک. پنل کاربر تا
-   امروز هیچ نوشتنی نداشت، پس برای کارت «ریست قفل‌ها» یک صف کوچک و یک
-   فرستندهٔ SET_PARAM اضافه شد. */
+/*
+ * ==================== (v1.112) ====================
+ */
+#define SIMPLE_WIFI_VIEWER_HOLD_MS      600000u
 #define SIMPLE_MSG_SET_PARAM            0x01u
 #define SIMPLE_MSG_PARAM_NAK            0x15u
 #define SIMPLE_SLOT_QUEUE_LEN           5u
@@ -93,20 +53,13 @@
 #define SIMPLE_SLOT_WEAK_RESET_ID       204u
 #define SIMPLE_SLOT_FIRST_ID            SIMPLE_SLOT_EVENTS_ID
 #define SIMPLE_SLOT_LAST_ID             SIMPLE_SLOT_WEAK_RESET_ID
-#define SIMPLE_SLOT_TX_GAP_MS           120u /* فاصلهٔ دو فریم ریست روی لینک */
-
-/* ==================== پارامترهای خود برد ====================
-   درصد فول/خالی باتری و زمان‌بندی چشمک سبز، پارامترهای خود برد هستند
-   (همان‌هایی که چراغ سبز با آن‌ها چشمک می‌زند). پنل آن‌ها را از برد
-   می‌خواند تا اگر کاربر روی برد عوضشان کرد، نمایش هم عوض شود. */
+#define SIMPLE_SLOT_TX_GAP_MS           120u
 #define SIMPLE_MSG_GET_PARAMS           0x02u
 #define SIMPLE_MSG_PARAM_REPORT         0x11u
 #define SIMPLE_MSG_PARAMS_BULK          0x12u
 #define SIMPLE_PARAM_COUNT              171u
-#define SIMPLE_PARAM_ITEM_SIZE          5u     /* شناسه ۱ بایت + مقدار ۴ بایت */
-#define SIMPLE_PARAMS_REQ_MS            30000u /* فاصله درخواست پارامترها */
-
-/* شناسه پارامترهای مصرفی - نام‌ها از جدول خود فرم‌ور (host_test_ui.py) */
+#define SIMPLE_PARAM_ITEM_SIZE          5u
+#define SIMPLE_PARAMS_REQ_MS            30000u
 #define SIMPLE_PARAM_GREEN_PERIOD_MS    66u
 #define SIMPLE_PARAM_GREEN_MIN_OFF_MS   67u
 #define SIMPLE_PARAM_YELLOW_PERIOD_MS   68u
@@ -130,9 +83,7 @@
 #define SIMPLE_PARAM_INPUT_HYST_LOW_MV    169u
 #define SIMPLE_PARAM_INPUT_HYST_HIGH_MV   170u
 #define SIMPLE_PARAM_OV_HYST_MV          71u
-#define SIMPLE_PARAM_UI_COUNT           19u    /* تعداد پارامترهایی که پنل می‌خواند */
-
-/* ==================== وای‌فای ==================== */
+#define SIMPLE_PARAM_UI_COUNT           19u
 #define SIMPLE_WIFI_AP_SSID             "changeover_userpannel"
 #define SIMPLE_WIFI_AP_PASS             "123456789"
 #define SIMPLE_WIFI_FILE                "/wifi.json"
@@ -140,45 +91,28 @@
 #define SIMPLE_WIFI_PASS_MAX            32u
 #define SIMPLE_HTTP_PORT                80
 #define SIMPLE_JSON_BUFFER_SIZE         1024u
-
-/* ==================== سقف صفحه ====================
-   سقف مرجع حجم صفحهٔ پنل (بایت). صفحهٔ فعلی حدود ۱۶۹ کیلوبایت است؛ اگر از
-   این عدد گذشت یعنی چیزی اشتباه به صفحه اضافه شده و باید بررسی شود. */
 #define SIMPLE_PANEL_HTML_MAX_BYTES     175000u
-
-/* ==================== نمودارها - با محور زمان ==================== */
 #define SIMPLE_CHART_HISTORY_SIZE       60u
-#define SIMPLE_CHART_1D_SIZE            24u   /* ۱ روزه: ۲۴ نقطه هر ساعت */
-#define SIMPLE_CHART_7D_SIZE            28u   /* ۷ روزه: ۲۸ نقطه هر ۶ ساعت */
-#define SIMPLE_CHART_1M_SIZE            30u   /* ۱ ماهه: ۳۰ نقطه هر روز */
-#define SIMPLE_CHART_3M_SIZE            90u   /* ۳ ماهه: ۹۰ نقطه هر روز */
+#define SIMPLE_CHART_1D_SIZE            24u
+#define SIMPLE_CHART_7D_SIZE            28u
+#define SIMPLE_CHART_1M_SIZE            30u
+#define SIMPLE_CHART_3M_SIZE            90u
 #define SIMPLE_CHARTS_FILE              "/charts.json"
-
-/* ==================== دیاگ ==================== */
 #define SIMPLE_DIAG_MAX_ERRORS          10u
 #define SIMPLE_DIAG_MAX_POWER_EVENTS    20u
-
-/* ==================== کاربر ==================== */
 #define SIMPLE_USERS_MAX                8u
 #define SIMPLE_USER_NAME_MAX            24u
 #define SIMPLE_USER_PASS_MAX            32u
-#define SIMPLE_USER_PASS_MIN            4u     /* کوتاه‌ترین رمز قابل قبول در فرم تغییر رمز */
+#define SIMPLE_USER_PASS_MIN            4u
 #define SIMPLE_USERS_FILE               "/users.json"
 #define SIMPLE_SESSION_TIMEOUT_MS       1800000u
 #define SIMPLE_SESSION_COOKIE           "co_sess"
 #define SIMPLE_SESSION_TOKEN_LEN        64u
-
-/* ==================== زمان ==================== */
 #define SIMPLE_TIME_FILE                "/time.json"
-#define SIMPLE_TIME_VALID_MIN           1600000000u  /* زیر این عدد یعنی ساعت تنظیم نشده */
-#define SIMPLE_TIME_SYNC_DELAY_MS       3000u        /* بعد از آمدن لینک، تا فرستادن ساعت به برد */
-#define SIMPLE_TIME_RESEND_MS           600000u      /* اگر برد ساعت را نگرفت، هر ۱۰ دقیقه دوباره */
-#define SIMPLE_TIME_ADOPT_DIFF_SEC      300u         /* اختلافی که بعد از آن ساعت برد (RTC) بر پنل مقدم می‌شود */
-
-/* ==================== تاریخچهٔ وضعیت (لاگ روزانه) ====================
-   دستور کاربر ۲۰۲۶-۱۰-۲۳: هر پنل تاریخچهٔ وضعیت خودش را روی فلش نگه می‌دارد،
-   روزی یک فایل، و ردیف فقط وقتی نوشته می‌شود که چیزی واقعاً عوض شده باشد.
-   هر ردیف همان لحظه بسته می‌شود تا قطع باتری آخرین ردیف را از بین نبرد. */
+#define SIMPLE_TIME_VALID_MIN           1600000000u
+#define SIMPLE_TIME_SYNC_DELAY_MS       3000u
+#define SIMPLE_TIME_RESEND_MS           600000u
+#define SIMPLE_TIME_ADOPT_DIFF_SEC      300u
 #define SIMPLE_LOG_MAX_DAYS             30u
 #define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
 #define SIMPLE_LOG_TAIL_LINES           30u
@@ -186,33 +120,31 @@
 #define SIMPLE_LOG_DAY_ZERO             0xFFFFFFFEu
 #define SIMPLE_LOG_RAM_ROWS             16u
 #define SIMPLE_LOG_RAM_ROW_MAX          160u
-#define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"   /* فقط برای پاک‌کردن بازماندهٔ نسخهٔ قدیمی؛ فهرست حالا از خود پوشه خوانده می‌شود */
-#define SIMPLE_LOG_SCAN_MIN_MS          2000u    /* فهرست روزها حداکثر هر ۲ ثانیه یک بار از فلش خوانده می‌شود */
+#define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"
+#define SIMPLE_LOG_SCAN_MIN_MS          2000u
 #define SIMPLE_LOG_LAST_PATH            "/evt-last.txt"
 #define SIMPLE_LOG_FILE_PREFIX          "/evt-"
-#define SIMPLE_LOG_CUT_BAND_MV          21200u   /* مرز «نزدیک قطع» باتری: ورود از زیر */
-#define SIMPLE_LOG_BAND_OFF_MV          21400u   /* ...و خروج از مرز فقط از بالای این ولتاژ */
-#define SIMPLE_LOG_VSTEP_MIN_MS         60000u   /* حداکثر یک ردیف گام ولتاژ در دقیقه */
-#define SIMPLE_LOG_VSTEP_MV             200u     /* پلهٔ ولتاژ پک که تغییر حساب می‌شود */
-#define SIMPLE_LOG_HEARTBEAT_MS         3600000u  /* هر ۱ ساعت یک ردیف «زنده‌ام» */
-#define SIMPLE_LOG_DRAIN_RETRY_MS       30000u    /* فاصلهٔ ۳۰ ثانیه بین تلاش‌های تخلیهٔ رم */
-#define SIMPLE_HTTP_SEND_TIMEOUT_MS     1000u     /* سقف انتظار ارسال سوکت ۱ ثانیه */
-#define SIMPLE_HTTP_ROOT_MAX_MS         15000u    /* سقف ۱۵ ثانیه برای ارسال صفحهٔ اصلی */
+#define SIMPLE_LOG_CUT_BAND_MV          21200u
+#define SIMPLE_LOG_BAND_OFF_MV          21400u
+#define SIMPLE_LOG_VSTEP_MIN_MS         60000u
+#define SIMPLE_LOG_VSTEP_MV             200u
+#define SIMPLE_LOG_HEARTBEAT_MS         3600000u
+#define SIMPLE_LOG_DRAIN_RETRY_MS       30000u
+#define SIMPLE_HTTP_SEND_TIMEOUT_MS     1000u
+#define SIMPLE_HTTP_ROOT_MAX_MS         15000u
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
 #define SIMPLE_DIAG_FILE                "/diag.json"
-#define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u   /* از این حجم به بعد، قدیمی‌ترین روز حذف می‌شود */
-#define SIMPLE_LOG_MIN_INTERVAL_MS      2000u    /* ادغام چند تغییر پشت‌سرهم در یک ردیف */
-/* [EN] A queued mains cut/return is written after this short coalescing
-        window (not the full merge window): the board may cut the panel's
-        power the same instant (battery saver) and the row must reach the
-        flash first (user order 2026-10-24: "the log must be complete").
-        Repeat flips inside the window still ride along in ONE row.
-   [FA] ردیفِ قطع/وصل برق شهر پس از همین پنجرهٔ کوتاه نوشته می‌شود (نه کل
-        پنجرهٔ ادغام): برد ممکن است همان لحظه (صرفه‌جویی باتری) برق پنل را
-        ببرد و ردیف باید اول به فلش برسد (دستور کاربر ۲۰۲۶-۱۰-۲۴: «لاگ باید
-        کامل باشد»). پرش‌های تند داخل همین پنجره هنوز در یک ردیف ادغام می‌شوند. */
-#define SIMPLE_LOG_MAINS_FLUSH_MS       250u    /* سقف انتظار ردیف برق شهر */
-#define SIMPLE_LOG_LINK_TIMEOUT_MS      5000u    /* بی‌فریم یعنی قطع ارتباط */
+#define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u
+#define SIMPLE_LOG_MIN_INTERVAL_MS      2000u
+/*
+ * [EN] A queued mains cut/return is written after this short coalescing
+ * window (not the full merge window): the board may cut the panel's
+ * power the same instant (battery saver) and the row must reach the
+ * flash first (user order 2026-10-24: "the log must be complete").
+ * Repeat flips inside the window still ride along in ONE row.
+ */
+#define SIMPLE_LOG_MAINS_FLUSH_MS       250u
+#define SIMPLE_LOG_LINK_TIMEOUT_MS      5000u
 #define SIMPLE_LOG_HEADER \
     "# تاریخچهٔ وضعیت / state history\n" \
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
@@ -220,34 +152,15 @@
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
     "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
-
-/* ==================== پارامترهای خود برد ==================== */
 #define SIMPLE_PARAMS_FILE              "/params.json"
-
-/* ==================== تم ==================== */
 #define SIMPLE_THEME_FILE               "/theme.json"
-#define SIMPLE_THEME_MAX                1u   /* 0=تیره، 1=روشن - تم سوم حذف شد */
-
-/* ==================== رمزنگاری فایل‌های حساس ====================
-   کاربران و وای‌فای روی فلش رمزنگاری‌شده ذخیره می‌شوند تا کسی نتواند با
-   خواندن یا دست‌کاری فایل، رمزها را ببیند یا عوض کند.
-   - کلید از شناسهٔ یکتای خود چیپ ساخته می‌شود: SHA256(salt || chipId)
-   - بدنهٔ فایل با جریان کلید HMAC-SHA256 رمز می‌شود
-   - برچسب HMAC-SHA256 روی متن رمزشده می‌آید: هر دست‌کاری ⇒ فایل رد می‌شود */
-#define SIMPLE_CRYPTO_TAG_LEN           16u  /* بایت برچسب HMAC در فایل */
-#define SIMPLE_CRYPTO_KEY_LEN           32u  /* بایت کلید مشتق‌شده */
+#define SIMPLE_THEME_MAX                1u
+#define SIMPLE_CRYPTO_TAG_LEN           16u
+#define SIMPLE_CRYPTO_KEY_LEN           32u
 #define SIMPLE_CRYPTO_SALT              "ChangeOver_FS_2026_v1"
-
-/* ==================== بازیابی رمز ادمین - با دسترسی فیزیکی ====================
-   قاعده: برد روشن می‌شود، این مدت می‌گذرد و هیچ کاربری وارد نمی‌شود ⇒ پرچم
-   «بوت بدون ورود» روی فلش می‌نشیند. اگر بعد از آن برق قطع و وصل شود، بوت
-   بعدی کاربران را به پیش‌فرض admin/admin برمی‌گرداند. با ورود هر کاربر پرچم
-   پاک می‌شود تا ریستارت معمولی رمزها را عوض نکند. */
 #define SIMPLE_RECOVERY_FILE            "/boot_no_login.json"
-#define SIMPLE_RECOVERY_ARM_MS          10000u   /* ۱۰ ثانیه بدون ورود */
-#define SIMPLE_RECOVERY_RETRY_MS        5000u    /* فاصلهٔ تلاش دوباره اگر نوشتن نشد */
-
-/* ==================== وضعیت پارسر ==================== */
+#define SIMPLE_RECOVERY_ARM_MS          10000u
+#define SIMPLE_RECOVERY_RETRY_MS        5000u
 typedef enum
 {
     SIMPLE_RX_WAIT_SOF0 = 0,
@@ -260,5 +173,4 @@ typedef enum
     SIMPLE_RX_WAIT_CRC_LO,
     SIMPLE_RX_WAIT_CRC_HI
 } simple_rx_state_t;
-
 #endif

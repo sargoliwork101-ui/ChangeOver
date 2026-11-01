@@ -2,12 +2,11 @@
    Included by ESP_Calibration.ino (single translation unit, order matters).
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Vazirmatn Font (PROGMEM) ==================== */
-/* [EN] Vazirmatn v33.0.3 (SIL OFL 1.1, github.com/rastikerdar/vazirmatn), variable wght 400..700,
-        subset to the glyphs used by the panel, plus added arrows U+2190/U+2192 drawn on the minus
-        stroke (modified font, OFL allows it); embedded because the AP has no internet.
-   [FA] فونت وزیرمتن نسخه 33.0.3 (مجوز SIL OFL 1.1)، وزن متغیر ۴۰۰ تا ۷۰۰، فقط حروف مورد استفادهٔ پنل؛
-        به‌علاوهٔ فلش‌های ← و → که روی ضخامت علامت منها رسم و اضافه شده‌اند (مجاز در OFL)؛
-        داخل برنامه جاسازی شده چون اکسس‌پوینت اینترنت ندارد. */
+/*
+ * [EN] Vazirmatn v33.0.3 (SIL OFL 1.1, github.com/rastikerdar/vazirmatn), variable wght 400..700,
+ * subset to the glyphs used by the panel, plus added arrows U+2190/U+2192 drawn on the minus
+ * stroke (modified font, OFL allows it); embedded because the AP has no internet.
+ */
 static const char ESP_PANEL_FONT_CSS[] PROGMEM =
 "@font-face{font-family:Vazirmatn;font-weight:400 700;font-display:swap;src:url(data:font/woff2;base64,"
 "d09GMgABAAAAAIxQABIAAAABICgAAIvoACEAxQAAAAAAAAAAAAAAAAAAAAAAAAAAGoIuG7cYHJN6BmA/U1RBVFQnHgCDdi9EEQgKgokwgeEpMIHHFAE2AiQD"

@@ -2,16 +2,12 @@
 # [EN] Integration host test for the battery-swap reset: production Fault and
 #      Imbalance code, plus a structural check of the TaskControl wire-up.
 #      No board, RTOS, or HAL is required.
-# [FA] تست هاست یکپارچهٔ ریست تعویض باتری: کد واقعی Fault و Imbalance به‌همراه
-#      بررسی اتصال TaskControl؛ بدون برد، RTOS یا HAL.
 set -euo pipefail
-
 SCRIPT_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd "${SCRIPT_DIRECTORY}/../../../.." && pwd)"
 cd "${SCRIPT_DIRECTORY}"
 HOST_TEST_BINARY="$(mktemp "${TMPDIR:-/tmp}/host_test_battery_swap.XXXXXX")"
 trap 'rm -f "$HOST_TEST_BINARY"' EXIT
-
 gcc -std=c11 -Wall -Wextra -Wpedantic -Werror -O0 \
     -I "${REPOSITORY_ROOT}/Firmware/App/Inc" \
     -I "${REPOSITORY_ROOT}/Firmware/Bsp/Inc" \
@@ -28,9 +24,7 @@ gcc -std=c11 -Wall -Wextra -Wpedantic -Werror -O0 \
     "${REPOSITORY_ROOT}/Firmware/Modules/Fault/fault.c" \
     "${REPOSITORY_ROOT}/Firmware/Modules/Imbalance/imbalance.c" \
     -o "${HOST_TEST_BINARY}"
-
 "${HOST_TEST_BINARY}"
-
 python3 - "${REPOSITORY_ROOT}/Firmware/Rtos/Src/task_control.c" <<'PY'
 import pathlib
 import re

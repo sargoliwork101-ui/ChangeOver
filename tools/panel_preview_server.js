@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 /**
  * panel_preview_server.js — [EN] Offline preview of the ESP web panel.
- * [FA] پیش‌نمایش آفلاین پنل وب ESP.
- *
  * [EN] Serves the REAL panel HTML extracted from plink_panel.h and
  *      simulates the STM32 behind it: a full charge cycle
  *      OFF -> BULK -> ABSORB -> FLOAT -> (sag) -> REENTRY -> BULK ...,
@@ -11,28 +9,20 @@
  *      shape the ESP sends.
  *      No hardware needed:  node tools/panel_preview_server.js  ->  http://localhost:3000
  *      (binds 0.0.0.0 so it also works inside a sandboxed preview).
- * [FA] همان HTML واقعی پنل را از plink_panel.h بیرون می‌کشد و STM32
- *      را پشت آن شبیه‌سازی می‌کند: یک چرخهٔ کامل شارژ
- *      خاموش → Bulk → Absorb → Float → (افت) → بازگشت → Bulk...،
- *      نمودار مراحل v1.14، تب آلارم‌های v1.15، ثبت پارامتر با همان پنجره‌های
- *      گیرهٔ واقعی، و JSON تله‌متری دقیقاً به شکل /t روی ESP. بدون سخت‌افزار:
  *      node tools/panel_preview_server.js  →  http://localhost:3000
  */
-
 "use strict";
-
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
-
 /* ---------- extract the real panel HTML from the panel module ---------- */
 const panelPath = path.join(__dirname, "..", "ESP_Calibration", "plink_panel.h");
 const panelSrc = fs.readFileSync(panelPath, "utf8");
-/* [EN] Serve the real embedded Vazirmatn CSS in the preview too. Returning
+/*
+ * [EN] Serve the real embedded Vazirmatn CSS in the preview too. Returning
  *      system fonts made a laptop preview look different from the ESP.
- *      [FA] پیش‌نمایش هم باید همان CSS وزیرمتن جاسازی‌شده را بدهد؛ فونت سیستم
- *      باعث می‌شد ظاهر لپ‌تاپ با خود ESP فرق کند. */
+ */
 const fontPath = path.join(__dirname, "..", "ESP_Calibration", "plink_font.h");
 const fontSrc = fs.readFileSync(fontPath, "utf8");
 const fontStart = fontSrc.indexOf("static const char ESP_PANEL_FONT_CSS");
@@ -1009,15 +999,16 @@ const server = http.createServer((req, res) => {
         for (let k = 0; k < TLM_FIELDS; k++) { s[k] = d.t[k]; lo[k] = d.t[k]; hi[k] = d.t[k]; la[k] = d.t[k]; }
         return send(200, "application/json", JSON.stringify({ _s: 200, n: 1, s, lo, hi, la }));
     }
-    /* [EN] v1.66 LUT routes; v1.68 the push handler mirrors the firmware
+    /*
+ * [EN] v1.66 LUT routes; v1.68 the push handler mirrors the firmware
      *      protocol exactly (see the comment inside).
-     * [FA] مسیرهای جدول (v1.66)؛ از v1.68 هندلر push دقیقاً آینهٔ پروتکل
-     *      فرم‌ور است (توضیح داخلش). */
+ */
     if (req.method === "POST" && url.pathname === "/lut") {
         let body = "";
         req.on("data", (chunk) => { body += chunk; if (body.length > 65536) req.destroy(); });
         req.on("end", () => {
-            /* [EN] v1.68 mirror of func__Esp_HttpLutPush (plink_http.h):
+            /*
+ * [EN] v1.68 mirror of func__Esp_HttpLutPush (plink_http.h):
              *      strict CSV body n1,n2,(chain,power)*n1,(chain,power)*n2,crc32;
              *      same refusals with the SAME reason codes (len/n/empty/pt/
              *      mono/crc); 0 points = channel left alone, so a single-
@@ -1028,12 +1019,7 @@ const server = http.createServer((req, res) => {
              *      instead of {"ok":1}, so every legitimate push failed in the
              *      preview with a misleading "board did not answer" error
              *      (user report 2026-10-07).
-             * [FA] آینهٔ دقیق func__Esp_HttpLutPush: همان بدنهٔ CSV، همان رد
-             *      شدنها با همان کدهای دلیل، کانال ۰-نقطه‌ای یعنی «دست نخورد»
-             *      (ارسال تک‌باتری قانونی است) و CRC دریافتی بازپس داده می‌شود
-             *      تا دست‌دادن پنل کامل شود. مدل قبلی کانال خالی را رد می‌کرد،
-             *      CRC جعلی می‌ساخت و ok:1 نمی‌داد، پس هر ارسال سالمی در
-             *      پیش‌نمایش با خطای گمراه‌کننده شکست می‌خورد. */
+ */
             const refuse = (e) => {
                 LUT = { stage: 0, status: 2, n1: 0, n2: 0, crc: 0, sent: 0,
                         count: LUT.count, txStage: 0, txError: 0, at: Date.now(),
@@ -1072,12 +1058,11 @@ const server = http.createServer((req, res) => {
         });
         return undefined;
     }
-    /* [EN] The real ESP asks the STM32 for both active frames; the preview
+    /*
+ * [EN] The real ESP asks the STM32 for both active frames; the preview
      *      answers from its simulated committed table so the new read-only
      *      and before/after panel flow is usable without hardware.
-     * [FA] ESP واقعی هر دو فریم فعال را از STM32 می‌خواهد؛ پیش‌نمایش از جدول
-     *      کامیت‌شدهٔ شبیه‌سازی‌شده پاسخ می‌دهد تا مسیر ‎read-only‎ و ‎before/after‎
-     *      بدون سخت‌افزار هم واقعاً قابل اجرا باشد. */
+ */
     if (req.method === "POST" && url.pathname === "/lut/read") {
         const pair = (tab) => tab.map((point) => [point[0], point[1]]);
         LUT.read = {
@@ -1104,11 +1089,11 @@ const server = http.createServer((req, res) => {
         }
         return send(200, "application/json", '{"_s":200}');
     }
-    /* [EN] v1.85 latch-reset routes, mirrored from func__Esp_HttpLatchReset /
+    /*
+ * [EN] v1.85 latch-reset routes, mirrored from func__Esp_HttpLatchReset /
      *      func__Esp_HttpLatchState so the panel's buttons work in the
      *      preview exactly as they do against the board.
-     * [FA] مسیرهای ریست قفل‌ها، آینهٔ همان دو هندلر ESP تا دکمه‌های پنل در
-     *      پیش‌نمایش هم مثل روی برد کار کنند. */
+ */
     if (req.method === "GET" && url.pathname === "/latch") {
         return send(200, "application/json", JSON.stringify({
             ok: 1, id: latch.lastId, val: latch.lastVal, known: latch.known,
@@ -1232,9 +1217,9 @@ const server = http.createServer((req, res) => {
     }
     return send(404, "text/plain", "not found");
 });
-
-/* [EN] Check invalid-input and long-pause recovery without starting the server.
- * [FA] توقف ورودی و بازیابی پس از مکث طولانی را بدون بالا آوردن سرور می‌سنجد. */
+/*
+ * [EN] Check invalid-input and long-pause recovery without starting the server.
+ */
 function runPreviewSelfTests() {
     inputArmed = false;
     for (const invalidMv of [15000, 29500]) {
@@ -1249,9 +1234,9 @@ function runPreviewSelfTests() {
         stepChannel(channel, 0, 24100);
         assert.strictEqual(channel.state, 0, "input recovery must restart through OFF");
     }
-
-    /* [EN] The shared Schmitt margin must gate recovery, not just the raw window.
-     * [FA] حاشیهٔ مشترک اشمیت باید برگشت را گیت کند، نه فقط پنجرهٔ خام. */
+    /*
+ * [EN] The shared Schmitt margin must gate recovery, not just the raw window.
+ */
     inputArmed = false;
     const marginChannel = mkChannel();
     marginChannel.state = 6;
@@ -1265,7 +1250,6 @@ function runPreviewSelfTests() {
     assert.strictEqual(marginChannel.state, 6, "inside raw window but above the upper margin must stay INPUT_WAIT");
     stepChannel(marginChannel, 0, 27500);
     assert.strictEqual(marginChannel.state, 0, "clearing the upper margin must re-arm through OFF");
-
     const transition = { chargeSec: [10, 0], pauseAt: [null, null] };
     const channel = mkChannel();
     channel.state = 1;
@@ -1275,7 +1259,6 @@ function runPreviewSelfTests() {
     assert.strictEqual(transition.chargeSec[0], 10.1,
         "input loss must preserve the last active interval and start a pause");
     assert.strictEqual(transition.pauseAt[0], 0, "INPUT_WAIT must start the pause clock");
-
     const shortPause = { chargeSec: [42, 0], pauseAt: [null, null] };
     updateDeadChargeCounter(shortPause, 0, 6, 0, 1000);
     updateDeadChargeCounter(shortPause, 0, 6, 999, 1000);
@@ -1284,7 +1267,6 @@ function runPreviewSelfTests() {
     updateDeadChargeCounter(shortPause, 0, 1, 999, 1000);
     assert.strictEqual(shortPause.chargeSec[0], 42.1,
         "charging recovery before the gap must resume the existing counter");
-
     const longPause = { chargeSec: [42, 0], pauseAt: [null, null] };
     updateDeadChargeCounter(longPause, 0, 6, 0, 1000);
     updateDeadChargeCounter(longPause, 0, 6, 999, 1000);
@@ -1296,9 +1278,9 @@ function runPreviewSelfTests() {
     updateDeadChargeCounter(longPause, 0, 1, 1100, 1000);
     assert.strictEqual(longPause.chargeSec[0], 0.1,
         "after a long pause, resumed charging must start from zero");
-
-    /* [EN] Exercise the full telemetry path at the 30 s input-loss episode.
-     * [FA] مسیر کامل تله‌متری را هنگام قطع ورودیِ ثانیهٔ ۳۰ می‌سنجد. */
+    /*
+ * [EN] Exercise the full telemetry path at the 30 s input-loss episode.
+ */
     const savedResetGapMs = P[126];
     P[126] = 5000;
     ch[0] = mkChannel();
@@ -1314,18 +1296,15 @@ function runPreviewSelfTests() {
     assert.strictEqual(frame.t[13], 6, "both installed channels must wait on invalid input");
     assert.strictEqual(frame.t[29], 42, "initial input loss must preserve accrued charge time");
     assert.strictEqual(latch.pauseAt[0], 30000, "telemetry must start the input-wait pause clock");
-
     ms = 35000;
     frame = telemetry();
     assert.strictEqual(frame.t[29], 0, "telemetry must reset the counter when the pause reaches id 126");
     assert.strictEqual(frame.t[30], 0, "the pause reset must apply independently to both channels");
-
     ms = 38000;
     frame = telemetry();
     assert.strictEqual(frame.t[6], 0, "recovered input must restart through OFF");
     assert.strictEqual(frame.t[5], 0, "the recovery pass must remain at zero duty");
     assert.strictEqual(frame.t[29], 0, "charging after a long outage must start from zero");
-
     latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: 0, imbBase: 0, chargeSec: [0, 0],
               pauseAt: [null, null], cutAt: [0, 0] };
@@ -1333,7 +1312,6 @@ function runPreviewSelfTests() {
         "scenario 5 reset must fit in the runtime-slot queue");
     assert.deepStrictEqual(latch.q.map(item => item.id), [200, 201, 202],
         "scenario 5 must queue event and cycle counters before the latch");
-
     latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: 1, imbBase: 0, chargeSec: [86400, 57],
               pauseAt: [123, 456], cutAt: [0, 0] };
@@ -1358,18 +1336,18 @@ function runPreviewSelfTests() {
         "scenario 6 reset must restart channel 2 from BULK");
     P[126] = savedResetGapMs;
 }
-
 if (process.argv.includes("--self-test")) {
     runPreviewSelfTests();
     console.log("ALL PANEL PREVIEW SCENARIO-5/6 SELF-TESTS PASSED");
-    /* [EN] v1.109: nothing must keep the process alive after the verdict, so
+    /*
+ * [EN] v1.109: nothing must keep the process alive after the verdict, so
      *      the gate that shells out to this file can finish.
-     * [FA] نسخهٔ ۱٫۱۰۹: پس از رأیِ خودآزمایی هیچ چیز نباید پروسه را زنده نگه
-     *      دارد تا دروازه‌ای که این فایل را صدا می‌زند بتواند تمام شود. */
+ */
     process.exit(0);
 } else {
-    /* [EN] Keep state advancing independently of browser polling.
-     * [FA] وضعیت شبیه‌سازی مستقل از درخواست‌های پنل جلو می‌رود. */
+    /*
+ * [EN] Keep state advancing independently of browser polling.
+ */
     setInterval(() => { SNAP = telemetry(); }, SIM_MS);
     evtHeartbeatStart();
     server.listen(PORT, "0.0.0.0", () => {

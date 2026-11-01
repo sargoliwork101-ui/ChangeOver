@@ -1,26 +1,12 @@
 #!/usr/bin/env bash
-# run_sim.sh - ساخت و اجرای سیمولاتور زندهٔ پنل ساده
-# فقط فارسی - مثل بقیهٔ این پوشه
 #
-# خود `ESP_USER.ino` کامپایل و اجرا می‌شود (بدون هیچ تغییری در کد
-# برنامه)، روی یک وب‌سرور واقعی و یک STM32 شبیه‌سازی‌شده. مقیاس‌های تقسیم‌کنندهٔ
-# ولتاژ از `bsp_measurement.c` خوانده و با -D داده می‌شوند تا شمارش‌های خام
-# سیمولاتور با همان اعداد فرم‌ور ساخته شوند.
 #
-#   SIMPLE_SIM_PORT   پورت وب‌سرور (پیش‌فرض ۳۰۰۰)
-#   SIMPLE_SIM_FS     پوشهٔ فایل‌سیستم شبیه‌سازی‌شده (پیش‌فرض /tmp/changeover_simple_fs)
-#   SIMPLE_SIM_BUILD  پوشهٔ ساخت (پیش‌فرض /tmp/changeover_simple_sim)
-#   SIMPLE_SIM_LINK_DOWN=1  برد در شروع بدون لینک بالا می‌آید (آزمون بازگردانی از فایل)
 set -euo pipefail
-
 DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd "${DIRECTORY}/../.." && pwd)"
 BSP_SOURCE="${REPOSITORY_ROOT}/Firmware/Bsp/Src/bsp_measurement.c"
 BUILD_DIRECTORY="${SIMPLE_SIM_BUILD:-/tmp/changeover_simple_sim}"
 mkdir -p "${BUILD_DIRECTORY}"
-
-# مقیاس‌ها از BSP خوانده می‌شوند نه تایپ دوباره؛ اگر تعریف‌ها نبود، پیش‌فرض
-# داخل sim_board.h می‌ماند و اسکریپت با هشدار ادامه می‌دهد
 DEFINES="$(python3 - "${BSP_SOURCE}" <<'PY'
 import re
 import sys
@@ -56,7 +42,6 @@ print("-DSIM_MV_PER_COUNT_24=%.6f" % (lsb * (top24 + bottom) / bottom),
       "-DSIM_VDDA_MV=%d" % vref)
 PY
 )"
-
 echo "[1/2] کامپایل خود برنامهٔ ESP برای PC"
 # shellcheck disable=SC2086
 g++ \
@@ -70,7 +55,6 @@ g++ \
     ${DEFINES} \
     -o "${BUILD_DIRECTORY}/sim_panel" \
     "${DIRECTORY}/main.cpp"
-
 echo "[2/2] اجرا"
 export SIMPLE_SIM_PORT="${SIMPLE_SIM_PORT:-3000}"
 exec "${BUILD_DIRECTORY}/sim_panel"

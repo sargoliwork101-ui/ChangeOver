@@ -51,23 +51,17 @@ Usage / نحوهٔ استفاده:
 See Programmer/SCRIPTS.md for the step-by-step explanation / توضیح گام‌به‌گام در
 همان فایل کنار اسکریپت‌ها است.
 """
-
 import argparse
 import hashlib
 import pathlib
 import sys
-
 import stm32_cli
-
-
 def describe_backup(backup_path):
     """[EN] Print a short fingerprint so the operator can see WHICH backup.
        [FA] چاپ یک اثر انگشت کوتاه تا کاربر ببیند کدام پشتیبان است."""
     digest = hashlib.sha256(backup_path.read_bytes()).hexdigest()[:16]
     print("  backup: %s (%d bytes, sha256:%s)"
           % (backup_path, stm32_cli.DATA_SIZE_BYTES, digest))
-
-
 def step_backup(cli, backup_path, dry_run):
     """[EN] Step 1: the data area must be on disk before anything is erased.
        [FA] گام ۱: ناحیهٔ داده باید قبل از هر پاک‌کردنی روی دیسک باشد."""
@@ -77,31 +71,23 @@ def step_backup(cli, backup_path, dry_run):
         return
     stm32_cli.check_backup_file(backup_path)
     describe_backup(backup_path)
-
-
 def step_flash(cli, image_path, dry_run):
     """[EN] Step 2: erase, program, verify. / [FA] گام ۲: پاک‌کردن، نوشتن، بررسی."""
     print("[2/5] full chip erase + program + verify / پاک‌کردن و نوشتن برنامه")
     if not dry_run and not pathlib.Path(image_path).exists():
         raise stm32_cli.FlashError("image not found: %s" % image_path)
     stm32_cli.flash_image(cli, image_path, dry_run)
-
-
 def step_restore(cli, backup_path, dry_run):
     """[EN] Step 3: put the data area back and verify it.
        [FA] گام ۳: برگرداندن ناحیهٔ داده و بررسی آن."""
     print("[3/5] restore the data area + verify / برگرداندن ناحیهٔ داده")
     stm32_cli.restore_data_area(cli, backup_path, dry_run)
-
-
 def step_report(cli, dry_run):
     """[EN] Step 4: reset and show the protection state.
        [FA] گام ۴: ریست و نمایش وضعیت قفل."""
     print("[4/5] reset and read back the protection state / ریست و خواندن وضعیت قفل")
     stm32_cli.reset_board(cli, dry_run)
     stm32_cli.show_protection_state(cli, dry_run)
-
-
 def step_lock(cli, lock_after, dry_run):
     """[EN] Step 5: optional RDP level 1. / [FA] گام ۵: قفل خواندن اختیاری."""
     print("[5/5] read protection / قفل خواندن")
@@ -109,8 +95,6 @@ def step_lock(cli, lock_after, dry_run):
         print("  skipped (pass --lock to enable RDP level 1) / رد شد (برای قفل --lock بدهید)")
         return
     stm32_cli.enable_read_protection(cli, dry_run)
-
-
 def parse_arguments():
     """[EN] Command line of the script. / [FA] خط فرمان اسکریپت."""
     parser = argparse.ArgumentParser(
@@ -127,15 +111,12 @@ def parse_arguments():
                         help="print the commands, change nothing")
     parser.add_argument("--cli", help="full path to STM32_Programmer_CLI")
     return parser.parse_args()
-
-
 def main():
     """[EN] Entry point: pick the requested flow and report clearly.
        [FA] نقطهٔ ورود: انتخاب مسیر درخواستی و گزارش روشن."""
     arguments = parse_arguments()
     try:
         cli = stm32_cli.find_cli(arguments.cli)
-
         if arguments.restore_only:
             print("[restore] writing the backup back / برگرداندن پشتیبان")
             if not arguments.dry_run:
@@ -143,10 +124,8 @@ def main():
             stm32_cli.restore_data_area(cli, arguments.backup, arguments.dry_run)
             stm32_cli.reset_board(cli, arguments.dry_run)
             return 0
-
         if not arguments.image:
             raise stm32_cli.FlashError("--image is required unless --restore-only is used")
-
         step_backup(cli, arguments.backup, arguments.dry_run)
         step_flash(cli, arguments.image, arguments.dry_run)
         step_restore(cli, arguments.backup, arguments.dry_run)
@@ -157,7 +136,5 @@ def main():
         print("\nSTOPPED / متوقف شد:")
         print("  " + str(error).replace("\n", "\n  "))
         return 2
-
-
 if __name__ == "__main__":
     sys.exit(main())

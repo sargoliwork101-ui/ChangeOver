@@ -28,44 +28,35 @@
      شود نمی‌تواند کهنه شود: همه‌چیز پایین در زمان ساخت از هدرهای فرم‌ور خوانده
      می‌شود، پس کتاب یک «نما» از کد است، نه کپی دوم آن.
 """
-
 import pathlib
 import re
 import sys
-
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "Documentation" / "Program_Map.xlsx"
-
 FONT = "Vazirmatn"
 C_TITLE = "1F3864"
 C_HEAD = "1F4E79"
 C_BAND = "D9E2F3"
 PALETTE = {
-    "ok": "C6EFCE",      # تأییدشده / جاری
-    "warn": "FFE699",    # کهنه / نیازمند توجه
-    "bad": "FFC7CE",     # ایراد
-    "info": "DDEBF7",    # اطلاعاتی
-    "idle": "EDEDED",    # خاموش / غیرفعال
-    "act": "FCE4D6",     # فعال
+    "ok": "C6EFCE",
+    "warn": "FFE699",
+    "bad": "FFC7CE",
+    "info": "DDEBF7",
+    "idle": "EDEDED",
+    "act": "FCE4D6",
 }
 thin = Side(style="thin", color="9DB7E8")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-
 def read(rel):
     return (ROOT / rel).read_text(encoding="utf-8", errors="ignore")
-
-
 def sheet(wb, name, title, headers, rows, widths):
     """[EN] One RTL sheet in the house style. / [FA] یک برگهٔ راست‌به‌چپ با سبک پروژه."""
     ws = wb.create_sheet(name)
     ws.sheet_view.rightToLeft = True
     ws.freeze_panes = "A3"
-
     ncol = len(headers)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
     tc = ws.cell(row=1, column=1, value=title)
@@ -73,7 +64,6 @@ def sheet(wb, name, title, headers, rows, widths):
     tc.fill = PatternFill("solid", fgColor=C_TITLE)
     tc.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 30
-
     for c, h in enumerate(headers, start=1):
         cell = ws.cell(row=2, column=c, value=h)
         cell.font = Font(name=FONT, size=11, bold=True, color="FFFFFF")
@@ -81,7 +71,6 @@ def sheet(wb, name, title, headers, rows, widths):
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = BORDER
     ws.row_dimensions[2].height = 28
-
     for r, row in enumerate(rows, start=3):
         tone = row[-1]
         values = row[:-1]
@@ -95,15 +84,11 @@ def sheet(wb, name, title, headers, rows, widths):
                 cell.fill = fill
             elif r % 2 == 1:
                 cell.fill = PatternFill("solid", fgColor=C_BAND)
-
     for c, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(c)].width = w
     ws.sheet_properties.tabColor = C_HEAD
     return ws
-
-
 # --------------------------------------------------------------- parsing
-
 def doc_block_brief(text, at):
     """[EN] Brief of the doc block that sits directly above line `at`
        (0-based). Returns (en, fa) or ('', '').
@@ -136,13 +121,9 @@ def doc_block_brief(text, at):
         elif mode == "fa" and s:
             fa.append(re.sub(r"^\[FA\]\s*", "", s))
     return " ".join(en).strip(), " ".join(fa).strip()
-
-
 FUNC_RE = re.compile(
     r"^(?:static\s+|inline\s+)*[A-Za-z_][A-Za-z0-9_]*\s*\**\s*"
     r"(func__[A-Za-z0-9_]+)\s*\(", re.M)
-
-
 def functions_of(rel):
     text = read(rel)
     out = []
@@ -151,8 +132,6 @@ def functions_of(rel):
         en, fa = doc_block_brief(text, line_no)
         out.append((m.group(1), line_no + 1, en, fa))
     return out
-
-
 def file_brief(rel):
     text = read(rel)
     en, fa = doc_block_brief(text, text[:text.find("*/")].count("\n") + 1
@@ -165,8 +144,6 @@ def file_brief(rel):
         en = " ".join(l.strip("* ") for l in en_m.group(1).split("\n")).strip() if en_m else ""
         fa = " ".join(l.strip("* ") for l in fa_m.group(1).split("\n")).strip() if fa_m else ""
     return en, fa
-
-
 def split_outside_parens(text):
     parts, depth, cur = [], 0, ""
     for ch in text:
@@ -182,24 +159,17 @@ def split_outside_parens(text):
     if cur.strip():
         parts.append(cur.strip())
     return parts
-
-
 def numbers(txt):
     table = {ord(c): str(i) for i, c in enumerate("۰۱۲۳۴۵۶۷۸۹")}
     table.update({ord(c): str(i) for i, c in enumerate("٠١٢٣٤٥٦٧٨٩")})
     return txt.translate(table)
-
-
 # --------------------------------------------------------------- builders
-
 SOURCE_GLOBS = [
     ("Firmware", "Firmware/**/*.[ch]"),
     ("CubeIDE/Core", "CubeIDE/Core/**/*.[ch]"),
     ("ESP_Calibration", "ESP_Calibration/*.[hino]*"),
     ("tools", "tools/*.py"),
 ]
-
-
 def build_files():
     rows = []
     for scope, pattern in SOURCE_GLOBS:
@@ -215,7 +185,6 @@ def build_files():
             if not role:
                 # [EN] CubeMX/panel files have no @brief; use the first
                 #      comment line rather than an empty cell.
-                # [FA] فایل‌های CubeMX/پنل @brief ندارند؛ اولین خط کامنت.
                 m_role = re.search(r"^\s*(?:/\*+|\*|//)\s*(\S.*)$", text, re.M)
                 role = m_role.group(1).strip("* /")[:160] if m_role else "—"
             rows.append([
@@ -228,8 +197,6 @@ def build_files():
                 "info",
             ])
     return rows
-
-
 def build_functions():
     """[EN] One row per function, never two: a declaration and its definition
        are the same function and listing them twice is how a table starts
@@ -271,16 +238,12 @@ def build_functions():
         rows.append([name, f["defined"] or "—", f["declared"] or "—",
                      str(f["line"] or ""), f["brief"] or "—", "info"])
     return rows
-
-
 def build_params():
     esp = read("Firmware/Modules/EspLink/esp_link.h")
     nvm = read("Firmware/Modules/EspLink/esp_link_nvm.h")
-
     def numdef(name):
         m = re.search(r"#define\s+" + name + r"\s+(\d+)u", nvm)
         return int(m.group(1)) if m else None
-
     lo_max = numdef("ESP_LINK_NVM_PERSISTED_ID_MAX_LOW")
     hi_min = numdef("ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH")
     hi_max = numdef("ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH")
@@ -291,7 +254,6 @@ def build_params():
     slot_min = numdef("ESP_LINK_NVM_SLOT_MIN_ID")
     slot_max = numdef("ESP_LINK_NVM_SLOT_MAX_ID")
     version = numdef("ESP_LINK_NVM_VERSION")
-
     rows = []
     pattern = re.compile(
         r"#define[ \t]+ESPLINK_PARAM_([A-Z0-9_]+)[ \t]+(\d+)u[ \t]*/[ \t]*\*([^\n]*?)\*/")
@@ -328,8 +290,6 @@ def build_params():
         rows.append([str(sid), "SLOT (runtime)", "u32", "—", "—", "اسلات زمان‌اجرا",
                      "بله", f"NVM v{version}", "act"])
     return rows
-
-
 def build_pins():
     pins = read("Firmware/Config/Inc/board_pins.h")
     rows = []
@@ -354,8 +314,6 @@ def build_pins():
             "info",
         ])
     return rows
-
-
 def build_flash():
     ld = read("CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld")
     rows = []
@@ -368,12 +326,10 @@ def build_flash():
                          "app" if name == "FLASH" else "data", "info"])
     nvm = read("Firmware/Modules/EspLink/esp_link_nvm.h")
     lut = read("Firmware/Modules/CalLut/cal_lut.h")
-
     def hexdef(text, name):
         m = re.search(r"#define\s+" + name + r"\s+(0x[0-9A-Fa-f]+)u", text)
         return m.group(1) if m else "?"
-
-    rows.append(["EspLink parameter NVM (bank A/B)", 
+    rows.append(["EspLink parameter NVM (bank A/B)",
                  hexdef(nvm, "ESP_LINK_NVM_PAGE_A_ADDR") + " / " +
                  hexdef(nvm, "ESP_LINK_NVM_PAGE_B_ADDR"),
                  "2 × 2 KiB — دو بانک دوصفحه‌ای", "r/w", "esp_link_nvm.c", "act"])
@@ -381,8 +337,6 @@ def build_flash():
                  hexdef(lut, "CAL_LUT_PAGE_A_ADDR") + " / " + hexdef(lut, "CAL_LUT_PAGE_B_ADDR"),
                  "2 × 1 KiB", "r/w", "cal_lut.c", "act"])
     return rows
-
-
 def build_gates(files, funcs, params, pins):
     return [
         ["bash tools/check_ai_rules.sh", "قوانین AI_AGENT_RULES.md: نام‌گذاری، کامنت دوزبانه، RTL، جداسازی توابع، بازر/UI",
@@ -398,17 +352,13 @@ def build_gates(files, funcs, params, pins):
         ["python3 tools/measure_ram.py", "بودجهٔ RAM و بدترین عمق پشته",
          "بدون برد واقعی", "warn"],
     ]
-
-
 def build():
     files = build_files()
     funcs = build_functions()
     params = build_params()
     pins = build_pins()
-
     wb = Workbook()
     wb.remove(wb.active)
-
     sheet(
         wb, "راهنما", "نقشهٔ کل برنامه ChangeOver — راهنما",
         ["برگه", "چه چیزی داخلش است", "از کجا خوانده می‌شود"],
@@ -434,36 +384,27 @@ def build():
         ],
         [18, 78, 52],
     )
-
     sheet(wb, "۱ فایل‌ها", "فایل‌های برنامه و نقش هرکدام",
           ["مسیر", "نوع", "خط", "تابع", "#define", "نقش (از هدر فایل)"],
           files, [46, 6, 7, 7, 9, 70])
-
     sheet(wb, "۲ توابع", "توابع func__ برنامه",
           ["تابع", "فایل تعریف", "اعلان در هدر", "خط", "خلاصه"],
           funcs, [34, 40, 34, 7, 70])
-
     sheet(wb, "۳ پارامترهای ESP", "شناسه‌های سیم ESP-Link (پروتکل v2، جدول کامل)",
           ["شناسه", "نام", "نوع", "واحد", "پیش‌فرض", "بازه/توضیح", "ماندگاری فلش", "نسخهٔ رکورد"],
           params, [7, 40, 6, 7, 12, 60, 12, 12])
-
     sheet(wb, "۴ پایه‌ها", "نگاشت پایه‌های MCU (شماتیک ↔ board_pins.h)",
           ["پایه", "سیگنال منطقی", "نت شماتیک", "قطبیت", "سطح امن", "توضیح هدر"],
           pins, [8, 20, 22, 12, 9, 52])
-
     sheet(wb, "۵ نقشهٔ فلش", "ناحیه‌های فلش داخلی و مالک هر بلوک داده",
           ["ناحیه/بلوک", "شروع", "اندازه", "نوع", "نویسنده"],
           build_flash(), [34, 20, 26, 8, 26])
-
     sheet(wb, "۶ دروازه‌ها", "دروازه‌های بررسی برنامه",
           ["دستور", "چه چیزی را چک می‌کند", "یادداشت"],
           build_gates(files, funcs, params, pins), [40, 62, 40])
-
     OUT.parent.mkdir(parents=True, exist_ok=True)
     wb.save(OUT)
     return OUT
-
-
 def main():
     if not (ROOT / "Firmware/Modules/EspLink/esp_link.h").is_file():
         print("run from the repository root")
@@ -471,7 +412,5 @@ def main():
     out = build()
     print(f"program map written: {out.relative_to(ROOT)}")
     return 0
-
-
 if __name__ == "__main__":
     sys.exit(main())

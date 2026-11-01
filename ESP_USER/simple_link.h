@@ -1,11 +1,4 @@
-/* simple_link.h - پارسر فریم و CRC پنل ساده
-   فقط فارسی - فقط خواندنی، بدون ارسال پارامتر */
-
-/* تاریخچهٔ وضعیت همین‌جا می‌آید تا پارسر بتواند بعد از هر فریم آن را صدا بزند؛
-   simple_state.h باید پیش از این فایل include شده باشد. */
 #include "simple_log.h"
-
-/* ==================== کمک بایت ==================== */
 static uint32_t func__Simple_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t uint8_t__offset)
 {
     uint32_t uint32_t__byte0 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset];
@@ -16,8 +9,7 @@ static uint32_t func__Simple_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t
     uint32_t uint32_t__highHalf = uint32_t__byte2 | uint32_t__byte3;
     return uint32_t__lowHalf | uint32_t__highHalf;
 }
-
-/* ==================== محاسبه CRC16 ==================== */
+/* ==================== CRC16 ==================== */
 static uint16_t func__Simple_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
 {
     uint8_t uint8_t__bit;
@@ -35,17 +27,9 @@ static uint16_t func__Simple_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte
     }
     return uint16_t__crc;
 }
-
-/* ==================== ذخیره فریم تله‌متری و دیاگ ==================== */
-/* ==================== دست‌دادن دوطرفه (v1.111) ====================
-   دستور کاربر ۲۰۲۶-۱۰-۲۵: «باید برد با ESP یک هندشیک داشته باشد که بفهمم با
-   هم ارتباط گرفته‌اند و آن ارتباط درست بوده».
-   چرا لازم است: تا امروز تنها نشانهٔ ارتباط، آمدن تله‌متری بود. تله‌متری فقط
-   می‌گوید برد حرف می‌زند؛ نمی‌گوید ESP هم به برد می‌رسد. با این دست‌دادن، پنل
-   سه چیز جدا را نشان می‌دهد: (۱) پاسخ برد می‌آید، (۲) برد چند فریم سالم از ما
-   شنیده و چند تا خراب بوده، (۳) دو طرف یک نسخه و یک تعداد پارامتر دارند. */
-
-/* یک HELLO می‌سازد و می‌فرستد: نسخهٔ سیم، نسخهٔ این پنل، نقش، پرچم‌ها، آپتایم. */
+/*
+ * ==================== (v1.111) ====================
+ */
 static void func__Simple_SendHello(void)
 {
     uint8_t UINT8_T__A__Frame[SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN + SIMPLE_LINK_CRC_SIZE];
@@ -55,14 +39,12 @@ static void func__Simple_SendHello(void)
     uint8_t uint8_t__flags = 0u;
     uint8_t uint8_t__i;
     uint32_t uint32_t__nowMs = (uint32_t)millis();
-
-    if (BOOL__G__TlmSeen) uint8_t__flags |= 0x01u;                     /* تله‌متری می‌آید */
+    if (BOOL__G__TlmSeen) uint8_t__flags |= 0x01u;
     if (BOOL__G__BrowserSeen &&
         ((uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) < SIMPLE_LINK_TIMEOUT_MS))
     {
-        uint8_t__flags |= 0x02u;                                        /* کاربر پنل را باز دارد */
+        uint8_t__flags |= 0x02u;
     }
-
     UINT8_T__A__Payload[0] = (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION;
     UINT8_T__A__Payload[1] = (uint8_t)SIMPLE_ESP_FW_VERSION;
     UINT8_T__A__Payload[2] = (uint8_t)SIMPLE_ESP_ROLE_USER;
@@ -71,7 +53,6 @@ static void func__Simple_SendHello(void)
     UINT8_T__A__Payload[5] = (uint8_t)((uint32_t__uptimeSec >> 8) & 0xFFu);
     UINT8_T__A__Payload[6] = (uint8_t)((uint32_t__uptimeSec >> 16) & 0xFFu);
     UINT8_T__A__Payload[7] = (uint8_t)((uint32_t__uptimeSec >> 24) & 0xFFu);
-
     UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
     UINT8_T__A__Frame[2] = (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION;
@@ -90,20 +71,15 @@ static void func__Simple_SendHello(void)
     UINT8_T__A__Frame[SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN] = (uint8_t)(uint16_t__crc & 0xFFu);
     UINT8_T__A__Frame[SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN + 1u] =
         (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
-
     (void)Serial.write(UINT8_T__A__Frame,
                        (size_t)(SIMPLE_LINK_HEADER_SIZE + SIMPLE_HELLO_LEN + SIMPLE_LINK_CRC_SIZE));
     UINT32_T__G__LastHelloTxMs = uint32_t__nowMs;
 }
-
-/* پاسخ برد را می‌خواند: هویت برد + سلامت دریافت خودش + بازپس آپتایم ما. */
 static void func__Simple_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
 {
     uint32_t uint32_t__echoedUptime;
-
     if (UINT16_T__G__RxLen != (uint16_t)SIMPLE_HELLO_ACK_LEN) return;
     uint32_t__echoedUptime = func__Simple_ReadU32(uint8_t__ptr_payload, 20u);
-
     UINT8_T__G__BoardProtoVersion = uint8_t__ptr_payload[0];
     UINT8_T__G__BoardFwVersion = uint8_t__ptr_payload[1];
     UINT8_T__G__BoardFlags = uint8_t__ptr_payload[2];
@@ -117,14 +93,11 @@ static void func__Simple_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[17] << 8));
     UINT16_T__G__BoardPeriodMs = (uint16_t)(uint8_t__ptr_payload[18] |
                                             (uint16_t)((uint16_t)uint8_t__ptr_payload[19] << 8));
-    (void)uint32_t__echoedUptime;   /* فقط برای تطبیق است؛ نمایش لازم نیست */
-
+    (void)uint32_t__echoedUptime;
     UINT32_T__G__LastHelloAckMs = (uint32_t)millis();
     BOOL__G__HelloSeen = true;
     UINT32_T__G__HelloAckCount++;
 }
-
-/* هر دوره یک HELLO؛ اگر پاسخ نرسد، ارتباط را قطع‌شده اعلام می‌کند. */
 static void func__Simple_HandshakeTick(uint32_t uint32_t__nowMs)
 {
     if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloTxMs) >= SIMPLE_HELLO_INTERVAL_MS)
@@ -138,32 +111,27 @@ static void func__Simple_HandshakeTick(uint32_t uint32_t__nowMs)
         UINT32_T__G__HelloLossCount++;
     }
 }
-
 static void func__Simple_HandleFrame(void)
 {
     const uint8_t *uint8_t__ptr_payload = UINT8_T__G__RxPayload;
     uint8_t uint8_t__index;
-
     if ((UINT8_T__G__RxType == SIMPLE_MSG_TLM_LIVE) && (UINT16_T__G__RxLen == SIMPLE_LINK_TLM_SIZE))
     {
         uint16_t uint16_t__seqLow = (uint16_t)uint8_t__ptr_payload[0];
         uint16_t uint16_t__seqHigh = (uint16_t)((uint16_t)uint8_t__ptr_payload[1] << 8);
         uint16_t uint16_t__seq = (uint16_t)(uint16_t__seqLow | uint16_t__seqHigh);
-
         for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
         {
             uint8_t uint8_t__fieldBytes = (uint8_t)(uint8_t__index * 4u);
             uint8_t uint8_t__offset = (uint8_t)(SIMPLE_LINK_TLM_FIELD_OFFSET + uint8_t__fieldBytes);
             UINT32_T__G__TlmField[uint8_t__index] = func__Simple_ReadU32(uint8_t__ptr_payload, uint8_t__offset);
         }
-
         UINT16_T__G__TlmSeq = uint16_t__seq;
         UINT8_T__G__TlmFlags = uint8_t__ptr_payload[2];
         UINT8_T__G__TlmFlags2 = uint8_t__ptr_payload[3];
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;
-        /* هر فریم به تاریخچه داده می‌شود؛ فقط تغییر واقعی ردیف می‌سازد */
         func__SimpleLog_OnFrame();
     }
     else if (UINT8_T__G__RxType == SIMPLE_MSG_HELLO_ACK)
@@ -174,7 +142,6 @@ static void func__Simple_HandleFrame(void)
     {
         if (UINT16_T__G__RxLen < 1u) return;
         uint8_t uint8_t__chunk = uint8_t__ptr_payload[0];
-
         if (uint8_t__chunk == 0u && UINT16_T__G__RxLen >= 23u)
         {
             uint32_t uint32_t__prevCh1 = UINT32_T__G__PrevChargeCountCh1;
@@ -211,10 +178,8 @@ static void func__Simple_HandleFrame(void)
                     uint8_t__newPwr = 0u;
                 }
             }
-            /* اگر برد اصلی صفر گزارش داد ولی ما محلی خطا داریم، محلی را نگه دار */
             if (uint8_t__newErr == 0u && UINT8_T__G__DiagErrorCount > 0u)
             {
-                /* نگه‌داشتن خطاهای محلی */
             }
             else if (uint8_t__newErr > 0u)
             {
@@ -226,16 +191,13 @@ static void func__Simple_HandleFrame(void)
                 {
                     UINT8_T__G__DiagErrorCount = uint8_t__newErr;
                 }
-                /* اگر محلی بیشتر بود، تعداد محلی می‌ماند تا پاک نشود */
             }
             else
             {
                 UINT8_T__G__DiagErrorCount = uint8_t__newErr;
             }
-
             if (uint8_t__newPwr == 0u && UINT8_T__G__PowerEventCount > 0u)
             {
-                /* نگه‌داشتن رویدادهای محلی برق */
             }
             else if (uint8_t__newPwr > 0u)
             {
@@ -253,7 +215,6 @@ static void func__Simple_HandleFrame(void)
                 UINT8_T__G__PowerEventCount = uint8_t__newPwr;
             }
             BOOL__G__DiagValid = true;
-            /* توسعه‌یافته: تعداد شارژ هر باتری */
             if (UINT16_T__G__RxLen >= 39u)
             {
                 UINT32_T__G__ChargeCountCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 23u);
@@ -269,7 +230,6 @@ static void func__Simple_HandleFrame(void)
                 }
                 else
                 {
-                    /* ثبت تاریخچه شارژ: اگر تعداد افزایش یافت، زمان (ساعت پنل) را ذخیره کن - با بافر چرخشی */
                     uint32_t uint32_t__stampSec = func__Simple_NowSec();
                     if (UINT32_T__G__ChargeCountCh1 < uint32_t__prevCh1)
                     {
@@ -293,7 +253,6 @@ static void func__Simple_HandleFrame(void)
                             }
                             else
                             {
-                                /* بافر پر - قدیمی‌ترین را حذف و شیفت بده */
                                 uint8_t uint8_t__s;
                                 for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
                                 {
@@ -385,13 +344,10 @@ static void func__Simple_HandleFrame(void)
     }
     else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen >= SIMPLE_PARAM_ITEM_SIZE))
     {
-        /* یک پارامتر که برد تازه اعمال کرده است: [شناسه:u8][مقدار:u32 LE] */
         uint8_t uint8_t__id = uint8_t__ptr_payload[0];
         uint32_t uint32_t__value = func__Simple_ReadU32(uint8_t__ptr_payload, 1u);
         if ((uint8_t__id >= SIMPLE_SLOT_FIRST_ID) && (uint8_t__id <= SIMPLE_SLOT_LAST_ID))
         {
-            /* پژواک یک درخواست ریست: برد مقدار را اعمال کرده است. مقدار
-               اعمال‌شده ذخیره و خانهٔ همان درخواست از صف آزاد می‌شود. */
             uint8_t uint8_t__i;
             UINT8_T__G__SlotLastId = uint8_t__id;
             UINT32_T__G__SlotLastValue = uint32_t__value;
@@ -413,7 +369,6 @@ static void func__Simple_HandleFrame(void)
     }
     else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAM_NAK) && (UINT16_T__G__RxLen == 2u))
     {
-        /* برد یک نوشتن را نپذیرفت: [شناسه:u8][کد:u8] */
         if ((uint8_t__ptr_payload[0] >= SIMPLE_SLOT_FIRST_ID) &&
             (uint8_t__ptr_payload[0] <= SIMPLE_SLOT_LAST_ID))
         {
@@ -424,9 +379,6 @@ static void func__Simple_HandleFrame(void)
     }
     else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
     {
-        /* پارامترهای خود برد: [تعداد:u8] بعد هر آیتم [شناسه:u8][مقدار:u32 LE].
-           قاب بزرگ است (۱۰۲ آیتم = ۵۱۱ بایت) پس آفست باید ۱۶ بیتی باشد.
-           کلید ذخیره شناسه است، نه ترتیب - پس چند فریم پشت سر هم مشکلی ندارند. */
         uint8_t uint8_t__count = uint8_t__ptr_payload[0];
         uint16_t uint16_t__item;
         for (uint16_t__item = 0u; uint16_t__item < (uint16_t)uint8_t__count; uint16_t__item++)
@@ -450,25 +402,18 @@ static void func__Simple_HandleFrame(void)
         UINT32_T__G__ParamBulkFrames++;
     }
 }
-
-/* ==================== ریست دستی قفل‌ها (فرستنده و صف) ==================== */
 /**
- * @brief  یک درخواست ریست را در صف اسلات‌ها می‌گذارد.
- * @param  uint8_t__id شناسهٔ اسلات (۲۰۰..۲۰۳)؛ بیرون این بازه رد می‌شود
- * @param  uint32_t__value مقدار اعمالی؛ برای ریست صفر
- * @return true اگر در صف نشست (یا ادغام شد)، false اگر صف پر بود
+* @param uint8_t__id (..)
+* @param uint32_t__value
+* @return true ( ) false
  */
 static bool func__Simple_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value)
 {
     uint8_t uint8_t__i;
-
     if ((uint8_t__id < SIMPLE_SLOT_FIRST_ID) || (uint8_t__id > SIMPLE_SLOT_LAST_ID))
     {
         return false;
     }
-
-    /* درخواست تکراری برای همان شناسه دوباره صف نمی‌شود؛ مقدارش تازه می‌شود
-       تا دو کلیک پشت‌سرهم دو فریم بی‌فایده نسازد. */
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
     {
         if (BOOL__G__SlotQueuePending[uint8_t__i] && (UINT8_T__G__SlotQueueId[uint8_t__i] == uint8_t__id))
@@ -477,7 +422,6 @@ static bool func__Simple_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value
             return true;
         }
     }
-
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
     {
         if (BOOL__G__SlotQueuePending[uint8_t__i] == false)
@@ -489,15 +433,12 @@ static bool func__Simple_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value
             return true;
         }
     }
-
     UINT8_T__G__SlotBusyReject++;
     return false;
 }
-
 /**
- * @brief  یک فریم SET_PARAM برای برد می‌فرستد (شناسه + مقدار ۳۲بیتی).
- * @param  uint8_t__id شناسهٔ اسلات، uint32_t__value مقدار
- * @return [EN] None / [FA]‎ ندارد
+* @param uint8_t__id uint32_t__value
+* @return None /
  */
 static void func__Simple_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
 {
@@ -505,13 +446,11 @@ static void func__Simple_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__va
     uint8_t UINT8_T__A__Payload[5];
     uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
     uint8_t uint8_t__i;
-
     UINT8_T__A__Payload[0] = uint8_t__id;
     UINT8_T__A__Payload[1] = (uint8_t)(uint32_t__value & 0xFFu);
     UINT8_T__A__Payload[2] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
     UINT8_T__A__Payload[3] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
     UINT8_T__A__Payload[4] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
-
     UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
     UINT8_T__A__Frame[2] = SIMPLE_LINK_PROTOCOL_VERSION;
@@ -531,23 +470,17 @@ static void func__Simple_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__va
     UINT8_T__A__Frame[12] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
     (void)Serial.write(UINT8_T__A__Frame, 13u);
 }
-
 /**
- * @brief  صف ریست را خالی می‌کند: هر SIMPLE_SLOT_TX_GAP_MS یک فریم.
- *         تأیید نشدن هم مهم نیست؛ پنل از پژواک REPORT می‌فهمد برد مقدار را
- *         اعمال کرده یا نه (و NAK هم جدا شمرده می‌شود).
- * @return [EN] None / [FA]‎ ندارد
+* @return None /
  */
 static void func__Simple_SlotTick(void)
 {
     uint32_t uint32_t__now = (uint32_t)millis();
     uint8_t uint8_t__i;
-
     if ((uint32_t__now - UINT32_T__G__LastSlotTxMs) < SIMPLE_SLOT_TX_GAP_MS)
     {
         return;
     }
-
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
     {
         if (BOOL__G__SlotQueuePending[uint8_t__i])
@@ -560,15 +493,11 @@ static void func__Simple_SlotTick(void)
         }
     }
 }
-
-/* ==================== همگام‌سازی مجدد ==================== */
 static void func__Simple_ResyncFromByte(uint8_t uint8_t__byte)
 {
     SIMPLE_RX_STATE_T__G__RxState =
         (uint8_t__byte == SIMPLE_LINK_SOF_BYTE0) ? SIMPLE_RX_WAIT_SOF1 : SIMPLE_RX_WAIT_SOF0;
 }
-
-/* ==================== پارسر یک بایت ==================== */
 static void func__Simple_ParseByte(uint8_t uint8_t__byte)
 {
     switch (SIMPLE_RX_STATE_T__G__RxState)
@@ -579,7 +508,6 @@ static void func__Simple_ParseByte(uint8_t uint8_t__byte)
                 SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_SOF1;
             }
             break;
-
         case SIMPLE_RX_WAIT_SOF1:
             if (uint8_t__byte == SIMPLE_LINK_SOF_BYTE1)
             {
@@ -590,7 +518,6 @@ static void func__Simple_ParseByte(uint8_t uint8_t__byte)
                 SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_SOF0;
             }
             break;
-
         case SIMPLE_RX_WAIT_VERSION:
             if (uint8_t__byte != (uint8_t)SIMPLE_LINK_PROTOCOL_VERSION)
             {
@@ -603,19 +530,16 @@ static void func__Simple_ParseByte(uint8_t uint8_t__byte)
                 SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_TYPE;
             }
             break;
-
         case SIMPLE_RX_WAIT_TYPE:
             UINT8_T__G__RxType = uint8_t__byte;
             UINT16_T__G__RxCrc = func__Simple_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_LEN_LO;
             break;
-
         case SIMPLE_RX_WAIT_LEN_LO:
             UINT16_T__G__RxLen = (uint16_t)uint8_t__byte;
             UINT16_T__G__RxCrc = func__Simple_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_LEN_HI;
             break;
-
         case SIMPLE_RX_WAIT_LEN_HI:
             UINT16_T__G__RxLen = (uint16_t)(UINT16_T__G__RxLen | ((uint16_t)((uint16_t)uint8_t__byte << 8)));
             UINT16_T__G__RxCrc = func__Simple_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
@@ -629,7 +553,6 @@ static void func__Simple_ParseByte(uint8_t uint8_t__byte)
                 SIMPLE_RX_STATE_T__G__RxState = (UINT16_T__G__RxLen == 0u) ? SIMPLE_RX_WAIT_CRC_LO : SIMPLE_RX_WAIT_PAYLOAD;
             }
             break;
-
         case SIMPLE_RX_WAIT_PAYLOAD:
             UINT8_T__G__RxPayload[UINT16_T__G__RxIndex] = uint8_t__byte;
             UINT16_T__G__RxIndex++;
@@ -639,12 +562,10 @@ static void func__Simple_ParseByte(uint8_t uint8_t__byte)
                 SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_CRC_LO;
             }
             break;
-
         case SIMPLE_RX_WAIT_CRC_LO:
             UINT8_T__G__RxCrcLow = uint8_t__byte;
             SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_CRC_HI;
             break;
-
         case SIMPLE_RX_WAIT_CRC_HI:
             if (((uint16_t)(((uint16_t)uint8_t__byte << 8) | (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__RxCrc)
             {
@@ -656,14 +577,12 @@ static void func__Simple_ParseByte(uint8_t uint8_t__byte)
             }
             func__Simple_ResyncFromByte(uint8_t__byte);
             break;
-
         default:
             func__Simple_ResyncFromByte(uint8_t__byte);
             break;
     }
 }
-
-/* ==================== تخلیه UART ==================== */
+/* ==================== UART ==================== */
 static void func__Simple_DrainSerial(void)
 {
     while (Serial.available() > 0)
@@ -675,14 +594,11 @@ static void func__Simple_DrainSerial(void)
         }
     }
 }
-
-/* ==================== ارسال وضعیت اتصال کاربر وای‌فای به برد ==================== */
 static void func__Simple_SendWifiClientState(bool bool__connected)
 {
     uint8_t UINT8_T__A__Frame[9];
     uint8_t uint8_t__stateByte = bool__connected ? 1u : 0u;
     uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
-
     UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
     UINT8_T__A__Frame[2] = SIMPLE_LINK_PROTOCOL_VERSION;
@@ -699,8 +615,6 @@ static void func__Simple_SendWifiClientState(bool bool__connected)
     UINT8_T__A__Frame[8] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
     (void)Serial.write(UINT8_T__A__Frame, 9u);
 }
-
-/* ==================== بررسی اتصال فعال کاربر به وای‌فای یا پنل ==================== */
 static bool func__Simple_IsWifiClientConnected(uint32_t uint32_t__nowMs)
 {
     bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
@@ -708,8 +622,6 @@ static bool func__Simple_IsWifiClientConnected(uint32_t uint32_t__nowMs)
         ((uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) < SIMPLE_WIFI_CLIENT_HOLD_MS);
     return bool__stationConnected || bool__browserActive;
 }
-
-/* ==================== پاسخگوی فوری درگاه ۵۳ و راه‌اندازی یکپارچهٔ وای‌فای ==================== */
 static void func__Simple_DnsStart(void)
 {
     if (BOOL__G__DnsRunning == false)
@@ -717,7 +629,6 @@ static void func__Simple_DnsStart(void)
         BOOL__G__DnsRunning = (WIFI_UDP_T__G__DnsUdp.begin(SIMPLE_WIFI_DNS_PORT) != 0u);
     }
 }
-
 static void func__Simple_DnsStop(void)
 {
     if (BOOL__G__DnsRunning != false)
@@ -726,11 +637,9 @@ static void func__Simple_DnsStop(void)
         BOOL__G__DnsRunning = false;
     }
 }
-
 static void func__Simple_DnsTick(void)
 {
     uint8_t uint8_t__handled = 0u;
-
     if ((BOOL__G__WifiApActive == false) || (BOOL__G__DnsRunning == false))
     {
         return;
@@ -742,7 +651,6 @@ static void func__Simple_DnsTick(void)
         size_t size_t__readLen;
         size_t size_t__replyLen = 12u;
         uint16_t uint16_t__qdCount;
-
         if (int__pktLen <= 0)
         {
             break;
@@ -763,7 +671,6 @@ static void func__Simple_DnsTick(void)
         {
             size_t size_t__pos = 12u;
             bool bool__ok = false;
-
             while (size_t__pos < size_t__readLen)
             {
                 uint8_t uint8_t__lab = uint8_t__buf[size_t__pos];
@@ -811,7 +718,6 @@ static void func__Simple_DnsTick(void)
         }
     }
 }
-
 static void func__Simple_StartSoftAp(void)
 {
     WiFi.mode(WIFI_AP);
@@ -827,7 +733,6 @@ static void func__Simple_StartSoftAp(void)
     BOOL__G__WifiApActive = true;
     func__Simple_DnsStart();
 }
-
 static void func__Simple_StopSoftAp(void)
 {
     func__Simple_DnsStop();
@@ -835,12 +740,6 @@ static void func__Simple_StopSoftAp(void)
     WiFi.mode(WIFI_OFF);
     BOOL__G__WifiApActive = false;
 }
-
-/* ==================== اعمال توان آنتن ====================
-   یک جا، با یک پرچم آینه‌ای که همیشه وضعیت واقعاً اعمال‌شده را می‌گوید.
-   چرا تابع جدا: هنگام ساخت/بازسازی اکسس‌پوینت باید توان دوباره نوشته شود
-   (مقدار قبلی روی چیپ می‌ماند)؛ با پرچم آینه‌ای بدون this force، نوشتن جا
-   می‌افتاد و توان اشتباه می‌ماند. */
 static void func__Simple_ApplyTxPower(bool bool__high, bool bool__force)
 {
     if ((bool__force == false) && (BOOL__G__WifiHighPower == bool__high))
@@ -852,14 +751,11 @@ static void func__Simple_ApplyTxPower(bool bool__high, bool bool__force)
 #endif
     BOOL__G__WifiHighPower = bool__high;
 }
-
-/* ==================== محاسبهٔ درصد شارژ باتری برای حد قطع وای‌فای ==================== */
 static uint32_t func__Simple_ComputeBatteryPercent(void)
 {
     uint32_t uint32_t__vBat24Mv = UINT32_T__G__TlmField[15];
     uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
     uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
-
     if ((!BOOL__G__TlmSeen) || (uint32_t__vBat24Mv == 0u) || (uint32_t__vMaxMv <= uint32_t__vMinMv))
     {
         return 100u;
@@ -874,8 +770,6 @@ static uint32_t func__Simple_ComputeBatteryPercent(void)
     }
     return ((uint32_t__vBat24Mv - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
 }
-
-/* ==================== مدیریت ترکیبی قدرت آنتن و چرخهٔ خاموش/روشن وای‌فای روی باتری ==================== */
 static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 {
     bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
@@ -887,7 +781,6 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     uint32_t uint32_t__cycleOffMs = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_CYCLE_OFF_MS);
     uint32_t uint32_t__batCutoffPct = func__Simple_BoardParam(SIMPLE_PARAM_WIFI_BAT_CUTOFF_PCT);
     uint32_t uint32_t__batteryPct = func__Simple_ComputeBatteryPercent();
-
     if (bool__inputPresent || (uint32_t__batCutoffPct == 0u))
     {
         BOOL__G__WifiBatCutoffLatched = false;
@@ -908,7 +801,6 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             BOOL__G__WifiBatCutoffLatched = false;
         }
     }
-
     if ((!bool__inputPresent) && BOOL__G__WifiBatCutoffLatched)
     {
         BOOL__G__WifiClientConnected = false;
@@ -924,9 +816,7 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         }
         return;
     }
-
     BOOL__G__WifiClientConnected = bool__clientConnected;
-
     if ((bool__clientConnected != BOOL__G__WifiLastReportedConnected) ||
         (bool__clientConnected && (!bool__inputPresent) &&
          ((uint32_t__nowMs - UINT32_T__G__WifiLastReportMs) >= SIMPLE_WIFI_CLIENT_REPORT_MS)))
@@ -935,8 +825,6 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
         BOOL__G__WifiLastReportedConnected = bool__clientConnected;
         UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
     }
-
-    /* v1.112: از چه لحظه‌ای یک دستگاه به شبکه وصل شده است (۰ = وصل نیست). */
     if (bool__stationConnected)
     {
         if (UINT32_T__G__WifiStationSinceMs == 0u)
@@ -948,14 +836,12 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
     {
         UINT32_T__G__WifiStationSinceMs = 0u;
     }
-
     if (bool__inputPresent || bool__clientConnected)
     {
         bool bool__apJustCreated = false;
         bool bool__viewerActive;
         bool bool__newcomer;
         bool bool__wantHighPower;
-
         BOOL__G__WifiBatteryIdleTracking = false;
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
         if (!BOOL__G__WifiApActive)
@@ -963,15 +849,6 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             func__Simple_StartSoftAp();
             bool__apJustCreated = true;
         }
-
-        /* دستور کاربر ۲۰۲۶-۱۰-۲۵: توان بیشینه تنها وقتی هزینه‌اش می‌ارزد که
-           کسی واقعاً پنل را ببیند. سه حالت:
-             - برق شهر: همیشه بیشینه (هزینهٔ باتری ندارد).
-             - بیننده: درخواست HTTP تازه در ۱۰ دقیقهٔ اخیر.
-             - تازه‌وارد: دستگاهی در ۱۰ دقیقهٔ اخیر به شبکه وصل شده
-               (تا فرصت باز کردن پنل داشته باشد).
-           غیر از این، اکسس‌پوینت روشن می‌ماند ولی با توان کم؛ پس گوشی‌ای که
-           فقط به شبکه وصل مانده دیگر باتری را با پرتوانی نمی‌سوزاند. */
         bool__viewerActive = BOOL__G__BrowserSeen &&
             ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) <
              (uint32_t)SIMPLE_WIFI_VIEWER_HOLD_MS);
@@ -980,20 +857,16 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             ((uint32_t)(uint32_t__nowMs - UINT32_T__G__WifiStationSinceMs) <
              (uint32_t)SIMPLE_WIFI_VIEWER_HOLD_MS);
         bool__wantHighPower = bool__inputPresent || bool__viewerActive || bool__newcomer;
-
         func__Simple_ApplyTxPower(bool__wantHighPower, bool__apJustCreated);
         return;
     }
-
     if (!BOOL__G__WifiBatteryIdleTracking)
     {
         BOOL__G__WifiBatteryIdleTracking = true;
         UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
     }
-
     uint32_t uint32_t__idleElapsedMs = uint32_t__nowMs - UINT32_T__G__WifiBatteryIdleStartMs;
     bool bool__shouldApBeOn = true;
-
     if ((uint32_t__idleElapsedMs >= uint32_t__idleLowPowerMs) &&
         (uint32_t__cycleOffMs > 0u))
     {
@@ -1004,17 +877,14 @@ static void func__Simple_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
             uint32_t__afterIdleMs % uint32_t__cyclePeriodMs;
         bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= uint32_t__cycleOffMs);
     }
-
     if (bool__shouldApBeOn)
     {
         bool bool__apJustCreated = false;
-
         if (!BOOL__G__WifiApActive)
         {
             func__Simple_StartSoftAp();
             bool__apJustCreated = true;
         }
-        /* در چرخهٔ باتری هیچ بیننده‌ای نیست: همیشه توان کم. */
         func__Simple_ApplyTxPower(false, bool__apJustCreated);
     }
     else

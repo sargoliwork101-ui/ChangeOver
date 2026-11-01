@@ -1,9 +1,4 @@
-/* simple_theme.h - مدیریت تم‌ها (تیره/روشن) و وای‌فای رمزنگاری‌شده
-   فقط فارسی - ذخیره در LittleFS */
-
 #include <LittleFS.h>
-
-/* ==================== بارگذاری تم ==================== */
 static void func__Simple_ThemeLoad(void)
 {
     UINT8_T__G__Theme = 0u;
@@ -25,8 +20,6 @@ static void func__Simple_ThemeLoad(void)
         UINT8_T__G__Theme = (uint8_t)int32_t__theme;
     }
 }
-
-/* ==================== ذخیره تم ==================== */
 static void func__Simple_ThemeSave(void)
 {
     if (!BOOL__G__FsOk) return;
@@ -37,8 +30,6 @@ static void func__Simple_ThemeSave(void)
     file__f.print("}");
     file__f.close();
 }
-
-/* ==================== تنظیم تم ==================== */
 static bool func__Simple_SetTheme(uint8_t uint8_t__theme)
 {
     if (uint8_t__theme > SIMPLE_THEME_MAX) return false;
@@ -47,38 +38,26 @@ static bool func__Simple_SetTheme(uint8_t uint8_t__theme)
     func__Simple_ThemeSave();
     return true;
 }
-
-/* ==================== وای‌فای - ذخیرهٔ رمزنگاری‌شده ====================
-   نام و رمز وای‌فای روی فلش رمز می‌شود؛ قالب فایل همان قالب فایل‌های
-   حساس است ({"e":1,"n":..,"c":..,"m":..}) تا رمز خوانا نماند. */
 static void func__Simple_WifiSave(void)
 {
     String string__plain;
     String string__enc;
-
     if (!BOOL__G__FsOk) return;
-
     string__plain = "{\"ssid\":\"";
     string__plain += CHAR__G__WifiSsid;
     string__plain += "\",\"pass\":\"";
     string__plain += CHAR__G__WifiPass;
     string__plain += "\"}";
-
     func__Simple_CryptoEncrypt(string__plain, string__enc);
-
     File file__f = LittleFS.open(SIMPLE_WIFI_FILE, "w");
     if (!file__f) return;
     file__f.print(string__enc);
     file__f.close();
 }
-
-/* ==================== وای‌فای - بارگذاری ====================
-   تا وقتی کلید نخورده یا فایل دست‌کاری شده، پیش‌فرض‌های همین فایل می‌مانند. */
 static void func__Simple_WifiLoad(void)
 {
     uint8_t uint8_t__state;
     String string__content;
-
     (void)strncpy(CHAR__G__WifiSsid, SIMPLE_WIFI_AP_SSID, SIMPLE_WIFI_SSID_MAX);
     CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX] = '\0';
     (void)strncpy(CHAR__G__WifiPass, SIMPLE_WIFI_AP_PASS, SIMPLE_WIFI_PASS_MAX);
@@ -89,10 +68,8 @@ static void func__Simple_WifiLoad(void)
     if (!file__f) return;
     String string__raw = file__f.readString();
     file__f.close();
-
     uint8_t__state = func__Simple_CryptoDecrypt(string__raw, string__content);
-    if (uint8_t__state == 0u) return;   /* رمزشده ولی برچسب نخورد - دست نزن */
-
+    if (uint8_t__state == 0u) return;
     int32_t int32_t__ssidPos = string__content.indexOf("\"ssid\":\"");
     if (int32_t__ssidPos >= 0)
     {
@@ -123,10 +100,8 @@ static void func__Simple_WifiLoad(void)
             }
         }
     }
-
     if (uint8_t__state == 1u)
     {
-        /* قالب خوانای قدیمی بود؛ همین حالا رمزشده ذخیره کن */
         func__Simple_WifiSave();
     }
 }

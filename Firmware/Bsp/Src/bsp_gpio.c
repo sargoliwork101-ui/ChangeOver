@@ -1,31 +1,20 @@
 /**
  * @file    bsp_gpio.c
  * @brief   [EN] STM32F103C8T6 logical GPIO port for the ChangeOver schematic.
- *          [FA] پورت GPIO منطقی STM32F103C8T6 برای شماتیک ChangeOver.
- *
  * @note    [EN] This is the only layer that resolves logical signals to HAL
  *              ports and pins. Product modules do not include this file's
  *              physical mapping header.
- *          [FA] این تنها لایه‌ای است که سیگنال منطقی را به پورت و پایه HAL
- *              تبدیل می‌کند. ماژول‌های محصول هدر نگاشت فیزیکی این فایل را
- *              وارد نمی‌کنند.
  */
-
 #include "bsp_gpio.h"
 #include "board_pins.h"
-
 #include <stddef.h>
-
 /* ==================== BspGpio_GetPin ==================== */
 /**
  * @brief  [EN] Resolve one logical signal to its physical HAL pin.
- *         [FA] یک سیگنال منطقی را به پایهٔ فیزیکی HAL تبدیل می‌کند.
  * @param  bsp_gpio_id_t__id [EN] Logical signal identifier /
- *                               شناسهٔ سیگنال منطقی
  * @param  GPIO_TypeDef__port [EN] Output physical GPIO port /
- *                                 پورت فیزیکی GPIO خروجی
- * @param  uint16_t__pin [EN] Output pin mask / ماسک پایهٔ خروجی
- * @return bool [EN] true when a mapping exists / اگر نگاشت وجود داشته باشد true
+* @param uint16_t__pin Output pin mask /
+* @return bool true when a mapping exists / true
  */
 static bool func__BspGpio_GetPin(bsp_gpio_id_t bsp_gpio_id_t__id,
                                   GPIO_TypeDef **GPIO_TypeDef__port,
@@ -35,7 +24,6 @@ static bool func__BspGpio_GetPin(bsp_gpio_id_t bsp_gpio_id_t__id,
     {
         return false;
     }
-
     switch (bsp_gpio_id_t__id)
     {
         case BSP_GPIO_BUZZER:
@@ -85,23 +73,17 @@ static bool func__BspGpio_GetPin(bsp_gpio_id_t bsp_gpio_id_t__id,
         default:
             return false;
     }
-
     return true;
 }
-
 /* ==================== BspGpio_IsActiveHigh ==================== */
 /**
  * @brief  [EN] Return the board active polarity for one logical signal.
- *         [FA] قطبیت فعال برد را برای یک سیگنال منطقی برمی‌گرداند.
  * @param  bsp_gpio_id_t__id [EN] Logical signal identifier /
- *                               شناسهٔ سیگنال منطقی
  * @return bool [EN] true when asserted is physical high /
- *                   اگر فعال‌بودن برابر High فیزیکی باشد true
  */
 static bool func__BspGpio_IsActiveHigh(bsp_gpio_id_t bsp_gpio_id_t__id)
 {
     bool bool__activeHigh = true;
-
     switch (bsp_gpio_id_t__id)
     {
         case BSP_GPIO_BUZZER:
@@ -129,40 +111,36 @@ static bool func__BspGpio_IsActiveHigh(bsp_gpio_id_t bsp_gpio_id_t__id)
             bool__activeHigh = (PIN_PROTECT_BATT_ACTIVE_HIGH != 0u);
             break;
         case BSP_GPIO_INPUT_24V_PRESENT:
-            /* [EN] Presence is HIGH when the DC input is there. / حضور = High. */
             bool__activeHigh = (PIN_INT_24_IN_ACTIVE_HIGH != 0u);
             break;
         case BSP_GPIO_JITTER1:
-            /* [EN] LM393 open-collector trip: asserted = physical LOW
-               (audit 2026-10-20 - this used to be hard-coded active-high).
-               [FA] تریپ ‎open-collector‎ ی ‎LM393‎ یعنی سطح فیزیکی پایین. */
+            /*
+ * [EN] LM393 open-collector trip: asserted = physical LOW
+ * (audit 2026-10-20 - this used to be hard-coded active-high).
+ */
             bool__activeHigh = (PIN_JITTER1_ACTIVE_HIGH != 0u);
             break;
         case BSP_GPIO_JITTER2:
-            /* [EN] Same active-low comparator contract as JITTER1.
-               [FA] همان قرارداد فعال-پایین JITTER1. */
+            /*
+ * [EN] Same active-low comparator contract as JITTER1.
+ */
             bool__activeHigh = (PIN_JITTER2_ACTIVE_HIGH != 0u);
             break;
         default:
             bool__activeHigh = true;
             break;
     }
-
     return bool__activeHigh;
 }
-
 /* ==================== BspGpio_IsWritable ==================== */
 /**
  * @brief  [EN] Identify logical outputs accepted by the write API.
- *         [FA] خروجی‌های منطقی مجاز برای API نوشتن را مشخص می‌کند.
  * @param  bsp_gpio_id_t__id [EN] Logical signal identifier /
- *                               شناسهٔ سیگنال منطقی
- * @return bool [EN] true for a controllable output / برای خروجی قابل‌کنترل true
+* @return bool true for a controllable output / true
  */
 static bool func__BspGpio_IsWritable(bsp_gpio_id_t bsp_gpio_id_t__id)
 {
     bool bool__writable = false;
-
     switch (bsp_gpio_id_t__id)
     {
         case BSP_GPIO_BUZZER:
@@ -178,14 +156,11 @@ static bool func__BspGpio_IsWritable(bsp_gpio_id_t bsp_gpio_id_t__id)
         default:
             break;
     }
-
     return bool__writable;
 }
-
 /* ==================== BspGpio_Init ==================== */
 /**
  * @brief  [EN] Apply safe startup levels to every board output.
- *         [FA] سطح امن شروع را روی همهٔ خروجی‌های برد اعمال می‌کند.
  */
 void func__BspGpio_Init(void)
 {
@@ -214,15 +189,11 @@ void func__BspGpio_Init(void)
                       PIN_PROTECT_BATT_PIN,
                       (PIN_SAFE_PROTECT_BATT_HIGH != 0u) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
-
 /* ==================== BspGpio_Write ==================== */
 /**
  * @brief  [EN] Assert or deassert a logical output; board polarity is private.
- *         [FA] خروجی منطقی را فعال یا غیرفعال می‌کند؛ قطبیت برد خصوصی است.
  * @param  bsp_gpio_id_t__id [EN] Logical signal identifier /
- *                               شناسهٔ سیگنال منطقی
  * @param  bool__asserted [EN] true=asserted/on, false=deasserted/off /
- *                             فعال/روشن یا غیرفعال/خاموش
  */
 void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__asserted)
 {
@@ -231,44 +202,35 @@ void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__asserted)
     GPIO_PinState GPIO_PinState__level;
     bool bool__activeHigh;
     bool bool__physicalHigh;
-
     if (func__BspGpio_IsWritable(bsp_gpio_id_t__id) == false)
     {
         return;
     }
-
     if (func__BspGpio_GetPin(bsp_gpio_id_t__id,
                               &GPIO_TypeDef__port,
                               &uint16_t__pin) == false)
     {
         return;
     }
-
     bool__activeHigh = func__BspGpio_IsActiveHigh(bsp_gpio_id_t__id);
     bool__physicalHigh = (bool__asserted == bool__activeHigh);
     GPIO_PinState__level = (bool__physicalHigh == true) ? GPIO_PIN_SET : GPIO_PIN_RESET;
     HAL_GPIO_WritePin(GPIO_TypeDef__port, uint16_t__pin, GPIO_PinState__level);
 }
-
 /* ==================== BspGpio_DisconnectBatteryPathIfInputPresent ==================== */
 /**
  * @brief  [EN] Atomic "input still present? then cut the battery path".
  *              See the header contract: the pair runs with interrupts masked so
  *              the PB4 EXTI reconnect cannot be overwritten by a stale pass.
- *         [FA] «ورودی هنوز حاضر است؟ پس مسیر باتری را قطع کن» به‌صورت اتمیک.
- *              قرارداد در هدر آمده است: جفت کار با وقفه‌های ماسک‌شده اجرا
- *              می‌شود تا وصل‌کردن اضطراری EXTI با پاس کهنه بازنویسی نشود.
- * @‎return bool [EN] true = path cut, false = input absent, battery kept on‎ / قطع شد؟
+* @return bool true = path cut, false = input absent, battery kept on /
  */
 bool func__BspGpio_DisconnectBatteryPathIfInputPresent(void)
 {
     uint32_t uint32_t__savedPrimask;
     bool bool__inputPresent;
     bool bool__disconnected = false;
-
     uint32_t__savedPrimask = __get_PRIMASK();
     __disable_irq();
-
     bool__inputPresent = func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
     if (bool__inputPresent == false)
     {
@@ -279,20 +241,14 @@ bool func__BspGpio_DisconnectBatteryPathIfInputPresent(void)
         func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false);
         bool__disconnected = true;
     }
-
     __set_PRIMASK(uint32_t__savedPrimask);
-
     return bool__disconnected;
 }
-
 /* ==================== BspGpio_Read ==================== */
 /**
  * @brief  [EN] Read a logical board signal.
- *         [FA] یک سیگنال منطقی برد را می‌خواند.
  * @param  bsp_gpio_id_t__id [EN] Logical signal identifier /
- *                               شناسهٔ سیگنال منطقی
  * @return bool [EN] true when the logical signal is asserted /
- *                   اگر سیگنال منطقی فعال باشد true
  */
 bool func__BspGpio_Read(bsp_gpio_id_t bsp_gpio_id_t__id)
 {
@@ -300,7 +256,6 @@ bool func__BspGpio_Read(bsp_gpio_id_t bsp_gpio_id_t__id)
     uint16_t uint16_t__pin = 0u;
     bool bool__isPhysicalHigh = false;
     bool bool__activeHigh = true;
-
     if (func__BspGpio_GetPin(bsp_gpio_id_t__id,
                               &GPIO_TypeDef__port,
                               &uint16_t__pin) == true)
@@ -309,6 +264,5 @@ bool func__BspGpio_Read(bsp_gpio_id_t bsp_gpio_id_t__id)
                                                  uint16_t__pin) == GPIO_PIN_SET);
         bool__activeHigh = func__BspGpio_IsActiveHigh(bsp_gpio_id_t__id);
     }
-
     return (bool__isPhysicalHigh == bool__activeHigh);
 }

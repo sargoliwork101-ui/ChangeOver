@@ -60,15 +60,12 @@ Options / گزینه‌ها:
 
 Step-by-step explanation / توضیح گام‌به‌گام: Programmer/SCRIPTS.md
 """
-
 import argparse
 import datetime
 import pathlib
 import re
 import sys
-
 import stm32_cli
-
 # [EN] Device banner handling. The tool is not a stable API, so the rule is
 #      deliberately one-sided: accept anything that says STM32F1 (all F1 parts
 #      share the same protection mechanism), and REFUSE anything that clearly
@@ -77,17 +74,8 @@ import stm32_cli
 #      board cannot be destroyed silently.
 #      Written this way after a test fixture ("STM32F10x") tripped a stricter
 #      pattern and would have aborted a perfectly good board.
-# [FA] برخورد با بنر دستگاه. ابزار یک API پایدار نیست، پس قاعده عمداً یک‌طرفه
-#      است: هر چه بگوید STM32F1 قبول می‌شود (همهٔ قطعه‌های F1 یک سازوکار قفل
-#      دارند) و هر چه خانوادهٔ دیگری را صریح نام ببرد رد می‌شود. دستگاه
-#      بی‌نام فقط هشدار می‌گیرد - گام بعد هر بردی که داده دارد را پاک نمی‌کند،
-#      پس برد بی‌نام هم بی‌صدا از بین نمی‌رود. این شکل بعد از آن نوشته شد که
-#      یک نمونهٔ تست («STM32F10x») الگوی سخت‌گیرانه‌تر را رد کرد و برد سالم را
-#      متوقف می‌کرد.
 EXPECTED_FAMILY_PATTERN = re.compile(r"STM32F1")
 OTHER_FAMILY_PATTERN = re.compile(r"STM32[FLGHUWC][0-9]")
-
-
 def step_identify(cli, dry_run):
     """[EN] Step 1: connect and confirm the part before touching anything.
        [FA] گام ۱: اتصال و تأیید قطعه پیش از هر تغییری."""
@@ -97,23 +85,18 @@ def step_identify(cli, dry_run):
         return
     if banner:
         print(banner.rstrip())
-
     if EXPECTED_FAMILY_PATTERN.search(banner):
         print("  device: an STM32F1 part answered / یک قطعهٔ STM32F1 پاسخ داد")
         return
-
     if OTHER_FAMILY_PATTERN.search(banner):
         raise stm32_cli.FlashError(
             "the connected part is not an STM32F1 - wrong board or wrong "
             "connector; nothing was erased"
         )
-
     print("  WARNING: the tool did not name the device; continuing because the "
           "next step still refuses to erase a board that holds data\n"
           "  هشدار: ابزار نام قطعه را نداد؛ ادامه می‌دهیم چون گام بعد هر بردی "
           "که داده دارد را پاک نمی‌کند")
-
-
 def step_probe(cli, probe_path, dry_run, force_provisioned):
     """[EN] Step 2: read the data area and decide "new board" or "not new".
        [FA] گام ۲: خواندن ناحیهٔ داده و تصمیم «برد نو» یا «نو نیست»."""
@@ -124,7 +107,6 @@ def step_probe(cli, probe_path, dry_run, force_provisioned):
                  stm32_cli.DATA_BASE_ADDRESS + stm32_cli.DATA_SIZE_BYTES - 1,
                  probe_path))
         return
-
     try:
         stm32_cli.read_data_area(cli, probe_path, dry_run)
     except stm32_cli.FlashError as error:
@@ -138,19 +120,16 @@ def step_probe(cli, probe_path, dry_run, force_provisioned):
             "چیزی پاک نکرد.\n"
             "  original error: %s" % error
         )
-
     if stm32_cli.is_blank_data_area(probe_path):
         print("  data area is blank (0xFF): bare board, good to program / "
               "ناحیهٔ داده پاک است: برد نو")
         probe_path.unlink()
         return
-
     if force_provisioned:
         print("  data area holds values, but --force-provisioned was given / "
               "ناحیهٔ داده مقدار دارد، ولی --force-provisioned داده شده")
         print("  what is about to be overwritten is kept here: %s" % probe_path)
         return
-
     raise stm32_cli.FlashError(
         "this board already holds parameters or a calibration table.\n"
         "  Programming it as a NEW board would erase that data on purpose, so "
@@ -163,8 +142,6 @@ def step_probe(cli, probe_path, dry_run, force_provisioned):
         "برای پاک‌کردن عمدی، --force-provisioned بدهید.\n"
         "  probe saved for inspection: %s" % probe_path
     )
-
-
 def step_program(cli, image_path, dry_run):
     """[EN] Step 3: erase everything and program the firmware.
        [FA] گام ۳: پاک‌کردن همه و نوشتن فرم‌ور."""
@@ -172,8 +149,6 @@ def step_program(cli, image_path, dry_run):
     if not dry_run and not pathlib.Path(image_path).exists():
         raise stm32_cli.FlashError("image not found: %s" % image_path)
     stm32_cli.flash_image(cli, image_path, dry_run)
-
-
 def step_confirm_factory_state(cli, baseline_path, dry_run):
     """[EN] Step 4: prove the data area really is erased after programming.
        [FA] گام ۴: اثبات اینکه ناحیهٔ داده بعد از نوشتن واقعاً پاک است."""
@@ -182,7 +157,6 @@ def step_confirm_factory_state(cli, baseline_path, dry_run):
     stm32_cli.read_data_area(cli, baseline_path, dry_run)
     if dry_run:
         return
-
     if not stm32_cli.is_blank_data_area(baseline_path):
         raise stm32_cli.FlashError(
             "the data area is NOT blank after programming; the board would "
@@ -192,16 +166,12 @@ def step_confirm_factory_state(cli, baseline_path, dry_run):
             "بالا می‌آمد." % baseline_path
         )
     print("  data area reads back as 0xFF / ناحیهٔ داده 0xFF خوانده شد")
-
-
 def step_reset_and_report(cli, dry_run):
     """[EN] Step 5: reset and show the protection state of the fresh board.
        [FA] گام ۵: ریست و نمایش وضعیت قفل برد تازه."""
     print("[5/6] reset and show the protection state / ریست و نمایش وضعیت قفل")
     stm32_cli.reset_board(cli, dry_run)
     stm32_cli.show_protection_state(cli, dry_run)
-
-
 def step_optional_lock(cli, lock_now, dry_run):
     """[EN] Step 6: optional lock, with the reason it is not the default.
        [FA] گام ۶: قفل اختیاری، با دلیل اینکه پیش‌فرض نیست."""
@@ -215,8 +185,6 @@ def step_optional_lock(cli, lock_now, dry_run):
               "با پاک‌شدن کامل تراشه شروع شود")
         return
     stm32_cli.enable_read_protection(cli, dry_run)
-
-
 def print_next_steps(label, baseline_path):
     """[EN] The checklist the operator needs right after a first flash.
        [FA] چک‌لیستی که کاربر بلافاصله بعد از اولین فلش لازم دارد."""
@@ -239,8 +207,6 @@ def print_next_steps(label, baseline_path):
         "  شاهد حالت اولیه ذخیره شد: همان فایل بالا\n"
         % (label, baseline_path)
     )
-
-
 def parse_arguments():
     """[EN] Command line of the script. / [FA] خط فرمان اسکریپت."""
     parser = argparse.ArgumentParser(
@@ -261,8 +227,6 @@ def parse_arguments():
                         help="print the commands, change nothing")
     parser.add_argument("--cli", help="full path to STM32_Programmer_CLI")
     return parser.parse_args()
-
-
 def main():
     """[EN] Entry point: identify, probe, program, prove, report.
        [FA] نقطهٔ ورود: شناسایی، بررسی، نوشتن، اثبات، گزارش."""
@@ -272,15 +236,11 @@ def main():
                      / ("first_flash_%s_%s.bin" % (arguments.label, stamp)))
     probe_path = (arguments.backup_dir
                   / ("probe_%s_%s.bin" % (arguments.label, stamp)))
-
     try:
         # [EN] Check the cheap things first: a missing image must fail before the
         #      board is even contacted.
-        # [FA] اول کارهای ارزان: فایل برنامهٔ نبود باید پیش از اتصال به برد
-        #      شکست بخورد.
         if not arguments.dry_run and not pathlib.Path(arguments.image).exists():
             raise stm32_cli.FlashError("image not found: %s" % arguments.image)
-
         cli = stm32_cli.find_cli(arguments.cli)
         step_identify(cli, arguments.dry_run)
         step_probe(cli, probe_path, arguments.dry_run, arguments.force_provisioned)
@@ -294,7 +254,5 @@ def main():
         print("\nSTOPPED / متوقف شد:")
         print("  " + str(error).replace("\n", "\n  "))
         return 2
-
-
 if __name__ == "__main__":
     sys.exit(main())

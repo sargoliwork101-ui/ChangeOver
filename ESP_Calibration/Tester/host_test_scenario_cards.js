@@ -1,6 +1,5 @@
 /**
  * [EN] Behavioural test for the seven scenario cards of the ESP panel.
- *
  *      The text checks elsewhere in this repository prove a field EXISTS.
  *      They cannot prove that the derived lines under those fields are the
  *      numbers the board will really use: a wrong divisor, a stale default
@@ -10,43 +9,20 @@
  *      mV equivalent of every percent threshold - so they need a test that
  *      loads the real generated page in a DOM, types into the real inputs
  *      and asserts on what the card then says.
- *
  *      Every expected value in this file is derived by hand from the
  *      firmware, not copied from the panel: the yellow blink from
  *      func__Ui_ScenarioCharging_Tick, the beep window from the buzzer
  *      service, the percent map from UI_ALARM_PARAM_* ids 74/75.
- *
  *      Optional by design, exactly like host_test_panel_click.js: jsdom is
  *      not a dependency of this project and the firmware build must never
  *      need node, so a missing jsdom SKIPS (exit 0). Run it with:
- *
  *          npm install --no-save jsdom
  *          node ESP_Calibration/Tester/host_test_scenario_cards.js
- *
- * [FA] تست رفتاری هفت کارت سناریوی پنل ESP.
- *
- *      چک‌های متنی دیگرِ این مخزن فقط ثابت می‌کنند یک فیلد «هست». نمی‌توانند
- *      ثابت کنند خط‌های محاسبه‌شدهٔ زیر آن فیلدها همان عددی‌اند که برد واقعاً
- *      به‌کار می‌برد: یک مخرج اشتباه، یک پیش‌فرض کهنه یا خطی که بی‌صدا دیگر
- *      مقدار تایپ‌شده را دنبال نمی‌کند، همه HTML کاملاً سالمی هستند. از نسخهٔ
- *      ۱٫۴۳/۱٫۴۴ کارت‌های سناریو همین اعداد را نشان می‌دهند (میلی‌ثانیهٔ چشمک،
- *      پنجرهٔ بوق، معادل mV هر آستانهٔ درصدی)، پس تستی لازم است که صفحهٔ واقعی
- *      تولیدشده را در DOM بار کند، در ورودی‌های واقعی تایپ کند و روی چیزی که
- *      کارت می‌گوید assert بزند.
- *
- *      هر مقدار انتظارشده در این فایل دستی از فرمور درآمده، نه کپی از پنل.
- *
- *      مثل host_test_panel_click.js اختیاری است: نبودن jsdom یعنی SKIP با
- *      خروجی صفر، چون بیلد فرمور هرگز نباید به node نیاز داشته باشد.
  */
-
 'use strict';
-
 const fs = require('fs');
 const path = require('path');
-
-/* ==================== jsdom (optional) / jsdom (اختیاری) ==================== */
-
+/* ==================== jsdom (optional) / jsdom () ==================== */
 let JSDOM;
 try {
     ({ JSDOM } = require('jsdom'));
@@ -60,12 +36,9 @@ try {
         process.exit(0);
     }
 }
-
-/* ==================== Test bookkeeping / شمارش تست ==================== */
-
+/* ==================== Test bookkeeping ==================== */
 let passed = 0;
 let failed = 0;
-
 function check(condition, name, detail) {
     if (condition) {
         passed += 1;
@@ -75,11 +48,8 @@ function check(condition, name, detail) {
         console.log('  FAIL ' + name + (detail ? '\n         ' + detail : ''));
     }
 }
-
-/* ==================== Page load / بارکردن صفحه ==================== */
-
+/* ==================== Page load ==================== */
 const PAGE = path.join(__dirname, '..', 'panel_preview.html');
-
 function loadPanel() {
     const html = fs.readFileSync(PAGE, 'utf8');
     return new JSDOM(html, {
@@ -88,35 +58,29 @@ function loadPanel() {
         url: 'http://localhost/'
     });
 }
-
-/* ==================== Helpers / کمک‌ها ==================== */
-
+/* ==================== Helpers ==================== */
 function textOf(doc, id) {
     const el = doc.getElementById(id);
     return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
 }
-
 /* The page deliberately uses Persian unit names for operators; older checks
    used the firmware shorthand "ms". Compare the value, not its localization. */
 function msCell(text, value) {
     return String(text).replace(/میلی[‌ ]?ثانیه/g, 'ms').replace(/\s+/g, '') === String(value) + 'ms';
 }
-
 function typeInto(win, doc, id, value) {
     const el = doc.getElementById(id);
     el.value = String(value);
     win.sall();
     win.c4();
 }
-
-/* ==================== Structure / ساختار ==================== */
-
+/* ==================== Structure ==================== */
 function testStructure(win, doc) {
     console.log('\nstructure / ساختار');
-
-    /* [EN] 27..118 are the alarm ids. 93..107 are edited in the chart and
-       117 is a toggle button, so only the rest own a numeric input.
-       [FA] شناسه‌های ۹۳..۱۰۷ در نمودار ویرایش می‌شوند و ۱۱۷ دکمه است. */
+    /*
+ * [EN] 27..118 are the alarm ids. 93..107 are edited in the chart and
+ * 117 is a toggle button, so only the rest own a numeric input.
+ */
     /* v1.74: 72/73 are retired - the low-battery window is a Changeover
        constant now, so the panel must NOT offer a field for them. */
     const noInput = new Set([72, 73, 76, 117]);
@@ -138,15 +102,14 @@ function testStructure(win, doc) {
     }
     check(missing.length === 0, 'every scenario id has an input', 'missing: ' + missing.join(','));
     check(duplicated.length === 0, 'no scenario id is duplicated', 'duplicated: ' + duplicated.join(','));
-
     for (let card = 1; card <= 8; card += 1) {
         doc.querySelector('#usel button[data-u="' + card + '"]').click();
         check(doc.getElementById('ucard' + card).style.display === '', 'card ' + card + ' opens');
     }
-
-    /* [EN] Each card must carry the "when does this come?" block and the
-       numbered sections - that is the shape the user asked for.
-       [FA] هر کارت باید جعبهٔ «کِی می‌آید؟» و بخش‌های شماره‌دار را داشته باشد. */
+    /*
+ * [EN] Each card must carry the "when does this come?" block and the
+ * numbered sections - that is the shape the user asked for.
+ */
     for (let card = 1; card <= 8; card += 1) {
         const el = doc.getElementById('ucard' + card);
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
@@ -154,30 +117,24 @@ function testStructure(win, doc) {
     }
     const factoryButtons = Array.from(doc.querySelectorAll('button')).filter(b =>
         b.textContent.indexOf('بازگردانی پیش‌فرض کارخانه') >= 0);
-    /* [EN] v1.86: one key per scenario (1..8), one for the charge profile,
-       one for the safety monitor and one for the Wi-Fi page.
-       v1.106 (user order 2026-10-24): the current-filter and current-
-       calibration cards got their own keys too - 13 in total.
-       [FA] نسخهٔ ۱٫۸۶: یک کلید برای هر سناریو (۱..۸) و یکی برای پروفایل
-       شارژ، یکی برای نظارت و ایمنی و یکی برای صفحهٔ وای‌فای.
-       v1.106: کارت‌های فیلتر و کالیبراسیون جریان هم کلید خودشان را گرفتند -
-       جمعاً ۱۳. */
+    /*
+ * [EN] v1.86: one key per scenario (1..8), one for the charge profile,
+ * one for the safety monitor and one for the Wi-Fi page.
+ * v1.106 (user order 2026-10-24): the current-filter and current-
+ * calibration cards got their own keys too - 13 in total.
+ */
     check(factoryButtons.length === 13 && factoryButtons.every(b => b.classList.contains('fwb')),
           'every settings section gives its factory-reset key the same full-width panel layout',
           'found ' + factoryButtons.length + ' keys: ' +
           factoryButtons.map(b => b.textContent.trim()).join(' | '));
     check(factoryButtons.every(b => b.classList.contains('sb2')),
           'all factory-reset keys use the panel secondary-button theme');
-
-    /* [EN] v1.106 (user order 2026-10-24): factory restore must cover EVERY
-       adjustable setting - the thermal trio joins the charger key, scenario 4
-       owns its percent-map pair, every scenario key owns its own «فعال» tick,
-       and the filter/calibration cards can return to factory too. A key that
-       skips a field of its own card is the drift this block exists to catch.
-       [FA] v1.106 (دستور ۲۰۲۶-۱۰-۲۴): بازگردانی کارخانه باید همهٔ تنظیمات را
-       پوشش دهد - سه‌گانهٔ استراحت حرارتی با کلید شارژر، جفتِ نگاشت درصد با
-       سناریوی ۴، تیک «فعال» هر سناریو با کلید خودش، و فیلتر/کالیبراسیون جریان
-       هم کلید کارخانه دارند. */
+    /*
+ * [EN] v1.106 (user order 2026-10-24): factory restore must cover EVERY
+ * adjustable setting - the thermal trio joins the charger key, scenario 4
+ * and the filter/calibration cards can return to factory too. A key that
+ * skips a field of its own card is the drift this block exists to catch.
+ */
     check(win.eval('qdef.toString().indexOf("odef([166,167,168])")>=0'),
           'the charger factory key must also restore the thermal trio 166..168');
     check(win.pdflt(166) === 600 && win.pdflt(167) === 3600000 && win.pdflt(168) === 600000,
@@ -203,11 +160,10 @@ function testStructure(win, doc) {
        operating page must not advertise a dead route. */
     check(!doc.getElementById('simopen') && typeof win.opensim !== 'function',
         'the removed standalone simulator route is not advertised on the operating page');
-
-    /* [EN] A browser min/max attribute is not a visible instruction. Every
-       numeric scenario box must print the same range immediately below it.
-       [FA] min/max اچِی‌تی‌ام‌ال به‌تنهایی راهنمای دیداری نیست؛ هر کادر عددی
-       سناریو باید همان بازه را درست زیر خودش چاپ کند. */
+    /*
+ * [EN] A browser min/max attribute is not a visible instruction. Every
+ * numeric scenario box must print the same range immediately below it.
+ */
     const numeric = [...doc.querySelectorAll('.bqr input[type="number"][id^="q"]')];
     const missingRanges = numeric.filter(el => {
         const r = el.closest('label').querySelector('.qrng');
@@ -217,12 +173,9 @@ function testStructure(win, doc) {
         'every numeric scenario box prints its min/max range below the box',
         missingRanges.map(el => el.id).join(','));
 }
-
 /* ==================== Scenario 1 - input overvoltage ==================== */
-
 function testOvervoltage(win, doc) {
     console.log('\nscenario 1 - overvoltage / اضافه‌ولتاژ');
-
     /* v1.104: the OV threshold IS the shared upper input limit (q34).
        q70 is a read-only mirror with a one-click jump link to q34. */
     typeInto(win, doc, 'q34', 28000);
@@ -245,9 +198,9 @@ function testOvervoltage(win, doc) {
     check(textOf(doc, 's1v').includes('27000') && textOf(doc, 's1v').includes('26000'),
         'editing the shared ceiling moves the OV alarm and its clear point', textOf(doc, 's1v'));
     typeInto(win, doc, 'q34', 28000);
-
-    /* [EN] Red blink: on = period * duty / 100. 1000 ms at 50% = 500/500.
-       [FA] چشمک قرمز: روشن = دوره × duty ÷ ۱۰۰. */
+    /*
+ * [EN] Red blink: on = period * duty / 100. 1000 ms at 50% = 500/500.
+ */
     typeInto(win, doc, 'q38', 1000);
     typeInto(win, doc, 'q39', 50);
     check(textOf(doc, 's1b').includes('500') &&
@@ -257,44 +210,36 @@ function testOvervoltage(win, doc) {
     check(textOf(doc, 's1b').includes('200') &&
           (textOf(doc, 's1b').includes('ms') || textOf(doc, 's1b').includes('میلی‌ثانیه')),
           'red blink follows the duty down to 200 ms', textOf(doc, 's1b'));
-
-    /* [EN] Beep window = duration*count + gap*(count-1); must fit the period.
-       [FA] پنجرهٔ بوق = مدت×تعداد + گپ×(تعداد−۱) و باید در دوره جا شود. */
+    /*
+ * [EN] Beep window = duration*count + gap*(count-1); must fit the period.
+ */
     typeInto(win, doc, 'q40', 10000);
     typeInto(win, doc, 'q41', 1000);
     typeInto(win, doc, 'q42', 2);
     typeInto(win, doc, 'q43', 500);
     check(/2500/.test(textOf(doc, 's1z')), 'beep window is 2*1000 + 500 = 2500 ms', textOf(doc, 's1z'));
-
     typeInto(win, doc, 'q41', 6000);
     check(/⚠/.test(textOf(doc, 's1z')), 'a beep window larger than the period is called out', textOf(doc, 's1z'));
     typeInto(win, doc, 'q40', 0);
     check(/خاموش/.test(textOf(doc, 's1z')), 'period zero reads as beeper off', textOf(doc, 's1z'));
 }
-
 /* ==================== Scenario 2 - battery disconnect ==================== */
-
 function testDisconnect(win, doc) {
     console.log('\nscenario 2 - disconnect / قطع باتری');
-
     typeInto(win, doc, 'q29', 6000);
     typeInto(win, doc, 'q30', 7000);
     const line = textOf(doc, 's2v');
     check(line.includes('6000') && line.includes('7000'), 'absence and return thresholds are both shown', line);
     check(line.includes('1000'), 'the distance between them is computed', line);
-
     typeInto(win, doc, 'q46', 3000);
     typeInto(win, doc, 'q47', 233);
     typeInto(win, doc, 'q48', 3);
     typeInto(win, doc, 'q49', 100);
     check(/899/.test(textOf(doc, 's2z')), '3 x 233 ms + 2 x 100 ms gap = 899 ms', textOf(doc, 's2z'));
 }
-
 /* ==================== Scenario 3 - discharge bands ==================== */
-
 function testDischarge(win, doc) {
     console.log('\nscenario 3 - discharge / دشارژ');
-
     typeInto(win, doc, 'q74', 21000);
     typeInto(win, doc, 'q75', 29000);
     typeInto(win, doc, 'q50', 40);
@@ -311,20 +256,19 @@ function testDischarge(win, doc) {
     typeInto(win, doc, 'q54', 60000);
     typeInto(win, doc, 'q55', 20000);
     typeInto(win, doc, 'q65', 100);
-
     const card = doc.getElementById('ucard3');
-
-    /* [EN] v1.47: the discharge card OWNS the ladder - one writable copy in
-       the whole page, read-only echoes elsewhere.
-       [FA] کارت دشارژ صاحب نردبان است: یک نسخهٔ قابل‌نوشتن در کل صفحه. */
+    /*
+ * [EN] v1.47: the discharge card OWNS the ladder - one writable copy in
+ * the whole page, read-only echoes elsewhere.
+ */
     check(card.querySelector('#q74') !== null && card.querySelector('#q75') !== null,
         'the discharge card owns the writable voltage limits');
     check(doc.querySelectorAll('#q74').length === 1 && doc.querySelectorAll('#q75').length === 1,
         'the ladder has exactly one writable field in the page');
-    /* [EN] v1.49 (user order): the charge side owns its OWN ladder (119/120).
-       Moving a discharge limit must not move the charge card.
-       [FA] سمت شارژ نردبان خودش را دارد (۱۱۹/۱۲۰)؛ جابه‌جاکردن حد دشارژ نباید
-       کارت شارژ را تکان بدهد. */
+    /*
+ * [EN] v1.49 (user order): the charge side owns its OWN ladder (119/120).
+ * Moving a discharge limit must not move the charge card.
+ */
     check(doc.querySelectorAll('#ucard4 input#q119').length === 1 &&
           doc.querySelectorAll('#ucard4 input#q120').length === 1,
         'the charge card owns a separate, writable percent ladder');
@@ -343,7 +287,6 @@ function testDischarge(win, doc) {
         'and the charge card follows its own pair', textOf(doc, 'c4map'));
     typeInto(win, doc, 'q119', 21000);
     win.c4();
-
     /* v1.74: the low-battery card is gone, so only the charge card echoes. */
     check(doc.querySelectorAll('#ucard4 .qmv[data-q="74"]').length === 1,
         'the charge card echoes the discharge ladder read-only');
@@ -358,14 +301,14 @@ function testDischarge(win, doc) {
     win.qmfill();
     check(textOf(doc, 's3m').includes('21000') && textOf(doc, 's3m').includes('29000'),
         'the ladder line shows both limits', textOf(doc, 's3m'));
-
-    /* [EN] One block per band; shared values echoed, never re-offered.
-       [FA] هر باند یک بلوک؛ مقدار مشترک بازتاب می‌شود نه دوباره پیشنهاد. */
-    /* [EN] v1.50 (user orders): the silent band is no longer a block of its
-       own - its single number lives in band 1 and its sentence is one line
-       under band 1. Band 2 owns its per-beep duration and gap now.
-       [FA] باند بی‌صدا بلوک جدا ندارد؛ عددش در باند ۱ و جمله‌اش یک خط زیر آن
-       است. باند ۲ مدت و گپ خودش را دارد. */
+    /*
+ * [EN] One block per band; shared values echoed, never re-offered.
+ */
+    /*
+ * [EN] v1.50 (user orders): the silent band is no longer a block of its
+ * own - its single number lives in band 1 and its sentence is one line
+ * under band 1. Band 2 owns its per-beep duration and gap now.
+ */
     const blocks = card.querySelectorAll('.bnd');
     check(blocks.length === 4, 'the silent band no longer takes a block of its own',
         'blocks=' + blocks.length);
@@ -390,9 +333,9 @@ function testDischarge(win, doc) {
         'the critical block owns its four values and echoes the gap');
     check(card.querySelectorAll('input#q65').length === 1,
         'the shared gap still has exactly one writable field');
-
-    /* [EN] Shaping band 2 must not move band 1's line, and vice versa.
-       [FA] شکل‌دادن باند ۲ نباید خط باند ۱ را تکان بدهد و برعکس. */
+    /*
+ * [EN] Shaping band 2 must not move band 1's line, and vice versa.
+ */
     typeInto(win, doc, 'q121', 1000);
     typeInto(win, doc, 'q122', 100);
     const band1Line = textOf(doc, 's3n1');
@@ -407,7 +350,6 @@ function testDischarge(win, doc) {
        is right to repair, which then leaked id 121 into the next batch. */
     typeInto(win, doc, 'q121', 1000);
     typeInto(win, doc, 'q122', 60000);
-
     typeInto(win, doc, 'q65', 250);
     win.qmfill();
     /* v1.71: bands 2, 3 and the critical block all echo the shared gap. */
@@ -419,9 +361,9 @@ function testDischarge(win, doc) {
         'and it is still writable in exactly one place');
     typeInto(win, doc, 'q65', 100);
     win.qmfill();
-
-    /* [EN] Factory default under every field, from the reset tables.
-       [FA] پیش‌فرض کارخانه زیر هر فیلد، از جدول دکمه‌های بازگردانی. */
+    /*
+ * [EN] Factory default under every field, from the reset tables.
+ */
     const noDefault = [];
     for (let k = 1; k <= 7; k += 1) {
         doc.querySelectorAll('#ucard' + k + ' .bqr label').forEach(l => {
@@ -432,33 +374,34 @@ function testDischarge(win, doc) {
         });
     }
     check(noDefault.length === 0, 'every scenario field prints its factory default', noDefault.join(','));
-    /* [EN] v1.50 (user order: "you wrote the default and the same number
-       again"): the chip beside a field must stay silent while it agrees with
-       the box, and speak only when the board holds something else.
-       [FA] چیپ کنار فیلد تا وقتی با کادر هم‌نظر است ساکت می‌ماند. */
+    /*
+ * [EN] v1.50 (user order: "you wrote the default and the same number
+ * again"): the chip beside a field must stay silent while it agrees with
+ * the box, and speak only when the board holds something else.
+ */
     win.D = { p: { 65: 100, 66: 1000 } };
     win.afill();
     check(doc.getElementById('a65').textContent === '',
         'no second copy of a number the box already shows',
         doc.getElementById('a65').textContent);
-    /* v1.70 (user order): the "روی برد: ..." chip was deleted on purpose, so
-       the span must stay empty even when the board disagrees. */
+    /*
+ * the span must stay empty even when the board disagrees.
+ */
     win.D = { p: { 65: 250, 66: 1000 } };
     win.afill();
     check(doc.getElementById('a65').textContent === '',
         'and the deleted board-value chip never comes back',
         doc.getElementById('a65').textContent);
     win.D = null;
-
     const gapLabel = card.querySelector('#q65').closest('label');
     check(gapLabel.querySelector('.dflt').textContent.includes('100'),
         'the printed default is the real factory value (gap = 100)',
         gapLabel.querySelector('.dflt').textContent);
     check(card.querySelector('#q66').closest('label').querySelector('.t') !== null,
         'the caption is wrapped so the inputs line up');
-
-    /* [EN] Band lines keep reporting the board numbers.
-       [FA] خط هر باند همچنان اعداد برد را گزارش می‌کند. */
+    /*
+ * [EN] Band lines keep reporting the board numbers.
+ */
     check(textOf(doc, 's3r2').includes('10') && textOf(doc, 's3r2').includes('20'),
         'band 2 range is 10..20 percent', textOf(doc, 's3r2'));
     check(textOf(doc, 's3r2').includes('21800') && textOf(doc, 's3r2').includes('22600'),
@@ -471,46 +414,40 @@ function testDischarge(win, doc) {
         'band 2 beep window is 2 x 1000 + its own 100 ms gap = 2100 ms', textOf(doc, 's3n2'));
     check(textOf(doc, 's3n4').includes('خاموش') && /یک‌بار/.test(textOf(doc, 's3n4')),
         'the critical block says LEDs off and one-shot', textOf(doc, 's3n4'));
-
     typeInto(win, doc, 'q59', 90000);
     check(/⚠/.test(textOf(doc, 's3n1')), 'a 90 s beep in a 60 s interval is called out', textOf(doc, 's3n1'));
     typeInto(win, doc, 'q59', 1000);
-
     typeInto(win, doc, 'q53', 60);
     check(/⚠/.test(textOf(doc, 's3z')), 'a broken band order is called out', textOf(doc, 's3z'));
     typeInto(win, doc, 'q53', 1);
     check(!/⚠/.test(textOf(doc, 's3z')), 'and the warning clears when the order is restored', textOf(doc, 's3z'));
-
-    /* [EN] "Percent stability" must be explained with the live numbers.
-       [FA] «پایداری درصد» باید با اعداد زنده توضیح داده شود. */
+    /*
+ * [EN] "Percent stability" must be explained with the live numbers.
+ */
     typeInto(win, doc, 'q80', 2);
     const hy = textOf(doc, 's3hy');
     check(hy.includes('درصد پایدار') && hy.includes('34') && hy.includes('36'),
         'the stability text explains the band around the stable percent', hy);
-    /* [EN] v1.50 (user order): the 1% paragraph was dropped as noise; the
-       0% one stays, and the text must not grow it back.
-       [FA] بند ۱٪ به دستور کاربر حذف شد؛ بند ۰٪ می‌ماند. */
+    /*
+ * [EN] v1.50 (user order): the 1% paragraph was dropped as noise; the
+ * 0% one stays, and the text must not grow it back.
+ */
     check(hy.includes('بیرون آمدن از ۰٪') && !hy.includes('بیرون آمدن از ۱٪'),
         'the zero-exit paragraph stays and the one-exit paragraph is gone', hy);
 }
-
 /* ==================== Scenario 4 - charging / full ==================== */
-
 function testCharging(win, doc) {
     console.log('\nscenario 4 - charging / شارژ');
-
     typeInto(win, doc, 'q74', 21000);
     typeInto(win, doc, 'q75', 29000);
     typeInto(win, doc, 'q68', 1000);
     typeInto(win, doc, 'q69', 150);
     typeInto(win, doc, 'q77', 100);
     typeInto(win, doc, 'q78', 95);
-
     check(textOf(doc, 'c4map').includes('80'), 'one percent of a 21..29 V ladder is 80 mV', textOf(doc, 'c4map'));
     const full = textOf(doc, 'c4full');
     check(full.includes('29000') && full.includes('28600'),
         'enter/exit full are translated to mV', full);
-
     const rows = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
     const at = p => rows.find(r => r[0] === p + '٪');
     check(msCell(at(50)[3], 500) && msCell(at(50)[4], 500),
@@ -520,13 +457,12 @@ function testCharging(win, doc) {
     check(at(100)[2] === '2٪', 'the remaining-to-full floor of 2% is applied at 100%', JSON.stringify(at(100)));
     check(msCell(at(0)[3], 1000) && msCell(at(0)[4], 0),
           'zero percent means the yellow is solid', JSON.stringify(at(0)));
-
-    /* q69 is a valid independent clamp, but the firmware also guarantees a
-       visible 2% remainder. At a 1000 ms period that physical floor is 20 ms,
-       so q69=5 must be accepted and the panel must explain why the table stays
-       at 20 ms rather than pretending the parameter is invalid.
-       q69 یک کف مستقل معتبر است؛ کف ۲٪ فرم‌ور در دورهٔ ۱۰۰۰ میلی‌ثانیه
-       برابر ۲۰ است، پس پنل باید تفاوت «پذیرفته‌شده» و «اثر واقعی» را بگوید. */
+    /*
+ * q69 is a valid independent clamp, but the firmware also guarantees a
+ * visible 2% remainder. At a 1000 ms period that physical floor is 20 ms,
+ * so q69=5 must be accepted and the panel must explain why the table stays
+ * at 20 ms rather than pretending the parameter is invalid.
+ */
     typeInto(win, doc, 'q69', 5);
     const floorText = textOf(doc, 'c4formula');
     check(floorText.includes('20ms') && floorText.includes('5ms') && floorText.includes('معتبر'),
@@ -534,22 +470,18 @@ function testCharging(win, doc) {
     check(doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('0') &&
           doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('10000'),
         'yellow minimum-on box visibly prints its firmware range 0..10000');
-
     typeInto(win, doc, 'q68', 2000);
     const rows2 = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
     check(msCell(rows2.find(r => r[0] === '50٪')[3], 1000),
           'doubling the period doubles the on time', JSON.stringify(rows2[3]));
     typeInto(win, doc, 'q68', 1000);
 }
-
-/* ==================== Latch reset route contracts / قرارداد مسیر ریست قفل ==================== */
-
+/* ==================== Latch reset route contracts ==================== */
 function sourceSection(source, startMarker, endMarker) {
     const start = source.indexOf(startMarker);
     const end = source.indexOf(endMarker, start);
     return start >= 0 && end > start ? source.slice(start, end) : '';
 }
-
 function testLatchResetSourceContracts() {
     console.log('\nlatch-reset source contracts / قرارداد مسیر ریست قفل');
     const calHttp = fs.readFileSync(path.join(__dirname, '..', 'plink_http.h'), 'utf8');
@@ -574,7 +506,6 @@ function testLatchResetSourceContracts() {
         check(eventPos >= 0 && eventPos < cyclePos && cyclePos < latchPos,
             name + ' queues counters before clearing the latch');
     });
-
     const calReset = sourceSection(calPanel, 'async function latchrst(n){', 'async function wrestore(');
     const simpleReset = sourceSection(simplePanel, 'async function latchReset(n){', 'async function loadUsers(');
     [
@@ -593,12 +524,10 @@ function testLatchResetSourceContracts() {
               name + ' waits for the reset queue to drain');
     });
 }
-
 async function testLatchResetHandshake(win, doc) {
     console.log('\nlatch-reset acknowledgement / تأیید پژواک ریست قفل');
     const oldFetch = win.fetch;
     const oldConfirm = win.pmConfirm;
-
     function response(status, body) {
         return { status, ok: status >= 200 && status < 300, json: async () => body };
     }
@@ -621,7 +550,6 @@ async function testLatchResetHandshake(win, doc) {
         await win.eval('latchrst')(n);
         return { gets, posts, message: textOf(doc, 'rst' + n) };
     }
-
     try {
         const s5 = await exercise(5, [
             { rep: 10, nak: 0, q: 0, id: 202, val: 0 },
@@ -631,7 +559,6 @@ async function testLatchResetHandshake(win, doc) {
         ]);
         check(s5.posts === 1 && s5.gets === 4 && s5.message.indexOf('✅') === 0,
             'scenario 5 waits for events, cycles and the final latch echo before success', JSON.stringify(s5));
-
         const s6 = await exercise(6, [
             { rep: 20, nak: 0, q: 0, id: 203, val: 0 },
             { rep: 21, nak: 0, q: 0, id: 202, val: 0 },
@@ -639,7 +566,6 @@ async function testLatchResetHandshake(win, doc) {
         ]);
         check(s6.posts === 1 && s6.gets === 3 && s6.message.indexOf('✅') === 0,
             'scenario 6 ignores a fresh wrong-id echo and waits for id 203', JSON.stringify(s6));
-
         const stale = await exercise(5, [
             { status: 503, body: { rep: 40, nak: 0, q: 0, id: 202, val: 0 } }
         ]);
@@ -650,12 +576,9 @@ async function testLatchResetHandshake(win, doc) {
         win.pmConfirm = oldConfirm;
     }
 }
-
 /* ==================== Scenario 5 - imbalance ==================== */
-
 function testImbalance(win, doc) {
     console.log('\nscenario 5 - imbalance / عدم‌توازن');
-
     check(doc.getElementById('q110').getAttribute('max') === '36000000' &&
           doc.getElementById('q111').getAttribute('max') === '36000000' &&
           doc.getElementById('q112').getAttribute('max') === '36000000',
@@ -671,11 +594,11 @@ function testImbalance(win, doc) {
           c5.querySelector('#q136') &&
           c5.querySelector('#s5b') && c5.querySelector('#s5z'),
           'scenario 5 has separate, ordered lamp, clean-cycle and beep boxes');
-    /* [EN] v1.85 (user order): the manual reset key sits in the lockout tag row
-       and must be as wide as the page, not one 260 px grid cell; its status line
-       spans the row with it. Checked on both lock cards.
-       [FA] کلید ریست دستی در ردیف تیک مسدودی نشسته و باید به اندازهٔ عرض صفحه
-       باشد، نه یک خانهٔ ۲۶۰ پیکسلی گرید؛ خط وضعیتش هم با آن تمام‌عرض است. */
+    /*
+ * [EN] v1.85 (user order): the manual reset key sits in the lockout tag row
+ * and must be as wide as the page, not one 260 px grid cell; its status line
+ * spans the row with it. Checked on both lock cards.
+ */
     const card6 = doc.getElementById('ucard6');
     const rst5 = c5.querySelector('button[onclick="latchrst(5)"]');
     const rst6 = card6 ? card6.querySelector('button[onclick="latchrst(6)"]') : null;
@@ -689,13 +612,11 @@ function testImbalance(win, doc) {
           'rst5=' + (rst5 && win.getComputedStyle(rst5).gridColumn) +
           ' rst6=' + (rst6 && win.getComputedStyle(rst6).gridColumn) +
           ' rst8=' + (rst8 && win.getComputedStyle(rst8).gridColumn));
-
-    /* [EN] v1.86: the two scenario-8 switches used to be drawn but never wired,
-       so a tick did nothing. They must send their own id, and draw() must put
-       the board's value back into the box and explain it under the switch.
-       [FA] نسخهٔ ۱٫۸۶: دو کلید سناریوی ۸ کشیده می‌شدند ولی وصل نبودند و تیک
-       کاری نمی‌کرد. باید شناسهٔ خودشان را بفرستند و draw هم مقدار برد را در
-       همان کادر بگذارد و معنایش را زیرش بنویسد. */
+    /*
+ * [EN] v1.86: the two scenario-8 switches used to be drawn but never wired,
+ * so a tick did nothing. They must send their own id, and draw() must put
+ * the board's value back into the box and explain it under the switch.
+ */
     const cb147 = doc.getElementById('cb147');
     const cb157 = doc.getElementById('cb157');
     check(!!cb147 && !!cb157 && typeof cb147.onchange === 'function' &&
@@ -724,18 +645,16 @@ function testImbalance(win, doc) {
           'draw() mirrors the board into both switches and says what each state means',
           'cb147=' + cb147.checked + ' cb157=' + cb157.checked + ' | ' +
           doc.getElementById('a147').textContent);
-    /* [EN] Scenario 8 must be visible everywhere the panel lists locked
-       verdicts, not just inside its own card: the live status button in the
-       top bar, the locked-error text box, and the button's refresh signature.
-       [FA] سناریوی ۸ باید همه‌جایی که پنل حکم‌های قفل‌شده را نشان می‌دهد
-       دیده شود: دکمهٔ وضعیت نوار بالا، متن کادر «خطاهای قفل‌شده» و کلید
-       تازه‌سازی همان کادر. */
-    /* [EN] v1.88 (user order 2026-10-23): the rest floor is the number that
-       separates an EMPTY pack from a WORN one, so it must be a real box on
-       card 8 with its own factory default and its own explanation.
-       [FA] نسخهٔ ۱٫۸۸ (دستور کاربر): آستانهٔ استراحت همان عددی است که
-       «خالی» را از «فرسوده» جدا می‌کند؛ پس باید کادر واقعی روی کارت ۸ با
-       پیش‌فرض و توضیح خودش داشته باشد. */
+    /*
+ * [EN] Scenario 8 must be visible everywhere the panel lists locked
+ * verdicts, not just inside its own card: the live status button in the
+ * top bar, the locked-error text box, and the button's refresh signature.
+ */
+    /*
+ * [EN] v1.88 (user order 2026-10-23): the rest floor is the number that
+ * separates an EMPTY pack from a WORN one, so it must be a real box on
+ * card 8 with its own factory default and its own explanation.
+ */
     const q165 = doc.getElementById('q165');
     check(!!q165 && q165.type === 'number' && q165.min === '21200' && q165.max === '29000',
           'card 8 carries the rest-floor box (21200..29000 mV)',
@@ -744,29 +663,23 @@ function testImbalance(win, doc) {
           'the rest floor restores to its 25000 mV factory default');
     check(win.eval('PX')[165] && win.eval('PX')[165][1].indexOf('خالی') >= 0,
           'the rest floor is explained in plain Persian, including the empty-vs-worn point');
-
     const calSrc = fs.readFileSync(path.join(__dirname, '..', 'plink_panel.h'), 'utf8');
-    /* [EN] v1.94: the top-bar chips are gone, so the weak verdict must reach
-             the fault box AND its own clickable state chip into card 8.
-       [FA] نسخهٔ ۱٫۹۴: چراغ‌های بالای جدول برداشته شدند، پس حکم باتری ضعیف
-             باید هم در کادر خطا و هم به‌صورت چراغِ کلیک‌پذیرِ خودش به کارت ۸
-             برسد. */
+    /*
+ * [EN] v1.94: the top-bar chips are gone, so the weak verdict must reach
+ * the fault box AND its own clickable state chip into card 8.
+ */
     check(calSrc.includes('onclick="errjmp(8)">حکم باتری ضعیف') &&
           calSrc.includes("if(flW&16)h.push('⚠ <b>باتری ضعیف</b>") &&
           calSrc.includes("(flW&19)"),
           'the weak-battery verdict reaches the state strip and the locked-error text');
     check(doc.getElementById('wbst') !== null,
           'card 8 has its live verdict line');
-
-    /* [EN] v1.87 (user order): the «فعال» tick of cards 1..7 is no longer a
-       browser-only mute. Unticking must queue a 0 for that scenario's alarm
-       id (158..164) so the LAMP AND BUZZER stay silent on the board while
-       detection and protection keep running. Scenario 8 has no such face
-       switch and must not invent one.
-       [FA] نسخهٔ ۱٫۸۷: تیک «فعال» کارت‌های ۱..۷ دیگر فقط در مرورگر نیست.
-       برداشتن تیک باید صفر را برای شناسهٔ هشدار همان سناریو (۱۵۸..۱۶۴) در
-       صف بگذارد تا چراغ و بوق روی برد ساکت بمانند، در حالی که تشخیص و
-       محافظت کار می‌کند. سناریوی ۸ چنین کلیدی ندارد و نباید بسازد. */
+    /*
+ * browser-only mute. Unticking must queue a 0 for that scenario's alarm
+ * id (158..164) so the LAMP AND BUZZER stay silent on the board while
+ * detection and protection keep running. Scenario 8 has no such face
+ * switch and must not invent one.
+ */
     win.scenarioToggle(2, false);
     check(win.eval('PEND')[159] === 0,
           'unticking scenario 2 queues 0 for its own alarm id 159',
@@ -784,10 +697,10 @@ function testImbalance(win, doc) {
           'scenario 8 has no alarm id and never invents one',
           Object.keys(win.eval('PEND')).join(','));
     win.scenarioToggle(8, true);
-    /* [EN] and the tick follows the BOARD, not just this browser: a frame
-       carrying 0 for id 160 must mute card 3 without queueing anything.
-       [FA] تیک از برد هم پیروی می‌کند: فریمی با صفر برای شناسهٔ ۱۶۰ باید
-       کارت ۳ را بی‌صدا کند بدون آن‌که چیزی در صف بگذارد. */
+    /*
+ * [EN] and the tick follows the BOARD, not just this browser: a frame
+ * carrying 0 for id 160 must mute card 3 without queueing anything.
+ */
     win.D.p[160] = 0;
     win.draw(win.D);
     check(doc.getElementById('sen3').checked === false &&
@@ -801,12 +714,11 @@ function testImbalance(win, doc) {
           'a board value of 1 puts the tick back on');
     check(pendKeys.every(k => +k >= 158 && +k <= 164),
           'the seven alarm ids are the only extras the card ticks touch');
-
-    /* [EN] v1.87 (user order): every scenario card must say, in simple
-          Persian, what makes that error go away - the scenario-8 card had
-          that line and the other seven did not.
-       [FA] نسخهٔ ۱.۸۷ (دستور کاربر): هر کارت سناریو باید با فارسی ساده
-          بگوید همان خطا با چه چیزی پاک می‌شود. */
+    /*
+ * [EN] v1.87 (user order): every scenario card must say, in simple
+ * Persian, what makes that error go away - the scenario-8 card had
+ * that line and the other seven did not.
+ */
     for (let n = 1; n <= 8; n++) {
         const card = doc.getElementById('ucard' + n);
         const clr = card ? card.querySelector('.clr') : null;
@@ -814,17 +726,15 @@ function testImbalance(win, doc) {
               'scenario ' + n + ' says what makes its error go away',
               clr ? clr.textContent.slice(0, 60) : 'no .clr strip');
     }
-
-    /* [EN] v1.91 (user order 2026-10-23): the charge/PID voltage axis is
-          pinned at a fixed 10.0 V floor - the v1.87 auto-floor still hid a
-          pack below 11.5 V, and a moving axis cannot be compared across two
-          readings.
-       [FA] نسخهٔ ۱.۹۱: کف محور ولتاژ روی ۱۰٫۰ ولت ثابت است؛ کف خودکارِ
-          نسخهٔ ۱.۸۷ هم باتریِ زیر ۱۱٫۵ ولت را پنهان می‌کرد. */
+    /*
+ * [EN] v1.91 (user order 2026-10-23): the charge/PID voltage axis is
+ * pinned at a fixed 10.0 V floor - the v1.87 auto-floor still hid a
+ * pack below 11.5 V, and a moving axis cannot be compared across two
+ * readings.
+ */
     check(calSrc.includes('const lo=10000,hi=16000') &&
           calSrc.indexOf('QLO') < 0 && calSrc.indexOf('_wantLo') < 0,
           'the voltage axis is pinned at a fixed 10.0..16.0 V window, so a discharged pack stays visible');
-
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&
           c5beep.querySelector('#q132').type === 'number' &&
@@ -853,7 +763,6 @@ function testImbalance(win, doc) {
     typeInto(win, doc, 'q133', 100);
     typeInto(win, doc, 'q136', 3);
     typeInto(win, doc, 'q118', 20);
-
     const lock = textOf(doc, 's5z');
     check(lock.includes('10'), 'the lock event count is shown', lock);
     check(lock.includes('3') && lock.includes('200') && lock.includes('گپ'),
@@ -861,31 +770,22 @@ function testImbalance(win, doc) {
     check(lock.includes('FLOAT') || lock.includes('رویداد کامل'),
           'the lock explanation requires a complete FLOAT-qualified event', lock);
     check(lock.includes('20'), 'the post-lock charge-cycle budget is shown', lock);
-
     typeInto(win, doc, 'q111', 0);
     check(/خاموش/.test(textOf(doc, 's5v')), 'a zero charge gate reads as off', textOf(doc, 's5v'));
     typeInto(win, doc, 'q111', 600000);
     check(/10 دقیقه/.test(textOf(doc, 's5v')), 'the charge gate is printed in minutes', textOf(doc, 's5v'));
-
     typeInto(win, doc, 'q115', 0);
     check(/بوق خاموش/.test(textOf(doc, 's5z')), 'a zero lock-beep period reads as off', textOf(doc, 's5z'));
 }
-
-
-/* ==================== v1.51 simulator / شبیه‌ساز ==================== */
-
+/* ==================== v1.51 simulator ==================== */
 /**
  * [EN] The LED/buzzer simulator must be driven ONLY by the boxes of its own
  *      card (user order 2026-10-05), so these checks never populate D: they
  *      type into the inputs, call the engine and assert on the lamps.
- * [FA] شبیه‌ساز فقط از کادرهای همان کارت تغذیه می‌شود؛ این چک‌ها هیچ داده‌ای
- *      از برد نمی‌گذارند و مستقیم روی چراغ‌ها assert می‌زنند.
  */
 function testSimulator(win, doc) {
     console.log('\nv1.51 simulator / شبیه‌ساز زنده');
-
     const on = (id) => (doc.getElementById(id).className || '').indexOf(' on') >= 0;
-
     for (let n = 1; n <= 7; n += 1) {
         check(doc.getElementById('sim' + n) !== null &&
               doc.getElementById('sl' + n + 'r') !== null &&
@@ -894,19 +794,14 @@ function testSimulator(win, doc) {
               doc.getElementById('sl' + n + 'z') !== null,
               'card ' + n + ' has a simulator with three LEDs and a buzzer');
     }
-
     check(doc.body.innerHTML.indexOf('c4dot') < 0,
           'the old board-driven dots are gone');
-
-    /* The engine must not need any board data at all. / بدون داده برد کار کند. */
     const keptD = win.D;
     win.D = null;
     let threw = false;
     try { win.simrun(); } catch (e) { threw = true; }
     win.D = keptD;
     check(!threw, 'the simulator runs with no board data at all');
-
-    /* Pure helpers mirror the firmware window maths. / کمک‌تابع‌ها. */
     check(win.simbz(0, 1000, 200, 2, 100) === true &&
           win.simbz(250, 1000, 200, 2, 100) === false &&
           win.simbz(350, 1000, 200, 2, 100) === true &&
@@ -917,14 +812,12 @@ function testSimulator(win, doc) {
           'a zero period or zero count is silent');
     check(win.simblink(0, 1000, 40) === true && win.simblink(500, 1000, 40) === false,
           'simblink follows period and duty');
-
     /* Card 1: green solid, red follows the duty the user typed. */
     typeInto(win, doc, 'q38', 1000);
     typeInto(win, doc, 'q39', 50);
     win.SIMT[1] = win.performance.now();
     win.simrun();
     check(on('sl1g') && !on('sl1y'), 'card 1 keeps green solid and yellow off');
-
     /* Card 3: the slider alone decides the band. */
     doc.getElementById('simp3').value = 90;
     win.simrun();
@@ -935,7 +828,6 @@ function testSimulator(win, doc) {
     win.simrun();
     check(!on('sl3r') && !on('sl3g') && !on('sl3y'),
           'the critical band turns all three LEDs off');
-
     /* Card 4: full means yellow off, zero percent means yellow solid. */
     doc.getElementById('simp4').value = 100;
     win.simrun();
@@ -943,13 +835,11 @@ function testSimulator(win, doc) {
     doc.getElementById('simp4').value = 0;
     win.simrun();
     check(on('sl4y'), 'zero percent holds the yellow solid on');
-
     /* v1.74: the low-battery card is gone; its window lives in Changeover,
        so no simulator may claim an anti-chatter band any more. */
     check(doc.getElementById('simp5') === null
           || doc.getElementById('simp5').type === 'range',
           'no leftover low-battery voltage slider on card 5');
-
     /* Card 1 (v1.104): the over-voltage alarm follows the shared ceiling 34 / hyst 71. */
     typeInto(win, doc, 'q34', 29000);
     typeInto(win, doc, 'q71', 500);
@@ -971,7 +861,6 @@ function testSimulator(win, doc) {
     win.simrun();
     check(doc.getElementById('sl1t').textContent.indexOf('زیر آستانه') >= 0,
           'below threshold minus hysteresis the alarm clears');
-
     /* Card 6 (v1.57): mode decides the window, the virtual clock decides time. */
     win.simspd(1);
     win.simrst5();
@@ -990,7 +879,6 @@ function testSimulator(win, doc) {
           'at rest the window is still shut right after a charge');
     check(doc.getElementById('sl5t').textContent.indexOf('پنجره بسته') >= 0,
           'and nothing is counted while it is shut');
-
     doc.getElementById('sim5m').value = 'd';
     win.sim5mode();
     win.simrun();
@@ -999,7 +887,6 @@ function testSimulator(win, doc) {
           (doc.getElementById('sim5w').textContent.indexOf('mV') >= 0 ||
            doc.getElementById('sim5w').textContent.indexOf('میلی‌ولت') >= 0),
           'on battery the window is open at once and uses the discharge limit');
-
     doc.getElementById('sim5m').value = 'c';
     win.sim5mode();
     typeInto(win, doc, 'q111', 0);
@@ -1007,14 +894,12 @@ function testSimulator(win, doc) {
     check(doc.getElementById('sim5w').textContent.indexOf('هرگز') >= 0,
           'a zero charge gate means no measurement while charging');
     typeInto(win, doc, 'q111', 600000);
-
     /* virtual clock: only runs while the card runs, and honours the speed */
     const t0 = win.SIMT[5];
     win.SIMON[5] = 0;
     win.simrun();
     check(win.SIMT[5] === t0, 'a stopped card freezes its own clock');
     win.SIMON[5] = 1;
-
     /* Three stable candidates latch only when each candidate reaches a real
        FLOAT/Full boundary. A merely stable discharge episode must remain a
        pending candidate; this mirrors the firmware's cycle qualification. */
@@ -1041,7 +926,6 @@ function testSimulator(win, doc) {
     doc.getElementById('simp5b').value = 12000;
     win.simrun();
     check(!on('sl5r') && win.S5.n === 0, 'the restart button clears the simulated lock');
-
     /* v1.55: a gap box is dead while its band asks for a single beep.
        v1.77 (user question + order): EVERY gap behaves the same way, the
        shared gap counts band 2 too, and a repeat interval is never treated
@@ -1065,7 +949,6 @@ function testSimulator(win, doc) {
     check(doc.getElementById('q65').disabled === false,
           'band 2 alone keeps the shared gap alive');
     typeInto(win, doc, 'q63', 1);
-
     /* v1.78 (user order): the two output-block switches are checkboxes that
        mirror the stored parameter and write it back on change. */
     [['ib117', 117], ['db127', 127]].forEach(([cid, pid]) => {
@@ -1084,7 +967,6 @@ function testSimulator(win, doc) {
     });
     check(doc.getElementById('a117') && doc.getElementById('a127'),
           'each output-block checkbox keeps its own plain-language state line');
-
     /* v1.82: scenario 6 owns its lamp/beep fields plus an independent
        count/gap pair; all are editable and belong to its factory key. */
     [[128, 600000], [129, 120], [130, 0], [131, 50], [134, 1], [135, 0]].forEach(([id, def]) => {
@@ -1109,11 +991,10 @@ function testSimulator(win, doc) {
           'the dead-battery gap editor is enabled when its beep count is greater than one');
     typeInto(win, doc, 'q134', 1);
     typeInto(win, doc, 'q135', 0);
-
-    /* [EN] Scenario 6 must present the red lamp and its independent buzzer as
-       two sections, not as one combined control block.
-       [FA] سناریوی ۶ باید چراغ قرمز و بوق مستقلش را در دو بخش جدا نشان دهد،
-       نه در یک بلوک ترکیبی. */
+    /*
+ * [EN] Scenario 6 must present the red lamp and its independent buzzer as
+ * two sections, not as one combined control block.
+ */
     const c6 = doc.getElementById('ucard6');
     const c6secs = [...c6.querySelectorAll('.sec')].map(e => e.textContent.trim());
     const lampSection = c6secs.findIndex(x => x.indexOf('چراغ قرمز مستقل') >= 0);
@@ -1128,7 +1009,6 @@ function testSimulator(win, doc) {
           c6.querySelector('#q130').closest('.bqr').textContent.indexOf('بوق') < 0 &&
           c6.querySelector('#q128').closest('.bqr').textContent.indexOf('چراغ') < 0,
           'scenario 6 lamp inputs and buzzer inputs are physically separated');
-
     /* Scenario 7: the technical-fault card is a real, independently driven
        state machine. It must not silently borrow scenario 5/6 beep settings,
        and one phase must drive all three LEDs. */
@@ -1145,7 +1025,6 @@ function testSimulator(win, doc) {
     check(c7.querySelector('#q137') && c7.querySelector('#q142') &&
           c7.querySelector('#s7v'),
           'scenario 7 exposes its own beep and synchronized-LED controls');
-
     typeInto(win, doc, 'q137', 3000);
     typeInto(win, doc, 'q138', 200);
     typeInto(win, doc, 'q139', 3);
@@ -1157,7 +1036,6 @@ function testSimulator(win, doc) {
           s7v.indexOf('3') >= 0 && s7v.indexOf('100') >= 0 &&
           s7v.indexOf('1000') >= 0 && s7v.indexOf('50') >= 0,
           'scenario 7 summary follows all six typed settings', s7v);
-
     const sameLedState = () => ['r', 'g', 'y'].map(c => on('sl7' + c));
     win.SIMON[7] = 0;
     win.SIMT[7] = 0;
@@ -1181,7 +1059,6 @@ function testSimulator(win, doc) {
     win.simrun();
     check(sameLedState().every(v => !v) && !on('sl7z'),
           'scenario 7 no-fault mode clears all LEDs and the buzzer');
-
     /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
        bits are real LEDs again - styled, and visible between blinks. */
     if (typeof win.uview === 'function' && win.ASB && win.ASB.bits && win.ASB.bits[0]) {
@@ -1213,23 +1090,16 @@ function testSimulator(win, doc) {
     win.simrun();
     check(doc.getElementById('q65').disabled === false,
           'one band asking for three beeps keeps the shared gap alive');
-
-    /* Stop button freezes the phase. / دکمهٔ توقف فاز را نگه می‌دارد. */
     win.simtog(1);
     check(win.SIMON[1] === 0 && doc.getElementById('simb1').textContent === 'ادامه',
           'the stop button pauses that card only');
     check(win.SIMON[2] === 1, 'the other cards keep running');
     win.simtog(1);
 }
-
-
-/* ==================== v1.52 send queue / صف ارسال ==================== */
-
+/* ==================== v1.52 send queue ==================== */
 /**
  * [EN] Nothing may reach the board until the global button is pressed, and
  *      the report after the handshake must tell the truth about clamping.
- * [FA] تا وقتی دکمهٔ سراسری زده نشود هیچ چیز به برد نمی‌رود؛ و گزارش بعد از
- *      دست‌دادن باید دربارهٔ گیره‌خوردن راست بگوید.
  */
 /* Manual duty box: Enter applies the typed duty, Escape sets it to 0 and clears the box. */
 async function testManualDutyKeys(win, doc) {
@@ -1258,7 +1128,6 @@ async function testManualDutyKeys(win, doc) {
     check(sent.indexOf('16=170') >= 0,
           'Enter in the manual duty box applies the typed duty (17 % = 170 permille)');
     check(box.value === '', 'after applying, the box is cleared');
-
     box.value = '42';
     box.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await new Promise(r => setTimeout(r, 900));
@@ -1266,10 +1135,8 @@ async function testManualDutyKeys(win, doc) {
           'Escape in the manual duty box sets the duty to 0');
     check(box.value === '', 'Escape clears the typed value too');
 }
-
 async function testSendQueue(win, doc) {
     console.log('\nv1.52 send queue / صف ارسال سراسری');
-
     const all = [];
     win.fetch = (u, o) => {
         all.push(String(u));
@@ -1280,7 +1147,6 @@ async function testSendQueue(win, doc) {
                     at(i) { return all.filter(u => u.indexOf('/s?') >= 0)[i]; } };
     win.PEND = {};
     win.pbar();
-
     typeInto(win, doc, 'q38', 2000);
     doc.getElementById('q38').onchange();
     check(posts.length === 0, 'typing alone posts nothing to the board');
@@ -1290,10 +1156,10 @@ async function testSendQueue(win, doc) {
     check(doc.getElementById('sbar').className === 'on' &&
           doc.getElementById('sbn').textContent === '1',
           'the global bar appears and counts the pending edit');
-
-    /* An out-of-range pending value is rejected locally: no /s is sent and
-       the report names the exact id, name, value and board-side consequence.
-       / مقدار خارج از بازه پیش از هر POST محلی رد می‌شود. */
+    /*
+ * An out-of-range pending value is rejected locally: no /s is sent and
+ * the report names the exact id, name, value and board-side consequence.
+ */
     win.qput(111, 36000001);
     await win.sendall();
     check(posts.length === 0 && win.PEND['111'] === 36000001,
@@ -1308,7 +1174,6 @@ async function testSendQueue(win, doc) {
           'the blocked report explains id, name, value, range and board clamp/reject',
           rangeReport);
     win.pclr(111);
-
     /* Undo puts the board value back and empties the queue. */
     win.D = { p: { 38: 1000 }, t: new Array(25).fill(0), q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1 };
     win.pundo();
@@ -1316,7 +1181,6 @@ async function testSendQueue(win, doc) {
           'undo clears the queue without touching the board');
     check(doc.getElementById('q38').value === '1000',
           'undo restores the value the board reported');
-
     /* The button ships the batch and then judges the echo. */
     win.qput(38, 2000);
     win.qput(39, 60);
@@ -1341,23 +1205,15 @@ async function testSendQueue(win, doc) {
     check(doc.getElementById('sbst').textContent.indexOf('عیناً پذیرفت') >= 0,
           'a clean batch is reported as accepted and stored');
 }
-
-
-
 /* ==================== v1.81 parameter schema + bench calibration ==================== */
-
 /**
  * [EN] The backup file must carry the parameter schema (id, name, unit and
  *      limits), not an opaque build stamp. Restore must report a changed
  *      parameter identity precisely, and bench calibration must turn a known
  *      straight line of samples back into the exact gain/offset that produced it.
- * [FA] فایل پشتیبان باید شمای پارامتر (شناسه، نام، واحد و محدوده) را نگه دارد،
- *      نه مهر مبهم بیلد را. بازگردانی باید تغییر دقیق هویت پارامتر را گزارش
- *      کند و کالیبراسیون بنچ نیز همان گین و آفست خط معلوم را برگرداند.
  */
 async function testBackupAndCal(win, doc) {
     console.log('\nv1.81 parameter schema + bench calibration / شمای پارامتر و کالیبراسیون');
-
     const backupOut = doc.querySelector('#s4 button[onclick="xexp()"]');
     const backupIn = doc.getElementById('xim') && doc.getElementById('xim').closest('label');
     const backupText = textOf(doc, 's4');
@@ -1387,7 +1243,6 @@ async function testBackupAndCal(win, doc) {
     check(trash && trash.textContent.trim() === '🗑️ پاک کردن نمونه‌ها' &&
           trash.classList.contains('pbr') && trash.getAttribute('aria-label') === 'پاک کردن نمونه‌ها',
           'sample deletion has a red trash icon, label and accessible hint');
-
     /* --- the export payload carries the identity fields --- */
     const blobs = [];
     const OldBlob = win.Blob;
@@ -1432,7 +1287,6 @@ async function testBackupAndCal(win, doc) {
     [15, 16, 17, 18, 19].forEach(id => {
         check(o.params[String(id)] === undefined, 'the momentary id ' + id + ' stays out of the backup');
     });
-
     /* --- the complete backup keeps pending edits, raw bench rows and the
        last real LUT readback in the same schema. Export must not substitute a
        generated proposal for the board's readback. --- */
@@ -1454,13 +1308,12 @@ async function testBackupAndCal(win, doc) {
           'a complete backup keeps the raw bench calibration row');
     check(full.lut && full.lut.T[0].Y[1] === 220,
           'a complete backup keeps the last LUT read from the board');
-
     /* --- an out-of-range number from a hand-edited file is pulled back --- */
     check(win.eval('xclamp')(2, 99999) === 3000, 'an impossible gain from a file is clamped to its maximum');
     check(win.eval('xclamp')(0, -5) === 0, 'a negative offset from a file is clamped to zero');
-
-    /* --- applied values must replace stale visible calibration/filter boxes ---
-       [FA] مقدار اعمال‌شده باید کادرهای قدیمی کالیبراسیون/فیلتر را جایگزین کند. */
+    /*
+ * --- applied values must replace stale visible calibration/filter boxes ---
+ */
     win.D = { p: { 0: 17, 1: 19, 2: 1200, 3: 1300, 7: 5, 8: 20, 27: 14800 }, t: [] };
     win.PEND = {};
     /* The previous scenario may leave its last input focused. The production
@@ -1492,7 +1345,6 @@ async function testBackupAndCal(win, doc) {
     check(doc.getElementById('q0').value === '99',
           'an explicitly queued local edit is not overwritten by telemetry');
     win.PEND = {};
-
     /* --- calibration: fit once, then show a named batch summary --------- */
     const gain = 1200, off = 7, zeroMa = -120;
     const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
@@ -1526,17 +1378,16 @@ async function testBackupAndCal(win, doc) {
           'the old calibration result table and its per-row editors are gone');
     check(doc.getElementById('calst').textContent.indexOf('در انتظار تأیید کاربر') >= 0,
           'nothing is written until the user confirms the complete batch');
-
-    /* A sample-selection edit invalidates the previous fit immediately; the
-       old numbers must not remain usable until the user runs the fit again.
-       [FA] تغییر انتخاب نمونه باید همان لحظه برازش قبلی را باطل کند. */
+    /*
+ * A sample-selection edit invalidates the previous fit immediately; the
+ * old numbers must not remain usable until the user runs the fit again.
+ */
     win.eval('caluse')(0, false);
     check(win.CALR.length === 0 &&
           doc.getElementById('calst').textContent.indexOf('نتیجهٔ قبلی دیگر معتبر نیست') >= 0,
           'changing sample selection invalidates the old calibration result');
     win.eval('caluse')(0, true);
     win.eval('calrun')();
-
     /* --- v1.58: one confirmation, no per-parameter ticks --------------- */
     check(!doc.querySelector('[id^="calv"]') && !doc.querySelector('[id^="calk"]') &&
           !doc.querySelector('[id^="cald"]'),
@@ -1544,7 +1395,6 @@ async function testBackupAndCal(win, doc) {
     check(doc.getElementById('calmodal') && doc.getElementById('calmodalBody') &&
           doc.getElementById('calmodalBody').className.indexOf('calmodalbody') >= 0,
           'the one-shot confirmation dialog has a dedicated scrollable body');
-
     /* --- v1.60: a sample knows its scenario and can be excluded by hand --- */
     win.eval('calsmp')();
     check(doc.getElementById('calsl').innerHTML.indexOf('هر دو باتری') >= 0,
@@ -1594,7 +1444,6 @@ async function testBackupAndCal(win, doc) {
           fallbackCode.indexOf('current gain   ch1 = 1000 permille') >= 0 &&
           doc.getElementById('calst').textContent.indexOf('گین جریان باتری ۱') >= 0,
           'firmware tables use the existing board gain when its bench fit is rejected');
-
     const fitSamples = win.CALS;
     const boardBeforeNoFits = Object.assign({}, win.D.p);
     win.CALS = fitSamples.map(row => Object.assign({}, row,
@@ -1626,7 +1475,6 @@ async function testBackupAndCal(win, doc) {
           'a battery-2-only row is ignored when fitting battery 1');
     win.CALS.pop();
     win.eval('calrun')();
-
     /* Selecting only BAT2 narrows every green/red rule and the fit itself.
        The other battery is not allowed to turn the selected result red. */
     doc.getElementById('wcBAT1').checked = false;
@@ -1651,7 +1499,6 @@ async function testBackupAndCal(win, doc) {
     win.CALS = savedScopeSamples;
     ['BAT1', 'BAT2', 'BOTH'].forEach(k => { doc.getElementById('wc' + k).checked = true; });
     win.eval('calrun')();
-
     /* --- v1.61: the conditions are on the page, and a firmware snippet --- */
     win.eval('calchk')();
     const ruleRows = doc.querySelectorAll('#calck .ckr');
@@ -1679,7 +1526,6 @@ async function testBackupAndCal(win, doc) {
           'the snippet repeats the gain/offset the table was fitted with');
     check(doc.getElementById('calcd').style.display === 'block',
           'the snippet is shown on the page, ready to copy');
-
     /* --- v1.63: any point count is fine, but fewer than two is refused --- */
     const keepP = win.CALS;
     const noZeroRow = { sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, b1: 0, b2: 0,
@@ -1703,7 +1549,6 @@ async function testBackupAndCal(win, doc) {
           'a table with fewer than two points is refused, not emitted');
     win.CALS = keepP;
     win.eval('calrun')();
-
     /* --- v1.64: the panel proves the table is legal before emitting it --- */
     const keepN = win.CALS;
     const noisy = keepN.map(z => Object.assign({}, z));
@@ -1721,10 +1566,8 @@ async function testBackupAndCal(win, doc) {
           'the count axis comes out strictly increasing');
     win.CALS = keepN;
     win.eval('calrun')();
-
     win.CALS = keepN;
     win.eval('calrun')();
-
     /* --- v1.64: nothing may be written while the bench wizard owns the board --- */
     const Wv = win.eval('W'); Wv.run = true;
     win.eval('calapply')();
@@ -1732,11 +1575,10 @@ async function testBackupAndCal(win, doc) {
           'applying calibration is refused while the bench wizard is running');
     await win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
-
-    /* The successful path applies every valid calibration parameter in one
-       confirmation, then reconciles each local owner with board readback.
-       [FA] مسیر موفق باید همهٔ پارامترهای معتبر را با یک تأیید اعمال کند و
-       بعد هر مالک محلی را با readback برد هماهنگ کند. */
+    /*
+ * The successful path applies every valid calibration parameter in one
+ * confirmation, then reconciles each local owner with board readback.
+ */
     const applyId = 2;
     const applyRow = win.CALR.findIndex(r => Number(r[1]) === applyId);
     const oldSetv = win.eval('setv');
@@ -1777,7 +1619,6 @@ async function testBackupAndCal(win, doc) {
     check(doc.getElementById('calst').textContent.indexOf('✅') >= 0 &&
           doc.getElementById('calst').textContent.indexOf('readback') >= 0,
           'calibration apply reports successful board readback for the batch');
-
     /* The voltage helper must use the same awaited setter/readback path, and
        must refuse to calculate from a missing live voltage. */
     const vcalCalls = [];
@@ -1797,7 +1638,6 @@ async function testBackupAndCal(win, doc) {
     win.setv = oldSetv;
     win.xexp = oldXexp;
     win.PEND = {};
-
     /* v1.81: importing a settings file must stage locally, never call /s. */
     const importUrls = [];
     win.fetch = (u) => { importUrls.push(String(u)); return Promise.resolve({ ok: true }); };
@@ -1820,7 +1660,6 @@ async function testBackupAndCal(win, doc) {
           'restore tells the user that values are staged, not written');
     win.PEND = {};
     win.pbar();
-
     /* A full backup restores all three local layers together. The imported
        LUT is only retained for review; no endpoint is called and no LUT
        payload is staged as an automatic board write. */
@@ -1839,7 +1678,6 @@ async function testBackupAndCal(win, doc) {
           'full restore reports the imported LUT and keeps it review-only');
     win.PEND = {};
     win.pbar();
-
     /* --- v1.65: the live table shows only what the user needs --- */
     const heads = Array.from(doc.querySelectorAll('#wT th')).map(h => h.textContent);
     if (heads.length) {
@@ -1857,7 +1695,6 @@ async function testBackupAndCal(win, doc) {
           'no voltage column remains in the calibration wizard');
     check(win.eval('WSTC') === win.eval('WH').length - 1,
           'the status column index follows the header list instead of a hard-coded 12');
-
     /* --- v1.66 bench input mode: SWEEP and manual duty are exclusive ----- */
     const sweepToggle = doc.getElementById('wSw');
     const manualDuty = doc.getElementById('wManual');
@@ -1887,7 +1724,6 @@ async function testBackupAndCal(win, doc) {
     sweepToggle.onchange();
     check(JSON.stringify(win.eval('wsweep')()) === JSON.stringify([2, 4, 6]),
           'the SWEEP step field controls the generated duty sequence');
-
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
     const OldBlob2 = win.Blob;
@@ -1905,7 +1741,6 @@ async function testBackupAndCal(win, doc) {
     const kept = win.CALS.length;
     win.CALS = [];
     await win.eval('calimp')({ text: async () => JSON.stringify(sf) });
-
     /* --- noisy / too few samples must be refused, not applied --- */
     win.CALS = [{ r1: 100, r2: 100, b1: 50, b2: 50, ts: 1 }];
     win.eval('calrun')();
@@ -1913,23 +1748,16 @@ async function testBackupAndCal(win, doc) {
           'one sample is refused with a plain reason');
     win.CALS = [];
 }
-
-/* ==================== v1.56 panel-side rules / قوانین سمت پنل ==================== */
-
+/* ==================== v1.56 panel-side rules ==================== */
 /**
  * [EN] Cross-field relationships are safety advice, not a second firmware
  *      setter. The panel must preserve every typed value until POST and let
  *      the owning MCU setter clamp/reject it; a later readback is the source
  *      of truth. This test deliberately keeps the old adversarial combinations
  *      and proves that fixrules() neither mutates them nor invents a repair.
- * [FA] رابطه‌های بین‌فیلدی توصیهٔ ایمنی‌اند، نه setter دوم فرم‌افزار. پنل باید
- *      مقدار تایپ‌شده را تا POST نگه دارد و clamp/reject را به setter برد بسپارد؛
- *      مقدار readback بعدی مرجع است. ترکیب‌های قدیمی عمداً آزمایش می‌شوند تا
- *      معلوم شود fixrules نه مقدار را تغییر می‌دهد و نه اصلاح ساختگی می‌سازد.
  */
 function testFixRules(win, doc) {
     console.log('\nv1.56 advisory cross-field rules / قوانین توصیه‌ای بین‌فیلدی');
-
     const base = {};
     [40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,
      74,75,77,78,119,120,121,122].forEach(id => { base[id] = 0; });
@@ -1957,7 +1785,6 @@ function testFixRules(win, doc) {
         check(JSON.stringify(v) === before && fx.length === 0,
               'cross-field case ' + (i + 1) + ' remains typed and has no panel repair');
     });
-
     /* q27 is independent of absorbOver and OV cutoff. Both firmware hard-edge
        values must pass the panel preflight, including the requested 14.8 V. */
     win.PEND = {};
@@ -1976,7 +1803,6 @@ function testFixRules(win, doc) {
           'q27 has no cross-field veto when absorbOver or OV cutoff differs');
     win.PEND = {};
 }
-
 function testInputSchmittPanel(win, doc) {
     const savedP = Object.assign({}, win.D.p);
     const savedT = win.D.t.slice();
@@ -2006,25 +1832,16 @@ function testInputSchmittPanel(win, doc) {
     win.D.p = savedP; win.D.t = savedT; win.eval('ASB.vinArmed = false');
     win.pundo();
 }
-
-/* ==================== Runner / اجراکننده ==================== */
-
+/* ==================== Runner ==================== */
 const dom = loadPanel();
 const win = dom.window;
-
-/* ==================== v1.66 direct LUT push / ارسال مستقیم جدول ==================== */
-
+/* ==================== v1.66 direct LUT push ==================== */
 /**
  * [EN] The push is a handshake, not a hope: the panel CRC32s exactly what it
  *      sends, refuses to call a mismatched or rejected push a success, and
  *      never offers the reboot unless the board echoed the same CRC. The
  *      build-time route must still be there - the user asked to keep it.
- * [FA] ارسال یک «دست‌دادن» است نه امید: پنل دقیقاً همان بایت‌هایی را که
- *      می‌فرستد CRC می‌گیرد، ارسال ردشده یا ناهمخوان را موفق اعلام نمی‌کند و
- *      تا وقتی برد همان CRC را پس نداده دکمهٔ ریست را پیشنهاد نمی‌دهد. راه
- *      بیلد هم باید سر جایش بماند - خواستهٔ کاربر.
  */
-
 /* v2 NAK: the board refused a SET_PARAM. The panel must say so, name the id,
    and clear the warning once the link reports no refusal. */
 function testNakWarning(win, doc) {
@@ -2038,10 +1855,8 @@ function testNakWarning(win, doc) {
     check(w.innerHTML === '' && w.className.indexOf('warn') < 0,
           'with no refusal reported, the NAK warning is cleared');
 }
-
 async function testLutPush(win, doc) {
     console.log('\nv1.66 direct LUT push / ارسال مستقیم جدول به برد');
-
     const K = win.eval('K_MA');
     const gain = 1200, off = 7, zeroMa = -120;
     const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
@@ -2053,7 +1868,6 @@ async function testLutPush(win, doc) {
     }
     win.D = { p: { 0: off, 1: off, 2: gain, 3: gain, 4: 40, 5: 50, 6: 60 }, t: [], on: 1 };
     win.eval('calrun')();
-
     const packed = win.eval('lpack')();
     check(!packed.bad, 'a clean sample set packs into a sendable table');
     check(packed.T[0].Y[0] === 0 && packed.T[0].Y[packed.T[0].Y.length - 1] > 0,
@@ -2067,7 +1881,6 @@ async function testLutPush(win, doc) {
           'the CRC the board will check is the last field of the body');
     check(packed.T[0].X.length <= 24 && packed.T[1].X.length <= 24,
           'the panel never offers to send more points than the board can store');
-
     /* The CRC must be the standard reflected CRC32 of [n][8 B per point]. */
     const bytes = [];
     packed.T.forEach(t => {
@@ -2078,7 +1891,6 @@ async function testLutPush(win, doc) {
     });
     check(win.eval('lcrc')(bytes) === packed.crc,
           'the CRC covers the point bytes in the order the board rebuilds them');
-
     /* --- a matching handshake is a success and offers the reboot --- */
     const calls = [];
     const postedBodies = [];
@@ -2134,7 +1946,6 @@ async function testLutPush(win, doc) {
     };
     const ackOk = { st: 3, s: 0, n1: packed.T[0].X.length, n2: packed.T[1].X.length,
                     crc: packed.crc, sent: packed.crc, age: 10, n: 3 };
-
     win.PEND = { 0: off + 1 };
     calls.length = 0;
     await win.eval('lsend')(1);
@@ -2144,9 +1955,9 @@ async function testLutPush(win, doc) {
     check(calls.length === 0, 'a pending calibration conflict does not even start LUT readback');
     win.PEND = {};
     win.pbar();
-
-    /* [EN] Missing DMM voltages are optional for the current LUT.
-       [FA] نبودن ولتاژ مولتی‌متر نباید جلوی ساخت جدول جریان را بگیرد. */
+    /*
+ * [EN] Missing DMM voltages are optional for the current LUT.
+ */
     const completeSamples = win.CALS;
     const boardInputOffset = win.D.p[4];
     win.D.p[4] = null;
@@ -2159,7 +1970,6 @@ async function testLutPush(win, doc) {
     check([4, 5, 6].every(id => noVoltagePack.cal.selected[id] === false &&
                                noVoltagePack.cal.voltage[id - 4] === oldVoltageOffsets[id - 4]),
           'unfitted voltage offsets default to preserve the exact board values');
-
     calls.length = 0;
     win.pmConfirm = () => false;
     win.fetch = stub(ackOk);
@@ -2205,7 +2015,6 @@ async function testLutPush(win, doc) {
     win.D.p[4] = boardInputOffset;
     win.CALS = completeSamples;
     win.eval('calrun')();
-
     /* Missing current fits also preserve the live current calibration. */
     const rejectedCurrent = win.CALR.find(row => Number(row[1]) === 2);
     const fittedBoardGain = win.D.p[2];
@@ -2260,7 +2069,6 @@ async function testLutPush(win, doc) {
     win.eval('lcancelpending')();
     win.D.p[2] = fittedBoardGain;
     win.eval('calrun')();
-
     /* The operator accepts the push but declines the reboot for now. */
     win.pmConfirm = (m) => String(m).indexOf('ریست شود') < 0;
     win.fetch = stub(ackOk);
@@ -2298,7 +2106,6 @@ async function testLutPush(win, doc) {
           'battery 2 is compared point by point and a changed row is marked');
     check(calls.filter(c => c.indexOf('/lut/reset') >= 0).length === 0,
           'declining the reboot leaves the board running on the table it just stored');
-
     /* Same push, reboot accepted. */
     calls.length = 0;
     win.pmConfirm = () => true;
@@ -2309,7 +2116,6 @@ async function testLutPush(win, doc) {
           'the confirmed reboot is sent so every module starts on the new table');
     check(calls.filter(c => c === 'GET /t').length >= 1,
           'after reset the panel gets a fresh calibration telemetry readback before declaring persistence');
-
     /* --- the read-only board view is useful on its own ------------------- */
     calls.length = 0;
     readPhase = 0;
@@ -2326,7 +2132,6 @@ async function testLutPush(win, doc) {
           doc.getElementById('lutcmp').textContent.indexOf('telemetry معتبر STM32') >= 0 &&
           doc.getElementById('lutcmp').textContent.indexOf('ID 6') >= 0,
           'the standalone board view explains the source of calibration readback and names every id');
-
     /* --- a CRC that does not match is NOT a success and reboots nothing --- */
     calls.length = 0;
     win.fetch = stub({ st: 3, s: 0, n1: 4, n2: 3, crc: (packed.crc ^ 1) >>> 0, sent: packed.crc, age: 10, n: 3 });
@@ -2338,14 +2143,12 @@ async function testLutPush(win, doc) {
           'and the user is told the previous table is untouched');
     check(calls.filter(c => c.indexOf('/lut/reset') >= 0).length === 0,
           'nothing reboots the board after a failed push');
-
     /* --- a board-side refusal is reported with its reason --- */
     win.fetch = stub({ st: 3, s: 5, n1: 0, n2: 0, crc: 0, sent: packed.crc, age: 10, n: 3 });
     await win.eval('lsend')();
     await applyPending('the board-refused LUT transaction');
     check(doc.getElementById('calst').textContent.indexOf('جدول روی برد افت داشت') >= 0,
           'the board status code is translated into a plain reason');
-
     /* A successful ACK without a value readback is not promoted to success. */
     readMode = 'unavailable';
     /* A rejected previous transaction did not perform its post-commit read,
@@ -2361,17 +2164,14 @@ async function testLutPush(win, doc) {
     check(doc.getElementById('lutcmp').textContent.indexOf('بازخوانی ناموفق') >= 0,
           'the table marks unavailable post-commit values visibly');
     readMode = 'good';
-
-    /* --- zero points are a valid clear, not an unchanged result ---------
-       [EN] A non-zero active override followed by a zero-point readback is
-            a real deletion of that override. A malformed/empty source table
-            is also intentionally encoded as zero points for that channel;
-            this test makes the destructive meaning visible instead of
-            claiming that the channel was not sent.
-       [FA] بازخوانی صفرنقطه‌ای پس از override غیرصفر، حذف واقعی override
-            است و نباید «بدون تغییر» نمایش داده شود. جدول نامعتبر/خالی نیز
-            عمداً برای آن کانال صفرنقطه‌ای رمز می‌شود؛ تست معنای حذف را
-            آشکار می‌کند تا پیام دروغین «فرستاده نشد» برنگردد. */
+    /*
+ * --- zero points are a valid clear, not an unchanged result ---------
+ * [EN] A non-zero active override followed by a zero-point readback is
+ * a real deletion of that override. A malformed/empty source table
+ * is also intentionally encoded as zero points for that channel;
+ * this test makes the destructive meaning visible instead of
+ * claiming that the channel was not sent.
+ */
     {
         const clear = win.eval('lpost')([100, 200], null, null, true, true, '');
         check(clear.c === 'changed' && clear.t.indexOf('تغییر کرد و تأیید شد') >= 0,
@@ -2379,7 +2179,6 @@ async function testLutPush(win, doc) {
         const extra = win.eval('lpost')([100, 200], null, [100, 200], true, true, '');
         check(extra.c === 'bad' && extra.t.indexOf('اضافه') >= 0,
               'a zero-point proposal with a non-zero post-readback is a mismatch');
-
         const savedSamples = win.CALS;
         win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
         const partial = win.eval('lpack')();
@@ -2389,7 +2188,6 @@ async function testLutPush(win, doc) {
         check(partial.msg.join(' ').indexOf('override قبلی را حذف می‌کند') >= 0,
               'the invalid-channel warning says zero points remove the old override');
         win.CALS = savedSamples;
-
         const proposed = { bad: false, T: [{ X: [], Y: [] }, { X: [], Y: [] }], body: 'zero' };
         const before = { ready: true, T: [{ X: [100], Y: [200] }, { X: [300], Y: [400] }] };
         const after = { ready: true, T: [{ X: [], Y: [] }, { X: [], Y: [] }] };
@@ -2397,14 +2195,12 @@ async function testLutPush(win, doc) {
         check(doc.getElementById('lutcmp').textContent.indexOf('تغییر کرد و تأیید شد') >= 0,
               'the DOM audit shows the non-zero to zero-point transition as confirmed');
     }
-
-    /* --- one battery update carries the other battery unchanged ---------
-       [EN] This is the regression the original all-table sender missed:
-            changing battery 1 must send its proposed gain/offset and LUT,
-            while battery 2 is copied from the fresh board readback.
-       [FA] این رگرسیون مسیر قبلی است: تغییر باتری ۱ باید گین/آفست و LUT
-            پیشنهادی خودش را بفرستد، اما باتری ۲ از readback تازه بدون تغییر
-            حمل شود. */
+    /*
+ * --- one battery update carries the other battery unchanged ---------
+ * [EN] This is the regression the original all-table sender missed:
+ * changing battery 1 must send its proposed gain/offset and LUT,
+ * while battery 2 is copied from the fresh board readback.
+ */
     {
         const savedSamples = win.CALS;
         win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
@@ -2445,7 +2241,6 @@ async function testLutPush(win, doc) {
               'battery 2 stays in the transaction with exactly its fresh readback point count');
         check(doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') < 0,
               'the unselected battery does not create a status or warning in the selected-battery audit');
-
         /* A calibration endpoint failure is a hard stop: no LUT POST may
            follow a missing/mismatched gain or offset readback. */
         win.CALR[idxOff1][3] = Number(win.D.p[0]) + 1;
@@ -2467,7 +2262,6 @@ async function testLutPush(win, doc) {
         readBefore = packed.T.map(t => ({ X: t.X.slice(), Y: t.Y.slice() }));
         readPhase = 0;
     }
-
     /* --- the wizard still owns the board while it runs --- */
     const Wv = win.eval('W'); Wv.run = true;
     await win.eval('lsend')();
@@ -2475,7 +2269,6 @@ async function testLutPush(win, doc) {
           'pushing a table is refused while the bench wizard owns the board');
     Wv.run = false;
     win.pmConfirm = oldConfirm;
-
     /* --- option (c) is still there: generate the header and rebuild --- */
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('CAL_Current1LutCounts') >= 0,
@@ -2491,7 +2284,6 @@ async function testLutPush(win, doc) {
           doc.getElementById('calst').compareDocumentPosition(doc.getElementById('lutcmp')) & 4,
           'calibration and LUT messages live in a themed RTL status box before the readback card');
 }
-
 function testWifiPowerSaveTab(win, doc) {
     const s5Btn = doc.querySelector('#sbt button[data-s="5"]');
     const s5Box = doc.getElementById('s5');
@@ -2513,7 +2305,6 @@ function testWifiPowerSaveTab(win, doc) {
           Number(q146.value) === 20,
           'wdef() restores factory defaults 1800000 ms, 60000 ms, 120000 ms, and 20%');
     win.pundo();
-
     /* pendRestore() must restore numeric parameter IDs from localStorage, and
        draw(D) must not clobber pending checkbox states ib117 / db127. */
     win.localStorage.setItem('changeover-panel-pending-v1', JSON.stringify({ '25': 700, '117': 0, '127': 1, '157': 0 }));
@@ -2539,8 +2330,6 @@ function testWifiPowerSaveTab(win, doc) {
           'draw(D) preserves pending ib117 and db127 checkbox states until sent or undone');
     win.pundo();
 }
-
-
 setTimeout(async () => {
     const doc = win.document;
     console.log('ESP panel scenario-card tests - the real generated page in a DOM');

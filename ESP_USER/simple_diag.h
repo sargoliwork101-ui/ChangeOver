@@ -1,11 +1,7 @@
-/* simple_diag.h - مدیریت دیاگ و تاریخچه نمودار با محور زمان - ۱ روزه/۷ روزه/۱ ماهه/۳ ماهه
-   فقط فارسی - ذخیره کامل Vin/Vpack/Pct/Time برای همه بازه‌ها */
-
 #include <LittleFS.h>
-
-/* ==================== خواندن آرایهٔ عددی از JSON ====================
-   از موقعیت کاراکتر «[» شروع می‌کند و تا «]» عددها را می‌خواند. تعداد
-   عددهای خوانده‌شده را برمی‌گرداند؛ آرایهٔ خروجی پر می‌شود. */
+/*
+ * ==================== JSON ====================
+ */
 static uint8_t func__Simple_JsonReadNumbers(const String &string__content,
                                             int32_t int32_t__startPos,
                                             uint32_t *uint32_t__ptr_out,
@@ -14,28 +10,22 @@ static uint8_t func__Simple_JsonReadNumbers(const String &string__content,
     uint8_t uint8_t__count = 0u;
     int32_t int32_t__pos = int32_t__startPos;
     int32_t int32_t__length = (int32_t)string__content.length();
-
     if (int32_t__startPos < 0) return 0u;
-
-    /* از موقعیت شروع تا اولین «[» جلو برو (جای شروع می‌تواند روی نام کلید باشد) */
     while ((int32_t__pos < int32_t__length) && (string__content.charAt((unsigned int)int32_t__pos) != '['))
     {
         int32_t__pos++;
     }
-
     while ((int32_t__pos < int32_t__length) && (uint8_t__count < uint8_t__maxCount))
     {
         int32_t int32_t__endPos;
         String string__value;
         char char__ch = string__content.charAt((unsigned int)int32_t__pos);
-
         if ((char__ch == '[') || (char__ch == ','))
         {
             int32_t__pos++;
             continue;
         }
         if (char__ch == ']') break;
-
         int32_t__endPos = int32_t__pos;
         while (int32_t__endPos < int32_t__length)
         {
@@ -43,7 +33,6 @@ static uint8_t func__Simple_JsonReadNumbers(const String &string__content,
             if ((char__inner == ',') || (char__inner == ']')) break;
             int32_t__endPos++;
         }
-
         string__value = string__content.substring(int32_t__pos, int32_t__endPos);
         string__value.trim();
         if (string__value.length() > 0u)
@@ -55,23 +44,16 @@ static uint8_t func__Simple_JsonReadNumbers(const String &string__content,
     }
     return uint8_t__count;
 }
-
-/* ==================== ذخیرهٔ پارامترهای خود برد ====================
-   پارامترهایی که پنل از برد خوانده (۷۴/۷۵ و چشمک‌ها) روی فایل می‌مانند تا
-   بعد از قطع برق، تا رسیدن جواب برد، نمایش با عددهای درست کار کند. */
 static void func__Simple_ParamsSave(void)
 {
     uint8_t uint8_t__i;
-
     if (!BOOL__G__FsOk)
     {
         BOOL__G__BoardParamsDirty = false;
         return;
     }
-
     File file__f = LittleFS.open(SIMPLE_PARAMS_FILE, "w");
     if (!file__f) return;
-
     file__f.print("{\"pv\":[");
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_PARAM_UI_COUNT; uint8_t__i++)
     {
@@ -85,33 +67,25 @@ static void func__Simple_ParamsSave(void)
     file__f.close();
     BOOL__G__BoardParamsDirty = false;
 }
-
-/* ==================== خواندن پارامترهای خود برد از فایل ==================== */
 static void func__Simple_ParamsLoad(void)
 {
     uint32_t uint32_t__values[SIMPLE_PARAM_UI_COUNT * 2u];
     uint8_t uint8_t__read;
     uint8_t uint8_t__i;
-
     if (!BOOL__G__FsOk) return;
     if (!LittleFS.exists(SIMPLE_PARAMS_FILE)) return;
-
     File file__f = LittleFS.open(SIMPLE_PARAMS_FILE, "r");
     if (!file__f) return;
     String string__content = file__f.readString();
     file__f.close();
-
     uint8_t__read = func__Simple_JsonReadNumbers(string__content,
         string__content.indexOf("\"pv\":["), uint32_t__values, (uint8_t)(SIMPLE_PARAM_UI_COUNT * 2u));
-
     for (uint8_t__i = 0u; uint8_t__i + 1u < uint8_t__read; uint8_t__i += 2u)
     {
         func__Simple_StoreBoardParam((uint8_t)uint32_t__values[uint8_t__i], uint32_t__values[uint8_t__i + 1u]);
     }
-    BOOL__G__BoardParamsDirty = false;   /* چیز تازه‌ای نسبت به فایل نیست */
+    BOOL__G__BoardParamsDirty = false;
 }
-
-/* ==================== افزودن نقطه به نمودار کوتاه ==================== */
 static void func__Simple_ChartAdd(uint32_t uint32_t__vin, uint32_t uint32_t__vpack, uint32_t uint32_t__pct, uint32_t uint32_t__imb)
 {
     UINT32_T__G__ChartVin[UINT8_T__G__ChartIndex] = uint32_t__vin;
@@ -124,10 +98,7 @@ static void func__Simple_ChartAdd(uint32_t uint32_t__vin, uint32_t uint32_t__vpa
         UINT8_T__G__ChartCount++;
     }
 }
-
-/* ==================== افزودن نقطه با زمان - درصد+Vin+Vpack برای ۳ ماه با ریت کم ==================== */
-/* ==================== افزودن یک نقطه به یک بازهٔ نمودار ====================
-   قدیمی‌ترین نقطه جای جدیدترین را می‌گیرد (حلقهٔ چرخشی). */
+/* ==================== - +Vin+Vpack ==================== */
 static void func__Simple_ChartPushRange(uint32_t *uint32_t__ptr_pct,
                                         uint32_t *uint32_t__ptr_vin,
                                         uint32_t *uint32_t__ptr_vpack,
@@ -138,54 +109,37 @@ static void func__Simple_ChartPushRange(uint32_t *uint32_t__ptr_pct,
                                         uint32_t uint32_t__vpack)
 {
     uint8_t uint8_t__slot = *uint8_t__ptr_index;
-
-    /* زمان هرگز عقب نمی‌افتد: اگر ساعت پنل بعد از یک قطع برق بدون ذخیره عقب
-       رفته باشد، نقطه‌ای با زمان قدیمی‌تر از آخرین نقطه ثبت نمی‌شود تا محور
-       زمان همیشه صعودی بماند (چند دقیقه بعد خودش جبران می‌شود). */
     if (*uint8_t__ptr_count > 0u)
     {
         uint8_t uint8_t__newestSlot = (uint8_t)((*uint8_t__ptr_index + uint8_t__size - 1u) % uint8_t__size);
         if (uint32_t__nowSec <= uint32_t__ptr_time[uint8_t__newestSlot]) return;
     }
-
-    BOOL__G__ChartsDirty = true;   /* نمودار عوض شد - روزی یک‌بار ذخیره می‌شود */
+    BOOL__G__ChartsDirty = true;
     uint32_t__ptr_pct[uint8_t__slot] = uint32_t__pct;
     uint32_t__ptr_vin[uint8_t__slot] = uint32_t__vin;
     uint32_t__ptr_vpack[uint8_t__slot] = uint32_t__vpack;
     uint32_t__ptr_time[uint8_t__slot] = uint32_t__nowSec;
-
     *uint8_t__ptr_index = (uint8_t)((uint8_t__slot + 1u) % uint8_t__size);
     if (*uint8_t__ptr_count < uint8_t__size)
     {
         *uint8_t__ptr_count = (uint8_t)(*uint8_t__ptr_count + 1u);
     }
 }
-
-/* ==================== خواندن زمان آخرین نقطهٔ ثبت‌شده در یک بازهٔ نمودار ==================== */
 static uint32_t func__Simple_ChartLastSec(const uint32_t *uint32_t__ptr_time,
                                           uint8_t uint8_t__count,
                                           uint8_t uint8_t__index,
                                           uint8_t uint8_t__size)
 {
     uint8_t uint8_t__newestSlot;
-
     if (uint8_t__count == 0u) return 0u;
     uint8_t__newestSlot = (uint8_t)((uint8_t__index + uint8_t__size - 1u) % uint8_t__size);
     return uint32_t__ptr_time[uint8_t__newestSlot];
 }
-
-/* ==================== افزودن نقطه زمان‌دار به هر چهار بازه ====================
-   زمان از «ساعت پنل» (همگام با ساعت میکرو STM32) می‌آید؛ فاصلهٔ نقاط با ثانیهٔ
-   واقعی سنجیده می‌شود تا در چرخهٔ خاموش/روشن کاهش مصرف باتری هم نقاط ۱ روزه،
-   ۷ روزه، ۱ ماهه و ۳ ماهه بدون ریست شدن تایمر ثبت شوند. */
 static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t__vin, uint32_t uint32_t__vpack)
 {
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
     uint32_t uint32_t__nowMs = (uint32_t)millis();
-
-    if (uint32_t__nowSec == 0u) return;   /* ساعت تنظیم نشده */
-
-    /* ۱ روزه - ۲۴ نقطه: اول هر ۱ دقیقه (۶۰ ثانیه) تا پر شدن، بعد هر ۱ ساعت (۳۶۰۰ ثانیه) */
+    if (uint32_t__nowSec == 0u) return;
     {
         uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) ? 60u : 3600u;
         uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
@@ -203,8 +157,6 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
             UINT32_T__G__Last1D_Ms = uint32_t__nowMs;
         }
     }
-
-    /* ۷ روزه - ۲۸ نقطه: اول هر ۵ دقیقه (۳۰۰ ثانیه)، بعد هر ۶ ساعت (۲۱۶۰۰ ثانیه) */
     {
         uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) ? 300u : 21600u;
         uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
@@ -222,8 +174,6 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
             UINT32_T__G__Last7D_Ms = uint32_t__nowMs;
         }
     }
-
-    /* ۱ ماهه - ۳۰ نقطه: اول هر ۱۵ دقیقه (۹۰۰ ثانیه)، بعد هر ۱ روز (۸۶۴۰۰ ثانیه) */
     {
         uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) ? 900u : 86400u;
         uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
@@ -241,8 +191,6 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
             UINT32_T__G__Last1M_Ms = uint32_t__nowMs;
         }
     }
-
-    /* ۳ ماهه - ۹۰ نقطه: اول هر ۳۰ دقیقه (۱۸۰۰ ثانیه)، بعد هر ۱ روز (۸۶۴۰۰ ثانیه) */
     {
         uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) ? 1800u : 86400u;
         uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
@@ -261,18 +209,13 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
         }
     }
 }
-
-/* ==================== ثبت محلی خطا - حتی اگر STM32 نفرستد ==================== */
+/* ==================== - STM32 ==================== */
 static void func__Simple_LocalRecordFault(uint32_t uint32_t__faultMask, uint32_t uint32_t__vin, uint32_t uint32_t__vpack, uint32_t uint32_t__vLow, uint32_t uint32_t__vHigh)
 {
     if (uint32_t__faultMask == 0u) return;
     uint32_t uint32_t__newBits = uint32_t__faultMask & (uint32_t)(~UINT32_T__G__LastLocalFaultMask);
     if (uint32_t__newBits == 0u) return;
-
-    /* مهر زمان از ساعت پنل؛ اگر ساعت تنظیم نشده باشد صفر می‌ماند و در رابط
-       کاربری «زمان نامعلوم» نشان داده می‌شود (زمان الکی ثبت نمی‌کنیم) */
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
-
     uint8_t uint8_t__i;
     for (uint8_t__i = SIMPLE_DIAG_MAX_ERRORS - 1u; uint8_t__i > 0u; uint8_t__i--)
     {
@@ -290,20 +233,15 @@ static void func__Simple_LocalRecordFault(uint32_t uint32_t__faultMask, uint32_t
     BOOL__G__DiagDirty = true;
     BOOL__G__DiagValid = true;
 }
-
 static void func__Simple_LocalRecordPower(bool bool__inputPresent)
 {
-    /* مهر زمان از ساعت پنل؛ اگر ساعت تنظیم نشده باشد صفر می‌ماند و در رابط
-       کاربری «زمان نامعلوم» نشان داده می‌شود (زمان الکی ثبت نمی‌کنیم) */
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
-
     if (!BOOL__G__LastLocalInputValid)
     {
         BOOL__G__LastLocalInputPresent = bool__inputPresent;
         BOOL__G__LastLocalInputValid = true;
         return;
     }
-
     if (BOOL__G__LastLocalInputPresent && !bool__inputPresent)
     {
         if (!BOOL__G__LocalPowerOffActive)
@@ -335,35 +273,22 @@ static void func__Simple_LocalRecordPower(bool bool__inputPresent)
     }
     BOOL__G__LastLocalInputPresent = bool__inputPresent;
 }
-
-/* ==================== تیک نمودار هر 5 ثانیه + ثبت محلی خطا/برق ==================== */
 static void func__Simple_ChartTick(void)
 {
     uint32_t uint32_t__now = (uint32_t)millis();
     if ((uint32_t__now - UINT32_T__G__LastChartMs) < 5000u) return;
     UINT32_T__G__LastChartMs = uint32_t__now;
-
-    /* داده فقط وقتی تازه است که هم قاب دیده شده باشد و هم از آخرین قاب کمتر از
-       مهلت لینک گذشته باشد. اگر داده تازه نیست، عددهای قبلی تکرار نمی‌شوند:
-       جای آن‌ها صفر با زمان همین لحظه ثبت می‌شود تا جای بی‌داده روی نمودار
-       معلوم بماند. زمان از ساعت پنل می‌آید؛ ساعت نامعتبر زمان جعلی نمی‌سازد. */
     bool bool__tlmFresh = (BOOL__G__TlmSeen != false) &&
         (((uint32_t)(uint32_t__now - UINT32_T__G__LastTlmMs)) <= SIMPLE_LINK_TIMEOUT_MS);
-
     uint32_t uint32_t__vin = 0u;
     uint32_t uint32_t__vpack = 0u;
     uint32_t uint32_t__pct = 0u;
     uint32_t uint32_t__imb = 0u;
-
     if (bool__tlmFresh)
     {
         uint32_t__vin = UINT32_T__G__TlmField[14];
-        uint32_t__vpack = UINT32_T__G__TlmField[15]; /* برد اصلی درصد را از V24 می‌گیرد - چشمک سبز - نه جمع Vlow+Vhigh */
+        uint32_t__vpack = UINT32_T__G__TlmField[15];
         uint32_t__imb = UINT32_T__G__TlmField[25];
-
-        /* درصد فول/خالی از پارامترهای خود برد خوانده می‌شود (۷۴/۷۵)، همان‌هایی که
-           چراغ سبز برد با آن‌ها چشمک می‌زند؛ و مثل خود برد اول با سقف نگاشت شارژ
-           (۱۲۰) گیره می‌شود. */
         uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
         uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
         uint32_t uint32_t__vMaxChgMv = func__Simple_BoardParam(SIMPLE_PARAM_CHG_PCT_VMAX_MV);
@@ -381,14 +306,9 @@ static void func__Simple_ChartTick(void)
             }
         }
     }
-
     func__Simple_ChartAdd(uint32_t__vin, uint32_t__vpack, uint32_t__pct, uint32_t__imb);
     func__Simple_ChartAddTimed(uint32_t__pct, uint32_t__vin, uint32_t__vpack);
-
-    /* صفرِ بی‌داده فقط برای نمودار است؛ خطا و قطع برق محلی فقط از دادهٔ تازه
-       ساخته می‌شوند تا سکوت برد رویداد جعلی نسازد. */
     if (!bool__tlmFresh) return;
-
     uint32_t uint32_t__vLow = UINT32_T__G__TlmField[17];
     uint32_t uint32_t__vHigh = UINT32_T__G__TlmField[18];
     uint32_t uint32_t__faultMask = UINT32_T__G__TlmField[19];
@@ -397,15 +317,11 @@ static void func__Simple_ChartTick(void)
         func__Simple_LocalRecordFault(uint32_t__faultMask, uint32_t__vin, uint32_t__vpack, uint32_t__vLow, uint32_t__vHigh);
     }
     UINT32_T__G__LastLocalFaultMask = uint32_t__faultMask;
-
     bool bool__inputPresent = true;
-    /* b0 یعنی «قاب معتبر» است نه ورودی؛ ورودی وصل = b1، پس نبودنش یعنی قطع */
     if ((UINT8_T__G__TlmFlags & 0x02u) == 0u) bool__inputPresent = false;
     if (uint32_t__vin < 18000u) bool__inputPresent = false;
     func__Simple_LocalRecordPower(bool__inputPresent);
 }
-
-/* ==================== ساخت فریم زمان ==================== */
 static void func__Simple_SendTimeSync(uint32_t uint32_t__unixSec)
 {
     uint8_t UINT8_T__A__Payload[4];
@@ -413,7 +329,6 @@ static void func__Simple_SendTimeSync(uint32_t uint32_t__unixSec)
     UINT8_T__A__Payload[1] = (uint8_t)((uint32_t__unixSec >> 8) & 0xFFu);
     UINT8_T__A__Payload[2] = (uint8_t)((uint32_t__unixSec >> 16) & 0xFFu);
     UINT8_T__A__Payload[3] = (uint8_t)((uint32_t__unixSec >> 24) & 0xFFu);
-
     uint8_t UINT8_T__A__Frame[16];
     uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
     UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
@@ -436,8 +351,6 @@ static void func__Simple_SendTimeSync(uint32_t uint32_t__unixSec)
     UINT8_T__A__Frame[11] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
     (void)Serial.write(UINT8_T__A__Frame, 12u);
 }
-
-/* ==================== درخواست دیاگ ==================== */
 static void func__Simple_SendDiagReq(void)
 {
     uint8_t UINT8_T__A__Frame[9];
@@ -469,11 +382,6 @@ static void func__Simple_SendDiagReq(void)
     }
     UINT32_T__G__LastDiagReqMs = (uint32_t)millis();
 }
-
-/* ==================== درخواست پارامترهای برد ====================
-   درصد فول/خالی باتری و زمان‌بندی چشمک، پارامترهای خود برد هستند؛ این
-   درخواست آن‌ها را می‌خواند تا پنل با همان عددهایی حساب کند که چراغ سبز
-   برد با آن‌ها چشمک می‌زند. */
 static void func__Simple_SendGetParams(void)
 {
     uint8_t UINT8_T__A__Frame[8];
@@ -493,8 +401,6 @@ static void func__Simple_SendGetParams(void)
     (void)Serial.write(UINT8_T__A__Frame, 8u);
     UINT32_T__G__LastParamsReqMs = (uint32_t)millis();
 }
-
-/* ==================== ذخیره تاریخچه شارژ ==================== */
 #ifndef SIMPLE_CHARGE_HISTORY_FILE
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
 #endif
@@ -526,7 +432,6 @@ static void func__Simple_ChargeHistorySave(void)
     file__f.close();
     BOOL__G__ChargeHistDirty = false;
 }
-
 static void func__Simple_ChargeHistoryLoad(void)
 {
     UINT8_T__G__ChargeHistoryCount = 0u;
@@ -576,14 +481,12 @@ static void func__Simple_ChargeHistoryLoad(void)
         int32_t int32_t__objEnd = string__content.indexOf("}", int32_t__tsEnd);
         if (int32_t__objEnd < 0) int32_t__objEnd = string__content.length();
         String string__ts = string__content.substring(int32_t__tsPos, int32_t__tsEnd);
-
         int32_t int32_t__chPos = string__content.indexOf("\"ch\":", int32_t__tsEnd);
         if (int32_t__chPos < 0) break;
         int32_t__chPos += 5;
         int32_t int32_t__chEnd = string__content.indexOf(",", int32_t__chPos);
         if (int32_t__chEnd < 0 || int32_t__chEnd > int32_t__objEnd) int32_t__chEnd = int32_t__objEnd;
         String string__ch = string__content.substring(int32_t__chPos, int32_t__chEnd);
-
         uint32_t uint32_t__duration = 0u;
         int32_t int32_t__durPos = string__content.indexOf("\"dur\":", int32_t__chEnd);
         if (int32_t__durPos >= 0 && int32_t__durPos < int32_t__objEnd)
@@ -591,12 +494,8 @@ static void func__Simple_ChargeHistoryLoad(void)
             int32_t__durPos += 6;
             uint32_t__duration = (uint32_t)string__content.substring(int32_t__durPos, int32_t__objEnd).toInt();
         }
-
         int32_t__pos = int32_t__objEnd;
-        /* مهر زمانی غیرواقعی (ثانیه از بوت در فایل‌های قدیمی) وارد تاریخچه
-           نمی‌شود تا محور زمان همه‌جا ثانیهٔ یونیکس باشد */
         if ((uint32_t)string__ts.toInt() < SIMPLE_TIME_VALID_MIN) continue;
-
         SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__found].timestamp = (uint32_t)string__ts.toInt();
         SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__found].channel = (uint8_t)string__ch.toInt();
         SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__found].durationSec = uint32_t__duration;
@@ -604,17 +503,12 @@ static void func__Simple_ChargeHistoryLoad(void)
     }
     UINT8_T__G__ChargeHistoryCount = uint8_t__found;
 }
-
-/* ==================== نوشتن یک آرایهٔ نمودار روی فایل ====================
-   همیشه از قدیمی‌ترین نقطه به جدیدترین نوشته می‌شود تا ترتیب فایل
-   «زمانی» باشد و بازخوانی ساده بماند. */
 static void func__Simple_ChartArraySave(File &file__f, const char *char__ptr_name,
                                         const uint32_t *uint32_t__ptr_values,
                                         uint8_t uint8_t__count, uint8_t uint8_t__index,
                                         uint8_t uint8_t__size)
 {
     uint8_t uint8_t__i;
-
     file__f.print("\"");
     file__f.print(char__ptr_name);
     file__f.print("\":[");
@@ -626,8 +520,6 @@ static void func__Simple_ChartArraySave(File &file__f, const char *char__ptr_nam
     }
     file__f.print("]");
 }
-
-/* ==================== نوشتن یک بازهٔ نمودار ==================== */
 static void func__Simple_ChartRangeSave(File &file__f, const char *char__ptr_tag,
                                         const uint32_t *uint32_t__ptr_pct,
                                         const uint32_t *uint32_t__ptr_vin,
@@ -650,8 +542,6 @@ static void func__Simple_ChartRangeSave(File &file__f, const char *char__ptr_tag
     func__Simple_ChartArraySave(file__f, "time", uint32_t__ptr_time, uint8_t__count, uint8_t__index, uint8_t__size);
     file__f.print("}");
 }
-
-/* ==================== ذخیرهٔ نمودارها - هر چهار بازه (روزی یک‌بار در صورت تغییر) ==================== */
 static void func__Simple_ChartsSave(void)
 {
     if (!BOOL__G__ChartsDirty) return;
@@ -662,7 +552,6 @@ static void func__Simple_ChartsSave(void)
     }
     File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "w");
     if (!file__f) return;
-
     file__f.print("{");
     func__Simple_ChartRangeSave(file__f, "1d",
         UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin, UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
@@ -687,8 +576,6 @@ static void func__Simple_ChartsSave(void)
         UINT32_T__G__LastChartSaveSec = func__Simple_NowSec();
     }
 }
-
-/* ==================== خواندن یک بازهٔ نمودار ==================== */
 static bool func__Simple_ChartRangeLoad(const String &string__content, const char *char__ptr_tag,
                                         uint32_t *uint32_t__ptr_pct,
                                         uint32_t *uint32_t__ptr_vin,
@@ -704,9 +591,7 @@ static bool func__Simple_ChartRangeLoad(const String &string__content, const cha
     uint8_t uint8_t__nVpack;
     uint8_t uint8_t__nTime;
     uint8_t uint8_t__count;
-
     if (int32_t__tagPos < 0) return false;
-
     uint8_t__nPct = func__Simple_JsonReadNumbers(string__content,
         string__content.indexOf("\"pct\":[", int32_t__tagPos), uint32_t__ptr_pct, uint8_t__size);
     uint8_t__nVin = func__Simple_JsonReadNumbers(string__content,
@@ -715,13 +600,11 @@ static bool func__Simple_ChartRangeLoad(const String &string__content, const cha
         string__content.indexOf("\"vpack\":[", int32_t__tagPos), uint32_t__ptr_vpack, uint8_t__size);
     uint8_t__nTime = func__Simple_JsonReadNumbers(string__content,
         string__content.indexOf("\"time\":[", int32_t__tagPos), uint32_t__ptr_time, uint8_t__size);
-
     uint8_t__count = uint8_t__nPct;
     if (uint8_t__nVin < uint8_t__count) uint8_t__count = uint8_t__nVin;
     if (uint8_t__nVpack < uint8_t__count) uint8_t__count = uint8_t__nVpack;
     if (uint8_t__nTime < uint8_t__count) uint8_t__count = uint8_t__nTime;
     if (uint8_t__count == 0u) return false;
-
     {
         uint8_t uint8_t__keep = 0u;
         uint8_t uint8_t__i;
@@ -740,13 +623,10 @@ static bool func__Simple_ChartRangeLoad(const String &string__content, const cha
         uint8_t__count = uint8_t__keep;
     }
     if (uint8_t__count == 0u) return false;
-
     *uint8_t__ptr_count = uint8_t__count;
     *uint8_t__ptr_index = (uint8_t)(uint8_t__count % uint8_t__size);
     return true;
 }
-
-/* ==================== خواندن نمودارها از فایل - هر چهار بازه ==================== */
 static void func__Simple_ChartsLoad(void)
 {
     if (!BOOL__G__FsOk) return;
@@ -755,7 +635,6 @@ static void func__Simple_ChartsLoad(void)
     if (!file__f) return;
     String string__content = file__f.readString();
     file__f.close();
-
     (void)func__Simple_ChartRangeLoad(string__content, "1d",
         UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin, UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
         &UINT8_T__G__Chart1D_Count, &UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
@@ -793,8 +672,6 @@ static void func__Simple_ChartsLoad(void)
     }
     BOOL__G__ChartsDirty = false;
 }
-
-/* ==================== ذخیره دیاگ محلی - خطاها و برق ==================== */
 #ifndef SIMPLE_DIAG_FILE
 #define SIMPLE_DIAG_FILE            "/diag.json"
 #endif
@@ -846,7 +723,6 @@ static void func__Simple_DiagSave(void)
     file__f.close();
     BOOL__G__DiagDirty = false;
 }
-
 static void func__Simple_DiagLoad(void)
 {
     if (!BOOL__G__FsOk) return;
@@ -856,7 +732,6 @@ static void func__Simple_DiagLoad(void)
     String string__content = file__f.readString();
     file__f.close();
     if (string__content.length() < 10) return;
-
     int32_t int32_t__errS = string__content.indexOf("\"err\":[");
     if (int32_t__errS >= 0)
     {
@@ -915,7 +790,6 @@ static void func__Simple_DiagLoad(void)
                     int32_t int32_t__s2End = ((int32_t__s2Comma >= 0) && (int32_t__s2Comma < int32_t__objEnd)) ? int32_t__s2Comma : int32_t__objEnd;
                     uint32_t__s2 = (uint32_t)string__errArr.substring(int32_t__s2, int32_t__s2End).toInt();
                 }
-
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].timestamp = (uint32_t)string__errArr.substring(int32_t__ts, int32_t__tsEnd).toInt();
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].faultMask = (uint32_t)string__errArr.substring(int32_t__fm, int32_t__fmEnd).toInt();
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__cnt].vIn = (uint32_t)string__errArr.substring(int32_t__vin, int32_t__vinEnd).toInt();
@@ -959,7 +833,6 @@ static void func__Simple_DiagLoad(void)
                 int32_t__dur += 6;
                 int32_t int32_t__durEnd = string__pwrArr.indexOf("}", int32_t__dur);
                 if (int32_t__durEnd < 0) break;
-
                 SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__cnt].offTime = (uint32_t)string__pwrArr.substring(int32_t__off, int32_t__offEnd).toInt();
                 SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__cnt].onTime = (uint32_t)string__pwrArr.substring(int32_t__on, int32_t__onEnd).toInt();
                 SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__cnt].durationSec = (uint32_t)string__pwrArr.substring(int32_t__dur, int32_t__durEnd).toInt();
@@ -975,8 +848,6 @@ static void func__Simple_DiagLoad(void)
         }
     }
 }
-
-/* ==================== پاک‌سازی ==================== */
 static void func__Simple_ChargeHistoryClear(void)
 {
     UINT8_T__G__ChargeHistoryCount = 0u;
@@ -993,7 +864,6 @@ static void func__Simple_ChargeHistoryClear(void)
         func__Simple_ChargeHistorySave();
     }
 }
-
 static void func__Simple_ChartsClear(void)
 {
     UINT8_T__G__ChartCount = 0u;
@@ -1010,7 +880,6 @@ static void func__Simple_ChartsClear(void)
         LittleFS.remove(SIMPLE_CHARTS_FILE);
     }
 }
-
 static void func__Simple_DiagClear(void)
 {
     UINT8_T__G__DiagErrorCount = 0u;

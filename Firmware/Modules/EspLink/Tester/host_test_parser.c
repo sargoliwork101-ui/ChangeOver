@@ -1,22 +1,17 @@
 /*
  * @file    host_test_parser.c
  * @brief   [EN] Host regression test for the production EspLink parser.
- *          [FA] تست هاست برای پارسر تولیدی لینک ESP.
- *
  * Host regression test for the production EspLink byte parser and the
  * one-shot LUT_RESET authorization predicate. The production esp_link.c is
  * compiled directly; only its host probes replace the UART/module graph.
  */
 #include "esp_link.h"
 #include "app_config.h"
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
-
 static unsigned g_checks;
 static unsigned g_failures;
-
 #define CHECK(condition) do { \
     g_checks++; \
     if (!(condition)) { \
@@ -24,11 +19,9 @@ static unsigned g_failures;
         (void)fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #condition); \
     } \
 } while (0)
-
 static uint16_t crc16_byte(uint16_t crc, uint8_t byte)
 {
     uint8_t bit;
-
     crc ^= (uint16_t)byte << 8;
     for (bit = 0u; bit < 8u; bit++)
     {
@@ -37,7 +30,6 @@ static uint16_t crc16_byte(uint16_t crc, uint8_t byte)
     }
     return crc;
 }
-
 static uint16_t frame_crc(uint8_t version,
                           uint8_t type,
                           uint8_t lengthLo,
@@ -47,7 +39,6 @@ static uint16_t frame_crc(uint8_t version,
 {
     uint16_t crc = (uint16_t)ESPLINK_CRC16_INIT;
     uint16_t index;
-
     crc = crc16_byte(crc, version);
     crc = crc16_byte(crc, type);
     crc = crc16_byte(crc, lengthLo);
@@ -58,7 +49,6 @@ static uint16_t frame_crc(uint8_t version,
     }
     return crc;
 }
-
 static void feed_frame(uint8_t type,
                        const uint8_t *payload,
                        uint16_t length,
@@ -66,7 +56,6 @@ static void feed_frame(uint8_t type,
 {
     uint16_t crc;
     uint16_t index;
-
     crc = frame_crc((uint8_t)ESPLINK_PROTOCOL_VERSION,
                     type,
                     (uint8_t)(length & 0xFFu),
@@ -87,20 +76,16 @@ static void feed_frame(uint8_t type,
                                               (corruptCrc ? 1u : 0u)));
     func__EspLink_HostTest_FeedByte((uint8_t)(crc >> 8));
 }
-
-/* [EN] v1.111 handshake stubs: the ACK leaves through the UART port, so the
+/*
+ * [EN] v1.111 handshake stubs: the ACK leaves through the UART port, so the
  *      test captures the real frame bytes instead of transmitting them, and
  *      provides the one config value the ACK reports (telemetry period).
- * [FA] استاب‌های دست‌دادن نسخهٔ ۱٫۱۱۱: پاسخ از پورت UART بیرون می‌رود، پس تست
- *      بایت‌های واقعی فریم را می‌گیرد و تنها مقدار پیکربندی‌ای را که پاسخ
- *      گزارش می‌کند (دورهٔ تله‌متری) فراهم می‌کند. */
+ */
 static uint8_t g_tx[64];
 static uint16_t g_txLen;
-
 bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length)
 {
     uint16_t index;
-
     g_txLen = (uint16_t__length > (uint16_t)sizeof(g_tx)) ? (uint16_t)sizeof(g_tx)
                                                           : uint16_t__length;
     for (index = 0u; index < g_txLen; index++)
@@ -109,7 +94,6 @@ bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length
     }
     return true;
 }
-
 const app_config_t APP_CONFIG =
 {
     .ui_selftest_led_ms   = 500u,
@@ -118,22 +102,18 @@ const app_config_t APP_CONFIG =
     .protection_period_ms = 5u,
     .comm_period_ms       = 100u
 };
-
 int main(void)
 {
     uint8_t crcPayload = 0u;
     uint8_t crcType;
     uint16_t crc;
     bool foundCrcHighAa = false;
-
     printf("== EspLink parser host test ==\n");
     func__EspLink_HostTest_Reset();
-
     /* A normal zero-length frame is accepted. */
     feed_frame(0x01u, NULL, 0u, false);
     CHECK(func__EspLink_HostTest_AcceptedFrames() == 1u);
     CHECK(func__EspLink_HostTest_CrcErrors() == 0u);
-
     /* Version mismatch: the mismatch byte is not AA, so the following frame
        starts normally. */
     func__EspLink_HostTest_FeedByte((uint8_t)ESPLINK_SOF_BYTE0);
@@ -142,7 +122,6 @@ int main(void)
     feed_frame(0x02u, NULL, 0u, false);
     CHECK(func__EspLink_HostTest_VersionErrors() == 1u);
     CHECK(func__EspLink_HostTest_AcceptedFrames() == 2u);
-
     /* An impossible length whose high byte is AA must retain that AA. */
     func__EspLink_HostTest_Reset();
     func__EspLink_HostTest_FeedByte((uint8_t)ESPLINK_SOF_BYTE0);
@@ -160,7 +139,6 @@ int main(void)
     func__EspLink_HostTest_FeedByte((uint8_t)crc);
     func__EspLink_HostTest_FeedByte((uint8_t)(crc >> 8));
     CHECK(func__EspLink_HostTest_AcceptedFrames() == 1u);
-
     /* CRC error with CRC-HI == AA: the following 55 must be consumed as
        SOF1, not discarded. Search a tiny valid frame space for such a CRC so
        this test exercises the exact byte boundary rather than assuming one. */
@@ -191,7 +169,6 @@ int main(void)
         CHECK(func__EspLink_HostTest_CrcErrors() == 1u);
         CHECK(func__EspLink_HostTest_AcceptedFrames() == 1u);
     }
-
     /* LUT_RESET is one-shot and requires a fresh successful commit ACK. A
        successful zero-point commit is intentionally accepted even though no
        active flash table remains. */
@@ -205,7 +182,6 @@ int main(void)
     CHECK(func__EspLink_HostTest_TryReset(true, true) == false);
     func__EspLink_HostTest_RecordCommitAck(true);
     CHECK(func__EspLink_HostTest_TryReset(true, true) == true);
-
     /* Hybrid Wi-Fi power-saving scenario on STM32:
        1) Mains input present: CH_PD stays ON, battery idle timer stays 0.
        2) Battery (input_present == false), no client:
@@ -217,38 +193,30 @@ int main(void)
     func__EspLink_HostTest_Reset();
     CHECK(func__EspLink_IsPowerOn() == true);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
-
     /* Mains input present -> stays ON, idle timer 0 */
     func__EspLink_PowerSaveTick(true, 600000u);
     CHECK(func__EspLink_IsPowerOn() == true);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
-
     /* On battery, no client: 29 minutes 59.9 seconds -> still in first 30 min (ON) */
     func__EspLink_PowerSaveTick(false, 1799900u);
     CHECK(func__EspLink_IsPowerOn() == true);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 1799900u);
-
     /* Reach exactly 30 minutes (1800000 ms) -> enters 2-minute OFF window */
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 1800000u);
     CHECK(func__EspLink_IsPowerOn() == false);
-
     /* After 119.9 seconds in OFF window -> still OFF */
     func__EspLink_PowerSaveTick(false, 119900u);
     CHECK(func__EspLink_IsPowerOn() == false);
-
     /* At 120 seconds after 30-min mark -> enters 1-minute ON window */
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == true);
-
     /* After 59.9 seconds in ON window -> still ON */
     func__EspLink_PowerSaveTick(false, 59900u);
     CHECK(func__EspLink_IsPowerOn() == true);
-
     /* At 180 seconds after 30-min mark (end of 1-min ON window) -> next 2-min OFF window */
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == false);
-
     /* Client connects via 0x33 frame [1] -> wakes immediately, resets 30-min timer */
     {
         uint8_t connectedPayload = 1u;
@@ -257,7 +225,6 @@ int main(void)
     CHECK(func__EspLink_IsWifiClientConnected() == true);
     CHECK(func__EspLink_IsPowerOn() == true);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
-
     /* Client disconnects via 0x33 frame [0] -> 30-minute timer starts over from 0 */
     {
         uint8_t disconnectedPayload = 0u;
@@ -267,12 +234,10 @@ int main(void)
     func__EspLink_PowerSaveTick(false, 600000u);
     CHECK(func__EspLink_IsPowerOn() == true);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 600000u);
-
     /* Mains input returns -> timer resets to 0 and stays ON */
     func__EspLink_PowerSaveTick(true, 100u);
     CHECK(func__EspLink_IsPowerOn() == true);
     CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 0u);
-
     /* Battery < 20% cutoff on battery power:
        - At 20%, ESP still operates normally on battery.
        - Below 20% (e.g. 19%) on battery, ESP turns completely OFF and refuses
@@ -283,11 +248,9 @@ int main(void)
     CHECK(func__EspLink_GetBatteryPercent() == 20u);
     func__EspLink_PowerSaveTick(false, 1000u);
     CHECK(func__EspLink_IsPowerOn() == true);
-
     func__EspLink_SetBatteryPercent(19u);
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == false);
-
     /* v1.108: the LOGICAL off is immediate (the policy is unchanged), but the
        physical CH_PD stays up for ESPLINK_POWER_OFF_GRACE_MS so the last
        telemetry frame (the mains cut) reaches the panel and its state log can
@@ -298,7 +261,6 @@ int main(void)
     CHECK(func__EspLink_IsPinPowered() == true);
     func__EspLink_PowerSaveTick(false, 250u);
     CHECK(func__EspLink_IsPinPowered() == false);
-
     /* +2% hysteresis: rebounding to 20% or 21% on battery stays OFF until 22% */
     func__EspLink_SetBatteryPercent(20u);
     func__EspLink_PowerSaveTick(false, 100u);
@@ -306,27 +268,21 @@ int main(void)
     func__EspLink_SetBatteryPercent(21u);
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == false);
-
     func__EspLink_NotifyWifiClientState(true);
     CHECK(func__EspLink_IsPowerOn() == false);
     CHECK(func__EspLink_IsWifiClientConnected() == false);
-
     func__EspLink_SetBatteryPercent(22u);
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == true);
-
     func__EspLink_SetBatteryPercent(19u);
     func__EspLink_PowerSaveTick(false, 100u);
     CHECK(func__EspLink_IsPowerOn() == false);
-
     func__EspLink_PowerSaveTick(true, 100u);
     CHECK(func__EspLink_IsPowerOn() == true);
-
     /* Configurable Wi-Fi parameters 143..146 via ApplyParam / GetParam */
     {
         uint32_t applied = 0u;
         uint32_t readBack = 0u;
-
         func__EspLink_HostTest_Reset();
         CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS, &readBack) == true);
         CHECK(readBack == 1800000u);
@@ -336,13 +292,11 @@ int main(void)
         CHECK(readBack == 120000u);
         CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, &readBack) == true);
         CHECK(readBack == 20u);
-
         CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_IDLE_LOW_POWER_MS, 900000u, &applied) == true);
         CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_CYCLE_ON_MS, 45000u, &applied) == true);
         CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_CYCLE_OFF_MS, 90000u, &applied) == true);
         CHECK(func__EspLink_ApplyParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, 35u, &applied) == true);
         CHECK(applied == 35u);
-
         /* func__EspLink_Init runs in TaskComm after func__EspLink_NvmInit in App_Init;
            it must NOT overwrite NVM-restored Wi-Fi parameters 143..146. */
         func__EspLink_Init();
@@ -350,12 +304,10 @@ int main(void)
         CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_CYCLE_ON_MS, &readBack) == true && readBack == 45000u);
         CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_CYCLE_OFF_MS, &readBack) == true && readBack == 90000u);
         CHECK(func__EspLink_GetParam(ESPLINK_PARAM_WIFI_BAT_CUTOFF_PCT, &readBack) == true && readBack == 35u);
-
         func__EspLink_SetBatteryPercent(30u);
         func__EspLink_PowerSaveTick(false, 100u);
         CHECK(func__EspLink_IsPowerOn() == false);
     }
-
     /* v1.110 boot contract (user symptom 2026-10-25: "board on, ESP dead, no
        Wi-Fi at all"). The board port starts with CH_PD LOW, so the module must
        really DRIVE the pin high once when the link comes up - before this
@@ -371,7 +323,6 @@ int main(void)
     /* A second Init must be harmless and must not count as another boot. */
     func__EspLink_Init();
     CHECK(func__EspLink_HostTest_ChPdHighWrites() == 2u);
-
     /* v1.111 handshake: the ESP sends HELLO, the board answers HELLO_ACK and
        only then claims the link. These checks are the machine-verified form of
        "the two sides shook hands and the connection was correct":
@@ -380,12 +331,10 @@ int main(void)
     {
         uint8_t hello[8];
         uint8_t badHello[8];
-
         func__EspLink_HostTest_Reset();
         g_txLen = 0u;
         CHECK(func__EspLink_IsHandshakeOk() == false);
         CHECK(func__EspLink_HandshakeCount() == 0u);
-
         hello[0] = (uint8_t)ESPLINK_PROTOCOL_VERSION;
         hello[1] = 7u;                                  /* ESP firmware version */
         hello[2] = (uint8_t)ESPLINK_ESP_ROLE_USER;
@@ -394,11 +343,9 @@ int main(void)
         hello[5] = 0x27u;                               /* uptime 10000 s */
         hello[6] = 0x00u;
         hello[7] = 0x00u;
-
         CHECK(func__EspLink_HostTest_HandleHello(hello, 8u) == true);
         CHECK(func__EspLink_IsHandshakeOk() == true);
         CHECK(func__EspLink_HandshakeCount() == 1u);
-
         /* The ACK must be a real frame: SOF, protocol version, HELLO_ACK type,
            the declared length and a CRC that the parser itself accepts. */
         CHECK(g_txLen == (uint16_t)(ESPLINK_FRAME_HEADER_SIZE +
@@ -419,7 +366,6 @@ int main(void)
         CHECK(g_tx[27] == 0x27u);
         CHECK(g_tx[28] == 0x00u);
         CHECK(g_tx[29] == 0x00u);
-
         /* The answer must carry the board's OWN receive health, so the panel
            can prove the exchange was correct instead of only present. Payload
            layout (after the 6-byte header): [0] wire ver, [1] board fw,
@@ -432,7 +378,6 @@ int main(void)
         CHECK(g_tx[23] == (uint8_t)((ESPLINK_PARAM_COUNT >> 8) & 0xFFu));
         CHECK(g_tx[24] == (uint8_t)(APP_CONFIG.comm_period_ms & 0xFFu));
         CHECK(g_tx[25] == (uint8_t)((APP_CONFIG.comm_period_ms >> 8) & 0xFFu));
-
         /* Feeding the answer back through the production parser proves the
            CRC is the one the other side computes. */
         func__EspLink_HostTest_Reset();
@@ -446,7 +391,6 @@ int main(void)
         CHECK(func__EspLink_HostTest_CrcErrors() == 0u);
         CHECK(func__EspLink_HostTest_AcceptedFrames() == 1u);
         CHECK(func__EspLink_HostTest_RxFrameOk() >= 1u);
-
         /* The reported counters are LIVE, not constants. (The host build's
            parser stops before the product dispatch graph, so the frame counter
            is driven through the real parser and the answer through the real
@@ -463,7 +407,6 @@ int main(void)
         (void)func__EspLink_HostTest_HandleHello(hello, 8u);
         CHECK(g_tx[18] == 1u && g_tx[19] == 0u);
         CHECK(g_tx[14] == 1u && g_tx[15] == 0u);
-
         /* A HELLO must change NOTHING outside the handshake. On battery the
            power schedule lives on the idle timer, and the client hold is what
            keeps the ESP awake; a 2 s HELLO routed into the client-state path
@@ -480,25 +423,21 @@ int main(void)
         }
         CHECK(func__EspLink_HostTest_WifiClientConnected() == false);
         CHECK(func__EspLink_HostTest_ClientHoldMs() == 0u);
-
         func__EspLink_HostTest_HandleHelloFrame(hello, 8u);
         CHECK(func__EspLink_IsHandshakeOk() == true);
         CHECK(func__EspLink_HostTest_WifiClientConnected() == false);
         CHECK(func__EspLink_HostTest_ClientHoldMs() == 0u);
-
         /* ... and the dispatcher really answered: a fresh ACK is on the wire. */
         CHECK(g_txLen == (uint16_t)(ESPLINK_FRAME_HEADER_SIZE +
                                     ESPLINK_HELLO_ACK_LEN +
                                     ESPLINK_FRAME_CHECKSUM_SIZE));
         CHECK(g_tx[3] == (uint8_t)ESPLINK_MSG_HELLO_ACK);
-
         /* ... and the battery schedule still advances after a HELLO. */
         func__EspLink_PowerSaveTick(false, 1000u);
         CHECK(func__EspLink_GetBatteryIdleElapsedMs() == 1000u);
         CHECK(func__EspLink_HostTest_ClientHoldMs() == 0u);
         CHECK(func__EspLink_HostTest_WifiClientConnected() == false);
         CHECK(func__EspLink_HostTest_ChPdHighWrites() == 0u);
-
         /* A HELLO with the wrong protocol version must NOT create a link. */
         badHello[0] = 0x7Fu;
         badHello[1] = 7u;
@@ -515,7 +454,6 @@ int main(void)
         /* A short HELLO is refused as well (no reading past the payload). */
         CHECK(func__EspLink_HostTest_HandleHello(hello, 4u) == false);
         CHECK(func__EspLink_IsHandshakeOk() == false);
-
         /* Timeout: three HELLOs' worth of silence drops the verdict, and the
            ESP coming back lifts it again without a reboot. */
         func__EspLink_HostTest_HandleHello(hello, 8u);
@@ -527,7 +465,6 @@ int main(void)
         CHECK(func__EspLink_HostTest_HandleHello(hello, 8u) == true);
         CHECK(func__EspLink_IsHandshakeOk() == true);
     }
-
     printf("checks: %u, failures: %u\n", g_checks, g_failures);
     return (g_failures == 0u) ? 0 : 1;
 }

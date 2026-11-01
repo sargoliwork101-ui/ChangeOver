@@ -1,25 +1,5 @@
-/* stub_arduino.h - کمینهٔ لازم از Arduino/ESP8266 تا برنامهٔ واقعی پنل ساده روی PC اجرا شود
-   فقط فارسی - مثل بقیهٔ این پوشه
-
-   چه چیزی جعلی است: Serial (صف بایت دوطرفه)، LittleFS (پوشه‌ای روی دیسک)،
-   WiFi، ESP.restart، millis و String.
-   چه چیزی واقعی است: تمام `ESP_USER.ino` و `simple_config.h` و
-   `simple_state.h` و `simple_panel.h` و `simple_link.h` و `simple_auth.h` و
-   `simple_diag.h` و `simple_http.h` و `simple_theme.h` - همان‌طور که برد
-   کامپایل می‌کند.
-
-   این استاب‌ها عمداً نازک‌اند: فقط رفتاری را پیاده می‌کنند که خود برنامه به آن
-   تکیه دارد، تا هر چه در سیمولاتور دیده می‌شود نتیجهٔ منطق خود برنامه باشد،
-   نه توافق یک تقلبی زیرک با آن.
-
-   نام‌گذاری: متغیرهای محلی `type__name` و سراسری‌ها `TYPE__G__NAME` هستند،
-   مطابق قانون پنل. تنها استثنا نام‌های خود Arduino/ESP8266 است (`String`،
-   `File`، `Serial`، `millis`، `PROGMEM`، ...) چون خود برنامه همین‌ها را صدا
-   می‌زند و عوض‌کردنشان یعنی دست‌بردن در برنامهٔ فلش‌شده.
-*/
 #ifndef SIM_STUB_ARDUINO_H
 #define SIM_STUB_ARDUINO_H
-
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -29,47 +9,34 @@
 #include <iterator>
 #include <string>
 #include <vector>
-
 #include <sys/time.h>
 #include <unistd.h>
-
-/* ==================== انتخاب برد: شاخهٔ ESP8266 ==================== */
+/* ==================== : ESP8266 ==================== */
 #ifndef ESP8266
 #define ESP8266 1
 #endif
-
-/* ==================== ماکروهای کتابخانه روی PC ==================== */
-/* روی PC، PROGMEM و F فقط حافظهٔ معمولی هستند و SERIAL_8N1 عدد بی‌اثری است */
+/* ==================== PC ==================== */
 #define PROGMEM
 #define PGM_P const char *
 #define F(text) (text)
 #define SERIAL_8N1 0
 #define CONTENT_LENGTH_UNKNOWN ((size_t)-1)
-
 #define WIFI_OFF 0
 #define WIFI_AP 2
 #define WIFI_NONE_SLEEP 0
-
-/* ==================== ساعت یکنوا ==================== */
 static unsigned long UNSIGNED_LONG__G__MillisStart = 0u;
-
 inline unsigned long millis(void)
 {
     struct timeval timeval__now;
     gettimeofday(&timeval__now, NULL);
-
     unsigned long unsigned_long__absolute =
         (unsigned long)((timeval__now.tv_sec * 1000L) + (timeval__now.tv_usec / 1000L));
-
     if (UNSIGNED_LONG__G__MillisStart == 0u)
     {
         UNSIGNED_LONG__G__MillisStart = unsigned_long__absolute;
     }
     return unsigned_long__absolute - UNSIGNED_LONG__G__MillisStart;
 }
-
-/* میکروثانیه: همان ساعت میلی‌ثانیه با دقت بیشتر (برنامه برای یکتاشدن
-   شمارندهٔ رمزنگاری از micros استفاده می‌کند) */
 inline unsigned long micros(void)
 {
     struct timeval timeval__now;
@@ -82,14 +49,11 @@ inline unsigned long micros(void)
     }
     return unsigned_long__absolute - (UNSIGNED_LONG__G__MillisStart * 1000uL);
 }
-
 inline void delay(unsigned long unsigned_long__ms)
 {
     usleep((useconds_t)(unsigned_long__ms * 1000u));
 }
-
 inline void yield(void) {}
-
 /* ==================== String ==================== */
 class String
 {
@@ -102,7 +66,6 @@ public:
     String(unsigned int unsigned_int__value) { func__Stub_FormatNumber((long)unsigned_int__value); }
     String(long long__value) { func__Stub_FormatNumber(long__value); }
     String(unsigned long unsigned_long__value) { func__Stub_FormatNumber((long)unsigned_long__value); }
-
     String &operator+=(const String &string__other)
     {
         text += string__other.text;
@@ -128,14 +91,11 @@ public:
         text += String(unsigned_long__other).text;
         return *this;
     }
-
-    /* مثل String خود آردوینو: کاراکتر در جای مشخص (برای پارسرها) */
     char charAt(unsigned int unsigned_int__index) const
     {
         if (unsigned_int__index >= text.size()) { return '\0'; }
         return text[unsigned_int__index];
     }
-
     int indexOf(const String &string__needle, unsigned int unsigned_int__from = 0u) const
     {
         return indexOf(string__needle.text.c_str(), unsigned_int__from);
@@ -155,7 +115,6 @@ public:
         size_t size_t__found = text.find(char__needle, unsigned_int__from);
         return (size_t__found == std::string::npos) ? -1 : (int)size_t__found;
     }
-
     String substring(unsigned int unsigned_int__from) const
     {
         if (unsigned_int__from >= text.size()) { return String(); }
@@ -173,13 +132,11 @@ public:
         }
         return String(text.substr(unsigned_int__from, unsigned_int__to - unsigned_int__from));
     }
-
     int lastIndexOf(char char__needle) const
     {
         size_t size_t__found = text.rfind(char__needle);
         return (size_t__found == std::string::npos) ? -1 : (int)size_t__found;
     }
-
     void trim(void)
     {
         size_t size_t__begin = text.find_first_not_of(" \t\r\n");
@@ -192,12 +149,10 @@ public:
     const char *c_str(void) const { return text.c_str(); }
     long toInt(void) const { return atol(text.c_str()); }
     void reserve(unsigned int unsigned_int__size) { text.reserve(unsigned_int__size); }
-
     char operator[](unsigned int unsigned_int__index) const
     {
         return (unsigned_int__index < text.size()) ? text[unsigned_int__index] : '\0';
     }
-
     bool operator==(const String &string__other) const { return text == string__other.text; }
     bool operator==(const char *char__ptr_other) const
     {
@@ -205,7 +160,6 @@ public:
     }
     bool operator!=(const String &string__other) const { return !(*this == string__other); }
     bool operator!=(const char *char__ptr_other) const { return !(*this == char__ptr_other); }
-
 private:
     void func__Stub_FormatNumber(long long__value)
     {
@@ -213,18 +167,15 @@ private:
         snprintf(char__buffer, sizeof(char__buffer), "%ld", long__value);
         text = char__buffer;
     }
-
     std::string text;
 };
-
 inline String operator+(const String &string__left, const String &string__right)
 {
     String string__sum(string__left);
     string__sum += string__right;
     return string__sum;
 }
-
-/* ==================== Serial: صف بایت دوطرفه با برد شبیه‌سازی‌شده ==================== */
+/* ==================== Serial: ==================== */
 class SimSerialLink
 {
 public:
@@ -256,8 +207,6 @@ public:
         }
         return size_t__count;
     }
-
-    /* مسیر برد -> ESP: قاب‌های تله‌متری و دیاگ */
     void boardToEsp(const uint8_t *uint8_t__ptr_bytes, size_t size_t__count)
     {
         for (size_t size_t__index = 0u; size_t__index < size_t__count; size_t__index++)
@@ -269,7 +218,6 @@ public:
             rxQueue.pop_front();
         }
     }
-    /* مسیر ESP -> برد: TIME_SYNC و DIAG_REQ */
     bool takeEspByte(uint8_t *uint8_t__ptr_byte)
     {
         if (txQueue.empty()) { return false; }
@@ -278,22 +226,15 @@ public:
         return true;
     }
     unsigned long baudRate(void) const { return baudRateValue; }
-
 private:
     std::deque<uint8_t> rxQueue;
     std::deque<uint8_t> txQueue;
     size_t rxBufferLimit = 2048u;
     unsigned long baudRateValue = 921600u;
 };
-
 extern SimSerialLink Serial;
-
-/* ==================== File و LittleFS: پوشه‌ای روی دیسک ==================== */
-/* روشن‌کردن این کلید یعنی «فلش پر است»: هر نوشتن صفر بایت می‌نویسد، همان
-   چیزی که print روی برد واقعی وقتی حافظه پر است برمی‌گرداند. بدون آن، هیچ
-   تستی نمی‌توانست مسیر «فلش نپذیرفت» را بیازماید. */
+/* ==================== File LittleFS: ==================== */
 static bool SIM_BOOL__G__RefuseWrites = false;
-
 class File
 {
 public:
@@ -304,10 +245,8 @@ public:
     }
     File(const File &) = delete;
     File &operator=(const File &) = delete;
-
     operator bool(void) const { return handle != NULL; }
     bool operator!(void) const { return handle == NULL; }
-
     size_t print(const char *char__ptr_text)
     {
         if ((handle == NULL) || (char__ptr_text == NULL)) { return 0u; }
@@ -325,12 +264,10 @@ public:
     {
         return func__Stub_FilePrintNumber("%lu", (long)unsigned_long__value);
     }
-
     String readString(void)
     {
         String string__content;
         if (handle == NULL) { return string__content; }
-
         char char__buffer[256];
         size_t size_t__got = 0u;
         while ((size_t__got = fread(char__buffer, 1u, sizeof(char__buffer) - 1u, handle)) > 0u)
@@ -366,12 +303,11 @@ public:
         if (long__end < long__here) { return 0; }
         return (int)(long__end - long__here);
     }
-    /* [EN] seek()/read(): the real ESP8266 File has both, and the log reads the
-            newest rows by walking backward from the end of the file. A stub
-            without them would have hidden that path from every host test.
-       [FA] seek و read: کلاس File روی خود ESP8266 هر دو را دارد و لاگ
-            جدیدترین ردیف‌ها را با عقب‌رفتن از انتهای فایل می‌خواند. استابِ
-            بدون این دو، آن مسیر را از همهٔ تست‌های هاست پنهان می‌کرد. */
+    /*
+ * [EN] seek()/read(): the real ESP8266 File has both, and the log reads the
+ * newest rows by walking backward from the end of the file. A stub
+ * without them would have hidden that path from every host test.
+ */
     bool seek(uint32_t uint32_t__pos)
     {
         if (handle == NULL) { return false; }
@@ -413,7 +349,6 @@ public:
         }
     }
     ~File() { close(); }
-
 private:
     size_t func__Stub_FilePrintNumber(const char *char__ptr_format, long long__value)
     {
@@ -421,19 +356,14 @@ private:
         snprintf(char__buffer, sizeof(char__buffer), char__ptr_format, long__value);
         return print(char__buffer);
     }
-
     std::string path;
     FILE *handle = NULL;
 };
-
-/* روی برد خود `LittleFS` یک شیء سراسری است (نه نام‌فضا)، پس برنامه با نقطه
-   صدایش می‌زند؛ اینجا هم عیناً همان شکل پیاده می‌شود. ریشهٔ فایل‌سیستم پیش‌فرض
-   بیرون مخزن است تا هیچ فایل وضعیتی داخل گیت ساخته نشود. */
-/* [EN] Directory listing of the simulated flash. The panel now reads its day
-        list from the folder itself, exactly like the real LittleFS does, so the
-        simulator needs the same door.
-   [FA] فهرست پوشهٔ فلش شبیه‌سازی‌شده. پنل حالا فهرست روزهایش را از خود پوشه
-        می‌خواند، دقیقاً مثل LittleFS واقعی، پس شبیه‌ساز هم همان در را لازم دارد. */
+/*
+ * [EN] Directory listing of the simulated flash. The panel now reads its day
+ * list from the folder itself, exactly like the real LittleFS does, so the
+ * simulator needs the same door.
+ */
 class SimDir
 {
 public:
@@ -452,11 +382,10 @@ public:
         return ((pos - 1u) < sizes.size()) ? sizes[pos - 1u] : 0u;
     }
 };
-
-/* [EN] the real LittleFS calls this type "Dir"; the program uses that name.
-   [FA] نوع پوشه در LittleFS واقعی «Dir» نام دارد؛ برنامه همان نام را به کار می‌برد. */
+/*
+ * [EN] the real LittleFS calls this type "Dir"; the program uses that name.
+ */
 typedef SimDir Dir;
-
 struct FSInfo
 {
     size_t totalBytes = 2097152u;
@@ -466,13 +395,11 @@ struct FSInfo
     size_t maxOpenFiles = 5u;
     size_t maxPathLength = 32u;
 };
-
 struct LittleFSConfig
 {
     bool _autoFormat = true;
     explicit LittleFSConfig(bool bool__autoFormat = true) : _autoFormat(bool__autoFormat) {}
 };
-
 class SimLittleFS
 {
 public:
@@ -486,9 +413,7 @@ public:
     bool exists(const char *char__ptr_path);
     SimDir openDir(const char *char__ptr_path);
 };
-
 extern SimLittleFS LittleFS;
-
 #ifndef SIM_IPADDRESS_DEFINED
 #define SIM_IPADDRESS_DEFINED
 class IPAddress
@@ -506,13 +431,11 @@ public:
     {
         return ((int__index >= 0) && (int__index < 4)) ? octets[int__index] : 0u;
     }
-
 private:
     uint8_t octets[4];
 };
 #endif
-
-/* ==================== WiFi: فقط گزارش، بدون شبکه ==================== */
+/* ==================== WiFi: ==================== */
 class SimWiFi
 {
 public:
@@ -560,7 +483,6 @@ public:
     bool isApActive(void) const { return apActive; }
     int currentMode(void) const { return modeValue; }
     const char *ssid(void) const { return ssidText.c_str(); }
-
 private:
     int modeValue = 0;
     int stationCount = 0;
@@ -569,7 +491,6 @@ private:
     std::string ssidText;
     std::string passwordText;
 };
-
 class SimWiFiUDP
 {
 public:
@@ -582,7 +503,6 @@ public:
     size_t curPos = 0u;
     std::vector<std::vector<uint8_t> > txPackets;
     std::vector<uint8_t> curTx;
-
     uint8_t begin(uint16_t uint16_t__port)
     {
         boundPort = uint16_t__port;
@@ -642,24 +562,14 @@ public:
     void feedPacket(const std::vector<uint8_t> &vec__pkt) { rxPackets.push_back(vec__pkt); }
 };
 typedef SimWiFiUDP WiFiUDP;
-
 extern SimWiFi WiFi;
-
-/* ==================== ESP: ریستارت شبیه‌سازی‌شده ==================== */
-/* به‌جای ریست واقعی، استثنا پرتاب می‌شود تا حلقهٔ سیمولاتور دوباره setup را
-   اجرا کند؛ وضعیت فایل‌سیستم سر جایش می‌ماند. */
+/* ==================== ESP: ==================== */
 struct SimRestartRequest {};
-
 class SimEsp
 {
 public:
     void restart(void) { throw SimRestartRequest(); }
-    /* شناسهٔ چیپ: روی برد واقعی یکتاست و کلید رمزنگاری فایل‌های حساس از آن
-       ساخته می‌شود. اینجا ثابت است تا فایل‌های پوشهٔ شبیه‌ساز بین اجراها
-       خوانده شوند. */
     uint32_t getChipId(void) const { return 0x00A5C0DEu; }
 };
-
 extern SimEsp ESP;
-
 #endif /* SIM_STUB_ARDUINO_H */

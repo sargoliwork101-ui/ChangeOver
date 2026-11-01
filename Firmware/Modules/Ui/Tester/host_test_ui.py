@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 # @file    host_test_ui.py
 # @brief   [EN] Host tests for UI buzzer, BatteryRun 2%+0/1, Charging 5%, InputOk 100/95 and phase preserve.
-#          [FA] تست هاست بوق، هیسترزیس ۲٪ BatteryRun + ۵٪ Charging و ۱۰۰/۹۵ فول.
-
 import os, re, subprocess, tempfile
-
 # [EN] v1.25: this script now lives in the module's Tester/ folder, so the
 #      headers it reads are one level UP, in the module root.
-# [FA] نسخهٔ ۱.۲۵: این اسکریپت حالا در پوشهٔ Tester ماژول است، پس هدرهایی
-#      که می‌خواند یک سطح بالاتر، در ریشهٔ ماژول‌اند.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUZZER_HEADER = os.path.join(BASE_DIR, "ui_buzzer.h")
 LED_HEADER = os.path.join(BASE_DIR, "ui_led.h")
@@ -21,7 +16,6 @@ for hdr in [BUZZER_HEADER, LED_HEADER]:
                 if m:
                     defines[m.group(1)] = int(m.group(2))
     except: pass
-
 UI_BUZZER_PERCENT_SCALE = defines.get("UI_BUZZER_PERCENT_SCALE",100)
 UI_BUZZER_DUTY_MAX_PERCENT = defines.get("UI_BUZZER_DUTY_MAX_PERCENT",100)
 UI_BUZZER_MIN_PERIOD_MS = defines.get("UI_BUZZER_MIN_PERIOD_MS",1000)
@@ -30,7 +24,6 @@ UI_BUZZER_CHECK_PERCENT = defines.get("UI_BUZZER_CHECK_PERCENT",10)
 UI_BUZZER_MIN_CHECK_MS = defines.get("UI_BUZZER_MIN_CHECK_MS",1)
 UI_BUZZER_OFF_RESULT = defines.get("UI_BUZZER_OFF_RESULT",0)
 UI_BUZZER_INVALID_RESULT = defines.get("UI_BUZZER_INVALID_RESULT",-1)
-
 UI_BAT_V_MIN_MV = defines.get("UI_BAT_V_MIN_MV",21000)
 UI_BAT_V_MAX_MV = defines.get("UI_BAT_V_MAX_MV",28000)
 UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT = defines.get("UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT", defines.get("UI_BATTERY_PERCENT_HYSTERESIS_PERCENT",2))
@@ -47,7 +40,6 @@ UI_GREEN_MIN_OFF_MS = defines.get("UI_GREEN_MIN_OFF_MS",10)
 UI_CHARGING_BLINK_PERIOD_MS = defines.get("UI_CHARGING_BLINK_PERIOD_MS",1000)
 UI_CHARGING_YELLOW_MIN_ON_MS = defines.get("UI_CHARGING_YELLOW_MIN_ON_MS",150)
 UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT = defines.get("UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT",2)
-
 def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
     if period_ms <=0 or duty_percent<=0 or beep_count<=0: return None
     if period_ms < UI_BUZZER_MIN_PERIOD_MS: return None
@@ -65,7 +57,6 @@ def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
     durs[-1]+=rem
     tail = period_ms - duty_window
     return duty_window, durs, effective_gap, tail
-
 def buzzer_level_at(period_ms,duty_percent,beep_count,gap_ms,elapsed_ms):
     p=calculate_pattern(period_ms,duty_percent,beep_count,gap_ms)
     if p is None: return False
@@ -80,7 +71,6 @@ def buzzer_level_at(period_ms,duty_percent,beep_count,gap_ms,elapsed_ms):
             if ce < cursor+eff_gap: return False
             cursor+=eff_gap
     return False
-
 def sample_waveform_segments(period_ms,duty_percent,beep_count,gap_ms):
     segs=[]
     prev=buzzer_level_at(period_ms,duty_percent,beep_count,gap_ms,0)
@@ -94,7 +84,6 @@ def sample_waveform_segments(period_ms,duty_percent,beep_count,gap_ms):
         l+=1
     segs.append((prev,l))
     return segs
-
 def calculate_next_check_ms(period_ms,duty_percent,beep_count,gap_ms):
     if period_ms<=0 or duty_percent<=0 or beep_count<=0: return UI_BUZZER_OFF_RESULT
     p=calculate_pattern(period_ms,duty_percent,beep_count,gap_ms)
@@ -106,7 +95,6 @@ def calculate_next_check_ms(period_ms,duty_percent,beep_count,gap_ms):
     smallest=min(segs)
     nxt=(smallest*UI_BUZZER_CHECK_PERCENT)//UI_BUZZER_PERCENT_SCALE
     return max(nxt, UI_BUZZER_MIN_CHECK_MS)
-
 def calculate_scenario_one_shot(duration_ms):
     if duration_ms<=0: return None
     period_ms=max(duration_ms, UI_BUZZER_MIN_PERIOD_MS)
@@ -115,7 +103,6 @@ def calculate_scenario_one_shot(duration_ms):
         duty=(duration_ms*UI_BUZZER_PERCENT_SCALE + period_ms-1)//period_ms
         duty=max(duty,1)
     return calculate_pattern(period_ms,duty,1,0)
-
 def battery_voltage_to_percent(vbat_mv):
     if vbat_mv <= UI_BAT_V_MIN_MV: return 0
     if vbat_mv >= UI_BAT_V_MAX_MV: return UI_PERCENT_FULL
@@ -126,7 +113,6 @@ def battery_voltage_to_percent(vbat_mv):
     pct=scaled//rng
     if pct>UI_PERCENT_FULL: pct=UI_PERCENT_FULL
     return int(pct)
-
 class BatteryRunStable:
     def __init__(self):
         self.stable=0
@@ -145,7 +131,6 @@ class BatteryRunStable:
             diff=abs(int(raw)-int(s))
             if diff >= UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT: s=raw
         self.stable=s; return s
-
 class ChargingStable:
     def __init__(self):
         self.stable=0
@@ -158,7 +143,6 @@ class ChargingStable:
         if diff >= UI_CHARGING_PERCENT_HYSTERESIS_PERCENT:
             self.stable=raw
         return self.stable
-
 class ChargingFull:
     def __init__(self):
         self.active=False
@@ -169,7 +153,6 @@ class ChargingFull:
         else:
             if raw >= UI_CHARGING_FULL_ENTER_PERCENT: self.active=True
         return self.active
-
 def green_timing(stable, period=UI_BLINK_PERIOD_MS, min_off=UI_GREEN_MIN_OFF_MS):
     remaining=UI_PERCENT_FULL-stable
     per=period//UI_PERCENT_SCALE
@@ -178,15 +161,12 @@ def green_timing(stable, period=UI_BLINK_PERIOD_MS, min_off=UI_GREEN_MIN_OFF_MS)
     if off>period: off=period
     on=period-off
     return on, off
-
 def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_on=UI_CHARGING_YELLOW_MIN_ON_MS):
     # [EN] REMAINING to full drives the ON time (final user directive 2026-09-19):
     # more charged -> shorter ON; 95% charged (5 remaining) -> 50 ms per 1000 ms.
     # v1.20 (user order 2026-09-28): remaining is floored at
     # UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT and stable>=100 no longer darks
     # the yellow (this scenario only runs while a charger channel pumps).
-    # [FA] «مانده تا فول» زمان روشن بودن را می‌دهد؛ کف ۲٪ و بدون خاموشی در ۱۰۰٪
-    # از v1.20 (دستور کاربر ۲۰۲۶-۰۹-۲۸).
     if stable >= UI_PERCENT_FULL:
         remaining = 0
     else:
@@ -199,7 +179,6 @@ def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_on=UI_CHARGING
     if on>period: on=period
     off=period-on
     return on, off
-
 class BlinkPhase:
     def __init__(self):
         self.on=False; self.init=False; self.start=0; self.on_ms=0; self.off_ms=0
@@ -216,12 +195,10 @@ class BlinkPhase:
         elif not self.on and elapsed>=self.off_ms:
             self.on=True; self.start=now
         return self.on
-
 def assert_equal(actual, expected, label):
     assert actual==expected, f"{label}: expected {expected}, got {actual}"
 def assert_true(cond,label):
     assert cond, f"{label}: expected True"
-
 def run_assertions():
     assert_equal(calculate_pattern(10000,10,2,100),(1000,[450,450],100,9000),"ten-second two-beep")
     assert_equal(calculate_next_check_ms(10000,10,2,100),10,"next check")
@@ -243,7 +220,6 @@ def run_assertions():
     assert_equal(calculate_next_check_ms(1000,50,2,99),UI_BUZZER_INVALID_RESULT,"short gap")
     assert_equal(calculate_next_check_ms(1000,10,3,100),UI_BUZZER_INVALID_RESULT,"gaps without pulse")
     assert_equal(calculate_next_check_ms(1000,101,1,100),UI_BUZZER_INVALID_RESULT,"duty >100")
-
 def run_battery_hysteresis_tests():
     print("\n=== BatteryRun 2% hysteresis ===")
     s=BatteryRunStable()
@@ -303,7 +279,6 @@ def run_battery_hysteresis_tests():
     s.update(1)
     assert_true(s.stable<1,"still critical after 0->1")
     print("Critical stable 0 persists on 1 jitter PASS")
-
 def run_charging_hysteresis_tests():
     print("\n=== Charging 5% hysteresis ===")
     c=ChargingStable()
@@ -320,7 +295,6 @@ def run_charging_hysteresis_tests():
     # 2026-09-19): more charged -> shorter ON; 5% charged -> 950 ms ON.
     # v1.17: the 150 ms floor (id 69, was 10) keeps the nearly-full blink
     # visible - 95% charged (5 remaining) -> 150 ms, not 50 ms.
-    # [FA] زرد بر اساس «مانده»: ۵٪ شارژ ⇒ ۹۵۰ms روشن؛ کف ۱۵۰ms از v1.17.
     assert_equal(yellow_timing(95), (150, 850), "yellow 95% charged -> 150ms floor (v1.17)")
     assert_equal(yellow_timing(5), (950, 50), "yellow 5% charged -> 950ms on")
     assert_equal(yellow_timing(99), (150, 850), "yellow 99% charged -> min 150ms on")
@@ -330,8 +304,6 @@ def run_charging_hysteresis_tests():
     # - the min-on clamp (id 69, default 150) then keeps the blip visible
     # - a 100% reading mid-charge keeps blinking (no early dark) because
     #   this scenario only runs while a charger channel is pumping.
-    # [FA] نسخهٔ ۱٫۲۰: کف مانده ۲٪ ⇒ ۲۰ms خام در دوره ۱۰۰۰ms، کف ۱۵۰ms مرئی
-    # می‌کند و درصد ۱۰۰ وسط شارژ دیگر زرد را خاموش نمی‌کند.
     assert_equal(yellow_timing(100, min_on=0), (20, 980), "v1.20 100% mid-pump keeps the 2% blink, no dark")
     assert_equal(yellow_timing(99, min_on=0), (20, 980), "v1.20 99% -> 2% remaining floor")
     assert_equal(yellow_timing(98, min_on=0), (20, 980), "v1.20 98% -> 2% remaining floor")
@@ -385,7 +357,6 @@ def run_charging_hysteresis_tests():
     c.update(v25+1)
     assert_equal(c.stable, v25, "charging 25V jitter +1 keep")
     print("Charging 25V jitter PASS")
-
 def run_full_hysteresis_tests():
     print("\n=== Charging Full hysteresis 100/95 ===")
     f=ChargingFull()
@@ -410,16 +381,13 @@ def run_full_hysteresis_tests():
     # now raw 98 while InputPresent should stay InputOk
     assert_equal(f.update(98),True,"stay InputOk at 98")
     print("Full decision PASS")
-
 def run_batlost_tests():
     """[EN] Battery-lost scenario: LED/buzzer pattern math + source contracts.
        [FA] سناریوی قطع باتری: ریاضی الگو + قراردادهای سورس."""
     print("\n=== BatLost scenario (central fault flag) ===")
     ui_led_h = open(LED_HEADER, "r", encoding="utf-8", errors="ignore").read()
     ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
-
     # [EN] Header must own the BatLost constants and prototype.
-    # [FA] هدر باید ثابت‌ها و پروتوتایپ سناریو را داشته باشد.
     assert_true(re.search(r"#define UI_BAT_LOST_LED_PERIOD_MS\s+1000u", ui_led_h), "batlost LED period 1000 ms")
     assert_true(re.search(r"#define UI_BAT_LOST_LED_DUTY_PERCENT\s+50u", ui_led_h), "batlost LED duty 50%")
     assert_true(re.search(r"#define UI_BAT_LOST_BEEP_PERIOD_MS\s+3000u", ui_led_h), "batlost beep period 3000 ms")
@@ -427,11 +395,9 @@ def run_batlost_tests():
     assert_true(re.search(r"#define UI_BAT_LOST_BEEP_COUNT\s+3u", ui_led_h), "batlost beep count 3")
     assert_true(re.search(r"#define UI_BAT_LOST_BEEP_GAP_MS\s+100u", ui_led_h), "batlost beep gap 100 ms")
     assert_true("void func__Ui_ScenarioBatLost_Tick(void);" in ui_led_h, "batlost prototype in header")
-
     # [EN] Pattern math must match the shared buzzer engine's expectations:
     #      duty = 900*100/3000 = 30 -> window 900, three 233/233/234 ms beeps,
     #      100 ms gaps, 2100 ms silence. Valid per min-period/min-gap rules.
-    # [FA] ریاضی الگو باید با موتور بوق سازگار باشد.
     period = defines.get("UI_BAT_LOST_BEEP_PERIOD_MS", 3000)
     duration = defines.get("UI_BAT_LOST_BEEP_DURATION_MS", 900)
     count = defines.get("UI_BAT_LOST_BEEP_COUNT", 3)
@@ -442,9 +408,7 @@ def run_batlost_tests():
     assert_true(period >= UI_BUZZER_MIN_PERIOD_MS, "batlost period >= min")
     assert_true(gap >= UI_BUZZER_MIN_GAP_MS, "batlost gap >= min")
     assert_true(calculate_next_check_ms(period, duty, count, gap) != UI_BUZZER_INVALID_RESULT, "batlost buzzer pattern valid")
-
     # [EN] Trigger: only the central fault bit, AFTER overvoltage, with return.
-    # [FA] ماشه: فقط پرچم متمرکز، بعد از اضافه‌ولتاژ، با return.
     assert_true("func__Ui_ScenarioBatLost_Tick" in ui_led_c, "batlost scenario implemented")
     assert_true("func__Fault_Get() & FAULT_CHARGER_BAT_LOST" in ui_led_c, "batlost trigger reads the central fault bit")
     assert_true("func__Charger_IsAnyChannelActive()" in ui_led_c, "charging yellow must be gated by the charger being active (user directive)")
@@ -472,7 +436,6 @@ def run_batlost_tests():
                 "func__Ui_ScenarioBatLost_Tick();" in run_body,
                 "BatteryRun cannot start its critical beep while BatLost is latched")
     print("BatLost scenario PASS")
-
 UI_ALARM_DEFAULTS = {
     # id: (struct field, boot default) - must match the positional struct init in ui_led.c
     38: ("ovLedPeriodMs", 1000), 39: ("ovLedDutyPct", 50),
@@ -501,7 +464,6 @@ UI_ALARM_DEFAULTS = {
     79: ("chgHystPct", 5), 80: ("runHystPct", 2),
     81: ("runZeroExit", 2), 82: ("runOneExit", 3),
 }
-
 def _w(v, lo, hi): return min(hi, max(lo, v))
 def _period(v): return 0 if v == 0 else _w(v, 1000, 600000)
 def _maxdur(period, count, gap):
@@ -509,7 +471,6 @@ def _maxdur(period, count, gap):
     gt = gap * (count - 1)
     if gt >= period: return 0
     return (period - gt) // count
-
 def ui_clamp_mirror(s):
     """[EN] v1.56: the firmware clamp is per-field only now - every
        cross-field rule moved into the panel (user order), so this mirror
@@ -544,13 +505,11 @@ def ui_clamp_mirror(s):
         if k in s:
             s[k] = _period(s[k])
     return s
-
 def _ui_duty(period, dur, count, gap):
     if period == 0 or dur == 0 or count == 0: return 0
     window = dur * count + (gap * (count - 1) if count > 1 else 0)
     if window > period: return 101  # infeasible -> service INVALID (deterministic silence)
     return (window * 100 + period - 1) // period
-
 def run_ui_alarm_tests():
     """[EN] v1.16: 39 runtime UI ids 38..76 - defines, boot defaults, exact
        legacy-sound equivalence, mute gate, read swaps, clamp invariants.
@@ -561,7 +520,6 @@ def run_ui_alarm_tests():
     print("\n=== UI alarms v1.16/v1.17 (ids 38..82) ===")
     ui_led_h = open(LED_HEADER, "r", encoding="utf-8", errors="ignore").read()
     ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
-
     # --- ID defines: contiguous 38..82 + MIN/MAX ---
     ids = sorted(int(m.group(2)) for m in
                  re.finditer(r"#define\s+(UI_ALARM_PARAM_\w+)\s+\(?(\d+)\)?u?",
@@ -569,8 +527,6 @@ def run_ui_alarm_tests():
     # [EN] v1.49: the dense block is still 38..82; the charge-side percent map
     #      lives in its own little range 119..120 (83..118 are owned by other
     #      modules, so it could not simply be appended).
-    # [FA] بلوک متراکم همان ۳۸..۸۲ است؛ نگاشت درصد سمت شارژ بازهٔ کوچک خودش
-    #      (۱۱۹..۱۲۰) را دارد چون ۸۳..۱۱۸ مال ماژول‌های دیگر است.
     assert_equal(ids, list(range(38, 83)) + [119, 120, 121, 122, 137, 138, 139, 140, 141, 142],
                  "UI alarm ids 38..82 plus ext ranges 119..122 and 137..142")
     assert_equal(defines.get("UI_ALARM_PARAM_MIN_ID"), 38, "MIN_ID 38")
@@ -585,8 +541,6 @@ def run_ui_alarm_tests():
     # [EN] v1.71 (user order: "in discharge only the GAP is shared"): id 122
     #      stopped being band 2's gap and became band 2's own repeat
     #      interval; the gap is the single shared id 65 again.
-    # [FA] شناسهٔ ۱۲۲ از «گپ باند ۲» به «فاصلهٔ تکرار باند ۲» تبدیل شد و گپ
-    #      دوباره فقط یکی است (۶۵).
     assert_equal(defines.get("UI_ALARM_PARAM_RUN_DOUBLE_INTERVAL_MS"), 122,
                  "band 2 repeat interval id 122")
     assert_true("UI_ALARM_PARAM_RUN_DOUBLE_GAP_MS" not in ui_led_h,
@@ -596,13 +550,9 @@ def run_ui_alarm_tests():
                 "band 2 owns two words of its own")
     # [EN] v1.50: band 2 must play ITS duration and gap, and the common gap
     #      floor must no longer answer to band 2's count.
-    # [FA] باند ۲ با مدت و گپ خودش پخش می‌شود و کف گپ مشترک دیگر به تعداد
-    #      باند ۲ پاسخ نمی‌دهد.
     # [EN] Table-driven ClampAlarms clamps by word index (verified in compiled C
     #      harness across all 53 wire IDs); band 2's duration appears once in tick
     #      and its interval appears twice in tick (period + duty derivation).
-    # [FA] گیره اکنون جدولی و در هارنس C تست می‌شود؛ مدت باند ۲ یک‌بار و فاصلهٔ
-    #      تکرار آن دوبار در تیک خوانده می‌شود.
     assert_equal(ui_led_c.count("uint32_t__runDoubleDurMs"), 1,
                  "band 2 duration: read in tick (clamp is table-driven)")
     assert_equal(ui_led_c.count("uint32_t__runDoubleIntervalMs"), 2,
@@ -610,7 +560,6 @@ def run_ui_alarm_tests():
     # [EN] v1.71: every discharge band is shaped identically - count,
     #      per-beep duration, own repeat interval - and the duty handed to
     #      the buzzer is always DERIVED. No band may pass a typed duty.
-    # [FA] هر چهار باند یک شکل‌اند و دیوتی همیشه محاسبه می‌شود.
     assert_true("uint32_t__runCritBeepDurMs" in ui_led_c
                 and "runCritDutyPct" not in ui_led_c,
                 "the critical band takes a per-beep duration, not a duty")
@@ -625,7 +574,6 @@ def run_ui_alarm_tests():
                 "charge-side converter prototype")
     assert_true("bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Set prototype")
     assert_true("bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Get prototype")
-
     # --- struct init order: positional init must list the 45 boot defaults in id order ---
     m = re.search(r"static (?:volatile )?ui_alarm_t UI_ALARM_T__G__Alarm =\n\{(.*?)\n\};", ui_led_c, re.S)
     assert_true(m, "alarm struct init found")
@@ -663,7 +611,6 @@ def run_ui_alarm_tests():
         "UI_TECH_FAULT_LED_PERIOD_MS", "UI_TECH_FAULT_LED_DUTY_PERCENT"]
     assert_equal(inits, expected_macros, "init order == id order (positional!)")
     print("IDs + boot defaults PASS")
-
     # --- legacy-sound equivalence: ceil duty on defaults must equal the old DUTY macros ---
     assert_equal(_ui_duty(10000, 1000, 1, 0), 10, "OV duty 10 (legacy macro 10)")
     assert_equal(_ui_duty(3000, 233, 3, 100), 30, "BatLost duty 30 from 233 ms/beep")
@@ -674,19 +621,14 @@ def run_ui_alarm_tests():
     assert_equal(_ui_duty(20000, 2000, 3, 100), 31, "triple duty 31 (legacy ceil macro)")
     assert_equal(calculate_pattern(60000, 2, 1, 100), (1200, [1200], 0, 58800), "std 1200 ms beep")
     print("Legacy-sound equivalence PASS")
-
     # --- read swaps: scenarios read the live struct through the mute gate ---
     # [EN] Pre-existing staleness found 2026-10-05: the count said 12 while
     #      the file had 13 (the imbalance scenario added a site and nobody
     #      re-ran this). Corrected, not weakened.
-    # [FA] این عدد از قبل کهنه بود (سناریوی عدم‌توازن یک محل اضافه کرد).
     # [EN] v1.75 audit: 13 call sites + the definition = 14. The pin was one
     #      behind again (the dead-battery scenario added a site in v1.72).
-    # [FA] ۱۳ محل فراخوانی + خود تعریف = ۱۴.
     # [EN] Scenario 8 (weak battery, 2026-10-23) added one more gated site:
     #      16 scenario sites + 1 definition = 17.
-    # [FA] سناریوی ۸ (باتری ضعیف) یک محل گیت‌دار دیگر اضافه کرد: ۱۶ محل + ۱
-    #      تعریف = ۱۷.
     assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 17,
                  "16 scenario sites + 1 def use the mute gate")
     assert_true("IMBAL_PARAM_LATCH_BEEP_COUNT" in ui_led_c and
@@ -699,17 +641,13 @@ def run_ui_alarm_tests():
     # + 2 BoardTest (mute bypass, still proves the buzzer works at boot)
     # [EN] v1.75 audit: 8 now - the dead-battery lock turns the buzzer off
     #      explicitly like the OV-clear path does.
-    # [FA] حالا ۸ مورد است.
     # [EN] Scenario 8 also turns the buzzer off explicitly when its period is 0.
-    # [FA] سناریوی ۸ هم با دورهٔ صفر بوق را صریحاً خاموش می‌کند.
     assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 9,
                  "direct Tick only in Gated/all_off/OV-clear/BoardTest/lock")
     assert_true("uint32_t__pctVminMv" in ui_led_c and "uint32_t__pctVmaxMv" in ui_led_c,
                 "discharge percent map reads live 74/75")
     # [EN] v1.49 separation: the discharge map feeds BatteryRun only, and the
     #      charging face + the full-charge latch read the charge map.
-    # [FA] جداسازی: نگاشت دشارژ فقط برای BatteryRun، و چهرهٔ شارژ و قفل
-    #      فول‌شارژ از نگاشت سمت شارژ می‌خوانند.
     assert_equal(ui_led_c.count("func__Ui_BatteryVoltageToPercent("), 2,
                  "the discharge map has exactly one caller (plus its own definition)")
     assert_equal(ui_led_c.count("func__Ui_ChargeVoltageToPercent("), 3,
@@ -727,7 +665,6 @@ def run_ui_alarm_tests():
                 and "APP_CONFIG.ui_charging_blink_period_ms" not in ui_led_c,
                 "no scenario reads blink periods from APP_CONFIG anymore")
     print("Read swaps + mute gate PASS")
-
     # --- clamp invariants: defaults no-op + 2000 random states incl. idempotence ---
     import random
     defs = {f: d for _, (f, d) in UI_ALARM_DEFAULTS.items()}
@@ -786,7 +723,6 @@ def run_ui_alarm_tests():
         check_inv(c1, f"trial {trial}")
         assert_equal(ui_clamp_mirror(c1), c1, f"clamp idempotent trial {trial}")
     print("Clamp invariants + idempotence (2000 random) PASS")
-
     # --- v1.56 (user order): every cross-field rule left the MCU ---
     for gone in ["uint32_t__critWindowMs", "runCritCount--", "func__Ui_MaxBeepDurMs",
                  "UI_BUZZER_MIN_GAP_MS"]:
@@ -800,7 +736,6 @@ def run_ui_alarm_tests():
                 and "_Static_assert((sizeof(ui_alarm_t) / sizeof(uint32_t)) == 55u" in ui_led_c,
                 "the per-field guard stays: a bad NVM record must not reach the ticks")
     print("Cross-field rules moved to the panel (v1.56) PASS")
-
     # --- v1.17: enter authoritative, yellow floor 150, scenario reads live 77..82 ---
     e = dict(defs)
     e.update({"chgFullEnterPct": 0, "chgFullExitPct": 0})
@@ -814,7 +749,6 @@ def run_ui_alarm_tests():
                 and "uint32_t__runZeroExit" in ui_led_c and "uint32_t__runOneExit" in ui_led_c,
                 "scenarios read live 77..82")
     print("Full latch + yellow 150 (v1.17) PASS")
-
 def run_scenario_alarm_switch_tests():
     """[EN] v1.87 (user order): the panel's «فعال» tick must silence that
        scenario's LED/beep face ON THE BOARD, and nothing else. These checks
@@ -829,7 +763,6 @@ def run_scenario_alarm_switch_tests():
                 encoding="utf-8", errors="ignore").read()
     ui_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r",
                 encoding="utf-8", errors="ignore").read()
-
     assert_true(re.search(r"UI_SCENARIO_ALARM_ID_FIRST\s+158u", ui_h) and
                 re.search(r"UI_SCENARIO_ALARM_ID_LAST\s+164u", ui_h),
                 "the seven alarm ids must be 158..164 (one per scenario 1..7)")
@@ -837,13 +770,11 @@ def run_scenario_alarm_switch_tests():
                  "func__Ui_ScenarioAlarmOn"):
         assert_true(keep in ui_h and keep in ui_c,
                     f"{keep} must be declared and defined")
-
     # every scenario face is gated
     for n in range(1, 8):
         assert_true(re.search(r"func__Ui_ScenarioAlarmOn\(" + str(n) + r"u\)",
                               ui_c) is not None,
                     f"scenario {n}'s LED/beep face is not gated by its switch")
-
     # the store can only ever hold 0 or 1, and refuses a bad id
     m = re.search(r"bool func__Ui_SetScenarioAlarm.*?\n\}", ui_c, flags=re.S)
     assert_true(m is not None, "func__Ui_SetScenarioAlarm must exist")
@@ -854,7 +785,6 @@ def run_scenario_alarm_switch_tests():
                 "the setter must refuse a NULL out-pointer and an id outside 158..164")
     assert_true("(uint32_t__value != 0u)" in body,
                 "the stored flag is a boolean, so a stray 5 or 100 cannot leak in")
-
     # a scenario number that does not exist cannot silence a face
     g = re.search(r"bool func__Ui_ScenarioAlarmOn.*?\n\}", ui_c, flags=re.S)
     assert_true(g is not None, "func__Ui_ScenarioAlarmOn must exist")
@@ -875,9 +805,6 @@ def run_scenario_alarm_switch_tests():
     # [EN] v1.88 (user order 2026-10-23): the scenario-8 face is a NO-MAINS
     #      face. With the mains back and the pack charging, the normal charge
     #      lamps must be shown; the verdict and the blocked battery path stay.
-    # [FA] نسخهٔ ۱٫۸۸ (دستور کاربر): چهرهٔ سناریوی ۸ فقط برای حالت بدون برق
-    #      شهر است. با برگشت برق شهر و شارژ شدن پک، چراغ شارژ عادی باید دیده
-    #      شود؛ حکم و بسته‌بودن مسیر باتری سر جایشان می‌مانند.
     weak = re.search(r"func__Changeover_WeakVerdictActive\(\) != false\)[^\n]*\n[^\n]*input_present",
                      ui_c)
     assert_true(weak is not None,
@@ -886,9 +813,6 @@ def run_scenario_alarm_switch_tests():
     # [EN] v1.89 (user order 2026-10-23): a cut battery path with no mains must
     #      leave EVERY lamp and the buzzer dark - the panel used to keep the
     #      green "running on battery" blink alive next to a dead output.
-    # [FA] نسخهٔ ۱٫۸۹: مسیر باتریِ بسته بدون برق شهر باید همهٔ چراغ‌ها و بوق
-    #      را خاموش بگذارد؛ قبلاً چشمک سبز «کار روی باتری» کنار خروجیِ خاموش
-    #      روشن می‌ماند.
     dark = re.search(r"if \(\(BOOL__G__UiInputPresent == false\) &&\s*\n"
                      r"\s*\(func__Changeover_PathBlocked\(\) != false\)\)\s*\n"
                      r"\s*\{\s*\n\s*func__all_off\(\);", ui_c)
@@ -896,8 +820,6 @@ def run_scenario_alarm_switch_tests():
                 "the no-mains + blocked-path case must call func__all_off() "
                 "before any scenario face can light a lamp")
     print("Scenario alarm switches (v1.87) PASS")
-
-
 def run_boardtest_watchdog_tests():
     """[EN] Verify TaskUi + func__Ui_BoardTest_Start refresh BSP_IWDG_SLOT_UI
        between steps so the 1650 ms boot self-test never exceeds
@@ -913,7 +835,6 @@ def run_boardtest_watchdog_tests():
     assert_true(init_idx != -1 and pre_checkin_idx != -1 and bt_idx != -1 and
                 init_idx < pre_checkin_idx < bt_idx,
                 "TaskUi must check in BSP_IWDG_SLOT_UI right before func__Ui_BoardTest_Start()")
-
     harness_c = r'''
 #include <stdio.h>
 #include <stdint.h>
@@ -1144,8 +1065,6 @@ int main(void)
             assert_true(res_run.returncode == 0,
                         f"BoardTest watchdog C harness failed ({led_ms}ms, rc={res_run.returncode}): {res_run.stdout} {res_run.stderr}")
     print("BoardTest IWDG check-in (1650 ms total, <=500 ms slice < 1500 ms stale) PASS")
-
-
 def main():
     print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")
     run_assertions()

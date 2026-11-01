@@ -1,6 +1,5 @@
 /**
  * [EN] Behavioural test for the panel's click-to-edit values.
- *
  *      Every other check in this repository reads the panel as TEXT. That
  *      catches a missing field and it catches a renamed id, but it cannot
  *      catch an editor that opens and then gets wiped by the next telemetry
@@ -8,39 +7,19 @@
  *      Those are the failures this file exists for: it loads the real
  *      generated page in a DOM, clicks the real labels and asserts on what
  *      actually happens.
- *
  *      v1.30 (user order): the CHART is the editor. The report table that
  *      later sat beside it was deleted wholesale on a follow-up order
  *      (v1.36), so this file now also pins its ABSENCE - a table that quietly
  *      crept back would pass every grep.
- *
  *      Optional by design. jsdom is not a dependency of this project and the
  *      firmware build must never need node, so a missing jsdom SKIPS (exit 0)
  *      with an instruction instead of failing. Run it with:
- *
  *          npm install --no-save jsdom
  *          node ESP_Calibration/Tester/host_test_panel_click.js
- *
- * [FA] تست رفتاری مقادیر کلیک-و-ویرایش پنل.
- *
- *      هر چک دیگری در این مخزن پنل را به‌صورت «متن» می‌خواند. آن روش نبودِ یک
- *      فیلد یا تغییر نام یک شناسه را می‌گیرد، ولی نمی‌تواند ویرایشگری را بگیرد
- *      که باز می‌شود و تلمتری بعدی پاکش می‌کند، یا کلید Esc که به‌جای لغو ذخیره
- *      کند، یا گیره‌ای که کاربر هرگز نمی‌بیندش.
- *
- *      نسخهٔ ۱.۳۰ (دستور کاربر): نمودار ویرایشگر است و جدول عملکرد فقط گزارش
- *      می‌دهد. پس این فایل جهتِ همان تقسیم را هم میخ می‌کند - جدولی که بی‌صدا
- *      دوباره ویرایش‌پذیر شود، از هر grep سالم رد می‌شود.
- *
- *      عمداً اختیاری است. jsdom وابستگی این پروژه نیست و بیلد فرم‌ور هرگز نباید
- *      به node نیاز پیدا کند، پس نبودن jsdom یعنی SKIP (خروج ۰).
  */
-
 "use strict";
-
 const fs = require("fs");
 const path = require("path");
-
 let JSDOM;
 try {
     ({ JSDOM } = require("jsdom"));
@@ -50,11 +29,9 @@ try {
     console.log("      node ESP_Calibration/Tester/host_test_panel_click.js");
     process.exit(0);
 }
-
 const PAGE = path.join(__dirname, "..", "panel_preview.html");
 let failures = 0;
 let checks = 0;
-
 function check(cond, what, detail) {
     checks++;
     if (cond) {
@@ -64,22 +41,20 @@ function check(cond, what, detail) {
         console.log("  FAIL " + what + (detail ? "  [" + detail + "]" : ""));
     }
 }
-
-/* [EN] The ids the user ordered to be settable from the panel, split by where
-        the chart can honestly draw them.
-   [FA] شناسه‌هایی که کاربر دستور داد از پنل تنظیم‌شدنی باشند، بر حسب اینکه
-        نمودار کجا می‌تواند صادقانه رسمشان کند. */
+/*
+ * [EN] The ids the user ordered to be settable from the panel, split by where
+ * the chart can honestly draw them.
+ */
 const ON_VOLT_AXIS = [20, 21, 22, 23, 24, 36, 100];
 const ON_CURR_AXIS = [25, 26, 35, 94];
-/* [EN] v1.32 (user order: "I wanted to click ON the chart, not have you write
-        it below it"): the chip strip is gone. These are annotated inside the
-        SVG, next to the line each one acts on.
-   [FA] نوار تراشه حذف شد. این‌ها داخل خود SVG و کنار همان خطی که رویش اثر
-        می‌گذارند یادداشت می‌شوند. */
+/*
+ * [EN] v1.32 (user order: "I wanted to click ON the chart, not have you write
+ * it below it"): the chip strip is gone. These are annotated inside the
+ * SVG, next to the line each one acts on.
+ */
 const ANNOTATED = [93, 95, 96, 97, 98, 99, 101, 102, 103, 104, 105, 106, 107];
 const LIMIT_IDS = [];
 for (let i = 93; i <= 107; i++) { LIMIT_IDS.push(i); }
-
 function seedParams() {
     const p = {};
     for (let i = 0; i < 108; i++) { p[i] = 0; }
@@ -92,7 +67,6 @@ function seedParams() {
     });
     return p;
 }
-
 function main() {
     const dom = new JSDOM(fs.readFileSync(PAGE, "utf8"), {
         runScripts: "dangerously", pretendToBeVisual: true,
@@ -100,33 +74,31 @@ function main() {
     });
     const w = dom.window;
     const d = w.document;
-
     setTimeout(() => {
         const sent = [];
-        /* [EN] Intercept the write path: this test is about the panel, not the
-                link. Echoing the value back is what an accepted SET_PARAM
-                looks like from the page's point of view.
-           [FA] مسیر نوشتن قطع می‌شود: موضوع این تست پنل است نه لینک. */
+        /*
+ * [EN] Intercept the write path: this test is about the panel, not the
+ * link. Echoing the value back is what an accepted SET_PARAM
+ * looks like from the page's point of view.
+ */
         const stub = (id, v) => { sent.push([id, v]); if (w.D && w.D.p) { w.D.p[id] = v; } };
         w.send = stub;
-        /* [EN] v1.52: edits are staged in the global queue instead of being
-                posted field by field, so the queue is the write path now.
-           [FA] از v1.52 ویرایش‌ها در صف سراسری می‌نشینند، پس مسیر نوشتن همان
-                صف است و اینجا هم همان قطع می‌شود. */
+        /*
+ * [EN] v1.52: edits are staged in the global queue instead of being
+ * posted field by field, so the queue is the write path now.
+ */
         w.qput = stub;
         w.D = {
             p: seedParams(), t: new Array(25).fill(0),
             q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1
         };
-        /* [EN] draw() rather than qgraph() directly: TAB defaults to 0, the
-                chargers page, so this also proves the redraw is not gated on
-                the settings tab. A mount that is never drawn is a container
-                that is present, empty and permanently silent.
-           [FA] به‌جای صدازدن مستقیم qgraph از draw استفاده می‌شود: TAB پیش‌فرض
-                ۰ است یعنی صفحهٔ شارژرها، پس این ثابت می‌کند بازرسم به تب
-                تنظیمات مشروط نیست. */
+        /*
+ * [EN] draw() rather than qgraph() directly: TAB defaults to 0, the
+ * chargers page, so this also proves the redraw is not gated on
+ * the settings tab. A mount that is never drawn is a container
+ * that is present, empty and permanently silent.
+ */
         w.draw(w.D);
-
         const anchor = (i) => d.querySelector('[data-i="' + i + '"]');
         const pop = () => d.getElementById("evpop");
         const field = () => { const p = pop(); return p ? p.querySelector("input") : null; };
@@ -138,7 +110,6 @@ function main() {
             el.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true }));
         const P0 = d.getElementById("p0");
         const P2 = d.getElementById("p2");
-
         /* --- 0. v1.36 (user follow-up order: the operating table was not
                  liked - delete it entirely). The chargers page carries just
                  the two charger cards now; the chart keeps its one home in
@@ -294,7 +265,6 @@ function main() {
               "the hard fault line is INSIDE the plot, not clipped to the edge",
               "x=" + x35 + " with the right edge at " + X1 +
               " - IMAX must cover every current threshold it draws");
-
         /* --- 4. clicking opens a floating editor with the RAW value --- */
         let inp = open(93);
         check(inp !== null, "clicking a value opens the editor");
@@ -305,7 +275,6 @@ function main() {
               inp.getAttribute("max") === "21600000",
               "the editor advertises the firmware's own window",
               inp.getAttribute("min") + ".." + inp.getAttribute("max"));
-
         /* --- 5. Enter commits --- */
         inp.value = "0";
         key(inp, "Enter");
@@ -316,7 +285,6 @@ function main() {
         check(anchor(93).textContent.indexOf("بدون سقف") >= 0,
               "zero renders as 'no ceiling', not as '0 ms'",
               anchor(93).textContent);
-
         /* --- 6. Escape must not write. A cancel key that saves is worse than
                  no cancel key: the user believes they backed out of changing
                  a safety limit. --- */
@@ -329,7 +297,6 @@ function main() {
         check(anchor(99).textContent.indexOf("32") >= 0,
               "Escape leaves the displayed value untouched",
               anchor(99).textContent);
-
         /* --- 7. what happens under an open editor when telemetry keeps
                  arriving. The field itself lives on <body>, so a redraw was
                  never going to delete it - mutation testing proved that
@@ -358,7 +325,6 @@ function main() {
                   "and the page resumes updating once the editor closes",
                   anchor(97).textContent);
         }
-
         /* --- 8. a clamp must be visible. The board clamping while the panel
                  keeps showing what was typed is how a ceiling ends up
                  believed-set and not set. --- */
@@ -373,14 +339,12 @@ function main() {
         check((a100.getAttribute("fill") || "") === "#f7c13c",
               "a clamped chart label is recoloured so the clamp is visible",
               a100.getAttribute("fill"));
-
         /* --- 9. the hard constant is not offered as a control --- */
         const cutoff = [...CHART.querySelectorAll(".qgm text")]
             .filter(t => t.textContent.indexOf("Hard cutoff") >= 0);
         check(cutoff.length === 1 && !cutoff[0].hasAttribute("data-i"),
               "the 15 V measurement ceiling stays read-only",
               "it is the board's valid-range limit, not a setting");
-
         /* --- 10. v1.33: the current ceilings were opened so a parallel pack
                  can be charged. The bench LUTs are only fitted to ~631 mA, so
                  the chart must SHOW where measured data ends - otherwise the
@@ -388,22 +352,20 @@ function main() {
                  trustworthy as one set at 600 mA. --- */
         const edge = () => [...CHART.querySelectorAll(".qgm line")]
             .filter(l => l.getAttribute("stroke-dasharray") === "2 4");
-        /* The first draft of this check asserted the edge is HIDDEN at
-           default. Running it proved the opposite is the honest answer: the
-           factory 950 mA trip has ALWAYS been past the 631 mA fitted edge,
-           so hiding the line at default would hide a fact that was already
-           true - it just had never been drawn. The assertion was corrected
-           to match reality rather than the code being bent to match it.
-           نسخهٔ اول این چک ادعا می‌کرد خط در حالت پیش‌فرض پنهان است. اجرا نشان
-           داد عکسش صادقانه است: تریپ کارخانه‌ای ۹۵۰ همیشه بالای لبهٔ ۶۳۱ بوده.
-           پس ادعا با واقعیت درست شد، نه کد با ادعا. */
+        /*
+ * The first draft of this check asserted the edge is HIDDEN at
+ * default. Running it proved the opposite is the honest answer: the
+ * factory 950 mA trip has ALWAYS been past the 631 mA fitted edge,
+ * so hiding the line at default would hide a fact that was already
+ * true - it just had never been drawn. The assertion was corrected
+ * to match reality rather than the code being bent to match it.
+ */
         check(edge().length === 1,
               "the calibration edge is drawn even at the factory setting",
               "the default 950 mA trip already sits past the 631 mA fit");
         check(Number(edge()[0].getAttribute("x1")) <
               Number(CHART.querySelector('.qgm [data-i="35"]').getAttribute("x")),
               "the edge sits left of the factory trip");
-
         const lbl35 = CHART.querySelector('.qgm [data-i="35"]');
         lbl35.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
         const i35 = field();
@@ -415,7 +377,6 @@ function main() {
         check(sent.some(x => x[0] === 35 && x[1] === 2400),
               "a 2400 mA hard fault is actually sent",
               JSON.stringify(sent.slice(-1)));
-
         w.D.p[35] = 2400;
         w.draw(w.D);
         check(edge().length === 1,
@@ -438,7 +399,6 @@ function main() {
               "x(edge)=" + xEdge + " x(trip)=" + xTrip);
         w.D.p[35] = 950;
         w.draw(w.D);
-
         /* ---- the chart must FOLLOW applied telemetry (the table that used
            to be cross-checked here was deleted wholesale on the user's order,
            so the still-live risk is a chart label going stale after an edit) */
@@ -465,7 +425,6 @@ function main() {
         w.draw(w.D);
         check(chartLabel(25).includes("650"),
               "and it follows the value back down again");
-
         /* --- 11. v1.85 (user order): a latched or decided error has to be
                  visible where the locks are, and clicking that lamp must open
                  the settings card which owns the error. The chips are rebuilt
@@ -473,13 +432,11 @@ function main() {
                  CURRENT draw instead of a reference captured earlier. --- */
         {
             w.scrollTo = () => {};
-            /* [EN] v1.94 (user order 2026-10-23): the always-on chips above the
-                   table are gone; everything that is true right now lives in
-                   the fault box under «وضعیت‌ها — همین حالا», and the latched
-                   bits keep their own clickable lamps next to it.
-               [FA] نسخهٔ ۱٫۹۴: چراغ‌های همیشه‌روشن بالای جدول برداشته شدند؛ هر
-                   چیز که همین حالا درست است در کادر خطا زیر عنوان «وضعیت‌ها»
-                   می‌آید و بیت‌های قفل‌شده چراغ کلیک‌پذیر خودشان را دارند. */
+            /*
+ * [EN] v1.94 (user order 2026-10-23): the always-on chips above the
+ * table are gone; everything that is true right now lives in
+ * bits keep their own clickable lamps next to it.
+ */
             const lvChip = (txt) => [...d.querySelectorAll("#lv span")]
                 .find(sp => sp.textContent.indexOf(txt) >= 0);
             const ledSet = (id) => {
@@ -492,7 +449,6 @@ function main() {
                 .filter(b => b.classList.contains("a")).map(b => b.dataset.s).join();
             const shownCard = () => [...d.querySelectorAll("#usel button")]
                 .filter(b => b.classList.contains("a")).map(b => b.dataset.u).join();
-
             /* a healthy board: the strip says so in words */
             w.D.fl = 2; w.D.fl2 = 0; w.D.t[28] = 0; w.D.t[19] = 0;
             w.D.t[6] = 1; w.D.t[13] = 3;
@@ -507,7 +463,6 @@ function main() {
                   "and says the battery path is connected");
             check(!lvChip("استراحت حرارتی") && !lvChip("حکم باتری خراب"),
                   "a healthy board shows no rest and no verdict");
-
             /* the two spare wire bits of byte 3 drive the two hardest states */
             w.D.fl2 = 32 | 64;
             w.draw(w.D);
@@ -517,7 +472,6 @@ function main() {
             check(!!lvChip("استراحت حرارتی"),
                   "wire bit b6 shows the thermal rest");
             w.D.fl2 = 0;
-
             /* a condemned battery: the LED lights AND the strip says it */
             w.D.t[28] = 1;
             w.draw(w.D); w.uview();
@@ -532,7 +486,6 @@ function main() {
                       "clicking that lamp opens Settings > scenarios on card 6",
                       activeTab() + " | " + activeSub() + " | " + shownCard());
             }
-
             /* v1.98 (user order): the weak-battery verdict is a latch like the
                others, so it gets its own lamp in the fault row - not only a
                line in the log. */
@@ -553,7 +506,6 @@ function main() {
             w.draw(w.D); w.uview();
             check(!ledSet("asbb10"),
                   "and the lamp goes out when the verdict is cleared");
-
             /* the charger power stage */
             w.D.t[28] = 0; w.D.t[19] = 128;
             w.draw(w.D); w.uview();
@@ -564,7 +516,6 @@ function main() {
                 techLed.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
                 check(shownCard() === "7", "and its click shows card 7", shownCard());
             }
-
             /* the weak-battery verdict keeps its own route into card 8 */
             w.D.t[19] = 0; w.D.fl2 = 16; w.D.p[157] = 1;
             w.draw(w.D);
@@ -584,29 +535,26 @@ function main() {
                 check(shownCard() === "8", "and the chip opens card 8", shownCard());
             }
             w.D.fl2 = 0;
-
             /* a running imbalance episode is amber, the latch is a red lamp */
             w.D.t[19] = 0; w.D.fl2 = 1;
             w.draw(w.D); w.uview();
             const epi = lvChip("عدم‌توازن در جریان");
             check(!!epi && epi.className.indexOf("y") >= 0,
                   "a running imbalance episode is an amber state chip");
-
             w.D.fl2 = 2;
             w.draw(w.D); w.uview();
             check(ledSet("asbb8"),
                   "the permanent latch keeps its own always-lit red lamp");
             check(!lvChip("عدم‌توازن در جریان"),
                   "and the amber episode chip yields to the permanent lock");
-
             w.D.fl2 = 0; w.D.t[28] = 0;
             w.draw(w.D); w.uview();
             check(!ledSet("asbb8"),
                   "clearing the lock puts that lamp back out");
         }
-
-        /* [EN] Ctrl+Enter must run the same send-all as the button (spy on the global).
-           [FA] ‎Ctrl+Enter‎ باید همان ارسال همگانی دکمه را اجرا کند (جاسوس روی تابع سراسری). */
+        /*
+ * [EN] Ctrl+Enter must run the same send-all as the button (spy on the global).
+ */
         {
             let sendCalls = 0;
             const realSendAll = w.sendall;
@@ -617,7 +565,6 @@ function main() {
             check(sendCalls === 1, "plain Enter does not trigger send-all");
             w.sendall = realSendAll;
         }
-
         /* --- 12. v1.86 (user order): every latched fault is written on ONE line
                  of the fault box, and the scenario-6 continuous-charge counters
                  (the numbers that decide "battery condemned") are shown live
@@ -632,7 +579,6 @@ function main() {
             check(!!asf && asf.textContent.indexOf("✅ بدون خطای قفل‌شده") >= 0,
                   "a clean fault box stays one short line",
                   asf ? asf.textContent : "no #asf");
-
             w.D.t[19] = 128 + 2 + 1;   /* bits 0, 1 and 7 */
             w.D.fl2 = 2;               /* permanent imbalance latch */
             w.D.t[28] = 3;             /* both batteries condemned */
@@ -646,7 +592,6 @@ function main() {
                   "and they all sit on one line, joined by a separator");
             check(txt.indexOf("عدم‌توازن در جریان") < 0,
                   "the episode note yields to the permanent latch");
-
             check(!!dbcnt && dbcnt.textContent.indexOf("باتری ۱") >= 0 &&
                   dbcnt.textContent.indexOf("باتری ۲") >= 0,
                   "the dead-battery counters are shown for both batteries",
@@ -654,7 +599,6 @@ function main() {
             check(!!dbcnt && dbcnt.textContent.indexOf("از") >= 0 &&
                   dbcnt.textContent.indexOf("حکم صادر شد") >= 0,
                   "each counter counts up to its deadline and the verdict is flagged");
-
             w.D.p[125] = 0;
             w.draw(w.D);
             check(!!dbcnt && dbcnt.textContent.indexOf("خاموش است") >= 0,
@@ -662,10 +606,10 @@ function main() {
             w.D.p[125] = 3600000; w.D.t[19] = 0; w.D.fl2 = 0; w.D.t[28] = 0;
             w.draw(w.D);
         }
-
-        /* [EN] Styled dialogs: the panel's own modal is shown, Enter confirms, Escape cancels.
-           The modal opens one tick after the call (it queues behind any open dialog).
-           [FA] کادر تأیید پنل: نمایش در کادر خود پنل، Enter = تأیید، Esc = انصراف. */
+        /*
+ * [EN] Styled dialogs: the panel's own modal is shown, Enter confirms, Escape cancels.
+ * The modal opens one tick after the call (it queues behind any open dialog).
+ */
         {
         /* --- v1.95 (user order): the log card at the bottom shows every state
                  and every fault, one line per event, newest first, and each
@@ -677,13 +621,11 @@ function main() {
                 [ep, 12, chg, note, mains, fl, c1, c2, fault, f2, v, v - 40, v + 40, 20].join(",");
             const rows = () => [...w.document.querySelectorAll("#evtlist .evtrow")];
             const txt = (i2) => rows()[i2] ? rows()[i2].textContent : "";
-
             w.evtRender([
                 row(2, 0, 1, 0, 1, 3, 0, 0, 24000),          /* mains back */
                 row(16, 0, 1, 0, 1, 3, 8, 0, 24000),         /* a fault */
                 row(256, 0, 0, 32, 9, 9, 0, 0, 20600)        /* hand mode */
             ].join("\n"), "");
-
             check(rows().length === 3,
                   "the log card draws one line per saved event",
                   String(rows().length));
@@ -704,7 +646,6 @@ function main() {
                   "the mode line says hand mode in words", txt(0));
             check(txt(2).indexOf("برق شهر وصل شد") >= 0,
                   "a mains return is written in words too", txt(2));
-
             /* every charger phase has a Persian name - none may fall back to #n */
             const all = [];
             for (let s1 = 0; s1 <= 10; s1++) all.push(row(4, 0, 0, 0, s1, s1, 0, 0, 24000));
@@ -712,20 +653,17 @@ function main() {
             check(txt(0).indexOf("#") < 0,
                   "every charging phase has a Persian name in the log",
                   txt(0));
-
             /* the condemned-battery verdict has its own column and its own bit */
             w.evtRender("1792756800,12,512,0,0,0,1,3,0,0,24000,23960,24040,20,1", "");
             check(rows()[0] && rows()[0].className.indexOf("lv3") >= 0 &&
                   txt(0).indexOf("نتیجه: باتری ۱ فرسوده") >= 0,
                   "a condemned-battery verdict is a red line that names the battery",
                   txt(0));
-
-            /* [EN] v1.96: a row now carries the rails, both currents and both
-                     duties, the pack voltage step is its own change bit, and a
-                     quiet board writes a heartbeat line.
-               [FA] نسخهٔ ۱٫۹۶: ردیف حالا ولتاژهای ورودی و نود، هر دو جریان و
-                     هر دو دیوتی را دارد؛ گام ولتاژ پک بیت تغییر خودش را دارد و
-                     برد آرام هم ردیف ضربان می‌نویسد. */
+            /*
+ * [EN] v1.96: a row now carries the rails, both currents and both
+ * duties, the pack voltage step is its own change bit, and a
+ * quiet board writes a heartbeat line.
+ */
             w.evtRender("1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
             check(txt(0).indexOf("ولتاژ پک یک پله") >= 0,
                   "a voltage step is a line of its own", txt(0));
@@ -737,21 +675,17 @@ function main() {
             check(txt(0).indexOf("فرمان کانال ۱ 45٪") >= 0 &&
                   txt(0).indexOf("فرمان کانال ۲ 30٪") >= 0,
                   "and both commands as a percentage", txt(0));
-
             w.evtRender("1792756800,12,0,5,1,1,3,0,0,0,24000,23960,24040,20,0", "");
             check(txt(0).indexOf("گزارش دوره‌ای") >= 0 && rows()[0].className.indexOf("lv0") >= 0,
                   "a heartbeat line says the panel is alive, in grey", txt(0));
-
             /* an old 15-column file still reads, without the new columns */
             w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0", "");
             check(txt(0).indexOf("ورودی") < 0 && txt(0).indexOf("24.00") >= 0,
                   "a day file written before v1.96 still opens", txt(0));
-
             /* an empty day says so instead of an empty box */
             w.evtRender("", "");
             check(w.document.getElementById("evtlist").textContent.indexOf("هنوز چیزی ثبت نشده") >= 0,
                   "an empty day says so in words");
-
             /* v1.99 (user order 2026-10-23): the day labels are Iranian (Jalali)
                dates, and each piece of a line sits in its own span with numbers
                and latin words bidi-isolated, so mixed text cannot tangle. */
@@ -771,7 +705,6 @@ function main() {
                   "numbers and latin words run inside their own left-to-right spans",
                   String(rows()[0].querySelectorAll(".lt").length));
         }
-
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
             const p1 = w.pmConfirm("تست کادر");
@@ -795,11 +728,11 @@ function main() {
                 }
                 process.exit(failures === 0 ? 0 : 1);
             });
-            /* [EN] v1.100: the manual-mode precondition checklist - green
-                     ticks when every condition holds, named reasons when not,
-                     and the same list gates the mode.
-               [FA] v1.100: چک‌لیست پیش‌شرط‌های مود دستی - تیک سبز وقتی همه درست،
-                     دلیلِ نام‌دار وقتی غلط، و همان فهرست جلوی ورود. */
+            /*
+ * [EN] v1.100: the manual-mode precondition checklist - green
+ * ticks when every condition holds, named reasons when not,
+ * and the same list gates the mode.
+ */
             {
                 const all = w.mpre({ on: 1, fl: 2, t: [], p: [] });
                 check(all.length === 6 && all.every(x => x.ok),
@@ -839,8 +772,6 @@ function main() {
                 check(box1.innerHTML === "" && box2.innerHTML === "",
                       "in auto mode the checklist is not shown");
             }
-            /* درصد پر بودن هر باتری کنار ولتاژ همان باتری در صفحهٔ اول:
-               موقع شارژ یا حضور برق ورودی پنهان و موقع دشارژ با نردبان ۷۴ و ۷۵ و هیسترزیس ۸۰ و ۸۱ و ۸۲ نمایش داده می‌شود. */
             {
                 const pDis = (w.D && Array.isArray(w.D.p)) ? w.D.p.slice() : [];
                 pDis[29] = 6000; pDis[33] = 21000; pDis[50] = 50; pDis[53] = 15;
@@ -854,7 +785,6 @@ function main() {
                       vp2.textContent === "" && vp2.className === "bpct",
                       "battery percentage stays hidden next to vb1/vb2 while charging on mains",
                       (vp1 ? vp1.className + ":" + vp1.textContent : "no-vp1"));
-
                 const tDis = tChg.slice();
                 tDis[6] = 6; tDis[13] = 6; tDis[14] = 0;
                 tDis[18] = 12500; /* upper: (12500-10500)/4000 = 50% -> green */
@@ -865,7 +795,6 @@ function main() {
                       vp2.textContent === "25%" && vp2.className === "bpct on y",
                       "on discharge each battery shows its own fullness % right beside its voltage",
                       vp1.textContent + "/" + vp1.className + " , " + vp2.textContent + "/" + vp2.className);
-
                 /* 1% jitter must be held steady by the 2% discharge hysteresis (q80=2) */
                 const tJit = tDis.slice();
                 tJit[18] = 12540; /* raw 51% -> within 2% of 50%, stays 50% */
@@ -874,19 +803,15 @@ function main() {
                 check(vp1.textContent === "50%" && vp2.textContent === "10%" && vp2.className === "bpct on r",
                       "discharge % applies 2% hysteresis and critical red styling below q53",
                       vp1.textContent + " , " + vp2.textContent + "/" + vp2.className);
-
                 /* Missing battery (<6V or BAT_LOST=8) must not claim 0% */
-                /* [EN] tLost copies tDis, so the lower battery is back at 11500 mV
-                        = 25 % raw. The point of this check is that ONE missing
-                        channel hides its % while the other one still shows ITS
-                        OWN number - not that the number is frozen at the value
-                        of the previous draw. The old expectation said 10 %, the
-                        value of the jitter draw it no longer copies.
-                   [FA] tLost از tDis کپی می‌شود، پس باتری پایین دوباره ۱۱۵۰۰
-                        میلی‌ولت = ۲۵٪ خام است. منظور این تست این است که یک
-                        کانالِ بی‌باتری درصدش را پنهان کند و کانال دیگر عدد
-                        خودش را نشان بدهد - نه اینکه عدد قبلی منجمد بماند.
-                        انتظار قبلی ۱۰٪ بود، یعنی مقدار همان قرائت قبلی. */
+                /*
+ * [EN] tLost copies tDis, so the lower battery is back at 11500 mV
+ * = 25 % raw. The point of this check is that ONE missing
+ * channel hides its % while the other one still shows ITS
+ * OWN number - not that the number is frozen at the value
+ * of the previous draw. The old expectation said 10 %, the
+ * value of the jitter draw it no longer copies.
+ */
                 const tLost = tDis.slice();
                 tLost[6] = 8; tLost[18] = 1200;
                 w.draw({ on: 1, seq: 904, fl: 5, fl2: 0, t: tLost, p: pDis });
@@ -895,7 +820,6 @@ function main() {
                       "a disconnected battery channel hides % while the connected battery keeps showing its %",
                       vp1.textContent + "/" + vp1.className + " , " + vp2.textContent);
             }
-
             return;
         }
         console.log("=".repeat(68));
@@ -908,5 +832,4 @@ function main() {
         process.exit(failures === 0 ? 0 : 1);
     }, 700);
 }
-
 main();

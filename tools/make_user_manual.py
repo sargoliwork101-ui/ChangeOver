@@ -9,7 +9,6 @@
 [FA] راهنمای کاربر ساده با جمله‌های کوتاه می‌سازد؛ جای عکس‌ها قرمز است.
 Run: python3 tools/make_user_manual.py
 """
-
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -17,15 +16,11 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 import pathlib
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / 'Documentation' / 'User_Manual.docx'
-
 FONT = 'Vazirmatn'
 NAVY = '1F3864'
 RED = 'FF0000'
-
-
 def _rtl_run(r, size=12, bold=False, color=None):
     r.font.name = FONT
     r.font.size = Pt(size)
@@ -42,8 +37,6 @@ def _rtl_run(r, size=12, bold=False, color=None):
     rtl.set(qn('w:val'), '1')
     rPr.append(rtl)
     return r
-
-
 def para(doc_or_cell, text='', size=12, bold=False, color=None, align='right',
          space_after=6, line=1.35):
     p = doc_or_cell.add_paragraph()
@@ -59,8 +52,6 @@ def para(doc_or_cell, text='', size=12, bold=False, color=None, align='right',
     if text:
         _rtl_run(p.add_run(text), size=size, bold=bold, color=color)
     return p
-
-
 def heading(doc, text, level=1):
     p = para(doc, '', space_after=8 if level == 1 else 6)
     _rtl_run(p.add_run(text), size=17 if level == 1 else 14, bold=True, color=NAVY)
@@ -75,51 +66,38 @@ def heading(doc, text, level=1):
         pbdr.append(bottom)
         pPr.append(pbdr)
     return p
-
-
 def example(doc, text, size=12):
     p = para(doc, '', space_after=6)
     _rtl_run(p.add_run('مثال:  '), size=size, bold=True, color=NAVY)
     _rtl_run(p.add_run(text), size=size)
     return p
-
-
 def _shade(cell, hexcolor):
     tcPr = cell._tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
     shd.set(qn('w:val'), 'clear')
     shd.set(qn('w:fill'), hexcolor)
     tcPr.append(shd)
-
-
 def item(doc, text, size=12):
     p = para(doc, '', space_after=3)
     _rtl_run(p.add_run('•  '), size=size, bold=True, color=NAVY)
     _rtl_run(p.add_run(text), size=size)
     return p
-
-
 def step(doc, n, text, size=12):
     p = para(doc, '', space_after=3)
     _rtl_run(p.add_run(f'قدم {n}:  '), size=size, bold=True, color=NAVY)
     _rtl_run(p.add_run(text), size=size)
     return p
-
-
 def photo(doc, text):
     p = para(doc, '', align='center', space_after=2)
     _rtl_run(p.add_run('【 جای عکس: ' + text + ' 】'), size=11, bold=True, color=RED)
     para(doc, '(این نوشتهٔ قرمز فقط راهنماست؛ عکس را اینجا بگذارید و بعد این متن را پاک کنید.)',
          size=10, bold=True, color=RED, align='center', space_after=12)
     return p
-
-
 def table(doc, headers, rows, widths=None):
     t = doc.add_table(rows=1, cols=len(headers))
     t.style = 'Table Grid'
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
     t._tbl.tblPr.append(OxmlElement('w:bidiVisual'))
-
     def fill(cell, text, bold=False, color=None, size=11):
         cell.text = ''
         p = cell.paragraphs[0]
@@ -130,7 +108,6 @@ def table(doc, headers, rows, widths=None):
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         p.paragraph_format.line_spacing = 1.25
         _rtl_run(p.add_run(text), size=size, bold=bold, color=color)
-
     for j, h in enumerate(headers):
         fill(t.rows[0].cells[j], h, bold=True, color=NAVY)
         _shade(t.rows[0].cells[j], 'D9E2F3')
@@ -146,8 +123,6 @@ def table(doc, headers, rows, widths=None):
                 row.cells[j].width = Cm(w)
     para(doc, '', space_after=4)
     return t
-
-
 def build():
     doc = Document()
     for sec in doc.sections:
@@ -157,14 +132,12 @@ def build():
         sec.right_margin = Cm(2.2)
     doc.styles['Normal'].font.name = FONT
     doc.styles['Normal'].font.size = Pt(12)
-
     # ---------- cover ----------
     para(doc, '', space_after=30)
     para(doc, 'راهنمای کاربر', size=28, bold=True, color=NAVY, align='center', space_after=10)
     para(doc, 'برد شارژر و تعویض خودکار باتری (ChangeOver)', size=15, bold=True, align='center', space_after=6)
     para(doc, 'نسخهٔ ۱', size=12, align='center', space_after=24)
     photo(doc, 'عکس برد و دستگاه کامل')
-
     # ---------- 1 ----------
     heading(doc, '۱) این دستگاه چه کار می‌کند؟')
     para(doc, 'این دستگاه دو باتری ۱۲ ولتی را شارژ می‌کند و برق خروجی را بین برق ورودی و باتری جابه‌جا می‌کند.', align='justify')
@@ -172,7 +145,6 @@ def build():
     para(doc, 'وقتی برق ورودی قطع شود، دستگاه خودش و بدون وقفه بار را روی باتری می‌برد.', align='justify')
     para(doc, 'وقتی برق ورودی برگردد، دستگاه خودش به برق ورودی برمی‌گردد و شارژ باتری‌ها ادامه پیدا می‌کند.', align='justify')
     para(doc, 'شما لازم نیست کاری بکنید؛ همه‌چیز خودکار است. چراغ‌ها به شما می‌گویند دستگاه چه وضعی دارد.', align='justify')
-
     # ---------- 2 ----------
     heading(doc, '۲) برای راه‌اندازی چه لازم است؟')
     item(doc, 'دو باتری ۱۲ ولتی سرب‌اسیدی که سری وصل می‌شوند (روی هم ۲۴ ولت).')
@@ -180,7 +152,6 @@ def build():
     item(doc, 'بار یا مصرف‌کننده‌ای که باید همیشه روشن بماند.')
     item(doc, 'برای دیدن پنل: یک گوشی یا کامپیوتر با وای‌فای و مرورگر (مثل کروم).')
     example(doc, 'دو باتری ۱۲ ولتی یعنی روی هم ۲۴ ولت. مثلاً اگر هر باتری ۱۲٫۵ ولت باشد، با هم ۲۵ ولت می‌شود و دستگاه با همین برق کار می‌کند.')
-
     # ---------- 3 ----------
     heading(doc, '۳) وصل‌کردن دستگاه')
     photo(doc, 'عکس برد با نشان‌دادن جای سیم باتری، ورودی و خروجی')
@@ -190,7 +161,6 @@ def build():
     step(doc, 4, 'برق ورودی را به جای ورودی روی برد وصل کنید.')
     step(doc, 5, 'بار را به خروجی وصل کنید.')
     step(doc, 6, 'یک بار دیگر همهٔ سیم‌ها را نگاه کنید که محکم و سر جای درستشان باشند.')
-
     # ---------- 4 ----------
     heading(doc, '۴) روشن‌کردن')
     step(doc, 1, 'برق ورودی را وصل و دستگاه را روشن کنید.')
@@ -199,7 +169,6 @@ def build():
     step(doc, 4, 'وقتی چراغ سبز ثابت شد، یعنی باتری پر است و دستگاه آماده است.')
     example(doc, 'اگر باتری‌ها خالی باشند (مثلاً هر کدام حدود ۱۱ ولت)، زرد مدت زیادی چشمک می‌زند و پر شدن باتری چند ساعت طول می‌کشد. وقتی هر باتری به حدود ۱۴٫۴ ولت رسید و پر شد، چراغ سبز ثابت می‌شود.')
     para(doc, 'از این به بعد دستگاه خودش کار می‌کند و لازم نیست هر روز به آن سر بزنید.', align='justify')
-
     # ---------- 5 ----------
     heading(doc, '۵) چراغ‌ها چه می‌گویند؟')
     para(doc, 'اول بدانید شارژ چطور پیش می‌رود. شارژ سه قدم دارد:', align='justify')
@@ -222,13 +191,11 @@ def build():
           ],
           widths=[4.4, 6.2, 5.4])
     photo(doc, 'عکس چراغ‌های روی برد در حالت عادی (سبز ثابت)')
-
     # ---------- 6 ----------
     heading(doc, '۶) صدای بوق چه می‌گوید؟')
     item(doc, 'در کار عادی، دستگاه ساکت است. بوق فقط برای خبرهای مهم است.')
     item(doc, 'وقتی دستگاه با باتری کار می‌کند و شارژ باتری خیلی کم شود، بوق هشدار می‌دهد؛ یعنی بهتر است برق ورودی زود برگردد.')
     item(doc, 'وقتی خطایی باشد، بوق با فاصله تکرار می‌شود تا متوجه شوید و چراغ‌ها را نگاه کنید.')
-
     # ---------- 7 ----------
     heading(doc, '۷) وقتی برق ورودی قطع می‌شود')
     para(doc, 'نگران نباشید؛ دستگاه همان لحظه بار را روی باتری می‌برد و کارتان قطع نمی‌شود.', align='justify')
@@ -242,7 +209,6 @@ def build():
     para(doc, 'با برگشتن برق ورودی، دستگاه اول حدود ۳۰ ثانیه صبر می‌کند تا برق ورودی مطمئن و ثابت شود. اگر باتری دست‌کم حدود ۲۱٫۲ ولت داشته باشد، بعد از آن خروجی را وصل می‌کند و شارژ باتری‌ها را از سر می‌گیرد. اگر باتری کمتر از این باشد، خروجی بسته می‌ماند تا باتری کمی شارژ شود.', align='justify')
     example(doc, 'برق ساعت ۱۲ می‌رود و دستگاه روی باتری می‌آید. نیم ساعت بعد شارژ باتری به ۴۰ درصد می‌رسد و بوق هشدار می‌دهد. اگر برق دیر برگردد و ولتاژ دو باتری روی هم به حدود ۲۱ ولت برسد، دستگاه خروجی را قطع می‌کند و چراغ‌ها خاموش می‌شوند. برق که برگردد، دستگاه اول ۳۰ ثانیه صبر می‌کند، بعد خروجی را وصل می‌کند و شارژ را از سر می‌گیرد.')
     example(doc, 'باتری کهنه‌ای دارید که با بار زود خالی می‌شود ولی بی‌بار ولتاژش بالا می‌رود. دستگاه بی‌بار ولتاژش را می‌بیند: اگر بالای ۲۵ ولت باشد یک بار امتحان می‌کند؛ اگر همان بار هم دوباره خالی شد، چراغ قرمز چشمک می‌زند و بوق می‌زند تا بدانید باتری باید عوض شود. اگر بی‌بار هم زیر ۲۵ ولت باشد، دستگاه اصلاً امتحان نمی‌کند و منتظر برق ورودی می‌ماند.')
-
     # ---------- 8 errors ----------
     heading(doc, '۸) خطاها و راه‌حل‌ها')
     para(doc, 'اگر چراغ قرمز دیدید یا بوق شنیدید، این جدول را نگاه کنید:', align='justify')
@@ -275,7 +241,6 @@ def build():
     example(doc, 'یکی از باتری‌ها ۱۲٫۹ ولت است و دیگری ۱۲٫۳ ولت؛ یعنی ۰٫۶ ولت با هم فرق دارند. این فرق زیاد است و دستگاه با چراغ قرمز چشمک‌زن و بوق گاه‌به‌گاه خبر می‌دهد که دو باتری یکی نیستند.')
     example(doc, 'اشتباهی به جای ۲۴ ولت، ۳۰ ولت به ورودی می‌دهید. چون از سقف پیش‌فرض ۲۸ ولت بیشتر است، دستگاه خطای ولتاژ بالا می‌دهد و شارژ نمی‌کند تا ولتاژ درست شود.')
     example(doc, 'باتری یک ساعت تند شارژ شده و گرم شده است. دستگاه ۱۰ دقیقه استراحت می‌کند (زرد با دورهٔ ۱ ثانیه چشمک می‌زند) و بعد خودش شارژ را ادامه می‌دهد. این خطا نیست.')
-
     # ---------- 9 panel ----------
     heading(doc, '۹) پنل دستگاه')
     para(doc, 'دستگاه یک پنل بی‌سیم دارد. با گوشی یا کامپیوتر می‌توانید وضعیت را ببینید و چند کار ساده انجام دهید.', align='justify')
@@ -301,7 +266,6 @@ def build():
     item(doc, 'هر بار نرم‌افزار پنل به‌روزرسانی شود، خودِ پنل یک خط در تاریخچه می‌نویسد: «پنل روشن شد — بروزرسانی فرم‌ور». این خط را پاک نکنید تا بدانید هر نسخه از چه روزی روی دستگاه بوده است.')
     item(doc, 'تنظیم اعداد شارژ، سناریوها، کالیبراسیون، روشن/خاموش کردن شارژرها و دیدن زندهٔ چراغ‌ها کار پنل فنی نصاب است و در پنل کاربر نیست. اگر لازم ندارید، چیزی را عوض نکنید.')
     item(doc, 'هر عددی که در پنل فنی عوض شود، خودش ذخیره می‌شود و با قطع برق از بین نمی‌رود. اگر چیزی را اشتباه عوض کردید، دکمهٔ «بازگردانی پیش‌فرض کارخانه» همان بخش، همان‌ها را به حالت اول برمی‌گرداند.')
-
     # ---------- 10 troubleshooting ----------
     heading(doc, '۱۰) اگر چیزی درست کار نکرد')
     table(doc,
@@ -316,7 +280,6 @@ def build():
               ['تاریخچه را پاک می‌کنم ولی خط‌ها می‌مانند', 'حالا خودِ دکمه می‌گوید چند روز پاک شد. اگر «پاک نشد» نوشت، حافظهٔ پنل سوار نشده است: یک بار پنل را خاموش و روشن کنید. یک خط «پنل روشن شد» هم بعد از هر بار روشن‌شدن دوباره نوشته می‌شود؛ این عمدی است.'],
           ],
           widths=[5.2, 10.8])
-
     # ---------- 11 safety ----------
     heading(doc, '۱۱) نکات ایمنی کوتاه')
     item(doc, 'مثبت و منفی باتری و ورودی را جابه‌جا نزنید.')
@@ -324,15 +287,11 @@ def build():
     item(doc, 'دستگاه را خیس نکنید و کنار گرما و آتش نگذارید.')
     item(doc, 'در دستگاه را باز نکنید؛ داخل آن چیزی برای تعمیر شما نیست.')
     item(doc, 'اگر بوی سوختگی یا دود دیدید، فوری برق ورودی و باتری را جدا کنید و با پشتیبانی تماس بگیرید.')
-
     # ---------- 12 support ----------
     heading(doc, '۱۲) پشتیبانی')
     para(doc, 'اگر با این راهنما مشکل حل نشد، با پشتیبانی تماس بگیرید و بگویید چراغ‌ها چه حالتی دارند؛ همین به فهمیدن مشکل کمک زیادی می‌کند.', align='justify')
     para(doc, '【 شماره و نشانی پشتیبانی را اینجا بنویسید 】', size=11, bold=True, color=RED, align='center')
-
     doc.save(str(OUT))
     print('wrote', OUT)
-
-
 if __name__ == '__main__':
     build()

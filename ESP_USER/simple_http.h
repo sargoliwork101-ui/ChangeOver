@@ -1,7 +1,3 @@
-/* simple_http.h - هندلرهای HTTP پنل سه صفحه‌ای
-   فقط فارسی - نمودار، کاربر، تنظیمات، دیاگ، ساعت، احراز هویت
-   اصلاح شده: پشتیبانی JSON body + boardTime در تله‌متری */
-
 static bool func__Simple_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr_value)
 {
     bool bool__negative = (char__ptr_text[0] == '-');
@@ -32,8 +28,7 @@ static bool func__Simple_ParseInt(const char *char__ptr_text, int32_t *int32_t__
     }
     return true;
 }
-
-/* ===== کمک JSON ساده - استخراج از plain body ===== */
+/* ===== JSON - plain body ===== */
 static bool func__Simple_JsonGetString(const String &string__json, const char *char__ptr_key, String &string__out)
 {
     String string__search = String("\"") + char__ptr_key + String("\"");
@@ -54,7 +49,6 @@ static bool func__Simple_JsonGetString(const String &string__json, const char *c
     }
     else
     {
-        /* عدد یا بولین بدون کوتیشن */
         int int__end = int__pos;
         while (int__end < (int)string__json.length() && string__json[int__end] != ',' && string__json[int__end] != '}' && string__json[int__end] != ' ' && string__json[int__end] != '\r' && string__json[int__end] != '\n') int__end++;
         string__out = string__json.substring(int__pos, int__end);
@@ -62,8 +56,6 @@ static bool func__Simple_JsonGetString(const String &string__json, const char *c
         return string__out.length() > 0;
     }
 }
-
-/* گرفتن آرگومان با پشتیبانی JSON plain */
 static bool func__Simple_GetArg(const char *char__ptr_name, String &string__out)
 {
     if (SIMPLE_WEB_SERVER_T__G__Server.hasArg(char__ptr_name))
@@ -86,14 +78,11 @@ static bool func__Simple_GetArg(const char *char__ptr_name, String &string__out)
     }
     return false;
 }
-
-/* ==================== صفحه اصلی ==================== */
 static size_t func__Simple_ClampJsonUsed(size_t size_t__used,
                                          int int__written,
                                          size_t size_t__cap)
 {
     size_t size_t__limit;
-
     if (size_t__cap == 0u)
     {
         return 0u;
@@ -113,11 +102,9 @@ static size_t func__Simple_ClampJsonUsed(size_t size_t__used,
     }
     return size_t__used + (size_t)int__written;
 }
-
 static void func__Simple_HttpRoot(void)
 {
     uint32_t uint32_t__startMs = (uint32_t)millis();
-
     BOOL__G__BrowserSeen = true;
     UINT32_T__G__LastBrowserPollMs = uint32_t__startMs;
 #if defined(ESP8266)
@@ -150,8 +137,7 @@ static void func__Simple_HttpRoot(void)
 #endif
     }
 }
-
-/* ==================== تله‌متری زنده - با boardTime ==================== */
+/* ==================== - boardTime ==================== */
 static void func__Simple_HttpTelemetry(void)
 {
     uint32_t uint32_t__nowMs = (uint32_t)millis();
@@ -163,16 +149,11 @@ static void func__Simple_HttpTelemetry(void)
     uint8_t uint8_t__role = bool__authed ? UINT8_T__G__CurrentRole : 0u;
     uint8_t uint8_t__index;
     size_t size_t__used;
-
     BOOL__G__BrowserSeen = true;
     UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
     func__Simple_ChartTick();
-
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
         "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,"
-        /* دست‌دادن دوطرفه (v1.111): lko = پاسخ تازهٔ برد داریم، bfw = نسخهٔ فرم‌ور
-           برد، brx = فریم سالم از دید برد، bce/bvm = خطای CRC و ناهم‌نسخگی از دید
-           برد، bpc = تعداد پارامتر برد، bpr = دورهٔ تله‌متری، lac = سن آخرین پاسخ. */
         "\"lko\":%u,\"bpv\":%u,\"bfw\":%u,\"bfl\":%u,\"brx\":%lu,\"bce\":%u,\"bvm\":%u,\"bpc\":%u,\"bpr\":%u,\"hac\":%lu,\"hls\":%lu,\"lac\":%lu,\"t\":[",
         bool__online ? 1u : 0u,
         (unsigned long)uint32_t__ageMs,
@@ -204,7 +185,6 @@ static void func__Simple_HttpTelemetry(void)
         (unsigned long)UINT32_T__G__HelloLossCount,
         (unsigned long)(BOOL__G__HelloSeen ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
                                            : 0xFFFFFFFFu));
-
     size_t__used = func__Simple_ClampJsonUsed(0u, (int)size_t__used, SIMPLE_JSON_BUFFER_SIZE);
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
@@ -219,8 +199,6 @@ static void func__Simple_HttpTelemetry(void)
             SIMPLE_JSON_BUFFER_SIZE - size_t__used, "],\"pv\":[");
         size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__mid, SIMPLE_JSON_BUFFER_SIZE);
     }
-
-    /* پارامترهای خود برد به همان ترتیبی که پنل انتظار دارد */
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_PARAM_UI_COUNT; uint8_t__index++)
     {
         const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
@@ -243,8 +221,6 @@ static void func__Simple_HttpTelemetry(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
-
-/* ==================== داده نمودارها ==================== */
 static void func__Simple_HttpCharts(void)
 {
     String string__range = SIMPLE_WEB_SERVER_T__G__Server.hasArg("range") ? SIMPLE_WEB_SERVER_T__G__Server.arg("range") : "1d";
@@ -252,7 +228,6 @@ static void func__Simple_HttpCharts(void)
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
     uint8_t uint8_t__i, uint8_t__idx;
-
     if (string__range == "7d")
     {
         String s; s.reserve(512);
@@ -390,8 +365,6 @@ static void func__Simple_HttpCharts(void)
         SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
     }
 }
-
-/* ==================== دیاگ ==================== */
 static void func__Simple_HttpDiag(void)
 {
     uint32_t uint32_t__now = (uint32_t)millis();
@@ -399,11 +372,9 @@ static void func__Simple_HttpDiag(void)
     {
         func__Simple_SendDiagReq();
     }
-
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
-
     String s; s.reserve(384);
     s = "{\"valid\":"; s += BOOL__G__DiagValid ? "1" : "0";
     s += ",\"totalChargeSec\":"; s += String(UINT32_T__G__TotalChargeSec);
@@ -414,8 +385,6 @@ static void func__Simple_HttpDiag(void)
     s += ",\"chargeSecCh2\":"; s += String(UINT32_T__G__ChargeSecCh2);
     s += ",\"uptimeSec\":"; s += String(UINT32_T__G__UptimeSec);
     s += ",\"resetCount\":"; s += String(UINT32_T__G__ResetCount);
-    /* «boardTime» همان ساعت خود STM32 است (گزارش تلمتری) و «panelTime» ساعت
-       پنل؛ هر دو نمایش داده می‌شوند تا بشود تفاوت را دید */
     s += ",\"boardTime\":"; s += String(UINT32_T__G__BoardTimeSec);
     s += ",\"panelTime\":"; s += String(func__Simple_NowSec());
     s += ",\"timeOk\":"; s += String(BOOL__G__TimeValid ? 1u : 0u);
@@ -423,7 +392,6 @@ static void func__Simple_HttpDiag(void)
     s += ",\"powerCount\":"; s += String(UINT8_T__G__PowerEventCount);
     s += ",\"errors\":[";
     SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-
     uint8_t uint8_t__i;
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__DiagErrorCount; uint8_t__i++)
     {
@@ -464,8 +432,7 @@ static void func__Simple_HttpDiag(void)
     }
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
 }
-
-/* ==================== همگام‌سازی ساعت - JSON + query ==================== */
+/* ==================== - JSON + query ==================== */
 static void func__Simple_HttpTimeSync(void)
 {
     if (!func__Simple_IsAdmin())
@@ -473,24 +440,18 @@ static void func__Simple_HttpTimeSync(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-
     String string__tsStr;
     int32_t int32_t__ts = 0;
     bool bool__found = false;
-
     if (func__Simple_GetArg("ts", string__tsStr))
     {
         if (func__Simple_ParseInt(string__tsStr.c_str(), &int32_t__ts) && int32_t__ts > 0) bool__found = true;
     }
-
     if (!bool__found)
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"ts\"}");
         return;
     }
-
-    /* اختلاف منطقهٔ زمانی هم از همان گوشی می‌آید تا نام فایل روزانهٔ تاریخچه
-       سرِ نیمه‌شب خودِ اپراتور عوض شود، نه نیمه‌شب UTC. */
     String string__tz;
     if (func__Simple_GetArg("tz", string__tz))
     {
@@ -501,31 +462,24 @@ static void func__Simple_HttpTimeSync(void)
             INT32_T__G__LogTzSec = int32_t__tz;
         }
     }
-
-    /* ساعت را در پنل تنظیم، روی فایل ذخیره و به برد هم بگو؛ از این لحظه
-       لنگر ساعت در پنل می‌ماند و بین فریم‌ها هم راه می‌رود */
     func__Simple_TimeSet((uint32_t)int32_t__ts, true);
     func__Simple_TimeSave();
     func__Simple_SendTimeSync(func__Simple_NowSec());
     UINT32_T__G__BoardTimeSec = func__Simple_NowSec();
     BOOL__G__TimePushed = true;
-
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
-
-/* ==================== لاگین - JSON + form ==================== */
+/* ==================== - JSON + form ==================== */
 static void func__Simple_HttpLogin(void)
 {
     String string__user, string__pass;
     bool bool__hasUser = func__Simple_GetArg("user", string__user);
     bool bool__hasPass = func__Simple_GetArg("pass", string__pass);
-
     if (!bool__hasUser || !bool__hasPass)
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
         return;
     }
-
     int32_t int32_t__login = func__Simple_AuthLogin(string__user.c_str(), string__pass.c_str());
     if (int32_t__login == 1)
     {
@@ -551,8 +505,6 @@ static void func__Simple_HttpLogin(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(401, "application/json", "{\"ok\":0,\"e\":\"wrong\"}");
     }
 }
-
-/* ==================== خروج ==================== */
 static void func__Simple_HttpLogout(void)
 {
     if (func__Simple_SessionValid())
@@ -564,8 +516,6 @@ static void func__Simple_HttpLogout(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
-
-/* ==================== لیست کاربران ==================== */
 static void func__Simple_HttpUsers(void)
 {
     if (!func__Simple_IsAdmin())
@@ -573,7 +523,6 @@ static void func__Simple_HttpUsers(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-
     size_t size_t__used = 0u;
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE, "{\"users\":[");
     bool bool__first = true;
@@ -590,8 +539,7 @@ static void func__Simple_HttpUsers(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
-
-/* ==================== افزودن کاربر - JSON ==================== */
+/* ==================== - JSON ==================== */
 static void func__Simple_HttpAddUser(void)
 {
     if (!func__Simple_IsAdmin())
@@ -619,8 +567,7 @@ static void func__Simple_HttpAddUser(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"full\"}");
     }
 }
-
-/* ==================== حذف کاربر - JSON ==================== */
+/* ==================== - JSON ==================== */
 static void func__Simple_HttpDelUser(void)
 {
     if (!func__Simple_IsAdmin())
@@ -643,8 +590,7 @@ static void func__Simple_HttpDelUser(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
     }
 }
-
-/* ==================== هندلر جدید: POST /users با action ==================== */
+/* ==================== : POST /users action ==================== */
 static void func__Simple_HttpUsersPost(void)
 {
     if (!func__Simple_IsAdmin())
@@ -654,7 +600,6 @@ static void func__Simple_HttpUsersPost(void)
     }
     String string__action, string__user, string__pass, string__roleStr;
     func__Simple_GetArg("action", string__action);
-
     if (string__action == "del")
     {
         if (!func__Simple_GetArg("user", string__user))
@@ -694,8 +639,6 @@ static void func__Simple_HttpUsersPost(void)
         }
     }
 }
-
-/* ==================== گرفتن تم ==================== */
 static void func__Simple_HttpGetTheme(void)
 {
     char char__buf[64];
@@ -703,8 +646,6 @@ static void func__Simple_HttpGetTheme(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
 }
-
-/* ==================== تنظیم تم - فقط ادمین ==================== */
 static void func__Simple_HttpSetTheme(void)
 {
     if (!func__Simple_IsAdmin())
@@ -729,8 +670,6 @@ static void func__Simple_HttpSetTheme(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
     }
 }
-
-/* ==================== وای‌فای - گرفتن تنظیمات ==================== */
 static void func__Simple_HttpGetWifi(void)
 {
     if (!func__Simple_IsAdmin())
@@ -743,8 +682,7 @@ static void func__Simple_HttpGetWifi(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
 }
-
-/* ==================== وای‌فای - تنظیم - فقط ادمین - JSON ==================== */
+/* ==================== - - - JSON ==================== */
 static void func__Simple_HttpSetWifi(void)
 {
     if (!func__Simple_IsAdmin())
@@ -760,33 +698,27 @@ static void func__Simple_HttpSetWifi(void)
     }
     if (string__ssid.length() < 1u || string__ssid.length() > SIMPLE_WIFI_SSID_MAX) { SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"ssid len\"}"); return; }
     if (string__pass.length() < 8u || string__pass.length() > SIMPLE_WIFI_PASS_MAX) { SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pass len 8-32\"}"); return; }
-
     if ((strcmp(CHAR__G__WifiSsid, string__ssid.c_str()) == 0) &&
         (strcmp(CHAR__G__WifiPass, string__pass.c_str()) == 0))
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"reboot\":0}");
         return;
     }
-
     (void)strncpy(CHAR__G__WifiSsid, string__ssid.c_str(), SIMPLE_WIFI_SSID_MAX);
     CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX] = '\0';
     (void)strncpy(CHAR__G__WifiPass, string__pass.c_str(), SIMPLE_WIFI_PASS_MAX);
     CHAR__G__WifiPass[SIMPLE_WIFI_PASS_MAX] = '\0';
-
     if (BOOL__G__FsOk)
     {
-        func__Simple_WifiSave();   /* رمزنگاری‌شده روی فلش */
+        func__Simple_WifiSave();
     }
     BOOL__G__WifiRebootPending = true;
     UINT32_T__G__WifiRebootMs = (uint32_t)millis();
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"reboot\":1}");
 }
-
-/* ==================== تغییر رمز عبور - /setpass ====================
-   قواعد:
-   - باید وارد شده باشی.
-   - کاربر ساده فقط رمز خودش را می‌تواند عوض کند و رمز فعلی‌اش را هم باید بدهد.
-   - ادمین رمز هر کاربری را می‌تواند عوض کند؛ برای رمز خودش رمز فعلی لازم است. */
+/*
+ * ==================== - /setpass ====================
+ */
 static void func__Simple_HttpSetPass(void)
 {
     String string__user;
@@ -795,7 +727,6 @@ static void func__Simple_HttpSetPass(void)
     String string__newPass2;
     bool bool__isAdmin;
     bool bool__isSelf;
-
     if (!func__Simple_SessionValid())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"login\"}");
@@ -808,7 +739,6 @@ static void func__Simple_HttpSetPass(void)
     }
     (void)func__Simple_GetArg("old", string__oldPass);
     (void)func__Simple_GetArg("new2", string__newPass2);
-
     if (string__newPass.length() < SIMPLE_USER_PASS_MIN || string__newPass.length() > SIMPLE_USER_PASS_MAX)
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pass 4-32\"}");
@@ -819,16 +749,13 @@ static void func__Simple_HttpSetPass(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mismatch\"}");
         return;
     }
-
     bool__isAdmin = (UINT8_T__G__CurrentRole == 1u);
     bool__isSelf = (strcmp(CHAR__G__CurrentUser, string__user.c_str()) == 0);
-
     if (!bool__isAdmin && !bool__isSelf)
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"self\"}");
         return;
     }
-    /* برای رمز خودت رمز فعلی لازم است؛ ادمین برای کاربر دیگر نمی‌خواهد */
     if (bool__isSelf)
     {
         if (!func__Simple_VerifyUserPass(string__user.c_str(), string__oldPass.c_str()))
@@ -837,7 +764,6 @@ static void func__Simple_HttpSetPass(void)
             return;
         }
     }
-
     if (!func__Simple_SetUserPass(string__user.c_str(), string__newPass.c_str()))
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user\"}");
@@ -845,8 +771,6 @@ static void func__Simple_HttpSetPass(void)
     }
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
-
-/* ==================== پاک‌سازی تاریخچه - فقط ادمین ==================== */
 static void func__Simple_HttpClearHistory(void)
 {
     if (!func__Simple_IsAdmin())
@@ -879,14 +803,8 @@ static void func__Simple_HttpClearHistory(void)
     }
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
-
-/* ==================== ریست دستی قفل‌ها - فقط ادمین ==================== */
 /**
- * @brief  درخواست ریست قفل را در صف می‌گذارد (POST /latch/reset?n=5|6).
- *         سناریو ۵: شمارنده‌های رویداد/سیکل (۲۰۰ و ۲۰۱) و در آخر پرچم قفل
- *         (۲۰۲) صفر می‌شوند تا بین فریم‌ها دوباره فعال نشود؛ سناریو ۶:
- *         ماسک حکم باتری خراب (۲۰۳) صفر می‌شود.
- * @return JSON با ok؛ صف پر → کد ۴۰۹ با e=1، ورودی بد → ۴۰۰ با e=2
+* @return JSON ok → e=1 → e=2
  */
 static void func__Simple_HttpLatchReset(void)
 {
@@ -895,18 +813,13 @@ static void func__Simple_HttpLatchReset(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-
     String string__n;
     bool bool__ok = false;
-
     if (func__Simple_GetArg("n", string__n))
     {
         int32_t int32_t__n = (int32_t)string__n.toInt();
-
         if (int32_t__n == 5)
         {
-            /* اول شمارنده‌ها صفر شوند؛ قفل آخر پاک شود تا کنترل‌گر بین فریم‌ها
-               با آستانهٔ قدیمی آن را دوباره فعال نکند. */
             bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u);
             bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) == true) && bool__ok;
             bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u) == true) && bool__ok;
@@ -930,31 +843,24 @@ static void func__Simple_HttpLatchReset(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
         return;
     }
-
     char char__A__Out[48];
     (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%s}",
                    bool__ok ? 1u : 0u, string__n.c_str());
     SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 409, "application/json", char__A__Out);
 }
-
 /**
- * @brief  وضعیت صف و آخرین پژواک برد (GET /latch) - فقط ادمین.
- *         پنل ‎rep/nak‎ را با خط پایه، ‎id/val‎ را با هدف و ‎q‎ را با صفر
- *         مقایسه می‌کند؛ سناریوی ۵ هم تا سه پژواک نرسد موفق اعلام نمی‌شود.
- * @return JSON با id/val/known/rep/req/nak/busy/q
+* @return JSON id/val/known/rep/req/nak/busy/q
  */
 static void func__Simple_HttpLatchState(void)
 {
     uint8_t uint8_t__i;
     uint8_t uint8_t__pending = 0u;
     char char__A__Out[160];
-
     if (!func__Simple_IsAdmin())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
     {
         if (BOOL__G__SlotQueuePending[uint8_t__i])
@@ -962,7 +868,6 @@ static void func__Simple_HttpLatchState(void)
             uint8_t__pending++;
         }
     }
-
     (void)snprintf(char__A__Out, sizeof(char__A__Out),
                    "{\"ok\":1,\"id\":%u,\"val\":%lu,\"known\":%u,\"rep\":%lu,"
                    "\"req\":%lu,\"nak\":%lu,\"busy\":%u,\"q\":%u}",
@@ -976,16 +881,10 @@ static void func__Simple_HttpLatchState(void)
                    (unsigned)uint8_t__pending);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__A__Out);
 }
-
-/* ==================== تاریخچهٔ وضعیت (لاگ روزانه) ====================
-   دستور کاربر ۲۰۲۶-۱۰-۲۳: پنل ساده هم مثل پنل فنی تاریخچهٔ وضعیت خودش را
-   نشان می‌دهد و دانلود می‌کند. متن ردیف‌ها اینجا ساخته می‌شود، نه روی پشته. */
 static char CHAR__G__LogTailBuffer[3600];
-
 static void func__Simple_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t__ptr_day)
 {
     String string__day;
-
     *bool__ptr_hasDay = false;
     *uint32_t__ptr_day = SIMPLE_LOG_DAY_AUTO;
     if (func__Simple_GetArg("day", string__day))
@@ -998,8 +897,6 @@ static void func__Simple_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t_
         }
     }
 }
-
-/* POST /clock : همگام‌سازی خودکار ساعت و افق زمانی گوشی برای تاریخچهٔ وضعیت */
 static void func__Simple_HttpClockSet(void)
 {
     String string__sec;
@@ -1007,7 +904,6 @@ static void func__Simple_HttpClockSet(void)
     int32_t int32_t__sec = 0;
     int32_t int32_t__tz = 0;
     bool bool__ok = false;
-
     if (func__Simple_GetArg("tz", string__tz))
     {
         if (func__Simple_ParseInt(string__tz.c_str(), &int32_t__tz) &&
@@ -1021,8 +917,6 @@ static void func__Simple_HttpClockSet(void)
         if (func__Simple_ParseInt(string__sec.c_str(), &int32_t__sec) &&
             ((uint32_t)int32_t__sec >= SIMPLE_TIME_VALID_MIN))
         {
-            /* ساعت هر بار که صفحه وصل می‌شود از همان دستگاه گرفته می‌شود؛
-               پرچم «زمان وارد شده» شرطِ همیشگی، نه مانع */
             func__Simple_TimeSet((uint32_t)int32_t__sec, false);
             func__Simple_TimeSave();
             bool__ok = true;
@@ -1034,9 +928,6 @@ static void func__Simple_HttpClockSet(void)
                    (unsigned long)func__Simple_NowSec());
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
-
-/* فرمت کردن فلش به درخواست صریح کاربر و سوار کردن دوبارهٔ آن.
-   هیچ‌وقت خودبه‌خود صدا زده نمی‌شود: فرمت تنها کاری است که تاریخچه را نابود می‌کند. */
 static void func__Simple_HttpEventFormat(void)
 {
     if (!func__Simple_IsAdmin())
@@ -1050,7 +941,6 @@ static void func__Simple_HttpEventFormat(void)
     func__SimpleLog_ResetStateAfterFormat();
     if (BOOL__G__FsOk)
     {
-        /* بازنویسی تنظیمات فعال کاربران، وای‌فای، تم و ساعت روی فلش تازه */
         func__Simple_AuthSave();
         func__Simple_WifiSave();
         func__Simple_ThemeSave();
@@ -1061,20 +951,15 @@ static void func__Simple_HttpEventFormat(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", BOOL__G__FsOk ? "ok" : "fail");
 }
-
-/* GET /evt : آخرین ردیف‌های یک روز (یا جدیدترین روز) به‌صورت متن */
 static void func__Simple_HttpEventLog(void)
 {
     bool bool__hasDay = false;
     uint32_t uint32_t__day = SIMPLE_LOG_DAY_AUTO;
-
     /* 0 = no file system, 2 = the flash refused the write (both are served
        from the RAM ring), 1 = the rows come from the flash. */
-    /* ۳ = فایل‌سیستم هست ولی سوار نشد؛ تاریخچه‌اش دست‌نخورده است */
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Fs",
         (BOOL__G__FsOk == false) ? (BOOL__G__FsMountFailed ? "3" : "0")
                                 : ((UINT8_T__G__LogWriteFault != 0u) ? "2" : "1"));
-    /* ردیف‌هایی که حلقهٔ رم ناچار دور ریخت؛ صفحه همان عدد را نشان می‌دهد */
     (void)snprintf(CHAR__G__LogLostText, sizeof(CHAR__G__LogLostText), "%u",
                    (unsigned int)UINT16_T__G__LogDroppedRows);
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("X-Log-Lost", CHAR__G__LogLostText);
@@ -1088,26 +973,20 @@ static void func__Simple_HttpEventLog(void)
                                uint32_t__day, SIMPLE_LOG_TAIL_LINES);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
 }
-
-/* GET /evt/days : روزهای ذخیره‌شده، قدیمی‌تر اول */
 static void func__Simple_HttpEventDays(void)
 {
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     (void)func__SimpleLog_Days(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
 }
-
-/* GET /evt/dl?day=YYYYMMDD : دانلود یک روز */
 static void func__Simple_HttpEventDownload(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     char char__ptr_name[64];
     bool bool__hasDay = false;
     uint32_t uint32_t__day = SIMPLE_LOG_DAY_AUTO;
-
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     func__Simple_ParseDayArg(&bool__hasDay, &uint32_t__day);
-
     if (BOOL__G__FsOk == false)
     {
         size_t size_t__hdrLen;
@@ -1133,7 +1012,6 @@ static void func__Simple_HttpEventDownload(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", CHAR__G__LogTailBuffer);
         return;
     }
-
     if (bool__hasDay == false)
     {
         uint32_t__day = func__SimpleLog_TodayCode();
@@ -1148,7 +1026,6 @@ static void func__Simple_HttpEventDownload(void)
             uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
         }
     }
-
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__day);
     if (LittleFS.exists(char__ptr_path) == false)
     {
@@ -1158,15 +1035,12 @@ static void func__Simple_HttpEventDownload(void)
     (void)snprintf(char__ptr_name, sizeof(char__ptr_name),
                    "attachment; filename=evt-%08lu.csv", (unsigned long)uint32_t__day);
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition", char__ptr_name);
-
     File file__day = LittleFS.open(char__ptr_path, "r");
     if (!file__day)
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(503, "text/plain", "fs");
         return;
     }
-    /* خط‌به‌خط فرستاده می‌شود: فایل روز می‌تواند بزرگ‌تر از رم آزاد باشد، پس
-       یک‌جا خوانده نمی‌شود. */
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", "");
     while (file__day.available())
@@ -1181,12 +1055,9 @@ static void func__Simple_HttpEventDownload(void)
     file__day.close();
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
 }
-
-/* POST /evt/clr : پاک کردن همهٔ روزها (فقط ادمین) */
 static void func__Simple_HttpEventClear(void)
 {
     uint8_t uint8_t__removed;
-
     if (!func__Simple_IsAdmin())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
@@ -1197,35 +1068,25 @@ static void func__Simple_HttpEventClear(void)
                                         String("{\"ok\":1,\"removed\":") +
                                         String((unsigned int)uint8_t__removed) + "}");
 }
-
-/* POST /evt/snap : ثبت فوری یک رکورد از وضعیت فعلی بدون شرط و صفر کردن فقط تایمرهای لاگ */
 static void func__Simple_HttpEventSnap(void)
 {
     bool bool__stored;
-
     bool__stored = func__SimpleLog_SnapshotNow();
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     (void)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
                    "{\"ok\":%u}", (bool__stored != false) ? 1u : 0u);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
-
-/* ==================== بررسی و پاک‌سازی حافظهٔ فلش ==================== */
-
-/* GET /evt/fs : وضعیت ظرفیت فلش و فهرست همهٔ فایل‌های موجود */
 static void func__Simple_HttpEventFsStatus(void)
 {
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     (void)func__SimpleLog_FsStatusJson(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__LogTailBuffer);
 }
-
-/* POST /evt/clean : حذف فقط فایل‌های جامانده از برنامه‌های قبلی (فقط ادمین) */
 static void func__Simple_HttpEventClean(void)
 {
     uint32_t uint32_t__freed = 0u;
     uint16_t uint16_t__removed;
-
     if (!func__Simple_IsAdmin())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
@@ -1240,4 +1101,3 @@ static void func__Simple_HttpEventClean(void)
                    (unsigned long)uint32_t__freed);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
-

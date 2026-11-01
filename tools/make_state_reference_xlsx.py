@@ -17,25 +17,18 @@
 Usage:
       python3 tools/make_state_reference_xlsx.py
 """
-
 import pathlib
-
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-
 HEAD = "1F4E79"
 TITLE = "1F3864"
 IDCOL = "D9E2F3"
 CELL = "FFF2CC"
 BAND = "F2F2F2"
 FONT = "B Nazanin"
-
 BORDER = Border(*(Side(style="thin", color="BFBFBF"),) * 4)
-
-
 def sheet_title(ws, text, cols):
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=cols)
     c = ws.cell(1, 1, text)
@@ -43,8 +36,6 @@ def sheet_title(ws, text, cols):
     c.fill = PatternFill("solid", fgColor=TITLE)
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 26
-
-
 def sheet_header(ws, row, cols):
     for i in range(1, cols + 1):
         c = ws.cell(row, i)
@@ -52,8 +43,6 @@ def sheet_header(ws, row, cols):
         c.fill = PatternFill("solid", fgColor=HEAD)
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         c.border = BORDER
-
-
 def put_row(ws, row, values, id_col=1, wrap=True):
     for i, v in enumerate(values, start=1):
         c = ws.cell(row, i, v)
@@ -63,25 +52,18 @@ def put_row(ws, row, values, id_col=1, wrap=True):
         c.border = BORDER
         c.fill = PatternFill("solid", fgColor=IDCOL if i == id_col else
                              (BAND if row % 2 == 1 else "FFFFFF"))
-
-
 def widths(ws, ws_widths):
     for i, w in enumerate(ws_widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
-
-
 # ======================================================================
-# Documentation/State.xlsx — ورودی/خروجی و جدول چراغ‌ها و بوق (از کد فعلی)
 # ======================================================================
 def build_state():
     wb = Workbook()
-
     ws = wb.active
     ws.title = "INPUT_OUTPUT"
     ws.sheet_view.rightToLeft = True
     ws.sheet_properties.tabColor = "C00000"
     sheet_title(ws, "ورودی‌ها و خروجی‌های دستگاه — بازسازی از کد فعلی (۲۰۲۶-۱۰-۳۱)", 4)
-
     ws.cell(2, 1, "INPUTS")
     ws.cell(2, 1).font = Font(name=FONT, size=11, bold=True)
     for i, h in enumerate(["ردیف", "ورودی", "واحد", "توضیحات"], start=1):
@@ -93,7 +75,6 @@ def build_state():
     put_row(ws, 5, [2, "24 (دو باتری ۱۲ سری)", "V",
                     "دو باتری ۱۲ ولتی سری. هر نیم‌باتری جدا اندازه‌گیری می‌شود؛ "
                     "جمع دو نیم = ولتاژ پک."])
-
     ws.cell(7, 1, "OUTPUTS")
     ws.cell(7, 1).font = Font(name=FONT, size=11, bold=True)
     for i, h in enumerate(["ردیف", "خروجی", "واحد", "توضیحات"], start=1):
@@ -106,7 +87,6 @@ def build_state():
                      "شارژ هر نیم‌باتری با کانال خودش؛ هر کانال با کلید «فعال‌بودن شارژر» "
                      "قطع/وصل می‌شود."])
     widths(ws, [6, 22, 8, 70])
-
     ws2 = wb.create_sheet("UI")
     ws2.sheet_view.rightToLeft = True
     ws2.sheet_properties.tabColor = "C00000"
@@ -154,19 +134,13 @@ def build_state():
     for k, row in enumerate(rows):
         put_row(ws2, 3 + k, row, id_col=2)
     widths(ws2, [6, 26, 34, 26, 30, 22, 40])
-
     out = ROOT / "Documentation" / "State.xlsx"
     wb.save(out)
     print("wrote", out)
-
-
 # ======================================================================
-# Documentation/System_State_Scenarios.xlsx — مرجع سطح‌بالای State/Scenario
 # ======================================================================
 def build_scenarios():
     wb = Workbook()
-
-    # ---------------- راهنما ----------------
     ws = wb.active
     ws.title = "راهنما"
     ws.sheet_view.rightToLeft = True
@@ -211,7 +185,6 @@ def build_scenarios():
         put_row(ws, r, [k, v], id_col=1)
         r += 1
     widths(ws, [22, 90, 2])
-
     # ---------------- States ----------------
     ws = wb.create_sheet("States")
     ws.sheet_view.rightToLeft = True
@@ -237,7 +210,6 @@ def build_scenarios():
     for k, row in enumerate(states):
         put_row(ws, 3 + k, row, id_col=1)
     widths(ws, [12, 34, 30, 38, 40, 16])
-
     # ---------------- Transitions ----------------
     ws = wb.create_sheet("Transitions")
     ws.sheet_view.rightToLeft = True
@@ -283,7 +255,6 @@ def build_scenarios():
     for k, row in enumerate(transitions):
         put_row(ws, 3 + k, row, id_col=1)
     widths(ws, [9, 18, 40, 22, 40, 18, 16, 34])
-
     # ---------------- Requirements ----------------
     ws = wb.create_sheet("Requirements")
     ws.sheet_view.rightToLeft = True
@@ -333,7 +304,6 @@ def build_scenarios():
     for k, row in enumerate(reqs):
         put_row(ws, 3 + k, row, id_col=1)
     widths(ws, [14, 14, 56, 30, 24, 18])
-
     # ---------------- Test_Cases ----------------
     ws = wb.create_sheet("Test_Cases")
     ws.sheet_view.rightToLeft = True
@@ -370,7 +340,6 @@ def build_scenarios():
     for k, row in enumerate(cases):
         put_row(ws, 4 + k, row, id_col=1)
     widths(ws, [10, 12, 34, 30, 40, 26, 18, 16, 14, 12])
-
     # ---------------- Coverage ----------------
     ws = wb.create_sheet("Coverage")
     ws.sheet_view.rightToLeft = True
@@ -406,7 +375,6 @@ def build_scenarios():
     for k, row in enumerate(cov):
         put_row(ws, 3 + k, row, id_col=1)
     widths(ws, [26, 28, 34, 18, 34])
-
     # ---------------- Signals ----------------
     ws = wb.create_sheet("Signals")
     ws.sheet_view.rightToLeft = True
@@ -439,7 +407,6 @@ def build_scenarios():
     for k, row in enumerate(sigs):
         put_row(ws, 3 + k, row, id_col=1)
     widths(ws, [30, 18, 40, 40, 36, 18])
-
     # ---------------- Faults ----------------
     ws = wb.create_sheet("Faults")
     ws.sheet_view.rightToLeft = True
@@ -471,7 +438,6 @@ def build_scenarios():
     for k, row in enumerate(faults):
         put_row(ws, 3 + k, row, id_col=1)
     widths(ws, [26, 22, 44, 22, 36, 30])
-
     # ---------------- Change_Log ----------------
     ws = wb.create_sheet("Change_Log")
     ws.sheet_view.rightToLeft = True
@@ -501,12 +467,9 @@ def build_scenarios():
     for k, row in enumerate(log):
         put_row(ws, 3 + k, row, id_col=1)
     widths(ws, [14, 60, 40, 18, 24])
-
     out = ROOT / "Documentation" / "System_State_Scenarios.xlsx"
     wb.save(out)
     print("wrote", out)
-
-
 if __name__ == "__main__":
     build_state()
     build_scenarios()

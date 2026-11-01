@@ -1,5 +1,3 @@
-/* simple_panel.h - پنل کاربر مدرن 2026 - خطی، فارسی، مینیمال حرفه‌ای */
-
 static const char SIMPLE_PANEL_HTML[] PROGMEM = R"rawliteral(
 <!doctype html>
 <html lang="fa" dir="rtl">

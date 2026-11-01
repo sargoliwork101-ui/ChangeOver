@@ -31,26 +31,18 @@ import hashlib
 import re
 import sys
 from pathlib import Path
-
 ROOT = Path(__file__).resolve().parent.parent
 PANEL = ROOT / "ESP_Calibration" / "plink_panel.h"
-
 STAMP_RE = re.compile(r'(<span class="bs" id="bs">build )([0-9a-f]{7}|_______)(</span>)')
 BLANK = "_______"
-
-
 def literal(src: str) -> str:
     """[EN] The HTML the board serves / [FA] همان HTML که برد می‌فرستد."""
     return src.split('R"HTML(', 1)[1].split(')HTML"', 1)[0]
-
-
 def expected(src: str) -> str:
     """[EN] Hash the markup with the stamp blanked, so it cannot chase itself.
        [FA] هش مارک‌آپ با مهرِ خالی‌شده تا خودش را دنبال نکند."""
     body = STAMP_RE.sub(lambda m: m.group(1) + BLANK + m.group(3), literal(src))
     return hashlib.sha1(body.encode("utf-8")).hexdigest()[:7]
-
-
 def main() -> int:
     src = PANEL.read_text(encoding="utf-8")
     m = STAMP_RE.search(src)
@@ -65,7 +57,5 @@ def main() -> int:
                      encoding="utf-8")
     print(f"panel build stamp {m.group(2)} -> {want}")
     return 0
-
-
 if __name__ == "__main__":
     raise SystemExit(main())

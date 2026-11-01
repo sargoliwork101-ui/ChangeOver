@@ -100,7 +100,8 @@ ChangeOver
 │   ├── make_module_state_machines.py  ← ساخت ماشین حالت جدا برای هر ماژول + لینک در فایل اعتبارسنجی همان ماژول
 │   ├── make_state_machine_xlsx.py     ← کتاب ماشین حالت کل برنامه (Documentation/System_State_Machine.xlsx)
 │   ├── make_program_map.py            ← نقشهٔ کل برنامه: فایل‌ها، توابع، ۱۷۱ شناسهٔ ESP، پایه‌ها، فلش، دروازه‌ها (Documentation/Program_Map.xlsx)
-│   ├── fix_rtl_comments.py            ← چک/اصلاح علامت‌های راست‌به‌چپ داخل کامنت‌های فارسی
+│   ├── strip_fa_comments.py           ← حذف خط خالی و کامنت فارسی از کل پروژه (`--check` گزارش، `--apply` اجرا)
+│   ├── fix_rtl_comments.py            ← بازنشسته: چک/اصلاح علامت‌های راست‌به‌چپ (کامنت فارسی نمانده)
 │   ├── make_panel_preview.py          ← ساخت کپی آفلاین پنل (ESP_Calibration/panel_preview.html)
 │   ├── panel_preview_server.js        ← سرور محلی همان کپی آفلاین (پورت ۳۰۰۰)
 │   ├── stamp_panel.py                 ← مهر نسخه/تاریخ ساخت روی هدر پنل

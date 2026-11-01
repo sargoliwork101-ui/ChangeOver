@@ -33,29 +33,34 @@ for d in "$ROOT"/Firmware/Modules/*; do
   echo "  OK: $mod has 7 sections"
 done
 echo ""
-echo "[3] Bilingual header check"
-# [EN] Process substitution, NOT a pipe: `find | while ...` runs the loop in a
-#      subshell, so every FAIL=1 below died with that subshell and the gate
-#      printed "FAIL: ... missing [EN]" and still exited 0. Proven by dropping
-#      a header-less file into Firmware: three FAIL lines, ALL CHECKS PASSED.
-# [FA] جای لوله، جانشینی فرایند: در `find | while ...` حلقه در زیرپوسته اجرا
-#      می‌شود و هر FAIL=1 با همان زیرپوسته می‌مرد؛ دروازه خط FAIL را چاپ
-#      می‌کرد و باز هم با کد صفر برمی‌گشت.
+echo "[3] English header check"
+# Process substitution, NOT a pipe: `find | while ...` runs the loop in a
+# subshell, so every FAIL=1 below died with that subshell and the gate printed
+# "FAIL: ... missing ..." and still exited 0. Proven by dropping a header-less
+# file into Firmware: three FAIL lines, ALL CHECKS PASSED. Persian header lines
+# are no longer required (rule 2026-11-01): the header is English only.
 while read -r f; do
   if ! grep -q "@file" "$f"; then
     echo "  FAIL: $f missing @file"
     FAIL=1
   fi
-  if ! grep -q "\[EN\]" "$f"; then
-    echo "  FAIL: $f missing [EN]"
-    FAIL=1
-  fi
-  if ! grep -q "\[FA\]" "$f"; then
-    echo "  FAIL: $f missing [FA]"
+  if ! grep -q "\[EN\]" "$f" && ! grep -q "@brief" "$f"; then
+    echo "  FAIL: $f missing English @brief"
     FAIL=1
   fi
 done < <(find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \))
-echo "  Bilingual header scan done"
+echo "  English header scan done"
+echo ""
+echo "[3b] No Persian comment and no blank line (rule 2026-11-01)"
+if OUT=$(cd "$ROOT" && python3 tools/strip_fa_comments.py --check Firmware \
+         CubeIDE/Core ESP_USER ESP_Calibration Programmer tools 2>&1) && \
+   echo "$OUT" | grep -q "^files: 0,"; then
+  echo "  OK: no Persian comment and no blank line left"
+else
+  echo "  FAIL: Persian comment or blank line found - run tools/strip_fa_comments.py --apply"
+  echo "$OUT" | head -n 10 | sed 's/^/    /'
+  FAIL=1
+fi
 echo ""
 echo "[4] Function brief check"
 while read -r f; do
@@ -147,22 +152,15 @@ echo ""
 #      the firmware is ever flashed. Regenerating here means a stale preview
 #      can never survive a check run - the audit then fails if the generated
 #      page disagrees with the source header.
-# [FA] دستور دائمی کاربر: برای هر چیزی که سمت ESP را لمس می‌کند، پنلِ
-#      شبیه‌سازی‌شده باید بازتولید شود تا بتوان پیش از فلش‌کردن فرم‌ور دیدش.
-#      بازتولید در همین‌جا یعنی پیش‌نمایش کهنه هرگز از یک اجرای بررسی جان سالم
-#      به در نمی‌برد.
 echo "[6a2] Regenerate the simulated ESP panel (must be viewable before flashing)"
 python3 tools/make_panel_preview.py >/dev/null || { echo "FAILED to regenerate ESP_Calibration/panel_preview.html"; exit 1; }
 echo "      ESP_Calibration/panel_preview.html refreshed"
-
 echo "[6a3] ESP panel inline <script> must parse as JavaScript (blank-page guard)"
 # [EN] v1.34 shipped a page whose entire inline <script> failed to PARSE
 #      (one missing paren in a template edit) and the whole panel went blank -
 #      every gate was green because nothing ever handed the panel's JS to a
 #      JS parser. Extract the inline blocks and node --check them. node is
 #      already a required tool here (tools/panel_preview_server.js).
-# [FA] v1.34 صفحه‌ای می‌داد که کل اسکریپتش PARSE نمی‌شد و پنل سفید می‌ماند -
-#      هیچ گیتی JS پنل را به یک پارسر JS نمی‌سپرد. حالا خود اسکریپت پارس می‌شود.
 if command -v node >/dev/null 2>&1; then
   python3 - <<'PYJS'
 import re, pathlib
@@ -178,15 +176,11 @@ PYJS
 else
   echo "  WARN: node not found - JS parse gate skipped (install nodejs)"
 fi
-
 echo "[6b] Whole-program cross-file consistency audit"
 # [EN] Almost every defect in this project has been one number written by hand
 #      in several files, with the copies drifting apart. Each file stays
 #      locally correct, so reading them line by line never finds it - the
 #      defect only exists BETWEEN files. This compares them.
-# [FA] تقریباً هر ایراد این پروژه یک عدد بوده که دستی در چند فایل نوشته شده و
-#      کپی‌ها از هم جدا افتاده‌اند. هر فایل به‌تنهایی درست می‌ماند، پس خواندن
-#      خط‌به‌خط پیدایش نمی‌کند؛ ایراد فقط «بین» فایل‌هاست.
 if python3 "$ROOT/tools/audit_consistency.py" > /tmp/consistency_audit.txt 2>&1; then
   echo "  OK: $(grep -o 'invariants checked : [0-9]*' /tmp/consistency_audit.txt) - no drift"
 else
@@ -194,7 +188,6 @@ else
   sed 's/^/    /' /tmp/consistency_audit.txt
   FAIL=1
 fi
-
 echo "[7] CubeMX .ioc peripheral check (full schematic BSP contract)"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"
 if [ -f "$IOC" ]; then
@@ -209,8 +202,6 @@ if [ -f "$IOC" ]; then
   #      assuming 3.300 V, and VDDA is the single term every voltage and every
   #      current is multiplied by - so losing this rank silently removes the
   #      only way this board can ever be calibrated for gain.
-  # [FA] شش رنک: پنج ورودی بیرونی به‌اضافهٔ مرجع داخلی ۱٫۲۰ ولت. حذف این رنک
-  #      بی‌صدا تنها راه کالیبراسیون گین این برد را از بین می‌برد.
   if grep -q "ADC1.NbrOfConversion=6" "$IOC" && grep -q "DMA1.Request1=ADC1" "$IOC" \
      && grep -q "ADC1.Channel-6=ADC_CHANNEL_VREFINT" "$IOC" \
      && grep -q "ADC1.SamplingTime-1-6=239.5" "$IOC"; then
@@ -403,7 +394,6 @@ else
   echo "  FAIL: UI files missing meaningful names"
   FAIL=1
 fi
-
 # Check for split files existence (LED and BUZZER per user request)
 if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.h" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
   echo "  OK: UI split into LED and BUZZER (ui_led.h/c, ui_buzzer.h/c) exists per user request"
@@ -420,28 +410,24 @@ if [ -n "$FOUND_HAL_DELAY" ]; then
 else
   echo "  OK: No HAL_Delay (CMSIS-RTOS2 delay lets other threads run)"
 fi
-
 FOUND_OS_DELAY_UI=$(grep -R --include="*.c" -E "osDelay\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
 if [ -n "$FOUND_OS_DELAY_UI" ]; then
   echo "  OK: UI uses CMSIS-RTOS2-compatible delays"
 else
   echo "  OK: UI is non-blocking and has no delay call"
 fi
-
 if grep -R --include="*.c" -E "osDelayUntil\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -Eq "osDelayUntil|func__Rtos_DelayMilliseconds"; then
   echo "  OK: Threads use CMSIS-RTOS2 delay APIs (other threads continue)"
 else
   echo "  FAIL: CMSIS-RTOS2 delay API not found in threads"
   FAIL=1
 fi
-
 if (grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui.h" 2>/dev/null || grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null || grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" 2>/dev/null) && (grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui.h" 2>/dev/null || grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null || grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" 2>/dev/null); then
   echo "  OK: ui.h / ui_led.h / ui_buzzer.h has UI_TICK_MS and Tick API (simple RTOS, constants in own header)"
 else
   echo "  FAIL: ui.h missing Tick API"
   FAIL=1
 fi
-
 # 16. Check function separation markers and buzzer at end
 echo ""
 echo "[16] Function separation with markers and buzzer at end (per new AI rule) - now split LED/BUZZER"
@@ -451,7 +437,6 @@ else
   echo "  FAIL: ui.c / ui_buzzer.c missing Buzzer / Beep marker"
   FAIL=1
 fi
-
 # Check split files: LED in ui_led.c, one buzzer service in ui_buzzer.c.
 if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
   if grep -q "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui_led.c" && grep -q "func__Ui_Buzzer_Tick" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c"; then
@@ -462,7 +447,6 @@ if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/U
 else
   echo "  WARN: Could not find buzzer/LED split files"
 fi
-
 # Check markers in other files + UI split files have markers above each function
 MARKER_COUNT=$(grep -R --include="*.c" "====================.*==================== " "$ROOT/Firmware" | wc -l)
 if [ "$MARKER_COUNT" -ge 20 ]; then
@@ -471,8 +455,6 @@ else
   echo "  FAIL: Only $MARKER_COUNT markers found, expected >=20"
   FAIL=1
 fi
-
-# Check UI split files have markers above each function (per user request: بالای هر تابع این مدلی جدا بشه)
 UI_LED_MARKERS=$(grep -c "====================.*==================== " "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null || echo 0)
 UI_BUZZER_MARKERS=$(grep -c "====================.*==================== " "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" 2>/dev/null || echo 0)
 UI_LED_C_MARKERS=$(grep -c "====================.*==================== " "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null || echo 0)
@@ -483,14 +465,12 @@ else
   echo "  FAIL: UI split files missing markers above each function (led.h $UI_LED_MARKERS, buzzer.h $UI_BUZZER_MARKERS, led.c $UI_LED_C_MARKERS, buzzer.c $UI_BUZZER_C_MARKERS)"
   FAIL=1
 fi
-
 if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/AI_AGENT_RULES.md"; then
   echo "  OK: AI_AGENT_RULES has separation rules"
 else
   echo "  FAIL: AI_AGENT_RULES missing separation rules"
   FAIL=1
 fi
-
 echo ""
 echo "[17] Formulas not linear (broken into steps, readable)"
 if grep -q "فرمول‌ها خطی نباشد" "$ROOT/AI_AGENT_RULES.md" || grep -q "فرمول‌ها را خطی ننویس" "$ROOT/AI_AGENT_RULES.md"; then
@@ -499,7 +479,6 @@ else
   echo "  FAIL: AI_AGENT_RULES missing non-linear formula rule"
   FAIL=1
 fi
-
 # Check ui.c or ui_led.c has non-linear formula broken into steps (voltageRange, voltageOffset, scaledOffset)
 if (grep -q "voltageRangeMv" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "voltageOffsetMv" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "scaledOffset" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null) || \
    (grep -q "voltageRangeMv" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "voltageOffsetMv" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "scaledOffset" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
@@ -508,7 +487,6 @@ else
   echo "  FAIL: ui.c has linear formula (should break into steps)"
   FAIL=1
 fi
-
 # Check charging has non-linear steps (remainingPercent, periodPerPercent)
 if (grep -q "remainingPercent" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "periodPerPercent" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null) || \
    (grep -q "remainingPercent" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "periodPerPercent" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
@@ -517,7 +495,6 @@ else
   echo "  FAIL: ui.c charging has linear formula"
   FAIL=1
 fi
-
 # Check no single-line long formula like (offset * 100u) / range in one line without steps
 FOUND_LINEAR=$(grep -n "offset.*\*.*100u.*\/.*range" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 || true)
 FOUND_LINEAR2=$(grep -n "offset.*\*.*100u.*\/.*range" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null | head -n 1 || true)
@@ -527,23 +504,12 @@ if [ -n "$FOUND_LINEAR" ] || [ -n "$FOUND_LINEAR2" ]; then
 else
   echo "  OK: No linear one-line formula (all broken into steps)"
 fi
-
-# [EN] RTL comment hygiene: a formula dropped bare into a Persian comment is
-#      re-ordered by the bidi algorithm and reads wrong. Every latin /
-#      arithmetic run inside a Persian comment must sit between LRM marks.
-#      tools/fix_rtl_comments.py rewrites them; here we only verify.
-# [FA] بهداشت کامنت راست‌به‌چپ: فرمول لخت وسط متن فارسی به‌هم می‌ریزد و باید
-#      بین دو علامت LRM بسته شود.
+# [EN] RTL comment hygiene is retired: no Persian comment is left in the code
+#      (rule 2026-11-01), so there is no bidi text to guard. Persian strings
+#      stay untouched and are not comment text. tools/fix_rtl_comments.py is
+#      kept for history only.
 echo ""
-echo "[RTL] Direction marks around formulas inside Persian comments"
-if (cd "$ROOT" && python3 tools/fix_rtl_comments.py --check >/tmp/rtl_check.txt 2>&1); then
-  echo "  OK: $(tail -n 1 /tmp/rtl_check.txt)"
-else
-  echo "  FAIL: Persian comments carry unmarked formulas - run tools/fix_rtl_comments.py"
-  sed -n '1,10p' /tmp/rtl_check.txt | sed 's/^/    /'
-  FAIL=1
-fi
-
+echo "[RTL] Retired - no Persian comment left to guard"
 echo ""
 if [ $FAIL -eq 0 ]; then
   echo "ALL CHECKS PASSED"
@@ -552,4 +518,3 @@ else
   echo "SOME CHECKS FAILED"
   exit 1
 fi
-

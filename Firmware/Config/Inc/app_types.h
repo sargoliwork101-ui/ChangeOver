@@ -1,16 +1,12 @@
 /**
  * @file    app_types.h
  * @brief   [EN] Shared types: system state, ADC snapshot, fault bits.
- *          [FA] نوع‌های مشترک: حالت سیستم، نمونه ADC، بیت خطا.
  */
-
 #ifndef APP_TYPES_H
 #define APP_TYPES_H
-
 /* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
-
 typedef enum
 {
     APP_STATE_BOOT = 0,
@@ -20,7 +16,6 @@ typedef enum
     APP_STATE_FAULT,
     APP_STATE_SAFE
 } app_state_t;
-
 typedef struct
 {
     uint32_t v_in_mv;
@@ -33,19 +28,16 @@ typedef struct
     bool     input_present;
     bool     valid;
 } measurement_snapshot_t;
-
 typedef uint32_t fault_mask_t;
-
 /* ==================== Defines ==================== */
 #define FAULT_NONE              0u
-
-/* [EN] Live bit: set while the measurement snapshot is invalid, cleared by
+/*
+ * [EN] Live bit: set while the measurement snapshot is invalid, cleared by
  *      the first valid one (deliberately NOT latched - see protection.c).
- * [FA] بیت زنده: تا وقتی نمونهٔ اندازه‌گیری نامعتبر است ست می‌شود و با اولین
- *      نمونهٔ سالم پاک می‌شود (عمداً قفل نمی‌شود - توضیح در protection.c). */
+ */
 #define FAULT_ADC               (1u << 0)
-
-/* [EN] RESERVED bits (audit 2026-10-05, user order: keep, do not delete).
+/*
+ * [EN] RESERVED bits (audit 2026-10-05, user order: keep, do not delete).
  *      NOTHING sets these five bits in the current firmware - the behaviour
  *      they used to describe now lives inside the owning module:
  *        - over-current  -> the charger's own current ceiling + backstop,
@@ -54,34 +46,24 @@ typedef uint32_t fault_mask_t;
  *      They are kept ONLY so the bit numbers never shift under the panel,
  *      the NVM records and the bench logs. Do not reuse a number for a new
  *      meaning; append a new bit instead.
- * [FA] بیت‌های رزرو (ممیزی ۲۰۲۶-۱۰-۰۵، دستور کاربر: بمانند، حذف نشوند).
- *      هیچ‌جای فرمور این پنج بیت را ست نمی‌کند؛ رفتاری که قبلاً توصیف
- *      می‌کردند حالا داخل خود ماژول صاحبش است: اضافه‌جریان در سقف جریان و
- *      ترمز اضطراری شارژر، باتری کم در قفل داخلی ‎changeover.c‎ (از v1.74) و
- *      جیتر در مدیریت تریپ هر کانال در ‎charger.c‎. فقط برای اینکه شمارهٔ
- *      بیت‌ها زیر پنل و رکوردهای NVM و لاگ بنچ جابه‌جا نشود نگه داشته شده‌اند.
- *      شمارهٔ یک بیت را برای معنای جدید بازاستفاده نکنید؛ بیت تازه اضافه کنید. */
-#define FAULT_OVERCURRENT_1     (1u << 1)   /* [EN] reserved / رزرو */
-#define FAULT_OVERCURRENT_2     (1u << 2)   /* [EN] reserved / رزرو */
-#define FAULT_LOW_BATTERY       (1u << 3)   /* [EN] reserved / رزرو */
-#define FAULT_JITTER_1          (1u << 4)   /* [EN] reserved / رزرو */
-#define FAULT_JITTER_2          (1u << 5)   /* [EN] reserved / رزرو */
-/* [EN] Battery-lost during charge, detected and cleared centrally by the
+ */
+#define FAULT_OVERCURRENT_1     (1u << 1)
+#define FAULT_OVERCURRENT_2     (1u << 2)
+#define FAULT_LOW_BATTERY       (1u << 3)
+#define FAULT_JITTER_1          (1u << 4)
+#define FAULT_JITTER_2          (1u << 5)
+/*
+ * [EN] Battery-lost during charge, detected and cleared centrally by the
  *      Fault module (since 2026-09-19): output voltage pumped above 14.8 V
  *      (no real 12 V battery reaches that), or battery absent with a valid
  *      input. Charger only mirrors the bit into CHG_STATE_BAT_LOST.
- * [FA] قطع باتری حین شارژ؛ تشخیص و پاک‌سازی متمرکز در ماژول Fault (از
- *      ۲۰۲۶-۰۹-۱۹): پمپ ولتاژ بالای ۱۴٫۸V یا نبود باتری با ورودی سالم.
- *      شارژر فقط بیت را به CHG_STATE_BAT_LOST آینه می‌کند. */
+ */
 #define FAULT_CHARGER_BAT_LOST  (1u << 6)
-
-/* [EN] Scenario 7: charger power-stage technical fault. This is a RAM-only
+/*
+ * [EN] Scenario 7: charger power-stage technical fault. This is a RAM-only
  *      safety latch: it is intentionally cleared by func__Fault_Init() on
  *      reset and is never persisted as a user setting. The charger owns the
  *      physical lockout; UI owns the alarm face.
- * [FA] سناریوی ۷: خطای فنی طبقهٔ قدرت شارژر. این لچ ایمنی فقط در RAM است و
- *      عمداً با ریست در func__Fault_Init پاک می‌شود و تنظیم پنل نیست؛ شارژر
- *      قفل فیزیکی را نگه می‌دارد و UI چهرهٔ هشدار را نمایش می‌دهد. */
+ */
 #define FAULT_CHARGER_TECHNICAL (1u << 7)
-
 #endif /* APP_TYPES_H */

@@ -4,39 +4,26 @@
  *               EXTI software flags of the board layer, latches one sticky
  *               boolean per channel and offers a per-channel clear. No HAL and no pin numbers appear here - which EXTI
  *               line belongs to which comparator is the board port's job.
- *          [FA] پیاده‌سازی قفلِ پرچم تریپ LM393: پرچم‌های نرم‌افزاری EXTI لایهٔ
- *               برد را می‌خواند، برای هر کانال یک بولینِ چسبنده قفل می‌کند و
- *               پاک‌کردن تکی می‌دهد. هیچ HAL و شمارهٔ پایه‌ای اینجا نیست؛
- *               اینکه کدام خط EXTI به کدام مقایسه‌گر می‌رود کار پورت برد است.
  * @note    [EN] Full-program audit 2026-10-05: the stale "placeholder"
  *               label of the old header line was removed.
- *          [FA] ممیزی ۲۰۲۶-۱۰-۰۵: برچسب کهنهٔ «اسکلت» از سرخط قبلی برداشته شد.
  */
-
 #include "jitter.h"
 #include "bsp_exti.h"
-
 static bool BOOL__G__Trip[2];
-
 /**
  * @brief  [EN] Clear trip flags and EXTI software flags.
- *         [FA] پرچم تریپ و EXTI را پاک می‌کند.
  */
 /* ==================== Jitter_Init ==================== */
-
 void func__Jitter_Init(void)
 {
     BOOL__G__Trip[0] = false;
     BOOL__G__Trip[1] = false;
     func__BspExti_Init();
 }
-
 /**
  * @brief  [EN] Latch trip if an EXTI event was taken.
- *         [FA] اگر رویداد EXTI آمده باشد تریپ را قفل می‌کند.
  */
 /* ==================== Jitter_Run ==================== */
-
 void func__Jitter_Run(void)
 {
     if (func__BspExti_TakeEvent(BSP_EXTI_JITTER1) == true)
@@ -48,15 +35,12 @@ void func__Jitter_Run(void)
         BOOL__G__Trip[1] = true;
     }
 }
-
 /**
  * @brief  [EN] True if channel 1 or 2 has latched a trip.
- *         [FA] اگر کانال ۱ یا ۲ تریپ قفل کرده باشد true.
- * @param  uint8_t__channel [EN] Channel number 1 or 2, other values return false / شماره کانال ۱ یا ۲
- * @return bool [EN] true if tripped / اگر تریپ کرده true
+* @param uint8_t__channel Channel number 1 or 2, other values return false /
+* @return bool true if tripped / true
  */
 /* ==================== Jitter_ChannelTripped ==================== */
-
 bool func__Jitter_ChannelTripped(uint8_t uint8_t__channel)
 {
     if (uint8_t__channel == 1u)
@@ -69,16 +53,12 @@ bool func__Jitter_ChannelTripped(uint8_t uint8_t__channel)
     }
     return false;
 }
-
 /**
  * @brief  [EN] Clear one latched channel so the next retry can observe a new
  *              comparator edge rather than the old event.
- *         [FA] تریپ قفل‌شدهٔ یک کانال را پاک می‌کند تا retry بعدی لبهٔ جدید
- *              comparator را ببیند، نه رویداد قبلی را.
- * @param  uint8_t__channel [EN] Channel number 1 or 2 / شماره کانال ۱ یا ۲
+* @param uint8_t__channel Channel number 1 or 2 /
  */
 /* ==================== Jitter_ClearChannel ==================== */
-
 void func__Jitter_ClearChannel(uint8_t uint8_t__channel)
 {
     if (uint8_t__channel == 1u)
@@ -92,6 +72,5 @@ void func__Jitter_ClearChannel(uint8_t uint8_t__channel)
     else
     {
         /* [EN] Invalid channel is intentionally ignored. */
-        /* [FA] کانال نامعتبر عمداً نادیده گرفته می‌شود. */
     }
 }

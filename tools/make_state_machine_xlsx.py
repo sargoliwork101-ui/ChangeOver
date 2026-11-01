@@ -9,38 +9,30 @@
      رنگی و راست‌به‌چپ با فونت وزیرمتن. محتوا از روی فایل‌های فرمورِ
      فهرست‌شده در برگهٔ «راهنما» نوشته شده است.
 """
-
 import pathlib
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "Documentation" / "System_State_Machine.xlsx"
-
 FONT = "Vazirmatn"
-
 C_TITLE = "1F3864"
 C_HEAD = "1F4E79"
 C_BAND = "D9E2F3"
 PALETTE = {
-    "ok":    "C6EFCE",   # سالم / عادی
-    "warn":  "FFE699",   # هشدار
-    "bad":   "FFC7CE",   # خطا / قفل
-    "info":  "DDEBF7",   # اطلاعاتی
-    "idle":  "EDEDED",   # بی‌کار
-    "act":   "FCE4D6",   # فعال / در حال کار
+    "ok":    "C6EFCE",
+    "warn":  "FFE699",
+    "bad":   "FFC7CE",
+    "info":  "DDEBF7",
+    "idle":  "EDEDED",
+    "act":   "FCE4D6",
 }
-
 thin = Side(style="thin", color="9DB7E8")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-
 def sheet(wb, name, title, headers, rows, widths):
     ws = wb.create_sheet(name)
     ws.sheet_view.rightToLeft = True
     ws.freeze_panes = "A3"
-
     ncol = len(headers)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
     tc = ws.cell(row=1, column=1, value=title)
@@ -48,7 +40,6 @@ def sheet(wb, name, title, headers, rows, widths):
     tc.fill = PatternFill("solid", fgColor=C_TITLE)
     tc.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 30
-
     for c, h in enumerate(headers, start=1):
         cell = ws.cell(row=2, column=c, value=h)
         cell.font = Font(name=FONT, size=11, bold=True, color="FFFFFF")
@@ -56,7 +47,6 @@ def sheet(wb, name, title, headers, rows, widths):
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = BORDER
     ws.row_dimensions[2].height = 28
-
     for r, row in enumerate(rows, start=3):
         tone = row[-1]
         values = row[:-1]
@@ -70,18 +60,13 @@ def sheet(wb, name, title, headers, rows, widths):
                 cell.fill = fill
             elif r % 2 == 1:
                 cell.fill = PatternFill("solid", fgColor=C_BAND)
-
     for c, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(c)].width = w
     ws.sheet_properties.tabColor = "7F7F7F" if name == "راهنما" else "7030A0"
     return ws
-
-
 def build():
     wb = Workbook()
     wb.remove(wb.active)
-
-    # ---------------- راهنما ----------------
     sheet(
         wb, "راهنما", "ماشین حالت کل برنامه ChangeOver — راهنما و فهرست",
         ["برگه", "چه چیزی داخلش است", "فایل مرجع در فرمور"],
@@ -106,7 +91,6 @@ def build():
         ],
         [22, 70, 55],
     )
-
     # ---------------- 1 app states ----------------
     sheet(
         wb, "۱ حالت سیستم", "حالت‌های اصلی سیستم (app_state_t)",
@@ -121,7 +105,6 @@ def build():
         ],
         [22, 34, 40, 34, 34],
     )
-
     # ---------------- 2 app transitions ----------------
     sheet(
         wb, "۲ گذار سیستم", "گذارهای حالت سیستم — شرط و زمان",
@@ -147,7 +130,6 @@ def build():
         ],
         [20, 20, 46, 22, 40],
     )
-
     # ---------------- 3 charger states ----------------
     sheet(
         wb, "۳ حالت شارژر", "حالت‌های هر کانال شارژ (charger_state_t)",
@@ -167,7 +149,6 @@ def build():
         ],
         [26, 38, 30, 46],
     )
-
     # ---------------- 4 charger transitions ----------------
     sheet(
         wb, "۴ گذار شارژر", "گذارهای کانال شارژ",
@@ -190,7 +171,6 @@ def build():
         ],
         [22, 22, 48, 44],
     )
-
     # ---------------- 5 faults ----------------
     sheet(
         wb, "۵ خطاها", "بیت‌های خطا (fault_mask_t)",
@@ -207,8 +187,6 @@ def build():
         ],
         [8, 32, 56, 46, 40],
     )
-
-    # ---------------- 5-a technical charger fault / خطای فنی سناریوی ۷ ----------------
     sheet(
         wb, "۵-الف خطای فنی", "ماشین حالت سناریوی ۷ — خطای فنی طبقهٔ قدرت شارژر",
         ["حالت", "شرط ورود", "خروجی اجباری", "شرط خروج", "پارامترهای چهره"],
@@ -221,7 +199,6 @@ def build():
         ],
         [26, 58, 54, 38, 34],
     )
-
     # ---------------- 6 UI ----------------
     sheet(
         wb, "۶ چهرهٔ UI", "اولویت سناریوهای چراغ و بوق (func__Ui_Tick)",
@@ -243,7 +220,6 @@ def build():
         ],
         [10, 30, 44, 40, 36],
     )
-
     # ---------------- 7 imbalance ----------------
     sheet(
         wb, "۷ عدم‌توازن", "ماشین حالت سناریوی ۵ (عدم‌توازن دو نیمِ باتری)",
@@ -259,7 +235,6 @@ def build():
         ],
         [24, 48, 46, 34],
     )
-
     # ---------------- 8 dead battery ----------------
     sheet(
         wb, "۸ باتری خراب", "ماشین حالت سناریوی ۶ (مهلت شارژ پیوسته)",
@@ -274,8 +249,6 @@ def build():
         ],
         [24, 46, 44, 34],
     )
-
-    # ---------------- 8-a weak battery / باتری ضعیف سناریوی ۸ ----------------
     sheet(
         wb, "۸-الف باتری ضعیف", "ماشین حالت سناریوی ۸ — حکم باتری ضعیف و بازیابی",
         ["حالت", "شرط ورود", "خروجی (PB11)", "شرط خروج", "پارامترها"],
@@ -293,7 +266,6 @@ def build():
         ],
         [22, 48, 34, 40, 24],
     )
-
     # ---------------- 9 mcu power path ----------------
     sheet(
         wb, "۹ تغذیهٔ MCU", "مسیر تغذیهٔ خود میکرو (Q1 روی PB5)",
@@ -306,7 +278,6 @@ def build():
         ],
         [26, 48, 36, 36],
     )
-
     # ---------------- 10 esp link ----------------
     sheet(
         wb, "۱۰ لینک ESP", "حالت پارسر فریم و مراحل انتقال جدول کالیبراسیون",
@@ -334,11 +305,8 @@ def build():
         ],
         [16, 34, 70],
     )
-
     OUT.parent.mkdir(parents=True, exist_ok=True)
     wb.save(OUT)
     print("wrote", OUT.relative_to(ROOT))
-
-
 if __name__ == "__main__":
     build()

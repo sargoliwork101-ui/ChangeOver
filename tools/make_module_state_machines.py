@@ -24,45 +24,35 @@
      اعتبارسنجی هر ماژول برگهٔ «ماشین حالت» اضافه می‌شود که مستقیم به آن
      لینک می‌دهد (و به کتاب سیستم برمی‌گردد).
 """
-
 import pathlib
-
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MODULES_DIR = ROOT / "Firmware" / "Modules"
 SYSTEM_BOOK = "../../../Documentation/System_State_Machine.xlsx"
-
 FONT = "Vazirmatn"
-
 C_TITLE = "1F3864"
 C_HEAD = "1F4E79"
 C_BAND = "D9E2F3"
 C_LINK = "0563C1"
 PALETTE = {
-    "ok":   "C6EFCE",   # سالم / عادی
-    "warn": "FFE699",   # هشدار / انتظار
-    "bad":  "FFC7CE",   # خطا / قفل
-    "info": "DDEBF7",   # اطلاعاتی
-    "idle": "EDEDED",   # بی‌کار
-    "act":  "FCE4D6",   # در حال کار
+    "ok":   "C6EFCE",
+    "warn": "FFE699",
+    "bad":  "FFC7CE",
+    "info": "DDEBF7",
+    "idle": "EDEDED",
+    "act":  "FCE4D6",
 }
-
 thin = Side(style="thin", color="9DB7E8")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
-
 COLOUR_LEGEND = ("سبز = عادی/سالم · زرد = هشدار یا انتظار · قرمز = خطا یا قفل · "
                  "نارنجی = در حال کار · خاکستری = بی‌کار · آبی = اطلاعاتی")
-
-
 def sheet(wb, name, title, headers, rows, widths):
     """[EN] One right-to-left, coloured sheet. / [FA] یک برگهٔ رنگی راست‌به‌چپ."""
     ws = wb.create_sheet(name)
     ws.sheet_view.rightToLeft = True
     ws.freeze_panes = "A3"
-
     ncol = len(headers)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
     tc = ws.cell(row=1, column=1, value=title)
@@ -70,7 +60,6 @@ def sheet(wb, name, title, headers, rows, widths):
     tc.fill = PatternFill("solid", fgColor=C_TITLE)
     tc.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 30
-
     for c, h in enumerate(headers, start=1):
         cell = ws.cell(row=2, column=c, value=h)
         cell.font = Font(name=FONT, size=11, bold=True, color="FFFFFF")
@@ -78,7 +67,6 @@ def sheet(wb, name, title, headers, rows, widths):
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = BORDER
     ws.row_dimensions[2].height = 28
-
     for r, row in enumerate(rows, start=3):
         tone = row[-1]
         values = row[:-1]
@@ -92,13 +80,10 @@ def sheet(wb, name, title, headers, rows, widths):
                 cell.fill = fill
             elif r % 2 == 1:
                 cell.fill = PatternFill("solid", fgColor=C_BAND)
-
     for c, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(c)].width = w
     ws.sheet_properties.tabColor = "7F7F7F" if name == "راهنما" else "7030A0"
     return ws
-
-
 def guide_sheet(wb, module, persian_name, sources, sheets, validation_name):
     """
     [EN] The first sheet of every module book: what is inside, which firmware
@@ -122,7 +107,6 @@ def guide_sheet(wb, module, persian_name, sources, sheets, validation_name):
         rows,
         [26, 72, 52],
     )
-
     link_row = ws.max_row + 2
     links = [
         ("برگهٔ اعتبارسنجی همین ماژول", validation_name),
@@ -138,15 +122,9 @@ def guide_sheet(wb, module, persian_name, sources, sheets, validation_name):
         link.font = Font(name=FONT, size=10, color=C_LINK, underline="single")
         link.alignment = Alignment(horizontal="right", vertical="center")
     return ws
-
-
-# ==================== Module content / محتوای ماژول‌ها ====================
 # [EN] Written from the firmware sources named in each entry; the audit
 #      invariant in tools/audit_consistency.py keeps the file list honest.
-# [FA] از روی همان فایل‌های فرمور نوشته شده که در هر ورودی نام برده شده‌اند.
-
 MODULES = {}
-
 MODULES["Changeover"] = {
     "fa": "تغییر مسیر (Changeover)",
     "validation": "Changeover_Board_Validation.xlsx",
@@ -205,7 +183,6 @@ MODULES["Changeover"] = {
          [8, 30, 46, 32, 34, 20]),
     ],
 }
-
 MODULES["Diag"] = {
     "fa": "لاگ تشخیصی (Diag)",
     "validation": "Diag_Validation.xlsx",
@@ -242,7 +219,6 @@ MODULES["Diag"] = {
          [16, 20, 52, 52]),
     ],
 }
-
 MODULES["Charger"] = {
     "fa": "شارژر (Charger)",
     "validation": "Charger_Validation.xlsx",
@@ -312,7 +288,6 @@ MODULES["Charger"] = {
          [26, 58, 58, 40, 34]),
     ],
 }
-
 MODULES["Fault"] = {
     "fa": "خطا (Fault)",
     "validation": "Fault_Validation.xlsx",
@@ -356,7 +331,6 @@ MODULES["Fault"] = {
          [24, 52, 62, 38]),
     ],
 }
-
 MODULES["Ui"] = {
     "fa": "نمایش و بوق (UI)",
     "validation": "UI_Board_Validation.xlsx",
@@ -396,7 +370,6 @@ MODULES["Ui"] = {
          [16, 34, 28, 52, 30]),
     ],
 }
-
 MODULES["Imbalance"] = {
     "fa": "عدم‌توازن (سناریوی ۵)",
     "validation": "Imbalance_Validation.xlsx",
@@ -439,7 +412,6 @@ MODULES["Imbalance"] = {
          [14, 48, 16, 40]),
     ],
 }
-
 MODULES["McuPowerPath"] = {
     "fa": "مسیر تغذیهٔ میکرو (McuPowerPath)",
     "validation": "McuPowerPath_Board_Validation.xlsx",
@@ -461,7 +433,6 @@ MODULES["McuPowerPath"] = {
          [26, 48, 36, 36]),
     ],
 }
-
 MODULES["EspLink"] = {
     "fa": "لینک ESP (EspLink)",
     "validation": "EspLink_Validation.xlsx",
@@ -498,7 +469,6 @@ MODULES["EspLink"] = {
          [20, 14, 76]),
     ],
 }
-
 MODULES["CalLut"] = {
     "fa": "جدول کالیبراسیون (CalLut)",
     "validation": "CalLut_Validation.xlsx",
@@ -535,7 +505,6 @@ MODULES["CalLut"] = {
          [10, 20, 70]),
     ],
 }
-
 MODULES["Jitter"] = {
     "fa": "جیتر (Jitter)",
     "validation": "Jitter_Validation.xlsx",
@@ -555,7 +524,6 @@ MODULES["Jitter"] = {
          [22, 46, 46, 40]),
     ],
 }
-
 MODULES["Protection"] = {
     "fa": "نگهبان اعتبار (Protection)",
     "validation": "Protection_Validation.xlsx",
@@ -574,7 +542,6 @@ MODULES["Protection"] = {
          [24, 40, 40, 50]),
     ],
 }
-
 MODULES["Measurement"] = {
     "fa": "اندازه‌گیری (Measurement)",
     "validation": "Measurement_Board_Validation.xlsx",
@@ -595,7 +562,6 @@ MODULES["Measurement"] = {
          [20, 42, 42, 54]),
     ],
 }
-
 MODULES["FlashLock"] = {
     "fa": "قفل خواندن حافظه (FlashLock)",
     "validation": "FlashLock_Validation.xlsx",
@@ -627,8 +593,6 @@ MODULES["FlashLock"] = {
          [30, 52, 44]),
     ],
 }
-
-
 def add_link_sheet(validation_path, module, state_book_name):
     """
     [EN] Give the module's validation workbook a «ماشین حالت» sheet whose
@@ -643,17 +607,14 @@ def add_link_sheet(validation_path, module, state_book_name):
     name = "ماشین حالت"
     if name in wb.sheetnames:
         del wb[name]
-
     ws = wb.create_sheet(name)
     ws.sheet_view.rightToLeft = True
-
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=3)
     tc = ws.cell(row=1, column=1, value=f"ماشین حالت ماژول {module}")
     tc.font = Font(name=FONT, size=14, bold=True, color="FFFFFF")
     tc.fill = PatternFill("solid", fgColor=C_TITLE)
     tc.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 30
-
     rows = [
         ("حالت‌ها و گذارهای همین ماژول", state_book_name, state_book_name),
         ("ماشین حالت کل برنامه (نمای سیستمی)", SYSTEM_BOOK, SYSTEM_BOOK),
@@ -673,39 +634,30 @@ def add_link_sheet(validation_path, module, state_book_name):
         vc.alignment = Alignment(horizontal="right", vertical="center", wrap_text=True)
         vc.border = BORDER
         ws.row_dimensions[r].height = 24
-
     ws.column_dimensions["A"].width = 34
     ws.column_dimensions["B"].width = 78
     ws.sheet_properties.tabColor = "7030A0"
     wb.save(validation_path)
-
-
 def build():
     written = []
     for module, spec in MODULES.items():
         out = MODULES_DIR / module / f"{module}_State_Machine.xlsx"
         wb = Workbook()
         wb.remove(wb.active)
-
         guide_sheet(wb, module, spec["fa"], spec["sources"], spec["sheets"],
                     spec["validation"])
         for name, title, headers, rows, widths in spec["tabs"]:
             sheet(wb, name, title, headers, rows, widths)
-
         out.parent.mkdir(parents=True, exist_ok=True)
         wb.save(out)
         written.append(out.relative_to(ROOT))
-
         validation = MODULES_DIR / module / spec["validation"]
         if validation.exists():
             add_link_sheet(validation, spec["fa"], out.name)
         else:
             print("WARNING: no validation workbook for", module)
-
     for path in written:
         print("wrote", path)
     print(f"{len(written)} module state-machine workbooks")
-
-
 if __name__ == "__main__":
     build()

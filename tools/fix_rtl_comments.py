@@ -27,52 +27,37 @@ Usage:
 
 فقط خط‌های کامنتی که حرف فارسی دارند دست می‌خورند.
 """
-
 import re
 import sys
 import glob
-
 LRM = "\u200e"
-
-# [EN] Persian/Arabic letters. [FA] حروف فارسی.
 FA = re.compile(r"[\u0600-\u06FF]")
-
 # [EN] A latin/arithmetic run: letters, digits, brackets, operators, dots.
-# [FA] رشتهٔ لاتین/ریاضی.
 RUN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_ \t()\[\]{}<>=+\-*/%.,:^|&!~']*"
                  r"[A-Za-z0-9_()\[\]}>%]")
-
 # [EN] Only runs that really are a formula or a range need the mark.
-# [FA] فقط رشته‌ای که واقعاً فرمول یا بازه است علامت می‌خواهد.
 OP = re.compile(r"[A-Za-z0-9_)\]]\s*(?:<=|>=|==|!=|->|=>|[-+*/%=<>^])\s*"
                 r"[A-Za-z0-9_(\[]|\.\.")
-
-
 def _wrap(line):
     """[EN] Wrap formula runs of one comment line. [FA] بستن فرمول‌های یک خط."""
     head = ""
     body = line.rstrip("\n")
     tail = line[len(body):]
-
     # [EN] Keep the comment opener/leader out of the rewrite.
-    # [FA] آغازگر کامنت دست‌نخورده می‌ماند.
     lead = re.match(r"^(\s*(?:/\*+|\*+|//+|)\s*)", body)
     if lead:
         head = lead.group(1)
         body = body[len(head):]
-
     closer = ""
     if body.endswith("*/"):
         closer = "*/"
         body = body[:-2]
-
     out, pos = [], 0
     for m in RUN.finditer(body):
         run = m.group(0)
         if not OP.search(run):
             continue
         before = body[pos:m.start()]
-        # [EN] Already marked? leave it. [FA] اگر علامت دارد، رها کن.
         if before.endswith(LRM):
             continue
         out.append(before)
@@ -80,8 +65,6 @@ def _wrap(line):
         pos = m.end()
     out.append(body[pos:])
     return head + "".join(out) + closer + tail
-
-
 def _comment_lines(text):
     """[EN] Indices of comment lines. [FA] شمارهٔ خط‌های کامنت."""
     inblock = False
@@ -94,8 +77,6 @@ def _comment_lines(text):
         if "*/" in line:
             inblock = False
         yield i, line, is_comment
-
-
 def process(path, check):
     text = open(path, encoding="utf-8").read()
     lines = text.splitlines(keepends=True)
@@ -103,7 +84,6 @@ def process(path, check):
     for i, line, is_comment in _comment_lines(text):
         # [EN] Section banners (==== Name ====) are grep anchors for the
         #      rule checker and must stay byte-for-byte as they are.
-        # [FA] خط‌های جداکنندهٔ بخش‌ها لنگر grep هستند و دست نمی‌خورند.
         if (not is_comment or not FA.search(line) or LRM in line
                 or "====" in line):
             continue
@@ -114,8 +94,6 @@ def process(path, check):
     if hits and not check:
         open(path, "w", encoding="utf-8").write("".join(lines))
     return hits
-
-
 def main():
     check = "--check" in sys.argv
     targets = sorted(
@@ -141,7 +119,5 @@ def main():
         return 0
     print(f"\n{total} line(s) in {files} file(s) rewritten")
     return 0
-
-
 if __name__ == "__main__":
     sys.exit(main())

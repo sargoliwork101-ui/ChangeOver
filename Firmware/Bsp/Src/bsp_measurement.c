@@ -1,39 +1,31 @@
 /**
  * @file    bsp_measurement.c
  * @brief   [EN] Board-specific ADC calibration for the current schematic.
- *          [FA] کالیبراسیون ADC مخصوص برد و شماتیک فعلی.
- *
  * @note    [EN] Replace this port when the analog circuit, ADC reference or
  *              ADC resolution changes; Measurement logic remains unchanged.
- *          [FA] اگر مدار آنالوگ، مرجع ADC یا وضوح ADC تغییر کرد این پورت را
- *              عوض کنید؛ منطق Measurement بدون تغییر می‌ماند.
  */
-
 #include "bsp_measurement.h"
-
 #include <stdint.h>
-
-/* ==================== Board calibration constants / ثابت‌های کالیبراسیون برد ==================== */
-/* [EN] Current STM32F1/board values: 3.3 V reference and 12-bit ADC.
- *      [FA] مقدارهای برد فعلی STM32F1: مرجع ۳٫۳V و ADC دوازده‌بیتی. */
-/* [EN] THE SINGLE GLOBAL SCALE. Every voltage and every current on this board
+/* ==================== Board calibration constants ==================== */
+/*
+ * [EN] Current STM32F1/board values: 3.3 V reference and 12-bit ADC.
+ */
+/*
+ * [EN] THE SINGLE GLOBAL SCALE. Every voltage and every current on this board
  *      is counts x VREF / FULL_SCALE, so VREF is the one term common to all of
  *      them - and therefore the ONLY correct place to fix a common-mode scale
  *      error. Do not patch individual channels for something that is shared.
- *
  *      VDDA HYPOTHESIS - NOT CONFIRMED (audit 2026-10-10). An earlier note
  *      claimed VIN and V12 both over-read by 1.19 %, implying VDDA ~3261 mV.
  *      Calibration Data/solo2_dense.csv (removed, see git history) does NOT support that: row 1 has VIN 24386 vs
  *      DMM 24100 (+1.2 %) but V12 12074 vs DMM 12080 (-0.05 %). Two channels
  *      disagree, so no shared-VDDA conclusion follows from this file.
- *
  *      (Unverified idea) the board "never calibrates" if the dominant error is a GAIN
  *      error, and the only runtime calibration the product exposes (params
  *      4/5/6) is an ADDER. An adder mathematically cannot correct a
  *      multiplier - it can only be right at one operating point, which is
  *      exactly why every attempt drifted and why per-channel patches kept
  *      getting added.
- *
  *      NOT CHANGED HERE, DELIBERATELY. Lowering VREF to 3261 would make every
  *      reading 1.2 percent LOWER, which moves the over-voltage cut LATER - a
  *      safety regression - and the number comes from one bench session on one
@@ -54,52 +46,22 @@
  *      makes the two agree, then switch CAL_VDDA_TRACKING_ENABLE on. Until
  *      that measurement exists the raw 1.16..1.24 V datasheet spread would be
  *      worse than the error it corrects, so the flag ships OFF on purpose.
- * [FA] تنها مقیاس سراسری. هر ولتاژ و هر جریان این برد برابر
- *      ‎counts x VREF / FULL_SCALE‎ است، پس VREF تنها جملهٔ مشترک همهٔ آن‌هاست و
- *      بنابراین تنها جای درست برای اصلاح خطای مقیاسِ مشترک. برای چیزی که
- *      مشترک است، تک‌تک کانال‌ها را وصله نکنید.
- *      فرضیهٔ ‎VDDA‎ - تأییدنشده (ممیزی ۲۰۲۶-۱۰-۱۰): یادداشت قدیمی ادعا می‌کرد
- *      ورودی و دوازده‌ولت هر دو ۱٫۱۹٪ بالا می‌خوانند، یعنی ‎VDDA‎ حدود ۳۲۶۱
- *      میلی‌ولت است. دادهٔ بنچ آن را تأیید نمی‌کند: در یک ردیف ورودی ‎+۱٫۲٪‎ و
- *      دوازده‌ولت ‎−۰٫۰۵٪‎ است - دو کانال ناهم‌خوان‌اند، پس از این فایل هیچ
- *      نتیجهٔ مرجع مشترکی درنمی‌آید.
- *      «چرا برد هیچ‌وقت کالیبره نمی‌شود»: خطای غالب از نوع گین است و تنها
- *      کالیبراسیون زمان‌اجرای محصول (پارامترهای ۴/۵/۶) جمع‌شونده است. جمع‌شونده
- *      ریاضیاتاً نمی‌تواند ضرب‌شونده را اصلاح کند.
- *      عمداً اینجا تغییر داده نشد: پایین‌آوردن به ۳۲۶۱ همهٔ خوانش‌ها را ۱٫۲٪ کم
- *      می‌کند و قطع اضافه‌ولتاژ را دیرتر می‌اندازد - پس‌رفت ایمنی. خواندنِ کمی
- *      بالا جهت امن است. راه درست: یا VDDA را با مولتی‌متر اندازه بگیرید و همین
- *      ثابت را بگذارید، یا بهتر، بگذارید مرجع داخلی VREFINT زمان اجرا VDDA را
- *      حساب کند تا هر برد خودش را کالیبره کند.
- *      وضعیت راه دوم، اصلاح‌شده در ممیزی ۲۰۲۶-۱۰-۰۵: سمت CubeMX از قبل انجام
- *      شده است؛ فایل ‎CubeIDE.ioc‎ با ‎NbrOfConversion 6‎ و
- *      ‎Channel-6 = ADC_CHANNEL_VREFINT‎ پیکربندی شده، ‎bsp_adc.h‎ آن را با نام
- *      ‎BSP_ADC_CHANNEL_VREFINT‎ بیرون می‌دهد و تابع
- *      ‎func__BspMeasurement_VddaMv‎ بالا آن را به میلی‌ولت تبدیل می‌کند. این
- *      توضیح قبلاً می‌گفت بازتولید CubeMX هنوز لازم است؛ لازم نیست. چیزی که
- *      باقی مانده فقط یک گام بنچ است: VDDA را روی برد با مولتی‌متر بخوانید،
- *      ‎CAL_VREFINT_MV‎ را طوری بگذارید که این دو بخوانند، سپس
- *      ‎CAL_VDDA_TRACKING_ENABLE‎ را روشن کنید. تا وقتی آن اندازه‌گیری نباشد،
- *      پراکندگی خام ۱٫۱۶ تا ۱٫۲۴ ولت دیتاشیت از خطایی که اصلاح می‌کند بدتر
- *      است، پس این پرچم عمداً خاموش عرضه می‌شود. */
+ */
 #define BSP_MEASUREMENT_VREF_MV             3300u
 #define BSP_MEASUREMENT_VDDA_MIN_MV         3000u
 #define BSP_MEASUREMENT_VDDA_MAX_MV         3600u
 #define BSP_MEASUREMENT_ADC_FULL_SCALE     4095u
-
-/* [EN] VOLTAGE SENSE DIVIDERS - read straight off the schematic, not tuned.
+/*
+ * [EN] VOLTAGE SENSE DIVIDERS - read straight off the schematic, not tuned.
  *      USER-ORDERED CORRECTION 2026-09-29. Every one of the three sense
  *      nets has the SAME shape: two resistors in series feeding the ADC pin,
  *      and one resistor from that pin to ground.
- *
  *        sheet 1 (power)      sheet 4 (MCU)        to GND
  *        ADC_MICRO_+24V_INPUT     R46 = 68K  +  R11 = 1.2K  |  R12 = 6.8K
  *        ADC_MICRO_+24V_BAT       R47 = 68K  +  R13 = 1.2K  |  R14 = 6.8K
  *        ADC_MICRO_+24V_BAT_COM   R48 = 33K  +  R15 = 1.2K  |  R16 = 6.8K
- *
  *      So the two 24 V nets are ELECTRICALLY IDENTICAL (68K+1.2K over 6.8K)
  *      and there is no physical reason for their coefficients to differ.
- *
  *      WHY THIS HAD TO BE CORRECTED. The pack net used to carry TOP = 66200,
  *      which is not a resistor that exists on this board. It was invented to
  *      make one bench reading line up, and it was the real reason the pack
@@ -112,26 +74,13 @@
  *      and the absorb/over pair), never the scale. Residual per-board error
  *      belongs in the runtime offsets, ESP params 4/5/6, which are an ADDER
  *      and therefore cannot distort the slope.
- * [FA] مقسم‌های حس ولتاژ - مستقیم از شماتیک خوانده شده‌اند، نه تنظیم‌شده.
- *      اصلاح به دستور کاربر ۲۰۲۶-۰۹-۲۹. هر سه نت حس یک شکل دارند: دو مقاومت
- *      سری تا پایهٔ ADC و یک مقاومت از همان پایه به زمین (‎R46/R47=68K‎ و
- *      ‎R48=33K‎ روی شیت قدرت، به‌اضافهٔ ‎R11/R13/R15=1.2K‎ و ‎R12/R14/R16=6.8K‎
- *      روی شیت MCU). پس دو نت ۲۴ولت از نظر الکتریکی یکی‌اند و هیچ دلیل فیزیکی
- *      برای تفاوت ضرایبشان وجود ندارد.
- *      چرا اصلاح لازم بود: نت پک قبلاً ‎TOP=66200‎ داشت که هیچ مقاومتی روی این
- *      برد نیست؛ ساخته شده بود تا یک خواندن بنچ جور دربیاید، و دقیقاً همین
- *      دلیل کالیبره‌نشدن ولتاژ پک بود. مقسم غلط یعنی خطای گین: فقط در یک نقطه
- *      درست است و در بقیهٔ نقاط غلط، و بی‌صدا همهٔ مصرف‌کننده‌های آن عدد را
- *      خراب می‌کند. قاعده از این به بعد: ولتاژ را صادقانه بخوان؛ اگر تصمیمی
- *      باید زودتر گرفته شود، آستانه را جابه‌جا کن نه مقیاس را. خطای باقی‌ماندهٔ
- *      هر برد جای آفست‌های زمان اجرا (پارامترهای ۴/۵/۶) است که جمع‌شونده‌اند و
- *      نمی‌توانند شیب را خراب کنند. */
+ */
 #define BSP_MEASUREMENT_SENSE_SERIES_MCU_OHMS  1200u  /* R11 / R13 / R15 */
 #define BSP_MEASUREMENT_SENSE_SHUNT_OHMS       6800u  /* R12 / R14 / R16 */
 #define BSP_MEASUREMENT_SENSE_TOP_24V_OHMS    68000u  /* R46 (input), R47 (pack) */
 #define BSP_MEASUREMENT_SENSE_TOP_12V_OHMS    33000u  /* R48 (mid node)          */
-
-/* [EN] MEASURED CORRECTION 2026-09-29, and it overrules the schematic reading.
+/*
+ * [EN] MEASURED CORRECTION 2026-09-29, and it overrules the schematic reading.
  *      With VDDA confirmed at exactly 3.300 V, the divider ratio was measured
  *      directly - DMM on the connector, DMM on the ADC pin - which needs no
  *      assumption at all, because a resistive divider is ratiometric and has no
@@ -147,102 +96,78 @@
  *      measured 6.0586, i.e. -0.48 %, which is inside a 1 % resistor stack and
  *      inside most meters' DC accuracy. One point is not enough to chase that,
  *      so it is left alone and flagged for a second reading.
- * [FA] اصلاح اندازه‌گیری‌شدهٔ ۲۰۲۶-۰۹-۲۹ که بر خوانش شماتیک ارجح است. با VDDA
- *      دقیقاً ۳٫۳۰۰، نسبت مقسم مستقیم اندازه گرفته شد - مولتی‌متر روی کانکتور و
- *      روی پایهٔ ADC - که هیچ فرضی نمی‌خواهد چون مقسم مقاومتی نسبتی است و آفست
- *      ندارد. میانگین دو نت ۲۴ولت ۱۱٫۰۰۵۴ شد و 68K روی 6.8K دقیقاً ۱۱٫۰۰۰۰
- *      می‌دهد؛ برازش ۰٫۰۵٪ روی دو نت مستقل تصادفی نیست. پس ۱٫۲ کیلواهم در مقسم
- *      نیست: بین نقطهٔ تقسیم و پایهٔ ADC است، جایی که مقاومت سری محافظ روی ورودی
- *      امپدانس‌بالاست و هیچ افت DC ندارد. */
+ */
 #define BSP_MEASUREMENT_DIV24_TOP_OHMS         BSP_MEASUREMENT_SENSE_TOP_24V_OHMS
 #define BSP_MEASUREMENT_DIV24_BOTTOM_OHMS   BSP_MEASUREMENT_SENSE_SHUNT_OHMS
-
-/* [EN] Same physical network as the input net above - deliberately spelled
-        out from the same constants so the two can never drift apart again.
-   [FA] دقیقاً همان شبکهٔ فیزیکی نت ورودی - عمداً از همان ثابت‌ها ساخته شده تا
-        دیگر هرگز از هم جدا نشوند. */
+/*
+ * [EN] Same physical network as the input net above - deliberately spelled
+ * out from the same constants so the two can never drift apart again.
+ */
 #define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS   BSP_MEASUREMENT_DIV24_TOP_OHMS
 #define BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS BSP_MEASUREMENT_DIV24_BOTTOM_OHMS
-
-/* [EN] MEASURED 2026-09-29: 14.88 V at CON2 pin 2 against 2.456 V at PA5 gives
+/*
+ * [EN] MEASURED 2026-09-29: 14.88 V at CON2 pin 2 against 2.456 V at PA5 gives
  *      a ratio of 6.0586. 33K+1.2K over 6.8K gives 6.0294, so the firmware read
  *      0.48 % LOW - and reading low on the battery the charger regulates means
  *      charging it HIGH, which is the unsafe direction. Unlike the 24 V nets
  *      there is no clean structural story here (the 1.2K IS in this path); the
  *      residual is ordinary 1 % resistor spread, so the top is set to what the
  *      divider actually measures: 6800 x (6.0586 - 1) = 34398.
- * [FA] اندازه‌گیری ۲۰۲۶-۰۹-۲۹: ۱۴٫۸۸ ولت روی پین ۲ کانکتور در برابر ۲٫۴۵۶ روی
- *      PA5 نسبت ۶٫۰۵۸۶ می‌دهد، ولی فرم‌ور ۶٫۰۲۹۴ داشت یعنی ۰٫۴۸٪ کم می‌خواند - و
- *      کم‌خواندن روی باتری‌ای که شارژر تنظیمش می‌کند یعنی بیش‌شارژ، که جهت ناامن
- *      است. برخلاف نت‌های ۲۴ولت اینجا داستان ساختاری تمیزی نیست و باقی‌مانده
- *      پراکندگی عادی مقاومت ۱٪ است، پس تاپ برابر همان چیزی گذاشته می‌شود که
- *      مقسم واقعاً اندازه می‌دهد. */
+ */
 #define BSP_MEASUREMENT_DIV12_TOP_OHMS      34398u
 #define BSP_MEASUREMENT_DIV12_BOTTOM_OHMS   BSP_MEASUREMENT_SENSE_SHUNT_OHMS
-
-/* [EN] Current sense: 10mOhm shunt and LM358 gain 101.
- *      [FA] سنجش جریان: شانت ۱۰mΩ و گین LM358 برابر ۱۰۱. */
-/* [EN] MCU input divider on the CURRENTx nets (MCU sheet): R41 = 1k series
+/*
+ * [EN] Current sense: 10mOhm shunt and LM358 gain 101.
+ */
+/*
+ * [EN] MCU input divider on the CURRENTx nets (MCU sheet): R41 = 1k series
  *      and R42 = 10k to GND. The ADC pin therefore sees only
  *      10k/(1k+10k) of the LM358 output; the conversion below undoes this
  *      permanent hardware divider separately from the user calibration.
- *      [FA] تقسیم ورودی MCU روی نت‌های CURRENTx (شیت MCU): R41 برابر 1k سری
- *      و R42 برابر 10k به زمین. پایه ADC فقط ‎10k/(1k+10k)‎ خروجی LM358 را
- *      می‌بیند؛ تبدیل پایین این تقسیم دائمی سخت‌افزاری را جدا از کالیبراسیون
- *      کاربر خنثی می‌کند. */
-/* [EN] Unit scales of the current formula, each ONE concept (no shared
+ */
+/*
+ * [EN] Unit scales of the current formula, each ONE concept (no shared
  *      magic 1000): milliamps per ampere for the shunt stage, and permille
  *      for the bench gain trim stage.
- *      [FA] مقیاس‌های واحد فرمول جریان، هر کدام یک مفهوم (بدون ۱۰۰۰ جادویی
- *      مشترک): میلی‌آمپر بر آمپر برای مرحلهٔ شانت، و پرمیل برای مرحلهٔ
- *      اصلاح گین بنچ. */
+ */
 #define BSP_MEASUREMENT_MA_PER_A              1000u
 #define BSP_MEASUREMENT_PERMILLE_SCALE        1000u
-
-/* [EN] Microvolts per millivolt - scale factor of the pure-hardware
-   shunt-voltage diagnostic converter (user order 2026-09-22).
-   [FA] میکروولت بر میلی‌ولت - ضریب مقیاس مبدل تشخیصیِ فقط-سخت‌افزاریِ
-   ولتاژ شانت (دستور کاربر ۲۰۲۶-۰۹-۲۲). */
-/* [EN] Per-CHANNEL calibration since 2026-09-20 (user order: charger 1 must
+/*
+ * [EN] Microvolts per millivolt - scale factor of the pure-hardware
+ * shunt-voltage diagnostic converter (user order 2026-09-22).
+ */
+/*
+ * [EN] Per-CHANNEL calibration since 2026-09-20 (user order: charger 1 must
  *      not ride on charger 2's calibration). Both chains share the same
  *      schematic topology above (10 mOhm shunt, LM358 gain 101, R41/R42), so
  *      only the offset and the bench gain permille differ per channel.
- * [FA] کالیبراسیون پر-کانال (دستور کاربر): توپولوژی هر دو زنجیره یکی است و
- *      فقط آفست و ضریب گینِ بنچ هر کانال جدا تنظیم می‌شود. */
-/* [EN] Safe start values until the first bench calibration (user order
+ */
+/*
+ * [EN] Safe start values until the first bench calibration (user order
  *      2026-10-10): the MAXIMUM gain (3000 permille) and ZERO offset. A
  *      higher reading only slows the charge; a low reading would push
  *      extra current into the battery. Both channels start here and the
  *      panel calibrates them at the first flash.
- * [FA] مقدار شروع ایمن تا اولین کالیبراسیون بنچ (دستور کاربر ۲۰۲۶-۱۰-۱۰):
- *      بیشترین گین (۳۰۰۰ پرمیل) و آفست صفر. خواندن بالاتر فقط شارژ را کند
- *      می‌کند؛ خواندن پایین‌تر جریان اضافه به باتری می‌دهد. هر دو کانال از
- *      همین‌جا شروع می‌کنند و پنل در اولین ریختن برنامه کالیبره‌شان می‌کند. */
+ */
 #define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 0u
 #define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 3000u
 #define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS 0u
 #define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 3000u
-
-/* [EN] Runtime clamp limits for the ESP-adjustable current calibration
+/*
+ * [EN] Runtime clamp limits for the ESP-adjustable current calibration
  *      (user order 2026-09-22: the ESP command panel must never be able to
  *      push a calibration value into a nonsense region).
- * [FA] حدود گیرهٔ زمان اجرا برای کالیبراسیون قابل‌تنظیم از ESP (دستور
- *      کاربر ۲۰۲۶-۰۹-۲۲): پنل ESP هرگز نباید مقدار کالیبراسیون را به
- *      ناحیهٔ بی‌معنا ببرد. */
+ */
 #define BSP_MEASUREMENT_CURRENT_OFFSET_MAX_COUNTS 255u
 #define BSP_MEASUREMENT_CURRENT_GAIN_MIN_PERMILLE 100u
 #define BSP_MEASUREMENT_CURRENT_GAIN_MAX_PERMILLE 3000u
-
-/* [EN] Runtime copies of the per-channel current calibration, initialized
+/*
+ * [EN] Runtime copies of the per-channel current calibration, initialized
  *      from the compiled bench defaults above and writable at runtime by
  *      the ESP link (flash-persisted since v1.14 - a reboot keeps the set).
  *      Written from the EspLink task, read in the measurement task; both
  *      are aligned 32-bit values, atomic on Cortex-M3.
- * [FA] نسخهٔ زمان اجرای کالیبراسیون جریان هر کانال: مقدار اولیه از
- *      پیش‌فرض‌های بنچ بالا و نوشتن در زمان اجرا توسط لینک ESP (روی فلش
- *      می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت مجموعه را نگه می‌دارد). نوشتن از تسک EspLink و
- *      خواندن در تسک اندازه‌گیری؛ هر دو ۳۲ بیتی تراز شده‌اند و روی
- *      ‎Cortex-M3‎ اتمیک‌اند. */
+ */
 static volatile uint32_t UINT32_T__G__Current1OffsetCounts =
     BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS;
 static volatile uint32_t UINT32_T__G__Current1GainPermille =
@@ -251,7 +176,6 @@ static volatile uint32_t UINT32_T__G__Current2OffsetCounts =
     BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS;
 static volatile uint32_t UINT32_T__G__Current2GainPermille =
     BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE;
-
 /* ==================== VDDA from the internal reference ==================== */
 /**
  * @brief  [EN] Work out the real VDDA (= ADC reference) from the internal
@@ -269,77 +193,51 @@ static volatile uint32_t UINT32_T__G__Current2GainPermille =
  *              That is why CAL_VDDA_TRACKING_ENABLE ships OFF: this function
  *              is a measurement you can look at first, not a silent change to
  *              every reading.
- *         [FA] VDDA واقعی را از کانال مرجع داخلی ۱٫۲۰ ولت حساب می‌کند: چون
- *              ولتاژ VREFINT معلوم است، هر شمارشی که تولید کند می‌گوید مقیاس
- *              کامل چقدر می‌ارزد. محدودیت صادقانه: STM32F103 مقدار کالیبراسیون
- *              کارخانه‌ای VREFINT را ذخیره نمی‌کند و دیتاشیت فقط ۱٫۱۶ تا ۱٫۲۴
- *              ولت را تضمین می‌کند، یعنی خام یعنی ±۳٫۳٪ که از خطای ~۱٫۲٪ فعلی
- *              بدتر است. فقط وقتی دقیق می‌شود که VDDA همین برد را با مولتی‌متر
- *              اندازه بگیرید و CAL_VREFINT_MV را مطابقش بگذارید؛ از آن به بعد
- *              برد خودش دریفت تغذیه و دما را دنبال می‌کند، کاری که هیچ ثابتی
- *              نمی‌تواند. به همین دلیل CAL_VDDA_TRACKING_ENABLE خاموش عرضه
- *              می‌شود: این یک اندازه‌گیری است که اول ببینید، نه تغییر بی‌صدای
- *              همهٔ خوانش‌ها.
  * @param  uint16_t__vrefintCounts [EN] Raw counts of the VREFINT channel /
- *                                      شمارش خام کانال VREFINT
  * @param  uint32_t__vrefintMv [EN] Reference voltage of that channel in mV -
  *                                  passed IN so the board port stays free of
  *                                  bench-calibration headers /
- *                                  ولتاژ مرجع همان کانال بر حسب mV - از بیرون
- *                                  داده می‌شود تا لایهٔ برد به هدرهای
- *                                  کالیبراسیون بنچ وابسته نشود
  * @return uint32_t [EN] Measured VDDA in mV, 0 if the reading is implausible /
- *                      VDDA اندازه‌گیری‌شده بر حسب mV، صفر اگر نامعقول باشد
  */
 uint32_t func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,
                                     uint32_t uint32_t__vrefintMv)
 {
     uint32_t uint32_t__vddaMv;
-
     if (uint16_t__vrefintCounts == 0u)
     {
         return 0u;
     }
-
     uint32_t__vddaMv = (uint32_t__vrefintMv *
                         (uint32_t)BSP_MEASUREMENT_ADC_FULL_SCALE) /
                        (uint32_t)uint16_t__vrefintCounts;
-
-    /* [EN] Refuse anything a 3.3 V rail could not physically be; a stuck or
-            un-enabled VREFINT channel must not silently rescale the product.
-       [FA] هر چیزی که یک ریل ۳٫۳ ولت فیزیکاً نمی‌تواند باشد رد می‌شود؛ کانال
-            گیرکرده یا فعال‌نشده نباید بی‌صدا کل محصول را بازمقیاس کند. */
+    /*
+ * [EN] Refuse anything a 3.3 V rail could not physically be; a stuck or
+ * un-enabled VREFINT channel must not silently rescale the product.
+ */
     if ((uint32_t__vddaMv < BSP_MEASUREMENT_VDDA_MIN_MV) ||
         (uint32_t__vddaMv > BSP_MEASUREMENT_VDDA_MAX_MV))
     {
         return 0u;
     }
-
     return uint32_t__vddaMv;
 }
-
 /**
  * @brief  [EN] Convert raw ADC counts to millivolts at the ADC pin.
- *         [FA] شمارش خام ADC را به میلی‌ولت روی پایهٔ ADC تبدیل می‌کند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Pin voltage in mV / ولتاژ پایه بر حسب mV
+* @param uint16_t__counts ADC count / ADC
+* @return uint32_t Pin voltage in mV / mV
  */
 /* ==================== BspMeasurement_CountsToMv ==================== */
 uint32_t func__BspMeasurement_CountsToMv(uint16_t uint16_t__counts)
 {
     uint32_t uint32_t__countsScaled;
-
     uint32_t__countsScaled =
         (uint32_t)uint16_t__counts * BSP_MEASUREMENT_VREF_MV;
-
     return uint32_t__countsScaled / BSP_MEASUREMENT_ADC_FULL_SCALE;
 }
-
 /**
  * @brief  [EN] Undo the board divider for a 24 V source channel.
- *         [FA] تقسیم برد را برای کانال منبع ۲۴ ولت برمی‌گرداند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع بر حسب mV
+* @param uint16_t__counts ADC count / ADC
+* @return uint32_t Source voltage in mV / mV
  */
 /* ==================== BspMeasurement_V24CountsToMv ==================== */
 uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts)
@@ -347,42 +245,33 @@ uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts)
     uint32_t uint32_t__adcPinMv;
     uint32_t uint32_t__dividerTotalOhms;
     uint32_t uint32_t__scaledMv;
-
     uint32_t__adcPinMv = func__BspMeasurement_CountsToMv(uint16_t__counts);
     uint32_t__dividerTotalOhms =
         BSP_MEASUREMENT_DIV24_TOP_OHMS + BSP_MEASUREMENT_DIV24_BOTTOM_OHMS;
     uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
-
     return uint32_t__scaledMv / BSP_MEASUREMENT_DIV24_BOTTOM_OHMS;
 }
-
 /* ==================== BspMeasurement_Battery24CountsToMv ==================== */
-
 /**
  * @brief  [EN] Undo the battery-PACK 24 V divider (user factor, 2026-09-25).
- *         [FA] خنثی‌کردن مقسم نت باتری‌پک ۲۴V (ضریب کاربر، ۲۰۲۶-۰۹-۲۵).
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک بر حسب mV
+* @param uint16_t__counts ADC count / ADC
+* @return uint32_t Pack voltage in mV / mV
  */
 uint32_t func__BspMeasurement_Battery24CountsToMv(uint16_t uint16_t__counts)
 {
     uint32_t uint32_t__adcPinMv;
     uint32_t uint32_t__dividerTotalOhms;
     uint32_t uint32_t__scaledMv;
-
     uint32_t__adcPinMv = func__BspMeasurement_CountsToMv(uint16_t__counts);
     uint32_t__dividerTotalOhms =
         BSP_MEASUREMENT_DIV24BAT_TOP_OHMS + BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS;
     uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
-
     return uint32_t__scaledMv / BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS;
 }
-
 /**
  * @brief  [EN] Undo the board divider for a 12 V source channel.
- *         [FA] تقسیم برد را برای کانال منبع ۱۲ ولت برمی‌گرداند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع بر حسب mV
+* @param uint16_t__counts ADC count / ADC
+* @return uint32_t Source voltage in mV / mV
  */
 /* ==================== BspMeasurement_V12CountsToMv ==================== */
 uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
@@ -390,17 +279,13 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
     uint32_t uint32_t__adcPinMv;
     uint32_t uint32_t__dividerTotalOhms;
     uint32_t uint32_t__scaledMv;
-
     uint32_t__adcPinMv = func__BspMeasurement_CountsToMv(uint16_t__counts);
     uint32_t__dividerTotalOhms =
         BSP_MEASUREMENT_DIV12_TOP_OHMS + BSP_MEASUREMENT_DIV12_BOTTOM_OHMS;
     uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
-
     return uint32_t__scaledMv / BSP_MEASUREMENT_DIV12_BOTTOM_OHMS;
 }
-
 /* ==================== BspMeasurement_ConvertCurrent (internal) ==================== */
-
 /**
  * @brief  [EN] Shared current formula of both channels, one stage per
  *              schematic element: counts -> ADC pin mV -> undo the
@@ -410,11 +295,6 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  *              Every multiply carries its own numerator/denominator stage
  *              and only ONE division runs at the very end (no
  *              intermediate truncation accumulates).
- *         [FA] قالب فرمول مشترک هر دو کانال، یک مرحله برای هر المان
- *              شماتیک: شمارش -> mV پایه ADC -> خنثی‌کردن تقسیم ‎R41/R42 ->‎
- *              خنثی‌کردن گین LM358 -> خنثی‌کردن mΩ شانت -> mA، سپس آفست
- *              صفر پر-کانال و گین پرمیل بنچ. هر ضرب مرحلهٔ صورت/مخرج خودش
- *              را جابه‌جا می‌کند و فقط یک تقسیم در انتها اجرا می‌شود.
  * @note   [EN] Flash diet: the five runtime stages are folded into ONE
  *              32-bit multiply+divide with BIT-IDENTICAL results (proven
  *              for all 4096 counts; the u64 division pulled
@@ -429,25 +309,19 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  *              nearest rounding can read below the true current.
  *              If ANY resistor/value above ever changes, re-derive (the
  *              host test recomputes the collapse from these defines).
- *         [FA] رژیم فلش: پنج مرحله در یک ضرب+تقسیم ۳۲بیتی با نتیجهٔ
- *              بیت‌به‌بیت یکسان جمع شد (اثبات برای هر ۴۰۹۶ شمارش؛ تقسیم
- *              ۶۴بیتی ~۱KB می‌خواست). اگر مقاومتی عوض شد دوباره اشتقاق
- *              بگیر (تست هاست از همین دیفاین‌ها بازمحاسبه می‌کند).
- *              رُند: تقسیم جمع‌شده رو به بالا (سقف) گرد می‌شود، همان قاعدهٔ
- *              درون‌یابی جدول؛ هیچ گرد یا برشی‌ای نباید از جریان واقعی پایین‌تر بخواند.
- * @param  uint16_t__counts           [EN] ADC count / شمارش ADC
- * @param  uint32_t__offsetCounts     [EN] zero-current offset, counts‎ / آفست صفر
- * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
- * @return uint32_t [EN] Current in mA / جریان بر حسب mA
+* @param uint16_t__counts ADC count / ADC
+* @param uint32_t__offsetCounts zero-current offset, counts /
+* @param uint32_t__gainPermille bench gain permille /
+* @return uint32_t Current in mA / mA
  */
 static uint32_t func__BspMeasurement_ChainNumerator(uint16_t uint16_t__counts,
                                                     uint32_t uint32_t__offsetCounts,
                                                     uint32_t uint32_t__gainPermille)
 {
     uint32_t uint32_t__calibratedCounts;
-
-    /* [EN] Zero offset in raw counts (bench value), clamped at 0. Integer only.
-       [FA] آفست صفر بر حسب شمارش خام (مقدار بنچ)، با کف صفر. فقط عدد صحیح. */
+    /*
+ * [EN] Zero offset in raw counts (bench value), clamped at 0. Integer only.
+ */
     if ((uint32_t)uint16_t__counts > uint32_t__offsetCounts)
     {
         uint32_t__calibratedCounts =
@@ -457,31 +331,26 @@ static uint32_t func__BspMeasurement_ChainNumerator(uint16_t uint16_t__counts,
     {
         uint32_t__calibratedCounts = 0u;
     }
-
-    /* [EN] Exact numerator (no division, no rounding): calibrated counts x gain
-       permille. Max 4095 x 3000 = 12,285,000, fits u32.
-       [FA] صورت دقیق (بدون تقسیم و بدون رُند): شمارش کالیبره x گین پرمیل.
-       حداکثر ‎4095 x 3000 = 12,285,000‎، در u32 جا می‌شود. */
+    /*
+ * [EN] Exact numerator (no division, no rounding): calibrated counts x gain
+ * permille. Max 4095 x 3000 = 12,285,000, fits u32.
+ */
     return uint32_t__calibratedCounts * uint32_t__gainPermille;
 }
-
-/* [EN] Exact chain scale: mA = numerator x 24200 / 27573000, where 24200 /
+/*
+ * [EN] Exact chain scale: mA = numerator x 24200 / 27573000, where 24200 /
  *      27573 is the fixed fold of the schematic stages and 1000 is the permille
- *      scale. [FA] مقیاس دقیق زنجیره: mA = صورت ‎x 24200 / 27573000‎؛ ۲۴۲۰۰/۲۷۵۷۳
- *      تجمیع ثابت مراحل مدار و ۱۰۰۰ مقیاس پرمیل است. */
+ */
 #define BSP_MEASUREMENT_CHAIN_DENOMINATOR (27573u * BSP_MEASUREMENT_PERMILLE_SCALE)
-
 /* ==================== BspMeasurement_ScaleRoundMa ==================== */
-
 /**
  * @brief  [EN] Ceil(numerator x 24200 / 27573000) in ONE round-up, without a
  *              64-bit divide. Split: N = a x 27573 + b, so
  *              N x 24200 / D = a x 24200 / 1000 + frac / D with
  *              frac = (a x 24200 mod 1000) x 27573 + b x 24200 (all < 2^31).
  *              round-up = p1 + ceil(frac / D).
- *         [FA] رُند(صورت ‎x 24200 / 27573000)‎ با یک رُند و بدون تقسیم ۶۴بیتی.
- * @param  uint32_t__numerator [EN] Exact numerator / صورت دقیق
- * @return uint32_t [EN] Current in mA, rounded up to an integer / جریان mA، گرد شده به بالا
+* @param uint32_t__numerator Exact numerator /
+* @return uint32_t Current in mA, rounded up to an integer / mA
  */
 static uint32_t func__BspMeasurement_ScaleRoundMa(uint32_t uint32_t__numerator)
 {
@@ -491,13 +360,11 @@ static uint32_t func__BspMeasurement_ScaleRoundMa(uint32_t uint32_t__numerator)
     uint32_t uint32_t__p1 = uint32_t__product / BSP_MEASUREMENT_PERMILLE_SCALE;
     uint32_t uint32_t__r1 = uint32_t__product % BSP_MEASUREMENT_PERMILLE_SCALE;
     uint32_t uint32_t__frac = (uint32_t__r1 * 27573u) + (uint32_t__b * 24200u);
-
     /* [EN] Single ROUND-UP (ceiling): never below the exact chain value. */
     return uint32_t__p1 +
            ((uint32_t__frac + BSP_MEASUREMENT_CHAIN_DENOMINATOR - 1u) /
             BSP_MEASUREMENT_CHAIN_DENOMINATOR);
 }
-
 static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
                                                     uint32_t uint32_t__offsetCounts,
                                                     uint32_t uint32_t__gainPermille)
@@ -507,13 +374,12 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
                                             uint32_t__offsetCounts,
                                             uint32_t__gainPermille));
 }
-
-/* [EN] Above-anchor extension in TENTHS of mA, rounded UP once. Exact:
+/*
+ * [EN] Above-anchor extension in TENTHS of mA, rounded UP once. Exact:
  *      mA x 10 = num x 24200 x 10 / (27573 x 1000) = num x 242 / 27573.
  *      num = q x 27573 + r gives q x 242 + ceil(r x 242 / 27573), so the whole
  *      computation stays in 32 bits (no 64-bit divide in the image).
- * [FA] افزایش بالای آخرین نقطه بر حسب دهم mA، فقط یک بار به بالا گرد می‌شود.
- *      ‎num x 242 / 27573‎ با تقسیم num به q و r، بدون عدد ۶۴ بیتی. */
+ */
 static uint32_t func__BspMeasurement_ChainDeltaTenthMa(uint16_t uint16_t__countsHigh,
                                                        uint16_t uint16_t__countsLow,
                                                        uint32_t uint32_t__offsetCounts,
@@ -530,7 +396,6 @@ static uint32_t func__BspMeasurement_ChainDeltaTenthMa(uint16_t uint16_t__counts
     uint32_t uint32_t__num;
     uint32_t uint32_t__q;
     uint32_t uint32_t__r;
-
     if (uint32_t__high <= uint32_t__low)
     {
         return 0u;
@@ -540,7 +405,6 @@ static uint32_t func__BspMeasurement_ChainDeltaTenthMa(uint16_t uint16_t__counts
     uint32_t__r = uint32_t__num % 27573u;
     return (uint32_t__q * 242u) + (((uint32_t__r * 242u) + 27572u) / 27573u);
 }
-
 uint32_t func__BspMeasurement_Current1DeltaTenthMa(uint16_t uint16_t__countsHigh,
                                                    uint16_t uint16_t__countsLow)
 {
@@ -549,7 +413,6 @@ uint32_t func__BspMeasurement_Current1DeltaTenthMa(uint16_t uint16_t__countsHigh
                                                   UINT32_T__G__Current1OffsetCounts,
                                                   UINT32_T__G__Current1GainPermille);
 }
-
 uint32_t func__BspMeasurement_Current2DeltaTenthMa(uint16_t uint16_t__countsHigh,
                                                    uint16_t uint16_t__countsLow)
 {
@@ -558,16 +421,12 @@ uint32_t func__BspMeasurement_Current2DeltaTenthMa(uint16_t uint16_t__countsHigh
                                                   UINT32_T__G__Current2OffsetCounts,
                                                   UINT32_T__G__Current2GainPermille);
 }
-
 /* ==================== BspMeasurement_Current1CountsToMa ==================== */
-
 /**
  * @brief  [EN] Channel 1 (Trans1 / Shunt1 / PA1) raw counts to primary mA -
  *              same formula shape as channel 2, own calibration pair.
- *         [FA] تبدیل شمارش کانال ۱ به mA اولیه با کالیبراسیون مستقل.
  * @param  uint16_t__counts [EN] ADC count from BSP_ADC_CHANNEL_CURRENT1 /
- *                              شمارش ADC کانال جریان ۱
- * @return uint32_t [EN] Primary current in mA / جریان اولیه mA
+* @return uint32_t Primary current in mA / mA
  */
 uint32_t func__BspMeasurement_Current1CountsToMa(uint16_t uint16_t__counts)
 {
@@ -575,16 +434,12 @@ uint32_t func__BspMeasurement_Current1CountsToMa(uint16_t uint16_t__counts)
                                                UINT32_T__G__Current1OffsetCounts,
                                                UINT32_T__G__Current1GainPermille);
 }
-
 /* ==================== BspMeasurement_Current2CountsToMa ==================== */
-
 /**
  * @brief  [EN] Channel 2 (Trans2 / Shunt2 / PA7) raw counts to primary mA -
  *              bench-verified calibration pair from 2026-09-18.
- *         [FA] تبدیل شمارش کانال ۲ به mA اولیه با کالیبراسیون تأییدشدهٔ بنچ.
  * @param  uint16_t__counts [EN] ADC count from BSP_ADC_CHANNEL_CURRENT2 /
- *                              شمارش ADC کانال جریان ۲
- * @return uint32_t [EN] Primary current in mA / جریان اولیه mA
+* @return uint32_t Primary current in mA / mA
  */
 uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
@@ -592,21 +447,15 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
                                                UINT32_T__G__Current2OffsetCounts,
                                                UINT32_T__G__Current2GainPermille);
 }
-
 /* ==================== BspMeasurement current calibration setters/getters ==================== */
-
 /**
  * @brief  [EN] Set the zero-current offset (raw counts) of one current
  *              channel at runtime, clamped to 0..255. Channel 0 = the
  *              Trans1/Shunt1 chain, channel 1 = Trans2/Shunt2.
  *              Flash-persisted (NVM); a reboot keeps the tuned value.
- *         [FA] آفست جریان صفر (شمارش خام) یک کانال را در زمان اجرا تنظیم
- *              می‌کند، گیره در ۰..۲۵۵. کانال ۰ = زنجیرهٔ ‎Trans1/Shunt1‎ و
- *              کانال ۱ = ‎Trans2/Shunt2‎. روی فلش می‌ماند؛ ری‌استارت مقدار
- *              تنظیم‌شده را نگه می‌دارد.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
- * @param  uint32_t__offsetCounts [EN] Requested offset in counts / آفست
- * @return uint32_t [EN] Actually applied offset / آفست اعمال‌شده
+* @param uint8_t__channelIndex 0 = channel 1, 1 = channel 2 /
+* @param uint32_t__offsetCounts Requested offset in counts /
+* @return uint32_t Actually applied offset /
  */
 uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelIndex,
                                                      uint32_t uint32_t__offsetCounts)
@@ -615,7 +464,6 @@ uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelInd
     {
         uint32_t__offsetCounts = BSP_MEASUREMENT_CURRENT_OFFSET_MAX_COUNTS;
     }
-
     if (uint8_t__channelIndex == 0u)
     {
         UINT32_T__G__Current1OffsetCounts = uint32_t__offsetCounts;
@@ -624,20 +472,15 @@ uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelInd
     {
         UINT32_T__G__Current2OffsetCounts = uint32_t__offsetCounts;
     }
-
     return uint32_t__offsetCounts;
 }
-
 /**
  * @brief  [EN] Set the bench gain trim (permille) of one current channel at
  *              runtime, clamped to 100..3000 (ESP panel, user order
  *              2026-09-22; flash-persisted since v1.14).
- *         [FA] ضریب گین بنچ (پرمیل) یک کانال را در زمان اجرا تنظیم می‌کند،
- *              گیره در ۱۰۰..۳۰۰۰ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲؛ روی فلش
- *              می‌ماند از نسخهٔ ۱.۱۴).
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
- * @param  uint32_t__gainPermille [EN] Requested gain permille / گین پرمیل
- * @return uint32_t [EN] Actually applied gain permille / گین اعمال‌شده
+* @param uint8_t__channelIndex 0 = channel 1, 1 = channel 2 /
+* @param uint32_t__gainPermille Requested gain permille /
+* @return uint32_t Actually applied gain permille /
  */
 uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelIndex,
                                                      uint32_t uint32_t__gainPermille)
@@ -652,9 +495,7 @@ uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelInd
     }
     else
     {
-        /* [EN] Value already inside the window. [FA] مقدار داخل پنجره است. */
     }
-
     if (uint8_t__channelIndex == 0u)
     {
         UINT32_T__G__Current1GainPermille = uint32_t__gainPermille;
@@ -663,17 +504,13 @@ uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelInd
     {
         UINT32_T__G__Current2GainPermille = uint32_t__gainPermille;
     }
-
     return uint32_t__gainPermille;
 }
-
 /* ==================== BspMeasurement_GetCurrentOffsetCounts ==================== */
-
 /**
  * @brief  [EN] Read the live zero-current offset of one current channel.
- *         [FA] آفست جریان صفرِ زندهٔ یک کانال را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
- * @return uint32_t [EN] Offset in counts / آفست بر حسب شمارش
+* @param uint8_t__channelIndex 0 = channel 1, 1 = channel 2 /
+* @return uint32_t Offset in counts /
  */
 uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelIndex)
 {
@@ -681,17 +518,13 @@ uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelInd
     {
         return UINT32_T__G__Current1OffsetCounts;
     }
-
     return UINT32_T__G__Current2OffsetCounts;
 }
-
 /* ==================== BspMeasurement_GetCurrentGainPermille ==================== */
-
 /**
  * @brief  [EN] Read the live bench gain trim of one current channel.
- *         [FA] ضریب گین بنچِ زندهٔ یک کانال را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
- * @return uint32_t [EN] Gain permille / گین پرمیل
+* @param uint8_t__channelIndex 0 = channel 1, 1 = channel 2 /
+* @return uint32_t Gain permille /
  */
 uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelIndex)
 {
@@ -699,12 +532,9 @@ uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelInd
     {
         return UINT32_T__G__Current1GainPermille;
     }
-
     return UINT32_T__G__Current2GainPermille;
 }
-
 /* ==================== BspMeasurement Current Counts To Shunt Uv ==================== */
-
 /**
  * @brief  [EN] Pure hardware chain only: raw current counts of either
  *              channel to the shunt voltage in microvolts - exactly the
@@ -712,10 +542,6 @@ uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelInd
  *              amplifier gain), deliberately NO zero offset and NO bench
  *              trim, so the value checks directly against a scope probe
  *              on the LM358 output (mV = uV x 101 / 1000).
- *         [FA] فقط زنجیرهٔ سخت‌افزاری: شمارش خام جریان هر کانال به ولتاژ
- *              دو سر شانت بر حسب میکروولت - دقیقاً سه مرحلهٔ سخت‌افزاری،
- *              عمداً بدون آفست صفر و بدون اصلاح بنچ، تا مستقیم با پروب
- *              اسکوپ روی خروجی LM358 قابل مقایسه باشد (‎mV = uV‎×101÷1000).
  * @note   [EN] Flash diet: same fold as ConvertCurrent (one u32
  *              multiply+divide, bit-identical for all 4096 counts):
  *                num = counts x VREF(3300) x (R41+R42)(11000) x UV_PER_MV(1000)
@@ -723,12 +549,8 @@ uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelInd
  *                = counts x 242000 / 27573  (both sides / 150,000;
  *                  242000 x 4095 = 990,990,000 < 2^32, exact every count).
  *              Re-derive if any value changes (host test recomputes).
- *         [FA] رژیم فلش: همان تا‌کردن ConvertCurrent (یک ضرب+تقسیم u32،
- *              بیت‌به‌بیت یکسان برای هر ۴۰۹۶ شمارش). با تغییر هر مقدار
- *              دوباره اشتقاق بگیر (تست هاست بازمحاسبه می‌کند).
  * @param  uint16_t__counts [EN] Raw ADC count of a current channel /
- *                              شمارش خام ADC یک کانال جریان
- * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV
+* @return uint32_t Shunt voltage in uV / uV
  */
 uint32_t func__BspMeasurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 {

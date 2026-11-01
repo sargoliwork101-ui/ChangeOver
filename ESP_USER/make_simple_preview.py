@@ -36,12 +36,10 @@ make_simple_preview.py - ساخت فایل مستقل سیمولاتور پنل 
 اجرا:  python3 ESP_USER/make_simple_preview.py
 خروجی: ESP_USER/simple_preview.html
 """
-
 import json
 import re
 import sys
 from pathlib import Path
-
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 SRC = HERE / "simple_panel.h"
@@ -49,8 +47,6 @@ CFG = HERE / "simple_config.h"
 SPEC = ROOT / "ESP_AGENT_SPEC.md"
 BSP = ROOT / "Firmware" / "Bsp" / "Src" / "bsp_measurement.c"
 OUT = HERE / "simple_preview.html"
-
-# [FA] نام‌های ایندکس در JS پنل -> نام فیلد در جدول §۱۵ سند
 PANEL_INDEX_MAP = {
     "T_VIN": "v_in_mv",
     "T_V24": "v_bat24_mv",
@@ -62,22 +58,12 @@ PANEL_INDEX_MAP = {
     "T_IMB": "imb_mv",
     "T_DEAD": "dead_mask",
 }
-
-# [FA] مدل جریان: میلی‌آمپر بر شمارش از زنجیرهٔ §۲ سند و میکروولت بر شمارش از
-#      نقطهٔ مرجع بنچ همان سند (۳۱۰ شمارش ↔ ۲۷۲۰ میکروولت). این‌ها مدل‌اند نه
-#      اندازه‌گیری، و پنل ساده نمایششان نمی‌دهد.
 MA_PER_COUNT = 24200.0 / 27573.0
 UV_PER_COUNT = 8.774
-
-# [FA] پیش‌فرض اسلایدرها: ورودی وصل، پک نیمه‌پر، دو نیم‌باتری نزدیک هم
 BOOT_VOLTAGES = {"vin": 24000, "vpack": 25500, "vlow": 12500, "vhigh": 13000}
-
-
 def die(message):
     """[FA] خطای بلند: سیمولاتور ناقص یا ناهم‌خوان ساخته نشود."""
     sys.exit("make_simple_preview: " + message)
-
-
 def panel_html():
     """[FA] رشتهٔ خام HTML، عیناً و بدون دست‌کاری."""
     text = SRC.read_text(encoding="utf-8")
@@ -87,8 +73,6 @@ def panel_html():
     if "</html>" not in html:
         die("simple_panel.h does not look like a complete page")
     return html
-
-
 def panel_number_constants():
     """[FA] ثابت‌های عددی پنل که در خطوط `const NAME=12, NAME2=34` هستند.
 
@@ -101,8 +85,6 @@ def panel_number_constants():
         for match in re.finditer(r"([A-Z_][A-Z0-9_]*)\s*=\s*(\d+)", line):
             values.setdefault(match.group(1), int(match.group(2)))
     return values
-
-
 def config_define(name):
     """[FA] یک #define عددی از simple_config.h."""
     match = re.search(r"#define\s+" + name + r"\s+(\d+)u?(?![0-9A-Za-z_])",
@@ -110,8 +92,6 @@ def config_define(name):
     if not match:
         die("could not read %s from simple_config.h" % name)
     return int(match.group(1))
-
-
 def config_string(name):
     """[FA] یک #define رشته‌ای از simple_config.h (مثل نام اکسس‌پوینت)."""
     match = re.search(r'#define\s+' + name + r'\s+"([^"]*)"',
@@ -119,16 +99,12 @@ def config_string(name):
     if not match:
         die("could not read %s from simple_config.h" % name)
     return match.group(1)
-
-
 def spec_section(number):
     """[FA] متن یک بخش شماره‌دار سند، از «## number» تا سرفصل بعدی."""
     text = SPEC.read_text(encoding="utf-8")
     start = text.index("\n## %d." % number)
     end = text.index("\n## ", start + 4)
     return text[start:end]
-
-
 def spec_tlm_fields():
     """[FA] جدول §۱۵: (offset، نوع، نام) هر فیلد قاب تله‌متری.
 
@@ -143,8 +119,6 @@ def spec_tlm_fields():
     if not rows:
         die("could not read the TLM_LIVE table from ESP_AGENT_SPEC.md section 15")
     return rows
-
-
 def field_indexes(rows):
     """[FA] نام فیلد u32 -> ایندکس در آرایهٔ t[] پنل (offset 4 + 4*i)."""
     mapping = {}
@@ -158,8 +132,6 @@ def field_indexes(rows):
             die("two fields share index %d" % index)
         mapping[name] = index
     return mapping
-
-
 def spec_fault_bits():
     """[FA] بیت‌های ماسک خطا از ستون توضیح همان جدول."""
     match = re.search(r"\|\s*80\s*\|\s*u32\s*\|\s*fault_mask\s*\|\s*([^|]+)\|",
@@ -174,8 +146,6 @@ def spec_fault_bits():
     if not bits:
         die("fault_mask bits did not parse: " + match.group(1))
     return bits
-
-
 def spec_charger_states():
     """[FA] نام حالت‌های شارژر از سطر «Charger states» همان سند."""
     match = re.search(r"Charger states:(.*?)\n\n", spec_section(15), re.S)
@@ -190,8 +160,6 @@ def spec_charger_states():
     if len(states) < 5:
         die("charger states did not parse: " + text)
     return states
-
-
 def bsp_volt_scales():
     """[FA] میلی‌ولت بر هر شمارش ADC برای نت‌های ۲۴ و ۱۲ ولت و شمارش VREFINT.
 
@@ -203,11 +171,9 @@ def bsp_volt_scales():
         print("warning: %s not found - raw counts stay 0" % BSP.name)
         return None
     text = BSP.read_text(encoding="utf-8")
-
     def value(name):
         found = re.search(r"#define\s+" + name + r"\s+(\d+)u?(?![0-9A-Za-z_])", text)
         return int(found.group(1)) if found else None
-
     vref = value("BSP_MEASUREMENT_VREF_MV")
     full = value("BSP_MEASUREMENT_ADC_FULL_SCALE")
     bottom = value("BSP_MEASUREMENT_SENSE_SHUNT_OHMS")
@@ -224,8 +190,6 @@ def bsp_volt_scales():
         "vrefint_counts": round(1200 / vref * full),
         "vdda_mv": vref,
     }
-
-
 def chart_ranges():
     """[FA] بازه‌های نمودار از simple_config.h: طول سری و گام زمانی هر نقطه."""
     return {
@@ -234,8 +198,6 @@ def chart_ranges():
         "1m": {"len": config_define("SIMPLE_CHART_1M_SIZE"), "stepSec": 24 * 3600},
         "3m": {"len": config_define("SIMPLE_CHART_3M_SIZE"), "stepSec": 24 * 3600},
     }
-
-
 SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فایل تولیدشده، دستی ویرایش نشود -->
 <style>
 #pg3 .simbox{background:var(--cd);border:1px solid var(--ln);border-radius:var(--r);padding:12px}
@@ -1048,12 +1010,9 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
 })();
 </script>
 """
-
 PLACEHOLDERS = ("__FIELD_INDEX__", "__TLM_N__", "__FAULT_BITS__", "__STATES__", "__RANGES__",
                 "__SCALES__", "__WIFI_SSID__", "__WIFI_PASS__", "__PANEL__", "__BOOT__",
                 "__MA_PER_COUNT__", "__UV_PER_COUNT__")
-
-
 def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
     """[FA] جای‌گذاری مقادیر مشتق‌شده در قالب JS سیمولاتور."""
     shim = SHIM
@@ -1075,8 +1034,6 @@ def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
         if token in shim:
             die("placeholder %s was not replaced" % token)
     return shim
-
-
 def main():
     html = panel_html()
     panel = panel_number_constants()
@@ -1086,8 +1043,6 @@ def main():
     states = spec_charger_states()
     tlm_n = config_define("SIMPLE_LINK_TLM_FIELD_COUNT")
     tlm_size = config_define("SIMPLE_LINK_TLM_SIZE")
-
-    # [FA] مقابلهٔ پنل و سند: ایندکس هر فیلدی که پنل می‌خواند باید یکی باشد
     for index_name, field_name in PANEL_INDEX_MAP.items():
         if index_name not in panel:
             die("%s is not defined in simple_panel.h" % index_name)
@@ -1103,24 +1058,17 @@ def main():
     for needed in ("INPUT_CONN_THR", "INPUT_WINDOW_MAX", "INPUT_HYST_DEFAULT", "OV_HYST_DEFAULT", "BAT_VMIN", "BAT_VMAX"):
         if needed not in panel:
             die("simple_panel.h does not define %s" % needed)
-
     shim = build_shim(field_map, tlm_n, bits, states, chart_ranges(), bsp_volt_scales(),
                       panel, BOOT_VOLTAGES)
-
     generated = html.replace("</head>", shim + "</head>", 1)
     if generated == html:
         die("could not inject the shim: </head> not found")
     OUT.write_text(generated, encoding="utf-8")
     print("wrote %s (%d bytes, %d TLM fields, %d fault bits)"
           % (OUT.name, len(generated), tlm_n, len(bits)))
-
-    # [FA] نسخه‌های همگام بیرون از هدر: فقط دقیقاً یک خط جدید ابتدای رشتهٔ خام
-    # حذف می‌شود تا فایل عیناً همان صفحهٔ پنل باشد (بدون shim سیمولاتور)
     synced = html[1:] if html.startswith("\n") else html
     for extra in (HERE / "index.html", HERE / "simple_panel_clean.html"):
         extra.write_text(synced, encoding="utf-8", newline="")
         print("synced %s (%d bytes)" % (extra.name, len(synced.encode("utf-8"))))
-
-
 if __name__ == "__main__":
     main()

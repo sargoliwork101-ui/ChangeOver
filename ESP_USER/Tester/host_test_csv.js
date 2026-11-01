@@ -1,8 +1,3 @@
-/*
- * host_test_csv.js - آزمون خروجی تاریخچهٔ شارژ پنل کاربر
- * ستون مدت حذف شده است؛ زمان، کانال و شمار ردیف‌ها باید حفظ شوند.
- * نیازمندی: node + jsdom + پیش‌نمایش ساخته‌شده
- */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -24,7 +19,6 @@ function check(condition, message) {
 setTimeout(() => {
     try {
         for (let i = 1; i < 10000; i++) { win.clearInterval(i); win.clearTimeout(i); }
-        /* ردیف قدیمی هم ممکن است مدت داشته باشد؛ خروجی تازه نباید آن را بیاورد. */
         win._lastChargeHistory = [
             { ts: 1700000300, ch: 2, dur: 0 },
             { ts: 1700000100, ch: 1, dur: 7200 },
