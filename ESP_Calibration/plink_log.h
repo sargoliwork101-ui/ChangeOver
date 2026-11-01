@@ -31,7 +31,8 @@
  * Kept one for one from the old file, because they are user orders, not
  * choices: boot row with no board at all, change-only rows, cut-band
  * hysteresis, one voltage-step row a minute (rises in discharge always),
- * mains rows inside a short window, six-hour heartbeat, day 0 for a panel
+ * mains rows inside a short window, one-hour heartbeat (counted on the log
+ * clock, so a battery power cut cannot reset it), day 0 for a panel
  * that has never seen a phone, retention by day count and byte budget,
  * RAM ring when the file system is off.
  */
