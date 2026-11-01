@@ -258,6 +258,36 @@ static void reset_clock_test_boot(void)
     UINT32_T__G__LastTlmMs = 0u;
     BOOL__G__HelloSeen = false;
     UINT32_T__G__BoardUptimeSec = 0u;
+    UINT32_T__G__LogLastBeatSec = 0u;
+    BOOL__G__LogLastBeatValid = false;
+}
+
+/**
+ * @brief  [EN] Fifth field of the clock file: the wall second of the last
+ *              written row (0 when the file has fewer fields).
+ *         [FA] فیلد پنجم فایل ساعت: ثانیهٔ دیواریِ آخرین ردیف نوشته‌شده.
+ * @return uint32_t beat second / ثانیهٔ ضربان
+ */
+static uint32_t clock_file_beat(void)
+{
+    const std::string &line = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+    size_t start = 0u;
+    uint32_t value = 0u;
+    for (uint8_t field = 1u; field < 5u; field++)
+    {
+        const size_t comma = line.find(',', start);
+        if (comma == std::string::npos)
+        {
+            return 0u;
+        }
+        start = comma + 1u;
+    }
+    while ((start < line.size()) && (line[start] >= '0') && (line[start] <= '9'))
+    {
+        value = (value * 10u) + (uint32_t)(line[start] - '0');
+        start++;
+    }
+    return value;
 }
 
 /**
@@ -3403,6 +3433,88 @@ int main(void)
             BOOL__G__SlotQueuePending[i] = false;
         }
         ESP_WEB_SERVER_T__G__Server.clearArgs();
+    }
+
+    /* -- v1.114: the silent hour is counted on the LOG clock ---------------
+       [EN] User report 2026-11-01: on battery the history gained nothing at
+            all. The row that should say "still alive" once an hour was judged
+            with millis(), i.e. with the panel's own uptime - and on battery the
+            board cuts that power every few minutes (battery saver), so the
+            counter started again from zero and never reached an hour. The
+            window is now counted on the log clock (wall seconds from the board
+            anchor) and its place is kept in the clock file.
+       [FA] گزارش کاربر ۲۰۲۶-۱۱-۰۱: روی باتری چیزی در تاریخچه ثبت نمی‌شد.
+            ردیف «زنده‌ام» با millis() سنجیده می‌شد، یعنی با آپ‌تایم خود پنل؛
+            و برد روی باتری هر چند دقیقه برقش را قطع می‌کند، پس شمارنده از صفر
+            شروع می‌شد و هیچ‌وقت به یک ساعت نمی‌رسید. حالا با ساعت لاگ شمرده
+            می‌شود و جای آن در فایل ساعت نگه داشته می‌شود. */
+    {
+        const uint32_t beatBaseSec = 1792800000u;
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.failOpenCount = 0;
+        check(func__EspLog_TimeSet(beatBaseSec, 0),
+              "beat: the browser sets the clock");
+        G_StubMillis = 1000u;
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "beat: the boot row is written",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday));
+        /* the board answers with its uptime: the first answer anchors, the next
+           one is an hour later - while the panel itself ran for one second */
+        feed_board_uptime(100u);
+        func__EspLog_Tick();
+        const uint16_t rowsAfterAnchor = UINT16_T__G__LogRowsToday;
+        func__EspLog_ClockSave();          /* the boot row's beat reaches flash */
+        G_StubMillis += 3000u;             /* past the 2 s merge window */
+        feed_board_uptime(3700u);
+        check((uint32_t)((uint32_t)millis() - UINT32_T__G__LogLastRowMs) <
+              ESP_LOG_HEARTBEAT_MS,
+              "beat: the panel's own uptime has NOT reached an hour");
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsAfterAnchor + 1u),
+              "beat: one hour on the LOG clock alone writes the heartbeat row",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday) + " rows");
+        {
+            char beatRow[256] = { 0 };
+            (void)func__EspLog_Tail(beatRow, sizeof beatRow,
+                                    func__EspLog_TodayCode(), 1u);
+            check(func__EspLog_RowFieldAt(beatRow, 3u) == (uint32_t)ESP_LOG_NOTE_HEARTBEAT,
+                  "beat: that row is marked as a heartbeat",
+                  std::to_string((unsigned)func__EspLog_RowFieldAt(beatRow, 3u)));
+        }
+        check(clock_file_beat() == UINT32_T__G__LogLastBeatSec,
+              "beat: the clock file now carries the wall second of that row",
+              std::to_string((unsigned long)clock_file_beat()) + " vs " +
+              std::to_string((unsigned long)UINT32_T__G__LogLastBeatSec));
+        /* an hour is written, so the same verdict must not fire again */
+        check(func__EspLog_HeartbeatDue((uint32_t)millis()) == false,
+              "beat: the hour does not fire twice");
+        /* a firmware stamp rewrite must not lose the beat second */
+        {
+            const uint32_t beatBefore = clock_file_beat();
+            func__EspLog_FwStampWrite(999u);
+            check(clock_file_beat() == beatBefore,
+                  "beat: the firmware stamp keeps the beat second",
+                  std::to_string((unsigned long)clock_file_beat()));
+        }
+        /* THE POWER CUT: this panel loses its own uptime, the board does not */
+        {
+            const uint32_t beatSec = UINT32_T__G__LogLastBeatSec;
+            reset_clock_test_boot();
+            func__EspLog_ClockLoad();
+            check(BOOL__G__LogLastBeatValid && (UINT32_T__G__LogLastBeatSec == beatSec),
+                  "beat: the hour comes back from the clock file after the cut",
+                  std::to_string((unsigned long)UINT32_T__G__LogLastBeatSec));
+            check(func__EspLog_HeartbeatDue((uint32_t)millis()) == false,
+                  "beat: right after the cut the hour is not due yet");
+            /* the board kept counting while the panel was dead: one hour on */
+            feed_board_uptime(UINT32_T__G__LogAnchorBoardSec + ESP_LOG_HEARTBEAT_SEC);
+            check(func__EspLog_HeartbeatDue((uint32_t)millis()) != false,
+                  "beat: an hour counted ACROSS the cut is still honoured",
+                  std::to_string((unsigned long)func__EspLog_NowSec()));
+        }
+        reset_clock_test_boot();
     }
 
     std::cout << std::string(70, '=') << "\n";

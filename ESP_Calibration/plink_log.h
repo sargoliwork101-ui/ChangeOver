@@ -159,6 +159,15 @@ static bool     BOOL__G__LogMainsQueuedValid = false;
 static uint32_t UINT32_T__G__LogMainsQueuedMs = 0u;
 static uint32_t UINT32_T__G__LogLastRowMs = 0u;
 static bool     BOOL__G__LogLastRowValid = false;
+/*
+ * [EN] The wall second the last written row belongs to. The heartbeat is judged
+ * with THIS, not with millis(): on battery the board switches this panel off
+ * every few minutes, so an uptime counter starts again from zero and the
+ * hour is never reached (user order 2026-11-01). It rides in the clock file,
+ * so the hour also survives the power cut.
+ */
+static uint32_t UINT32_T__G__LogLastBeatSec = 0u;
+static bool     BOOL__G__LogLastBeatValid = false;
 static bool     BOOL__G__LogLinkDown = false;
 /*
  * [EN] when the boot row of this session was written; the "board silent"
@@ -496,16 +505,27 @@ static void func__EspLog_ClockSave(void)
         {
             uint32_t__boardUptimeSec = UINT32_T__G__LogBoardNowSec;
         }
-        (void)snprintf(char__line, sizeof(char__line), "%lu,%ld,%lu,%u\n",
+        /*
+ * [EN] A fifth field carries the wall second of the last written row, so the
+ * heartbeat hour is not restarted by a power cut. Zero = not known yet,
+ * exactly like the board anchor.
+ */
+        (void)snprintf(char__line, sizeof(char__line), "%lu,%ld,%lu,%u,%lu\n",
                        (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec,
                        (unsigned long)uint32_t__boardUptimeSec,
-                       (unsigned int)ESP_ESP_FW_VERSION);
+                       (unsigned int)ESP_ESP_FW_VERSION,
+                       (unsigned long)((BOOL__G__LogLastBeatValid != false) ?
+                                       UINT32_T__G__LogLastBeatSec : 0u));
     }
     (void)file__clock.print(char__line);
     file__clock.close();
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
     BOOL__G__LogClockSavedOnce = true;
 }
+/*
+ * [EN] Defined below; the clock reader uses it to find the fifth field.
+ */
+static int32_t func__EspLog_FieldStart(String string__line, uint8_t uint8_t__field);
 /**
  * @brief  [EN] Read the clock anchor back after a restart.
 * @return None /
@@ -572,6 +592,25 @@ static void func__EspLog_ClockLoad(void)
     BOOL__G__LogAnchorBoardValid = (UINT32_T__G__LogAnchorBoardSec != 0u);
     BOOL__G__LogClockValid = true;
     UINT32_T__G__LogHighWaterSec = uint32_t__savedSec;
+    /*
+ * [EN] The fifth field is the wall second of the last written row; an older
+ * file has none, and the first row of this session makes one.
+ */
+    {
+        int32_t int32_t__beatStart = func__EspLog_FieldStart(string__content, 5u);
+        if (int32_t__beatStart > 0)
+        {
+            String string__beat = string__content.substring((size_t)int32_t__beatStart);
+            uint32_t uint32_t__beatSec;
+            string__beat.trim();
+            uint32_t__beatSec = (uint32_t)string__beat.toInt();
+            if (uint32_t__beatSec >= ESP_LOG_CLOCK_VALID_MIN)
+            {
+                UINT32_T__G__LogLastBeatSec = uint32_t__beatSec;
+                BOOL__G__LogLastBeatValid = true;
+            }
+        }
+    }
 }
 /* ==================== Firmware stamp ==================== */
 /**
@@ -639,8 +678,9 @@ static uint32_t func__EspLog_FwStampRead(void)
 }
 /**
  * @brief  [EN] Rewrite the clock file with the running firmware version as its
- *              fourth field. The first three fields are kept exactly as they
- *              are, so this can never lose or rewind the clock.
+ *              fourth field. The first three fields and the fifth (the
+ *              heartbeat second) are kept as they are, so this can never
+ *              lose or rewind the clock.
 * @param uint32_t uint32_t__version version /
 * @return None /
  */
@@ -648,7 +688,9 @@ static void func__EspLog_FwStampWrite(uint32_t uint32_t__version)
 {
     String string__content = String("0,0,0");
     String string__firstThree;
+    String string__beat = String("0");
     int32_t int32_t__start;
+    int32_t int32_t__beatStart;
     char char__line[80];
     File file__clock;
     if (BOOL__G__FsOk == false)
@@ -687,13 +729,28 @@ static void func__EspLog_FwStampWrite(uint32_t uint32_t__version)
     {
         string__firstThree = String("0,0,0");
     }
+    /*
+ * [EN] The heartbeat second (fifth field) is carried over untouched: a stamp
+ * write must never restart the silent-hour clock.
+ */
+    int32_t__beatStart = func__EspLog_FieldStart(string__content, 5u);
+    if (int32_t__beatStart > 0)
+    {
+        string__beat = string__content.substring((size_t)int32_t__beatStart);
+        string__beat.trim();
+        if (string__beat.length() == 0u)
+        {
+            string__beat = String("0");
+        }
+    }
     file__clock = LittleFS.open(ESP_LOG_CLOCK_PATH, "w");
     if (!file__clock)
     {
         return;
     }
-    (void)snprintf(char__line, sizeof(char__line), "%s,%u\n",
-                   string__firstThree.c_str(), (unsigned int)uint32_t__version);
+    (void)snprintf(char__line, sizeof(char__line), "%s,%u,%s\n",
+                   string__firstThree.c_str(), (unsigned int)uint32_t__version,
+                   string__beat.c_str());
     (void)file__clock.print(char__line);
     file__clock.close();
 }
@@ -1573,6 +1630,16 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
     UINT32_T__G__LogLastRowMs = (uint32_t)millis();
     BOOL__G__LogLastRowValid = true;
+    /*
+ * [EN] The heartbeat hour restarts from THIS row, and it restarts on the log
+ * clock, so it still means one whole hour after the board has switched
+ * this panel off and on again.
+ */
+    if (BOOL__G__LogClockValid != false)
+    {
+        UINT32_T__G__LogLastBeatSec = func__EspLog_NowSec();
+        BOOL__G__LogLastBeatValid = true;
+    }
     UINT16_T__G__LogPendingMask = 0u;
     UINT8_T__G__LogPendingNote = 0u;
     BOOL__G__LogMainsQueuedValid = false;
@@ -2077,6 +2144,46 @@ static void func__EspLog_OnFrame(void)
     func__EspLog_DetectChanges();
 }
 /**
+ * @brief  [EN] Is the silent-window row due? The window is counted on the LOG
+ *              clock - wall seconds from the board anchor, and its place is
+ *              kept in the clock file - so the hour survives a power cut. This
+ *              panel's own uptime is only the fallback for a session with no
+ *              clock yet. On battery the board cuts this panel's power every
+ *              few minutes (battery saver), so an uptime counter started again
+ *              from zero and the row was never written at all
+ *              (user order 2026-11-01: "it must count the hour, from the board
+ *              clock").
+* @param uint32_t uint32_t__nowMs current millis(), ms /
+* @return bool due /
+ */
+static bool func__EspLog_HeartbeatDue(uint32_t uint32_t__nowMs)
+{
+    uint32_t uint32_t__nowSec;
+    if (BOOL__G__LogClockValid != false)
+    {
+        uint32_t__nowSec = func__EspLog_NowSec();
+        if (BOOL__G__LogLastBeatValid == false)
+        {
+            /* first verdict of this session: seed the window, never fire */
+            UINT32_T__G__LogLastBeatSec = uint32_t__nowSec;
+            BOOL__G__LogLastBeatValid = true;
+            return false;
+        }
+        if (uint32_t__nowSec < UINT32_T__G__LogLastBeatSec)
+        {
+            /* the clock was set back: the hour starts again from here */
+            UINT32_T__G__LogLastBeatSec = uint32_t__nowSec;
+            return false;
+        }
+        if ((uint32_t__nowSec - UINT32_T__G__LogLastBeatSec) >= ESP_LOG_HEARTBEAT_SEC)
+        {
+            return true;
+        }
+    }
+    return ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >=
+            ESP_LOG_HEARTBEAT_MS);
+}
+/**
  * @brief  [EN] Periodic work: merge pending rows, save the clock, drain the RAM
  *              ring when the flash is healthy again, notice a lost link. Called
  *              from loop().
@@ -2190,13 +2297,22 @@ static void func__EspLog_Tick(void)
  * window, write one row that says so. It is the difference
  * between "nothing changed" and "the panel stopped working":
  * a board that keeps beating is a board that kept running.
+ * v1.114: the window is measured on the LOG clock instead of this
+ * panel's uptime, which the battery saver resets every few minutes.
  */
     if (BOOL__G__LogLastRowValid != false)
     {
-        if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >=
-            ESP_LOG_HEARTBEAT_MS)
+        if (func__EspLog_HeartbeatDue(uint32_t__nowMs) != false)
         {
             func__EspLog_Queue(0u, ESP_LOG_NOTE_HEARTBEAT);
+            /*
+ * [EN] v1.114: save the new beat second at once - the next power cut may
+ * come before the ten-minute clock save, and the row must not repeat.
+ */
+            if (BOOL__G__LogClockValid != false)
+            {
+                func__EspLog_ClockSave();
+            }
         }
     }
 }
@@ -2971,6 +3087,9 @@ static void func__EspLog_ResetStateAfterFormat(void)
     BOOL__G__LogDrainWait = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
+    /* the clock file was erased, so its fifth field (the beat second) is gone */
+    BOOL__G__LogLastBeatValid = false;
+    UINT32_T__G__LogLastBeatSec = 0u;
     if ((BOOL__G__FsOk != false) && (BOOL__G__LogClockValid != false))
     {
         func__EspLog_ClockSave();

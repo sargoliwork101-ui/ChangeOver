@@ -326,10 +326,18 @@
  * [EN] One "still alive" row this often when nothing at all has changed. It was
  * 6 h, which meant a pack lying quietly on battery produced ONE row a
  * session and the history looked empty (user order 2026-10-27: "it is on
- * and it still writes nothing"). 10 min = 144 rows a day, inside the 400
- * rows a day cap with room for real events.
+ * and it still writes nothing"). One hour, and the hour is counted with
+ * ESP_LOG_HEARTBEAT_SEC below, not with this panel's own uptime.
  */
 #define ESP_LOG_HEARTBEAT_MS         3600000u
+/*
+ * [EN] The same window in LOG-CLOCK seconds. On battery the board cuts this
+ * panel's power every few minutes (battery saver), so a counter that starts
+ * at zero on every boot never reaches an hour and the heartbeat row was
+ * never written at all. The wall second is kept in the clock file, so the
+ * hour survives a power cut (user order 2026-11-01).
+ */
+#define ESP_LOG_HEARTBEAT_SEC        (ESP_LOG_HEARTBEAT_MS / 1000u)
 #define ESP_LOG_DRAIN_RETRY_MS       30000u
 #define ESP_HTTP_SEND_TIMEOUT_MS     1000u
 #define ESP_HTTP_ROOT_MAX_MS         15000u
