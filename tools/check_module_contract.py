@@ -404,10 +404,32 @@ def run_strict(report, allowlist_path):
         return 1
     print("  OK    no enforced module crossed a boundary it may not cross")
     return 0
+HELP_TEXT = """usage: python3 tools/check_module_contract.py [option]
+  (no option)   print the full report, always exit 0
+  --strict      fail with exit 1 if an enforced module crossed a boundary
+  --json        print the measured numbers as JSON instead of a table
+  --allow FILE  read the allowlist from FILE instead of tools/module_boundaries.json
+  --help        print this text
+Every mode only reads the sources. Nothing is built, changed or run."""
 def main(argv):
+    for flag in ("-h", "--help"):
+        if flag in argv:
+            print(HELP_TEXT)
+            return 0
+    unknown = [item for item in argv
+               if item.startswith("-") and item not in ("--strict", "--json", "--allow")]
+    if unknown:
+        print("ERROR: unknown option: %s" % " ".join(unknown))
+        print(HELP_TEXT)
+        return 2
     allowlist_path = DEFAULT_ALLOWLIST
     if "--allow" in argv:
-        allowlist_path = argv[argv.index("--allow") + 1]
+        index = argv.index("--allow") + 1
+        if index >= len(argv) or argv[index].startswith("-"):
+            print("ERROR: --allow needs a file name.")
+            print(HELP_TEXT)
+            return 2
+        allowlist_path = argv[index]
     report = analyse()
     if "--json" in argv:
         printable = {
