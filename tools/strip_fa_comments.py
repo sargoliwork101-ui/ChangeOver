@@ -38,7 +38,7 @@ SKIP_DIRS = {
 }
 SKIP_FILES = {
     'panel_preview.html', 'index.html', 'simple_preview.html',
-    'simple_panel_clean.html', 'scenario5_simulator.html', 'chart_now.svg',
+    'simple_panel_clean.html', 'chart_now.svg',
 }
 def has_persian(text):
     return PERSIAN.search(text) is not None
