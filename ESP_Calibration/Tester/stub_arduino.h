@@ -419,6 +419,13 @@ struct StubFS {
  * [EN] true = every write is refused, exactly like a full flash.
  */
     bool failWrites = false;
+    /*
+ * [EN] Refuse the next N opens, then behave normally. A transient refusal is
+ * what makes "could not open the day file, but the append itself worked"
+ * reachable in a test: without this switch the two failures always come
+ * together and the interesting path is never executed.
+ */
+    int failOpenCount = 0;
     bool setConfig(const LittleFSConfig &cfg) { autoFormatCfg = cfg._autoFormat; return true; }
     bool begin(bool = false) { mounted = true; return true; }
     bool format(void) { files.clear(); return true; }
@@ -456,6 +463,10 @@ struct StubFS {
     StubFile open(const char *p, const char *mode) {
         StubFile f;
         if (p == NULL || p[0] != '/') return f;
+        if (failOpenCount > 0) {
+            failOpenCount--;
+            return f;                 /* ok stays false: this open is refused */
+        }
         std::string key(p);
         if (mode && mode[0] == 'r') {
             if (!files.count(key)) return f;

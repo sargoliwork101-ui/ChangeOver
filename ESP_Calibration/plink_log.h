@@ -1234,6 +1234,17 @@ static bool func__EspLog_RepairTail(const char *char__path)
     return bool__needsNewline;
 }
 /**
+ * @brief  [EN] Is this a day code a file name can carry? Only the eight-digit
+ *              YYYYMMDD range is; the two control values (AUTO and ZERO) and
+ *              the "no day open yet" sentinel are not days at all.
+ * @param  uint32_t uint32_t__dayCode day code (YYYYMMDD or 0)
+ * @return bool true when a day file may be named after it
+ */
+static bool func__EspLog_DayCodeValid(uint32_t uint32_t__dayCode)
+{
+    return (uint32_t__dayCode < 100000000u);
+}
+/**
  * @brief  [EN] THE one append path: one verified row plus its newline into one
  *              day file. Nothing else in this file writes a row.
 * @param uint32_t uint32_t__dayCode day /
@@ -1247,6 +1258,17 @@ static bool func__EspLog_AppendRow(uint32_t uint32_t__dayCode, const char *char_
     bool bool__ok;
     if ((BOOL__G__FsOk == false) || (char__row == NULL))
     {
+        return false;
+    }
+    /*
+ * [EN] v1.113: a day code outside the file-name range would create
+ * "evt-4294967295.csv" - a file the day scan, the retention and the panel
+ * all ignore, so its rows would vanish without a word. Refuse instead; the
+ * caller keeps the row in RAM.
+ */
+    if (func__EspLog_DayCodeValid(uint32_t__dayCode) == false)
+    {
+        func__EspLog_FaultRaise();
         return false;
     }
     func__EspLog_PathOf(char__path, uint32_t__dayCode);
@@ -1470,9 +1492,17 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
  * off and on again. The day is opened first, so a full day ends where
  * it should: at midnight.
  */
+    /*
+ * [EN] v1.113: when the day file could not be opened, the day code still
+ * belongs to the PREVIOUS day (or to the "no day yet" sentinel), so an
+ * append here would file today's row under yesterday - or under a name no
+ * reader knows. The row goes to the RAM ring instead and is drained into
+ * its own day file once the flash answers again.
+ */
+    bool bool__dayOpen = true;
     if (BOOL__G__FsOk != false)
     {
-        (void)func__EspLog_OpenDay();
+        bool__dayOpen = func__EspLog_OpenDay();
     }
     /*
  * [EN] v1.113: a forced row (the firmware-update row) ignores this cap as
@@ -1491,7 +1521,7 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         func__EspLog_FaultRaise();
         return false;
     }
-    if ((BOOL__G__FsOk != false) &&
+    if ((BOOL__G__FsOk != false) && (bool__dayOpen != false) &&
         ((BOOL__G__LogDayFull == false) || (BOOL__A__LogForceRow != false)))
     {
         /*
@@ -1836,7 +1866,12 @@ static bool func__EspLog_FlushDue(uint32_t uint32_t__nowMs)
  */
 static void func__EspLog_FlushPending(void)
 {
-    if (UINT16_T__G__LogPendingMask == 0u)
+    /*
+ * [EN] v1.113: a queued NOTE is a reason to write on its own. The heartbeat
+ * row carries no change bit at all, so testing the mask alone left it
+ * waiting for the next real change instead of leaving on its own schedule.
+ */
+    if ((UINT16_T__G__LogPendingMask == 0u) && (UINT8_T__G__LogPendingNote == ESP_LOG_NOTE_NONE))
     {
         return;
     }

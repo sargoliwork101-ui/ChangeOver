@@ -157,6 +157,16 @@ static long row_field(const std::string &body, size_t rowIndex, size_t fieldInde
     return -1;
 }
 
+/* [EN] Is this slot id waiting in the ESP-side reset queue? Used by the
+        all-or-nothing test of /latch/reset. */
+static bool slot_pending(uint8_t id)
+{
+    for (uint8_t i = 0u; i < ESP_SLOT_QUEUE_LEN; i++) {
+        if (BOOL__G__SlotQueuePending[i] && (UINT8_T__G__SlotQueueId[i] == id)) return true;
+    }
+    return false;
+}
+
 static std::vector<uint8_t> tlm_payload(uint16_t seq)
 {
     std::vector<uint8_t> p(ESP_LINK_TLM_SIZE, 0u);
@@ -3242,6 +3252,144 @@ int main(void)
               "board reset: a fresh uptime anchor is taken");
         check(func__EspLog_NowSec() >= baseSec,
               "board reset: the last known time is never rewound");
+    }
+
+    /* -- v1.114 review: three silent failures, one test each ------------- */
+    {
+        const uint32_t reviewBaseSec = 1792756800u;
+        char reviewPath[40];
+
+        /* finding 5: a row that carries ONLY a note must leave the queue */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.failOpenCount = 0;
+        func__EspLog_Begin();
+        G_StubMillis = 5000u;
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "note-only flush: the boot row is the only row so far",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday));
+        G_StubMillis = 6000u;
+        func__EspLog_Queue(0u, ESP_LOG_NOTE_HEARTBEAT);
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "note-only flush: nothing is written inside the merge window");
+        G_StubMillis = 6000u + ESP_LOG_MIN_INTERVAL_MS;
+        func__EspLog_FlushPending();
+        check(UINT16_T__G__LogRowsToday == 2u,
+              "note-only flush: the queue writes a row that carries only a note",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday));
+        {
+            const std::string dayFile = LittleFS.files[std::string("/evt-00000000.csv")];
+            check(row_field(dayFile, 1u, 3u) == (long)ESP_LOG_NOTE_HEARTBEAT,
+                  "note-only flush: the written row carries the heartbeat note",
+                  dayFile);
+        }
+
+        /* finding 3a: a day file that cannot be opened at boot must never be
+           replaced by a file under the sentinel day code. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.failOpenCount = 0;
+        func__EspLog_Begin();
+        check(UINT32_T__G__LogDayCode == 0xFFFFFFFFu,
+              "unopenable day: a fresh boot has no day open yet");
+        LittleFS.failOpenCount = 1;      /* one refused open, then healthy again */
+        {
+            const bool stored = func__EspLog_WriteRow(ESP_LOG_CHG_BOOT, ESP_LOG_NOTE_NONE);
+            LittleFS.failOpenCount = 0;
+            check(!LittleFS.exists("/evt-4294967295.csv"),
+                  "unopenable day: no file is created under the sentinel name");
+            /* the contract is "stored somewhere": the RAM ring counts */
+            check(stored != false,
+                  "unopenable day: the row is reported as kept, not lost");
+            check(UINT8_T__G__LogRamCount == 1u,
+                  "unopenable day: the row waits in the RAM ring",
+                  std::to_string((unsigned)UINT8_T__G__LogRamCount));
+            check(UINT16_T__G__LogRowsToday == 0u,
+                  "unopenable day: the day counter ignores a row that never landed");
+        }
+
+        /* finding 3b: when the new day cannot be opened, the row must not be
+           appended to the previous day's file. */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.failOpenCount = 0;
+        check(func__EspLog_TimeSet(reviewBaseSec, 0),
+              "stale day: the browser sets the clock");
+        G_StubMillis = 1000u;
+        func__EspLog_Tick();
+        {
+            const uint32_t dayA = func__EspLog_TodayCode();
+            (void)snprintf(reviewPath, sizeof reviewPath, "/evt-%08lu.csv",
+                           (unsigned long)dayA);
+            const uint16_t rowsA = func__EspLog_CountRows(reviewPath);
+            check(rowsA == 1u, "stale day: the first day has its boot row",
+                  std::to_string((unsigned)rowsA));
+            check(func__EspLog_TimeSet(reviewBaseSec + 86400u, 0),
+                  "stale day: the clock moves to the next day");
+            check(func__EspLog_TodayCode() != dayA,
+                  "stale day: the day really changed");
+            LittleFS.failOpenCount = 1;
+            (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_MANUAL);
+            LittleFS.failOpenCount = 0;
+            check(func__EspLog_CountRows(reviewPath) == rowsA,
+                  "stale day: the row is not appended to yesterday's file",
+                  std::to_string((unsigned)func__EspLog_CountRows(reviewPath)));
+            check(UINT8_T__G__LogRamCount == 1u,
+                  "stale day: the row waits in the RAM ring");
+        }
+
+        /* finding 6: /latch/reset is all or nothing. */
+        for (uint8_t i = 0u; i < ESP_SLOT_QUEUE_LEN; i++)
+        {
+            BOOL__G__SlotQueuePending[i] = false;
+            UINT8_T__G__SlotQueueId[i] = 0u;
+            UINT32_T__G__SlotQueueValue[i] = 0u;
+        }
+        UINT8_T__G__SlotBusyReject = 0u;
+        for (uint8_t i = 0u; i < 3u; i++)   /* three taken: room for two only */
+        {
+            BOOL__G__SlotQueuePending[i] = true;
+            UINT8_T__G__SlotQueueId[i] = (uint8_t)(100u + i);
+        }
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("n", "5");
+        ESP_WEB_SERVER_T__G__Server.call("/latch/reset", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 409,
+              "latch reset: a queue that cannot take all three answers 409",
+              std::to_string(ESP_WEB_SERVER_T__G__Server.lastCode));
+        {
+            uint8_t pending = 0u;
+            for (uint8_t i = 0u; i < ESP_SLOT_QUEUE_LEN; i++)
+            {
+                if (BOOL__G__SlotQueuePending[i]) pending++;
+            }
+            check(pending == 3u,
+                  "latch reset: a refused reset queues nothing at all",
+                  std::to_string((unsigned)pending));
+        }
+        check(!slot_pending(ESP_SLOT_EVENTS_ID) && !slot_pending(ESP_SLOT_CYCLES_ID) &&
+              !slot_pending(ESP_SLOT_LATCH_ID),
+              "latch reset: no part of the reset survives a refusal");
+        check(UINT8_T__G__SlotBusyReject == 1u,
+              "latch reset: one refusal is one busy rejection",
+              std::to_string((unsigned)UINT8_T__G__SlotBusyReject));
+        for (uint8_t i = 0u; i < ESP_SLOT_QUEUE_LEN; i++)
+        {
+            BOOL__G__SlotQueuePending[i] = false;
+        }
+        ESP_WEB_SERVER_T__G__Server.call("/latch/reset", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "latch reset: with room the reset is accepted",
+              std::to_string(ESP_WEB_SERVER_T__G__Server.lastCode));
+        check(slot_pending(ESP_SLOT_EVENTS_ID) && slot_pending(ESP_SLOT_CYCLES_ID) &&
+              slot_pending(ESP_SLOT_LATCH_ID),
+              "latch reset: all three parts are queued together");
+        for (uint8_t i = 0u; i < ESP_SLOT_QUEUE_LEN; i++)
+        {
+            BOOL__G__SlotQueuePending[i] = false;
+        }
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
     }
 
     std::cout << std::string(70, '=') << "\n";

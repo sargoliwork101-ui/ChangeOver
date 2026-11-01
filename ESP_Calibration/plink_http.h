@@ -402,12 +402,62 @@ static bool func__Esp_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value)
     return false;
 }
 /**
+ * @brief  [EN] Can the slot queue take every id of one request right now? An
+ *              id that is already queued is updated in place and costs no
+ *              slot, so a repeat request is never refused for lack of room.
+ * @param  uint8_t uint8_t__count ids in this request
+ * @param  const uint8_t *uint8_t__ptr_ids ids (200..204)
+ * @return bool true when the whole request fits
+ */
+static bool func__Esp_SlotQueueFits(uint8_t uint8_t__count, const uint8_t *uint8_t__ptr_ids)
+{
+    uint8_t uint8_t__free = 0u;
+    uint8_t uint8_t__need = 0u;
+    uint8_t uint8_t__index;
+    uint8_t uint8_t__item;
+    if ((uint8_t__ptr_ids == NULL) || (uint8_t__count == 0u))
+    {
+        return false;
+    }
+    for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__index] == false)
+        {
+            uint8_t__free++;
+        }
+    }
+    /*
+ * [EN] A request for an id that is already queued only replaces its value,
+ * so it costs no slot. Counting it as a new one would refuse a reset the
+ * queue could have taken.
+ */
+    for (uint8_t__item = 0u; uint8_t__item < uint8_t__count; uint8_t__item++)
+    {
+        bool bool__already = false;
+        for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
+        {
+            if ((BOOL__G__SlotQueuePending[uint8_t__index] != false) &&
+                (UINT8_T__G__SlotQueueId[uint8_t__index] == uint8_t__ptr_ids[uint8_t__item]))
+            {
+                bool__already = true;
+            }
+        }
+        if (bool__already == false)
+        {
+            uint8_t__need++;
+        }
+    }
+    return (uint8_t__free >= uint8_t__need);
+}
+/**
 * @param n
 * @return JSON ok → e=1 → e=2
  */
 static void func__Esp_HttpLatchReset(void)
 {
     int32_t int32_t__n = 0;
+    uint8_t UINT8_T__A__Ids[3];
+    uint8_t uint8_t__idCount;
     bool bool__nOk = ESP_WEB_SERVER_T__G__Server.hasArg("n") &&
                      func__Esp_ParseInt(ESP_WEB_SERVER_T__G__Server.arg("n").c_str(), &int32_t__n);
     if ((!bool__nOk) || ((int32_t__n != 5) && (int32_t__n != 6) && (int32_t__n != 8)))
@@ -415,21 +465,43 @@ static void func__Esp_HttpLatchReset(void)
         ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
         return;
     }
-    bool bool__queued;
     if (int32_t__n == 5)
     {
-        bool__queued = func__Esp_QueueSlot(ESP_SLOT_EVENTS_ID, 0u);
-        bool__queued = (func__Esp_QueueSlot(ESP_SLOT_CYCLES_ID, 0u) == true) && bool__queued;
-        bool__queued = (func__Esp_QueueSlot(ESP_SLOT_LATCH_ID, 0u) == true) && bool__queued;
+        UINT8_T__A__Ids[0] = ESP_SLOT_EVENTS_ID;
+        UINT8_T__A__Ids[1] = ESP_SLOT_CYCLES_ID;
+        UINT8_T__A__Ids[2] = ESP_SLOT_LATCH_ID;
+        uint8_t__idCount = 3u;
     }
     else if (int32_t__n == 6)
     {
-        bool__queued = func__Esp_QueueSlot(ESP_SLOT_DEAD_MASK_ID, 0u);
+        UINT8_T__A__Ids[0] = ESP_SLOT_DEAD_MASK_ID;
+        uint8_t__idCount = 1u;
     }
     else
     {
         /* [EN] v1.86: scenario 8 - the STM drops its weak-battery verdict. */
-        bool__queued = func__Esp_QueueSlot(ESP_SLOT_WEAK_RESET_ID, 0u);
+        UINT8_T__A__Ids[0] = ESP_SLOT_WEAK_RESET_ID;
+        uint8_t__idCount = 1u;
+    }
+    /*
+ * [EN] v1.113: the reset is one action, not three. If the queue cannot take
+ * every part, nothing is queued at all - a 409 from a request that had
+ * already reset half the counters was the worst of both answers.
+ */
+    if (func__Esp_SlotQueueFits(uint8_t__idCount, UINT8_T__A__Ids) == false)
+    {
+        UINT8_T__G__SlotBusyReject++;
+        char char__A__Busy[48];
+        (void)snprintf(char__A__Busy, sizeof(char__A__Busy), "{\"ok\":0,\"n\":%ld}",
+                       (long)int32_t__n);
+        ESP_WEB_SERVER_T__G__Server.send(409, "application/json", char__A__Busy);
+        return;
+    }
+    bool bool__queued = true;
+    for (uint8_t uint8_t__item = 0u; uint8_t__item < uint8_t__idCount; uint8_t__item++)
+    {
+        bool__queued = (func__Esp_QueueSlot(UINT8_T__A__Ids[uint8_t__item], 0u) == true) &&
+                       bool__queued;
     }
     char char__A__Out[48];
     (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%ld}",
