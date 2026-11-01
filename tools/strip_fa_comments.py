@@ -33,6 +33,8 @@ DEFAULT_TARGETS = [
 SKIP_DIRS = {
     'node_modules', '__pycache__', 'build', 'Drivers', 'Middlewares',
     'STM32CubeIDE', 'Debug', 'Release',
+    # development tools, not part of the program (rule 2026-11-01)
+    'Tester', 'Simulator',
 }
 SKIP_FILES = {
     'panel_preview.html', 'index.html', 'simple_preview.html',

@@ -40,7 +40,6 @@ export ASAN_OPTIONS="detect_leaks=0"
 #      renders but throws on a click is broken for the user just the same.
 if command -v node >/dev/null 2>&1; then
     node "${SCRIPT_DIRECTORY}/host_test_panel_click.js" || exit 1
-    node "${SCRIPT_DIRECTORY}/host_test_scenario_cards.js" || exit 1
 else
     echo "SKIP: node is not installed; the DOM tests did not run."
 fi

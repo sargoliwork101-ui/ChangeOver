@@ -1814,14 +1814,13 @@ def test_ui_mirror_v116():
     # mirror refresh and the mute toggle.
     check("function uview()" in ino and "setInterval(uview,250)" in ino ,
           "the fault-bit refresh must exist")
-    check("ulR" not in ino and "function simrun()" in ino and "function simbz(" in ino,
-          "the board-driven LED strip is gone and the per-card simulator is in")
+    check("ulR" not in ino and "function simrun()" not in ino and "function simbz(" not in ino,
+          "the board-driven LED strip and the per-card simulator are both gone")
     # v1.55 (user order): the leftover notice row and the mute button went too.
     check('id="uleds"' not in ino and 'leds stick' not in ino
-          and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino
-                  for n in range(1, 8))   # scenario 7 adds its own simulator card
-          and 'id="sl7r"' in ino,
-          "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
+          and all(f'id="sl{n}r"' not in ino and f'id="sl{n}z"' not in ino
+                  for n in range(1, 9)),   # v1.90: the simulators were removed
+          "no sticky board mirror and no simulated LED/buzzer row left")
     check(all(f'id="asbb{k}"' in ino for k in range(8)),
           "one LED per fault bit (asbb0..asbb7)")
     check("pendingMask3" in ino and "pendingMask4" in ino and "64..95" in ino,
@@ -1881,7 +1880,7 @@ def test_ui_mirror_v116():
     s3part = ino.split('id="s0"')[1].split('id="s1"')[0]
     bkpart = ino.split('id="s4"')[1].split("</main>")[0]
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
-    check("ucard1" in s1part and "ucard5" in s1part and 'id="sim1"' in s1part and 'id="aw2"' in s1part
+    check("ucard1" in s1part and "ucard5" in s1part and 'id="sim1"' not in s1part and 'id="aw2"' in s1part
           and 'id="aw"' in s1part and 'id="ib117"' in s1part
           and all(f + "()" in s1part for f in ("ovdef", "bdef", "dsdef", "chdef", "ibdef", "dbdef"))
           and "<b>نظارت باتری</b>" not in s1part
@@ -2065,12 +2064,12 @@ def test_ui_mirror_v117b():
           and "bool__isFull = true;" in text_uic,
           "the UI dispatcher must latch full on charger completion too")
     # --- panel: the board mirror that derived charger-done from the
-    #     telemetry is gone (v1.53); the card simulator decides "full" from
-    #     the full-entry percent the user typed, not from the live states.
-    check("UV." not in ino and "pct>=en" in ino,
-          "no telemetry-derived charger-done left; the simulator uses the typed full-entry percent")
-    check("فول: سبز ثابت، زرد خاموش" in ino and "شارژر بیکار" not in ino,
-          "the charge simulator must say full = green solid with the yellow off")
+    #     telemetry is gone (v1.53) and the card simulators went in v1.90
+    #     (user order), so neither the mirror nor the simulator may come back.
+    check("UV." not in ino and "pct>=en" not in ino,
+          "no telemetry-derived charger-done and no card simulator left in the panel")
+    check("شارژر بیکار" not in ino,
+          "the panel must not claim a charger-idle face any more")
     # [EN] The same rule, now read from the card's dark box instead of the
     #      has finished absorb (taper or the one-hour ceiling), not when the
     #      charger merely goes idle.
@@ -2738,8 +2737,8 @@ def test_min_select_handover_v124():
           "the two id blocks (108..118 and 123..124) need an ownership and an index helper")
     check('id="q123"' in ino and 'id="q124"' in ino,
           "card 5 must expose the blink period and duty inputs")
-    check("c4v(123,1000)" in ino and "simblink(now-S5.lt,bper,bdt)" in ino,
-          "the card-6 simulator must blink its red lamp from the lock-start phase")
+    check("simblink" not in ino and "S5.lt" not in ino,
+          "the card-6 simulator is gone (v1.90) and nothing blinks from a lock-start phase")
     # [EN] v1.49 appends one more block after IDEF: CDEF, the charge-side
     #      percent map (119..120). Derive the top from every table so the next
     #      block keeps this check honest too.

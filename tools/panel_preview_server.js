@@ -557,7 +557,7 @@ let imbFl2 = 0;  /* [EN] scenario 5 demo flags (byte 3 of TLM) / [FA] بیت‌�
  *      (مثل یک فریم در هر نوبت روی برد)، پژواک برای پنل و شمارندهٔ NAK. */
 let latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: DEMO_DEAD, imbBase: 0,
-              chargeSec: [0, 0], pauseAt: [null, null], cutAt: [0, 0] };
+              chargeSec: [0, 0], pauseAt: [null, null] };
 
 /* [EN] Scenario 6 counts only BULK/ABSORB, clears on FLOAT, and keeps a
  *      short pause but resets at the configured gap (id 126), including
@@ -775,16 +775,6 @@ function telemetry() {
     /* v1.87: scenario-6 counters were advanced with the channel state above. */
     t[29] = Math.floor(latch.chargeSec[0]);
     t[30] = Math.floor(latch.chargeSec[1]);
-
-    /* v1.87: absent-reset simulation */
-    for (let k = 0; k < 2; k++) {
-        if (latch.cutAt[k] > 0 && ms - latch.cutAt[k] >= 3000) {
-            latch.deadMask &= ~(1 << k);
-            latch.chargeSec[k] = 0;
-            latch.pauseAt[k] = null;
-            latch.cutAt[k] = 0;
-        }
-    }
 
     /* [FA] ماسک حکم باتری خراب هم مثل خود برد در تلمتری می‌آید. */
     t[28] = latch.deadMask;
@@ -1206,15 +1196,6 @@ const server = http.createServer((req, res) => {
         res.end('{"ok":1}');
         return;
     }
-    if (req.method === "POST" && url.pathname === "/sim/battery") {
-        const n = Number(url.searchParams.get("n"));
-        const cut = Number(url.searchParams.get("cut"));
-        if ((n === 1 || n === 2) && (cut === 0 || cut === 1)) {
-            latch.cutAt[n - 1] = cut === 1 ? ms : 0;
-            return send(200, "application/json", JSON.stringify({ ok: 1, n, cut }));
-        }
-        return send(400, "application/json", '{"ok":0,"e":2}');
-    }
     return send(404, "text/plain", "not found");
 });
 /*
@@ -1289,7 +1270,7 @@ function runPreviewSelfTests() {
     ch[1].state = 1;
     latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: 0, imbBase: 0, chargeSec: [42, 42],
-              pauseAt: [null, null], cutAt: [0, 0] };
+              pauseAt: [null, null] };
     ms = 30000;
     let frame = telemetry();
     assert.strictEqual(frame.t[6], 6, "demo overvoltage must publish INPUT_WAIT");
@@ -1307,14 +1288,14 @@ function runPreviewSelfTests() {
     assert.strictEqual(frame.t[29], 0, "charging after a long outage must start from zero");
     latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: 0, imbBase: 0, chargeSec: [0, 0],
-              pauseAt: [null, null], cutAt: [0, 0] };
+              pauseAt: [null, null] };
     assert.strictEqual(queueLatchReset(5), true,
         "scenario 5 reset must fit in the runtime-slot queue");
     assert.deepStrictEqual(latch.q.map(item => item.id), [200, 201, 202],
         "scenario 5 must queue event and cycle counters before the latch");
     latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
               deadMask: 1, imbBase: 0, chargeSec: [86400, 57],
-              pauseAt: [123, 456], cutAt: [0, 0] };
+              pauseAt: [123, 456] };
     ch[0].state = 3;
     ch[1].state = 2;
     assert.strictEqual(queueLatchReset(6), true,
