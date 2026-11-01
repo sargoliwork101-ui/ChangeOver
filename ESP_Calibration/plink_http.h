@@ -492,7 +492,12 @@ static void func__Esp_HttpLatchReset(void)
     {
         UINT8_T__G__SlotBusyReject++;
         char char__A__Busy[48];
-        (void)snprintf(char__A__Busy, sizeof(char__A__Busy), "{\"ok\":0,\"n\":%ld}",
+        /*
+ * [EN] e=1 is the "queue full, try again" code this handler documents and the
+ * panel already translates into that sentence. It was never sent before, so
+ * the operator only ever saw the generic "request refused".
+ */
+        (void)snprintf(char__A__Busy, sizeof(char__A__Busy), "{\"ok\":0,\"e\":1,\"n\":%ld}",
                        (long)int32_t__n);
         ESP_WEB_SERVER_T__G__Server.send(409, "application/json", char__A__Busy);
         return;

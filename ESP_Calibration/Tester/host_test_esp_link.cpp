@@ -3337,6 +3337,15 @@ int main(void)
                   std::to_string((unsigned)func__EspLog_CountRows(reviewPath)));
             check(UINT8_T__G__LogRamCount == 1u,
                   "stale day: the row waits in the RAM ring");
+            /* the flash answers again: the row must land in ITS OWN day file */
+            func__EspLog_DrainRam();
+            (void)snprintf(reviewPath, sizeof reviewPath, "/evt-%08lu.csv",
+                           (unsigned long)func__EspLog_TodayCode());
+            check(func__EspLog_CountRows(reviewPath) == 1u,
+                  "stale day: after recovery the row lands in its own day file",
+                  std::to_string((unsigned)func__EspLog_CountRows(reviewPath)));
+            check(UINT8_T__G__LogRamCount == 0u,
+                  "stale day: the RAM ring is empty again");
         }
 
         /* finding 6: /latch/reset is all or nothing. */
@@ -3358,6 +3367,10 @@ int main(void)
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 409,
               "latch reset: a queue that cannot take all three answers 409",
               std::to_string(ESP_WEB_SERVER_T__G__Server.lastCode));
+        /* the panel turns e=1 into "the queue is full, try again in a moment" */
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"e\":1") != std::string::npos,
+              "latch reset: the refusal carries the busy code the panel shows",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
         {
             uint8_t pending = 0u;
             for (uint8_t i = 0u; i < ESP_SLOT_QUEUE_LEN; i++)
