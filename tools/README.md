@@ -1,43 +1,32 @@
-# tools/README.md - who owns the checkers, and where the boundary data lives
+# ابزارهای مرکزی و بررسی مرز پروژه
 
-One copy of every checker lives in this folder. None of them is copied into a
-module folder, and none of them lives inside `Firmware/`. This file records the
-reason, so the question "should the boundary checker sit in every module?" is
-answered once instead of in every review.
+## چرا checkerها مرکزی هستند
 
-## Why one central copy
+هر checker باید در `tools/` یک نسخه داشته باشد؛ checker میان چند پوشه/ماژول مرز می‌کشد و نباید داخل یکی از طرف‌های همان مرز کپی شود. برای نمونه، checker ماژول‌ها و دادهٔ مرزهای آن‌ها مرکزی هستند و به‌صورت محلی در `Firmware/Modules/<Module>/` تکثیر نمی‌شوند.
 
-A module folder owns one module. A boundary is a relationship between two
-modules, so it belongs to neither of them. If `check_module_contract.py` were
-copied into `Firmware/Modules/Charger/`, then the owner of Charger would own the
-rule that says what Charger may reach - which is exactly the rule that has to
-stay outside their reach to mean anything.
+| مورد | مسیر | نقش |
+| --- | --- | --- |
+| checker قرارداد ماژول‌ها | `tools/check_module_contract.py` | بررسی مرکزی وابستگی بین ماژول‌ها |
+| دادهٔ مرزهای ماژول‌ها | `tools/module_boundaries.json` | قواعد مشترک و فهرست enforcement ماژول‌ها |
+| قرارداد یک ماژول | `Firmware/Modules/<Module>/CONTRACT.md` | وعدهٔ همان ماژول به callerهایش |
+| تست یک ماژول | `Firmware/Modules/<Module>/Tester/` | تست‌های همان ماژول |
 
-Three more practical reasons:
+checker ماژول‌ها در حالت فعلی با `enforced` خالی گزارش می‌دهد و تا وقتی ماژولی عمداً به آن افزوده نشود، strict mode چیزی را enforce نمی‌کند. جزئیات: `python3 tools/check_module_contract.py --help`.
 
-| If the checker is copied into 13 folders | If there is one copy here |
-| --- | --- |
-| 13 copies drift apart within weeks | one file, one behaviour |
-| a bug means 13 fixes | a bug means one fix |
-| each copy sees only its own folder, so it cannot see who depends on whom | it reads the whole tree, so it can see both sides of every edge |
-| each module can weaken its own copy | no module can weaken the gate |
+## قراردادهای مرزی سه برد
 
-## What lives where
+```sh
+python3 tools/check_project_contract.py
+python3 tools/check_project_contract.py --json
+python3 -m unittest tools/test_check_project_contract.py
+```
 
-| Thing | Path | Owner | Why there |
-| --- | --- | --- | --- |
-| the checker itself | `tools/check_module_contract.py` | whoever integrates the tree | read-only, runs over all modules at once |
-| the list of allowed boundaries | `tools/module_boundaries.json` | whoever integrates the tree | shared between modules, so it is one central file, never a per-module file |
-| what a module promises its callers | `Firmware/Modules/<Module>/CONTRACT.md` | the module owner | it describes one module only, so it sits next to that module's `README.md` |
-| tests of one module | `Firmware/Modules/<Module>/Tester/` | the module owner | unchanged, this is how it already works |
+این checker قراردادهای `ESP_USER`، `ESP_Calibration` و `STM32` را بررسی می‌کند. دو ESP کاربرد جدا دارند و هم‌زمان به STM32 وصل نمی‌شوند. ریشه‌های STM32 در `tools/project_boundaries.json` آمده‌اند؛ `Calibration Data/` یک دادهٔ مشترک کالیبراسیون است، نه ریشهٔ مالکیت یک برد.
 
-So: the tool is central, the rules about who may reach whom are central, and the
-only per-module file is the contract sheet, which is data, not a second copy of
-the tool.
+Checker بررسی می‌کند که هر ورودی بلافاصله زیر ریشهٔ مخزن به یکی از ریشه‌های سه پروژه، مسیرهای shared/outside، فایل پشتیبان ریشه یا استثنای صریح تخصیص یافته باشد. همچنین routeهای ثبت‌شده در دو اسکچ ESP را با فهرست routeهای قرارداد و ثابت‌های UART مشخص‌شده را با تعریف source مقایسه می‌کند.
 
-## Current state
+این ابزار مالکیت تک‌تک فایل‌های تو‌در‌تو را اثبات نمی‌کند؛ جزئیات جدول ورودی/خروجی HTTP یا کل schema بار UART را با کد تطبیق نمی‌دهد؛ و از تغییر هم‌زمان قرارداد/manifest و source جلوگیری نمی‌کند. بنابراین consistency checker محلی است، نه گیت PR، ممیزی امنیتی یا جایگزین بازبینی مالک پروتکل.
 
-`tools/module_boundaries.json` ships with an empty `enforced` list. The report
-mode runs over the whole tree; strict mode enforces nothing until a module is
-added to that list on purpose. See
-`python3 tools/check_module_contract.py --help` for the four ways to run it.
+برای اجباری‌کردن آن، CI باید به‌عنوان required status check تنظیم شود و مسیرهای قرارداد/manifest/source نیازمند بازبینی مالک باشند. وجود checker یا workflow به‌تنهایی branch protection ایجاد نمی‌کند. فعلاً این README ادعایی دربارهٔ اجباری‌بودن CI یا branch protection ندارد.
+
+`Tester/` و `Simulator/` در ریشهٔ enclosing board باقی می‌مانند؛ checker فعلی برای آن‌ها مالکیت فایل‌به‌فایل جداگانه ادعا نمی‌کند. `Documentation/`، `tools/` و `Calibration Data/` پشتیبانی مشترک بیرون از سه ریشهٔ برد هستند.
