@@ -395,6 +395,8 @@ def main(argv):
                     fh.write(new_text)
     print('files: %d, lines removed: %d%s' % (changed, saved,
                                               '' if apply else ' (dry run)'))
+    if not apply and changed > 0:
+        return 1
     return 0
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))

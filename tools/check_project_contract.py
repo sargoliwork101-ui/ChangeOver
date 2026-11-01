@@ -5,16 +5,11 @@ import json
 import os
 import re
 import sys
-
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MANIFEST = os.path.join(ROOT, "tools", "project_boundaries.json")
-
-
 def _safe_relative_path(path):
     return (isinstance(path, str) and bool(path) and not os.path.isabs(path)
             and all(part not in ("", ".", "..") for part in path.split("/")))
-
-
 def read_json_contract(path):
     with open(path, encoding="utf-8") as handle:
         text = handle.read()
@@ -22,20 +17,15 @@ def read_json_contract(path):
     if not match:
         raise ValueError("missing ```contract json``` block")
     return json.loads(match.group(1))
-
-
 def check(manifest):
     errors = []
-
     def fail(message):
         errors.append(message)
         print("FAIL " + message)
-
     projects = manifest.get("projects")
     if not isinstance(projects, dict) or not projects:
         print("FAIL manifest must contain a non-empty projects object")
         return 1
-
     # Validate that every immediate repository entry is explicitly assigned to
     # one project, declared shared/outside the board projects, or intentionally
     # excluded (currently only Git metadata). This does not claim ownership of
@@ -57,7 +47,6 @@ def check(manifest):
                 if root == previous or root.startswith(previous + "/") or previous.startswith(root + "/"):
                     fail(f"overlapping ownership: {previous_name} ({previous}) and {name} ({root})")
             assignments.append((root, name))
-
     outside_dirs = manifest.get("outside_directories", [])
     outside_files = manifest.get("outside_files", [])
     ignored = manifest.get("ignored_root_entries", [])
@@ -79,7 +68,6 @@ def check(manifest):
             if label == "ignored_root_entries" and not os.path.exists(full):
                 fail(f"{label}: missing path {path}")
             assignments.append((path, label))
-
     classified = [path for path, _owner in assignments]
     if len(classified) != len(set(classified)):
         fail("a top-level path is assigned more than once")
@@ -89,7 +77,6 @@ def check(manifest):
         fail(f"unclassified top-level repository entry: {path}")
     for path in sorted(declared_entries - actual_entries):
         fail(f"manifest classifies a non-existent top-level entry: {path}")
-
     for name, project in projects.items():
         roots = project.get("roots", [project.get("root")])
         roots = [item for item in roots if item]
@@ -116,7 +103,6 @@ def check(manifest):
             fail(f"{name}: contract root is not owned by this project")
         if contract.get("roots") and contract["roots"] != roots:
             fail(f"{name}: contract roots do not match manifest")
-
         route_source = project.get("route_source")
         if route_source:
             if not _safe_relative_path(route_source):
@@ -135,7 +121,6 @@ def check(manifest):
                 contract_routes = sorted(set(contract.get("http_routes", [])))
                 if source_routes != contract_routes:
                     fail(f"{name}: HTTP route list in contract does not match {route_source}")
-
         for item in project.get("locked_symbols", []):
             source_path = item.get("file")
             if not _safe_relative_path(source_path):
@@ -156,15 +141,12 @@ def check(manifest):
                     fail(f"{name}: expected one definition of {symbol} in {source_path}, found {len(found)}")
                 elif found[0] != expected:
                     fail(f"{name}: {symbol} in {source_path} is {found[0]}, contract requires {expected}")
-
     if errors:
         print(f"PROJECT CONTRACT CHECK FAILED: {len(errors)} error(s)")
         return 1
     print("PASS: root-level paths are classified; declared routes and locked constants match source")
     print("NOTE: This is a consistency check, not a protected PR gate or a substitute for owner review.")
     return 0
-
-
 def main():
     parser = argparse.ArgumentParser(description="Check board contracts and declared source interfaces.")
     parser.add_argument("--json", action="store_true", help="print the project boundary manifest")
@@ -179,7 +161,5 @@ def main():
         print(json.dumps(manifest, ensure_ascii=False, indent=2))
         return 0
     return check(manifest)
-
-
 if __name__ == "__main__":
     sys.exit(main())
