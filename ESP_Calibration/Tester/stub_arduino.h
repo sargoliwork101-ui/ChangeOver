@@ -448,6 +448,18 @@ struct StubFS {
         if (p == NULL || p[0] != '/') return false;
         return files.erase(p) > 0;
     }
+    /*
+     * [EN] lfs_rename: the destination is replaced when it already exists, which
+     * is what makes the clock save atomic. Same signature as the real core.
+     */
+    bool rename(const char *from, const char *to) {
+        if ((from == NULL) || (to == NULL) || (from[0] != '/') || (to[0] != '/')) return false;
+        std::map<std::string, std::string>::iterator it = files.find(std::string(from));
+        if (it == files.end()) return false;
+        files[std::string(to)] = it->second;
+        files.erase(it);
+        return true;
+    }
     StubDir openDir(const char *) {
         StubDir d;
         for (std::map<std::string, std::string>::const_iterator it = files.begin();

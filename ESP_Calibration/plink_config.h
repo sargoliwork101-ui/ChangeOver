@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          112u
+#define ESP_ESP_FW_VERSION          114u
 /*
  * [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
  */
@@ -164,7 +164,8 @@
  * (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
  * of spec 4; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
  * Arduino IDE: pick a flash layout WITH a file system. ESP8266-01S (1 MB): LittleFS next to the ~414 KB panel and the
- * sketch may not fit. NOT measured yet - check the sketch size in the IDE before relying on this log. ESP32 default is fine.
+ * sketch may not fit. NOT measured yet - check the sketch size in the IDE before relying on this log.
+ * This panel is ESP8266 only (user order 2026-11-01); the ESP32 branches were removed.
  */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
 #define ESP_BENCHLOG_MAX_BYTES      102400u
@@ -324,6 +325,11 @@
  */
 #define ESP_LOG_LEGACY_INDEX_PATH   "/evt-days.txt"
 #define ESP_LOG_CLOCK_PATH          "/evt-clock.txt"
+/*
+ * [EN] Written first, then renamed onto the real file, so a power cut inside
+ * the save can never leave a half-written clock behind.
+ */
+#define ESP_LOG_CLOCK_TMP_PATH      "/evt-clock.tmp"
 #define ESP_LOG_FILE_PREFIX         "/evt-"
 #define ESP_LOG_CUT_BAND_MV         21200u
 #define ESP_LOG_BAND_OFF_MV         21400u

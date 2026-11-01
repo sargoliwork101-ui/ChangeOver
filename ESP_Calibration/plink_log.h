@@ -485,7 +485,14 @@ static void func__EspLog_ClockSave(void)
     {
         return;
     }
-    file__clock = LittleFS.open(ESP_LOG_CLOCK_PATH, "w");
+    /*
+ * [EN] The new clock is written to a TEMPORARY file and swapped in at the end.
+ * An in-place "w" truncates the old clock the moment it opens, so a power cut
+ * inside this function - routine on battery, where the board cuts this panel's
+ * power - used to leave an empty clock file and lose the time, the timezone
+ * and the heartbeat second with it (user order 2026-11-01).
+ */
+    file__clock = LittleFS.open(ESP_LOG_CLOCK_TMP_PATH, "w");
     if (!file__clock)
     {
         return;
@@ -525,8 +532,29 @@ static void func__EspLog_ClockSave(void)
                        (unsigned long)((BOOL__G__LogLastBeatValid != false) ?
                                        UINT32_T__G__LogLastBeatSec : 0u));
     }
-    (void)file__clock.print(char__line);
-    file__clock.close();
+    {
+        size_t size_t__want = strlen(char__line);
+        size_t size_t__got = (size_t)file__clock.print(char__line);
+        file__clock.close();
+        if (size_t__got != size_t__want)
+        {
+            /*
+ * [EN] the flash refused part of it: throw the half file away and keep the
+ * clock that is already on the flash.
+ */
+            (void)LittleFS.remove(ESP_LOG_CLOCK_TMP_PATH);
+            return;
+        }
+    }
+    /*
+ * [EN] lfs_rename replaces the destination atomically, so the clock file is
+ * either the whole old one or the whole new one - never half of each.
+ */
+    if (LittleFS.rename(ESP_LOG_CLOCK_TMP_PATH, ESP_LOG_CLOCK_PATH) == false)
+    {
+        (void)LittleFS.remove(ESP_LOG_CLOCK_TMP_PATH);
+        return;
+    }
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
     BOOL__G__LogClockSavedOnce = true;
 }
@@ -1108,33 +1136,6 @@ static uint8_t func__EspLog_ScanDays(bool bool__force)
     UINT32_T__G__LogLastScanMs = uint32_t__nowMs;
     BOOL__G__LogScanValid = true;
     UINT8_T__G__LogIndexCount = 0u;
-#if defined(ESP32)
-    {
-        File file__root = LittleFS.open("/", "r");
-        if (file__root)
-        {
-            File file__entry = file__root.openNextFile();
-            while (file__entry)
-            {
-                char char__rootPath[40];
-                if (func__EspLog_ToRootPath(file__entry.name(),
-                                            char__rootPath,
-                                            sizeof(char__rootPath)) != false)
-                {
-                    func__EspLog_RecordDayEntry(char__rootPath,
-                                                (uint32_t)file__entry.size());
-                }
-                file__entry.close();
-                if (UINT8_T__G__LogIndexCount >= (ESP_LOG_MAX_DAYS + 2u))
-                {
-                    break;
-                }
-                file__entry = file__root.openNextFile();
-            }
-            file__root.close();
-        }
-    }
-#else
     {
         Dir dir__root = LittleFS.openDir("/");
         while (dir__root.next())
@@ -1154,7 +1155,6 @@ static uint8_t func__EspLog_ScanDays(bool bool__force)
             }
         }
     }
-#endif
     return UINT8_T__G__LogIndexCount;
 }
 /**
@@ -2860,17 +2860,12 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
     }
     if (BOOL__G__FsOk != false)
     {
-#if defined(ESP32)
-        uint32_t__totalBytes = (uint32_t)LittleFS.totalBytes();
-        uint32_t__usedBytes = (uint32_t)LittleFS.usedBytes();
-#else
         FSInfo fsInfo__stat;
         if (LittleFS.info(fsInfo__stat))
         {
             uint32_t__totalBytes = (uint32_t)fsInfo__stat.totalBytes;
             uint32_t__usedBytes = (uint32_t)fsInfo__stat.usedBytes;
         }
-#endif
     }
     int__written = snprintf(char__out, size_t__outSize,
                             "{\"fs\":%u,\"mountFail\":%u,\"total\":%lu,\"used\":%lu,\"files\":[",
@@ -2886,49 +2881,6 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
     size_t__used = (size_t)int__written;
     if (BOOL__G__FsOk != false)
     {
-#if defined(ESP32)
-        File file__root = LittleFS.open("/", "r");
-        if (file__root)
-        {
-            File file__entry = file__root.openNextFile();
-            while (file__entry)
-            {
-                char char__rootPath[40];
-                char char__safeName[40];
-                uint32_t uint32_t__fsize = (uint32_t)file__entry.size();
-                if (func__EspLog_ToRootPath(file__entry.name(),
-                                            char__rootPath,
-                                            sizeof(char__rootPath)) != false)
-                {
-                    bool bool__own = func__EspLog_IsOwnFile(char__rootPath);
-                    uint32_t__sumBytes += uint32_t__fsize;
-                    func__EspLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));
-                    if ((uint16_t__shown < 24u) && ((size_t__used + 96u) < size_t__outSize))
-                    {
-                        int int__item = snprintf(&char__out[size_t__used],
-                                                 size_t__outSize - size_t__used,
-                                                 "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
-                                                 (uint16_t__shown == 0u) ? "" : ",",
-                                                 char__safeName,
-                                                 (unsigned long)uint32_t__fsize,
-                                                 (bool__own != false) ? 1u : 0u);
-                        if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
-                        {
-                            size_t__used += (size_t)int__item;
-                            uint16_t__shown++;
-                        }
-                    }
-                    else
-                    {
-                        uint16_t__more++;
-                    }
-                }
-                file__entry.close();
-                file__entry = file__root.openNextFile();
-            }
-            file__root.close();
-        }
-#else
         Dir dir__root = LittleFS.openDir("/");
         while (dir__root.next())
         {
@@ -2964,7 +2916,6 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
                 }
             }
         }
-#endif
         if ((uint32_t__usedBytes == 0u) && (uint32_t__sumBytes > 0u))
         {
             uint32_t__usedBytes = uint32_t__sumBytes;
@@ -3006,33 +2957,6 @@ static uint16_t func__EspLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedByte
         uint32_t uint32_t__sizes[8];
         uint8_t uint8_t__count = 0u;
         uint8_t uint8_t__idx;
-#if defined(ESP32)
-        File file__root = LittleFS.open("/", "r");
-        if (file__root)
-        {
-            File file__entry = file__root.openNextFile();
-            while (file__entry && (uint8_t__count < 8u))
-            {
-                char char__rootPath[40];
-                if ((func__EspLog_ToRootPath(file__entry.name(),
-                                             char__rootPath,
-                                             sizeof(char__rootPath)) != false) &&
-                    (func__EspLog_IsOwnFile(char__rootPath) == false))
-                {
-                    (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "%s", char__rootPath);
-                    uint32_t__sizes[uint8_t__count] = (uint32_t)file__entry.size();
-                    uint8_t__count++;
-                }
-                file__entry.close();
-                file__entry = file__root.openNextFile();
-            }
-            if (file__entry)
-            {
-                file__entry.close();
-            }
-            file__root.close();
-        }
-#else
         Dir dir__root = LittleFS.openDir("/");
         while (dir__root.next() && (uint8_t__count < 8u))
         {
@@ -3048,7 +2972,6 @@ static uint16_t func__EspLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedByte
                 uint8_t__count++;
             }
         }
-#endif
         if (uint8_t__count == 0u)
         {
             break;

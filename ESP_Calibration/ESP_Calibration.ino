@@ -63,19 +63,21 @@
  *               hang or a broken link.
  */
 /* ==================== Board Includes ==================== */
-#if defined(ESP8266)
-  #include <ESP8266WiFi.h>
-  #include <ESP8266WebServer.h>
-  #include <WiFiUdp.h>
-  typedef ESP8266WebServer esp_web_server_t;
-#elif defined(ESP32)
-  #include <WiFi.h>
-  #include <WebServer.h>
-  #include <WiFiUdp.h>
-  typedef WebServer esp_web_server_t;
-#else
-  #error "Select an ESP8266 or ESP32 board / برد ESP8266 یا ESP32 را انتخاب کنید"
+/*
+ * [EN] ESP8266 ONLY (user order 2026-11-01: "we do not use an ESP32, only this
+ * ESP8266"). The ESP32 branches were never compiled by anything - not by the
+ * Arduino IDE on this project's board, not by the host tests - so they were
+ * dead code that looked like support. There is one target now, and a wrong
+ * board selection stops the build with this sentence instead of failing deep
+ * inside a LittleFS call with an ESP32 signature.
+ */
+#if !defined(ESP8266)
+  #error "This panel is ESP8266 only / این پنل فقط ESP8266 است"
 #endif
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <WiFiUdp.h>
+typedef ESP8266WebServer esp_web_server_t;
 #include <LittleFS.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -99,9 +101,7 @@ void setup(void)
     Serial.begin(ESP_LINK_BAUD_RATE, SERIAL_8N1);
     WiFi.persistent(false);
     func__Esp_StartSoftAp();
-#if defined(ESP8266)
     WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
-#endif
     BOOL__G__WifiHighPower = true;
     /*
  * [EN] Mount WITHOUT formatting. An automatic format on a mount failure
@@ -109,12 +109,12 @@ void setup(void)
  * saved" report. A failed mount now only means "rows wait in RAM", and
  * formatting is an explicit button in the panel.
  */
-#if defined(ESP8266)
+    /*
+ * [EN] ESP8266: setConfig(first=false) keeps LittleFS from formatting the file
+ * system behind the user's back when the mount fails.
+ */
     (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();
-#else
-    BOOL__G__FsOk = LittleFS.begin(false);
-#endif
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
     ESP_WEB_SERVER_T__G__Server.on("/ping", HTTP_GET, func__Esp_HttpPing);
     ESP_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Esp_HttpRoot);

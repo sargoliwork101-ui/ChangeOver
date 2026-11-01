@@ -3517,6 +3517,40 @@ int main(void)
         reset_clock_test_boot();
     }
 
+    /* ---------------------------------------------------------------------
+       [EN] v1.114: the clock file is written to a temporary file and renamed
+            onto the real one, so a power cut inside the save cannot leave a
+            half clock behind. The old code opened the real file with "w",
+            which truncates it the moment it opens: a refused write then left
+            an EMPTY clock, and the time, the timezone and the heartbeat second
+            went with it (user order 2026-11-01, battery power cuts).
+       [FA] بازبینی ۲۰۲۶-۱۱-۰۱: ذخیرهٔ فایل ساعت حالا اتمیک است.
+       --------------------------------------------------------------------- */
+    {
+        std::string before;
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.failOpenCount = 0;
+        LittleFS.failWrites = false;
+        check(func__EspLog_TimeSet(1793000000u, 12600),
+              "clock file: the browser sets the time");
+        func__EspLog_ClockSave();
+        check(LittleFS.files.count(std::string(ESP_LOG_CLOCK_PATH)) == 1u,
+              "clock file: saved");
+        before = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+        check(!before.empty(), "clock file: it has content");
+        check(LittleFS.files.count(std::string(ESP_LOG_CLOCK_TMP_PATH)) == 0u,
+              "clock file: no temporary file is left behind");
+        LittleFS.failWrites = true;         /* a power cut / a full flash */
+        func__EspLog_ClockSave();
+        LittleFS.failWrites = false;
+        check(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] == before,
+              "clock file: a refused save leaves the OLD file untouched");
+        check(LittleFS.files.count(std::string(ESP_LOG_CLOCK_TMP_PATH)) == 0u,
+              "clock file: the half file is thrown away");
+        reset_clock_test_boot();
+    }
+
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
         std::cout << "ALL " << checks << " ESP HOST TESTS PASSED\n";

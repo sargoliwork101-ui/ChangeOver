@@ -1267,11 +1267,8 @@ static void func__Esp_DnsTick(void)
 static void func__Esp_StartSoftAp(void)
 {
     WiFi.mode(WIFI_AP);
-#if defined(ESP8266)
+    /* ESP8266 only: no radio sleep, so the panel answers a phone immediately. */
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
-#else
-    WiFi.setSleep(false);
-#endif
     (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
                             IPAddress(0, 0, 0, 0),
                             IPAddress(255, 255, 255, 0));
