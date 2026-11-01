@@ -468,12 +468,52 @@ static uint32_t func__EspLog_RowEpoch(const char *char__row)
 }
 /* ==================== Clock storage ==================== */
 /**
+ * @brief  [EN] Write one line into the clock file ATOMICALLY: the temporary file
+ *              first, the rename at the end.
+ *              An in-place "w" truncates the old clock the moment it opens, so
+ *              a power cut inside the write - routine on battery, where the
+ *              board cuts this panel's power - used to leave an empty clock and
+ *              lose the time, the timezone and the heartbeat second with it.
+ *              lfs_rename replaces the destination in one step, so the clock is
+ *              always either the whole old line or the whole new one.
+* @param const char *char__ptr_line full line, newline included /
+ * @return bool true when the clock file now holds it /
+ */
+static bool func__EspLog_ClockStore(const char *char__ptr_line)
+{
+    File file__clock;
+    size_t size_t__want;
+    size_t size_t__got;
+    if ((BOOL__G__FsOk == false) || (char__ptr_line == NULL))
+    {
+        return false;
+    }
+    file__clock = LittleFS.open(ESP_LOG_CLOCK_TMP_PATH, "w");
+    if (!file__clock)
+    {
+        return false;
+    }
+    size_t__want = strlen(char__ptr_line);
+    size_t__got = (size_t)file__clock.print(char__ptr_line);
+    file__clock.close();
+    if (size_t__got != size_t__want)
+    {
+        (void)LittleFS.remove(ESP_LOG_CLOCK_TMP_PATH);   /* half a file is no clock */
+        return false;
+    }
+    if (LittleFS.rename(ESP_LOG_CLOCK_TMP_PATH, ESP_LOG_CLOCK_PATH) == false)
+    {
+        (void)LittleFS.remove(ESP_LOG_CLOCK_TMP_PATH);
+        return false;
+    }
+    return true;
+}
+/**
  * @brief  [EN] Persist the clock anchor (every 10 minutes and on adoption).
 * @return None /
  */
 static void func__EspLog_ClockSave(void)
 {
-    File file__clock;
     uint32_t uint32_t__nowSec;
     char char__line[64];
     if ((BOOL__G__FsOk == false) || (BOOL__G__LogClockValid == false))
@@ -482,18 +522,6 @@ static void func__EspLog_ClockSave(void)
     }
     uint32_t__nowSec = func__EspLog_NowSec();
     if (uint32_t__nowSec < ESP_LOG_CLOCK_VALID_MIN)
-    {
-        return;
-    }
-    /*
- * [EN] The new clock is written to a TEMPORARY file and swapped in at the end.
- * An in-place "w" truncates the old clock the moment it opens, so a power cut
- * inside this function - routine on battery, where the board cuts this panel's
- * power - used to leave an empty clock file and lose the time, the timezone
- * and the heartbeat second with it (user order 2026-11-01).
- */
-    file__clock = LittleFS.open(ESP_LOG_CLOCK_TMP_PATH, "w");
-    if (!file__clock)
     {
         return;
     }
@@ -532,28 +560,9 @@ static void func__EspLog_ClockSave(void)
                        (unsigned long)((BOOL__G__LogLastBeatValid != false) ?
                                        UINT32_T__G__LogLastBeatSec : 0u));
     }
+    if (func__EspLog_ClockStore(char__line) == false)
     {
-        size_t size_t__want = strlen(char__line);
-        size_t size_t__got = (size_t)file__clock.print(char__line);
-        file__clock.close();
-        if (size_t__got != size_t__want)
-        {
-            /*
- * [EN] the flash refused part of it: throw the half file away and keep the
- * clock that is already on the flash.
- */
-            (void)LittleFS.remove(ESP_LOG_CLOCK_TMP_PATH);
-            return;
-        }
-    }
-    /*
- * [EN] lfs_rename replaces the destination atomically, so the clock file is
- * either the whole old one or the whole new one - never half of each.
- */
-    if (LittleFS.rename(ESP_LOG_CLOCK_TMP_PATH, ESP_LOG_CLOCK_PATH) == false)
-    {
-        (void)LittleFS.remove(ESP_LOG_CLOCK_TMP_PATH);
-        return;
+        return;   /* the old clock stays; the timer is not moved, so we retry */
     }
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
     BOOL__G__LogClockSavedOnce = true;
@@ -779,16 +788,10 @@ static void func__EspLog_FwStampWrite(uint32_t uint32_t__version)
             string__beat = String("0");
         }
     }
-    file__clock = LittleFS.open(ESP_LOG_CLOCK_PATH, "w");
-    if (!file__clock)
-    {
-        return;
-    }
     (void)snprintf(char__line, sizeof(char__line), "%s,%u,%s\n",
                    string__firstThree.c_str(), (unsigned int)uint32_t__version,
                    string__beat.c_str());
-    (void)file__clock.print(char__line);
-    file__clock.close();
+    (void)func__EspLog_ClockStore(char__line);
 }
 /**
  * @brief  [EN] Is this boot the first one of a new firmware? The remembered

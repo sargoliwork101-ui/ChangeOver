@@ -3548,6 +3548,35 @@ int main(void)
               "clock file: a refused save leaves the OLD file untouched");
         check(LittleFS.files.count(std::string(ESP_LOG_CLOCK_TMP_PATH)) == 0u,
               "clock file: the half file is thrown away");
+        /* the version stamp went through the same in-place write, so it is
+           covered here as well */
+        before = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+        LittleFS.failWrites = true;
+        func__EspLog_FwStampWrite(999u);
+        LittleFS.failWrites = false;
+        check(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] == before,
+              "clock file: a refused version stamp leaves the clock untouched");
+        check(LittleFS.files.count(std::string(ESP_LOG_CLOCK_TMP_PATH)) == 0u,
+              "clock file: a refused stamp leaves no half file");
+        /* the temporary file must never look like history to the rest of the panel */
+        {
+            LittleFS.files[std::string(ESP_LOG_CLOCK_TMP_PATH)] = "1,2\n";
+            uint32_t leftoverDay = 7u;
+            check(func__EspLog_DayFromName(ESP_LOG_CLOCK_TMP_PATH, &leftoverDay) == false,
+                  "clock file: a leftover temp file is not read as a day file");
+            char daysText[3600] = { 0 };
+            (void)func__EspLog_Days(daysText, sizeof daysText);
+            check(std::string(daysText).find("evt-clock") == std::string::npos,
+                  "clock file: the day list does not show it", daysText);
+            ESP_WEB_SERVER_T__G__Server.call("/evt/fs", HTTP_GET);
+            check(ESP_WEB_SERVER_T__G__Server.lastBody.find("evt-clock.tmp") != std::string::npos,
+                  "clock file: /evt/fs lists the leftover so it is visible");
+            ESP_WEB_SERVER_T__G__Server.call("/evt/clean", HTTP_POST);
+            check(LittleFS.files.count(std::string(ESP_LOG_CLOCK_TMP_PATH)) == 0u,
+                  "clock file: /evt/clean removes the leftover");
+            check(LittleFS.files.count(std::string(ESP_LOG_CLOCK_PATH)) == 1u,
+                  "clock file: /evt/clean keeps the real clock file");
+        }
         reset_clock_test_boot();
     }
 
