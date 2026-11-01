@@ -239,6 +239,13 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 static_assert(ESP_LOG_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
               "ESP_LOG_ROW_MAX must hold the widest row: 22 x 10 digits + 21 commas");
 /*
+ * [EN] The RAM ring keeps a copy of the row when the flash refuses it, so its
+ * slot must hold the same widest row. This assert is what stops the two sizes
+ * from drifting apart again (160 bytes cut long rows in silence).
+ */
+static_assert(ESP_LOG_RAM_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
+              "ESP_LOG_RAM_ROW_MAX must hold the widest row, or the RAM ring cuts it");
+/*
  * [EN] The value the /evt answer carries in X-Log-Fs: 1 = rows come from the
  * flash, 0 = the file system is off (RAM ring), 2 = the file system is
  * mounted but a write failed (RAM ring holds the newest rows).

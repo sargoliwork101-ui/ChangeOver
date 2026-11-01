@@ -303,7 +303,14 @@
 #define ESP_LOG_DAY_AUTO            0xFFFFFFFFu
 #define ESP_LOG_DAY_ZERO            0xFFFFFFFEu
 #define ESP_LOG_RAM_ROWS            16u
-#define ESP_LOG_RAM_ROW_MAX         160u
+/*
+ * [EN] The RAM ring holds the rows the flash refused, and it must hold a WHOLE
+ * row: the widest one is 241 bytes (22 numbers + 21 commas), so a 160-byte
+ * slot cut a long row in half without saying so, and that half row was
+ * drained into the day file later. Equal to ESP_LOG_ROW_MAX on purpose, and
+ * the static_assert beside that buffer keeps the two from drifting apart.
+ */
+#define ESP_LOG_RAM_ROW_MAX         256u
 /*
  * [EN] v1.110 (user order 2026-10-28: "why not take it from the log file
  * itself?"): the day list is no longer a file. It is read from the day
