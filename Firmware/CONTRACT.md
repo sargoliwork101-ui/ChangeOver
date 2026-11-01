@@ -16,7 +16,7 @@
 |---|---|---|
 | UART1, PA10 RX / PA9 TX, 921600 8N1 | Protocol-v2 frames from one connected ESP board | Protocol-v2 replies and telemetry |
 | ESP enable, PA8 `MCU_ESP_CHPD` | — | ESP board enable signal |
-| ADC1, 6-value frame | Ordered as current 1 (PA1/IN1), 24 V input (PA7/IN7), 24 V battery (PA2/IN2), 12 V battery (PA5/IN5), current 2 (PA3/IN3), internal VREFINT | — |
+| ADC1, 6-value frame | Ordered as current 1 (PA1/IN1), 24 V input (PA2/IN2), 24 V battery (PA3/IN3), 12 V battery (PA5/IN5), current 2 (PA7/IN7), internal VREFINT | — |
 | Digital inputs | 24 V present (PB4, active high), jitter 1 (PB2, active-low trip), jitter 2 (PB6, active-low trip) | — |
 | PWM outputs | — | Charger 1 (PA0/TIM2_CH1), charger 2 (PA6/TIM3_CH1), duty 0–1000 permille |
 | Digital outputs | — | Buzzer (PA4), red LED (PB0), yellow LED (PB1), green LED (PB10), battery switch (PB5, active low), relay (PB7), battery protection (PB11, active high) |
