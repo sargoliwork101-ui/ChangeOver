@@ -174,6 +174,14 @@ static bool     BOOL__G__LogLastBeatValid = false;
  * by Tick, rate limited by ESP_LOG_CLOCK_SAVE_MIN_MS.
  */
 static bool     BOOL__G__LogClockSaveWanted = false;
+/*
+ * [EN] v1.116: a new board anchor was taken in this session and the flash does
+ * not have it yet. Written by the next Tick at once (one write per wake, not
+ * rate limited): without it the next wake had to guess how long the board had
+ * been running, and every guess threw away one sleep - the field report was a
+ * night that fell six hours behind and a day whose first rows were missing.
+ */
+static bool     BOOL__G__LogAnchorSaveWanted = false;
 static bool     BOOL__G__LogLinkDown = false;
 /*
  * [EN] when the boot row of this session was written; the "board silent"
@@ -337,6 +345,7 @@ static void func__EspLog_NoteBoardTime(uint32_t uint32_t__boardUptimeSec)
     UINT32_T__G__LogAnchorMs = (uint32_t)millis();
     UINT32_T__G__LogAnchorBoardSec = uint32_t__boardUptimeSec;
     BOOL__G__LogAnchorBoardValid = true;
+    BOOL__G__LogAnchorSaveWanted = true;
 }
 /* ==================== Boot clock grace ==================== */
 /**
@@ -552,6 +561,26 @@ static void func__EspLog_ClockSave(void)
         if ((BOOL__G__LogBoardAlive != false) && (UINT32_T__G__LogBoardNowSec != 0u))
         {
             uint32_t__boardUptimeSec = UINT32_T__G__LogBoardNowSec;
+        }
+        /*
+ * [EN] v1.116: the board is silent in this session, but the pair this panel
+ * already holds is still true - the board keeps counting while the panel is
+ * off, so its uptime grew by the same wall seconds. Writing 0 here (v1.114
+ * did) threw away the only clock that survives a sleep: the next wake
+ * restarted from the saved second and counted only its own uptime, so a
+ * night on battery fell hours behind and the early rows landed in the
+ * previous day's file (field report 2026-11-02: "the first hours of the day
+ * are missing, writing started six hours later"). Advance the pair instead.
+ */
+        else if ((BOOL__G__LogAnchorBoardValid != false) &&
+                 (UINT32_T__G__LogAnchorBoardSec != 0u) &&
+                 (uint32_t__nowSec >= UINT32_T__G__LogAnchorSec))
+        {
+            uint32_t__boardUptimeSec = UINT32_T__G__LogAnchorBoardSec +
+                (uint32_t__nowSec - UINT32_T__G__LogAnchorSec);
+            UINT32_T__G__LogAnchorBoardSec = uint32_t__boardUptimeSec;
+            UINT32_T__G__LogAnchorSec = uint32_t__nowSec;
+            UINT32_T__G__LogAnchorMs = (uint32_t)millis();
         }
         /*
  * [EN] A fifth field carries the wall second of the last written row, so the
@@ -867,23 +896,50 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
             /* normal re-sync: a few seconds, nothing to report */
         }
     }
-    UINT32_T__G__LogAnchorSec = uint32_t__epochSec;
-    UINT32_T__G__LogAnchorMs = (uint32_t)millis();
-    INT32_T__G__LogTzSec = int32_t__tzSec;
-    BOOL__G__LogClockValid = true;
-    UINT32_T__G__LogHighWaterSec = uint32_t__epochSec;
-    /*
- * [EN] The phone says WHAT time it is; the board says how time passes from
- * here on. Both anchors start at this instant.
+    {
+        /*
+ * [EN] v1.116: remember the pair that is being replaced. The first page poll
+ * of a session often arrives before the board's first HELLO_ACK, and the old
+ * code dropped the board anchor in exactly that case, then saved a 0 into the
+ * clock file - the root of the "the first hours of the day are missing"
+ * report. The board keeps counting while this panel is off, so its uptime
+ * advanced by the same wall seconds: carry the pair forward.
  */
-    if ((BOOL__G__LogBoardAlive != false) && (UINT32_T__G__LogBoardNowSec != 0u))
-    {
-        UINT32_T__G__LogAnchorBoardSec = UINT32_T__G__LogBoardNowSec;
-        BOOL__G__LogAnchorBoardValid = true;
-    }
-    else
-    {
-        BOOL__G__LogAnchorBoardValid = false;
+        const uint32_t uint32_t__oldAnchorSec = UINT32_T__G__LogAnchorSec;
+        const uint32_t uint32_t__oldBoardSec = UINT32_T__G__LogAnchorBoardSec;
+        const bool bool__oldBoardValid = BOOL__G__LogAnchorBoardValid;
+        UINT32_T__G__LogAnchorSec = uint32_t__epochSec;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        INT32_T__G__LogTzSec = int32_t__tzSec;
+        BOOL__G__LogClockValid = true;
+        UINT32_T__G__LogHighWaterSec = uint32_t__epochSec;
+        /*
+ * [EN] The phone says WHAT time it is; the board says how time passes from
+ * here on.
+ */
+        if ((BOOL__G__LogBoardAlive != false) && (UINT32_T__G__LogBoardNowSec != 0u))
+        {
+            UINT32_T__G__LogAnchorBoardSec = UINT32_T__G__LogBoardNowSec;
+            BOOL__G__LogAnchorBoardValid = true;
+        }
+        else if ((bool__oldBoardValid != false) && (uint32_t__oldBoardSec != 0u))
+        {
+            int64_t int64_t__boardSec = (int64_t)uint32_t__oldBoardSec +
+                ((int64_t)uint32_t__epochSec - (int64_t)uint32_t__oldAnchorSec);
+            if (int64_t__boardSec > 0)
+            {
+                UINT32_T__G__LogAnchorBoardSec = (uint32_t)int64_t__boardSec;
+                BOOL__G__LogAnchorBoardValid = true;
+            }
+            else
+            {
+                BOOL__G__LogAnchorBoardValid = false;
+            }
+        }
+        else
+        {
+            BOOL__G__LogAnchorBoardValid = false;
+        }
     }
     /*
  * [EN] An accepted browser clock is an absolute time source too, so it
@@ -2287,6 +2343,16 @@ static void func__EspLog_Tick(void)
     if (BOOL__G__LogClockValid != false)
     {
         uint32_t uint32_t__sinceSaveMs = (uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastClockSaveMs);
+        /*
+ * [EN] v1.116: a freshly taken board anchor goes to the flash at once. One
+ * small write per wake is the price of never losing a sleep; the row-driven
+ * save below stays rate limited.
+ */
+        if (BOOL__G__LogAnchorSaveWanted != false)
+        {
+            func__EspLog_ClockSave();
+            BOOL__G__LogAnchorSaveWanted = false;
+        }
         bool bool__due = (uint32_t__sinceSaveMs >= ESP_LOG_CLOCK_SAVE_MS);
         /*
  * [EN] v1.115: a written row asks for a fresh anchor. On battery a session
@@ -3070,6 +3136,7 @@ static void func__EspLog_ResetStateAfterFormat(void)
     BOOL__G__LogLastBeatValid = false;
     UINT32_T__G__LogLastBeatSec = 0u;
     BOOL__G__LogClockSaveWanted = false;
+    BOOL__G__LogAnchorSaveWanted = false;
     if ((BOOL__G__FsOk != false) && (BOOL__G__LogClockValid != false))
     {
         func__EspLog_ClockSave();

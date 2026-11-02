@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          115u
+#define ESP_ESP_FW_VERSION          116u
 /*
  * [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
  */

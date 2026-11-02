@@ -233,6 +233,7 @@ static void reset_clock_test_boot(void)
     BOOL__G__LogClockSavedOnce = false;
     UINT32_T__G__LogLastClockSaveMs = 0u;
     BOOL__G__LogClockSaveWanted = false;
+    BOOL__G__LogAnchorSaveWanted = false;
     BOOL__G__LogBootRowPending = true;
     BOOL__G__LogUpdatePending = false;
     BOOL__A__LogForceRow = false;
@@ -3362,13 +3363,30 @@ int main(void)
         }
         func__EspLog_Begin();
         BOOL__G__LogUpdatePending = true;
+        const std::string clockBefore =
+            LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
         check(func__EspLog_TimeSet(baseSec + 50000u, 12600),
               "browser during grace: its clock is accepted");
         func__EspLog_Tick();
         check(!BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 1u,
               "browser during grace: the boot row need not wait for HELLO");
-        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 2u) == 0L,
-              "browser during grace: no stale board uptime is saved with the new time");
+        /*
+         * [EN] v1.116: the old rule wrote 0 here to avoid pairing a stale
+         * uptime with a new wall time. That cure was worse than the disease:
+         * with no anchor the next wake counted only its own uptime, so a
+         * night on battery fell hours behind (user report 2026-11-02). The
+         * pair is now moved forward by the same wall seconds instead, which
+         * is exactly the uptime the board has by then.
+         */
+        {
+            const std::string clockAfter =
+                LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+            check(row_field(clockAfter, 0u, 2u) ==
+                  row_field(clockBefore, 0u, 2u) +
+                  (row_field(clockAfter, 0u, 0u) - row_field(clockBefore, 0u, 0u)),
+                  "browser during grace: the board uptime moves WITH the clock, never back to zero",
+                  clockAfter);
+        }
 
         /* An update row remains mandatory even with a full day and no board;
            only its timestamp gets the bounded grace window. */
@@ -3647,6 +3665,104 @@ int main(void)
         reset_clock_test_boot();
     }
 
+    /* -- v1.116: a page visit before the board answers must not kill the anchor
+       [EN] Field report 2026-11-02: "the early hours of the day are not
+            written; writing only started 6 hours later, when I opened the
+            page". Cause: the browser sets the clock on the first poll of
+            every session, often before the board's first HELLO_ACK. The old
+            code cleared the board anchor in that case and then wrote 0 into
+            the clock file, so the next wake restarted the clock from the
+            saved second and counted only its own uptime: on battery that is
+            60 s of clock per 180 s of real time, so a night falls hours
+            behind, the early rows land in the PREVIOUS day's file and the
+            day the user opens looks empty until the phone sets the time
+            again. The board keeps counting while this panel is off, so its
+            uptime advanced by the same wall seconds: advance the pair, never
+            drop it.
+       [FA] گزارش میدانی ۲۰۲۶-۱۱-۰۲: «ساعت‌های اول روز نوشته نشده؛ شش ساعت
+            بعد که صفحه را باز کردم تازه شروع شد». علت: مرورگر در اولین
+            درخواست هر نشست ساعت را ست می‌کند، اغلب پیش از اولین پاسخ برد.
+            کد قبلی در این حالت لنگر برد را پاک می‌کرد و صفر در فایل ساعت
+            می‌نوشت، پس بیدار‌شدن بعدی فقط با آپ‌تایم خودش جلو می‌رفت: روی
+            باتری ۶۰ ثانیه در هر ۱۸۰ ثانیه - یعنی یک شب چند ساعت عقب
+            می‌افتد، ردیف‌های اولیه در فایل روز قبل می‌نشینند و روزِ بازکردن
+            صفحه خالی دیده می‌شود. برد وقتی پنل خاموش است هم می‌شمارد، پس
+            جفت را جلو ببر، هرگز پاکش نکن. */
+    {
+        const uint32_t nightBaseSec = 1792950000u;
+        const uint32_t nightBoardSec = 50000u;
+        char nightPath[32];
+
+        /* a normal session that ended with a matched pair on the flash */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        feed_board_uptime(nightBoardSec);
+        check(func__EspLog_TimeSet(nightBaseSec, 12600),
+              "night clock: the browser sets the time while the board answers");
+        func__EspLog_ClockSave();
+        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 2u) ==
+              (long)nightBoardSec,
+              "night clock: the saved pair holds the board uptime",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
+
+        /* the next wake: the page polls first, the board has not answered yet */
+        reset_clock_test_boot();
+        func__EspLog_Begin();
+        check(BOOL__G__LogClockValid && BOOL__G__LogAnchorBoardValid,
+              "night clock: the wake restores the pair");
+        check(func__EspLog_TimeSet(nightBaseSec + 30u, 12600),
+              "night clock: the early page poll is accepted");
+        func__EspLog_ClockSave();
+        {
+            const std::string saved = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+            check(row_field(saved, 0u, 2u) >= (long)nightBoardSec,
+                  "night clock: the page poll does NOT throw the board anchor away",
+                  saved);
+        }
+
+        /* six hours later the board answers again; the panel was asleep */
+        reset_clock_test_boot();
+        func__EspLog_Begin();
+        feed_board_uptime(nightBoardSec + 30u + 6u * 3600u);
+        check(func__EspLog_NowSec() >= nightBaseSec + 30u + 6u * 3600u &&
+              func__EspLog_NowSec() <= nightBaseSec + 30u + 6u * 3600u + 5u,
+              "night clock: six slept hours come back, so the row lands in today's file",
+              std::to_string((unsigned long)(func__EspLog_NowSec() -
+                                             (nightBaseSec + 30u + 6u * 3600u))));
+
+        /*
+         * [EN] v1.116: even with no anchor in the file, the first board answer
+         * of the session must reach the flash at once. Otherwise every later
+         * wake has to guess how long the board ran and throws one sleep away.
+         */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        check(func__EspLog_TimeSet(nightBaseSec, 12600),
+              "night clock: a fresh flash with no board answer");
+        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 2u) == 0L,
+              "night clock: the first save has no board uptime to pair with");
+        G_StubMillis = 2000u;
+        feed_board_uptime(nightBoardSec);
+        func__EspLog_Tick();
+        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 2u) ==
+              (long)nightBoardSec,
+              "night clock: the first board answer is on the flash in the same second",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
+
+        /* six slept hours later, that saved pair is what keeps the day right */
+        reset_clock_test_boot();
+        func__EspLog_Begin();
+        G_StubMillis = 1000u;
+        feed_board_uptime(nightBoardSec + 6u * 3600u);
+        check(func__EspLog_NowSec() >= nightBaseSec + 6u * 3600u - 2u &&
+              func__EspLog_NowSec() <= nightBaseSec + 6u * 3600u + 2u,
+              "night clock: the saved pair brings the six slept hours back",
+              std::to_string((unsigned long)((int64_t)func__EspLog_NowSec() -
+                                             (int64_t)(nightBaseSec + 6u * 3600u))));
+        (void)nightPath;
+        reset_clock_test_boot();
+    }
+
     /* -- v1.115: every written row asks for a fresh clock anchor ------------
        [EN] On battery the board cuts this panel's power every few minutes, so
             the ten-minute periodic save never came and the clock file stayed
@@ -3671,8 +3787,10 @@ int main(void)
         uint32_t boardSec = 100u;
         feed_board_uptime(boardSec);
         func__EspLog_Tick();
+        /* v1.116: the first board answer of the session is saved at once, so
+           the file already carries the pair one second into the session */
         check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 0u) ==
-              (long)freshBaseSec,
+              (long)freshBaseSec + 1L,
               "fresh anchor: the clock file starts on the session second",
               LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
 
