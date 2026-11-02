@@ -232,6 +232,7 @@ static void reset_clock_test_boot(void)
     BOOL__G__LogClockJumpPending = false;
     BOOL__G__LogClockSavedOnce = false;
     UINT32_T__G__LogLastClockSaveMs = 0u;
+    BOOL__G__LogClockSaveWanted = false;
     BOOL__G__LogBootRowPending = true;
     BOOL__G__LogUpdatePending = false;
     BOOL__A__LogForceRow = false;
@@ -1139,16 +1140,25 @@ int main(void)
         check(func__EspLog_NowSec() >= 1792756800u,
               "now() walks forward from the phone anchor");
 
-        /* v1.106: the boot row needs NO board frame - Tick writes it at
-           start-up so a session with a silent board still logs. */
+        /* v1.115 (user order 2026-11-02): a plain switch-on is NOT an event.
+           It used to write a row every time, which on battery meant one row
+           every three minutes and a full day file after 20 hours. */
         G_StubMillis = 100000u;
         func__EspLog_Tick();
-        check(UINT16_T__G__LogRowsToday == 1u,
-              "start-up writes exactly one boot row even with the board never connected");
+        check(UINT16_T__G__LogRowsToday == 0u,
+              "start-up alone writes NOTHING: a switch-on is not an event");
         const std::vector<uint8_t> first = tlm_payload_v24(200u, 24000u);
         feed(build_frame(ESP_MSG_TLM_LIVE, first));
-        check(UINT16_T__G__LogRowsToday == 1u,
+        check(UINT16_T__G__LogRowsToday == 0u,
               "the first frame only seeds the state compare - it adds no row");
+
+        /* mains appears (pack healthy): THIS is the first event of the log */
+        std::vector<uint8_t> withMains = tlm_payload_v24(202u, 24000u);
+        withMains[2] = 0x02u;   /* input present */
+        G_StubMillis += 5000u;
+        feed(build_frame(ESP_MSG_TLM_LIVE, withMains));
+        check(UINT16_T__G__LogRowsToday == 1u,
+              "the first real change writes the first row");
 
         const uint32_t dayCode = func__EspLog_TodayCode();
         char path[32];
@@ -1156,39 +1166,26 @@ int main(void)
         check(dayCode != 0u && LittleFS.exists(path),
               "the row lands in a file named after the phone's own day");
 
-        size_t rows = 0u;
         std::string body = LittleFS.files[std::string(path)];
-        for (size_t k = 0u; k < body.size(); k++) {
-            if ((body[k] == '\n') && (k > 0u) && (body[k - 1u] != '#')) rows++;
-        }
         check(body.find("# epoch,uptime_s") != std::string::npos,
               "a new day file starts with its column header");
-        check(row_field(body, 0u, 2u) == 1,
-              "the first row carries the boot change bit");
+        check(row_field(body, 0u, 2u) == 2,
+              "the first row carries the mains change bit");
 
-        /* the same state again: NOTHING is written */
+        /* the same state again (mains still present): NOTHING is written */
+        std::vector<uint8_t> same = tlm_payload_v24(201u, 24000u);
+        same[2] = 0x02u;
         G_StubMillis += 5000u;
-        feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(201u, 24000u)));
+        feed(build_frame(ESP_MSG_TLM_LIVE, same));
         check(UINT16_T__G__LogRowsToday == 1u,
               "an unchanged board writes nothing (the log is change-only)");
-
-        /* mains appears (pack still healthy): one row, mains bit set */
-        std::vector<uint8_t> withMains = tlm_payload_v24(202u, 24000u);
-        withMains[2] = 0x02u;   /* input present */
-        G_StubMillis += 5000u;
-        feed(build_frame(ESP_MSG_TLM_LIVE, withMains));
-        check(UINT16_T__G__LogRowsToday == 2u,
-              "a mains change writes one row");
-        std::string body2 = LittleFS.files[std::string(path)];
-        check(row_field(body2, 1u, 2u) == 2,
-              "the mains row carries the mains change bit");
 
         /* battery falls under the cut band: a row, and the last-state note */
         std::vector<uint8_t> lowPack = tlm_payload_v24(203u, 20608u);
         lowPack[2] = 0x00u;
         G_StubMillis += 5000u;
         feed(build_frame(ESP_MSG_TLM_LIVE, lowPack));
-        check(UINT16_T__G__LogRowsToday == 3u,
+        check(UINT16_T__G__LogRowsToday == 2u,
               "crossing the cut band writes one row");
         /* [EN] no second file: the row itself is the memory. The last row of the
                 day file carries the pack voltage, so the next boot can compare.
@@ -1196,7 +1193,7 @@ int main(void)
                 پک را دارد، پس روشن‌شدن بعدی می‌تواند مقایسه کند. */
         {
             std::string bodyLow = LittleFS.files[std::string(path)];
-            check(row_field(bodyLow, 2u, 10u) == 20608,
+            check(row_field(bodyLow, 1u, 10u) == 20608,
                   "the last row itself holds the pack voltage, no extra file needed",
                   std::to_string(row_field(bodyLow, 2u, 10u)));
         }
@@ -1222,13 +1219,13 @@ int main(void)
             manual[2] = 0x20u;   /* hand mode on, pack still on the cut band */
             G_StubMillis += 5000u;
             feed(build_frame(ESP_MSG_TLM_LIVE, manual));
-            check(UINT16_T__G__LogRowsToday == 4u,
+            check(UINT16_T__G__LogRowsToday == 3u,
                   "switching the board to hand mode writes a row");
             std::string bodyMode = LittleFS.files[std::string(path)];
-            check(row_field(bodyMode, 3u, 2u) == 256u,
+            check(row_field(bodyMode, 2u, 2u) == 256u,
                   "that row is marked as a mode change",
                   std::to_string(row_field(bodyMode, 3u, 2u)));
-            check(row_field(bodyMode, 3u, 5u) == 32u,
+            check(row_field(bodyMode, 2u, 5u) == 32u,
                   "and the saved state carries the hand-mode bit, so the line can say it",
                   std::to_string(row_field(bodyMode, 3u, 5u)));
             check(bodyMode.find(",fl,") != std::string::npos,
@@ -1250,13 +1247,13 @@ int main(void)
             dead[o + 3u] = 0x00u;
             G_StubMillis += 5000u;
             feed(build_frame(ESP_MSG_TLM_LIVE, dead));
-            check(UINT16_T__G__LogRowsToday == 5u,
+            check(UINT16_T__G__LogRowsToday == 4u,
                   "a condemned-battery verdict writes a row");
             std::string bodyDead = LittleFS.files[std::string(path)];
-            check(row_field(bodyDead, 4u, 2u) == 768u,
+            check(row_field(bodyDead, 3u, 2u) == 768u,
                   "that row is marked as a verdict change (and a mode change: the flags byte fell)",
                   std::to_string(row_field(bodyDead, 4u, 2u)));
-            check(row_field(bodyDead, 4u, 14u) == 1u,
+            check(row_field(bodyDead, 3u, 14u) == 1u,
                   "and the verdict itself is saved, so the line can name the battery",
                   std::to_string(row_field(bodyDead, 4u, 14u)));
         }
@@ -1484,9 +1481,18 @@ int main(void)
             BOOL__G__LogMainsQueuedValid = false;
             G_StubMillis += 5000u;
 
+            /* v1.115: a switch-on with no board writes nothing at all. */
+            func__EspLog_Tick();
+            check(UINT16_T__G__LogRowsToday == 0u,
+                  "a silent board and no change: the switch-on writes nothing");
+
+            /* the hourly heartbeat is what keeps an offline log alive - and it
+               needs no earlier row now, only the log clock */
+            UINT32_T__G__LogLastBeatSec = func__EspLog_NowSec() - ESP_LOG_HEARTBEAT_SEC;
+            BOOL__G__LogLastBeatValid = true;
             func__EspLog_Tick();
             check(UINT16_T__G__LogRowsToday == 1u,
-                  "with a board that never connected, the boot row is still written");
+                  "the heartbeat keeps the offline log alive too");
 
             G_StubMillis += ESP_LOG_LINK_TIMEOUT_MS + 10u;
             func__EspLog_Tick();
@@ -1495,16 +1501,9 @@ int main(void)
             check(BOOL__G__LogLinkDown,
                   "the silence stays latched so the first frame can pair it with link-back");
 
-            /* backdate the last row instead of jumping 6 h forward - a real
-               jump can roll the operator's day and reset the per-day count */
-            UINT32_T__G__LogLastRowMs = (uint32_t)millis() - ESP_LOG_HEARTBEAT_MS;
-            func__EspLog_Tick();
-            check(UINT16_T__G__LogRowsToday == 3u,
-                  "the heartbeat keeps the offline log alive too");
-
             G_StubMillis += 5000u;
             feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(219u, 24000u)));
-            check(UINT16_T__G__LogRowsToday == 4u,
+            check(UINT16_T__G__LogRowsToday == 3u,
                   "the first late frame pairs the silence with a link-back row");
         }
 
@@ -1537,6 +1536,79 @@ int main(void)
         feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(220u)));
         check(UINT16_T__G__LogRowsToday == 1u,
               "the history starts again from a clean file after a clear");
+    }
+
+    /* -- v1.115: the only two switch-ons that still write a row ------------
+       [EN] The plain "panel came on" row is gone (user order 2026-11-02). A
+            row survives only when it carries a message: a firmware update, or
+            a previous run that had stopped in the battery danger band. Both
+            are driven here from a real state, not from a flag poked in the
+            test: the danger state is read from the last row of the last day
+            file, exactly as on the board.
+       [FA] ردیف سادهٔ «پنل روشن شد» حذف شده است (دستور کاربر ۲۰۲۶-۱۱-۰۲).
+            فقط دو حالت ردیف دارند: آپدیت فریمور، یا اجرای قبلی که در نوار
+            خطر باتری ایستاده بود. هر دو اینجا از یک وضعیت واقعی ساخته
+            می‌شوند، نه از یک فلگ دستی: وضعیت خطر از آخرین ردیف آخرین
+            فایل روز خوانده می‌شود، همان‌طور که روی برد اتفاق می‌افتد. */
+    {
+        const uint32_t dangerBaseSec = 1792900000u;
+        char dangerPath[32];
+
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        check(func__EspLog_TimeSet(dangerBaseSec, 0),
+              "danger stop: the browser sets the clock");
+        (void)snprintf(dangerPath, sizeof dangerPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        /* the clock row that TimeSet just wrote is not part of this scenario */
+        LittleFS.files.clear();
+        UINT16_T__G__LogRowsToday = 0u;
+        /* the previous run ended at 20,500 mV - inside the cut band (21,200) */
+        LittleFS.files[std::string(dangerPath)] = std::string(ESP_LOG_HEADER) +
+            "1792899000,900,0,0,0,0,0,0,0,0,20500,12000,11900,0,0,0,0,0,0,0,0,15\n";
+        BOOL__G__LogBootSnapValid = false;
+        G_StubMillis = 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__EspLog_Tick();
+
+        check(func__EspLog_CountRows(dangerPath) == 2u,
+              "danger stop: the switch-on speaks and adds exactly one row",
+              std::to_string((unsigned)func__EspLog_CountRows(dangerPath)));
+        {
+            const std::string dangerFile = LittleFS.files[std::string(dangerPath)];
+            check((row_field(dangerFile, 1u, 2u) & 1L) != 0L,
+                  "danger stop: the row keeps the boot bit",
+                  dangerFile);
+            check(row_field(dangerFile, 1u, 3u) == 1L,
+                  "danger stop: and says why - back from a low-battery stop",
+                  dangerFile);
+        }
+        func__EspLog_Tick();
+        check(func__EspLog_CountRows(dangerPath) == 2u,
+              "danger stop: the row is written once, not on every Tick",
+              std::to_string((unsigned)func__EspLog_CountRows(dangerPath)));
+
+        /* the firmware update: the other case that must always speak */
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        check(func__EspLog_TimeSet(dangerBaseSec + 60u, 0),
+              "update row: the browser sets the clock");
+        BOOL__G__LogUpdatePending = true;
+        G_StubMillis = 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        func__EspLog_Tick();
+        (void)snprintf(dangerPath, sizeof dangerPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        {
+            const std::string updateFile = LittleFS.files[std::string(dangerPath)];
+            check(UINT16_T__G__LogRowsToday == 1u,
+                  "update row: one row for the update, no extra switch-on row",
+                  std::to_string((unsigned)UINT16_T__G__LogRowsToday));
+            check((row_field(updateFile, 0u, 2u) & 0x1001L) == 0x1001L,
+                  "update row: it carries both the boot and the update bit",
+                  updateFile);
+        }
+        reset_clock_test_boot();
     }
 
     /* ---- 31. v1.96: the byte budget, not just the day count ------------
@@ -1602,11 +1674,32 @@ int main(void)
         UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
         UINT16_T__G__LogRowsToday = 0u;
         UINT16_T__G__LogPendingMask = 0u;
+        /* the previous block left a "battery was on the cut band" snapshot
+           behind; this block starts from a clean sheet */
+        BOOL__G__LogBootSnapValid = false;
+        UINT8_T__G__LogBootDanger = 0u;
+        /* a stale "link was down" flag or a leftover queued note would put a
+           note row in front of the event this block is about */
+        BOOL__G__LogLinkDown = false;
+        UINT8_T__G__LogPendingNote = ESP_LOG_NOTE_NONE;
 
         G_StubMillis += 5000u;
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        /* v1.115: the heartbeat no longer needs an earlier row, so this block
+           starts its own silent hour instead of inheriting the previous one */
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        BOOL__G__LogLastBeatValid = false;
         func__EspLog_Tick();
         feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(240u, 23800u)));
+        /* v1.115: the switch-on itself writes nothing, so the first row has to
+           be a real event - the mains appearing is the smallest real one */
+        {
+            std::vector<uint8_t> firstEvent = tlm_payload_v24(241u, 23800u);
+            firstEvent[2u] = 0x02u;
+            G_StubMillis += 5000u;
+            UINT32_T__G__LastTlmMs = (uint32_t)millis();
+            feed(build_frame(ESP_MSG_TLM_LIVE, firstEvent));
+        }
 
         check(LittleFS.exists("/evt-00000000.csv"),
               "with no phone clock at all, the first row still lands in a day file");
@@ -1617,8 +1710,9 @@ int main(void)
         check(UINT8_T__G__LogIndexCount == 1u,
               "and the no-clock day is listed, so the panel can open it",
               std::to_string(UINT8_T__G__LogIndexCount));
-        check(row_field(noClock, 0u, 2u) == 1L,
-              "the row is a boot row like any other");
+        check((row_field(noClock, 0u, 2u) & 2L) != 0L,
+              "the row carries the change that caused it, not a switch-on",
+              std::to_string(row_field(noClock, 0u, 2u)));
 
         /* the phone connects: the next change goes to the real day file */
         ESP_WEB_SERVER_T__G__Server.clearArgs();
@@ -1631,16 +1725,18 @@ int main(void)
         ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
               !ESP_WEB_SERVER_T__G__Server.lastBody.empty() &&
-              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              (row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) & 2L) != 0L,
               "پیش از ساخته‌شدن فایل امروز، خواندن خودکار آخرین فایل موجود (روز بدون ساعت) را نشان می‌دهد");
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt/dl", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
-              ESP_WEB_SERVER_T__G__Server.lastBody.find("23800") == std::string::npos,
+              ESP_WEB_SERVER_T__G__Server.lastHeaderVal.find("evt-00000000.csv") != std::string::npos &&
+              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 0u) == 0L,
               "دانلود خودکار پیش از ساخته‌شدن فایل امروز همان فایل موجود را تحویل می‌دهد");
 
-        std::vector<uint8_t> mainsNow = tlm_payload_v24(241u, 23800u);
-        mainsNow[2] = 0x02u;
+        /* the mains goes away again: a real event, so today's file is made */
+        std::vector<uint8_t> mainsNow = tlm_payload_v24(242u, 23800u);
+        mainsNow[2] = 0x00u;
         G_StubMillis += 5000u;
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         feed(build_frame(ESP_MSG_TLM_LIVE, mainsNow));
@@ -1659,7 +1755,7 @@ int main(void)
         ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
               row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 0u) == 0L &&
-              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              (row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) & 2L) != 0L,
               "انتخاب صریح 00000000 حتی پس از ساخته‌شدن فایل امروز دقیقاً فایل روز بدون ساعت را برمی‌گرداند");
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.setArg("day", "00000000");
@@ -1681,11 +1777,15 @@ int main(void)
         G_StubMillis += 5000u;
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         func__EspLog_Tick();
+        /* v1.115: with no file system the switch-on writes nothing either, so
+           the RAM ring is filled by a real event - the user's own snapshot. */
+        check(func__EspLog_SnapshotNow() != false,
+              "خارج از فایل‌سیستم، ثبت دستی ردیف را در حلقهٔ رم می‌نشاند");
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
               !ESP_WEB_SERVER_T__G__Server.lastBody.empty() &&
-              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 3u) == 6L,
               "حتی در صورت غیرفعال بودن فایل‌سیستم فلش، ردیف زنده در حلقهٔ رم ثبت و خوانده می‌شود");
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt/dl", HTTP_GET);
@@ -1742,7 +1842,11 @@ int main(void)
         G_StubMillis += 5000u;
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
 
-        /* the clock is fine, the flash is not: every write is refused */
+        /* the clock is fine, the flash is not: every write is refused.
+           v1.115: a plain switch-on writes nothing, so the row that the flash
+           has to refuse comes from a firmware update - the one case that
+           still always speaks. */
+        BOOL__G__LogUpdatePending = true;
         LittleFS.failWrites = true;
         func__EspLog_Tick();
         check(UINT8_T__G__LogWriteFault != 0u,
@@ -1760,7 +1864,7 @@ int main(void)
               "GET /evt tells the page that the flash refused the write",
               ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
         check(!ESP_WEB_SERVER_T__G__Server.lastBody.empty() &&
-              row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+              (row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) & 1L) != 0L,
               "and the refused boot row is still readable under that banner - not an empty card");
 
         /* the flash works again: the next change lands on flash and clears it */
@@ -1787,10 +1891,10 @@ int main(void)
         check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs") == "1",
               "the page is told the rows come from the flash again",
               ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
-        check(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) == 1L,
+        check((row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) & 1L) != 0L,
               "the row the flash had refused is now the FIRST row of the day file",
               std::to_string(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u)));
-        check(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 1u, 2u) == 2L,
+        check((row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 1u, 2u) & 2L) != 0L,
               "and the row written after the recovery follows it as the mains change",
               std::to_string(row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 1u, 2u)));
 
@@ -1963,13 +2067,24 @@ int main(void)
         BOOL__G__LogDayFull = false;
         BOOL__G__LogMarkerDone = false;
         UINT8_T__G__LogWriteFault = 0u;
-        func__EspLog_Tick();          /* boot row, still no browser */
+        func__EspLog_Tick();          /* no browser - and no row on its own */
 
-        /* the board keeps talking: two mains changes, still no browser */
+        /* v1.115: the switch-on writes nothing, so the offline history is made
+           of real changes - the mains going away and coming back */
+        {
+            std::vector<uint8_t> quiet = tlm_payload_v24(60u, 24000u);
+            quiet[2u] = 0x00u;
+            G_StubMillis += 5000u;
+            Serial.feed(build_frame(ESP_MSG_TLM_LIVE, quiet));
+            func__Esp_DrainSerial();
+            func__EspLog_Tick();
+        }
         for (uint8_t k = 0u; k < 3u; k++)
         {
+            std::vector<uint8_t> withMains = tlm_payload_v24((uint16_t)(61u + k), 24000u);
+            withMains[2u] = ((k % 2u) == 0u) ? 0x02u : 0x00u;
             G_StubMillis += 5000u;
-            Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(60u + k)));
+            Serial.feed(build_frame(ESP_MSG_TLM_LIVE, withMains));
             func__Esp_DrainSerial();
             func__EspLog_Tick();
         }
@@ -1987,8 +2102,9 @@ int main(void)
         check(ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs") == "1",
               "the page is served from the flash, not from a live session",
               ESP_WEB_SERVER_T__G__Server.header("X-Log-Fs"));
-        check(ESP_WEB_SERVER_T__G__Server.lastBody.find(",1,") != std::string::npos,
-              "and the boot row from the offline session is in the answer");
+        check((row_field(ESP_WEB_SERVER_T__G__Server.lastBody, 0u, 2u) & 2L) != 0L,
+              "and the offline session's own rows are in the answer",
+              ESP_WEB_SERVER_T__G__Server.lastBody.substr(0u, 120u));
     }
 
     /* ---- 39. the clock is the BOARD's, not the browser's ------------------
@@ -2319,13 +2435,16 @@ int main(void)
         LittleFS.files[std::string(cutPath)] = std::string(ESP_LOG_HEADER) +
             "1792756000,1,1024,0,1,0,0,0,0,0,23900,12000,11900,0,0,0,0,0,0,0,0,36";
 
-        func__EspLog_Tick();   /* boot row: the day has to be opened and repaired */
+        /* v1.115: a plain switch-on writes no row, so the row that forces the
+           open (and with it the repair) comes from the firmware update */
+        BOOL__G__LogUpdatePending = true;
+        func__EspLog_Tick();   /* update row: the day has to be opened and repaired */
         const std::string repaired = LittleFS.files[std::string(cutPath)];
         check(repaired.find(",36\n") != std::string::npos,
               "the broken last row gets its newline, so the crash is a closed row again");
-        const size_t bootAt = repaired.rfind(",1,0,");
+        const size_t bootAt = repaired.rfind(",4097,0,");
         check(bootAt != std::string::npos && bootAt > repaired.find(",36\n"),
-              "and the new boot row starts on its own line, not glued to the broken one");
+              "and the new update row starts on its own line, not glued to the broken one");
 
         /* the reader must not lose the row before the repair either */
         ESP_WEB_SERVER_T__G__Server.clearArgs();
@@ -3187,6 +3306,9 @@ int main(void)
         func__EspLog_Begin();
         check(BOOL__G__LogClockValid && BOOL__G__LogAnchorBoardValid,
               "ten-hour wake: the saved pair is restored");
+        /* v1.115: a plain wake writes no row, so this scenario is a firmware
+           update waking up - the case that still must speak */
+        BOOL__G__LogUpdatePending = true;
         func__EspLog_Tick();
         check(BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 0u,
               "ten-hour wake: the boot row waits for the first board uptime");
@@ -3201,7 +3323,7 @@ int main(void)
               std::to_string(func__EspLog_NowSec()));
         func__EspLog_Tick();
         check(!BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 1u,
-              "ten-hour wake: one boot row is written after the answer");
+              "ten-hour wake: one update row is written after the answer");
         (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
                        (unsigned long)func__EspLog_TodayCode());
         {
@@ -3217,6 +3339,7 @@ int main(void)
         /* A silent board must not block storage forever. */
         reset_clock_test_boot();
         func__EspLog_Begin();
+        BOOL__G__LogUpdatePending = true;
         G_StubMillis = 9999u;
         func__EspLog_Tick();
         check(BOOL__G__LogBootRowPending,
@@ -3238,6 +3361,7 @@ int main(void)
             LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] = savedClock;
         }
         func__EspLog_Begin();
+        BOOL__G__LogUpdatePending = true;
         check(func__EspLog_TimeSet(baseSec + 50000u, 12600),
               "browser during grace: its clock is accepted");
         func__EspLog_Tick();
@@ -3266,6 +3390,7 @@ int main(void)
         reset_clock_test_boot();
         LittleFS.files.clear();
         func__EspLog_Begin();
+        BOOL__G__LogUpdatePending = true;
         func__EspLog_Tick();
         check(LittleFS.exists("/evt-00000000.csv"),
               "no saved clock: day-zero storage does not wait for a board");
@@ -3294,10 +3419,13 @@ int main(void)
         LittleFS.files.clear();
         LittleFS.failOpenCount = 0;
         func__EspLog_Begin();
+        /* v1.115: a plain switch-on writes nothing, so the row this block
+           starts from comes from the firmware update */
+        BOOL__G__LogUpdatePending = true;
         G_StubMillis = 5000u;
         func__EspLog_Tick();
         check(UINT16_T__G__LogRowsToday == 1u,
-              "note-only flush: the boot row is the only row so far",
+              "note-only flush: the update row is the only row so far",
               std::to_string((unsigned)UINT16_T__G__LogRowsToday));
         G_StubMillis = 6000u;
         func__EspLog_Queue(0u, ESP_LOG_NOTE_HEARTBEAT);
@@ -3346,6 +3474,7 @@ int main(void)
         LittleFS.failOpenCount = 0;
         check(func__EspLog_TimeSet(reviewBaseSec, 0),
               "stale day: the browser sets the clock");
+        BOOL__G__LogUpdatePending = true;
         G_StubMillis = 1000u;
         func__EspLog_Tick();
         {
@@ -3455,10 +3584,11 @@ int main(void)
         LittleFS.failOpenCount = 0;
         check(func__EspLog_TimeSet(beatBaseSec, 0),
               "beat: the browser sets the clock");
+        BOOL__G__LogUpdatePending = true;
         G_StubMillis = 1000u;
         func__EspLog_Tick();
         check(UINT16_T__G__LogRowsToday == 1u,
-              "beat: the boot row is written",
+              "beat: the update row is written",
               std::to_string((unsigned)UINT16_T__G__LogRowsToday));
         /* the board answers with its uptime: the first answer anchors, the next
            one is an hour later - while the panel itself ran for one second */
@@ -3514,6 +3644,94 @@ int main(void)
                   "beat: an hour counted ACROSS the cut is still honoured",
                   std::to_string((unsigned long)func__EspLog_NowSec()));
         }
+        reset_clock_test_boot();
+    }
+
+    /* -- v1.115: every written row asks for a fresh clock anchor ------------
+       [EN] On battery the board cuts this panel's power every few minutes, so
+            the ten-minute periodic save never came and the clock file stayed
+            hours behind the rows around it. A written row now asks for a save,
+            rate limited to one a minute so the flash is not worn. These checks
+            pin that promise: the file moves with the rows, and a second row
+            inside the same minute does not touch the flash.
+       [FA] روی باتری برد هر چند دقیقه برق پنل را قطع می‌کند، پس ذخیرهٔ ده‌
+            دقیقه‌ای هرگز نمی‌رسید و فایل ساعت ساعت‌ها از ردیف‌های اطرافش
+            عقب می‌ماند. حالا هر ردیفِ نوشته‌شده یک ذخیرهٔ تازه می‌خواهد،
+            حداکثر یک‌بار در دقیقه تا فلش فرسوده نشود. این بررسی‌ها همان
+            قول را میخ می‌کنند: فایل با ردیف‌ها جلو می‌رود و ردیف دوم در
+            همان دقیقه به فلش دست نمی‌زند. */
+    {
+        const uint32_t freshBaseSec = 1792850000u;
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        LittleFS.failOpenCount = 0u;
+        check(func__EspLog_TimeSet(freshBaseSec, 0),
+              "fresh anchor: the browser sets the clock");
+        G_StubMillis = 1000u;
+        uint32_t boardSec = 100u;
+        feed_board_uptime(boardSec);
+        func__EspLog_Tick();
+        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 0u) ==
+              (long)freshBaseSec,
+              "fresh anchor: the clock file starts on the session second",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
+
+        /* a board that keeps talking, so silence never adds rows of its own */
+        auto advanceSeconds = [&boardSec](uint32_t uint32_t__seconds) {
+            for (uint32_t k = 0u; k < uint32_t__seconds; k += 5u)
+            {
+                G_StubMillis += 5000u;
+                boardSec += 5u;
+                feed_board_uptime(boardSec);
+                func__EspLog_Tick();
+            }
+        };
+
+        /* half a minute later a real row lands */
+        advanceSeconds(30u);
+        check(func__EspLog_NowSec() == freshBaseSec + 31u,
+              "fresh anchor: the board clock has moved half a minute",
+              std::to_string((unsigned long)func__EspLog_NowSec()));
+        check(func__EspLog_WriteRow(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE) != false,
+              "fresh anchor: a real row lands in the day file");
+        check(BOOL__G__LogClockSaveWanted != false,
+              "fresh anchor: the written row asks for a fresh clock file");
+
+        /* a few seconds later the minute is not up: the file must not move */
+        const std::string afterStart = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+        advanceSeconds(5u);
+        check(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] == afterStart,
+              "fresh anchor: the file is not rewritten inside the same minute",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
+        check(BOOL__G__LogClockSaveWanted != false,
+              "fresh anchor: the request waits instead of being dropped");
+
+        /* exactly one minute after the last save the file moves with the row */
+        advanceSeconds(25u);
+        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 0u) ==
+              (long)func__EspLog_NowSec(),
+              "fresh anchor: the file now carries the row's own second",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
+        check(BOOL__G__LogClockSaveWanted == false,
+              "fresh anchor: the request is cleared once it is served");
+
+        /* a second row inside the same minute must not wear the flash */
+        const std::string afterFirstSave = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
+        (void)func__EspLog_WriteRow(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE);
+        advanceSeconds(5u);
+        check(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] == afterFirstSave,
+              "fresh anchor: a second row inside the minute leaves the file alone",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
+        check(BOOL__G__LogClockSaveWanted != false,
+              "fresh anchor: but its request is kept, not dropped");
+
+        /* one minute after the last save the waiting request goes out */
+        advanceSeconds(55u);
+        check(BOOL__G__LogClockSaveWanted == false &&
+              row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 0u) ==
+              (long)func__EspLog_NowSec(),
+              "fresh anchor: the waiting request goes out one minute later",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
         reset_clock_test_boot();
     }
 

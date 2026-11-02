@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          114u
+#define ESP_ESP_FW_VERSION          115u
 /*
  * [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
  */
@@ -351,6 +351,13 @@
  * hour survives a power cut (user order 2026-11-01).
  */
 #define ESP_LOG_HEARTBEAT_SEC        (ESP_LOG_HEARTBEAT_MS / 1000u)
+/*
+ * [EN] v1.115: the clock file follows a written row, but not more often than
+ * this. On battery the panel only lives 60 s per cycle, so the ten-minute
+ * periodic save never happens and the file used to stay hours old; one small
+ * write a minute keeps the anchor fresh without wearing the flash.
+ */
+#define ESP_LOG_CLOCK_SAVE_MIN_MS    60000u
 #define ESP_LOG_DRAIN_RETRY_MS       30000u
 #define ESP_HTTP_SEND_TIMEOUT_MS     1000u
 #define ESP_HTTP_ROOT_MAX_MS         15000u

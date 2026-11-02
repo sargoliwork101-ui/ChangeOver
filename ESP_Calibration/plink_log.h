@@ -169,6 +169,11 @@ static bool     BOOL__G__LogLastRowValid = false;
  */
 static uint32_t UINT32_T__G__LogLastBeatSec = 0u;
 static bool     BOOL__G__LogLastBeatValid = false;
+/*
+ * [EN] v1.115: a row was written, so the clock file should follow it. Handled
+ * by Tick, rate limited by ESP_LOG_CLOCK_SAVE_MIN_MS.
+ */
+static bool     BOOL__G__LogClockSaveWanted = false;
 static bool     BOOL__G__LogLinkDown = false;
 /*
  * [EN] when the boot row of this session was written; the "board silent"
@@ -1650,6 +1655,12 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     {
         UINT32_T__G__LogLastBeatSec = func__EspLog_NowSec();
         BOOL__G__LogLastBeatValid = true;
+        /*
+ * [EN] v1.115: keep the anchor on the flash next to the row it belongs to.
+ * Tick does the write, at most once a minute, so a busy day cannot wear
+ * the flash and a battery session still leaves a fresh anchor behind.
+ */
+        BOOL__G__LogClockSaveWanted = true;
     }
     UINT16_T__G__LogPendingMask = 0u;
     UINT8_T__G__LogPendingNote = 0u;
@@ -2204,22 +2215,34 @@ static void func__EspLog_Tick(void)
 {
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     /*
- * [EN] Boot row FIRST and with no board at all: the panel log is the
- * witness of the panel itself, so a session with a silent board still
- * starts its own record (user order 2026-10-24). It carries the state
- * the panel saw last time and whether that run was in the danger band.
+ * [EN] v1.115: a switch-on only speaks when it has something to say - see
+ * the note inside. The silent-hour clock no longer waits for a row to
+ * exist, so a session that writes nothing still writes its heartbeat.
  */
     if ((BOOL__G__LogBootRowPending != false) &&
         (func__EspLog_BootClockReady(uint32_t__nowMs) != false))
     {
         /*
- * [EN] Changes queued during the boot-clock grace ride with this row,
- * so none of them is stamped with the stale flash clock.
+ * [EN] v1.115 (user order 2026-11-02: "why should it write 'the panel is on'
+ * every time? I do not need it at all"). A plain switch-on is not an
+ * event: on battery the board cycles this panel every three minutes, so
+ * the old boot row filled the day with 20 rows an hour, hit the
+ * 400-row cap after 20 hours and left the rest of the day unlogged -
+ * the "a couple of hours in the middle are missing" report. A row is
+ * written here ONLY when it carries a message: a firmware update, or a
+ * previous run that stopped in the battery danger band.
  */
-        uint16_t uint16_t__mask = (uint16_t)(ESP_LOG_CHG_BOOT | UINT16_T__G__LogPendingMask);
+        bool bool__speak = false;
+        uint16_t uint16_t__mask = UINT16_T__G__LogPendingMask;
         BOOL__G__LogBootRowPending = false;
         UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
         UINT8_T__G__LogPrevNote = func__EspLog_LoadLastDanger();
+        if (UINT8_T__G__LogPrevNote != 0u)
+        {
+            /* this row really does open a session, so it keeps the boot bit */
+            bool__speak = true;
+            uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_BOOT);
+        }
         /*
  * [EN] v1.113 (user order 2026-10-28: "every time I do an update one
  * record must be written, with no conditions at all, and only the
@@ -2232,7 +2255,8 @@ static void func__EspLog_Tick(void)
         if (BOOL__G__LogUpdatePending != false)
         {
             BOOL__G__LogUpdatePending = false;
-            uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_UPDATE);
+            bool__speak = true;
+            uint16_t__mask = (uint16_t)(uint16_t__mask | ESP_LOG_CHG_BOOT | ESP_LOG_CHG_UPDATE);
             UINT32_T__G__LogLastRowMs = 0u;
             BOOL__G__LogLastRowValid = false;
             UINT32_T__G__LogLastStepMs = 0u;
@@ -2243,9 +2267,12 @@ static void func__EspLog_Tick(void)
             BOOL__G__LogMainsQueuedValid = false;
             BOOL__A__LogForceRow = true;
         }
-        (void)func__EspLog_WriteRow(uint16_t__mask,
-                                    (UINT8_T__G__LogPrevNote != 0u) ?
-                                    ESP_LOG_NOTE_LOW_STOP : ESP_LOG_NOTE_NONE);
+        if (bool__speak != false)
+        {
+            (void)func__EspLog_WriteRow(uint16_t__mask,
+                                        (UINT8_T__G__LogPrevNote != 0u) ?
+                                        ESP_LOG_NOTE_LOW_STOP : ESP_LOG_NOTE_NONE);
+        }
     }
     /*
  * [EN] The clock moved by more than a re-sync: say it in the history.
@@ -2259,9 +2286,22 @@ static void func__EspLog_Tick(void)
     uint32_t__nowMs = (uint32_t)millis();
     if (BOOL__G__LogClockValid != false)
     {
-        if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastClockSaveMs) >= ESP_LOG_CLOCK_SAVE_MS)
+        uint32_t uint32_t__sinceSaveMs = (uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastClockSaveMs);
+        bool bool__due = (uint32_t__sinceSaveMs >= ESP_LOG_CLOCK_SAVE_MS);
+        /*
+ * [EN] v1.115: a written row asks for a fresh anchor. On battery a session
+ * lasts 60 s, so the ten-minute periodic save never came and the file
+ * stayed hours behind; this one is rate limited so the flash is not worn.
+ */
+        if ((BOOL__G__LogClockSaveWanted != false) &&
+            (uint32_t__sinceSaveMs >= ESP_LOG_CLOCK_SAVE_MIN_MS))
+        {
+            bool__due = true;
+        }
+        if (bool__due != false)
         {
             func__EspLog_ClockSave();
+            BOOL__G__LogClockSaveWanted = false;
         }
     }
     /*
@@ -2311,19 +2351,24 @@ static void func__EspLog_Tick(void)
  * v1.114: the window is measured on the LOG clock instead of this
  * panel's uptime, which the battery saver resets every few minutes.
  */
-    if (BOOL__G__LogLastRowValid != false)
-    {
-        if (func__EspLog_HeartbeatDue(uint32_t__nowMs) != false)
-        {
-            func__EspLog_Queue(0u, ESP_LOG_NOTE_HEARTBEAT);
-            /*
- * [EN] v1.114: save the new beat second at once - the next power cut may
- * come before the ten-minute clock save, and the row must not repeat.
+    /*
+ * [EN] v1.115: this used to need a row to exist first (LogLastRowValid), and
+ * a switch-on used to provide it. With the plain boot row gone, a quiet
+ * battery session would never have written a heartbeat at all, so the
+ * window is judged on the log clock alone; the beat second comes from the
+ * clock file, which is why it survives the power cut.
  */
-            if (BOOL__G__LogClockValid != false)
-            {
-                func__EspLog_ClockSave();
-            }
+    if (func__EspLog_HeartbeatDue(uint32_t__nowMs) != false)
+    {
+        func__EspLog_Queue(0u, ESP_LOG_NOTE_HEARTBEAT);
+        /*
+ * [EN] save the new beat second at once - the next power cut may come
+ * before the periodic save, and the row must not repeat.
+ */
+        if (BOOL__G__LogClockValid != false)
+        {
+            func__EspLog_ClockSave();
+            BOOL__G__LogClockSaveWanted = false;
         }
     }
 }
@@ -3024,6 +3069,7 @@ static void func__EspLog_ResetStateAfterFormat(void)
     /* the clock file was erased, so its fifth field (the beat second) is gone */
     BOOL__G__LogLastBeatValid = false;
     UINT32_T__G__LogLastBeatSec = 0u;
+    BOOL__G__LogClockSaveWanted = false;
     if ((BOOL__G__FsOk != false) && (BOOL__G__LogClockValid != false))
     {
         func__EspLog_ClockSave();
