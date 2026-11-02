@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          116u
+#define ESP_ESP_FW_VERSION          117u
 /*
  * [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
  */
@@ -392,7 +392,7 @@
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
     "# batt_pct: battery percent from the discharge map (param 74/75, factory 21,000..29,000 mV) / درصد باتری از نگاشت دشارژ\n" \
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
-    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full 5=heartbeat 6=manual\n" \
+    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full 5=heartbeat 6=manual 7=day start\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 /*
  * [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of

@@ -240,6 +240,12 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_NOTE_DAY_FULL  4u
 #define ESP_LOG_NOTE_HEARTBEAT 5u
 #define ESP_LOG_NOTE_MANUAL    6u
+/*
+ * [EN] v1.117: the first row of a day file: "the log of this day starts here".
+ * It carries the real second of the first wake after midnight, never a fake
+ * 00:00 (user order 2026-11-02: "the moment the file is made, write a record").
+ */
+#define ESP_LOG_NOTE_DAY_START 7u
 #define ESP_LOG_PATH_MAX       24u
 /*
  * [EN] One CSV row: 22 numbers, the widest possible being 22 x 10 digits plus
@@ -1311,6 +1317,26 @@ static uint16_t func__EspLog_CountRows(const char *char__path)
         String string__line = file__day.readStringUntil('\n');
         if ((string__line.length() > 0u) && (string__line[0] != '#'))
         {
+            /*
+             * [EN] v1.117: the day-file marker (note 7) is the file's own first
+             * line, not a history row, so it never spends a slot of the day cap.
+             */
+            int32_t int32_t__note = func__EspLog_FieldStart(string__line, 4u);
+            uint32_t uint32_t__note = 0u;
+            if (int32_t__note > 0)
+            {
+                String string__note = string__line.substring((size_t)int32_t__note);
+                int32_t int32_t__comma = (int32_t)string__note.indexOf(',');
+                if (int32_t__comma >= 0)
+                {
+                    string__note = string__note.substring(0u, (size_t)int32_t__comma);
+                }
+                uint32_t__note = (uint32_t)string__note.toInt();
+            }
+            if (uint32_t__note == (uint32_t)ESP_LOG_NOTE_DAY_START)
+            {
+                continue;
+            }
             uint16_t__rows++;
         }
     }
@@ -1424,6 +1450,14 @@ static bool func__EspLog_AppendRow(uint32_t uint32_t__dayCode, const char *char_
  * @brief  [EN] Make sure today's file exists and its row counter is right.
  * @return [EN] bool, false when the day file could not be opened or written
  */
+/*
+ * [EN] v1.117: defined below; the day opener writes the day's first row itself.
+ */
+static bool func__EspLog_BuildRow(char *char__row, size_t size_t__size,
+                                  uint16_t uint16_t__changeMask, uint8_t uint8_t__note);
+/**
+ * @brief  [EN] Open (and remember) the day file of "now".
+* @return bool opened */
 static bool func__EspLog_OpenDay(void)
 {
     char char__path[ESP_LOG_PATH_MAX];
@@ -1463,6 +1497,30 @@ static bool func__EspLog_OpenDay(void)
         func__EspLog_FaultRaise();
     }
     UINT16_T__G__LogRowsToday = func__EspLog_CountRows(char__path);
+    /*
+ * [EN] v1.117: a brand new day file opens with its own row, so the history
+ * never starts with an unexplained gap - the day begins where the panel woke.
+ * Only with a real clock: a "start" line with no time would be noise in the
+ * no-clock file. The heartbeat is deliberately NOT touched here, so the
+ * hourly rows keep landing on the hour.
+ */
+    if ((bool__isNew != false) && (bool__ok != false) &&
+        (BOOL__G__LogClockValid != false))
+    {
+        char char__startRow[ESP_LOG_ROW_MAX];
+        if (func__EspLog_BuildRow(char__startRow, sizeof(char__startRow),
+                                  0u, ESP_LOG_NOTE_DAY_START) != false)
+        {
+            if (func__EspLog_AppendRow(uint32_t__dayCode, char__startRow) != false)
+            {
+                /*
+                 * [EN] the marker does not use a slot of the day cap: it is the
+                 * file's own first line, not a history row the panel reports.
+                 */
+                BOOL__G__LogAnchorSaveWanted = true;
+            }
+        }
+    }
     BOOL__G__LogDayFull = (UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY);
     BOOL__G__LogMarkerDone = BOOL__G__LogDayFull;
     /*
@@ -2337,6 +2395,21 @@ static void func__EspLog_Tick(void)
     {
         BOOL__G__LogClockJumpPending = false;
         func__EspLog_Queue(ESP_LOG_CHG_CLOCK, ESP_LOG_NOTE_NONE);
+    }
+    /*
+ * [EN] v1.117: the first wake after midnight opens the new day right away, so
+ * the file exists from that second (with its own "day starts here" row) even
+ * if nothing else happens for hours. Opening an existing file writes nothing,
+ * so a reboot in the same day cannot duplicate the row.
+ */
+    if ((BOOL__G__FsOk != false) && (BOOL__G__LogClockValid != false) &&
+        (func__EspLog_BootClockReady(uint32_t__nowMs) != false))
+    {
+        uint32_t uint32_t__today = func__EspLog_TodayCode();
+        if ((uint32_t__today != 0u) && (uint32_t__today != UINT32_T__G__LogDayCode))
+        {
+            (void)func__EspLog_OpenDay();
+        }
     }
     func__EspLog_FlushPending();
     uint32_t__nowMs = (uint32_t)millis();

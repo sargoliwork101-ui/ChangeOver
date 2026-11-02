@@ -433,7 +433,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 82df909</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c673ac5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4193,6 +4193,9 @@ function evtRowText(r){
   if(r.note===5){add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);}
   if(r.note===6){add('ثبت دستی (به‌روزرسانی) — کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
   if(r.note===4){add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);}
+  /* [EN] v1.117: the first row of a day file says the day's log starts here.
+     [FA] نسخهٔ ۱٫۱۱۷: اولین ردیف فایل هر روز می‌گوید ثبت آن روز از اینجا شروع شده. */
+  if(r.note===7){add('ایجاد فایل روز — ثبت این روز از این لحظه شروع شد',0);}
   if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
   /* [EN] v1.109: every row also speaks the battery state - percent (stored
           on the row since v1.109, or recomputed for older files), the side it

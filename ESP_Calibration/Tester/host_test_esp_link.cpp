@@ -136,7 +136,19 @@ static long row_field(const std::string &body, size_t rowIndex, size_t fieldInde
     while (k <= body.size()) {
         const bool eol = (k == body.size()) || (body[k] == '\n');
         if (eol) {
-            if ((k > start) && (body[start] != '#')) {
+            bool skip = false;
+            if ((k > start) && (body[start] != '#'))
+            {
+                /* v1.117: the day-file marker (note 7) is not a history row */
+                unsigned long fa = 0u, fb = 0u, fc = 0u, fd = 0u;
+                const std::string probe = body.substr(start, k - start);
+                if ((sscanf(probe.c_str(), "%lu,%lu,%lu,%lu", &fa, &fb, &fc, &fd) == 4) &&
+                    (fd == (unsigned long)ESP_LOG_NOTE_DAY_START))
+                {
+                    skip = true;
+                }
+            }
+            if ((k > start) && (body[start] != '#') && (skip == false)) {
                 if (row == rowIndex) {
                     std::string line = body.substr(start, k - start);
                     size_t from = 0u;
@@ -270,6 +282,40 @@ static void reset_clock_test_boot(void)
  *         [FA] فیلد پنجم فایل ساعت: ثانیهٔ دیواریِ آخرین ردیف نوشته‌شده.
  * @return uint32_t beat second / ثانیهٔ ضربان
  */
+/* [EN] v1.117: every day file starts with its own marker row (note 7). It is
+        the file's creation line, not a history row; assertions about the
+        history read the file without it.
+   [FA] هر فایل روز با یک ردیف نشانه (note 7) شروع می‌شود؛ آن خطِ ایجاد فایل
+        است نه یک ردیف تاریخچه. بررسی‌ها فایل را بدون آن می‌خوانند. */
+/* [EN] v1.117: read one data line INCLUDING the day-file marker (note 7).
+        Every other assertion treats that marker as the file's own first line,
+        not as a history row - see row_field() below.
+   [FA] یک خط داده را با نشانهٔ ایجاد فایل (note 7) هم برمی‌گرداند؛ بقیهٔ
+        بررسی‌ها آن نشانه را خطِ اول خودِ فایل می‌دانند، نه یک ردیف تاریخچه. */
+static std::string raw_data_line(const std::string &file, size_t rowIndex)
+{
+    size_t row = 0u, at = 0u;
+    while (at < file.size())
+    {
+        size_t nl = file.find('\n', at);
+        if (nl == std::string::npos)
+        {
+            nl = file.size();
+        }
+        const std::string line = file.substr(at, nl - at);
+        at = (nl < file.size()) ? (nl + 1u) : file.size();
+        if (line.empty() || (line[0] == '#'))
+        {
+            continue;
+        }
+        if (row == rowIndex)
+        {
+            return line;
+        }
+        row++;
+    }
+    return std::string();
+}
 static uint32_t clock_file_beat(void)
 {
     const std::string &line = LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)];
@@ -2862,20 +2908,18 @@ int main(void)
         BOOL__G__LogClockJumpPending = false;
         G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
         func__EspLog_Begin();
-        const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
+        /* v1.117: the day file may be opened (and recounted) by this Tick, so
+           the promise "nothing new was written" is checked on the file itself */
+        char dayPathCopy[40] = { 0 };
+        (void)snprintf(dayPathCopy, sizeof dayPathCopy, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        const std::string fileBefore = LittleFS.files[std::string(dayPathCopy)];
         G_StubMillis += 5000u; UINT32_T__G__LastTlmMs = (uint32_t)millis();
         feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload_v24(2u, 24000u)));
         func__EspLog_Tick();
-        {
-            char lastRow[256] = { 0 };
-            (void)func__EspLog_Tail(lastRow, sizeof lastRow,
-                                    func__EspLog_TodayCode(), 1u);
-            check(UINT16_T__G__LogRowsToday == rowsBefore,
-                  "and the same state after the restart still writes nothing",
-                  std::to_string(UINT16_T__G__LogRowsToday) + " rows, last row bits " +
-                  std::to_string(func__EspLog_RowFieldAt(lastRow, 2u)) + " note " +
-                  std::to_string(func__EspLog_RowFieldAt(lastRow, 3u)));
-        }
+        check(LittleFS.files[std::string(dayPathCopy)] == fileBefore,
+              "and the same state after the restart still writes nothing",
+              LittleFS.files[std::string(dayPathCopy)]);
 
         /* ---- (a) the clock anchor is not rewritten on every poll -------- */
         UINT8_T__G__LogWriteFault = 0u;
@@ -2962,8 +3006,8 @@ int main(void)
         {
             if (tail[i] == '\n') lines++;
         }
-        check(lines == 5u,
-              "the card shows the three flash rows AND the two RAM rows",
+        check(lines == 6u,
+              "the card shows the day marker, the three flash rows AND the two RAM rows",
               std::to_string(lines) + " rows");
         check(tail[0] == '1',
               "the first row of the card is the oldest row of the file",
@@ -3347,11 +3391,20 @@ int main(void)
               "silent board: the boot row is still inside the grace window");
         G_StubMillis = 10000u;
         func__EspLog_Tick();
-        check(!BOOL__G__LogBootRowPending && UINT16_T__G__LogRowsToday == 1u,
-              "silent board: the boot row is written once the grace window ends");
-        func__EspLog_Tick();
-        check(UINT16_T__G__LogRowsToday == 1u,
-              "silent board: the grace fallback does not duplicate the boot row");
+        {
+            char gracePath[40] = { 0 };
+            (void)snprintf(gracePath, sizeof gracePath, "/evt-%08lu.csv",
+                           (unsigned long)func__EspLog_TodayCode());
+            const uint16_t rowsAfterGrace =
+                func__EspLog_CountRows(gracePath);
+            check(!BOOL__G__LogBootRowPending && (rowsAfterGrace >= 1u),
+                  "silent board: the boot row is written once the grace window ends",
+                  std::to_string((unsigned)rowsAfterGrace));
+            func__EspLog_Tick();
+            check(func__EspLog_CountRows(gracePath) == rowsAfterGrace,
+                  "silent board: the grace fallback does not duplicate the boot row",
+                  std::to_string((unsigned)func__EspLog_CountRows(gracePath)));
+        }
 
         /* A browser arriving during the grace window is an absolute time
            source too, so it releases the row immediately. */
@@ -3662,6 +3715,90 @@ int main(void)
                   "beat: an hour counted ACROSS the cut is still honoured",
                   std::to_string((unsigned long)func__EspLog_NowSec()));
         }
+        reset_clock_test_boot();
+    }
+
+    /* -- v1.117: the first wake after midnight opens the day with one row ---
+       [EN] User order 2026-11-02: "at 00:00, the moment the file is created,
+            write a record too, and save the clock and the counter with it -
+            then it reads as 'the file was created'". With the panel asleep on
+            battery the exact 00:00 cannot be promised, so the row carries the
+            REAL second of the first wake after midnight (a fake 00:00 would be
+            a lie in the history). It must not move the hourly heartbeat: that
+            row keeps landing on the hour.
+       [FA] دستور کاربر ۲۰۲۶-۱۱-۰۲: «سر ساعت ۰۰:۰۰ همان لحظه‌ای که فایل ساخته
+            می‌شود یک رکورد هم بزن و ساعت و شمارنده را ذخیره کن تا معنی‌اش
+            ایجاد فایل باشد». روی باتری پنل خواب است، پس ۰۰:۰۰ دقیق قابل
+            قول‌دادن نیست؛ ردیف ساعتِ واقعی اولین بیداری بعد از نیمه‌شب را
+            می‌نویسد (۰۰:۰۰ قلابی دروغ در تاریخچه است). این ردیف نباید ساعت
+            ضربان را جابه‌جا کند؛ ردیف‌های ساعتی همان سر ساعت می‌مانند. */
+    {
+        const uint32_t midnightBase = 1794000000u;
+        const uint32_t midnightDayStart =
+            ((midnightBase + 12600u) / 86400u) * 86400u - 12600u;
+        char dayStartPath[32];
+
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        check(func__EspLog_TimeSet(midnightDayStart + 180u, 12600),
+              "day start: the browser sets the clock three minutes after midnight");
+        G_StubMillis = 5000u;
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        feed_board_uptime(1000u);
+        func__EspLog_Tick();
+        (void)snprintf(dayStartPath, sizeof dayStartPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        check(LittleFS.exists(dayStartPath),
+              "day start: the new day's file is created at the first wake");
+        check(func__EspLog_CountRows(dayStartPath) == 0u,
+              "day start: the marker spends no slot of the history or of the day cap",
+              std::to_string((unsigned)func__EspLog_CountRows(dayStartPath)));
+        {
+            const std::string marker =
+                raw_data_line(LittleFS.files[std::string(dayStartPath)], 0u);
+            long epoch = 0L, uptime = 0L, bits = 0L, note = 0L;
+            (void)sscanf(marker.c_str(), "%ld,%ld,%ld,%ld",
+                         &epoch, &uptime, &bits, &note);
+            check(note == (long)ESP_LOG_NOTE_DAY_START,
+                  "day start: that row says 'the file of this day was created'",
+                  marker);
+            check(epoch >= (long)(midnightDayStart + 180u) &&
+                  epoch <= (long)(midnightDayStart + 190u),
+                  "day start: it carries the REAL second of the wake, not a fake 00:00",
+                  marker);
+        }
+        /* a second wake in the same day must not open the file again */
+        G_StubMillis += 3000u;
+        feed_board_uptime(1003u);
+        func__EspLog_Tick();
+        check(raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u).empty() &&
+              !raw_data_line(LittleFS.files[std::string(dayStartPath)], 0u).empty(),
+              "day start: another wake in the same day adds nothing");
+
+        /* and neither does a reboot in the middle of the day */
+        reset_clock_test_boot();
+        func__EspLog_Begin();
+        G_StubMillis = 2000u;
+        feed_board_uptime(1200u);
+        func__EspLog_Tick();
+        check(raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u).empty(),
+              "day start: a reboot does not write a second start row",
+              raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u));
+
+        /* the marker must not count as "a row was written", or the hourly
+           heartbeat would slide off the hour: exactly one hour after it, the
+           heartbeat is due at the same second the hour turns over */
+        G_StubMillis += 3600u * 1000u;
+        feed_board_uptime(1000u + 3600u);
+        check(func__EspLog_HeartbeatDue((uint32_t)millis()) != false,
+              "day start: the hourly heartbeat is not moved by this row",
+              std::to_string((unsigned long)func__EspLog_NowSec()) + " vs beat " +
+              std::to_string((unsigned long)UINT32_T__G__LogLastBeatSec));
+
+        /* the clock is on the flash at that moment, so the pair is not lost */
+        check(row_field(LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)], 0u, 2u) != 0L,
+              "day start: the clock and the board counter are saved with it",
+              LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)]);
         reset_clock_test_boot();
     }
 
