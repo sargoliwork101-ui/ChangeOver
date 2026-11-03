@@ -4105,6 +4105,77 @@ int main(void)
         reset_clock_test_boot();
     }
 
+    /* ---- 52. every cached counter is forgotten in one place ----------------
+       [EN] A delete or a full format must leave no counter pointing at data
+            that is gone: a stale day code makes the panel claim today's file
+            still exists, a stale row count blocks the next day. Both calls now
+            share func__EspLog_ResetCaches(), so this block sets all eleven
+            counters to a wrong value, calls one entry point, and demands that
+            every one of them is back to its empty value. Without it a field
+            can be added to the helper's neighbourhood and forgotten in one of
+            the two call sites.
+       [FA] پاک‌کردن یا فرمت کامل نباید هیچ شمارنده‌ای را روی دادهٔ رفته باقی
+            بگذارد: کد روز کهنه باعث می‌شود پنل بگوید فایل امروز هست، و شمارش
+            ردیف کهنه روز بعد را می‌بندد. حالا هر دو مسیر از
+            func__EspLog_ResetCaches() رد می‌شوند؛ این بخش هر یازده شمارنده را
+            روی مقدار غلط می‌گذارد، یک نقطهٔ ورود را صدا می‌زند و می‌خواهد همه
+            به مقدار خالی برگردند. */
+    {
+        auto dirty = []() {
+            UINT8_T__G__LogIndexCount = 3u;
+            BOOL__G__LogScanValid = true;
+            UINT32_T__G__LogDayCode = 20261103u;
+            UINT16_T__G__LogRowsToday = 17u;
+            BOOL__G__LogDayFull = true;
+            BOOL__G__LogMarkerDone = true;
+            UINT8_T__G__LogRamHead = 5u;
+            UINT8_T__G__LogRamCount = 6u;
+            BOOL__G__LogDrainWait = true;
+            UINT8_T__G__LogWriteFault = 2u;
+            UINT16_T__G__LogDroppedRows = 9u;
+        };
+        auto allEmpty = []() {
+            return (UINT8_T__G__LogIndexCount == 0u) &&
+                   (BOOL__G__LogScanValid == false) &&
+                   (UINT32_T__G__LogDayCode == 0xFFFFFFFFu) &&
+                   (UINT16_T__G__LogRowsToday == 0u) &&
+                   (BOOL__G__LogDayFull == false) &&
+                   (BOOL__G__LogMarkerDone == false) &&
+                   (UINT8_T__G__LogRamHead == 0u) &&
+                   (UINT8_T__G__LogRamCount == 0u) &&
+                   (BOOL__G__LogDrainWait == false) &&
+                   (UINT8_T__G__LogWriteFault == 0u) &&
+                   (UINT16_T__G__LogDroppedRows == 0u);
+        };
+        LittleFS.failWrites = false;
+        BOOL__G__FsOk = true;
+
+        dirty();
+        check(!allEmpty(), "the eleven cached log counters can be made wrong");
+        func__EspLog_ResetCaches();
+        check(allEmpty(), "the shared reset empties all eleven cached counters");
+
+        dirty();
+        func__EspLog_ResetStateAfterFormat();
+        check(allEmpty(), "a full format empties all eleven cached counters");
+
+        dirty();
+        (void)func__EspLog_Clear();
+        check(allEmpty(), "deleting every day empties all eleven cached counters");
+
+        /* the early return for a dead file system is NOT part of the shared
+           reset - it keeps its own four fields, so pin that down too */
+        BOOL__G__FsOk = false;
+        dirty();
+        (void)func__EspLog_Clear();
+        check((UINT16_T__G__LogRowsToday == 0u) && (BOOL__G__LogDayFull == false) &&
+                  (UINT8_T__G__LogWriteFault == 0u) && (UINT16_T__G__LogDroppedRows == 0u),
+              "with no file system the delete still empties its four counters");
+        BOOL__G__FsOk = true;
+        func__EspLog_ResetCaches();
+        LittleFS.files.clear();
+    }
+
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
         std::cout << "ALL " << checks << " ESP HOST TESTS PASSED\n";

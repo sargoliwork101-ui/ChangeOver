@@ -270,7 +270,6 @@ static_assert(ESP_LOG_RAM_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
  * mounted but a write failed (RAM ring holds the newest rows).
  */
 #define ESP_LOG_FS_OK          1u
-#define ESP_LOG_FS_OFF         0u
 #define ESP_LOG_FS_WRITE_FAULT 2u
 /* ==================== Time helpers ==================== */
 /**
@@ -2891,6 +2890,27 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     return size_t__used;
 }
 /**
+ * @brief  [EN] Forget every cached log counter, so the next read sees the flash
+ *              again. Called after the files were deleted or formatted: a stale
+ *              day code or row count here makes the panel show a day that is
+ *              already gone.
+ * @return None /
+ */
+static void func__EspLog_ResetCaches(void)
+{
+    UINT8_T__G__LogIndexCount = 0u;
+    BOOL__G__LogScanValid = false;
+    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+    UINT16_T__G__LogRowsToday = 0u;
+    BOOL__G__LogDayFull = false;
+    BOOL__G__LogMarkerDone = false;
+    UINT8_T__G__LogRamHead = 0u;
+    UINT8_T__G__LogRamCount = 0u;
+    BOOL__G__LogDrainWait = false;
+    UINT8_T__G__LogWriteFault = 0u;
+    UINT16_T__G__LogDroppedRows = 0u;
+}
+/**
  * @brief  [EN] Delete every saved day and start a fresh list.
 * @return uint8_t number of files removed /
  */
@@ -2918,15 +2938,7 @@ static uint8_t func__EspLog_Clear(void)
             uint8_t__removed++;
         }
     }
-    UINT8_T__G__LogIndexCount = 0u;
-    BOOL__G__LogScanValid = false;
-    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
-    UINT16_T__G__LogRowsToday = 0u;
-    BOOL__G__LogDayFull = false;
-    BOOL__G__LogMarkerDone = false;
-    BOOL__G__LogDrainWait = false;
-    UINT8_T__G__LogWriteFault = 0u;
-    UINT16_T__G__LogDroppedRows = 0u;
+    func__EspLog_ResetCaches();
     return uint8_t__removed;
 }
 /**
@@ -3211,17 +3223,7 @@ static uint16_t func__EspLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedByte
  */
 static void func__EspLog_ResetStateAfterFormat(void)
 {
-    UINT8_T__G__LogIndexCount = 0u;
-    BOOL__G__LogScanValid = false;
-    UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
-    UINT16_T__G__LogRowsToday = 0u;
-    BOOL__G__LogDayFull = false;
-    BOOL__G__LogMarkerDone = false;
-    UINT8_T__G__LogRamHead = 0u;
-    UINT8_T__G__LogRamCount = 0u;
-    BOOL__G__LogDrainWait = false;
-    UINT8_T__G__LogWriteFault = 0u;
-    UINT16_T__G__LogDroppedRows = 0u;
+    func__EspLog_ResetCaches();
     /* the clock file was erased, so its fifth field (the beat second) is gone */
     BOOL__G__LogLastBeatValid = false;
     UINT32_T__G__LogLastBeatSec = 0u;

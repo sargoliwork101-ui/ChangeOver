@@ -76,10 +76,6 @@
 #define ESP_ESP_ROLE_CALIBRATION    2u
 #define ESP_ESP_FW_VERSION          118u
 /*
- * [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
- */
-#define ESP_TLM_FLAG_LINK_OK        0x40u
-/*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
 #define ESP_LUT_POINTS_MAX          24u
@@ -96,7 +92,6 @@
 #define ESP_WIFI_IDLE_LOW_POWER_MS  1800000u
 #define ESP_WIFI_CYCLE_ON_MS        60000u
 #define ESP_WIFI_CYCLE_OFF_MS       120000u
-#define ESP_WIFI_CYCLE_PERIOD_MS    180000u
 #define ESP_WIFI_BAT_CUTOFF_PCT     20u
 #define ESP_WIFI_CLIENT_REPORT_MS   1000u
 /*
