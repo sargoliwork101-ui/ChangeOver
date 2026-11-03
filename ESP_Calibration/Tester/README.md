@@ -8,9 +8,10 @@ firmware. That is the right tool for "does this id exist", "does this window mat
 the firmware", "is this number copied correctly". It is the wrong tool for anything
 that only exists while the page is *running*.
 
-This directory holds the tests that run the panel's own code: two of them load the
-real generated page into a DOM and click the real controls, and one calls the page's
-own label function with no DOM at all.
+This directory holds the two tests that run the panel's own code: one loads the
+real generated page into a DOM and clicks the real controls, and one calls the page's
+own label function with no DOM at all. (The scenario-card simulator test that used to
+live here was deleted with the simulator on 2026-11-01, `AI_AGENT_RULES.md:30-40`.)
 
 | file | what it proves |
 |---|---|
@@ -49,7 +50,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 The normal way is `bash ESP_Calibration/Tester/run_esp_tests.sh`, which runs the
 host tests, then the label checks (always, they need no DOM) and then the click
 tests (skipped with exit code 0 when jsdom is absent). Current counts:
-**484** host checks, **8** label checks, **199** click checks.
+**484** host checks, **8** label checks, **209** click checks.
 
 `node_modules/` is git-ignored. The test reads `ESP_Calibration/panel_preview.html`,
 so run `python3 tools/make_panel_preview.py` first if you have edited
@@ -84,9 +85,10 @@ caught:
 شده» ابزار درستی است. برای هر چیزی که فقط هنگام **اجرای** صفحه وجود دارد، ابزار
 غلطی است.
 
-این پوشه تست‌هایی را نگه می‌دارد که خودِ کد پنل را اجرا می‌کنند: دو تست صفحهٔ
-واقعیِ تولیدشده را در DOM بار می‌کنند و روی کنترل‌های واقعی کلیک می‌کنند، و یک
-تست تابع برچسبِ خود پنل را بدون DOM صدا می‌زند.
+این پوشه دو تستی را نگه می‌دارد که خودِ کد پنل را اجرا می‌کنند: یکی صفحهٔ
+واقعیِ تولیدشده را در DOM بار می‌کند و روی کنترل‌های واقعی کلیک می‌کند، و یکی
+تابع برچسبِ خود پنل را بدون DOM صدا می‌زند. (تست شبیه‌ساز کارت‌ها که قبلاً اینجا
+بود، ۲۰۲۶-۱۱-۰۱ همراه شبیه‌ساز حذف شد — `AI_AGENT_RULES.md:30-40`.)
 
 | فایل | چه چیزی را اثبات می‌کند |
 |---|---|
@@ -124,7 +126,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 
 راه معمول `bash ESP_Calibration/Tester/run_esp_tests.sh` است: تست‌های هاست، بعد
 چک برچسب‌ها (همیشه، DOM نمی‌خواهد) و بعد تست کلیک (بدون jsdom با کد ۰ SKIP
-می‌شود). شمارش فعلی: **۴۸۴** بررسی هاست، **۸** چک برچسب، **۱۹۹** چک کلیک.
+می‌شود). شمارش فعلی: **۴۸۴** بررسی هاست، **۸** چک برچسب، **۲۰۹** چک کلیک.
 
 پوشهٔ `node_modules/` در gitignore است. تست فایل
 `ESP_Calibration/panel_preview.html` را می‌خواند، پس اگر `plink_panel.h` را ویرایش
