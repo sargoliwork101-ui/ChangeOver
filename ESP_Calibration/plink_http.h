@@ -1043,9 +1043,9 @@ static const char *func__Esp_LogSourceCode(void)
     }
     if (UINT8_T__G__LogWriteFault != 0u)
     {
-        return "2";   /* ESP_LOG_FS_WRITE_FAULT */
+        return "2";   /* mounted, but a row could not be written */
     }
-    return "1";       /* ESP_LOG_FS_OK */
+    return "1";       /* rows come from the flash */
 }
 static void func__Esp_HttpEventLog(void)
 {

@@ -8,13 +8,14 @@ firmware. That is the right tool for "does this id exist", "does this window mat
 the firmware", "is this number copied correctly". It is the wrong tool for anything
 that only exists while the page is *running*.
 
-This directory holds the tests that load the real generated page into a DOM, click
-the real controls and assert on what happens.
+This directory holds the tests that run the panel's own code: two of them load the
+real generated page into a DOM and click the real controls, and one calls the page's
+own label function with no DOM at all.
 
 | file | what it proves |
 |---|---|
 | `host_test_panel_click.js` | the click-to-edit operating table: a cell opens an editor, the editor carries the raw value, Enter commits, Escape does not, a telemetry re-render does not delete the field being typed into, a clamped value is visible, and the read-only derived cell is inert |
-| `host_test_scenario_cards.js` | the seven scenario cards (v1.43/v1.44): each card explains what triggers it and is split into numbered sections, and every derived line is the number the board will really use — enter/exit thresholds, red/green/yellow blink milliseconds, the beep window against its period, the mV/percent translation on the 74/75 ladder, the per-band blocks (every variable of a band in one place) with each shared value having exactly one writable field and read-only echoes elsewhere, and the factory default printed under every field, and the clamp warnings. Since v1.51 it also covers the per-card LED/buzzer simulator: the widgets exist on all seven cards, the old board-driven dots are gone, the engine runs with no board data at all, and the beep/blink helpers replay the firmware window maths and the v1.52 global send queue (nothing is posted until the button is pressed, undo restores the board value, one press posts each staged edit once, and the post-handshake report names every value the board clamped) - and the v1.56 cross-field rules the panel took over from the MCU (gap floor, window fit, band ordering, critical count shrink, min-off/min-on, low-battery clear, 100 mV ladder span, full exit under full entry), the v1.87 LUT readback audit, and the v1.88 calibration-first independent battery update/readback guards, the v1.90 commit/reset/flush gates and fresh post-reset readback, the complete backup/import layers for applied settings, pending edits, raw calibration samples and LUT readback, and the accessible labeled download/upload backup controls with distinct colors, the LUT explanation, the grouped sample save/restore/delete controls with a trash icon, and the two-app latch-reset order/echo guards - 454 checks. Values are typed into the real inputs, so a derived line that stops following the user is a failure |
+| `host_test_panel_labels.js` | the Persian sentence a history row gets (v1.118): the function `evtRowText` is lifted out of `plink_panel.h` and called with an update row, a danger row and a legacy row. It fails if the card goes back to saying "the panel came on" for a row that is really a firmware update or a return from the battery cut. No jsdom, so it always runs - 8 checks |
 
 ### Why this exists
 
@@ -40,10 +41,15 @@ grep.
 node, so the test skips with exit code 0 when jsdom is absent:
 
 ```sh
+node ESP_Calibration/Tester/host_test_panel_labels.js   # no jsdom needed
 npm install --no-save jsdom
 node ESP_Calibration/Tester/host_test_panel_click.js
-node ESP_Calibration/Tester/host_test_scenario_cards.js
 ```
+
+The normal way is `bash ESP_Calibration/Tester/run_esp_tests.sh`, which runs the
+host tests, then the label checks (always, they need no DOM) and then the click
+tests (skipped with exit code 0 when jsdom is absent). Current counts:
+**484** host checks, **8** label checks, **199** click checks.
 
 `node_modules/` is git-ignored. The test reads `ESP_Calibration/panel_preview.html`,
 so run `python3 tools/make_panel_preview.py` first if you have edited
@@ -62,6 +68,7 @@ caught:
 | input prefilled with the formatted string instead of the raw value | this test |
 | clamp feedback removed | this test |
 | the read-only duty cell becomes clickable | this test |
+| the history card goes back to "the panel came on" for an update row | `host_test_panel_labels.js` |
 | a limit silently stops being drawn | `audit_consistency.py` |
 | an `EVB` window drifts wider than the firmware's | `audit_consistency.py` |
 | a limit loses its `EVB` row | `audit_consistency.py` |
@@ -77,12 +84,13 @@ caught:
 شده» ابزار درستی است. برای هر چیزی که فقط هنگام **اجرای** صفحه وجود دارد، ابزار
 غلطی است.
 
-این پوشه تست‌هایی را نگه می‌دارد که صفحهٔ واقعیِ تولیدشده را در یک DOM بار
-می‌کنند، روی کنترل‌های واقعی کلیک می‌کنند و روی آنچه رخ می‌دهد ادعا می‌گذارند.
+این پوشه تست‌هایی را نگه می‌دارد که خودِ کد پنل را اجرا می‌کنند: دو تست صفحهٔ
+واقعیِ تولیدشده را در DOM بار می‌کنند و روی کنترل‌های واقعی کلیک می‌کنند، و یک
+تست تابع برچسبِ خود پنل را بدون DOM صدا می‌زند.
 
 | فایل | چه چیزی را اثبات می‌کند |
 |---|---|
-| `host_test_scenario_cards.js` | کارت‌های سناریو و مسیر ریست قفل: فرمول‌ها/پیش‌فرض‌ها و پنجره‌های بوق/چشمک را در DOM می‌سنجد؛ ترتیب امن ۲۰۰، ۲۰۱، ۲۰۲ را در هر دو ESP بررسی می‌کند و با پژواک‌های ساختگی ثابت می‌کند موفقیت فقط برای شناسهٔ هدف، مقدار صفر، شمار پاسخ‌های لازم و صف خالی اعلام شود؛ خطای خواندن وضعیت پیش از ریست هم باید مانع POST شود. |
+| `host_test_panel_labels.js` | جملهٔ فارسیِ هر ردیف تاریخچه (v1.118): تابع `evtRowText` از `plink_panel.h` بیرون کشیده و با سه ردیف صدا زده می‌شود — ردیف بروزرسانی، ردیف خطر و ردیف قدیمی. اگر کارت دوباره برای ردیفِ بروزرسانی یا بازگشت از قطع باتری بنویسد «پنل روشن شد»، تست رد می‌شود. jsdom نمی‌خواهد، پس همیشه اجرا می‌شود — ۸ بررسی |
 | `host_test_panel_click.js` | جدول عملکردِ کلیک-و-ویرایش: خانه ویرایشگر باز می‌کند، ویرایشگر مقدار خام را دارد، Enter ثبت می‌کند، Esc نمی‌کند، بازرسمِ تلمتری فیلدِ در حال تایپ را پاک نمی‌کند، مقدار گیره‌خورده دیده می‌شود، و خانهٔ فقط-خواندنیِ مشتق بی‌اثر است |
 
 ### چرا وجود دارد
@@ -109,9 +117,14 @@ caught:
 باشد، پس نبودن jsdom یعنی خروج با کد ۰ و پیام SKIP:
 
 ```sh
+node ESP_Calibration/Tester/host_test_panel_labels.js   # jsdom نمی‌خواهد
 npm install --no-save jsdom
 node ESP_Calibration/Tester/host_test_panel_click.js
 ```
+
+راه معمول `bash ESP_Calibration/Tester/run_esp_tests.sh` است: تست‌های هاست، بعد
+چک برچسب‌ها (همیشه، DOM نمی‌خواهد) و بعد تست کلیک (بدون jsdom با کد ۰ SKIP
+می‌شود). شمارش فعلی: **۴۸۴** بررسی هاست، **۸** چک برچسب، **۱۹۹** چک کلیک.
 
 پوشهٔ `node_modules/` در gitignore است. تست فایل
 `ESP_Calibration/panel_preview.html` را می‌خواند، پس اگر `plink_panel.h` را ویرایش

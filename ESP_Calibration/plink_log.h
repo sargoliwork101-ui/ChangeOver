@@ -265,12 +265,13 @@ static_assert(ESP_LOG_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
 static_assert(ESP_LOG_RAM_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
               "ESP_LOG_RAM_ROW_MAX must hold the widest row, or the RAM ring cuts it");
 /*
- * [EN] The value the /evt answer carries in X-Log-Fs: 1 = rows come from the
- * flash, 0 = the file system is off (RAM ring), 2 = the file system is
- * mounted but a write failed (RAM ring holds the newest rows).
+ * [EN] The /evt answer says where its rows came from in the X-Log-Fs header:
+ *      1 = the flash, 2 = the flash is mounted but a write failed (the RAM ring
+ *      holds the newest rows), 3 = the filesystem exists but did not mount,
+ *      0 = there is no filesystem at all. func__Esp_LogSourceCode()
+ *      (plink_http.h) is the one place that produces the value, so the numbers
+ *      live there; a macro that nothing reads would only look like a contract.
  */
-#define ESP_LOG_FS_OK          1u
-#define ESP_LOG_FS_WRITE_FAULT 2u
 /* ==================== Time helpers ==================== */
 /**
  * @brief  [EN] Current epoch seconds from the phone anchor, 0 when unknown.
