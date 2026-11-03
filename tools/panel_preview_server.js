@@ -836,6 +836,30 @@ function evtWrite(mask, note, flags, fl2, t) {
     evtPendingMask = 0;
     evtPendingNote = EVT_NOTE_NONE;
 }
+/*
+ * [EN] v1.121: a fresh preview starts with two rows, so the new "older" key had
+ *      nothing to page through and looked broken. Seed one simulated day (90
+ *      rows, spread from 00:02 to now) so the three keys can be tried with no
+ *      board attached. These rows are simulation, like every other number here.
+ * [FA] نسخهٔ ۱٫۱۲۱: پیش‌نمایش تازه با دو ردیف شروع می‌شد، پس کلید «قدیمی‌تر»
+ *      چیزی برای گشتن نداشت و خراب به نظر می‌رسید. یک روز شبیه‌سازی‌شده
+ *      (۹۰ ردیف، از ۰۰:۰۲ تا همین حالا) کاشته می‌شود تا سه کلید تازه بدون برد
+ *      امتحان شوند. مثل بقیهٔ عددهای این صفحه، شبیه‌سازی است.
+ */
+function evtSeedDemo() {
+    const now = Math.floor(Date.now() / 1000);
+    const start = Math.floor(new Date(new Date().setHours(0, 0, 0, 0)).getTime() / 1000) + 120;
+    const span = Math.max(600, now - start - 60);
+    const step = Math.max(1, Math.floor(span / 90));
+    for (let i = 0; i < 90; i++) {
+        const sec = start + i * step;
+        const mains = (i % 30) < 20 ? 1 : 0;
+        const v24 = 24000 - (i % 12) * 60;
+        evtRows.push([sec, 3600 + i * step, (i % 7 === 0) ? 1024 : 0, 5, mains, 7,
+                      1, 1, 0, 1, v24, v24 - 40, v24 + 40, 80, 0, 24100,
+                      v24 - 12000, 900, 850, 450, 300, evtPct(v24)].join(','));
+    }
+}
 function evtFlush() {
     if (!evtPendingMask && evtPendingNote === EVT_NOTE_NONE) return;
     if (!evtLastRowOk || (Date.now() - evtLastRowMs) >= EVT_MIN_MS) {
@@ -1329,6 +1353,7 @@ if (process.argv.includes("--self-test")) {
     /*
  * [EN] Keep state advancing independently of browser polling.
  */
+    if (!evtRows.length) evtSeedDemo();
     setInterval(() => { SNAP = telemetry(); }, SIM_MS);
     evtHeartbeatStart();
     server.listen(PORT, "0.0.0.0", () => {

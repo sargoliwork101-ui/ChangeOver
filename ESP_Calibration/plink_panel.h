@@ -412,7 +412,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f6f99ca</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d3c8572</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -439,7 +439,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="cd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر یک ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
+<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. کارت ۳۰ ردیف آخر را نشان می‌دهد؛ «۳۰ ردیف قدیمی‌تر» بقیهٔ همان روز را می‌آورد و «همهٔ ردیف‌ها» کل روز را یک‌جا. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر یک ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
 <button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
@@ -451,6 +451,11 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div id="evtfs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
 <div class="evtsum" id="evtsum"></div>
 <div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
+<div class="bqr">
+<button class="sb" type="button" id="evtpv" onclick="evtOlder()">۳۰ ردیف قدیمی‌تر</button>
+<button class="sb" type="button" id="evtnx" onclick="evtNewer()">۳۰ ردیف جدیدتر</button>
+<button class="sb" type="button" id="evtal" onclick="evtAllRows()">همهٔ ردیف‌ها</button>
+</div>
 </div>
 </div>
 <div class="pgx" id="p1"></div>
@@ -4235,28 +4240,138 @@ function evtParse(line){
    جدا نگه داشته می‌شود تا متن قاطی نشود. */
 const xiso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
 const xspr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+xiso(x)+'</span>').join('');
-function evtRender(text,code,ram,src){
-  const box=$('evtlist'),sum=$('evtsum');
-  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
-  /* src 0 = no file system, 2 = the flash refused the write, 3 = it did not mount. */
-  const fsWarn=(src==='2')?'<span class="r">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
-              :(src==='3')?'<span class="r">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
-              :(ram?'<span class="y">حافظهٔ موقت رم — با قطع برق پاک می‌شود</span>':'');
-  rows.forEach(r=>{r.band=r.v24<21200;});
-  if(sum)sum.innerHTML=fsWarn;
-  if(!rows.length){
-    box.innerHTML='<span class="lb">'+(code?'برای این روز هنوز چیزی ثبت نشده است.':'امروز هنوز چیزی ثبت نشده است؛ به‌محض اولین تغییر، خط اول همین‌جا نوشته می‌شود.')+'</span>';
+/*
+ * [EN] v1.121 (user report: "the morning rows are gone"). The board answers
+ *      /evt with a TAIL of 30 rows, so a busy day looked as if its morning had
+ *      been deleted. "Older" fetches the whole day file through the same
+ *      /evt/dl the download key saves and pages it 30 rows at a time; "all"
+ *      draws the day in one go. Nothing changed on the board side: its tail
+ *      buffer stays 3600 bytes, all of this runs in the browser.
+ * [FA] نسخهٔ ۱٫۱۲۱ (گزارش کاربر): برد همیشه فقط ۳۰ ردیف آخر را می‌دهد، پس
+ *      صبحِ یک روز شلوغ دیده نمی‌شد. «قدیمی‌تر» کل فایل آن روز را از همان
+ *      /evt/dl می‌گیرد و ۳۰ ردیف‌۳۰ ردیف نشان می‌دهد؛ «همهٔ ردیف‌ها» کل روز
+ *      را یک‌جا. سمت برد هیچ‌چیز عوض نشد؛ بافرش همان ۳۶۰۰ بایت است.
+ */
+let evtRows=[],evtFrom=0,evtWhole=false,evtAll=false,evtPicked=false;
+let evtFsWarn='',evtGap='',evtWhere='',evtDayLab='';
+const EVT_PAGE=30;
+function evtParseAll(text){
+  return (text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
+}
+function evtLine(r){
+  const t=evtRowText(r);
+  return '<div class="evtrow lv'+t.lv+'"><span class="evtt">'+xiso(t.time)+
+         '</span><span class="evtd">'+xspr(t.txt,'ep')+
+         '</span><span class="evtv">'+xspr(t.v,'m')+'</span></div>';
+}
+function evtPager(){
+  const pv=$('evtpv'),nx=$('evtnx'),al=$('evtal');
+  /* A tail view is not "the whole day" yet, so «قدیمی‌تر» stays usable: the
+     press itself is what fetches the file. */
+  if(pv)pv.disabled=(evtWhole&&!evtAll&&evtFrom<=0);
+  if(nx)nx.disabled=(!evtWhole||evtRows.length<=EVT_PAGE);
+  if(al)al.disabled=(!evtRows.length||evtAll);
+}
+function evtPaint(){
+  const box=$('evtlist'),sum=$('evtsum'),st=$('evtst');
+  const n=evtRows.length;
+  const from=evtAll?0:Math.max(0,Math.min(evtFrom,n-EVT_PAGE));
+  const end=evtAll?n:Math.min(n,from+EVT_PAGE);
+  evtRows.forEach(r=>{r.band=r.v24<21200;});
+  if(st){
+    const win=evtWhole?('ردیف '+evtFa(from+1)+' تا '+evtFa(end)+' از '+evtFa(n)):(evtFa(n)+' خط');
+    st.textContent=evtWhere+evtDayLab+' · '+win+evtGap;
+  }
+  evtPager();
+  if(sum)sum.innerHTML=evtFsWarn;
+  if(!box)return;
+  if(!n){
+    box.innerHTML='<span class="lb">'+(evtPicked?'برای این روز هنوز چیزی ثبت نشده است.':'امروز هنوز چیزی ثبت نشده است؛ به‌محض اولین تغییر، خط اول همین‌جا نوشته می‌شود.')+'</span>';
     return;
   }
   let nf=0,nw=0,ng=0;
-  rows.forEach(r=>{const t=evtRowText(r);if(t.lv===3)nf++;else if(t.lv===2)nw++;else if(t.lv===1)ng++;});
-  if(sum)sum.innerHTML=fsWarn+'<span class="r">خطا و قفل: '+nf+'</span><span class="y">هشدار: '+nw+'</span><span class="g">برگشت به سلامتی: '+ng+'</span><span>مجموع: '+rows.length+' خط</span>';
+  evtRows.forEach(r=>{const t=evtRowText(r);if(t.lv===3)nf++;else if(t.lv===2)nw++;else if(t.lv===1)ng++;});
+  if(sum)sum.innerHTML=evtFsWarn+'<span class="r">خطا و قفل: '+evtFa(nf)+'</span><span class="y">هشدار: '+evtFa(nw)+'</span><span class="g">برگشت به سلامتی: '+evtFa(ng)+'</span><span>مجموع: '+evtFa(n)+' خط</span>';
   /* جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
-  box.innerHTML=rows.slice().reverse().map(r=>{
-    const t=evtRowText(r);
-    return '<div class="evtrow lv'+t.lv+'"><span class="evtt">'+xiso(t.time)+'</span><span class="evtd">'+xspr(t.txt,'ep')+
-           '</span><span class="evtv">'+xspr(t.v,'m')+'</span></div>';
-  }).join('');
+  box.innerHTML=evtRows.slice(from,end).reverse().map(evtLine).join('');
+}
+/* The board's answer is a TAIL: 30 rows, never the whole day. */
+function evtRender(text,code,ram,src){
+  /* src 0 = no file system, 2 = the flash refused the write, 3 = it did not mount. */
+  evtFsWarn=(src==='2')?'<span class="r">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
+              :(src==='3')?'<span class="r">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
+              :(ram?'<span class="y">حافظهٔ موقت رم — با قطع برق پاک می‌شود</span>':'');
+  evtWhere=(src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':'');
+  evtRows=evtParseAll(text);
+  evtWhole=false;evtAll=false;
+  evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
+  evtDayLab=evtDayFa(code||evtToday());
+  evtPicked=!!code;
+  evtPaint();
+}
+/* A full day file (the CSV /evt/dl saves) - every row, oldest first. */
+function evtDayLoad(text,day){
+  evtRows=evtParseAll(text);
+  evtWhole=true;evtAll=false;
+  evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
+  evtDayLab=evtDayFa(day||evtToday());
+  evtPicked=!!day;
+  evtPaint();
+  return evtRows.length;
+}
+function evtPageOlder(){
+  if(!evtWhole)return false;
+  if(evtAll){evtAll=false;evtFrom=Math.max(0,evtRows.length-EVT_PAGE);}
+  if(evtFrom<=0)return false;
+  evtFrom=Math.max(0,evtFrom-EVT_PAGE);
+  evtPaint();
+  return true;
+}
+function evtPageNewer(){
+  if(!evtWhole)return false;
+  evtAll=false;
+  if((evtFrom+EVT_PAGE)>=evtRows.length)return false;
+  evtFrom=evtFrom+EVT_PAGE;
+  evtPaint();
+  return true;
+}
+function evtShowAll(){
+  if(!evtRows.length)return false;
+  evtAll=true;
+  evtPaint();
+  return true;
+}
+async function evtFull(){
+  const day=($('evtday')&&$('evtday').value.trim())||'';
+  try{
+    const r=await evtHttp('/evt/dl'+(day?'?day='+encodeURIComponent(day):''),'GET',15000);
+    if(!r||r.ok===false)return false;
+    evtDayLoad(await r.text(),day);
+    return true;
+  }catch(e){return false;}
+}
+async function evtOlder(){
+  const st=$('evtst');
+  if(!evtWhole){
+    if(st)st.textContent='در حال خواندن کل این روز…';
+    if(!(await evtFull())){
+      if(st)st.textContent='کل این روز خوانده نشد · فقط ۳۰ ردیف آخر در دسترس است';
+      return;
+    }
+  }
+  evtPageOlder();
+}
+async function evtNewer(){
+  if(!evtWhole){
+    if(!(await evtFull()))return;
+  }
+  if(!evtPageNewer())await evtfetch(0);
+}
+function evtAllRows(){
+  if(evtWhole){evtShowAll();return;}
+  const st=$('evtst');
+  if(st)st.textContent='در حال خواندن کل این روز…';
+  evtFull().then(ok=>{if(ok)evtShowAll();});
 }
 async function evtfetch(manual){
   const day=($('evtday')&&$('evtday').value.trim())||'';
@@ -4266,13 +4381,10 @@ async function evtfetch(manual){
     const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
     const ram=(src==='0'||src==='2'||src==='3');
     const t=await r.text();
+    evtGap=(+lost>0)?(' · '+evtFa(lost)+' ردیف از دست رفت'):'';
+    /* evtRender paints the status line, so the day name, the row count and the
+       lost-row warning keep coming from one place. */
     evtRender(t,day,ram,src);
-    if($('evtst')){
-      const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;
-      const where=(src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':'');
-      const gap=(+lost>0)?(' · '+evtFa(lost)+' ردیف از دست رفت'):'';
-      $('evtst').textContent=where+evtDayFa(day||evtToday())+' · '+n+' خط'+gap;
-    }
   }catch(e){ if($('evtst'))$('evtst').textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود'; }
 }
 async function evtsnap(){

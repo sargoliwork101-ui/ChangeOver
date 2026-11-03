@@ -705,6 +705,54 @@ function main() {
                   "numbers and latin words run inside their own left-to-right spans",
                   String(rows()[0].querySelectorAll(".lt").length));
         }
+        /*
+ * [EN] v1.121 (user report 2026-11-03: "the morning rows are gone"): the card
+ *      only ever showed the last 30 rows the board serves, so a day with more
+ *      rows looked as if everything before the first visible hour had been
+ *      deleted. The whole day file is now paged 30 rows at a time, and the
+ *      "all rows" key can draw the day in one go. Nothing here is a firmware
+ *      change: the page reads the same /evt/dl file the download key saves.
+ */
+        {
+            const ep2 = 1792756800;
+            const dayRows = [];
+            for (let i2 = 0; i2 < 75; i2++) {
+                dayRows.push([ep2 + i2 * 600, 12 + i2, 0, 5, 1, 1, 3, 0, 0, 0,
+                              24000, 23960, 24040, 20, 0].join(","));
+            }
+            const pRows = () => [...w.document.querySelectorAll("#evtlist .evtrow")];
+            const pTxt = (i3) => pRows()[i3] ? pRows()[i3].textContent : "";
+            const pv = d.getElementById("evtpv");
+            const nx = d.getElementById("evtnx");
+            const al = d.getElementById("evtal");
+            check(!!pv && !!nx && !!al && pv.textContent.indexOf("قدیمی") >= 0 &&
+                  al.textContent.indexOf("همه") >= 0,
+                  "the history card carries a previous-page key and a show-all key");
+            w.evtDayLoad(dayRows.join("\n"), "");
+            check(pRows().length === 30, "the day view draws one page of 30 rows",
+                  String(pRows().length));
+            check(d.getElementById("evtst").textContent.indexOf("۷۵") >= 0,
+                  "the status line says how many rows the WHOLE day has",
+                  d.getElementById("evtst").textContent);
+            const newest = pTxt(0);
+            check(w.evtPageOlder() === true && pRows().length === 30,
+                  "the previous-page key moves back one page", String(pRows().length));
+            check(pTxt(0) !== newest, "and the rows on screen really changed", pTxt(0));
+            w.evtPageOlder();
+            check(w.evtPageOlder() === false && pRows().length === 30,
+                  "the oldest page stops at the first row of the file",
+                  String(pRows().length));
+            check(pv.disabled === true,
+                  "the previous-page key goes grey on the first page");
+            check(w.evtShowAll() === true && pRows().length === 75,
+                  "show-all draws every row of the day", String(pRows().length));
+            check(w.evtPageNewer() === true && pRows().length === 30,
+                  "the next-page key returns to the last page", String(pRows().length));
+            w.evtRender(dayRows.slice(0, 3).join("\n"), "");
+            check(pv.disabled === false && pRows().length === 3,
+                  "a fresh tail view leaves the previous-page key usable",
+                  String(pRows().length));
+        }
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
             const p1 = w.pmConfirm("تست کادر");
