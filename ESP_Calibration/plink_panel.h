@@ -24,7 +24,6 @@ nav button.a{background:linear-gradient(180deg,#24406e,#1b3358);color:#fff;box-s
 nav button.m.a{background:linear-gradient(180deg,#6e4a10,#543806);color:#ffe1a8}
 section{margin-top:12px}
 .cd{background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%),var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--sh)}
-.ti{font-size:12.5px;font-weight:700;color:var(--mu);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px}
 .lb{color:var(--mu);font-size:.86em}
 /* [FA] عنوان بخش‌های کادر وضعیت و خطا (نسخهٔ ۱٫۹۴) */
 .sub{display:block;text-align:center;font-size:11px;color:var(--mu);margin:6px 0 4px;border-top:1px dashed var(--ln);padding-top:6px}
@@ -73,7 +72,6 @@ section{margin-top:12px}
 .evpt{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px;white-space:nowrap}
 .evpr{display:flex;align-items:center;gap:6px;direction:ltr;justify-content:flex-end}
 .evph{font-size:10.5px;color:var(--mu);margin-top:6px;white-space:nowrap}
-.evv{color:var(--tx);font-weight:700;white-space:nowrap}
 .fl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
 .tg{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--rs);color:var(--mu);border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
 .tg::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
@@ -128,7 +126,6 @@ select{direction:rtl}
 .sb:hover{filter:brightness(1.1)}.sb:active{transform:scale(.98)}
 .sw{border:1px solid var(--ln);border-radius:10px;padding:7px 0;width:68px;min-height:36px;background:var(--rs);color:var(--mu);font-weight:600;transition:background .15s}
 .sw.on{background:#263d62;color:#dcecff;border-color:#4775b5}.sw.w.on{background:rgba(229,72,77,.14);color:#ffbfc4;border-color:rgba(255,104,115,.55)}
-.sg{display:flex;background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:3px}.sg button{border:0;background:none;min-width:36px;padding:5px 8px;border-radius:7px;color:var(--mu);font-weight:600}.sg button.on{background:var(--ac);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .wn{background:rgba(251,94,106,.1);border:1px solid rgba(251,94,106,.35);color:#ffc2c7;border-radius:14px;padding:11px 13px;margin-top:12px;font-size:13px}
 .wn b{color:var(--er)}.gb{display:none}.gb.v{display:block}
 .mx{display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -140,22 +137,15 @@ select{direction:rtl}
 .sb2,.brun{background:#263d62;color:#dcecff;border-color:#4775b5}
 /* v1.87: دکمهٔ ریست قفل رنگ گرم و متمایز */
 .sb-rst{background:linear-gradient(180deg,#d97706,#b45309);color:#fff;border-color:#92400e;font-weight:700}
-.sb-rst:hover{filter:brightness(1.1)}.sb-rst:active{transform:scale(.98)}.brun:hover{filter:brightness(1.08)}.qr{background:#263d62;color:#dcecff;border-color:#4775b5}.qr.j{background:rgba(229,72,77,.14);color:#ffbfc4;border-color:rgba(255,104,115,.55)}.qr:disabled{opacity:.4;cursor:default}
-.wt tr.wa td{background:rgba(251,191,36,.08)}.wt .wi{width:76px}
+.sb-rst:hover{filter:brightness(1.1)}.sb-rst:active{transform:scale(.98)}.brun:hover{filter:brightness(1.08)}
+.wt tr.wa td{background:rgba(251,191,36,.08)}
 canvas{width:100%;height:160px;display:block;background:var(--in);border:1px solid var(--ln);border-radius:12px;margin-top:10px;direction:ltr}
 .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mu);margin-top:8px}.lg i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-left:5px;vertical-align:middle}
-.ti2{display:flex;justify-content:space-between;align-items:center}
-.ca{border-top:1px solid var(--ln);margin-top:4px;padding-top:12px}.ca .ti{margin-bottom:4px;color:var(--tx)}
-.cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.cb{border:1px solid #31436a;border-radius:12px;padding:10px 12px;background:linear-gradient(180deg,#2a3a5c,#22304c);color:#d7e5ff;display:flex;justify-content:space-between;align-items:center;min-height:44px;transition:filter .15s}
-.cb:hover{filter:brightness(1.12)}.cb b{font-weight:500;color:var(--ac2)}
-.cb.lo{background:var(--in);color:var(--mu);border-color:var(--ln)}.cb:disabled{opacity:.45;cursor:default}
 .cm{margin-top:10px;min-height:1.6em}.cm.g{color:var(--ok)}.cm.r{color:var(--er)}.wr{color:var(--wa)}
 /* Link loss belongs in the status banner and send gate, not in a disabled-looking
    wash over the live operating page. Controls remain readable/editable offline;
    the explicit global-send result still reports that the board was unreachable. */
-body.dn #sh,body.dn #ch{opacity:1;filter:none}
-.bsb{position:sticky;top:var(--t-sub,113px);z-index:54;border-color:#6b5206}.bqr2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding:10px;background:rgba(8,11,18,.42);border:1px solid var(--ln);border-radius:12px}.bqr2 .sb{min-height:36px}.bqr2 label.sb{display:inline-flex;align-items:center;justify-content:center;gap:6px}.calselbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;padding:8px 10px;background:var(--in);border:1px solid var(--ln);border-radius:10px}.calselbar label{display:inline-flex;align-items:center;gap:8px;color:var(--tx);font-size:12px;font-weight:700;cursor:pointer}.calselbar input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--ac);cursor:pointer}
+body.dn #sh,body.dn #ch{opacity:1;filter:none}.bqr2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding:10px;background:rgba(8,11,18,.42);border:1px solid var(--ln);border-radius:12px}.bqr2 .sb{min-height:36px}.bqr2 label.sb{display:inline-flex;align-items:center;justify-content:center;gap:6px}.calselbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;padding:8px 10px;background:var(--in);border:1px solid var(--ln);border-radius:10px}.calselbar label{display:inline-flex;align-items:center;gap:8px;color:var(--tx);font-size:12px;font-weight:700;cursor:pointer}.calselbar input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--ac);cursor:pointer}
 .bctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding:10px;background:rgba(8,11,18,.42);border:1px solid var(--ln);border-radius:12px}.bctl .wmode-sweep{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px}.bctl .wmode-manual input.dl{width:160px}.bctl .wmode-hidden{display:none!important}
 .bctl .ctlcap{font-size:12px;color:var(--mu);font-weight:700;white-space:nowrap}
 .modepick{display:inline-flex;gap:3px;padding:3px;background:var(--in);border:1px solid var(--ln);border-radius:11px}
@@ -183,9 +173,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
    post-commit value together. The status colour describes values, not CRC.
    [FA] جدول ممیزی LUT: مقدار برد، پیشنهاد و مقدار پس از commit در هر ردیف
    کنار هم می‌مانند؛ رنگ وضعیت از خود عددها می‌آید، نه از CRC. */
-.lutbox{margin-top:10px;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px}.lutbox.lutchange{border-color:rgba(247,148,30,.88);box-shadow:0 0 0 2px rgba(247,148,30,.16),0 0 18px rgba(247,148,30,.18)}.lutactions{margin-top:10px;padding-top:9px;border-top:1px solid rgba(247,148,30,.42);display:grid;gap:8px}.lutactions .bqr2{margin-top:0}.calstatus{direction:rtl;text-align:right;unicode-bidi:plaintext;margin:10px 0 0;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--in);color:var(--tx);line-height:1.9;overflow-wrap:anywhere}.calstatus:empty{display:none}.calstatus.cal-ok{border-color:rgba(53,214,160,.65);background:rgba(53,214,160,.10);color:#b9f6df}.calstatus.cal-warn{border-color:rgba(247,193,60,.65);background:rgba(247,193,60,.10);color:#ffe2a3}.calstatus.cal-err{border-color:rgba(255,104,115,.65);background:rgba(255,104,115,.10);color:#ffc2c7}.calstatus.cal-info{border-color:rgba(99,162,255,.55);background:rgba(99,162,255,.08);color:#cfe2ff}.calstatus.cal-summary{border-color:transparent!important;background:transparent!important;box-shadow:none!important;padding:0}.calstatus .calsummary{margin:0;background:transparent;border:1px solid rgba(247,148,30,.88);box-shadow:0 0 0 2px rgba(247,148,30,.14),0 0 18px rgba(247,148,30,.16);padding:9px}.calstatus .calsummarybody{max-height:260px}.calreadbox{direction:rtl;text-align:right}.calreadmeta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;color:var(--mu);font-size:11px;margin-bottom:6px}.calreadmeta b{color:var(--tx)}.calparamtable{direction:rtl}.calparamtable .calpname{text-align:right;font-weight:700;white-space:normal}.calparamtable .calpid{font-size:10px;color:var(--mu);font-weight:400;white-space:nowrap}.calparamtable .calnum{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;white-space:nowrap}.calparamtable .calpick{white-space:nowrap}.calparamtable .calpick label{display:inline-flex;align-items:center;gap:4px;color:var(--tx);cursor:pointer}.calparamtable .lutcalcheck{accent-color:#f7941e}.calparamtable tr.calskip{opacity:.72}.calparamtable tr.calskip .calpname{text-decoration:line-through;text-decoration-color:rgba(247,148,30,.7)}.luthead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;color:var(--tx);font-weight:700}.luttag{font-size:11px;color:var(--mu);font-weight:400}.lutreadnote{margin:7px 0;padding:7px 9px;border-radius:8px;background:rgba(80,150,255,.08);color:var(--mu);font-size:12px}.lutreadcard{margin-top:9px;border:1px solid var(--ln);border-radius:9px;padding:8px;background:rgba(0,0,0,.08)}.lutcal{display:grid;gap:4px;margin:7px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:9px;background:rgba(247,193,60,.08);font-size:12px}.lutbox.badread{border-color:rgba(255,104,115,.6)}.lutt{width:100%;font-size:12px;direction:ltr;white-space:nowrap}.lutt th{position:sticky;top:0;background:var(--rs);color:var(--mu);padding:6px 8px;text-align:center;font-weight:600}.lutt td{padding:5px 8px;text-align:center;border-top:1px solid rgba(56,69,94,.45)}.lutt .pair{font-variant-numeric:tabular-nums}.lutst{font-weight:700;border-radius:999px;padding:2px 8px;display:inline-block}.lutst.same{color:var(--mu);background:rgba(150,161,184,.12)}.lutst.changed{color:var(--ok);background:rgba(53,214,160,.12)}.lutst.diff{color:var(--wa);background:rgba(247,193,60,.12)}.lutst.bad{color:var(--er);background:rgba(255,104,115,.12)}.calsummary{margin:8px 0;padding:9px;border:1px solid var(--ln);border-radius:10px;background:var(--in)}.calsummaryhead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700}.calsummarybody{max-height:280px;overflow-y:auto;margin-top:7px;display:grid;gap:5px;padding-right:2px}.calsummaryrow{display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,2fr);gap:8px;align-items:center;padding:7px 8px;border:1px solid rgba(56,69,94,.55);border-radius:8px;background:rgba(0,0,0,.08)}.calsummaryrow .calname{font-weight:700}.calsummaryrow .calvalue{direction:ltr;text-align:left;font-variant-numeric:tabular-nums}.calsummaryrow .calstate{grid-column:1/-1;color:var(--mu);font-size:12px}.calmodal{display:none;position:fixed;inset:0;z-index:120;background:rgba(2,6,23,.72);padding:16px;align-items:center;justify-content:center}.calmodal.on{display:flex}.calmodalbox{width:min(700px,100%);max-height:82vh;display:flex;flex-direction:column;background:var(--rs);border:1px solid var(--ln);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.45);padding:12px}.calmodalhead{display:flex;justify-content:space-between;gap:10px;align-items:center}.calmodalbody{overflow-y:auto;max-height:min(58vh,460px);margin:10px 0}.calmodalfoot{display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:10px}.calmodalclose{border:0;background:transparent;color:var(--mu);font-size:24px;cursor:pointer;padding:0 6px}.calmodal .calsummary{margin:0;background:var(--in)}
-.bt3{width:auto;font-size:13px}.bt3 th{color:var(--mu);font-weight:600;text-align:center;padding:5px 8px;white-space:nowrap}.bt3 td{padding:5px 8px;text-align:center}.bt3 input[type=number]{padding:6px 8px}
-.bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
+.lutbox{margin-top:10px;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px}.lutbox.lutchange{border-color:rgba(247,148,30,.88);box-shadow:0 0 0 2px rgba(247,148,30,.16),0 0 18px rgba(247,148,30,.18)}.lutactions{margin-top:10px;padding-top:9px;border-top:1px solid rgba(247,148,30,.42);display:grid;gap:8px}.lutactions .bqr2{margin-top:0}.calstatus{direction:rtl;text-align:right;unicode-bidi:plaintext;margin:10px 0 0;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--in);color:var(--tx);line-height:1.9;overflow-wrap:anywhere}.calstatus:empty{display:none}.calstatus.cal-ok{border-color:rgba(53,214,160,.65);background:rgba(53,214,160,.10);color:#b9f6df}.calstatus.cal-warn{border-color:rgba(247,193,60,.65);background:rgba(247,193,60,.10);color:#ffe2a3}.calstatus.cal-err{border-color:rgba(255,104,115,.65);background:rgba(255,104,115,.10);color:#ffc2c7}.calstatus.cal-info{border-color:rgba(99,162,255,.55);background:rgba(99,162,255,.08);color:#cfe2ff}.calstatus.cal-summary{border-color:transparent!important;background:transparent!important;box-shadow:none!important;padding:0}.calstatus .calsummary{margin:0;background:transparent;border:1px solid rgba(247,148,30,.88);box-shadow:0 0 0 2px rgba(247,148,30,.14),0 0 18px rgba(247,148,30,.16);padding:9px}.calstatus .calsummarybody{max-height:260px}.calreadbox{direction:rtl;text-align:right}.calreadmeta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;color:var(--mu);font-size:11px;margin-bottom:6px}.calreadmeta b{color:var(--tx)}.calparamtable{direction:rtl}.calparamtable .calpname{text-align:right;font-weight:700;white-space:normal}.calparamtable .calpid{font-size:10px;color:var(--mu);font-weight:400;white-space:nowrap}.calparamtable .calnum{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;white-space:nowrap}.calparamtable .calpick{white-space:nowrap}.calparamtable .calpick label{display:inline-flex;align-items:center;gap:4px;color:var(--tx);cursor:pointer}.calparamtable .lutcalcheck{accent-color:#f7941e}.calparamtable tr.calskip{opacity:.72}.calparamtable tr.calskip .calpname{text-decoration:line-through;text-decoration-color:rgba(247,148,30,.7)}.luthead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;color:var(--tx);font-weight:700}.luttag{font-size:11px;color:var(--mu);font-weight:400}.lutreadnote{margin:7px 0;padding:7px 9px;border-radius:8px;background:rgba(80,150,255,.08);color:var(--mu);font-size:12px}.lutreadcard{margin-top:9px;border:1px solid var(--ln);border-radius:9px;padding:8px;background:rgba(0,0,0,.08)}.lutbox.badread{border-color:rgba(255,104,115,.6)}.lutt{width:100%;font-size:12px;direction:ltr;white-space:nowrap}.lutt th{position:sticky;top:0;background:var(--rs);color:var(--mu);padding:6px 8px;text-align:center;font-weight:600}.lutt td{padding:5px 8px;text-align:center;border-top:1px solid rgba(56,69,94,.45)}.lutt .pair{font-variant-numeric:tabular-nums}.lutst{font-weight:700;border-radius:999px;padding:2px 8px;display:inline-block}.lutst.same{color:var(--mu);background:rgba(150,161,184,.12)}.lutst.changed{color:var(--ok);background:rgba(53,214,160,.12)}.lutst.diff{color:var(--wa);background:rgba(247,193,60,.12)}.lutst.bad{color:var(--er);background:rgba(255,104,115,.12)}.calsummary{margin:8px 0;padding:9px;border:1px solid var(--ln);border-radius:10px;background:var(--in)}.calsummaryhead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700}.calsummarybody{max-height:280px;overflow-y:auto;margin-top:7px;display:grid;gap:5px;padding-right:2px}.calsummaryrow{display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,2fr);gap:8px;align-items:center;padding:7px 8px;border:1px solid rgba(56,69,94,.55);border-radius:8px;background:rgba(0,0,0,.08)}.calsummaryrow .calname{font-weight:700}.calsummaryrow .calvalue{direction:ltr;text-align:left;font-variant-numeric:tabular-nums}.calsummaryrow .calstate{grid-column:1/-1;color:var(--mu);font-size:12px}.calmodal{display:none;position:fixed;inset:0;z-index:120;background:rgba(2,6,23,.72);padding:16px;align-items:center;justify-content:center}.calmodal.on{display:flex}.calmodalbox{width:min(700px,100%);max-height:82vh;display:flex;flex-direction:column;background:var(--rs);border:1px solid var(--ln);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.45);padding:12px}.calmodalhead{display:flex;justify-content:space-between;gap:10px;align-items:center}.calmodalbody{overflow-y:auto;max-height:min(58vh,460px);margin:10px 0}.calmodalfoot{display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:10px}.calmodalclose{border:0;background:transparent;color:var(--mu);font-size:24px;cursor:pointer;padding:0 6px}.calmodal .calsummary{margin:0;background:var(--in)}.okc{color:var(--ok)}.erc{color:var(--er)}
 /* [EN] Colour checklist: green ready / yellow warning / red blocker.
    [FA] فهرست رنگی: سبز آماده / زرد هشدار / قرمز مانع. */
 .wak{color:var(--wa)}
@@ -199,14 +187,11 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .ckr.ok i{background:var(--ok);color:#04120c}
 .ckr.wa i{background:var(--wa);color:#231a02}
 .ckr.no i{background:var(--er);color:#2b0508}
-.ckr .fx{color:var(--mu);font-size:11.5px;display:block;margin-top:2px}
-.bxw textarea,.calcd{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 Vazirmatn;direction:ltr;margin-top:6px}.calcd{display:none;height:220px;font-size:12px}
+.ckr .fx{color:var(--mu);font-size:11.5px;display:block;margin-top:2px}.calcd{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 Vazirmatn;direction:ltr;margin-top:6px}.calcd{display:none;height:220px;font-size:12px}
 .sx{font-size:12.5px;line-height:1.95;color:#aab3c5;margin:2px 0 6px;padding:0 2px}.sx b{color:var(--tx);font-weight:700}
 .ds{font-size:13px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:11px 15px}.ds ul{padding-right:18px}.ds b{color:var(--tx)}
 /* [EN] v1.87: one strip per scenario card says exactly what makes that error go away. [FA] یک نوار در هر کارت سناریو می‌گوید همان خطا با چه چیزی پاک می‌شود. */
-.clr{font-size:12.5px;line-height:1.95;color:#cfe8d8;background:rgba(46,163,107,.08);border:1px solid rgba(46,163,107,.45);border-right:4px solid #2ea36b;border-radius:10px;padding:8px 12px;margin:6px 0 2px}.clr b{color:#7fd6a6}
-.qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:12px}.q input[type=number]{width:92px}.q .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.q .run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
-.eg3{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px}.eg3 label{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.clr{font-size:12.5px;line-height:1.95;color:#cfe8d8;background:rgba(46,163,107,.08);border:1px solid rgba(46,163,107,.45);border-right:4px solid #2ea36b;border-radius:10px;padding:8px 12px;margin:6px 0 2px}.clr b{color:#7fd6a6}.q{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:12px}.q input[type=number]{width:92px}.q .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.q .run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
 .pgx{display:none}.pgx.a{display:block}body:not(.br) .wstop{display:none}body.br .brun{opacity:.4;pointer-events:none}a.lnk{text-decoration:none;display:inline-block}
 .bq{background:var(--in);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:11px;margin-top:10px}
 /* [EN] v1.47 (user order "they jump up and down"): a grid with stretched
@@ -240,16 +225,13 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .shv{display:flex;flex-direction:column;gap:3px;justify-content:flex-end;background:var(--cd);border:1px dashed var(--ln);border-radius:10px;padding:7px 10px;font-size:13px}
 .shv .t{flex:1 0 auto;font-weight:600;color:var(--mu)}
 .shv b{font-size:15px;font-variant-numeric:tabular-nums;direction:ltr;text-align:left}
-.shv .ow{font-size:11px;color:var(--mu)}
-.cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4;white-space:nowrap}
-.vc{justify-content:center}.vc input[type=number]{width:min(108px,100%);max-width:100%;box-sizing:border-box}
+.shv .ow{font-size:11px;color:var(--mu)}.stp2{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4;white-space:nowrap}
 .fl{margin-top:0;padding-top:0;border-top:0}#sh .hd{flex-wrap:wrap;gap:8px}
 .sec{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--tx);margin:16px 0 8px;padding-top:13px;border-top:1px solid var(--ln)}
 .sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--ln));border-radius:1px}
 
-.kc{font-size:12px;margin-top:6px}.cr{margin-top:10px;flex-wrap:wrap}.cr .cb{flex:1 1 120px}.cr input[type=number]{width:124px}
-.off2{background:linear-gradient(180deg,#a02b33,#7c1f27);white-space:nowrap}
-@media(max-width:1000px){.ch,.qs{grid-template-columns:1fr}}
+.kc{font-size:12px;margin-top:6px}
+@media(max-width:1000px){.ch{grid-template-columns:1fr}}
 /* [EN] v1.84 laptop viewport pass: 760px-wide browsers need one charger
    column, shorter sticky bars and controls that wrap before they overflow.
    [FA] ممیزی نمایشگر لپ‌تاپ: در عرض ۷۶۰ پیکسل کارت شارژر تک‌ستونه، نوارهای
@@ -271,7 +253,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
  .srv col.c5{width:170px}
  .evpop{max-width:calc(100vw - 16px)}
 }
-@media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.cb{font-size:12px;padding:9px 8px}.cb span{white-space:nowrap}.ch{grid-template-columns:1fr}.bg2{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
+@media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.ch{grid-template-columns:1fr}.bg2{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
 /* [EN] v1.57 (user order): the scenario bar sticks right under the top bar
    and stays visible while scrolling. [FA] نوار سناریوها زیر نوار بالایی
    می‌چسبد و هنگام اسکرول همیشه دیده می‌شود. */
@@ -283,7 +265,6 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .sbt button{flex:1;border:0;background:none;border-radius:8px;padding:8px 6px;color:var(--mu);font-weight:700;transition:background .15s,color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sbt button:hover{color:var(--tx)}.sbt button.a{background:linear-gradient(180deg,#24406e,#1b3358);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 .sgx{display:none}.sgx.a{display:block}
-.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0}
 .ab{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;min-height:92px;transition:border-color .2s}
 .ab small{color:var(--mu)}.ab b{font-size:19px;display:block;margin:2px 0;font-variant-numeric:tabular-nums}.ab .lb{display:block;min-height:20px}.ab .tg{margin-top:4px;display:inline-flex}
 .wbx:empty{display:none}.wbx{position:relative;margin:10px 0;padding:10px 42px 10px 12px;border-radius:12px;border:1px solid var(--ln);background:var(--rs);font-size:13px;line-height:1.9}
@@ -424,8 +405,6 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evtd{flex:1}
 .evtv{color:var(--mu);font-family:Vazirmatn}
 .mok{color:#2f9e63;font-weight:700}.mbad{color:#e5484d;font-weight:700}
-.evttag{display:inline-block;min-width:8px;height:8px;border-radius:2px;margin-left:6px;background:#5b6472}
-.evttag.g{background:#2f9e63}.evttag.y{background:#c9a227}.evttag.r{background:#c0392b}
 </style></head><body>
 <div id="pmod"><div class="pmb"><div id="pmt"></div><div id="pmbtn"><button class="sb" id="pmok">تأیید</button><button class="sb sb2" id="pmno">انصراف</button></div><div class="lb" style="margin-top:10px;font-size:11px;opacity:.8">Enter = تأیید · Esc = انصراف</div></div></div>
 <div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی</span>
@@ -433,7 +412,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1190957</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5646095</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
