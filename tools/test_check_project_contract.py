@@ -60,6 +60,23 @@ class ProjectContractCheckerTests(unittest.TestCase):
         bad = json.loads(json.dumps(self.manifest))
         bad["projects"]["B"]["root"] = "../outside"
         self.assertEqual(self.run_check(bad), 1)
+    def test_ignored_entry_may_be_absent(self):
+        # node_modules only exists after "npm install"; a clean checkout has it
+        # missing and must still pass the checker.
+        manifest = json.loads(json.dumps(self.manifest))
+        manifest["ignored_root_entries"] = ["node_modules"]
+        self.assertFalse((self.root / "node_modules").exists())
+        self.assertEqual(self.run_check(manifest), 0)
+    def test_ignored_entry_present_is_classified(self):
+        # ...and when it IS installed it must not read as an unowned entry.
+        manifest = json.loads(json.dumps(self.manifest))
+        manifest["ignored_root_entries"] = ["node_modules"]
+        (self.root / "node_modules").mkdir()
+        self.assertEqual(self.run_check(manifest), 0)
+    def test_present_ignored_entry_still_must_be_declared(self):
+        # an installed node_modules absent from the manifest is a real gap.
+        (self.root / "node_modules").mkdir()
+        self.assertEqual(self.run_check(), 1)
 class StripFaCommentsExitCodeTests(unittest.TestCase):
     def test_check_mode_fails_when_rewrite_is_needed(self):
         with tempfile.TemporaryDirectory() as directory:

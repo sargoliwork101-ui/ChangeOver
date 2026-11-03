@@ -28,7 +28,7 @@ def check(manifest):
         return 1
     # Validate that every immediate repository entry is explicitly assigned to
     # one project, declared shared/outside the board projects, or intentionally
-    # excluded (currently only Git metadata). This does not claim ownership of
+    # excluded (Git metadata and node_modules). This does not claim ownership of
     # files below a project root individually.
     assignments = []
     for name, project in projects.items():
@@ -50,6 +50,11 @@ def check(manifest):
     outside_dirs = manifest.get("outside_directories", [])
     outside_files = manifest.get("outside_files", [])
     ignored = manifest.get("ignored_root_entries", [])
+    # Entries here are optional by design: node_modules only exists after
+    # "npm install", so a clean checkout has no such directory and must still
+    # pass. When it does exist it is classified like any other root entry, so a
+    # present-but-undeclared node_modules still fails below.
+    optional_entries = set(ignored) if isinstance(ignored, list) else set()
     for label, paths in (("outside_directories", outside_dirs),
                          ("outside_files", outside_files),
                          ("ignored_root_entries", ignored)):
@@ -65,8 +70,7 @@ def check(manifest):
                 fail(f"{label}: missing directory {path}")
             if label == "outside_files" and not os.path.isfile(full):
                 fail(f"{label}: missing file {path}")
-            if label == "ignored_root_entries" and not os.path.exists(full):
-                fail(f"{label}: missing path {path}")
+            # ignored_root_entries carry no existence requirement (see above).
             assignments.append((path, label))
     classified = [path for path, _owner in assignments]
     if len(classified) != len(set(classified)):
@@ -76,6 +80,8 @@ def check(manifest):
     for path in sorted(actual_entries - declared_entries):
         fail(f"unclassified top-level repository entry: {path}")
     for path in sorted(declared_entries - actual_entries):
+        if path in optional_entries:
+            continue    # optional entry that is simply not installed here
         fail(f"manifest classifies a non-existent top-level entry: {path}")
     for name, project in projects.items():
         roots = project.get("roots", [project.get("root")])
