@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          117u
+#define ESP_ESP_FW_VERSION          118u
 /*
  * [EN] Bit 6 of the TLM flag byte: the board confirms the handshake.
  */
@@ -387,6 +387,14 @@
  */
 #define ESP_LOG_CLOCK_REWIND_SEC    120u
 #define ESP_LOG_CLOCK_VALID_MIN     1700000000u
+/*
+ * [EN] v1.118 (audit item 4): the clock had a floor but no ceiling, so a phone
+ * whose date is wrong in the FUTURE (2106, a dead RTC on the phone itself)
+ * was accepted and opened a day file named after that year; coming back to
+ * today then looked like a huge rewind and split the history in two. No real
+ * installation is running in 2100, so that is the ceiling.
+ */
+#define ESP_LOG_CLOCK_VALID_MAX     4102444800u
 #define ESP_LOG_HEADER \
     "# state history / تاریخچهٔ وضعیت\n" \
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \

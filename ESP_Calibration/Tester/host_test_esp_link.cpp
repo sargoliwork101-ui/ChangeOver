@@ -3718,6 +3718,58 @@ int main(void)
         reset_clock_test_boot();
     }
 
+    /* -- v1.118: a clock far in the future is not a clock -------------------
+       [EN] Audit item 4. The clock had a floor but no ceiling, so a phone with
+            a wrong future date was believed: the panel opened a day file named
+            after that year, and when the phone was right again the jump back
+            looked like a rewind and cut the history in two. Refused now, on
+            the way in (POST /clock) and on the way back (the clock file).
+       [FA] بند ۴ ممیزی. ساعت کف داشت ولی سقف نداشت، پس گوشی‌ای با تاریخ
+            آینده باور می‌شد: پنل فایلی به نام آن سال می‌ساخت و بعد برگشتن به
+            امروز مثل عقب‌بردن ساعت تاریخچه را دو تکه می‌کرد. حالا هم هنگام
+            گرفتن ساعت از گوشی رد می‌شود و هم هنگام خواندن فایل ساعت. */
+    {
+        const uint32_t goodBase = 1794000000u;      /* a believable second */
+        const uint32_t year2106Sec = 4294000000u;   /* 2106-02-07, past the cap */
+
+        reset_clock_test_boot();
+        LittleFS.files.clear();
+        check(func__EspLog_TimeSet(goodBase, 12600),
+              "future clock: a believable second is accepted first");
+        const uint32_t dayBefore = func__EspLog_TodayCode();
+        check(func__EspLog_TimeSet(year2106Sec, 12600) == false,
+              "future clock: a year-2106 clock from the phone is REFUSED");
+        check(func__EspLog_TodayCode() == dayBefore,
+              "future clock: and the day does not jump to that year",
+              std::to_string((unsigned long)func__EspLog_TodayCode()));
+        check(LittleFS.files[std::string("/evt-21060207.csv")].empty(),
+              "future clock: no day file named after the wrong year is created");
+        check(func__EspLog_NowSec() < year2106Sec,
+              "future clock: the panel keeps the time it already had",
+              std::to_string((unsigned long)func__EspLog_NowSec()));
+
+        /* the last believable years still work, so the cap is not too tight */
+        check(func__EspLog_TimeSet(4099680000u, 12600),
+              "future clock: 2099 is still a believable year");
+
+        /* one bad save must not survive a power cut either */
+        reset_clock_test_boot();
+        {
+            char futureClock[64];
+            (void)snprintf(futureClock, sizeof futureClock,
+                           "%lu,12600,1000,118,0\n", (unsigned long)year2106Sec);
+            LittleFS.files[std::string(ESP_LOG_CLOCK_PATH)] = std::string(futureClock);
+        }
+        func__EspLog_ClockLoad();
+        check(BOOL__G__LogClockValid == false,
+              "future clock: a saved year-2106 second in the clock file is ignored",
+              std::to_string((unsigned long)func__EspLog_NowSec()));
+        check(func__EspLog_TodayCode() == 0u,
+              "future clock: with no believable clock the day stays unknown",
+              std::to_string((unsigned long)func__EspLog_TodayCode()));
+        reset_clock_test_boot();
+    }
+
     /* -- v1.117: the first wake after midnight opens the day with one row ---
        [EN] User order 2026-11-02: "at 00:00, the moment the file is created,
             write a record too, and save the clock and the counter with it -

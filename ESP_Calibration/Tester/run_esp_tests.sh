@@ -39,6 +39,9 @@ export ASAN_OPTIONS="detect_leaks=0"
 #      failing. When the tools exist they are part of the gate: a panel that
 #      renders but throws on a click is broken for the user just the same.
 if command -v node >/dev/null 2>&1; then
+    # [EN] v1.118: the Persian label of a history row is JavaScript, so it needs
+    #      its own runner. This one needs no DOM and no jsdom, so it always runs.
+    node "${SCRIPT_DIRECTORY}/host_test_panel_labels.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_panel_click.js" || exit 1
 else
     echo "SKIP: node is not installed; the DOM tests did not run."

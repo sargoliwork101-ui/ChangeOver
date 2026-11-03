@@ -638,7 +638,13 @@ static void func__EspLog_ClockLoad(void)
         return;
     }
     uint32_t__savedSec = (uint32_t)string__content.substring(0, int32_t__split).toInt();
-    if (uint32_t__savedSec < ESP_LOG_CLOCK_VALID_MIN)
+    /*
+ * [EN] v1.118: a saved second outside the believable range is not a clock.
+ * Without the ceiling, one bad save (a phone with a wrong future date) would
+ * survive every power cut.
+ */
+    if ((uint32_t__savedSec < ESP_LOG_CLOCK_VALID_MIN) ||
+        (uint32_t__savedSec > ESP_LOG_CLOCK_VALID_MAX))
     {
         return;
     }
@@ -867,6 +873,17 @@ static bool func__EspLog_TimeSet(uint32_t uint32_t__epochSec, int32_t int32_t__t
     uint32_t uint32_t__nowSec;
     bool bool__jump = false;
     if (uint32_t__epochSec < ESP_LOG_CLOCK_VALID_MIN)
+    {
+        return false;
+    }
+    /*
+ * [EN] v1.118 (audit item 4): a clock far in the FUTURE is just as wrong as one
+ * in the past, and it used to be accepted: the panel opened a day file named
+ * after that year and, when the phone was right again, the jump back looked
+ * like a rewind that split the history. Refuse it; the panel keeps the time
+ * it already had.
+ */
+    if (uint32_t__epochSec > ESP_LOG_CLOCK_VALID_MAX)
     {
         return false;
     }

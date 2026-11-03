@@ -541,7 +541,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c673ac5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1190957</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -4267,7 +4267,22 @@ function evtRowText(r){
   const parts=[];let lv=0;
   const add=(txt,l)=>{parts.push(txt);if(l>lv)lv=l;};
   const stName=v=>((typeof STFA!=='undefined'&&STFA[v])?STFA[v]:(ST[v]||('#'+v)));
-  if(chg&1){add('پنل روشن شد'+((chg&4096)?' — بروزرسانی فرم‌ور':'')+(r.note===1?' — دفعهٔ قبل باتری روی مرز قطع بود':''),2);}
+  /* [EN] v1.118 (audit item 3): since v1.115 the boot bit no longer means "the
+          panel came on" - a plain switch-on writes nothing. It now rides only
+          on an update row or on a row that says the last run stopped at the
+          battery cut line. The label follows the real meaning; the old
+          sentence stays for files written by v1.114 and earlier, which really
+          did have a row per switch-on.
+     [FA] نسخهٔ ۱٫۱۱۸ (بند ۳ ممیزی): از ۱٫۱۱۵ بیت «روشن شدن» دیگر معنایش
+          «پنل روشن شد» نیست؛ روشن‌شدن ساده هیچ ردیفی نمی‌نویسد. این بیت حالا
+          فقط روی ردیف آپدیت یا ردیفِ «دفعهٔ قبل روی مرز قطع بود» می‌آید.
+          برچسب با معنای واقعی هم‌خوان شد؛ متن قدیمی برای فایل‌های نسخهٔ
+          ۱٫۱۱۴ و پیش از آن می‌ماند که واقعاً هر روشن‌شدن یک ردیف داشت. */
+  if(chg&1){
+    if(chg&4096){add('بروزرسانی فرم‌ور انجام شد — پنل با نسخهٔ نو روشن شد',2);}
+    else if(r.note===1){add('بازگشت از قطع باتری — دفعهٔ قبل روی مرز قطع بود',2);}
+    else{add('پنل روشن شد',2);}
+  }
   if((chg&4096)&&!(chg&1)){add('بروزرسانی فرم‌ور انجام شد',2);}
   if(chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد دوباره برقرار شد',(r.note===2)?2:1);}
   if(chg&2){add(mains?'برق شهر وصل شد':'برق شهر قطع شد',(mains?(r.band?2:1):2));}
