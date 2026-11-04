@@ -1,34 +1,24 @@
 /**
  * @file    bsp_exti.c
  * @brief   [EN] STM32F103C8T6 EXTI adapter for JITTER1, JITTER2 and 24V input.
- *          [FA] adapter خطوط EXTI برای JITTER1، JITTER2 و ورودی ۲۴ ولت.
- *
  * @note    [EN] PB2/PB6 are active-low LM393 outputs: the CubeMX/MCU EXTI
  *              trigger is falling-edge and the callback also checks the pin is
  *              low before latching. PB4 remains a rising/falling presence input.
- *          [‎FA] PB2/PB6‎ خروجی ‎active-low‎ از LM393 هستند: تریگر EXTI در ‎CubeMX/MCU‎
- *              لبهٔ پایین‌رونده است و callback نیز پیش از latch پایین‌بودن پایه
- *              را چک می‌کند. PB4 همچنان ورودی حضور با هر دو لبه است.
  */
-
 #include "bsp_exti.h"
 #include "board_pins.h"
 #include "modules_enable.h"
 #if MODULE_MCU_POWER_PATH
 #include "mcu_power_path.h"
 #endif
-
 static volatile uint8_t UINT8_T__G__Flags[BSP_EXTI_SOURCE_COUNT];
-
 /* ==================== BspExti_Init ==================== */
 /**
  * @brief  [EN] Clear all board event flags before the application starts.
- *         [FA] پیش از شروع برنامه همهٔ پرچم‌های رویداد برد را پاک می‌کند.
  */
 void func__BspExti_Init(void)
 {
     uint32_t uint32_t__index;
-
     for (uint32_t__index = 0u;
          uint32_t__index < (uint32_t)BSP_EXTI_SOURCE_COUNT;
          uint32_t__index++)
@@ -36,12 +26,10 @@ void func__BspExti_Init(void)
         UINT8_T__G__Flags[uint32_t__index] = 0u;
     }
 }
-
 /* ==================== BspExti_OnIrq ==================== */
 /**
  * @brief  [EN] Latch one logical event from an IRQ callback.
- *         [FA] یک رویداد منطقی را از callback وقفه قفل می‌کند.
- * @param  bsp_exti_src_t__src [EN] Logical source / منبع منطقی
+* @param bsp_exti_src_t__src Logical source /
  */
 void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
 {
@@ -50,7 +38,6 @@ void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
         UINT8_T__G__Flags[bsp_exti_src_t__src] = 1u;
     }
 }
-
 /* ==================== BspExti_TakeEvent ==================== */
 /**
  * @brief  [EN] Read and clear one logical event flag. The read-clear pair
@@ -59,38 +46,27 @@ void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
  *         clear would be lost forever - the LM393 output stays low without
  *         a new edge - swallowing a real JIT trip. Critical section is a
  *         few cycles only.
- *         [FA] پرچم یک رویداد منطقی را می‌خواند و پاک می‌کند. جفت
- *         خواندن-پاک‌کردن داخل بخش بحرانی کوتاه PRIMASK است (ممیزی
- *         ۲۰۲۶-۰۹-۲۲): رویدادی که دقیقاً بین خواندن و پاک‌کردن برسد برای
- *         همیشه گم می‌شود (خروجی LM393 بدون لبهٔ جدید پایین می‌ماند) و یک
- *         تریپ واقعی JIT قورت داده می‌شود. بخش بحرانی فقط چند سیکل است.
- * @param  bsp_exti_src_t__src [EN] Logical source / منبع منطقی
- * @return bool [EN] true when an event was pending / اگر pending باشد true
+* @param bsp_exti_src_t__src Logical source /
+* @return bool true when an event was pending / pending true
  */
 bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src)
 {
     bool bool__taken = false;
     uint32_t uint32_t__savedPrimask;
-
     if ((uint32_t)bsp_exti_src_t__src < (uint32_t)BSP_EXTI_SOURCE_COUNT)
     {
         uint32_t__savedPrimask = __get_PRIMASK();
         __disable_irq();
-
         bool__taken = (UINT8_T__G__Flags[bsp_exti_src_t__src] != 0u);
         UINT8_T__G__Flags[bsp_exti_src_t__src] = 0u;
-
         __set_PRIMASK(uint32_t__savedPrimask);
     }
-
     return bool__taken;
 }
-
 /* ==================== HAL_GPIO_EXTI_Callback ==================== */
 /**
  * @brief  [EN] Translate a HAL EXTI pin callback into a logical board event.
- *         [FA] callback پایهٔ EXTI در HAL را به رویداد منطقی برد تبدیل می‌کند.
- * @param  uint16_t__GPIO_Pin [EN] HAL pin mask / ماسک پایهٔ HAL
+* @param uint16_t__GPIO_Pin HAL pin mask / HAL
  */
 void HAL_GPIO_EXTI_Callback(uint16_t uint16_t__GPIO_Pin)
 {
@@ -114,20 +90,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t uint16_t__GPIO_Pin)
     else if (uint16_t__GPIO_Pin == PIN_INT_24_IN_PIN)
     {
 #if MODULE_MCU_POWER_PATH
-        /* [EN] Emergency MCU battery reconnect has priority: drive PB5 Low immediately in ISR,
+        /*
+ * [EN] Emergency MCU battery reconnect has priority: drive PB5 Low immediately in ISR,
          *      cancel pending disconnect timer, then latch the input-detect event for other modules.
          *      (Full-program audit 2026-09-22: this hook is called exactly ONCE - a second,
          *      redundant call after the event latch was removed.)
-         * [FA] اتصال اضطراری باتری MCU اولویت دارد: فوراً PB5 Low، لغو تایمر، سپس ثبت رویداد.
-         *      (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲: این هوک دقیقاً یک‌بار صدا زده می‌شود - فراخوانی
-         *      تکراری بعد از ثبت رویداد حذف شد.) */
+ */
         func__McuPowerPath_OnInputIrq();
 #endif
         func__BspExti_OnIrq(BSP_EXTI_INPUT_DETECT);
     }
     else
     {
-        /* [EN] Unknown EXTI sources are intentionally ignored.
-           [FA] منابع EXTI ناشناخته عمداً نادیده گرفته می‌شوند. */
+        /*
+ * [EN] Unknown EXTI sources are intentionally ignored.
+ */
     }
 }

@@ -1,6 +1,6 @@
 # ESP-Link Agent Spec — current contract
 
-Status date: 2026-10-11. This is the single handoff document for the ESP panel and the
+Status date: 2026-10-31. This is the single handoff document for the ESP panel and the
 STM32 firmware pair. Where the code and this text disagree, the code wins and this file
 must be corrected. Older version history was removed; it lives in `git log`.
 
@@ -18,14 +18,14 @@ must be corrected. Older version history was removed; it lives in `git log`.
 
 Authoritative endpoint contract for the current firmware/panel pair:
 
-- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 143`; ordinary wire ids are `0..142`.
+- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 171`; ordinary wire ids are `0..170`.
 - `PARAMS_BULK` is chunked at the 512-byte payload ceiling: at most 102
   `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
-- NVM format is version `12`, with capacity `144` entries. Persisted settings are
-  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..142` except retired `72/73` and transient session mute `76`,
+- NVM format is version `12`, with capacity `172` entries. Persisted settings are
+  ids `0..14` (ids `9` and `10` are reserved and rejected), `20..170` except derived `70`, retired `72/73` and transient session mute `76`,
   plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
   and is not an NVM setting.
-- Scenario 7 is the technical board/power-stage fault face. Its controls are:
+- Scenario 7 is the technical board/power-stage fault face, and ids `143..146` configure Wi-Fi battery power saving:
 
 | ID | Name | Type | Unit | Default | Range | Meaning |
 |---:|---|---|---|---:|---|---|
@@ -35,6 +35,10 @@ Authoritative endpoint contract for the current firmware/panel pair:
 | 140 | `TECH_BEEP_GAP_MS` | u32 | ms | 100 | 0..5000 | Gap between beeps |
 | 141 | `TECH_LED_PERIOD_MS` | u32 | ms | 1000 | 100..10000 | Shared period for all three LEDs |
 | 142 | `TECH_LED_DUTY_PCT` | u32 | % | 50 | 0..100 | Shared ON share for all three LEDs |
+| 143 | `WIFI_IDLE_LOW_POWER_MS` | u32 | ms | 1800000 | 0..86400000 | Initial low-TX-power ON window on battery |
+| 144 | `WIFI_CYCLE_ON_MS` | u32 | ms | 60000 | 5000..3600000 | ON window per cycle after initial window |
+| 145 | `WIFI_CYCLE_OFF_MS` | u32 | ms | 120000 | 0..3600000 | OFF window per cycle after initial window |
+| 146 | `WIFI_BAT_CUTOFF_PCT` | u32 | % | 20 | 0..100 | Battery % cutoff below which ESP stays completely OFF on battery |
 
 Scenario-7 detection is not performed by the ESP. The STM32 detects either
 `relay open + applied PWM 0 + recorded JIT`, or `applied PWM > 200 permille +
@@ -42,6 +46,38 @@ measured channel current 0 mA + channel battery >= 6000 mV (not BAT_LOST)`. The 
 condition keeps an unplugged battery from latching the lockout during the 1 s absent debounce. After detection the Charger keeps both PWM paths
 stopped and the relay open until reset/power-cycle; only the three-LED face and
 its six settings are exposed to the panel. This is the single current contract.
+
+Ids `147..157` configure scenario 8 (weak-battery verdict), `158..164` are the
+per-scenario alarm on/off ticks (the «فعال» tick of scenario cards 1..7), `165`
+sets the rest-voltage floor that makes a re-cut count as weakness, and
+`166..168` configure the charging thermal rest, and `169/170` are the shared input Schmitt return margins:
+
+| ID | Name | Type | Unit | Default | Range | Meaning |
+|---:|---|---|---|---:|---|---|
+| 147 | `WEAK_ENABLE` | u8 | 0/1 | 1 | 0..1 | Scenario-8 verdict on |
+| 148 | `WEAK_REST_MS` | u32 | ms | 600000 | 60000..3600000 | Continuous healthy rest until the verdict clears and one retry is allowed |
+| 149 | `WEAK_CYCLE_GUARD_MS` | u32 | ms | 60000 | 1000..600000 | A repeat cut inside this window after a mains-free reconnect = weak pack |
+| 150 | `WEAK_HEALTHY_HOLD_MS` | u32 | ms | 10000 | 1000..300000 | Unbroken healthy voltage needed before a mains-free reconnect |
+| 151 | `WEAK_LED_PERIOD_MS` | u32 | ms | 500 | 0 or 100..10000 | Scenario-8 red blink period; 0 = solid red |
+| 152 | `WEAK_LED_DUTY_PCT` | u8 | % | 50 | 5..95 | Scenario-8 red ON share |
+| 153 | `WEAK_BEEP_PERIOD_MS` | u32 | ms | 3000 | 0 or 1000..600000 | Scenario-8 beep pattern period; 0 = silent |
+| 154 | `WEAK_BEEP_LEN_MS` | u32 | ms | 200 | 20..2000 | Length of each beep |
+| 155 | `WEAK_BEEP_COUNT` | u8 | count | 3 | 0..10 | Beeps per pattern |
+| 156 | `WEAK_BEEP_GAP_MS` | u32 | ms | 100 | 0..5000 | Gap between beeps |
+| 157 | `WEAK_BLOCK_OUTPUT` | u8 | 0/1 | 1 | 0..1 | Keep the weak pack off the output until the verdict clears |
+| 158..164 | `SCN1_ALARM`..`SCN7_ALARM` | u8 | 0/1 | 1 | 0..1 | Per-scenario LED/beep tick (silences that scenario face; detection unchanged) |
+| 165 | `WEAK_REST_FLOOR_MV` | u32 | mV | 25000 | 21200..29000 | Rest voltage that makes a re-cut count as weakness; below it the pack is discharged and never attempted |
+| 166 | `CHG_THERMAL_TRIGGER_MA` | u32 | mA | 600 | 0..3000 | Thermal-rest current threshold; 0 = auto (bulkMax - 50) |
+| 167 | `CHG_THERMAL_CONTINUOUS_MS` | u32 | ms | 3600000 | 0..21600000 | Continuous charge at/above the threshold that triggers the rest; 0 = rest off |
+| 168 | `CHG_THERMAL_REST_MS` | u32 | ms | 600000 | 0..3600000 | Thermal rest length; 0 = rest off |
+| 169 | `FAULT_INPUT_HYST_LOW_MV` | u32 | mV | 500 | 0..3000 and <= (q34-q33)/4 | Shared lower return margin |
+| 170 | `FAULT_INPUT_HYST_HIGH_MV` | u32 | mV | 500 | 0..3000 and <= (q34-q33)/4 | Shared upper return margin |
+
+The shared input permission is owned by Fault: outside `[q33,q34]` it releases
+immediately; it re-arms only inside `[q33+q169, q34-q170]`. Charger, UI and
+McuPowerPath consume that one permission. The OV alarm threshold is derived from
+`q34`; id `70` is a read-only mirror and is not persisted. Only `q71` (OV clear
+hysteresis) remains separately adjustable.
 
 
 ## 2. Battery-current chain (current)
@@ -75,8 +111,8 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 - Push and commit (messages 0x04..0x08): `LUT_BEGIN`, `LUT_CHUNK` (points), `LUT_COMMIT` (ACK),
   `LUT_RESET` only after a successful COMMIT, `LUT_READ` for read-back. The payload layout is
   defined in `Firmware/Modules/EspLink/esp_link.c` (LUT handlers).
-- Measured table: `bench/current_table_4a9da54.csv`, built from the DMM export
-  `bench/bench_samples_4a9da54.json` (BAT2, duty 0-17 %). It is the table in use on the bench
+- Measured table: `Calibration Data/current_table_4a9da54.csv`, built from the DMM export
+  `Calibration Data/bench_samples_4a9da54.json` (BAT2, duty 0-17 %). It is the table in use on the bench
   boards. Y is the highest DMM reading at each count, rounded UP to 0.1 mA. The chain
   formula `counts x 24200/27573` (no gain) was NOT the real relation: above about 11 % duty it read
   below the measured current (about 108 mA low at 17 %). BSP(c) above is the fallback formula only.
@@ -91,7 +127,7 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 
 ## 4. Bench capture file (current)
 
-- The column layout is defined by `ESP_BENCHLOG_HEADER` in `esp_link_panel/plink_config.h`.
+- The column layout is defined by `ESP_BENCHLOG_HEADER` in `ESP_Calibration/plink_config.h`.
   That header is the source of truth; this file does not repeat it.
 - Current-channel columns: `raw1/raw2` (counts), `shunt1_uv/shunt2_uv` (mA ≈ µV ÷ 10 with the
   10 mΩ shunt), `unf/filt/iest` (mA after the chain; `iest` equals the filtered current).
@@ -175,7 +211,9 @@ calibration campaign and a silently wrong number there is worse than no number:
 | 0x01 | ESP→STM | SET_PARAM | `[id:u8][value:u32 LE]` (5 bytes) |
 | 0x02 | ESP→STM | GET_PARAMS | empty (len = 0) |
 | 0x03 | — | *(reserved, not handled)* | Was a v1.3 one-shot calibration command. The panel stopped sending it in v1.7 and the STM32 handler was carried dead for six versions - 172 source lines - until it overflowed the 62 KB flash budget by 92 bytes and was removed. The id stays RESERVED: reusing it would make an older panel's frames silently misinterpreted instead of harmlessly ignored. Calibrate by reading the raw ADC counts in the telemetry and writing coefficients back as ordinary SET_PARAM. Old targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
-| 0x10 | STM→ESP | TLM_LIVE | **104 bytes**, layout below (84 until v1.25; +5 u32 raw calibration fields) |
+| 0x10 | STM→ESP | TLM_LIVE | **128 bytes**, layout in section 15 (historical sizes: 84, then 104, then 116) |
+| 0x40 | ESP→STM | HELLO (v1.111) | `[wireVer:u8][espFw:u8][role:u8][flags:u8][uptimeSec:u32 LE]` (8 bytes). Sent every 2 s by BOTH panels. `role` 1 = user panel, 2 = calibration panel; `flags` bit0 = telemetry already seen, bit1 = a browser is polling. A HELLO with the wrong wire version or fewer than 8 bytes is refused, so a corrupted frame can never fake a link |
+| 0x41 | STM→ESP | HELLO_ACK (v1.111) | 24 bytes: `[wireVer:u8][boardFw:u8][moduleFlags:u8][reserved:u8][boardUptime:u32][framesAccepted:u32][crcErrors:u16][versionErrors:u16][paramCount:u16][commPeriodMs:u16][echoedEspUptime:u32]`. `framesAccepted` is the board's OWN count of CRC-good frames it heard from the ESP - a dead ESP→STM direction shows 0 while telemetry still pours out. `moduleFlags` bit0 NVM loaded, bit1 charger, bit2 imbalance, bit3 diag. The board drops the "link" verdict after 6 s of silence and counts one loss; the next HELLO lifts it again with no reboot. Bit 0x40 of the TLM_LIVE flag byte carries the same verdict, so "frames arrive" and "the pair shook hands" are two separate indicators. A HELLO has NO other side effect: it must never be treated as "a user is connected" or it would reset the battery idle timer every 2 s and cancel the whole Wi-Fi power-saving schedule |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
 | 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS). **Since v1.28 the reply is CHUNKED into one or more frames:** 108 params would need 1 + 108×5 = 541 B against the 512 B ceiling, so each frame carries at most `(512−1)/5 = 102` items and the receiver merges whatever ids arrive, in any grouping (`func__Esp_StoreParamItem` is id-keyed, not index-keyed, so no ESP change was needed). 108 params = 2 frames (102 + 6). An empty trailing frame is never sent: it would read as "zero parameters known" |
 
@@ -277,8 +315,10 @@ User order: "I want to send the constants from the panel to the board and,
 once sent, they must stay there and survive power loss." Scope: EVERY
 settable parameter EXCEPT the transient test modes - that is ids 0..14
 (offsets, gains, filters, charger enables, duty ceilings), 20..26
-(charge profile), 27..37 (alarms, since v1.15) and 38..75 (UI cadence,
-since v1.16). The fixed-duty ids
+(charge profile), 27..37 (alarms, since v1.15), 38..75 (UI cadence,
+since v1.16) and every later settable block through 170 (PID/limits,
+imbalance, dead/weak battery, scenario ticks, Wi-Fi policy and the
+charging thermal rest). The fixed-duty ids
 15..18, manual test id 19 and the panel-session mute 76 (since v1.16b)
 are NEVER persisted: after any reboot the charger is guaranteed to be in
 its automatic mode and the buzzer unmuted.
@@ -302,14 +342,14 @@ its automatic mode and the buzzer unmuted.
   overwriting records. Driver: `Firmware/Bsp/Src/bsp_flash.c` (direct
   RM0008 FPEC register sequences - no HAL flash sources needed).
 - Record (esp_link_nvm.c): magic "CHO1" + version + wrap-around u16
-  sequence + up to 77 {id, value} slots + CRC32 over everything before it.
+  sequence + up to 172 {id, value} slots + CRC32 over everything before it.
   A record containing any non-persisted id is rejected WHOLE. v1.15 bumps
   the version 1 -> 2, v1.16 bumps it 2 -> 3, v1.16b bumps it 3 -> 4
   (id 76 turns transient, so v3 records may carry it): upgrading LOSES
   a set saved by the previous version - both boards reflash together
   and the panel re-sends the set.
-- Power-cut safety (ping-pong): each save erases the page that does NOT
-  hold the newest record, then programs the new record there and verifies
+- Power-cut safety (ping-pong): each save erases the two 1 KiB pages of the
+  bank that does NOT hold the newest record, then programs the new record there and verifies
   by read-back. A cut during erase or program can never destroy the
   previous good record; boot picks the CRC-valid record with the newest
   sequence (int16 difference, wrap-safe).
@@ -331,8 +371,8 @@ its automatic mode and the buzzer unmuted.
   applied.
 - Save path: a successful SET_PARAM of a persisted id arms a dirty flag;
   `func__EspLink_Run` calls `func__EspLink_NvmTick` every comm period and
-  saves ~1.5 s (15 runs) after the LAST change - one page erase + program
-  per burst, not per keystroke. A failed verify retries up to 3 times,
+  saves ~1.5 s (15 runs) after the LAST change - one two-page bank erase +
+  program per burst, not per keystroke. A failed verify retries up to 3 times,
   then the save PARKS (no erase loop on a worn page): the value stays dirty in RAM
   and nothing is discarded. The next persisted change, or the reset flush before
   a LUT reset, tries again.
@@ -972,7 +1012,7 @@ for as long as it is left on.
 
 
 Charger states: `0 OFF, 1 BULK, 2 ABSORB, 3 FLOAT, 4 BRINGUP, 5 JIT_RETRY_WAIT,
-6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST, 9 MANUAL`.
+6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST, 9 MANUAL, 10 THERMAL_REST`.
 
 Channel mapping: **channel 1 = Trans1 = upper battery (Vhigh)**,
 **channel 2 = Trans2 = lower battery (Vlow)**.
@@ -986,7 +1026,7 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 
 1. Boot UART at 921600 8N1 and wait for the first `TLM_LIVE` frame.
 2. Send `GET_PARAMS`, merge all `PARAMS_BULK` chunks, and expose the current
-   **143** ordinary parameters (`0..142`); never display the historical 19/20
+   **171** ordinary parameters (`0..170`); never display the historical 19/20
    count as the active schema.
 3. For every numeric control, show the exact firmware min/max directly below
    the input. Import values are clamped/reported; invalid ids, retired ids and
@@ -1039,7 +1079,7 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 ## 18. Current activation state (STM32 side)
 
 `MODULE_ESP = 1` is enabled in `Firmware/Config/Inc/modules_enable.h`; the
-current EspLink build therefore includes the 143-id map, v2 frames, chunked
+current EspLink build therefore includes the 171-id map, v2 frames, chunked
 `PARAMS_BULK`, NVM v12 and the scenario-7 controls. The host ESP suite compiles
 this path with sanitizers and reports **97/97 PASS**. This is a host result, not
 an assertion that UART, WiFi, flash or a physical board was exercised.
@@ -1052,7 +1092,7 @@ to the current panel workflow.
 
 ## 19. Manual test mode (scenario 9) — current contract
 
-`MANUAL_TEST_MODE` (ID 19) is a **global bench/test switch**. While it is 1
+`MANUAL_TEST_MODE` (ID 19) is a **global Calibration Data/test switch**. While it is 1
 the automatic charger is fully suspended and the human at the panel owns the
 PWM. Purpose: calibration and filter tuning - set a duty, watch the raw ->
 shunt -> unfiltered -> filtered current chain, adjust offsets/gains/filter

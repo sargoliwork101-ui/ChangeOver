@@ -77,10 +77,12 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 | `BSP_GPIO_LED_GREEN` | PB10 | خروجی | active-high، Low |
 | `BSP_GPIO_BATTERY_SWITCH` | PB5 | خروجی | active-low، High |
 | `BSP_GPIO_RELAY` | PB7 | خروجی | active-high، Low |
-| `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-low، High |
+| `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-high، High = قطع (امن)، Low = وصل |
 | `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | ورودی + EXTI | تشخیص منطقی سطح High |
-| `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
-| `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
+| `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | خروجی LM393 active-low (‎`PIN_JITTER1_ACTIVE_HIGH 0u`‎)، فقط falling معتبر است |
+| `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | خروجی LM393 active-low (‎`PIN_JITTER2_ACTIVE_HIGH 0u`‎)، فقط falling معتبر است |
+
+قطبیت هر سه ورودی دیجیتال از ممیزی ۲۰۲۶-۱۰-۲۰ در `board_pins.h` تعریف می‌شود (‎`PIN_INT_24_IN_ACTIVE_HIGH 1u`‎ و دو جیتر ‎`0u`‎) و `bsp_gpio.c` دیگر هیچ قطبیتی را داخل خودش ثابت فرض نمی‌کند؛ قبلاً هر سه فعال-بالا فرض شده بودند و خواندن منطقی پایه‌های جیتر برعکس می‌شد. دریافت تریپ همیشه از EXTI است و این تغییر مسیر حفاظت را عوض نمی‌کند.
 
 `bsp_exti.c` callback HAL را به eventهای `BSP_EXTI_JITTER1`، `BSP_EXTI_JITTER2` و `BSP_EXTI_INPUT_DETECT` تبدیل می‌کند. PB2/PB6 روی falling و PB4 روی هر دو لبه فعال هستند؛ callback برای JIT پایین‌بودن پایه را نیز چک می‌کند. IRQهای واقعی در `stm32f1xx_it.c` پاک‌سازی و به callback تحویل می‌شوند. `func__BspExti_TakeEvent` جفت خواندن-پاک‌کردن را داخل بخش بحرانی کوتاه PRIMASK اجرا می‌کند تا رویدادی که دقیقاً وسط TakeEvent برسد (و چون LM393 بدون لبهٔ جدید دوباره فایر نمی‌شود، برای همیشه) گم نشود (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲)؛ هوک اضطراری `McuPowerPath_OnInputIrq` در callback PB4 فقط یک‌بار و قبل از ثبت رویداد صدا زده می‌شود (فراخوانی تکراری قبلی حذف شد).
 
@@ -97,6 +99,8 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 ## قرارداد Flash و زمان‌بندی
 
 `bsp_flash.h` مرز واحد حافظهٔ ماندگار را از `0x0800E000` تا پیش از `0x08010000` تعریف می‌کند؛ این مرز عمداً فقط NVM را پوشش می‌دهد و به کد برنامه اجازهٔ دسترسی نمی‌دهد. `func__BspFlash_ErasePage` فقط آدرس هم‌تراز ۱KB داخل همین پنجره را می‌پذیرد، مسدودکننده است و فقط در context تسک/Thread مجاز است. `func__BspFlash_ProgramHalfWords` پاک‌کردن انجام نمی‌دهد: مبدأ باید non-NULL، آدرس نیم‌کلمه‌ای و کل بازه داخل پنجره باشد؛ هر فراخوانی حداکثر ۱۰۲۴ نیم‌کلمه (۲KB) است و ترتیب پاک‌کردن صفحه بر عهدهٔ مالک رکورد است. این قرارداد با ساختار رکورد، CRC و مسیر عادی ذخیره‌سازی EspLink یکی نیست و آن‌ها را تغییر نمی‌دهد.
+
+`bsp_flash_lock.c` مرز تنها دسترسی به option byte تراشه است و سه تابع دارد: خواندن سطح قفل از ثبات `OBR`، نوشتن RDP سطح ۱ با حفظ بایت `USER`، و بارگذاری دوباره و ریست. ترتیب کار از کد مرجع همان HAL گرفته شده چون پاک‌کردن بلوک option byte در F1 اجباری است (رفتن از `0xAA` به `0xA5` بیت‌های یک لازم دارد و برنامه‌ریزی فقط بیت را صفر می‌کند) و در همان پاک‌کردن، بایت `USER` هم باید برگردد وگرنه منبع watchdog و رفتار ریست بی‌صدا عوض می‌شود. این فایل هیچ تست هاستی ندارد (روی کامپیوتر اجرا نمی‌شود)؛ اثباتش روی میز تست است و در کاربرگ `Modules/FlashLock` ثبت می‌شود.
 
 تبدیل‌های `func__Rtos_MillisecondsToTicks` و `func__Rtos_TicksToMilliseconds` نرخ فعال `osKernelGetTickFreq()` را می‌خوانند و برای نرخ صفر یا سرریز به مقدار محدود برمی‌گردند. محاسبات بدون `uint64_t` و بدون فرض ۱kHz انجام می‌شوند؛ نرخ فعال فعلی ۱۰۰۰Hz است و نتیجهٔ مسیر عادی آن با قرارداد قبلی یکسان می‌ماند. `func__Rtos_DelayMilliseconds` تنها wrapper همین تبدیل است.
 
@@ -116,7 +120,7 @@ HAL_Init → SystemClock_Config
   → App_Start
 ```
 
-ADC توسط `task_measurement.c` با `func__BspAdc_Init` و `func__BspAdc_Start` آغاز می‌شود تا مالکیت شروع acquisition با Measurement بماند. تا پیش از فریم معتبر، دادهٔ Measurement نامعتبر است.
+ADC توسط `task_measurement.c` با `func__BspAdc_Init` و `func__BspAdc_Start` آغاز می‌شود تا مالکیت شروع acquisition با Measurement بماند. تا پیش از فریم معتبر، دادهٔ Measurement نامعتبر است. در صورت توقف پرچم‌های سخت‌افزاری نیم/کامل DMA (`HTIF1/TCIF1`) به مدت ۵ms یا رخ‌دادن `TEIF1`، `func__BspAdc_GetRaw` از تحویل دادهٔ یخ‌زده خودداری می‌کند و ناظر اندازه‌گیری با `func__BspAdc_Recover` به مدت ۶۰ ثانیه درجا تلاش به خودترمیمی می‌کند، سپس حداکثر یک ریست نرم‌افزاری میکرو (`func__BspAdc_TriggerRecoveryReset` با کوکی تک‌مصرف `.noinit` و پاک‌کردن پرچم‌های چسبندهٔ `RCC->CSR` از طریق `RCC_CSR_RMVF` در `func__BspAdc_Init`) انجام می‌دهد و ۶۰ ثانیهٔ دیگر تلاش می‌کند تا فقط در صورت عدم بهبود قطعی `FAULT_ADC` ثبت شود.
 
 `bsp_iwdg.c` واچ‌داگ مستقل (پری‌اسکیلر ۳۲/، ریلود ۱۲۵۰ → اسمی ۱٫۰ ثانیه، واقعی ۰٫۶۷..۱٫۳۳ با پراکندگی LSI) به‌علاوهٔ ناظر زنده‌بودن چندتسکی است: تسک‌های measurement/comm/protection/ui هر چرخه `func__BspIwdg_CheckIn` می‌زنند و تسک کنترل با `func__BspIwdg_PollKick` فقط وقتی kick می‌کند که همهٔ شکاف‌های موردانتظار (ساخته‌شده از همان فلگ‌های `MODULE_*` که threadها را می‌سازند) داخل ۱۵۰۰ms تازه باشند — قفل هر تسک به ریست fail-safe می‌انجامد. فریز با halt دیباگر ست است تا دیباگ ریست ندهد؛ اگر ترکیب ماژول‌ها تسک کنترل نداشته باشد واچ‌داگ عمداً روشن نمی‌شود.
 
@@ -137,6 +141,7 @@ CubeIDE/Core/Src/main.c
         ├── bsp_measurement.c← board voltage/current calibration
         ├── bsp_pwm.c        ← charger PWM backend
         ├── bsp_uart.c       ← ESP-Link USART1 backend
+        ├── bsp_flash_lock.c ← read-out protection (option byte RDP) boundary
         └── bsp_exti.c       ← logical event latches
 
 Firmware/Rtos/Src/task_measurement.c → bsp_adc + bsp_measurement
@@ -144,6 +149,7 @@ Firmware/Modules/Ui                 → bsp_gpio
 Firmware/Modules/Charger             → bsp_pwm (after module enable)
 Firmware/Modules/EspLink             → bsp_gpio + bsp_uart (after module enable)
 Firmware/Modules/Jitter              → bsp_exti (after module enable)
+Firmware/Modules/FlashLock           → bsp_flash_lock (قفل خواندن؛ کلید پیش‌فرض خاموش)
 ```
 
 ## قواعد Agentهای ماژول

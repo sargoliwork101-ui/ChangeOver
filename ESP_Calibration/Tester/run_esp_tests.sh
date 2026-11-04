@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# [EN] Build and run the ESP host tests. The sketch itself is compiled here
+#      (ESP_Calibration.ino, unmodified, ESP8266 branch) against the Arduino
+#      stubs in this directory, so a broken ESP build is caught on the PC
+#      instead of at flashing time. -Werror: the board's compiler is the only
+#      other reader this code ever gets.
+set -euo pipefail
+SCRIPT_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPOSITORY_ROOT="$(cd "${SCRIPT_DIRECTORY}/../.." && pwd)"
+cd "${REPOSITORY_ROOT}"
+BUILD_DIRECTORY="${SCRIPT_DIRECTORY}/build"
+mkdir -p "${BUILD_DIRECTORY}"
+BINARY="${BUILD_DIRECTORY}/host_test_esp_link"
+# [EN] The sanitizers are the point, not an extra. A write one past the
+#      parameter table and a shift of 32 on a 32-bit word are both invisible
+#      to an assertion - the first corrupts a neighbour, the second is
+#      undefined behaviour that happens to look right on one compiler. ASan
+#      and UBSan see them. On the ESP there is nothing to see them at all.
+echo "[1/2] compiling the ESP sketch for the host / کامپایل اسکچ ESP برای هاست"
+g++ \
+    -std=gnu++17 \
+    -Wall \
+    -Wextra \
+    -Werror \
+    -fsanitize=address,undefined \
+    -fno-omit-frame-pointer \
+    -g \
+    -Wno-unused-parameter \
+    -I "${SCRIPT_DIRECTORY}" \
+    -I "${SCRIPT_DIRECTORY}/stubinc" \
+    -o "${BINARY}" \
+    "${SCRIPT_DIRECTORY}/host_test_esp_link.cpp"
+echo "[2/2] running / اجرا"
+export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
+export ASAN_OPTIONS="detect_leaks=0"
+"${BINARY}"
+# [EN] Optional behavioural tests in a real DOM. They need node and jsdom, which
+#      are not dependencies of this project, so a missing tool SKIPS instead of
+#      failing. When the tools exist they are part of the gate: a panel that
+#      renders but throws on a click is broken for the user just the same.
+if command -v node >/dev/null 2>&1; then
+    # [EN] v1.118: the Persian label of a history row is JavaScript, so it needs
+    #      its own runner. This one needs no DOM and no jsdom, so it always runs.
+    node "${SCRIPT_DIRECTORY}/host_test_panel_labels.js" || exit 1
+    node "${SCRIPT_DIRECTORY}/host_test_panel_click.js" || exit 1
+else
+    echo "SKIP: node is not installed; the DOM tests did not run."
+fi

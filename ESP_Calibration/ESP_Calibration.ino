@@ -1,0 +1,178 @@
+/**
+ * @file    ESP_Calibration.ino
+ * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32 over UART
+ *               (921600 8N1, ESP_AGENT_SPEC.md) and serves a dark RTL web panel (Vazirmatn).
+ *               v1.14 (user order 2026-09-25): the charge tab gains a live SVG STAGE GRAPH
+ *               (threshold bands, BULK->ABSORB->FLOAT curve with the reentry cycle, current
+ *               annotations, live battery markers and charger states, dashed preview of typed
+ *               values) and the persistence texts - every applied parameter is stored on the
+ *               STM32's own flash ~1.5 s after the change and survives power loss there
+ *               (wire protocol unchanged; see ESP_AGENT_SPEC.md sections 6 and 7).
+ *               v1.15 (user order 2026-09-26): ALARMS inside the settings
+ *               tab (ids 27..34 fault supervision + 35..37 down-only
+ *               charger safety ceilings), with grouped cards, live
+ *               threshold bars and a TLM-derived grouped status card
+ *               (v1.15b: build-once skeleton, per-bit fault explanations)
+ *               plus JSON settings backup (import/export);
+ *               PARAMS_BULK grows to 191 payload bytes (38 params), both
+ *               boards must flash together.
+ *               v1.16 (user order 2026-09-26): UI cadence (ids 38..76 -
+ *               LED periods/duties, beep periods/durations/counts/gaps,
+ *               beep bands, blink periods, thresholds, panel-session buzzer
+ *               mute, RAM-only since v1.16b) with virtual board LEDs (real blinking), a buzzer
+ *               icon with a mute cross, per-bit fault LEDs and editable
+ *               fields; the wire length field grows to u16 (frame = AA 55
+ *               type len_lo len_hi payload xor) and PARAMS_BULK to 416
+ *               payload bytes (83 params, v1.17) - both boards must flash
+ *               together (a v1.15 parser reads len_hi as payload).
+ *               Tabs (v1.7 simplification; filter avg window 1..300 since v1.9):
+ *               1) Panel: shared voltages (with DMM offset helpers), the current filter (median 1..15,
+ *                  average 1..300) and one column per charger: live status, the measurement chain with
+ *                  live formulas, the live filter chart and a charger cut button.
+ *               2) Bench capture (spec 4): SOLO1/SOLO2/BOTH, a user-typed duty list, advance ONLY on
+ *                  the user's submit. v1.7 latch fix (user order 2026-09-25): the statistics window is
+ *                  reset when the DMM form OPENS and is read the moment the user PRESSES submit, so the
+ *                  CSV row matches the typed meters instead of a stale earlier window; sample_ms in the
+ *                  CSV is the actual window duration. One 128-column row per step in LittleFS
+ *                  /benchlog.csv, GET /benchlog to download. v1.8 (user order 2026-09-25,
+ *                  same day): the bench tab also carries a compact PERMANENT manual-duty card
+ *                  (manual-mode toggle + per-channel duty + both-to-zero) so current tests can
+ *                  run without the removed engineer tab; the section 19 safety contract (10 s
+ *                  dead-man, channel ceilings, JIT re-arm) is unchanged. v1.9 (user order 2026-09-25,
+ *                  same day): DMM currents accept NEGATIVE values (battery discharge path), the
+ *                  moving-average ceiling is 300 samples (visible smoothing at the 10 Hz TLM), the
+ *                  filter card shows the live effective span, and the wizard's default duty list is
+ *                  denser (2% steps) for the next, denser LUT run. v1.10 (same day): the manual-duty
+ *                  card moved into the PANEL tab; per-channel duty-ceiling inputs (0..500 permille);
+ *                  chart sample count user-settable (default 100); the wizard settle step REMOVED
+ *                  (capture is user-latched, the wait added nothing); the pack-24V divider corrected
+ *                  (user factor 0.09827 = 6.8k/69.2k; scale 69200/6800) and voltage offsets now
+ *                  +/-5000 mV; DMM form hints compacted.
+ *               The v1.6 extras (CAL card, manual tests B/C/D, correction/analysis tab, engineer mode)
+ *               were removed except the manual-duty card above; nothing was ever calibrated
+ *               automatically and the wire protocol (SET_PARAM / GET_PARAMS / TLM) is unchanged.
+ * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
+ *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
+ *               Wi-Fi AP "ChangeOver-ESP", password "123456789", panel at http://192.168.4.1
+ *               No cloud: only MCU <-> ESP data exchange (flash is used only for the bench log file).
+ *               Manual test mode (ID 19): a GET_PARAMS keepalive is sent every 1 s while manual
+ *               mode is active (TLM flag b5 or param 19), also with a background tab (spec 19).
+ *               Safety: if no browser has polled /t for 10 s (or none since the ESP booted), the ESP
+ *               sends ID 19 = 0 every 1 s until the STM32 reports manual off, so a closed panel never
+ *               leaves a channel on an unregulated duty; the STM32 3 s dead-man still covers an ESP
+ *               hang or a broken link.
+ */
+/* ==================== Board Includes ==================== */
+/*
+ * [EN] ESP8266 ONLY (user order 2026-11-01: "we do not use an ESP32, only this
+ * ESP8266"). The ESP32 branches were never compiled by anything - not by the
+ * Arduino IDE on this project's board, not by the host tests - so they were
+ * dead code that looked like support. There is one target now, and a wrong
+ * board selection stops the build with this sentence instead of failing deep
+ * inside a LittleFS call with an ESP32 signature.
+ */
+#if !defined(ESP8266)
+  #error "This panel is ESP8266 only / این پنل فقط ESP8266 است"
+#endif
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <WiFiUdp.h>
+typedef ESP8266WebServer esp_web_server_t;
+#include <LittleFS.h>
+#include <stdint.h>
+#include <stdbool.h>
+/* Modules (single translation unit, included in this order): */
+#include "plink_config.h"
+#include "plink_params.h"
+#include "plink_state.h"
+#include "plink_log.h"
+#include "plink_panel.h"
+#include "plink_font.h"
+#include "plink_link.h"
+#include "plink_http.h"
+/* ==================== Arduino Entry Points ==================== */
+/**
+ * @brief  [EN] Start UART link, Wi-Fi AP and HTTP server. CH_PD is left untouched.
+* @return None /
+ */
+void setup(void)
+{
+    Serial.setRxBufferSize(ESP_LINK_RX_BUFFER_SIZE);
+    Serial.begin(ESP_LINK_BAUD_RATE, SERIAL_8N1);
+    WiFi.persistent(false);
+    func__Esp_StartSoftAp();
+    WiFi.setOutputPower(ESP_WIFI_TX_MAX_DBM);
+    BOOL__G__WifiHighPower = true;
+    /*
+ * [EN] Mount WITHOUT formatting. An automatic format on a mount failure
+ * deletes the whole history - that is the "I came back and nothing was
+ * saved" report. A failed mount now only means "rows wait in RAM", and
+ * formatting is an explicit button in the panel.
+ */
+    /*
+ * [EN] ESP8266: setConfig(first=false) keeps LittleFS from formatting the file
+ * system behind the user's back when the mount fails.
+ */
+    (void)LittleFS.setConfig(LittleFSConfig(false));
+    BOOL__G__FsOk = LittleFS.begin();
+    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
+    ESP_WEB_SERVER_T__G__Server.on("/ping", HTTP_GET, func__Esp_HttpPing);
+    ESP_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Esp_HttpRoot);
+    ESP_WEB_SERVER_T__G__Server.on("/f.css", HTTP_GET, func__Esp_HttpFont);
+    ESP_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Esp_HttpTelemetry);
+    ESP_WEB_SERVER_T__G__Server.on("/s", HTTP_POST, func__Esp_HttpSetParam);
+    ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_POST, func__Esp_HttpStatReset);
+    ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_GET, func__Esp_HttpStatRead);
+    /*
+ * [EN] v1.85: the direct LUT push and point readback live on their own
+ * routes, exactly as the table lives in its own flash block on the board.
+ */
+    ESP_WEB_SERVER_T__G__Server.on("/lut", HTTP_POST, func__Esp_HttpLutPush);
+    ESP_WEB_SERVER_T__G__Server.on("/lut", HTTP_GET, func__Esp_HttpLutStatus);
+    ESP_WEB_SERVER_T__G__Server.on("/lut/read", HTTP_POST, func__Esp_HttpLutRead);
+    ESP_WEB_SERVER_T__G__Server.on("/lut/reset", HTTP_POST, func__Esp_HttpLutReset);
+    ESP_WEB_SERVER_T__G__Server.on("/latch", HTTP_GET, func__Esp_HttpLatchState);
+    ESP_WEB_SERVER_T__G__Server.on("/latch/reset", HTTP_POST, func__Esp_HttpLatchReset);
+    ESP_WEB_SERVER_T__G__Server.on("/benchlog", HTTP_GET, func__Esp_HttpBenchLogGet);
+    ESP_WEB_SERVER_T__G__Server.on("/benchlog/add", HTTP_POST, func__Esp_HttpBenchLogAdd);
+    ESP_WEB_SERVER_T__G__Server.on("/benchlog/clear", HTTP_POST, func__Esp_HttpBenchLogClear);
+    /*
+ * [EN] v1.93 state history: phone clock, tail read, day list, download, clear.
+ */
+    ESP_WEB_SERVER_T__G__Server.on("/clock", HTTP_POST, func__Esp_HttpClockSet);
+    ESP_WEB_SERVER_T__G__Server.on("/evt", HTTP_GET, func__Esp_HttpEventLog);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/days", HTTP_GET, func__Esp_HttpEventDays);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/dl", HTTP_GET, func__Esp_HttpEventDownload);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Esp_HttpEventClear);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/snap", HTTP_POST, func__Esp_HttpEventSnap);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Esp_HttpEventFormat);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Esp_HttpEventFsStatus);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Esp_HttpEventClean);
+    ESP_WEB_SERVER_T__G__Server.begin();
+    /*
+ * [EN] v1.93: restore the clock anchor and the day list for the history.
+ */
+    func__EspLog_Begin();
+}
+/**
+ * @brief  [EN] Non-blocking loop: drain UART, send queued command, serve HTTP.
+* @return None /
+ */
+void loop(void)
+{
+    /*
+ * [EN] Same drain the HTTP send paths call - one implementation, two
+ * callers, so the parser sees every byte exactly once.
+ */
+    func__Esp_DrainSerial();
+    func__Esp_PumpTx();
+    /*
+ * [EN] Two-sided handshake (v1.111): HELLO every 2 s; a silent board drops
+ * the confirmed-link flag, so the page can name the side that failed.
+ */
+    func__Esp_HandshakeTick((uint32_t)millis());
+    func__Esp_DnsTick();
+    ESP_WEB_SERVER_T__G__Server.handleClient();
+    func__Esp_WifiPowerSaveTick((uint32_t)millis());
+    func__EspLog_Tick();
+}

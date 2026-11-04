@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 /**
  * panel_preview_server.js — [EN] Offline preview of the ESP web panel.
- * [FA] پیش‌نمایش آفلاین پنل وب ESP.
- *
  * [EN] Serves the REAL panel HTML extracted from plink_panel.h and
  *      simulates the STM32 behind it: a full charge cycle
  *      OFF -> BULK -> ABSORB -> FLOAT -> (sag) -> REENTRY -> BULK ...,
@@ -11,28 +9,21 @@
  *      shape the ESP sends.
  *      No hardware needed:  node tools/panel_preview_server.js  ->  http://localhost:3000
  *      (binds 0.0.0.0 so it also works inside a sandboxed preview).
- * [FA] همان HTML واقعی پنل را از plink_panel.h بیرون می‌کشد و STM32
- *      را پشت آن شبیه‌سازی می‌کند: یک چرخهٔ کامل شارژ
- *      خاموش → Bulk → Absorb → Float → (افت) → بازگشت → Bulk...،
- *      نمودار مراحل v1.14، تب آلارم‌های v1.15، ثبت پارامتر با همان پنجره‌های
- *      گیرهٔ واقعی، و JSON تله‌متری دقیقاً به شکل /t روی ESP. بدون سخت‌افزار:
  *      node tools/panel_preview_server.js  →  http://localhost:3000
  */
-
 "use strict";
-
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-
+const assert = require("assert");
 /* ---------- extract the real panel HTML from the panel module ---------- */
-const panelPath = path.join(__dirname, "..", "esp_link_panel", "plink_panel.h");
+const panelPath = path.join(__dirname, "..", "ESP_Calibration", "plink_panel.h");
 const panelSrc = fs.readFileSync(panelPath, "utf8");
-/* [EN] Serve the real embedded Vazirmatn CSS in the preview too. Returning
+/*
+ * [EN] Serve the real embedded Vazirmatn CSS in the preview too. Returning
  *      system fonts made a laptop preview look different from the ESP.
- *      [FA] پیش‌نمایش هم باید همان CSS وزیرمتن جاسازی‌شده را بدهد؛ فونت سیستم
- *      باعث می‌شد ظاهر لپ‌تاپ با خود ESP فرق کند. */
-const fontPath = path.join(__dirname, "..", "esp_link_panel", "plink_font.h");
+ */
+const fontPath = path.join(__dirname, "..", "ESP_Calibration", "plink_font.h");
 const fontSrc = fs.readFileSync(fontPath, "utf8");
 const fontStart = fontSrc.indexOf("static const char ESP_PANEL_FONT_CSS");
 const fontEq = fontSrc.indexOf("=", fontStart) + 1;
@@ -57,7 +48,7 @@ if (!FONT_CSS) {
  *      شبیه‌ساز به‌جای آینه، یک نظر کهنهٔ دوم بود. با اشتقاق، فیلد بعدی که به
  *      قاب اضافه شود بدون ویرایش اینجا دیده می‌شود و نبودِ define یک خطای
  *      بلند هنگام بالا آمدن است نه آرایه‌ای که بی‌صدا کوتاه مانده. */
-const configPath = path.join(__dirname, "..", "esp_link_panel", "plink_config.h");
+const configPath = path.join(__dirname, "..", "ESP_Calibration", "plink_config.h");
 const configSrc = fs.readFileSync(configPath, "utf8");
 const tlmMatch = configSrc.match(/#define\s+ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u?/);
 if (!tlmMatch) {
@@ -114,6 +105,10 @@ const VREFINT_COUNTS = Math.round((1200 / VREF_MV) * ADC_FULL);
 /* Link-health counters surfaced by /t; 0 = healthy link (see telemetry()). */
 const DEMO_VM = process.env.PLINK_DEMO_VM ? Number(process.env.PLINK_DEMO_VM) : 0;
 const DEMO_CE = process.env.PLINK_DEMO_CE ? Number(process.env.PLINK_DEMO_CE) : 0;
+/* [FA] ماسک حکم باتری خراب برای نمایش: پیش‌فرض صفر (بی‌حکم)؛ با
+   ‎PLINK_DEMO_DEAD=3‎ هر دو کانال حکم‌شده بالا می‌آیند تا دکمهٔ ریست سناریو ۶
+   هم چیزی برای پاک‌کردن داشته باشد. */
+const DEMO_DEAD = process.env.PLINK_DEMO_DEAD ? (Number(process.env.PLINK_DEMO_DEAD) & 3) : 0;
 const html = panelSrc.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
 
 /* [EN] The settable current ceiling, READ FROM THE FIRMWARE HEADER rather
@@ -199,8 +194,10 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            1000, 50,
            /* v1.72 ids 125..127 = dead-battery scenario 6 (charger.h):
               continuous-charge deadline, the pause that zeroes the clock,
-              and the output-disconnect checkbox. */
-           86400000, 600000, 0,
+              and the output-disconnect checkbox. Id 126 is 60000 (1 min)
+              since v1.88, matching the firmware default - the stale
+              600000 here is what the consistency audit flagged. */
+           86400000, 60000, 0,
            /* v1.80 ids 128..131 = scenario 6's OWN lamp and buzzer (user
               question: "it has a lamp and a beep, why no boxes?"): beep
               period, beep length, red blink period (0 = solid) and its
@@ -214,7 +211,30 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            3,
            /* v1.84 ids 137..142 = scenario 7's independent buzzer and
               synchronized three-LED cadence. */
-           3000, 200, 3, 100, 1000, 50];
+           3000, 200, 3, 100, 1000, 50,
+           /* v1.85 ids 143..146 = Wi-Fi battery power-saving settings:
+              initial low-power ON ms, cycle ON ms, cycle OFF ms, battery cutoff %. */
+           1800000, 60000, 120000, 20,
+           /* v1.86 ids 147..157 = scenario 8 (weak battery, changeover.h):
+              verdict enable, rest window, cycle-guard window, healthy-hold
+              window, red blink period/duty, beep period/length/count/gap and
+              the output-disconnect checkbox. */
+           1, 600000, 60000, 10000, 500, 50, 3000, 200, 3, 100, 1,
+           /* ‎v1.87 ids 158..164 = the‎ «فعال» ‎tick of scenario cards 1..7‎:
+              1 = that scenario's LED/buzzer face on (default), 0 = silent.
+              Detection, latching and the output gates are untouched. */
+           1, 1, 1, 1, 1, 1, 1,
+           /* v1.88 id 165 = scenario 8's rest floor (mV): the pack must rest at
+              or above this value before a re-cut is called weakness, so an
+              empty pack never lights the weak-battery face. */
+           25000,
+           /* v1.102 ids 166..168 = CHG_THERMAL_ROWS boot defaults (mA / ms /
+              ms): trigger 600 = the old rule at the factory ceiling 650
+              (0 = auto band-50), and the two durations are the 1 h / 10 min
+              the employer set; 0 duration = off. */
+           600, 3600000, 600000,
+           /* Shared input Schmitt margins (ids 169/170), Fault-owned. */
+           500, 500];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -265,8 +285,8 @@ function clampParam(id, v) {
         case 107: return Math.min(5000, Math.max(50, v));
         /* v1.43 imbalance scenario 5 (IMBAL_* clamp windows in imbalance.c) */
         case 108: case 109: return Math.min(2000, Math.max(0, v));
-        case 110: case 111: return Math.min(18000000, Math.max(0, v));
-        case 112: return Math.min(600000, Math.max(1000, v));
+        case 110: case 111: return Math.min(36000000, Math.max(0, v));
+        case 112: return Math.min(36000000, Math.max(1000, v));
         case 113: return Math.min(1000, Math.max(0, v));
         case 114: return Math.min(255, Math.max(1, v));
         case 115: return Math.min(86400000, Math.max(0, v));
@@ -319,6 +339,11 @@ function clampParam(id, v) {
         case 140: return clampW(v, 0, 5000);
         case 141: return clampW(v, 100, 10000);
         case 142: return clampW(v, 0, 100);
+        /* v1.85: Wi-Fi battery power-saving settings (ids 143..146). */
+        case 143: return clampW(v, 0, 86400000);
+        case 144: return clampW(v, 5000, 3600000);
+        case 145: return clampW(v, 0, 3600000);
+        case 146: return clampW(v, 0, 100);
         /* v1.15 alarms: q27 has the Fault module's independent hard window;
            q36 remains the Charger module's profile-relative OV clamp. */
         case 27: return clampW(v, 14000, 15000);
@@ -383,12 +408,43 @@ function clampParam(id, v) {
         /* v1.24 ids 83..92: mirror of func__Charger_ClampPid - every gain is
            0..20000 and every slew rate is 10..20000 m permille/s. The row
            layout is (Kp, Ki, Kd, up, down), so (id - 83) % 5 >= 3 is a rate. */
+        /* [EN] v1.102 ids 166..168: plain mirror of CHG_THERMAL_ROWS in
+           charger.c (trigger mA, charge time before rest, rest length). 0 is
+           a real value on all three (auto / off / off), so there is no floor.
+           [FA] آینهٔ سادهٔ CHG_THERMAL_ROWS در charger.c؛ صفر روی هر سه مقدار
+           واقعی است (خودکار / خاموش / خاموش) و کفی در کار نیست. */
+        case 166: return clampW(v, 0, 3000);
+        case 167: return clampW(v, 0, 21600000);
+        case 168: return clampW(v, 0, 3600000);
+        case 169: case 170: {
+            const cap = Math.min(3000, Math.floor((P[34] - P[33]) / 4));
+            return clampW(v, 0, cap);
+        }
         default:
             if (id >= 83 && id <= 92) {
                 return ((id - 83) % 5) >= 3 ? clampW(v, 10, 20000) : clampW(v, 0, 20000);
             }
             return v;
     }
+}
+
+/* [EN] One shared input Schmitt permission, mirroring Fault. Outside the raw
+ *      q33/q34 window it drops immediately; re-arm needs the panel margins
+ *      q169/q170 (each capped at span/4). Every simulated consumer uses it.
+ * [FA] یک مجوز مشترک اشمیت ورودی، آینهٔ فالت. بیرون پنجرهٔ خام ‎q33/q34‎
+ *      فوراً می‌افتد؛ بازگشت به حاشیه‌های پنل ‎q169/q170‎ نیاز دارد (هر کدام
+ *      حداکثر یک‌چهارم فاصله). همهٔ مصرف‌کننده‌های شبیه‌سازی از همین استفاده می‌کنند. */
+let inputArmed = false;
+function stepInputPermission(inputMv) {
+    const cap = Math.min(3000, Math.floor((P[34] - P[33]) / 4));
+    const hl = Math.min(P[169], cap);
+    const hh = Math.min(P[170], cap);
+    if (inputMv < P[33] || inputMv > P[34]) {
+        inputArmed = false;
+    } else if (!inputArmed) {
+        inputArmed = inputMv >= P[33] + hl && inputMv <= P[34] - hh;
+    }
+    return inputArmed;
 }
 
 /* one battery channel: firmware-like state machine, demo time-scale */
@@ -416,8 +472,32 @@ let benchSize = 3120; /* simulated /benchlog.csv bytes (nonzero so the resume/ch
 const SIM_MS = 100;
 let ms = 0;
 
-function stepChannel(c, phase) {
+/* [EN] Advance one channel by a 100 ms tick using the current input voltage.
+ * [FA] وضعیت یک کانال را در یک گام ۱۰۰ میلی‌ثانیه‌ای با ولتاژ ورودی به‌روز می‌کند. */
+function stepChannel(c, phase, inputMv, inputPermitted) {
     const prof = { enter: P[21], absorb: P[20], float: P[23], reentry: P[24], imax: P[25], taper: P[26] };
+    if (inputPermitted === undefined) { inputPermitted = stepInputPermission(inputMv); }
+    if (!inputPermitted) {
+        /* [EN] Mirror the firmware's INPUT_WAIT gate: no input, no PWM.
+         * [FA] آینهٔ گیت INPUT_WAIT فرم‌ور: ورودی نامعتبر یعنی توقف شارژ. */
+        c.state = 6;
+        c.i = 0;
+        c.duty = 0;
+        c.soak = 0;
+        c.taper = 0;
+        c.off = 0;
+        c.floatT = 0;
+        return;
+    }
+    if (c.state === 6) {
+        /* [EN] Recovery goes through OFF's normal stability gate.
+         * [FA] پس از بازیابی، شروع امن از گیت پایداری OFF می‌گذرد. */
+        c.state = 0;
+        c.off = 0;
+        c.soak = 0;
+        c.taper = 0;
+        c.floatT = 0;
+    }
     switch (c.state) {
         case 0: /* OFF: connection-stability gate (demo: 3 s) */
             c.i = 0; c.duty = 0;
@@ -449,6 +529,14 @@ function stepChannel(c, phase) {
     }
 }
 
+/* [EN] Return demo input voltage for the given cycle offset in milliseconds.
+ * [FA] ولتاژ ورودی نمایشی را از روی زمانِ چرخه، به میلی‌ثانیه، برمی‌گرداند. */
+function demoInputMv(cycleMs) {
+    if (cycleMs >= 30000 && cycleMs < 38000) return 29500;
+    if (cycleMs >= 46000 && cycleMs < 54000) return 15000;
+    return 24100;
+}
+
 /* battery current -> ADC raw counts via the v1.13 power model (rough inverse) */
 function rawFromCurrent(iBat, vMv) {
     const p = iBat * vMv / 1000; /* mW */
@@ -462,15 +550,120 @@ function rawFromCurrent(iBat, vMv) {
 let SNAP = null;
 let imbFl2 = 0;  /* [EN] scenario 5 demo flags (byte 3 of TLM) / [FA] بیت‌های وضعیت سناریوی ۵ (بایت ۳) */
 
+/* [EN] Manual latch reset, mirrored from the ESP: a four-slot queue, one item
+ *      applied per tick like the board drains one frame per TX interval, an
+ *      echo the panel reads back (rep/val) and a NAK counter for a refusal.
+ * [FA] ریست دستی قفل‌ها، آینهٔ ESP: صف چهارخانه‌ای، اعمال یکی‌یکی در هر تیک
+ *      (مثل یک فریم در هر نوبت روی برد)، پژواک برای پنل و شمارندهٔ NAK. */
+let latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: DEMO_DEAD, imbBase: 0,
+              chargeSec: [0, 0], pauseAt: [null, null] };
+
+/* [EN] Scenario 6 counts only BULK/ABSORB, clears on FLOAT, and keeps a
+ *      short pause but resets at the configured gap (id 126), including
+ *      INPUT_WAIT. `nowMs` uses the simulator clock, not browser polling.
+ * [FA] سناریوی ۶ فقط هنگام شارژ سریع و پایانی می‌شمارد و با کامل‌شدن شارژ
+ *      صفر می‌شود؛ مکث کوتاه را نگه می‌دارد و با رسیدن مکث به حد شناسهٔ ۱۲۶
+ *      (از جمله انتظار ورودی) صفر می‌شود. زمان از ساعت شبیه‌ساز است، نه درخواست پنل. */
+function updateDeadChargeCounter(timerState, channelIndex, channelState, nowMs, resetGapMs) {
+    if (channelState === 3) {
+        timerState.chargeSec[channelIndex] = 0;
+        timerState.pauseAt[channelIndex] = null;
+        return;
+    }
+    if (channelState === 1 || channelState === 2) {
+        const pauseAt = timerState.pauseAt[channelIndex];
+        if (pauseAt !== null) {
+            if (nowMs - pauseAt >= resetGapMs) timerState.chargeSec[channelIndex] = 0;
+            timerState.pauseAt[channelIndex] = null;
+        }
+        timerState.chargeSec[channelIndex] += SIM_MS / 1000;
+        return;
+    }
+    if (timerState.pauseAt[channelIndex] === null) timerState.pauseAt[channelIndex] = nowMs;
+    if (nowMs - timerState.pauseAt[channelIndex] >= resetGapMs) {
+        timerState.chargeSec[channelIndex] = 0;
+    }
+}
+
+/* [EN] Apply one echoed runtime-slot request. Clearing scenario 6 also clears
+ *      the selected channel's live timer, matching Charger_SetDeadParam.
+ * [FA] یک درخواست اسلات را اعمال می‌کند؛ پاک‌کردن حکم سناریوی ۶ ساعت زندهٔ
+ *      همان کانال را هم صفر می‌کند، مثل func__Charger_SetDeadParam. */
+function applyLatchItem(item) {
+    if (item.id === 202) {
+        latch.imbBase = ms;
+        if (item.val === 0) {
+            for (let channelIndex = 0; channelIndex < 2; channelIndex += 1) {
+                if ((latch.deadMask & (1 << channelIndex)) === 0) {
+                    ch[channelIndex].state = 1;
+                    ch[channelIndex].v = 12400;
+                    ch[channelIndex].soak = 0;
+                    ch[channelIndex].taper = 0;
+                }
+            }
+        }
+    }
+    if (item.id === 203) {
+        const newMask = item.val & 3;
+        for (let channelIndex = 0; channelIndex < 2; channelIndex += 1) {
+            if ((newMask & (1 << channelIndex)) === 0) {
+                latch.chargeSec[channelIndex] = 0;
+                latch.pauseAt[channelIndex] = null;
+                ch[channelIndex].state = 1;
+                ch[channelIndex].v = 12400;
+                ch[channelIndex].soak = 0;
+                ch[channelIndex].taper = 0;
+            }
+        }
+        latch.deadMask = newMask;
+    }
+    latch.lastId = item.id;
+    latch.lastVal = item.val;
+    latch.known = 1;
+    latch.rep += 1;
+}
+
+function queueLatchReset(n) {
+    const ids = n === 5 ? [200, 201, 202] : (n === 6 ? [203] : []);
+    if (ids.length === 0) return false;
+    const fresh = ids.filter(id => !latch.q.some(item => item.id === id));
+    if (latch.q.length + fresh.length > 4) {
+        latch.busy += 1;
+        return false;
+    }
+    for (const id of fresh) latch.q.push({ id, val: 0 });
+    latch.req += fresh.length;
+    return true;
+}
+
 /* [EN] The sim runs on a REAL 100 ms ticker (like the STM32 measurement
  *      task), independent of browser polling; /t just snapshots it.
  * [FA] شبیه‌سازی روی تیکر واقعی ۱۰۰ms (مثل تسک اندازه‌گیری STM32) مستقل
  *      از poll مرورگر جلو می‌رود؛ /t فقط عکس لحظه را می‌دهد. */
-setInterval(() => { SNAP = telemetry(); }, SIM_MS);
 
 function telemetry() {
-    stepChannel(ch[0], 0);
-    stepChannel(ch[1], 2.1);
+    /* [FA] صف ریست قفل‌ها: در هر تیک یک درخواست اعمال می‌شود؛ سناریو ۵
+       شمارنده‌ها را پیش از قفل پاک می‌کند و سناریو ۶ ساعت زندهٔ کانال را هم
+       همراه ماسک حکم صفر می‌کند. */
+    if (latch.q.length) {
+        const item = latch.q.shift();
+        applyLatchItem(item);
+    }
+    const cyc = ms % 60000;
+    const inputBaseMv = demoInputMv(cyc);
+    const inputMv = inputBaseMv + (P[4] | 0);
+    const inputValid = stepInputPermission(inputMv);
+    for (let k = 0; k < 2; k++) {
+        const previousState = ch[k].state;
+        if (!inputValid) {
+            /* [EN] Match the firmware's pre-SafeIdle final active-time tick.
+             * [FA] مثل فرم‌ور، آخرین زمان فعال پیش از توقف ثبت می‌شود. */
+            updateDeadChargeCounter(latch, k, previousState, ms, P[126]);
+        }
+        stepChannel(ch[k], k === 0 ? 0 : 2.1, inputMv, inputValid);
+        updateDeadChargeCounter(latch, k, ch[k].state, ms, P[126]);
+    }
     const vlow = ch[1].v, vhigh = ch[0].v;
     const t = new Array(TLM_FIELDS).fill(0);
     for (let k = 0; k < 2; k++) {
@@ -500,7 +693,7 @@ function telemetry() {
         t[b + 5] = c.duty;
         t[b + 6] = c.state;
     }
-    t[14] = 24100;                 /* input, one reading per run (bench rule) */
+    t[14] = inputBaseMv;           /* input reading follows the demo scenario */
     t[15] = vlow + vhigh;          /* 24 V pack */
     t[16] = vlow;                  /* 12 V mid node (see invariant below) */
     t[17] = vlow;                  /* battery low  */
@@ -509,10 +702,8 @@ function telemetry() {
     /* v1.16 demo: rotate scenarios so the LED/buzzer mirror shows every face:
      * 0-30 s normal charging, 30-38 s input overvoltage, 38-46 s battery lost,
      * 46-54 s BatteryRun (input absent, double-beep band), 54-60 s normal. */
-    const cyc = ms % 60000;
-    if (cyc >= 30000 && cyc < 38000) t[14] = 29500;
-    else if (cyc >= 38000 && cyc < 46000) t[19] = 64;
-    else if (cyc >= 46000 && cyc < 54000) { t[14] = 15000; t[17] = 22200; t[18] = 22200; t[6] = 0; t[13] = 0; }
+    if (cyc >= 38000 && cyc < 46000) t[19] = 64;
+    else if (cyc >= 46000 && cyc < 54000) { t[17] = 22200; t[18] = 22200; }
 
     /* [EN] Re-impose the firmware's own relationship AFTER the demo scenarios
      *      have had their say, so no scenario can emit a combination the real
@@ -572,7 +763,7 @@ function telemetry() {
      * [FA] بلوک زندهٔ سناریوی ۵: دموی چرخه‌ای - ارزیابی، رشد شمارش، قفل و
      *      ریست خودکار با تعویض باتری. */
     {
-        const imbCyc = ms % 120000;
+        const imbCyc = (ms - latch.imbBase) % 120000;
         const imb = Math.abs(t[18] - t[17]);
         t[25] = imb;
         if (imbCyc < 30000) { t[26] = Math.round(imbCyc / 30000 * 10); t[27] = 0; imbFl2 = (imb > P[108]) ? 1 : 0; }
@@ -581,7 +772,15 @@ function telemetry() {
         else { t[26] = 0; t[27] = 0; imbFl2 = 0; }
     }
 
+    /* v1.87: scenario-6 counters were advanced with the channel state above. */
+    t[29] = Math.floor(latch.chargeSec[0]);
+    t[30] = Math.floor(latch.chargeSec[1]);
+
+    /* [FA] ماسک حکم باتری خراب هم مثل خود برد در تلمتری می‌آید. */
+    t[28] = latch.deadMask;
+
     seq += 1; frames += 1; ms += SIM_MS;
+    evtFrame(7, imbFl2, t);
     return {
         on: 1, age: 40, seq, fl: 7, fl2: imbFl2, n: frames,
         q: 0, q2: 0, q3: 0, q4: 0, ka: 800,
@@ -596,6 +795,155 @@ function telemetry() {
         vm: DEMO_VM, ce: DEMO_CE,
         t, p: P.slice()
     };
+}
+
+/* ---------- مدل کوچک «تاریخچهٔ وضعیت» (آینهٔ plink_log.h) ----------
+   دقیقاً قواعد فرم‌ور: ردیف فقط با تغییر واقعی، ادغام ۲ثانیه‌ای، گام ۲۰۰ میلی‌ولت
+   حداکثر یکی در دقیقه، ردیف بوت بدون نیاز به برد، ضربان ۶ساعته. خروجی همان
+   CSV بیست‌ویک‌ستونه است که کارت «تاریخچهٔ وضعیت» پنل می‌خواند. */
+const EVT_CHG_BOOT = 1, EVT_CHG_MAINS = 2, EVT_CHG_CHG1 = 4, EVT_CHG_CHG2 = 8,
+      EVT_CHG_FAULT = 16, EVT_CHG_FLAGS = 32, EVT_CHG_BAND = 64, EVT_CHG_LINK = 128,
+      EVT_CHG_MODE = 256, EVT_CHG_DEAD = 512, EVT_CHG_VSTEP = 1024;
+const EVT_NOTE_NONE = 0, EVT_NOTE_LINK_LOST = 2, EVT_NOTE_LINK_BACK = 3, EVT_NOTE_HEARTBEAT = 5, EVT_NOTE_MANUAL = 6;
+const EVT_MIN_MS = 2000, EVT_VSTEP_MV = 200, EVT_VSTEP_MIN_MS = 60000, EVT_MAX_ROWS = 2000;
+const EVT_HEADER = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,v24,vlow,vhigh,imb,dm,vin,v12,i1,i2,d1,d2';
+let evtRows = [];
+let evtPendingMask = 0, evtPendingNote = 0;
+let evtLastRowMs = 0, evtLastRowOk = false, evtLastStepMs = 0, evtLastStepOk = false;
+let evtHasPrev = false, evtPrev = null, evtPrevV24 = 0;
+let evtBooted = false, evtLastFlags = 0, evtLastFl2 = 0, evtLastT = null;
+
+function evtPct(v) {
+    /* v1.109 mirror: discharge map 74/75, factory 21,000..29,000 mV */
+    const vmin = (P[74] != null) ? P[74] : 21000, vmax = (P[75] != null) ? P[75] : 29000;
+    if (v <= vmin) return 0;
+    if (v >= vmax) return 100;
+    return Math.floor(((v - vmin) * 100) / (vmax - vmin));
+}
+function evtWrite(mask, note, flags, fl2, t) {
+    if (evtRows.length >= EVT_MAX_ROWS) return;
+    const nowSec = Math.floor(Date.now() / 1000);
+    evtRows.push([nowSec, Math.floor(nowSec - (evtStartSec)), mask, note,
+                  (flags & 0x02) ? 1 : 0, flags,
+                  t[6], t[13], t[19], fl2,
+                  t[15], t[17], t[18], t[25], t[28],
+                  t[14], t[16], t[3], t[10], t[5], t[12],
+                  evtPct(t[15])].join(','));
+    evtLastRowMs = Date.now();
+    evtLastRowOk = true;
+    if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
+    evtPrevV24 = t[15];
+    evtPendingMask = 0;
+    evtPendingNote = EVT_NOTE_NONE;
+}
+/*
+ * [EN] v1.121: a fresh preview starts with two rows, so the new "older" key had
+ *      nothing to page through and looked broken. Seed one simulated day (90
+ *      rows, spread from 00:02 to now) so the three keys can be tried with no
+ *      board attached. These rows are simulation, like every other number here.
+ * [FA] نسخهٔ ۱٫۱۲۱: پیش‌نمایش تازه با دو ردیف شروع می‌شد، پس کلید «قدیمی‌تر»
+ *      چیزی برای گشتن نداشت و خراب به نظر می‌رسید. یک روز شبیه‌سازی‌شده
+ *      (۹۰ ردیف، از ۰۰:۰۲ تا همین حالا) کاشته می‌شود تا سه کلید تازه بدون برد
+ *      امتحان شوند. مثل بقیهٔ عددهای این صفحه، شبیه‌سازی است.
+ */
+function evtSeedDemo() {
+    const now = Math.floor(Date.now() / 1000);
+    const start = Math.floor(new Date(new Date().setHours(0, 0, 0, 0)).getTime() / 1000) + 120;
+    const span = Math.max(600, now - start - 60);
+    const step = Math.max(1, Math.floor(span / 90));
+    for (let i = 0; i < 90; i++) {
+        const sec = start + i * step;
+        const mains = (i % 30) < 20 ? 1 : 0;
+        const v24 = 24000 - (i % 12) * 60;
+        evtRows.push([sec, 3600 + i * step, (i % 7 === 0) ? 1024 : 0, 5, mains, 7,
+                      1, 1, 0, 1, v24, v24 - 40, v24 + 40, 80, 0, 24100,
+                      v24 - 12000, 900, 850, 450, 300, evtPct(v24)].join(','));
+    }
+}
+function evtFlush() {
+    if (!evtPendingMask && evtPendingNote === EVT_NOTE_NONE) return;
+    if (!evtLastRowOk || (Date.now() - evtLastRowMs) >= EVT_MIN_MS) {
+        evtWrite(evtPendingMask, evtPendingNote, evtLastFlags, evtLastFl2, evtLastT);
+    }
+}
+function evtQueue(mask, note) {
+    evtPendingMask |= mask;
+    if (note !== EVT_NOTE_NONE) evtPendingNote = note;
+    evtFlush();
+}
+function evtFrame(flags, fl2, t) {
+    evtLastFlags = flags;
+    evtLastFl2 = fl2;
+    evtLastT = t;
+    if (!evtBooted) {
+        evtBooted = true;
+        evtWrite(EVT_CHG_BOOT, EVT_NOTE_NONE, flags, fl2, t);
+    }
+    const mains = (flags & 0x02) ? 1 : 0;
+    const chg1 = t[6], chg2 = t[13];
+    const fault = t[19], dead = t[28];
+    const fl = flags & 0x3D;
+    const band = (evtPrev && evtPrev.band) ? (t[15] > 21400 ? 0 : 1)
+                                           : (t[15] < 21200 ? 1 : 0);
+    if (!evtHasPrev) {
+        evtHasPrev = true;
+        evtPrev = { mains, chg1, chg2, fl2, fault, band, fl, dead };
+        evtPrevV24 = t[15];
+        return;
+    }
+    let mask = 0;
+    if (mains !== evtPrev.mains) mask |= EVT_CHG_MAINS;
+    if (chg1 !== evtPrev.chg1) mask |= EVT_CHG_CHG1;
+    if (chg2 !== evtPrev.chg2) mask |= EVT_CHG_CHG2;
+    if (fault !== evtPrev.fault) mask |= EVT_CHG_FAULT;
+    if (fl2 !== evtPrev.fl2) mask |= EVT_CHG_FLAGS;
+    if (band !== evtPrev.band) mask |= EVT_CHG_BAND;
+    if (fl !== evtPrev.fl) mask |= EVT_CHG_MODE;
+    if (dead !== evtPrev.dead) mask |= EVT_CHG_DEAD;
+    if (Math.abs(t[15] - evtPrevV24) >= EVT_VSTEP_MV) {
+        /* v1.109 mirror: while the mains are OFF every RISE is its own row */
+        const riseInDischarge = (!mains) && (t[15] > evtPrevV24);
+        if (mask || riseInDischarge || !evtLastStepOk || (Date.now() - evtLastStepMs) >= EVT_VSTEP_MIN_MS) {
+            mask |= EVT_CHG_VSTEP;
+        }
+    }
+    if (mask) evtQueue(mask, EVT_NOTE_NONE);
+    else evtFlush();
+    evtPrev = { mains, chg1, chg2, fl2, fault, band, fl, dead };
+}
+function evtDayOf(epochSec) {
+    const d = new Date((epochSec || Math.floor(Date.now() / 1000)) * 1000);
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+function evtDaysList() {
+    const days = [];
+    for (const line of evtRows) {
+        const day = String(evtDayOf(Number(line.split(',')[0])));
+        if (!days.includes(day)) days.push(day);
+    }
+    days.sort();
+    return days;
+}
+function evtTailText(day) {
+    const days = evtDaysList();
+    const chosen = day || (days.length ? days[days.length - 1] : '');
+    const rows = evtRows.filter((line) => String(evtDayOf(Number(line.split(',')[0]))) === chosen);
+    return [EVT_HEADER].concat(rows.slice(-30)).join('\n');
+}
+const evtStartSec = Math.floor(Date.now() / 1000);
+/* [EN] v1.109: the heartbeat timer runs only while the server serves. In
+ *      --self-test mode it used to keep the process alive forever, hanging the
+ *      whole host syntax gate after its PASS line.
+ * [FA] نسخهٔ ۱٫۱۰۹: شمارندهٔ ضربان فقط هنگام خدمت‌رسانی سرور می‌دود. در حالت
+ *      خودآزمای قبلاً پروسه را برای همیشه زنده نگه می‌داشت و دروازهٔ نحویِ هاست
+ *      را پس از خطِ «قبول» قفل می‌کرد. */
+let simForeignFiles = [
+    { name: "/old_sketch_cfg.bin", size: 24576 }
+];
+function evtHeartbeatStart() {
+    setInterval(() => {
+        if (evtLastRowOk && (Date.now() - evtLastRowMs) >= 3600000) evtQueue(0, EVT_NOTE_HEARTBEAT);
+    }, 60000);
 }
 
 /* [EN] LUT handshake state of the simulated board, and the point window
@@ -646,7 +994,7 @@ const server = http.createServer((req, res) => {
                  * as the real board's would after each write. v1.15: the
                  * same cascade (profile -> charger alarms -> fault alarms). */
                 for (const pid of [20, 21, 22, 23, 24, 25, 26, 35, 36, 37,
-                                   27, 28, 29, 30, 31, 32, 33, 34,
+                                   27, 28, 29, 30, 31, 32, 33, 34, 169, 170,
                                    38, 39, 40, 42, 43, 41, 44, 45, 46, 48, 49, 47,
                                    50, 51, 52, 53, 54, 55, 56, 57, 62, 63, 64, 65, 58, 59, 60, 61,
                                    66, 67, 68, 69, 70, 71, 74, 75, 76,
@@ -665,15 +1013,16 @@ const server = http.createServer((req, res) => {
         for (let k = 0; k < TLM_FIELDS; k++) { s[k] = d.t[k]; lo[k] = d.t[k]; hi[k] = d.t[k]; la[k] = d.t[k]; }
         return send(200, "application/json", JSON.stringify({ _s: 200, n: 1, s, lo, hi, la }));
     }
-    /* [EN] v1.66 LUT routes; v1.68 the push handler mirrors the firmware
+    /*
+ * [EN] v1.66 LUT routes; v1.68 the push handler mirrors the firmware
      *      protocol exactly (see the comment inside).
-     * [FA] مسیرهای جدول (v1.66)؛ از v1.68 هندلر push دقیقاً آینهٔ پروتکل
-     *      فرم‌ور است (توضیح داخلش). */
+ */
     if (req.method === "POST" && url.pathname === "/lut") {
         let body = "";
         req.on("data", (chunk) => { body += chunk; if (body.length > 65536) req.destroy(); });
         req.on("end", () => {
-            /* [EN] v1.68 mirror of func__Esp_HttpLutPush (plink_http.h):
+            /*
+ * [EN] v1.68 mirror of func__Esp_HttpLutPush (plink_http.h):
              *      strict CSV body n1,n2,(chain,power)*n1,(chain,power)*n2,crc32;
              *      same refusals with the SAME reason codes (len/n/empty/pt/
              *      mono/crc); 0 points = channel left alone, so a single-
@@ -684,12 +1033,7 @@ const server = http.createServer((req, res) => {
              *      instead of {"ok":1}, so every legitimate push failed in the
              *      preview with a misleading "board did not answer" error
              *      (user report 2026-10-07).
-             * [FA] آینهٔ دقیق func__Esp_HttpLutPush: همان بدنهٔ CSV، همان رد
-             *      شدنها با همان کدهای دلیل، کانال ۰-نقطه‌ای یعنی «دست نخورد»
-             *      (ارسال تک‌باتری قانونی است) و CRC دریافتی بازپس داده می‌شود
-             *      تا دست‌دادن پنل کامل شود. مدل قبلی کانال خالی را رد می‌کرد،
-             *      CRC جعلی می‌ساخت و ok:1 نمی‌داد، پس هر ارسال سالمی در
-             *      پیش‌نمایش با خطای گمراه‌کننده شکست می‌خورد. */
+ */
             const refuse = (e) => {
                 LUT = { stage: 0, status: 2, n1: 0, n2: 0, crc: 0, sent: 0,
                         count: LUT.count, txStage: 0, txError: 0, at: Date.now(),
@@ -728,12 +1072,11 @@ const server = http.createServer((req, res) => {
         });
         return undefined;
     }
-    /* [EN] The real ESP asks the STM32 for both active frames; the preview
+    /*
+ * [EN] The real ESP asks the STM32 for both active frames; the preview
      *      answers from its simulated committed table so the new read-only
      *      and before/after panel flow is usable without hardware.
-     * [FA] ESP واقعی هر دو فریم فعال را از STM32 می‌خواهد؛ پیش‌نمایش از جدول
-     *      کامیت‌شدهٔ شبیه‌سازی‌شده پاسخ می‌دهد تا مسیر ‎read-only‎ و ‎before/after‎
-     *      بدون سخت‌افزار هم واقعاً قابل اجرا باشد. */
+ */
     if (req.method === "POST" && url.pathname === "/lut/read") {
         const pair = (tab) => tab.map((point) => [point[0], point[1]]);
         LUT.read = {
@@ -760,6 +1103,23 @@ const server = http.createServer((req, res) => {
         }
         return send(200, "application/json", '{"_s":200}');
     }
+    /*
+ * [EN] v1.85 latch-reset routes, mirrored from func__Esp_HttpLatchReset /
+     *      func__Esp_HttpLatchState so the panel's buttons work in the
+     *      preview exactly as they do against the board.
+ */
+    if (req.method === "GET" && url.pathname === "/latch") {
+        return send(200, "application/json", JSON.stringify({
+            ok: 1, id: latch.lastId, val: latch.lastVal, known: latch.known,
+            rep: latch.rep, req: latch.req, nak: latch.nak, busy: latch.busy,
+            q: latch.q.length }));
+    }
+    if (req.method === "POST" && url.pathname === "/latch/reset") {
+        const n = Number(url.searchParams.get("n"));
+        if (n !== 5 && n !== 6) return send(400, "application/json", '{"ok":0,"e":2}');
+        if (!queueLatchReset(n)) return send(409, "application/json", '{"ok":0,"e":1}');
+        return send(200, "application/json", JSON.stringify({ ok: 1, n }));
+    }
     if (req.method === "GET" && url.pathname === "/benchlog") {
         if (url.searchParams.get("i") === "1") {
             return send(200, "application/json",
@@ -777,9 +1137,226 @@ const server = http.createServer((req, res) => {
         benchSize = 0;
         return send(200, "application/json", '{"ok":1}');
     }
+    /* v1.87: simulate battery disconnect/reconnect for scenario 6 */
+    if (req.method === "GET" && url.pathname === "/evt") {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(evtTailText(url.searchParams.get("day") || ""));
+        return;
+    }
+    if (req.method === "GET" && url.pathname === "/evt/days") {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(evtDaysList().join(" "));
+        return;
+    }
+    if (req.method === "GET" && url.pathname === "/evt/dl") {
+        const day = url.searchParams.get("day") || "";
+        const days = evtDaysList();
+        const chosen = day || (days.length ? days[days.length - 1] : "");
+        const rows = evtRows.filter((line) => String(evtDayOf(Number(line.split(',')[0]))) === chosen);
+        res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Cache-Control": "no-store",
+                             "Content-Disposition": 'attachment; filename=evt-' + (chosen || "today") + '.csv' });
+        res.end([EVT_HEADER].concat(rows).join("\n"));
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/clr") {
+        const removed = evtDaysList().length;
+        evtRows = [];
+        evtHasPrev = false;
+        evtLastRowOk = false;
+        evtBooted = false;
+        res.writeHead(200, { "Content-Type": "application/json", "X-Log-Fs": "1" });
+        res.end(JSON.stringify({ ok: 1, removed }));
+        return;
+    }
+    if (req.method === "GET" && url.pathname === "/evt/fs") {
+        const days = evtDaysList();
+        const files = days.map((d) => {
+            const rows = evtRows.filter((line) => String(evtDayOf(Number(line.split(",")[0]))) === d);
+            const size = Buffer.byteLength([EVT_HEADER].concat(rows).join("\n"), "utf8");
+            return { name: "/evt-" + d + ".csv", size, own: 1 };
+        });
+        files.push({ name: "/evt-clock.txt", size: 28, own: 1 });
+        if (benchSize > 0) {
+            files.push({ name: "/benchlog.csv", size: benchSize, own: 1 });
+        }
+        for (const f of simForeignFiles) {
+            files.push({ name: f.name, size: f.size, own: 0 });
+        }
+        const used = files.reduce((s, x) => s + x.size, 0);
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used, files, fileBytes: used, more: 0 }));
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/clean") {
+        const removed = simForeignFiles.length;
+        const freed = simForeignFiles.reduce((s, x) => s + x.size, 0);
+        simForeignFiles = [];
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(JSON.stringify({ ok: 1, removed, freed }));
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/format") {
+        evtRows = [];
+        evtHasPrev = false;
+        evtLastRowOk = false;
+        evtBooted = false;
+        benchSize = 0;
+        simForeignFiles = [];
+        res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
+        res.end("ok");
+        return;
+    }
+    if (req.method === "POST" && url.pathname === "/evt/snap") {
+        if (!evtLastT) telemetry();
+        const mask = evtPendingMask;
+        evtLastRowMs = 0;
+        evtLastRowOk = false;
+        evtLastStepMs = 0;
+        evtLastStepOk = false;
+        evtPendingMask = 0;
+        evtPendingNote = EVT_NOTE_NONE;
+        evtWrite(mask, EVT_NOTE_MANUAL, evtLastFlags, evtLastFl2, evtLastT);
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end('{"ok":1}');
+        return;
+    }
     return send(404, "text/plain", "not found");
 });
-
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`panel preview: http://0.0.0.0:${PORT}  (charge tab: BULK->ABSORB->FLOAT->reentry cycle, ~1 min loop)`);
-});
+/*
+ * [EN] Check invalid-input and long-pause recovery without starting the server.
+ */
+function runPreviewSelfTests() {
+    inputArmed = false;
+    for (const invalidMv of [15000, 29500]) {
+        const channel = mkChannel();
+        channel.state = 1;
+        channel.i = 600;
+        channel.duty = 100;
+        stepChannel(channel, 0, invalidMv);
+        assert.strictEqual(channel.state, 6, `input ${invalidMv} mV must enter INPUT_WAIT`);
+        assert.strictEqual(channel.i, 0, "INPUT_WAIT must stop simulated current");
+        assert.strictEqual(channel.duty, 0, "INPUT_WAIT must stop simulated duty");
+        stepChannel(channel, 0, 24100);
+        assert.strictEqual(channel.state, 0, "input recovery must restart through OFF");
+    }
+    /*
+ * [EN] The shared Schmitt margin must gate recovery, not just the raw window.
+ */
+    inputArmed = false;
+    const marginChannel = mkChannel();
+    marginChannel.state = 6;
+    stepChannel(marginChannel, 0, 21200);
+    assert.strictEqual(marginChannel.state, 6, "inside raw window but below the lower margin must stay INPUT_WAIT");
+    stepChannel(marginChannel, 0, 21500);
+    assert.strictEqual(marginChannel.state, 0, "clearing the lower margin must re-arm through OFF");
+    inputArmed = false;
+    marginChannel.state = 6;
+    stepChannel(marginChannel, 0, 27800);
+    assert.strictEqual(marginChannel.state, 6, "inside raw window but above the upper margin must stay INPUT_WAIT");
+    stepChannel(marginChannel, 0, 27500);
+    assert.strictEqual(marginChannel.state, 0, "clearing the upper margin must re-arm through OFF");
+    const transition = { chargeSec: [10, 0], pauseAt: [null, null] };
+    const channel = mkChannel();
+    channel.state = 1;
+    updateDeadChargeCounter(transition, 0, channel.state, 0, 1000);
+    stepChannel(channel, 0, 15000);
+    updateDeadChargeCounter(transition, 0, channel.state, 0, 1000);
+    assert.strictEqual(transition.chargeSec[0], 10.1,
+        "input loss must preserve the last active interval and start a pause");
+    assert.strictEqual(transition.pauseAt[0], 0, "INPUT_WAIT must start the pause clock");
+    const shortPause = { chargeSec: [42, 0], pauseAt: [null, null] };
+    updateDeadChargeCounter(shortPause, 0, 6, 0, 1000);
+    updateDeadChargeCounter(shortPause, 0, 6, 999, 1000);
+    assert.strictEqual(shortPause.chargeSec[0], 42,
+        "a pause shorter than the configured gap must preserve the counter");
+    updateDeadChargeCounter(shortPause, 0, 1, 999, 1000);
+    assert.strictEqual(shortPause.chargeSec[0], 42.1,
+        "charging recovery before the gap must resume the existing counter");
+    const longPause = { chargeSec: [42, 0], pauseAt: [null, null] };
+    updateDeadChargeCounter(longPause, 0, 6, 0, 1000);
+    updateDeadChargeCounter(longPause, 0, 6, 999, 1000);
+    assert.strictEqual(longPause.chargeSec[0], 42,
+        "the counter must survive until the configured gap is reached");
+    updateDeadChargeCounter(longPause, 0, 6, 1000, 1000);
+    assert.strictEqual(longPause.chargeSec[0], 0,
+        "a pause reaching the configured gap must reset the counter");
+    updateDeadChargeCounter(longPause, 0, 1, 1100, 1000);
+    assert.strictEqual(longPause.chargeSec[0], 0.1,
+        "after a long pause, resumed charging must start from zero");
+    /*
+ * [EN] Exercise the full telemetry path at the 30 s input-loss episode.
+ */
+    const savedResetGapMs = P[126];
+    P[126] = 5000;
+    ch[0] = mkChannel();
+    ch[1] = mkChannel();
+    ch[0].state = 1;
+    ch[1].state = 1;
+    latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: 0, imbBase: 0, chargeSec: [42, 42],
+              pauseAt: [null, null] };
+    ms = 30000;
+    let frame = telemetry();
+    assert.strictEqual(frame.t[6], 6, "demo overvoltage must publish INPUT_WAIT");
+    assert.strictEqual(frame.t[13], 6, "both installed channels must wait on invalid input");
+    assert.strictEqual(frame.t[29], 42, "initial input loss must preserve accrued charge time");
+    assert.strictEqual(latch.pauseAt[0], 30000, "telemetry must start the input-wait pause clock");
+    ms = 35000;
+    frame = telemetry();
+    assert.strictEqual(frame.t[29], 0, "telemetry must reset the counter when the pause reaches id 126");
+    assert.strictEqual(frame.t[30], 0, "the pause reset must apply independently to both channels");
+    ms = 38000;
+    frame = telemetry();
+    assert.strictEqual(frame.t[6], 0, "recovered input must restart through OFF");
+    assert.strictEqual(frame.t[5], 0, "the recovery pass must remain at zero duty");
+    assert.strictEqual(frame.t[29], 0, "charging after a long outage must start from zero");
+    latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: 0, imbBase: 0, chargeSec: [0, 0],
+              pauseAt: [null, null] };
+    assert.strictEqual(queueLatchReset(5), true,
+        "scenario 5 reset must fit in the runtime-slot queue");
+    assert.deepStrictEqual(latch.q.map(item => item.id), [200, 201, 202],
+        "scenario 5 must queue event and cycle counters before the latch");
+    latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: 1, imbBase: 0, chargeSec: [86400, 57],
+              pauseAt: [123, 456] };
+    ch[0].state = 3;
+    ch[1].state = 2;
+    assert.strictEqual(queueLatchReset(6), true,
+        "scenario 6 reset must fit in the runtime-slot queue");
+    applyLatchItem(latch.q.shift());
+    assert.strictEqual(latch.deadMask, 0,
+        "scenario 6 reset must clear the latched dead-battery bit");
+    assert.strictEqual(latch.chargeSec[0], 0,
+        "scenario 6 reset must clear channel 1's live 24-hour timer");
+    assert.strictEqual(latch.pauseAt[0], null,
+        "scenario 6 reset must clear channel 1's pause bookkeeping");
+    assert.strictEqual(latch.chargeSec[1], 0,
+        "scenario 6 reset (val=0) must also zero channel 2's live timer even before latching");
+    assert.strictEqual(latch.pauseAt[1], null,
+        "scenario 6 reset (val=0) must also clear channel 2's pause state");
+    assert.strictEqual(ch[0].state, 1,
+        "scenario 6 reset must restart channel 1 from BULK");
+    assert.strictEqual(ch[1].state, 1,
+        "scenario 6 reset must restart channel 2 from BULK");
+    P[126] = savedResetGapMs;
+}
+if (process.argv.includes("--self-test")) {
+    runPreviewSelfTests();
+    console.log("ALL PANEL PREVIEW SCENARIO-5/6 SELF-TESTS PASSED");
+    /*
+ * [EN] v1.109: nothing must keep the process alive after the verdict, so
+     *      the gate that shells out to this file can finish.
+ */
+    process.exit(0);
+} else {
+    /*
+ * [EN] Keep state advancing independently of browser polling.
+ */
+    if (!evtRows.length) evtSeedDemo();
+    setInterval(() => { SNAP = telemetry(); }, SIM_MS);
+    evtHeartbeatStart();
+    server.listen(PORT, "0.0.0.0", () => {
+        console.log(`panel preview: http://0.0.0.0:${PORT}  (charge tab: BULK->ABSORB->FLOAT->reentry cycle, ~1 min loop)`);
+    });
+}

@@ -5,11 +5,9 @@ These tests validate policy and source contracts only. They do not authorize a
 battery connection and cannot replace HAL, transformer, relay, comparator or
 oscilloscope tests on the board.
 """
-
 from pathlib import Path
 import re
 import sys
-
 ROOT = Path(__file__).resolve().parents[4]
 APP_TYPES_H = Path(__file__).resolve().parents[3] / "Config" / "Inc" / "app_types.h"
 CHARGER_H = ROOT / "Firmware/Modules/Charger/charger.h"
@@ -36,7 +34,6 @@ FREERTOSCONFIG_H = ROOT / "CubeIDE/Core/Inc/FreeRTOSConfig.h"
 FREERTOS_HOOKS_C = ROOT / "Firmware/Rtos/Src/freertos_hooks.c"
 FLASH_LD = ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld"
 CPROJECT = ROOT / "CubeIDE/STM32CubeIDE/.cproject"
-
 ABSORB_MV = 14400
 FLOAT_MV = 13500
 REENTRY_MV = 12800
@@ -48,14 +45,10 @@ RAMP_UP_MS = 1000
 RAMP_DOWN_MS = 500
 DUTY_START = 10
 DUTY_STEP = 5
-INPUT_VALID_MV = 22000
-
-
+INPUT_VALID_MV = 21000
 def check(condition, message):
     if not condition:
         raise AssertionError(message)
-
-
 def regulate_one(channel, voltage_mv, current_ma, now_ms=0):
     """Small host model of the bulk branch, with a duty per channel and
     rate-limited steps: one 0.5% up-step per 1000 ms, one 0.5% down-step
@@ -77,8 +70,6 @@ def regulate_one(channel, voltage_mv, current_ma, now_ms=0):
                 channel["duty"] = DUTY_MAX
             channel["last_step_ms"] = now_ms
     # inside the 630..650 band or inside the step window: hold duty
-
-
 def jit_sequence(channel, trip_count):
     """Host model of per-channel JIT sequence."""
     channel["trips"] = trip_count
@@ -92,8 +83,6 @@ def jit_sequence(channel, trip_count):
         channel["pwm_other"] = 0
         channel["relay_on"] = True
         channel["final"] = True
-
-
 def test_fault_pump_rule_per_half_v121():
     """[EN] v1.21 (user order 2026-09-28): the 14.8 V pump rule arms PER HALF
        by that half's own pumping channel (channel 0 = high half, 1 = low half).
@@ -107,21 +96,15 @@ def test_fault_pump_rule_per_half_v121():
                 (high_ok and ch0_pumping and high_mv > disc))
     # [EN] Bench case that produced the repeating 3-beep cycle: only ch2
     # pumps, the DERIVED vhigh (V24 - V12) spikes above 14.8 V.
-    # [FA] همان حالت بنچ با چرخهٔ سه‌بوق: فقط ch2 پمپ می‌کند و vhigh
-    # مشتق‌شده (V24 - V12) اسپایک می‌گیرد.
     check(any_over_v120(True, 13000, 15000) == True, "old rule: the parked ch1 half could false-latch while ch2 pumped")
     check(any_over_v121(False, True, 13000, 15000) == False, "v1.21: parked ch1 half is not judged while only ch2 pumps")
     # [EN] Real wire cut on a charging channel must still latch.
-    # [FA] قطع واقعی سیم روی کانال در حال شارژ همچنان قفل می‌کند.
     check(any_over_v121(True, False, 13000, 15000) == True, "v1.21: real ch1 wire cut while ch1 pumps still latches")
     check(any_over_v121(False, True, 15000, 13000) == True, "v1.21: real ch2 wire cut while ch2 pumps still latches")
     check(any_over_v121(True, True, 15000, 14400) == True, "v1.21: both pumping + low half over latches")
     # [EN] No pump -> rule not armed at all; uninstalled half ignored.
-    # [FA] بدون پمپ اصلاً مسلح نیست؛ نیمِ کانال غیرنصب نادیده گرفته می‌شود.
     check(any_over_v121(False, False, 16000, 16000) == False, "v1.21: no pump -> rule not armed")
     check(any_over_v121(True, False, 13000, 15000, installed=(True, False)) == False, "v1.21: uninstalled high half ignored")
-
-
 def test_modules_enabled_build():
     mods = (ROOT / "Firmware/Config/Inc/modules_enable.h").read_text()
     ch = CHARGER_H.read_text()
@@ -135,8 +118,6 @@ def test_modules_enabled_build():
           "MODULE_ESP must be 1 (default since the 2026-09-27 audit: pushed build works with the panel untouched)")
     check(re.search(r"#define MODULE_PROTECTION\s+0", mods),
           "MODULE_PROTECTION must stay 0 (skeleton: only the instantaneous FAULT_ADC bit)")
-
-
 def test_master_enable_constant_is_single_gate():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
@@ -153,8 +134,6 @@ def test_master_enable_constant_is_single_gate():
     check(("JIT" in text_h and "relay" in text_h and "inactive" in text_h) or
           "سیاست JIT/رله غیرفعال" in text_h,
           "with CHG_MASTER_ENABLE=0 JIT/relay disconnect policy must be documented inactive")
-
-
 def test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off():
     text_c = CHARGER_C.read_text()
     # Master=0 path must call SafeIdle, and SafeIdle must StopAll + relay false
@@ -165,8 +144,6 @@ def test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off():
     check("func__BspPwm_StopAll();" in text_c and "func__BspGpio_Write(BSP_GPIO_RELAY, false);" in text_c,
           "SafeIdle must StopAll PWM and de-energize relay coil (NC closed)")
     check("return;" in snippet, "master-zero must return before any control/JIT/relay policy")
-
-
 def test_transformer_known_not_bypassable_bringup_only_when_zero():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
@@ -189,8 +166,6 @@ def test_transformer_known_not_bypassable_bringup_only_when_zero():
           "only explicit bring-up mode is allowed when transformer is unknown")
     check("if (bool__controlAllowed == false)" in text_c and "func__Charger_SafeIdle();" in text_c,
           "when neither KNOWN nor bring-up enabled, SafeIdle must be forced")
-
-
 def test_master_enable_does_not_bypass_numeric_protections():
     text_c = CHARGER_C.read_text()
     check(re.search(r"CHG_CURRENT_LIMIT_MA", CHARGER_H.read_text()) is not None and
@@ -199,8 +174,6 @@ def test_master_enable_does_not_bypass_numeric_protections():
     check("CHG_MIN_VALID_BATTERY_MV" in text_c, "battery validity threshold must still exist")
     check("CHG_INPUT_VALID_MV" in text_c, "real ADC input threshold must still exist")
     check("func__Charger_FinalDisconnect" in text_c, "final disconnect protection must still exist")
-
-
 def test_channel_selection_constants():
     text = CHARGER_H.read_text()
     match_ch1 = re.search(r"#define CHG_CHANNEL_1_INSTALLED\s+([01])u", text)
@@ -212,8 +185,6 @@ def test_channel_selection_constants():
               "with channel 1 installed the transformer data must be marked known (bring-up gate, user order 2026-09-20)")
     check("CHG_INSTALLED_CHANNEL_MASK" in text,
           "the two constants must feed one explicit installed-channel mask")
-
-
 def test_channel_one_is_always_zero_stopped():
     text = CHARGER_C.read_text()
     check("func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);" in text,
@@ -222,8 +193,6 @@ def test_channel_one_is_always_zero_stopped():
           "shared SetPwmBoth must not be used or reintroduced")
     check("BSP_PWM_CHARGER_1" in text and "0u" in text,
           "PWM1 must be explicitly kept 0 for uninstalled CH1")
-
-
 def test_trans2_uses_only_vlow_not_24v_pack():
     text = CHARGER_C.read_text()
     check("func__Charger_ChannelVoltageMv" in text,
@@ -243,8 +212,6 @@ def test_trans2_uses_only_vlow_not_24v_pack():
           "charger policy must not use 24 V pack value for CH2 setpoint or missing battery (outside the diag-only capture function)")
     check("v_bat_low_mv" in text,
           "Trans2 control must use independent low battery sense")
-
-
 def test_min_valid_battery_is_sense_not_setpoint():
     text_h = CHARGER_H.read_text()
     check(re.search(r"#define CHG_MIN_VALID_BATTERY_MV\s+2000u", text_h),
@@ -260,8 +227,6 @@ def test_min_valid_battery_is_sense_not_setpoint():
           "only voltage-clamped electronic load / battery simulator must be allowed for no-battery tests")
     check("free resistor" in text_h or "resistor alone" in text_h or "مقاومت آزاد" in text_h,
           "free resistor alone must be documented as not a valid battery simulator")
-
-
 def test_battery_voltage_upper_cutoff_applies_before_any_control():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
@@ -275,8 +240,6 @@ def test_battery_voltage_upper_cutoff_applies_before_any_control():
           "both bring-up and normal charging must stop on low or high battery sense")
     check("CHG_MAX_VALID_BATTERY_MV" in text_h and "not a substitute" in text_h,
           "firmware cutoff must be documented as an additional protection, not hardware protection")
-
-
 def test_jit_is_active_low_and_retry_captures_duty_before_stop():
     text_c = CHARGER_C.read_text()
     text_exti = BSP_EXTI_C.read_text()
@@ -293,25 +256,29 @@ def test_jit_is_active_low_and_retry_captures_duty_before_stop():
     check("PB2.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" in ioc and
           "PB6.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" in ioc,
           "CubeMX JIT pins must use falling-edge EXTI")
-
-
-def test_input_voltage_is_real_adc_22000mv():
+def test_input_voltage_uses_shared_fault_window():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
-    check(re.search(r"#define CHG_INPUT_VALID_MV\s+22000u", text_h),
-          "input validity threshold must be 22000 mV")
-    check("measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV" in text_c,
+    check(re.search(r"#define CHG_INPUT_VALID_MV\s+21000u", text_h),
+          "Fault-off input fallback must mirror the shared q33 factory default 21000 mV")
+    check(re.search(r"#define CHG_INPUT_VALID_MAX_MV\s+28000u", text_h),
+          "Fault-off input fallback must mirror the shared q34 factory default 28000 mV")
+    check(re.search(r"#define CHG_INPUT_RECOVERY_HYSTERESIS_MV\s+500u", text_h),
+          "Fault-off charger fallback must keep the 500 mV boot Schmitt margin")
+    check("measurement_snapshot_t__snap->v_in_mv" in text_c,
           "input must be checked from real ADC v_in_mv every cycle")
-    check("input_present == false" not in text_c,
-          "PB4 digital input alone must not be the charge gate")
-    # Vin<22000 path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
-    idx = text_c.find("bool__inputAdcValid == false")
+    check("func__Fault_GetInputPermission" in text_c,
+          "charger must use the one shared Fault input Schmitt permission")
+    check("bool__inputPermitted" in text_c,
+          "stop, INPUT_WAIT recovery and every OFF->BULK start must share one flag")
+    check("input_present == false" not in text_c or "bool__inputPermitted" in text_c,
+          "PB4 digital input alone must not be the charge gate - use the shared ADC Schmitt")
+    # Vin out of range path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
+    idx = text_c.find("bool__inputPermitted == false")
     check(idx >= 0, "low-Vin gate must exist")
-    snippet = text_c[idx:idx+1400]  # C26 (2026-09-26): SafeIdle-first + comment widened the block
-    check("func__Charger_SafeIdle();" in snippet, "low Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
-    check("CHG_STATE_INPUT_WAIT" in snippet, "low Vin must put channels into INPUT_WAIT (no retry/PWM until recovery)")
-
-
+    snippet = text_c[idx:idx+3000]  # Include the timer servicing added for INPUT_WAIT
+    check("func__Charger_SafeIdle();" in snippet, "out-of-range Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
+    check("CHG_STATE_INPUT_WAIT" in snippet, "out-of-range Vin must put channels into INPUT_WAIT (no retry/PWM until recovery)")
 def test_input_recovery_restarts_with_safe_duty():
     text_c = CHARGER_C.read_text()
     text_h = CHARGER_H.read_text()
@@ -321,8 +288,58 @@ def test_input_recovery_restarts_with_safe_duty():
           "safe restart duty must be 10 permille = 1%")
     check("CHG_STATE_OFF" in text_c,
           "on Vin recovery channels must transition back to OFF/start duty")
-
-
+def test_input_wait_services_dead_battery_pause_counter():
+    """[EN] INPUT_WAIT must keep the scenario-6 pause clock running.
+    [FA] در حالت انتظار ورودی ساعت مکث سناریوی ۶ باید به کار ادامه دهد."""
+    text_c = CHARGER_C.read_text()
+    eval_start = text_c.find("void func__Charger_Evaluate(")
+    invalid_start = text_c.find("if (bool__inputPermitted == false)", eval_start)
+    invalid_end = text_c.find("#if MODULE_JITTER", invalid_start)
+    check(eval_start >= 0 and invalid_start > eval_start and invalid_end > invalid_start,
+          "charger input-invalid branch must be identifiable")
+    invalid_branch = text_c[invalid_start:invalid_end]
+    tick_calls = [match.start() for match in re.finditer(
+        r"func__Charger_DeadBatteryTick\(uint8_t__channelIndex, uint32_t__nowTick\);",
+        invalid_branch)]
+    safe_idle = invalid_branch.find("func__Charger_SafeIdle();")
+    input_wait = invalid_branch.find("CHG_STATE_INPUT_WAIT", safe_idle)
+    check(len(tick_calls) == 2 and tick_calls[0] < safe_idle,
+          "input loss must account for the final active interval before SafeIdle")
+    check(safe_idle < input_wait < tick_calls[1],
+          "the dead-charge timer must be serviced after INPUT_WAIT is stamped")
+    active_start = text_c.find("bool func__Charger_IsChannelActive(")
+    active_end = text_c.find("\n}", active_start)
+    active_body = text_c[active_start:active_end]
+    check("CHG_STATE_BULK" in active_body and "CHG_STATE_ABSORB" in active_body and
+          "CHG_STATE_INPUT_WAIT" not in active_body,
+          "INPUT_WAIT must be treated as a pause, not active charging")
+    dead_tick = text_c[text_c.find("static void func__Charger_DeadBatteryTick("):]
+    check(re.search(r"uint32_t__gapMs\s*=\s*UINT32_T__G__DeadParam\[1\];", dead_tick) and
+          re.search(r">=\s+uint32_t__gapMs", dead_tick),
+          "scenario-6 pause must reset the counter at the configured gap")
+def test_manual_dead_battery_reset_clears_live_timer():
+    """[EN] Clearing runtime slot 203 must clear the matching channel timer
+    (even when not yet latched) and restart charging from the beginning.
+    [FA] پاک‌کردن اسلات ۲۰۳ باید ساعت زندهٔ کانال را (حتی پیش از قفل‌شدن)
+    صفر کند و شارژ را از ابتدا آغاز کند."""
+    text_c = CHARGER_C.read_text()
+    setter_start = text_c.find("bool func__Charger_SetDeadParam(")
+    setter_end = text_c.find("void func__Charger_DeadFaceShape(", setter_start)
+    check(setter_start >= 0 and setter_end > setter_start,
+          "scenario-6 runtime setter must be identifiable")
+    setter = text_c[setter_start:setter_end]
+    check("if ((uint32_t__applied & uint32_t__bit) == 0u)" in setter,
+          "any channel cleared to 0 in slot 203 must have its live timer reset even before latching")
+    check(all(token in setter for token in (
+        "UINT32_T__G__DeadChargeMs[uint8_t__index] = 0u;",
+        "UINT32_T__G__DeadLastTick[uint8_t__index] = 0u;",
+        "BOOL__G__DeadWasCharging[uint8_t__index] = false;",
+        "UINT32_T__G__DeadPauseTick[uint8_t__index] = 0u;",
+        "func__Charger_ResetChannelToOff(uint8_t__index);",
+        "func__Charger_StopOneChannel(uint8_t__index);")),
+          "manual reset must clear charge, active-tick, charging-edge and pause-tick RAM state and restart the channel from OFF->BULK")
+    check("osKernelLock()" in setter and "osKernelRestoreLock(int32_t__savedKernelLock)" in setter,
+          "the ESP task must reset shared timer state under the scheduler lock")
 def test_no_shadowing_in_duty_adjustments():
     import re as _re
     text_c = CHARGER_C.read_text()
@@ -334,8 +351,6 @@ def test_no_shadowing_in_duty_adjustments():
     # rather than only declaring a shadowed local. Verify ApplyDuty clamps via a dedicated
     # local that is then passed to BspPwm and stored into the channel.
     check("uint16_t__clampedDuty" in text_c, "ApplyDuty must clamp through a local that feeds BspPwm write (no shadow drop)")
-
-
 def test_jit_per_channel_sequence():
     text_c = CHARGER_C.read_text()
     check("uint8_t__jitTripCount" in text_c,
@@ -350,7 +365,6 @@ def test_jit_per_channel_sequence():
           "second retry must be capped at 10 percent or less")
     check("func__Jitter_ClearChannel" in text_c,
           "retry must clear only the tripped comparator channel")
-
     ch = {"duty_before": 200, "pwm_other": 100, "other_pwm_changed": False, "final": False}
     jit_sequence(ch, 1)
     check(ch["pwm_this"] == 0 and not ch["relay_on"] and ch["retry_duty"] == 100,
@@ -363,15 +377,11 @@ def test_jit_per_channel_sequence():
     jit_sequence(ch, 3)
     check(ch["pwm_this"] == 0 and ch["pwm_other"] == 0 and ch["relay_on"] and ch["final"],
           "third JIT on CH2 must stop both PWM and open relay")
-
-
 def test_low_current_is_not_fault():
     channel = {"duty": 100, "fault": False}
     regulate_one(channel, voltage_mv=12400, current_ma=40)
     check(channel["duty"] == 105, "low current below target must increase same channel duty by 5 permille")
     check(not channel["fault"], "low current must not be a fault")
-
-
 def test_duty_steps_are_time_limited():
     channel = {"duty": 100, "fault": False}
     regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=0)
@@ -384,16 +394,12 @@ def test_duty_steps_are_time_limited():
     check(channel["duty"] == 110, "down-step needs its own 500 ms window after the last step")
     regulate_one(channel, voltage_mv=12400, current_ma=700, now_ms=1500)
     check(channel["duty"] == 105, "over-band gradually steps duty down instead of cutting to zero")
-
-
 def test_duty_max_dcm_ceiling():
     channel = {"duty": 495, "fault": False}
     regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=0)
     check(channel["duty"] == 500, "step up allowed up to the 50% DCM ceiling")
     regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=1000)
     check(channel["duty"] == 500, "duty must clamp at 500 permille = 50% (higher risks burning the MOSFET)")
-
-
 def test_current_band_regulates_and_protects():
     channel_low = {"duty": 100, "fault": False}
     regulate_one(channel_low, voltage_mv=12400, current_ma=600)
@@ -411,8 +417,6 @@ def test_current_band_regulates_and_protects():
     regulate_one(channel_bad, voltage_mv=12400, current_ma=951)
     check(channel_bad["fault"] and channel_bad["duty"] == 0,
           "only current above the 950 mA hard fault must reset the channel")
-
-
 def test_setpoints_and_timing():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
@@ -430,7 +434,16 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_ABSORB_ENTER_MV\s+14300u", text_h), "absorb voltage-hold window must start at 14.3 V (user directive)")
     check("CHG_ABSORB_TIMED_MAX_MV" not in text_h, "soak has no sub-window anymore: it counts during the whole ABSORB stay")
     check(re.search(r"#define CHG_ABSORB_OVER_MV\s+14600u", text_h), "overshoot fast-down threshold must be 14.6 V (user directive)")
-    check(re.search(r"#define CHG_DUTY_STEP_FINE_PERMILLE\s+1u", text_h), "voltage-hold duty steps must be 0.1% (user directive)")
+    check("CHG_DUTY_STEP_FINE_PERMILLE" not in text_h, "the fine/coarse step table was deleted in v1.23; a leftover macro advertises a regulator that no longer exists")
+    check("CHG_PID_MAX_STEP_PERMILLE (8 permille)" in text_h,
+          "the header must state the real absorb duty-shaping limit: the PID, 8 permille per 100 ms update")
+    check("drives NO duty step" in CHARGER_H.read_text(),
+          "profile id 22 must be documented as the OV-cutoff floor, not as a duty step")
+    text_md = (ROOT / "Firmware/Modules/Charger/README.md").read_text()
+    check("22000..30000mV" not in text_md,
+          "the module sheet must not claim the 22000..30000 input window (code: 21000..28000 default)")
+    check("21000..28000mV" in text_md,
+          "the module sheet must state the real default input window 21000..28000 mV")
     check("uint32_t__absorbAccumTicks" in text_c, "soak must accumulate with pause outside the window")
     check("do NOT fall back to BULK" in text_c, "FLOAT must survive descending below the 14.3 V window (bench bug: fresh soak restarted right after every soak completed)")
     check("PARK THE PUMP AT ZERO" in text_c, "FLOAT must ramp the duty to 0 and park it (user: 'why is the charger not off? duty stuck 4-5%')")
@@ -454,11 +467,6 @@ def test_setpoints_and_timing():
     #          not from taste, and stays inside it,
     #        - the ceiling is genuinely above the old value, or the user's
     #          hand is still tied.
-    # [FA] این چک عدد ۹۵۰ را منجمد کرده بود و دقیقاً همان چیزی بود که جلوی
-    #      دستور کاربر را می‌گرفت - ششمین مقدار ثابتی که به‌جای «نیت» از یک
-    #      «عدد» دفاع می‌کرد. نیت‌ها: بردی که کسی دستش نزند هنوز در ۹۵۰ تریپ
-    #      کند؛ سقف از آنچه زنجیرهٔ ADC می‌تواند نمایش دهد مشتق شود نه از
-    #      سلیقه؛ و سقف واقعاً بالاتر از مقدار قبلی باشد.
     dflt = int(re.search(r"#define CHG_CURRENT_HARD_FAULT_DEFAULT_MA\s+(\d+)u",
                          text_h).group(1))
     ceil = int(re.search(r"#define CHG_CURRENT_HARD_FAULT_MAX_MA\s+(\d+)u",
@@ -511,11 +519,6 @@ def test_setpoints_and_timing():
     #      The id stays RESERVED rather than freed: if 0x03 were reused for
     #      something else, an older panel still sending CAL_REFERENCE would be
     #      silently misinterpreted instead of harmlessly ignored.
-    # [FA] CAL_REFERENCE فرمانی از نسخهٔ ۱.۳ بود که پنل از نسخهٔ ۱.۷ نمی‌فرستد.
-    #      هندلرش شش نسخه مرده حمل شد - ۱۷۲ خط و حدود یک کیلوبایت از ۶۲ کیلوبایت
-    #      فلش - و همان چیزی بود که بیلد نسخهٔ ۲ را ۹۲ بایت سرریز کرد. حذف شد،
-    #      به‌همراه دسته تستی که آن کد مرده را سر جایش قفل کرده بود. شناسه رزرو
-    #      می‌ماند نه آزاد.
     check("#define ESPLINK_MSG_CAL_REFERENCE     0x03u" in esp_link_h_txt
           and "reserved, not handled" in esp_link_h_txt,
           "message id 0x03 must stay RESERVED and marked as no longer handled, so it "
@@ -554,8 +557,6 @@ def test_setpoints_and_timing():
           "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..300 since v1.9, default 10) on each current channel (user order 2026-09-25) - and on the RAW ADC counts with the counts->mA conversion AFTER the filter (user order 2026-09-27)")
     # [EN] 2026-10-10: the compiled current tables and the battery-voltage
     #      division were removed; the current table now comes from the panel.
-    # [FA] ۲۰۲۶-۱۰-۱۰: جدول‌های جریان کامپایلی و تقسیم بر ولتاژ باتری حذف شد؛
-    #      جدول جریان حالا از پنل می‌آید.
     check("func__Measurement_BenchTableMa(" in meas_c_raw and
           "func__BspMeasurement_Current1DeltaTenthMa(" in meas_c_raw and
           "func__CalLut_BatteryMa(" in meas_c_raw and
@@ -645,8 +646,6 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE\s+150u", text_h), "diagnostic duty must be fixed at 150 permille = 15%")
     check(re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", text_h), "start duty must be 10 permille = 1%")
     check(re.search(r"#define CHG_DUTY_STEP_PERMILLE\s+5u", text_h), "increase step must be 5 permille = 0.5%")
-
-
 def test_pwm_contract():
     text_h = CHARGER_H.read_text()
     main = MAIN_C.read_text()
@@ -659,8 +658,6 @@ def test_pwm_contract():
         check("1439" in text, "generated PWM period must still be 1439")
         check("Prescaler = 0" in text or "Prescaler=0" in text,
               "generated PWM prescaler must still be zero")
-
-
 def test_pwm_interleave_phase_lock():
     bsp_pwm_c = (ROOT / "Firmware/Bsp/Src/bsp_pwm.c").read_text()
     check("__HAL_TIM_SET_COUNTER(&htim2" in bsp_pwm_c and
@@ -677,8 +674,6 @@ def test_pwm_interleave_phase_lock():
     check("htim2.Instance->CR1 |= TIM_CR1_CEN" in bsp_pwm_c and
           "htim3.Instance->CR1 |= TIM_CR1_CEN" in bsp_pwm_c,
           "both counters must start via two adjacent raw CEN register writes (~tens of ns skew) so the 10 us offset is deterministic")
-
-
 def test_charge_profile_v112():
     """[EN] v1.12 (user order 2026-09-25): runtime charge profile settable from the
     ESP panel tab, shared by both channels, ids 20..26; calibration tables in ONE
@@ -689,9 +684,8 @@ def test_charge_profile_v112():
     text_h = CHARGER_H.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
-
     # --- charger.h declares the profile API + ids matching esp_link.h ---
     for decl in ["func__Charger_SetProfileParam(uint8_t uint8_t__paramId",
                  "func__Charger_GetProfileParam(uint8_t uint8_t__paramId"]:
@@ -708,7 +702,6 @@ def test_charge_profile_v112():
         m_e = re.search(rf"#define {esp_name}\s+(\d+)u", text_esph)
         check(m_h is not None and m_e is not None and int(m_h.group(1)) == num and int(m_e.group(1)) == num,
               f"profile id {num} must be identical in charger.h ({chg_name}) and esp_link.h ({esp_name})")
-
     # --- charger.c: profile struct, defaults from the compile-time setpoints, clamp rules ---
     check("charger_profile_t" in text_c and "CHARGER_PROFILE_T__G__Profile" in text_c,
           "charger.c must hold the runtime profile struct")
@@ -731,13 +724,10 @@ def test_charge_profile_v112():
             #      that actually matters (the trip must stay above the
             #      setpoint or the charger faults on its own target). The
             #      intent is pinned, the literal is not.
-            # [FA] باند دیگر روی ۹۰۰ منجمد نمی‌ایستد؛ ۵۰ میلی‌آمپر زیر سقف
-            #      خطای سخت می‌ایستد، یعنی همان رابطه‌ای که واقعاً مهم است.
             (".uint32_t__bulkCurrentMaxMa >\n        (CHG_CURRENT_HARD_FAULT_MAX_MA - 50u)",
              "current band capped 50 mA under the hard-fault ceiling"),
             (".uint32_t__taperCurrentMa >", "taper clamped against the band")]:
         check(needle in text_c, f"clamp rule present: {why}")
-
     # --- every automatic-charge decision site reads the profile, not the macro ---
     body = re.sub(r"/\*.*?\*/", "", text_c, flags=re.S)
     body = re.sub(r"CHARGER_PROFILE_T__G__Profile\s*=\s*\{[^}]*\}", "", body)
@@ -750,7 +740,6 @@ def test_charge_profile_v112():
               f"no bare {macro} use outside the profile initializer/comments (got {leftover[:2]})")
     check(text_c.count("CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv") >= 5,
           "the absorb setpoint must be read from the profile at every decision site")
-
     # --- esp_link.c wires ids 20..26 to the charger profile API ---
     apply_block = text_espc.split("bool func__EspLink_ApplyParam")[1][:8000]
     get_block = text_espc.split("bool func__EspLink_GetParam")[1][:8000]
@@ -758,13 +747,12 @@ def test_charge_profile_v112():
           "ApplyParam must route all 7 profile ids to Charger_SetProfileParam")
     check("func__Charger_GetProfileParam" in get_block and get_block.count("ESPLINK_PARAM_CHG_PROFILE_") >= 7,
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
-
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+143u", ino), "panel ESP_PARAM_COUNT must be 143 (scenario 7 ids 137..142)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+171u", ino), "panel ESP_PARAM_COUNT must be 171 (shared input Schmitt margins 169/170)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 143 and len(mx.group(1).split(",")) == 143,
-          "panel min/max tables must carry 143 entries (through scenario 7 id 142)")
+    check(mn and mx and len(mn.group(1).split(",")) == 171 and len(mx.group(1).split(",")) == 171,
+          "panel min/max tables must carry 171 entries (through the shared input Schmitt ids 169/170)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -774,11 +762,6 @@ def test_charge_profile_v112():
     #      those ids must still be reachable - on the chart, where the user
     #      asked for them. A deleted assertion would have let an id vanish
     #      with the form.
-    # [FA] هفت کادر ورودی q20..q26 جای دومِ تنظیم همان هفت مقدار بودند؛
-    #      همان تکراری که کاربر دارد حذف می‌کند. ادعا به‌جای حذف «وارونه» شد:
-    #      فرم باید رفته باشد و هر هفت شناسه همچنان در دسترس باشند - روی
-    #      نمودار، همان‌جا که کاربر خواست. حذف ادعا اجازه می‌داد یک شناسه
-    #      همراه فرم ناپدید شود.
     check('id="p2"' in ino and not any(f'id="q{i}"' in ino for i in range(20, 27)),
           "the duplicate profile form q20..q26 must be gone: the chart edits "
           "those seven values now")
@@ -791,12 +774,8 @@ def test_charge_profile_v112():
           "and the factory-default button must survive the form removal")
     # [EN] v1.32 (user order 2026-10-03: "write the English word for the ones
     #      that should be English"): the transliterated stage names are gone -
-    #      Absorb/Taper/Float are English terms, and ابزورب/تیپر/شناور were the
     #      worst of both worlds, neither English nor a Persian word you could
     #      look up. The labels still have to exist; only their spelling moved.
-    # [FA] نام مرحله‌های ترانویسی‌شده حذف شدند - Absorb/Taper/Float اصطلاح
-    #      انگلیسی‌اند و «ابزورب/تیپر/شناور» بدترین حالت هر دو زبان بودند: نه
-    #      انگلیسی، نه واژه‌ای فارسی که بشود جایی پیدایش کرد.
     check("حداکثر ولتاژ باتری (Absorb)" in ino and "جریان Taper" in ino and
           "ولتاژ Float" in ino,
           "the tab must label/describe every field (user order: with descriptions)")
@@ -810,10 +789,6 @@ def test_charge_profile_v112():
     #      requires the loop bound to come from PN, and
     #      test_benchlog_row_matches_header_v125 checks PN against the real
     #      count and the whole row against the header.
-    # [FA] این تست قبلاً خودِ عدد ۹۹ را الزام می‌کرد و در عمل باگ را قفل کرده
-    #      بود: ۹۹ تعداد پارامتر v1.22 بود و نگه‌داشتنش باعث شد هر ردیف CSV از
-    #      v1.23 به بعد ۶ ستون اضافه داشته باشد. تستی که عددی را hard-code کند
-    #      که باید مشتق شود، از جواب غلط دفاع می‌کند.
     # [EN] v1.26 (user order 2026-09-29: "a lot of these are zero and never change
     #      - do not log them every row, or send them once at the start"): the 93
     #      settings moved out of the data row into a single '# settings:' line.
@@ -821,10 +796,6 @@ def test_charge_profile_v112():
     #      2.7x more sweep points. The row must therefore NOT contain them, the
     #      settings line must still be built from the derived bound PN, and a
     #      mid-run change must be re-logged so no row inherits stale settings.
-    # [FA] نسخهٔ ۱.۲۶ (دستور کاربر): ۹۳ تنظیم از ردیف داده بیرون رفت و به یک خط
-    #      «# settings:» منتقل شد - ۶۲٪ هر ردیف. پس ردیف نباید آن‌ها را داشته
-    #      باشد، خط تنظیمات باید از PN ساخته شود، و تغییر وسط کار باید دوباره
-    #      ثبت شود تا هیچ ردیفی تنظیمات کهنه به ارث نبرد.
     check("function wset(){" in ino and "for(let k=0;k<PN;k++)P.push(" in ino and
           "async function wsync()" in ino and "WSIG" in ino and
           "'# settings: '" in ino and
@@ -839,8 +810,8 @@ def test_charge_profile_v112():
           "the data row must NOT repeat the 125 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 143 and "139, 140, 141, 142 };" in ino,
-          "TxOrder must list all 143 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 171 and "169, 170 };" in ino,
+          "TxOrder must list all 171 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     # [EN] v2 NAK (user approval 2026-10-12): a refused SET_PARAM is answered with PARAM_NAK.
     esp_h = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.h").read_text(encoding="utf-8")
     esp_c = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.c").read_text(encoding="utf-8")
@@ -850,7 +821,6 @@ def test_charge_profile_v112():
           "v2 NAK: the STM sends PARAM_NAK for every SET_PARAM it does not apply, and the panel counts it")
     check("L('wVi'" not in ino and "window.WVI=" not in ino and "calpush" in ino,
           "the calibration wizard has no voltage inputs (voltage readings removed from the calibration page)")
-
     # --- python model of ClampProfile: interdependencies hold for arbitrary writes ---
     def clamp(p):
         p = dict(p)
@@ -859,8 +829,8 @@ def test_charge_profile_v112():
         p[22] = min(max(p[22], p[20] + 100), min(p[20] + 400, 14750))
         p[23] = min(max(p[23], 9000), p[20] - 300)
         p[24] = min(max(p[24], 8000), p[23] - 300)
-        p[25] = min(max(p[25], 100), 900)
-        p[26] = min(max(p[26], 10), min(300, p[25]))
+        p[25] = min(max(p[25], 100), 2950)
+        p[26] = min(max(p[26], 10), min(1475, p[25]))
         return p
     d = {20: 14400, 21: 14300, 22: 14600, 23: 13500, 24: 12800, 25: 650, 26: 50}
     check(clamp(d) == d, "defaults must be a fixed point of the clamp (no drift at boot)")
@@ -881,17 +851,14 @@ def test_charge_profile_v112():
         c = clamp(w)
         if not (11000 <= c[20] <= 14600 and c[20] - 500 <= c[21] <= c[20] - 50
                 and c[20] + 100 <= c[22] <= 14750 and 9000 <= c[23] <= c[20] - 300
-                and 8000 <= c[24] <= c[23] - 300 and 100 <= c[25] <= 900
-                and 10 <= c[26] <= min(300, c[25])):
+                and 8000 <= c[24] <= c[23] - 300 and 100 <= c[25] <= 2950
+                and 10 <= c[26] <= min(1475, c[25])):
             ok = False
             break
     check(ok, "2000 random writes must all land inside the invariant ranges")
-
     # --- calibration.h: 2026-10-10 - no compiled current tables any more ---
     check("CAL_Current1LutCounts" not in cal_h and "CAL_Current2LutCounts" not in cal_h,
           "calibration.h must not carry compiled current tables (the panel pushes them into flash)")
-
-
 def test_charger_persistence_v114():
     """[EN] v1.14 (user order 2026-09-25, "values must survive power loss"):
     the whole persisted-parameter stack - flash driver, ping-pong record,
@@ -904,26 +871,22 @@ def test_charger_persistence_v114():
     import subprocess
     import tempfile
     import shutil
-
     nvm_h = (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.h").read_text(encoding="utf-8")
     nvm_c = (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.c").read_text(encoding="utf-8")
     flash_c = (ROOT / "Firmware/Bsp/Src/bsp_flash.c").read_text(encoding="utf-8")
     flash_h = (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").read_text(encoding="utf-8")
     app_c = (ROOT / "Firmware/App/Src/app.c").read_text(encoding="utf-8")
     ld = (ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld").read_text(encoding="utf-8")
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
-
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     check((ROOT / "Firmware/Bsp/Src/bsp_flash.c").exists() and
           (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").exists() and
           (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.c").exists() and
           (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.h").exists(),
           "v1.14 needs the BSP flash driver (bsp_flash.c/.h) and the persistence module (esp_link_nvm.c/.h)")
-
     check("FLASH->KEYR" in flash_c and "FLASH_CR_PER" in flash_c and
           "FLASH_CR_STRT" in flash_c and "FLASH_CR_PG" in flash_c and
           "FLASH_CR_LOCK" in flash_c and "0x45670123" in flash_c,
           "bsp_flash.c must use the direct RM0008 FPEC sequences (KEYR unlock, PER+AR+STRT page erase, PG halfword program, LOCK) with no HAL flash dependency")
-
     check("func__EspLink_NvmMarkDirty(uint8_t__payload[0]);" in ESP_LINK_C.read_text(encoding="utf-8") and
           "func__EspLink_NvmTick();" in ESP_LINK_C.read_text(encoding="utf-8"),
           "a successful SET_PARAM of a persisted id must arm the debounced save, and EspLink_Run must tick it every comm period")
@@ -933,18 +896,14 @@ def test_charger_persistence_v114():
     check("bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId," in esph_txt and
           "bool func__EspLink_GetParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__value);" in esph_txt,
           "ApplyParam/GetParam must be public since v1.14 - the flash load/save replays through the SAME clamped setters as the panel")
-
     # [EN] v1.66: application FLASH is 60K now - the bench-LUT block took two
     #      more pages at 0x0800F000. Both reserved regions must be declared, or
     #      the image could grow into them without the linker saying a word.
-    # [FA] v1.66: فلش برنامه ۶۰K شد - بلوک جدول بنچ دو صفحهٔ دیگر گرفت. هر دو
-    #      ناحیهٔ رزرو باید اعلام شوند وگرنه تصویر بی‌صدا داخلشان رشد می‌کند.
     # [EN] v1.80: the parameter record outgrew one 1 KiB page (ids 128..131),
     #      so each ping-pong bank is TWO pages and the 4 KiB record block moved
     #      down to 0x0800E000. Application FLASH is 56K; the two old record
     #      pages stay reserved as SPARE so stale field records are never
     #      overwritten by code.
-    # [FA] از v1.80 بلوک رکوردها ۴K در 0x0800E000 است و فلش برنامه ۵۶K.
     check(re.search(r"FLASH\s+\(rx\)\s*: ORIGIN = 0x8000000,\s*LENGTH = 56K", ld) and
           re.search(r"NVM\s+\(r\)\s*: ORIGIN = 0x800E000,\s*LENGTH = 4K", ld) and
           re.search(r"LUTNVM\s+\(r\)\s*: ORIGIN = 0x800F000,\s*LENGTH = 2K", ld) and
@@ -956,50 +915,37 @@ def test_charger_persistence_v114():
     # [EN] Matched by regex, not by exact spacing: these #defines are column
     #      aligned, so going from a 2-digit to a 3-digit id silently broke a
     #      literal-string check that had nothing to do with what it tested.
-    # [FA] با regex تطبیق می‌شود نه با فاصله‌گذاری دقیق: این تعریف‌ها ستونی
-    #      تراز شده‌اند و رفتن از شناسهٔ دو رقمی به سه رقمی، چکِ رشتهٔ عینی را
-    #      بی‌صدا می‌شکست بدون آن‌که ربطی به چیزی که می‌سنجید داشته باشد.
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+144u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+172u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+142u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
-          "persisted set = 0..14 + 20..75 + 77..136 + runtime slots 200..203 (131 entries in 144 slots; v1.83 adds the imbalance clean-FLOAT-cycle threshold 136; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+170u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
+          "persisted set = 0..14 + 20..170 (minus the retired 72/73 and the transient mute 76) + runtime slots 200..203 in 172 slots; the shared input Schmitt margins 169/170 persist; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
     # [EN] v1.71 bumps 10 -> 11. This one is a MEANING bump, not a layout
     #      bump: ids 57 and 122 kept their slots but changed units (critical
     #      duty % -> critical per-beep ms, band-2 gap -> band-2 repeat
     #      interval). A v10 record holds 100 in both, which under the new
     #      meaning is a 100 ms beep every 100 ms - loud nonsense. Rejecting
     #      the old record is the point.
-    # [FA] نسخهٔ ۱۱ تغییر معنی است نه چیدمان؛ رکورد قدیمی باید رد شود.
     check(re.search(r"ESP_LINK_NVM_VERSION\s+12u", nvm_h),
           "v1.43 bumps the NVM record version to 10: a v9 record carries 108 slots, so "
           "replaying one into a 122-slot layout would leave ids 108..118 and 200..202 holding whatever "
           "the erased flash reads as. The version check must reject it and fall back to "
           "compiled defaults - the first boot after this upgrade is a factory-default boot")
-
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 142 and i not in (72, 73, 76)) or 200 <= i <= 203}
-    check(persisted == set(range(15)) | (set(range(20, 143)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted,
+    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 170 and i not in (72, 73, 76)) or 200 <= i <= 203}
+    check(persisted == set(range(15)) | (set(range(20, 171)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted and 147 in persisted and 157 in persisted and 164 in persisted and 165 in persisted and 166 in persisted and 168 in persisted and 169 in persisted and 170 in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
-
     tab2 = ino.split('id="p2"', 2)[1]
     # [EN] v1.31: the chart is mounted on the chargers page as well, because
     #      that is where the operating table is and the user edits ON the
     #      chart. So the redraw can no longer be gated on tab 2 alone - a
     #      mount that is never drawn is a container that is present, empty
     #      and permanently silent, and the markup looks perfectly correct.
-    # [FA] نمودار روی صفحهٔ شارژرها هم نصب است، چون جدول عملکرد همان‌جاست و
-    #      کاربر روی نمودار ویرایش می‌کند. پس بازرسم دیگر نمی‌تواند فقط به تب ۲
-    #      مشروط باشد - محل نصبی که هرگز رسم نشود یعنی ظرفی که هست، خالی است و
-    #      برای همیشه ساکت می‌ماند، در حالی که مارک‌آپ کاملاً درست به نظر می‌رسد.
     # [EN] v1.33: the chart has ONE mount (chargers page) and PID moved into
     #      sub-tab 0, so the gates changed shape. The persistence text left
     #      with the duplicate profile form and was deliberately carried over
     #      into the chart's own help - losing it would have been dropping
     #      information, not dropping a duplicate.
-    # [FA] نمودار یک محل نصب دارد و PID به زیرتب ۰ رفت، پس گاردها عوض شدند.
-    #      متن ماندگاری همراه فرم تکراری رفت و عمداً به راهنمای خود نمودار
-    #      منتقل شد - از دست دادنش یعنی انداختن «اطلاعات»، نه «تکرار».
     check("روی فلش برد ذخیره" in ino and
           "ماندگاری:" in ino and "function qgraph()" in ino and
           "if(TAB==2&&STAB==0)qgraph();" in ino and
@@ -1011,14 +957,9 @@ def test_charger_persistence_v114():
     # [EN] v1.32 (user order: "remove the extra and duplicated items"): the
     #      second copy of the chart was itself the duplication. Exactly one
     #      mount survives, on the chargers page above the operating table.
-    # [FA] نسخهٔ دوم نمودار خودش همان تکرار بود. دقیقاً یک محل نصب می‌ماند، روی
-    #      صفحهٔ شارژرها بالای جدول عملکرد.
     # [EN] v1.34: the settings mount is back by user order. Counting mounts
     #      encoded a preference that has since reversed; what must hold is
     #      that one renderer fills them all, so they cannot disagree.
-    # [FA] نسخهٔ تب تنظیمات به دستور کاربر برگشت. شمردن محل نصب یک ترجیح را
-    #      کد کرده بود که برگشت؛ چیزی که باید برقرار بماند این است که یک
-    #      رندرکننده همه را پر کند تا نتوانند حرف متفاوت بزنند.
     # [EN] v1.37 (user order 2026-10-03: "why did you put the chart in the
     #      panel too? delete it from there. put the tables under it into the
     #      chargers page"). The preference reversed a THIRD time, which is
@@ -1026,10 +967,6 @@ def test_charger_persistence_v114():
     #      the pair of facts that cannot be argued with: the chart has one
     #      home and cannot be out of step with itself, and the chargers page
     #      keeps the operating table the user asked to have there.
-    # [FA] ترجیح برای سومین بار برگشت، و دقیقاً به همین دلیل «تعداد» چیزی
-    #      نیست که قفل شود. چیزی که قفل می‌شود دو واقعیت بحث‌ناپذیر است:
-    #      نمودار یک خانه دارد و نمی‌تواند با خودش ناهماهنگ شود، و صفحهٔ
-    #      شارژرها جدول عملکردی را که کاربر خواسته نگه می‌دارد.
     check(ino.count('class="qgm"') == 1,
           "the chart has exactly one home, so no two copies can disagree")
     _p0 = ino.split('id="p0"', 1)[1].split('id="p1"', 1)[0]
@@ -1044,10 +981,6 @@ def test_charger_persistence_v114():
     #      and must no longer be drawn as floating runs over the I-V plane.
     #      Deleting them would leave the next layout change unguarded, which
     #      is how the on-plot version crept back in the first place.
-    # [FA] این دو ادعا دقیقاً عکس دستور تازه بودند و «وارونه» شدند، نه حذف:
-    #      زمان‌ها و گین‌ها حالا باید زیر نمودار تراشه باشند و دیگر نباید روی
-    #      صفحهٔ I-V شناور رسم شوند. حذف‌کردنشان تغییر چیدمان بعدی را بی‌نگهبان
-    #      می‌گذاشت - و دقیقاً همین‌طور بود که نسخهٔ روی‌نمودار برگشت.
     check(".evcg" in ino and 'class="evc"' in ino and
           ino.count('class="qgcm"') == ino.count('class="qgm"'),
           "the timers and gains must be chips under EVERY chart, not drawn on it")
@@ -1057,15 +990,12 @@ def test_charger_persistence_v114():
           "dead UI code is how a removed layout comes back by accident")
     # [EN] Moved, never demoted - a chip that lost its editor hook would look
     #      the same and silently stop being settable.
-    # [FA] منتقل شد، نه تنزل‌یافته - تراشه‌ای که قلاب ویرایش را از دست بدهد
-    #      دقیقاً همان‌شکل است و بی‌صدا غیرقابل‌تنظیم می‌شود.
     import re as _re
     _evn = _re.search(r"const EVN=\{(.*?)\};", ino, _re.S)
     _names = _re.findall(r"\d+:'([^']+)'", _evn.group(1)) if _evn else []
     # [EN] v1.73 (user order: remove the "!" badges, explain above each
     #      section instead) - the same coverage rule now applies to the
     #      always-visible chart explanation.
-    # [FA] از v1.73 همین قاعده روی متنِ همیشه-روی-صفحهٔ کارت نمودار اعمال می‌شود.
     _ch = _re.findall(
         r'<b>نمودار فقط ولتاژ و جریان را نشان می‌دهد</b>(.*?)</div>', ino, _re.S)
     check(len(_names) >= 13 and _ch and
@@ -1077,9 +1007,6 @@ def test_charger_persistence_v114():
     #      the bilingual comment explaining why $('qg') is wrong. Same trap as
     #      the audit's "hard-coded bound" finding that lived only in the
     #      sentence warning against hard-coded bounds.
-    # [FA] قبل از جست‌وجوی فراخوان ممنوع، کامنت‌ها را حذف کن. اولین اجرای این
-    #      چک روی تنها $('qg') باقی‌ماندهٔ فایل شکست - داخل همان کامنت دوزبانه‌ای
-    #      که توضیح می‌دهد چرا $('qg') غلط است.
     ino_live = re.sub(r"/\*.*?\*/", "", ino, flags=re.S)
     check("document.querySelectorAll('.qgm')" in ino_live and
           "$('qg')" not in ino_live,
@@ -1089,43 +1016,29 @@ def test_charger_persistence_v114():
           'id="q7"' in tab2 and 'id="q8"' in tab2 and 'id="a7"' in tab2 and 'id="a8"' in tab2 and
           "پنجرهٔ median" in tab2 and "پنجرهٔ میانگین" in tab2 and
           # [EN] v1.33: ids 20..26 left this loop with their input boxes.
-          # [FA] شناسه‌های ۲۰..۲۶ همراه کادرهای ورودی‌شان از این حلقه رفتند.
           "for(const id of [7,8])" in ino and
           "row(7)+row(8)" not in ino,
           "v1.14b (user order 2026-09-26): the median/average window controls must live in the settings tab under the filter section (nav renamed, tab 0 keeps only the live status), and both ids bind through the same send/qfill path")
     # [EN] v1.32 (user order 2026-10-03: "write the English word for the ones
     #      that should be English"). This check used to demand the doubled
-    #      form "ناحیهٔ ابزورب (Absorb)" - a transliteration followed by the
     #      real term in brackets. That is the pattern the user rejected, so
     #      the assertion is INVERTED rather than deleted: the labels must
     #      still all exist, in the single English form, and the doubled form
     #      must not come back. Deleting it would have left the next rename
     #      unguarded.
-    # [FA] این چک قبلاً شکل دوتایی «ناحیهٔ ابزورب (Absorb)» را طلب می‌کرد -
-    #      ترانویسی به‌علاوهٔ اصطلاح واقعی در پرانتز؛ دقیقاً همان الگویی که
-    #      کاربر رد کرد. پس ادعا به‌جای حذف‌شدن «وارونه» شد: همهٔ برچسب‌ها باید
-    #      همچنان وجود داشته باشند، در شکل یگانهٔ انگلیسی، و شکل دوتایی نباید
-    #      برگردد. حذف‌کردنش تغییرنام بعدی را بی‌نگهبان می‌گذاشت.
     check("ناحیهٔ Absorb" in ino and "ناحیهٔ Float" in ino and
           "ناحیهٔ Over" in ino and "زیر Reentry" in ino and
           "Hard cutoff 15V" in ino and "'Bulk'" in ino and "'Off'" in ino and
           # [EN] A Persian description with the English term in brackets is
-          #      fine and stays - "حداکثر ولتاژ باتری (Absorb)" names a thing
           #      in Persian and then gives its standard term. What is banned
           #      is the transliteration, and the loop above already pins that,
           #      so this must NOT be widened into "no brackets anywhere".
-          # [FA] توضیح فارسی با اصطلاح انگلیسی داخل پرانتز درست است و می‌ماند؛
-          #      چیزی که ممنوع است ترانویسی است و حلقهٔ بالا همان را میخ کرده.
           "ابزورب" not in ino and "شناور (" not in ino and
           # [EN] This pinned the literal #0b0f17. Fifth frozen hex/number found
           #      defending a VALUE instead of an INTENT, and it blocked the
           #      requested re-theme. The intent is "the graph uses the panel's
           #      own inset colour", so derive it from :root - which is strictly
           #      stronger, because now the graph can never drift from the theme.
-          # [FA] این عدد ۰b0f17 را منجمد کرده بود - پنجمین مقدار ثابتی که
-          #      به‌جای «نیت» از یک «عدد» دفاع می‌کرد و جلوی تغییر تم را گرفت.
-          #      نیت این است که نمودار از رنگ فرورفتگی خود پنل استفاده کند، پس
-          #      از :root مشتق می‌شود و حالا نمودار هرگز از تم جدا نمی‌افتد.
           ('fill="%s"' % re.search(r"--in:(#[0-9a-f]{6})",
                                    re.search(r":root\{([^}]*)\}", ino).group(1)).group(1)) in ino,
           "the stage graph must use the dark panel palette (v1.16f inset #0b0f17) with bilingual (FA+EN) zone, threshold and stage labels")
@@ -1135,9 +1048,6 @@ def test_charger_persistence_v114():
           #      here, which blocked a requested resize. Fourth hard-coded
           #      literal found defending a value instead of an intent - check
           #      that a dot is drawn at a sane size, not that it never changes.
-          # [FA] نقطه باید باشد؛ شعاعش ظاهری است و روی ۷ منجمد شده بود و جلوی
-          #      تغییر اندازهٔ درخواستی را گرفت. چهارمین عدد hard-code شده که
-          #      به‌جای «نیت» از یک «مقدار» دفاع می‌کرد.
           re.search(r'<circle cx="\$\{x\}" cy="\$\{y\}" r="(\d+(?:\.\d+)?)"', ino) and
           2.0 <= float(re.search(r'<circle cx="\$\{x\}" cy="\$\{y\}" r="(\d+(?:\.\d+)?)"', ino).group(1)) <= 10.0 and
           'stroke="#e7eaf0"' not in ino and "marker-end" not in ino,
@@ -1145,9 +1055,6 @@ def test_charger_persistence_v114():
     # [EN] v1.31: the warning box is mounted next to every copy of the chart,
     #      so it is a class now. An id would have warned on one page only -
     #      and the chargers page is the one where the numbers are edited.
-    # [FA] جعبهٔ هشدار کنار هر نسخه از نمودار نصب است، پس حالا کلاس است. با id
-    #      فقط روی یک صفحه هشدار می‌داد - و صفحهٔ شارژرها همان جایی است که
-    #      اعداد ویرایش می‌شوند.
     check(ino.count('class="qwm"') >= 1 and
           "document.querySelectorAll('.qwm').forEach" in ino and
           'function qchk()' in ino and
@@ -1156,22 +1063,17 @@ def test_charger_persistence_v114():
           'باز هم ارسال شود؟' not in ino and 'نگهبان ترکیب' in ino and
           'قطع باتری باید ۱۴۰۰۰..۱۵۰۰۰ باشد' in ino,
           "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL; v1.39 moved the zone names out of the chart into an external legend, so v1.41 pruned the now-empty ZL list - the pass is PL/LL), and a qchk() guard - red field + confirm-before-send on invalid combos (v1.69 user order: the red BANNER is gone, it claimed the board clamps combinations and the board has not done that since v1.56)")
-
     # [EN] v1.69 (user order: "what is this message? why should it be there?
     #      delete this junk"): the cross-field banner must stay deleted. It
     #      told the operator "the board will clamp these", which stopped
     #      being true in v1.56 when the joint rules moved into the panel.
-    # [FA] بنر ترکیب نامعتبر حذف شد و باید حذف بماند.
     for junk in ("ترکیب نامعتبر — برد این‌ها را گیره می‌زند",
                  "۱۱۳ مقدار ماندگار"):
         check(junk not in re.sub(r"/\*.*?\*/", " ", ino, flags=re.S),
               f"the panel must no longer print the deleted text: {junk}")
-
     # [EN] v1.69: the sticky bars are measured, not hard-coded, and the
     #      scenario-card bar parks BELOW the section bar instead of on top of
     #      it (that is what hid the "charger / scenarios / ..." row).
-    # [FA] نوارهای چسبان اندازه‌گیری می‌شوند و نوار کارت‌های سناریو زیر نوار
-    #      بخش‌ها می‌چسبد نه رویش.
     # [EN] v1.70 (user order: "the message must be complete and tell me
     #      whether to resend"): the verdict used to be written only into
     #      #sbar, which hides itself as soon as the queue empties - so the
@@ -1180,7 +1082,6 @@ def test_charger_persistence_v114():
     #      resend button on every outcome where something did not land. An id
     #      with no echo stays queued so that resend actually has something to
     #      send.
-    # [FA] کارت نتیجهٔ ارسال که تا بسته نشود می‌ماند و دکمهٔ «دوباره بفرست».
     check('id="sres"' in ino and "function sdlg(" in ino and "function sdlgx()" in ino
           and "دوباره بفرست" in ino and "#sres.on{display:flex}" in ino
           and "⛔ هیچ‌کدام ارسال نشد" in ino and "⚠ ارسال ناقص" in ino
@@ -1196,16 +1097,12 @@ def test_charger_persistence_v114():
           "an unanswered id must stay in PEND so that 'resend' has something to resend")
     check("pclr(id,+back)" in body and "function pclr(id,applied)" in ino,
           "a clamped/read-back value must replace the pending request in the visible editor")
-
     # [EN] v1.70 (user order: "the 'board value' note under some boxes never
     #      updates after a change and is not needed - we have the factory
     #      default"): the chip is gone. The a<id> spans stay, because the
-    #      queue/send states ("در صف", "…", "خطا") are written into them.
-    # [FA] چیپ «روی برد: …» حذف شد؛ خود span ها می‌مانند.
     check("'روی برد: '" not in ino and "a.textContent=''" in ino
           and "در صف" in ino,
           "the stale 'board value' chip must be gone, while the queue state stays")
-
     check("function stickfit()" in ino and "--t-sub2" in ino
           and "#usel{position:sticky;top:var(--t-sub2" in ino
           and "top:113px" not in ino,
@@ -1217,18 +1114,12 @@ def test_charger_persistence_v114():
     #      label pitch shrank WITH the height - halving the canvas while
     #      leaving a 16 px stacking pitch is exactly what would make the
     #      labels collide, which is the thing the user complained about.
-    # [FA] دستور ۲۰۲۶-۰۹-۲۶ «حداقل ۵۰٪ بلندتر» بود؛ دستور ۲۰۲۶-۰۹-۲۹ برعکسش
-    #      می‌کند، پس H برابر ۴۲۰ است. آنچه هنوز مهم است و سنجیده می‌شود: ناحیهٔ
-    #      حاشورخوردهٔ بالک، و اینکه گام عمودی برچسب‌ها همراه ارتفاع کوچک شده
-    #      باشد - نصف‌کردن بوم با نگه‌داشتن گام ۱۶ پیکسلی دقیقاً همان چیزی است
-    #      که برچسب‌ها را روی هم می‌اندازد.
     m_h = re.search(r"\bH=(\d+),X0=", ino)
     m_gap = re.search(r"LBL_GAP=(\d+)", ino)
     check(m_h and int(m_h.group(1)) == 420 and m_gap and int(m_gap.group(1)) <= 12 and
           'id="bkh"' in ino and 'url(#bkh)' in ino and
           'ناحیهٔ Bulk' in ino and 'patternTransform="rotate(45)"' in ino,
           "v1.14e (user order 2026-09-26, 'at least 50% taller; what is the zone between float and absorb - hatch the bulk zone lightly'): chart height is now 420 (user order 2026-09-29 halved the 840 set on 2026-09-26) and the label stacking pitch shrank with it (LBL_GAP <= 12) so the labels stop colliding; the former grey filler between absorb-enter and float remains a labelled Bulk zone with a light diagonal hatch pattern")
-
     # ---------- compiled fault-injection run of the EXACT flash-state code ----------
     gcc = shutil.which("gcc")
     if gcc is None:
@@ -1276,8 +1167,8 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
         case 22: value = clampf(value, 14500, 14750); break;
         case 23: value = clampf(value, 9000, 14300); break;
         case 24: value = clampf(value, 8000, 14000); break;  /* float-300, float max 14300 */
-        case 25: value = clampf(value, 100, 900); break;
-        case 26: value = clampf(value, 10, 300); break;
+        case 25: value = clampf(value, 100, 2950); break;
+        case 26: value = clampf(value, 10, 1475); break;
         case 27: value = clampf(value, 14000, 15000); break;
         case 28: value = clampf(value, 50, 1000); break;
         case 29: value = clampf(value, 3000, 8000); break;
@@ -1286,7 +1177,7 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
         case 32: value = clampf(value, 100, 5000); break;
         case 33: value = clampf(value, 18000, 24000); break;
         case 34: value = clampf(value, 24000, 30000); break;
-        case 35: value = clampf(value, 150, 950); break;
+        case 35: value = clampf(value, 150, 3000); break;
         case 36: value = clampf(value, 14000, 15000); break;
         case 37: value = clampf(value, 0, 8000); break;
         case 38: value = clampf(value, 100, 10000); break;
@@ -1484,17 +1375,19 @@ int main(void){
     assert(EMU_FLASH[0] == 0xFF && EMU_FLASH[2048] == 0xFF);
 
     /* T11 (v1.15): alarm ids persist round-trip; a hostile hard-current
-       replays CLAMPED to the 950 ceiling (down-only safety) */
+       replays CLAMPED to the chain ceiling (3000, down-only safety). The
+       950 factory default is a separate macro, so a legal 990 now survives -
+       the hostile value has to sit above 3000 to prove the clamp. */
     memset(EMU_FLASH, 0xFF, 4096); reboot();
     {
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
         e[0].uint16_t__id = 27; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 14700;
-        e[1].uint16_t__id = 35; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 990;
+        e[1].uint16_t__id = 35; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 9999;
         func__EspLink_NvmRecordBuild(&rec, 11, e, 2);
         assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
-        assert(g_params[27] == 14700 && g_params[35] == 950);
+        assert(g_params[27] == 14700 && g_params[35] == 3000);
     }
 
     /* T12 (v1.16b): UI ids persist round-trip; a hostile red-duty
@@ -1561,23 +1454,18 @@ int main(void){
                   f"(cut during erase, cut during program, bit-flip, hostile record, clamp, wrap) - output: {rr.stdout!r} rc={rr.returncode}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-
-
 def test_electronic_load_policy_documented():
     text_h = CHARGER_H.read_text()
     check("free resistor" in text_h or "resistor alone" in text_h or "مقاومت آزاد" in text_h,
           "free resistor alone must be documented as not a valid battery simulator")
     check("battery simulator" in text_h or "voltage clamp" in text_h,
           "valid no-battery load must be documented as clamped/simulator only")
-
-
 def test_manual_test_mode_v12():
     text_c = CHARGER_C.read_text()
     text_h = CHARGER_H.read_text()
     text_fault = FAULT_C.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_esp = ESP_LINK_C.read_text()
-
     check("CHG_STATE_MANUAL" in text_c, "manual test mode needs its own charger state (9)")
     check(re.search(r"#define CHG_MANUAL_WATCHDOG_MS\s+3000u", text_h),
           "manual link dead-man must be 3 s")
@@ -1587,9 +1475,9 @@ def test_manual_test_mode_v12():
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+143u", text_esph),
-          "param 19 = manual test mode; 142 params total since v1.84 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6, 128..131 = its own lamp and buzzer, 132..133 = imbalance beep count/gap, 134..135 = dead-battery beep count/gap)")
-
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+171u", text_esph),
+          "param 19 = manual test mode; 171 params total (147 + scenario 8 ids 147..157 "
+          "+ v1.87 scenario alarm ticks 158..164 + v1.102 thermal rest 166..168 + shared input Schmitt 169/170)")
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
     check("func__Charger_ManualDriveChannel" in text_c,
@@ -1598,20 +1486,16 @@ def test_manual_test_mode_v12():
           "manual mode keeps the hard overvoltage cutoff (v1.15: runtime id 36, down-only from the 15 V compile ceiling)")
     check("func__Charger_ApplyDuty" in manual,
           "manual duty must go through the ApplyDuty clamp choke point")
-
     jit = text_c[text_c.find("static void func__Charger_HandleJitTrip"):
                  text_c.find("static uint16_t func__Charger_RetryDuty")]
     check("BOOL__G__ChargerManualModeActive" in jit,
           "JIT in manual mode must not arm the auto-retry/queue")
-
     check("func__Charger_IsManualTestModeActive" in text_fault,
           "battery-lost detection must freeze while manual mode is active")
     check("func__Charger_NotifyEspLinkActivity" in text_esp,
           "every valid ESP frame must feed the manual dead-man")
     check("ESPLINK_TLM_FLAG_MANUAL_MODE" in text_esp and "0x20u" in text_esp,
           "telemetry must expose the manual flag on b5")
-
-
 def test_alarms_tab_v115():
     """[EN] v1.15 (user order 2026-09-26, "an alarms tab - the number behind
     every alarm must be editable from the ESP panel and stick on the board
@@ -1629,8 +1513,7 @@ def test_alarms_tab_v115():
     text_fh = FAULT_H.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
-
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     # --- id match: fault 27..34 and charger 35..37 identical on both sides ---
     fault_pairs = [("FAULT_ALARM_PARAM_DISCONNECT_MV", "ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV", 27),
                    ("FAULT_ALARM_PARAM_DISCONNECT_DEB_MS", "ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_DEB_MS", 28),
@@ -1660,7 +1543,6 @@ def test_alarms_tab_v115():
             ("func__Charger_SetAlarmParam(uint8_t uint8_t__paramId", text_ch, "charger.h"),
             ("func__Charger_GetAlarmParam(uint8_t uint8_t__paramId", text_ch, "charger.h")]:
         check(decl in where, f"{what} must declare {decl.split('(')[0]}")
-
     # --- fault.c: live struct, set-clamp, Evaluate reads runtime only ---
     check("fault_alarm_t" in text_fc and "FAULT_ALARM_T__G__Alarm" in text_fc,
           "fault.c must hold the runtime alarm struct")
@@ -1680,7 +1562,6 @@ def test_alarms_tab_v115():
     check(text_fc.count("FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv") >= 3 and
           text_fc.count("FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv") >= 2,
           "Evaluate must read the disconnect/input thresholds from the live struct")
-
     # --- charger.c: runtime ceilings, down-only clamps, cascade ---
     check("UINT32_T__G__ChargerHardFaultMa" in text_cc and "UINT32_T__G__ChargerOvCutoffMv" in text_cc
           and "UINT32_T__G__ChargerValidFloorMv" in text_cc,
@@ -1702,8 +1583,6 @@ def test_alarms_tab_v115():
     #      flagged the new ceiling as the old banned macro. Same class of
     #      trap as the \b-on-A_B__C one: underscores are word characters, so
     #      \b does the right thing here while `in` does not.
-    # [FA] مرز واژه، نه زیررشته. نام قدیمی زیررشتهٔ نام سقف جدید است، پس
-    #      تست `in` سقف تازه را به‌جای ماکروی ممنوع علامت می‌زد.
     for macro in ["CHG_CURRENT_HARD_FAULT_MA", "CHG_MAX_VALID_BATTERY_MV", "CHG_MIN_VALID_BATTERY_MV"]:
         leftover = [ln for ln in cbody.split("\n")
                     if re.search(r"\b" + macro + r"\b", ln)
@@ -1712,7 +1591,6 @@ def test_alarms_tab_v115():
               f"no bare {macro} use outside boot defaults/clamp ceilings/comments (got {leftover[:2]})")
     check("uint32_t__currentMa > UINT32_T__G__ChargerHardFaultMa" in text_cc,
           "the hard-fault comparison must read the runtime ceiling (id 35)")
-
     # --- esp_link.c routes 27..37 through the module APIs ---
     apply_region = text_espc.split("bool func__EspLink_ApplyParam")[1].split("bool func__EspLink_GetParam")[0]
     get_region = text_espc.split("bool func__EspLink_GetParam")[1]
@@ -1725,7 +1603,6 @@ def test_alarms_tab_v115():
           "ApplyParam must route all 3 charger alarm ids to Charger_SetAlarmParam")
     check("func__Charger_GetAlarmParam" in get_region and get_region.count("ESPLINK_PARAM_CHG_ALARM_") >= 3,
           "GetParam must route all 3 charger alarm ids to Charger_GetAlarmParam")
-
     # --- panel: sub-tab, cards, live status + bars, q2/q3 masks, 128-col CSV ---
     check('id="s1"' in ino and 'id="s2"' in ino and 'id="s3"' in ino
           and 'data-t="3"' not in ino,
@@ -1752,7 +1629,6 @@ def test_alarms_tab_v115():
           "the bench sample actions are grouped beside calculation with a labeled trash control")
     # [EN] v1.57 (user order: finish the backup): the file must carry an
     #      identity and the import must reuse the panel's joint rules.
-    # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.
     check("app:'ChangeOver-settings',v:4" in ino and "schema:xschema()" in ino
           and "saved:new Date().toISOString()" in ino and "pending:xpending()" in ino
           and "benchSamples:xsamples" in ino and "lut:lut" in ino,
@@ -1760,7 +1636,6 @@ def test_alarms_tab_v115():
     check("const fixed=fixrules(v);" in ino and "function xclamp(id,n)" in ino,
           "v1.57: an imported file passes through fixrules and each field's own range")
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
-    # [FA] v1.57: کالیبراسیون مستقیم از داده‌برداری بنچ با تأیید کاربر.
     check("function calpush(" in ino and "function calfit(" in ino
           and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
@@ -1770,34 +1645,25 @@ def test_alarms_tab_v115():
           "bench calibration directly fits signed current in each battery lead and builds battery-current LUTs (2026-10-10)")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:
     #      the battery-supervision fields are no longer one flat group called
-    #      "نظارت باتری" - they live in the six scenario cards, and the
     #      monitoring tab keeps the input window and the safety ceilings.
-    # [FA] این ادعا از زمان بازطراحی کارت‌های سناریو کهنه بود: فیلدهای نظارت
-    #      باتری حالا داخل شش کارت سناریو هستند و تب نظارت پنجرهٔ ورودی و
-    #      سقف‌های ایمنی را نگه داشته است.
     check("نظارت و ایمنی" in ino and "پنجرهٔ ورودی سالم" in ino and "سقف‌های ایمنی شارژر" in ino
-          and "فقط پایین‌بردنی" in ino,
-          "alarm inputs must be grouped (monitoring tab / input window / safety ceilings) with the down-only note")
+          and "هیچ‌کدام از سقف کارخانه بالاتر نمی‌روند" in ino and "فقط پایین‌بردنی" not in ino,
+          "alarm inputs must be grouped (monitoring tab / input window / safety ceilings) with the REAL factory-ceiling note (v1.102: the old lower-only claim was wrong - hard fault raises to 3000, OV to 15000, floor to 8000)")
     check("قابل تغییر نیست" not in ino, "the stale 'safety limits cannot change' sentence must be gone (v1.15 lowers them)")
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 143, "TxOrder must carry all 143 ids")
+    check(tx and len(tx.group(1).split(",")) == 171, "TxOrder must carry all 171 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
     #      The column total is now verified properly, by counting, in
     #      test_benchlog_row_matches_header_v125; this check keeps only what it
     #      is actually about: that the alarm and UI columns are NAMED.
-    # [FA] عدد ادبی «۱۳۴ ستون» اینجا الزام می‌شد. این سومین شمارش hard-code شده
-    #      در این مجموعه بود و هر سه کهنه بودند - از عددی دفاع می‌کنند که هنگام
-    #      نوشتنشان درست بوده. شمارش واقعی حالا در تست جداگانه‌ای با شمردن انجام
-    #      می‌شود؛ این چک فقط همان چیزی را نگه می‌دارد که دربارهٔ آن است.
     check("alm_disc_mv" in ino and "alm_hard_ma" in ino and "alm_floor_mv" in ino
           and "ui_ov_led_per" in ino,
           "the bench CSV header must NAME the alarm and UI columns (the total is "
           "counted in test_benchlog_row_matches_header_v125, never hard-coded here)")
-
     # --- python models of both clamp sets: fixed point + random invariants ---
     def fclamp(a, over=14600, ov=15000):
         a = dict(a)
@@ -1820,21 +1686,21 @@ def test_alarms_tab_v115():
         if a[34] < a[33] + 1000:
             a[34] = a[33] + 1000
         return a
-
     def cclamp(a, imax=650, over=14600):
         a = dict(a)
-        a[35] = min(max(a[35], imax + 50), 950)
+        a[35] = min(max(a[35], imax + 50), 3000)
         a[36] = min(max(a[36], max(14000, over + 150)), 15000)
         a[37] = min(max(a[37], 0), 8000)
         return a
-
     fd = {27: 14800, 28: 150, 29: 6000, 30: 7000, 31: 1000, 32: 1000, 33: 21000, 34: 28000}
     check(fclamp(fd) == fd, "fault alarm defaults must be a fixed point of the clamp")
     cd = {35: 950, 36: 15000, 37: 2000}
     check(cclamp(cd) == cd, "charger alarm defaults must be a fixed point of the clamp")
-    check(cclamp({35: 9999, 36: 99999, 37: 0})[35] == 950
+    check(cclamp({35: 9999, 36: 99999, 37: 0})[35] == 3000
           and cclamp({35: 9999, 36: 99999, 37: 0})[36] == 15000,
-          "safety ceilings are DOWN-ONLY: absurd writes collapse to 950 mA / 15000 mV, never above")
+          "safety ceilings are DOWN-ONLY: absurd writes collapse to the 3000 mA "
+          "chain ceiling / 15000 mV, never above (the 950 mA factory default is a "
+          "separate number and does not move)")
     import random
     rng = random.Random(20260926)
     ok = True
@@ -1854,19 +1720,16 @@ def test_alarms_tab_v115():
         imax = rng.randint(100, 900)
         cw = {35: rng.randint(0, 2000), 36: rng.randint(0, 20000), 37: rng.randint(0, 12000)}
         cc2 = cclamp(cw, imax, over)
-        if not (imax + 50 <= cc2[35] <= 950
+        if not (imax + 50 <= cc2[35] <= 3000
                 and max(14000, over + 150) <= cc2[36] <= 15000
                 and 0 <= cc2[37] <= 8000):
             ok = False
             break
     check(ok, "2000 random alarm writes must all land inside the invariant ranges")
-
     # --- offline preview mirrors the 38-param board ---
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
     check("q2: 0" in prev and "q3: 0" in prev and "id < 93" in prev and all(f"case {i}:" in prev for i in range(27, 83)),
           "the preview server must serve 93 params with alarm + UI clamps and the q2/q3 masks")
-
-
 def test_ui_mirror_v116():
     """[EN] v1.16 (user order 2026-09-26, "LEDs for every fault/alarm that
     really blink, a buzzer icon with a cross on mute, every alarm number
@@ -1883,9 +1746,8 @@ def test_ui_mirror_v116():
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
     text_uih = (ROOT / "Firmware/Modules/Ui/ui_led.h").read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
-
     # --- frame v2: u16 LE length, 6-byte header, CRC-16, 512 ceiling, BOTH sides ---
     # [EN] Was pinned at 5 bytes. v2 (2026-09-29) inserts a protocol VERSION byte
     #      after the SOF pair and replaces the XOR-8 trailer with CRC-16, so the
@@ -1894,9 +1756,6 @@ def test_ui_mirror_v116():
     #      dropped everything and the panel looked like an unplugged cable.
     #      The exact sizes are cross-checked against the ESP by
     #      tools/audit_consistency.py; here we pin the SHAPE.
-    # [FA] قبلاً روی ۵ بایت قفل بود. نسخهٔ ۲ یک بایت نسخه بعد از SOF می‌گذارد و
-    #      XOR-8 را با CRC-16 عوض می‌کند، پس هدر ۶ و دنباله ۲ است. بایت نسخه هست
-    #      چون فلش ناهماهنگ قبلاً هیچ خطایی تولید نمی‌کرد.
     check(re.search(r"#define ESPLINK_FRAME_HEADER_SIZE\s+6u", text_esph)
           and re.search(r"#define ESP_LINK_HEADER_SIZE\s+6u", ino),
           "both frame headers must be 6 bytes (AA 55 ver type len_lo len_hi)")
@@ -1914,7 +1773,6 @@ def test_ui_mirror_v116():
     check("ESP_RX_WAIT_LEN_LO" in ino and "ESP_RX_WAIT_LEN_HI" in ino
           and "UINT16_T__G__RxLen" in ino and "UINT16_T__G__RxIndex" in ino,
           "the ESP parser must assemble a u16 length (two states, u16 len/index)")
-
     # --- id match: UI 38..82 identical on the link and the Ui module ---
     for esp_name, ui_name, num in [
             ("ESPLINK_PARAM_UI_OV_LED_PERIOD_MS", "UI_ALARM_PARAM_OV_LED_PERIOD_MS", 38),
@@ -1930,13 +1788,11 @@ def test_ui_mirror_v116():
           "ApplyParam AND GetParam must range-dispatch 38..82 to the Ui module")
     check("MIN_ID              38u" in text_uih and "MAX_ID              82u" in text_uih,
           "the Ui range must be 38..82")
-
     # --- panel: 56 edit fields, guard, mirror, per-bit LEDs, q3, backup ---
     # [EN] v1.74 (user order: low battery is not a LED scenario, it belongs to
     #      changeover and not to the panel): ids 72/73 are retired, so the panel
     #      must NOT carry fields for them any more - the check flips from
     #      "they exist" to "they are gone".
-    # [FA] شناسه‌های ۷۲/۷۳ بازنشسته‌اند و نباید کادری در پنل داشته باشند.
     RETIRED_IDS = (72, 73)
     editable = [i for i in range(27, 83) if i not in RETIRED_IDS]
     check(all(f'id="q{i}"' in ino for i in editable)
@@ -1956,18 +1812,15 @@ def test_ui_mirror_v116():
     # v1.53 (user order): the board-driven LED/buzzer mirror was deleted - the
     # per-card simulators replaced it. What must survive is the fault-bit
     # mirror refresh and the mute toggle.
-    # v1.53: آینهٔ LED برد حذف شد؛ شبیه‌ساز هر کارت جایش را گرفت.
     check("function uview()" in ino and "setInterval(uview,250)" in ino ,
           "the fault-bit refresh must exist")
-    check("ulR" not in ino and "function simrun()" in ino and "function simbz(" in ino,
-          "the board-driven LED strip is gone and the per-card simulator is in")
+    check("ulR" not in ino and "function simrun()" not in ino and "function simbz(" not in ino,
+          "the board-driven LED strip and the per-card simulator are both gone")
     # v1.55 (user order): the leftover notice row and the mute button went too.
-    # v1.55: ردیف باقی‌مانده و دکمهٔ میوت هم برداشته شدند.
     check('id="uleds"' not in ino and 'leds stick' not in ino
-          and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino
-                  for n in range(1, 8))   # scenario 7 adds its own simulator card
-          and 'id="sl7r"' in ino,
-          "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
+          and all(f'id="sl{n}r"' not in ino and f'id="sl{n}z"' not in ino
+                  for n in range(1, 9)),   # v1.90: the simulators were removed
+          "no sticky board mirror and no simulated LED/buzzer row left")
     check(all(f'id="asbb{k}"' in ino for k in range(8)),
           "one LED per fault bit (asbb0..asbb7)")
     check("pendingMask3" in ino and "pendingMask4" in ino and "64..95" in ino,
@@ -1981,10 +1834,8 @@ def test_ui_mirror_v116():
     #      77..118). What must stay true is the MACHINERY: XIDS derives the
     #      backup set from AIDS, so a new parameter joins the backup by
     #      itself and there is no label left to go stale.
-    # [FA] خط توضیح بازه‌ها حذف شد (باز هم کهنه شده بود)؛ آنچه باید بماند خود
-    #      ساز و کار است: XIDS فهرست را از AIDS می‌سازد.
     check("XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino
-          and "AIDS.forEach(id=>{if(id!==72&&id!==73&&id!==76)XIDS.push(id);});" in ino,
+          and "AIDS.forEach(id=>{if(id!==70&&id!==72&&id!==73&&id!==76)XIDS.push(id);});" in ino,
           "v1.16c (user order: ONE backup for the whole settings): all persisted ids "
           "0..14 + 20..75 + 77..136 (with 132/133 imbalance beep, 134/135 dead-battery beep and 136 clean-FLOAT-cycle threshold; slots 200..203 stay board-only). "
           "XIDS extends itself from AIDS, so the limits block "
@@ -1999,9 +1850,6 @@ def test_ui_mirror_v116():
     #      its card now sits in sub-tab 0, so backup moves up to 3. Pinned
     #      both ways: the standalone PID tab must not come back, and the PID
     #      card must actually be inside s0 rather than merely deleted.
-    # [FA] زیرتب PID به‌عنوان «تب» حذف شد و کارتش داخل زیرتب ۰ نشست، پس
-    #      پشتیبان‌گیری به ۳ آمد. هر دو طرف میخ شد: نه تب مستقل برگردد، نه
-    #      کارت PID صرفاً حذف شده باشد.
     check('data-s="1">سناریوها<' in ino and 'data-s="2">نظارت و ایمنی<' in ino
           and 'data-s="3">کالیبراسیون و فیلتر جریان<' in ino
           and 'data-s="4">پشتیبان‌گیری<' in ino
@@ -2029,11 +1877,10 @@ def test_ui_mirror_v116():
     s2part = ino.split('id="s2"')[1].split('id="s3"')[0]
     # [EN] v1.33: PID lives in s0. v1.42 (user order: backup sub-tab LAST):
     #      backup is now s4 and calibration+filters s3.
-    # [FA] PID در s0 است، و با دستور v1.42 پشتیبان‌گیری زیرتب آخر (s4) شد.
     s3part = ino.split('id="s0"')[1].split('id="s1"')[0]
     bkpart = ino.split('id="s4"')[1].split("</main>")[0]
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
-    check("ucard1" in s1part and "ucard5" in s1part and 'id="sim1"' in s1part and 'id="aw2"' in s1part
+    check("ucard1" in s1part and "ucard5" in s1part and 'id="sim1"' not in s1part and 'id="aw2"' in s1part
           and 'id="aw"' in s1part and 'id="ib117"' in s1part
           and all(f + "()" in s1part for f in ("ovdef", "bdef", "dsdef", "chdef", "ibdef", "dbdef"))
           and "<b>نظارت باتری</b>" not in s1part
@@ -2058,8 +1905,6 @@ def test_ui_mirror_v116():
     # [EN] v1.38 (user order: one factory-restore key is enough): the
     #      PID-only button was deleted and the surviving qdef() restores the
     #      whole charger scope - the section pin follows that consensus.
-    # [FA] v1.38 (دستور کاربر: یک کلید بازگردانی کافی است) - کلید جدای PID
-    #      حذف شد و qdef بازمانده کل محدودهٔ شارژر را برمی‌گرداند.
     check("PID دوحلقه‌ای شارژ (CC/CV)" in s3part and 'onclick="qdef()"' in s3part and 'id="pw"' in s3part
           and 'onclick="pdef()"' not in s3part
           and all(f'id="q{i}"' in s3part for i in range(83, 93))
@@ -2071,15 +1916,16 @@ def test_ui_mirror_v116():
           and all(f'id="q{i}"' not in bkpart for i in range(27, 93)),
           "v1.42 (user order: backup sub-tab LAST): the final sub-tab (s4) "
           "holds only the single backup card")
-    check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part,
-          "the merged voltages+alarm table sits on the main panel tab (p0, v1.16k: fixed layout, each value once), not in settings")
+    # [EN] v1.94 (user order): the fault box grew into two sections - "faults"
+    #      and "states right now" - and the header says so.
+    check("خطاها و وضعیت‌های زنده" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part
+          and "وضعیت آلارم‌ها" not in p0part,
+          "the voltages + faults + live-states box sits on the main panel tab (p0, fixed layout, each value once), not in settings")
     check("asb5" in ino and "abf0" not in ino and "abf1" not in ino and "abf2" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
           and "Math.max(t[3],t[10])" not in ino,
           "v1.16c (user order: per-battery current supervision, no max() merge); v1.16k: merged table rows for both currents (fault box kept)")
     # [EN] v1.75 (user order: "when you delete 5 you must shift the rest down"):
     #      the low-battery card is gone AND the two cards that followed it moved
-    #      up, so the picker reads 1..6 with no hole and no leftover "۷ ·".
-    # [FA] کارت باتری کم حذف شد و دو کارت بعدی یک شماره پایین آمدند: ۱ تا ۶ بدون حفره.
     check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری کم" not in ino
           and "۵ · عدم‌توازن" in ino and "۶ · باتری خراب" in ino
           and "۷ · خطای فنی برد" in ino and 'data-u="7"' in ino
@@ -2090,14 +1936,11 @@ def test_ui_mirror_v116():
     #      the other three - count, per-beep duration, own repeat interval,
     #      shared gap - so its guard is the same "does it fit the interval"
     #      sentence the other bands use, and the duty-window wording is gone.
-    # [FA] باند بحرانی هم‌شکل بقیه شد، پس نگهبانش همان جملهٔ «در فاصله جا
-    #      نمی‌شود» است و حرف پنجرهٔ duty حذف شد.
     check("بوق باند بحرانی در فاصلهٔ خودش جا نمی‌شود" in ino
           and "[57,56,58,65]" in ino and "دوره×duty" not in ino,
           "v1.16e/v1.71: the critical band is guarded exactly like the other bands")
     # [EN] Every discharge band must own count + per-beep duration + repeat
     #      interval, and the ONLY shared number is the gap (id 65).
-    # [FA] تنها عدد مشترک گپ است (۶۵).
     for _fit in ("fit(a.u59,a.u54,a.u62,a.u65)", "fit(a.u121,a.u122,a.u63,a.u65)",
                  "fit(a.u60,a.u55,a.u64,a.u65)", "fit(a.u57,a.u56,a.u58,a.u65)"):
         check(_fit in ino,
@@ -2105,27 +1948,18 @@ def test_ui_mirror_v116():
     check(ino.count('data-q="65"') == 3 and 'data-q="54"><span class="ow">مشترک' not in ino,
           "v1.71: bands 2, 3 and critical show the shared gap as read-only; "
           "nothing else is shared")
-    # [EN] 2026-10-06 (user order, second pass): the روند one-liner is gone
     #      from ALL SIX scenario cards - it repeated, almost word for word,
-    #      the dark "این سناریو کِی می‌آید؟" box printed right below it. The
     #      box is what must survive, so that is what this now checks: every
     #      scenario card still explains itself, just once.
-    # [FA] به دستور کاربر، خط «روند» از هر شش کارت سناریو برداشته شد چون
-    #      همان کادر مشکی زیرش را تکرار می‌کرد. حالا وجود خود آن کادر بررسی
-    #      می‌شود: هر سناریو هنوز خودش را توضیح می‌دهد، فقط یک‌بار.
     check("روند:" not in ino,
           "the duplicated روند one-liner is gone from every scenario card")
     check(ino.count('class="ds c4ds"') >= 6,
           "every scenario card keeps its dark explanation box")
     check("روی فلش ذخیره نمی‌شود" in ino and "روی فلش می‌ماند" not in ino,
           "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
-
     # --- preview server: 93 params + q3 ---
     check("q3: 0" in prev and "id < 93" in prev,
           "the offline preview must serve 93 params with the q3 mask")
-
-
-
 def test_ui_mirror_v117():
     """[EN] v1.17 (user order 2026-09-27, "the charge number must follow the
     scenario, and the like"): ids 77..82 = the full latch (enter/exit) +
@@ -2139,9 +1973,8 @@ def test_ui_mirror_v117():
     ماندگاری مثل بقیه جز میوت ۷۶؛ گارد و آینه و کارت‌های جدید پنل."""
     text_uih = (ROOT / "Firmware/Modules/Ui/ui_led.h").read_text()
     text_uic = (ROOT / "Firmware/Modules/Ui/ui_led.c").read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
-
     # --- board boot defaults (the UI_* macros stay the single source) ---
     for name, val in [("UI_CHARGING_FULL_ENTER_PERCENT", "100u"),
                       ("UI_CHARGING_FULL_EXIT_PERCENT", "95u"),
@@ -2152,41 +1985,34 @@ def test_ui_mirror_v117():
                       ("UI_CHARGING_YELLOW_MIN_ON_MS", "150u")]:
         check(re.search(rf"#define {name}\s+{val}", text_uih),
               f"boot default {name} must be {val} (v1.17: 69 rises 10 -> 150)")
-
     # --- the board keeps only per-field windows; cross-field relationships are
     #     advisory in the panel and the firmware/read-back owns any clamp.
-    check("uint32_t__chgFullEnterPct, 1u, 100u" in text_uic
-          and "uint32_t__chgFullExitPct, 0u, 100u" in text_uic
+    check("UI_CLAMP_RULE_T__A__Rules" in text_uic
+          and "{    100u,     1u, 0u, 0u }" in text_uic
+          and "{    100u,     0u, 0u, 0u }" in text_uic
+          and "{     50u,     0u, 0u, 0u }" in text_uic
+          and "14u, 1u, 15u, 15u, 14u, 1u" in text_uic
           and "uint32_t__chgFullEnterPct - 1u" not in text_uic
-          and "function fixrules(v)" in ino and "return [];" in ino
-          and "uint32_t__chgHystPct, 0u, 50u" in text_uic
-          and "uint32_t__runHystPct, 0u, 50u" in text_uic
-          and "uint32_t__runZeroExit, 0u, 100u" in text_uic
-          and "uint32_t__runOneExit, 0u, 100u" in text_uic,
+          and "function fixrules(v)" in ino and "return [];" in ino,
           "ClampAlarms keeps the real per-field windows and the panel does not mutate dependent fields")
-
     # --- panel: ADEF tail + the 150 fallback for 69 ---
     adef = re.search(r"const ADEF=\[([^\]]*)\]", ino)
     check(adef and adef.group(1).split(",")[-6:] == ["100", "95", "5", "2", "2", "3"]
           and adef.group(1).split(",")[42].strip() == "150",
           "ADEF must end with the six v1.17 defaults (100/95/5/2/2/3) and carry 150 at the id-69 slot")
-
     # --- panel: enter>=exit+1 guard + mirror fallbacks ---
     check("a.u78<=a.u77-1" in ino and "خروج فول باید زیر ورود باشد" in ino,
           "the panel guard must warn unless exit <= enter-1 (77 authoritative)")
     # v1.53: the fallbacks moved from the deleted board mirror into the
     # per-card simulator, which reads the boxes through c4v().
-    # v1.53: پیش‌فرض‌ها از آینهٔ حذف‌شده به شبیه‌ساز کارت‌ها منتقل شدند.
     check("c4v(77,100)" in ino and "c4v(69,150)" in ino and 'id="q78"' in ino,
           "the simulator must fall back to the v1.17 boot defaults")
-
     # --- panel: ucard4 holds q77..q79, ucard3 holds q80..q82 ---
     ucard3 = ino.split('id="ucard3"')[1].split('id="ucard4"')[0]
     ucard4 = ino.split('id="ucard4"')[1].split('id="ucard5"')[0]
     check(all(f'id="q{i}"' in ucard4 for i in range(77, 80))
           and all(f'id="q{i}"' in ucard3 for i in range(80, 83)),
           "ucard4 must hold the full/hysteresis inputs q77..q79 and ucard3 the run exits q80..q82")
-
     # --- preview server mirrors the same numbers ---
     check("100, 95, 5, 2, 2, 3," in prev and "case 78:" in prev and "P[77] - 1" not in prev
           and "50, 18000, 0, 10, 1000," in prev
@@ -2200,8 +2026,6 @@ def test_ui_mirror_v117():
           "the offline preview must serve the v1.17 defaults with the enter-authoritative "
           "clamp, the calibrated PID rows after them, the v1.28 limits block, "
           "the v1.43 imbalance scenario block, and the v1.49 charge-side percent map plus the v1.68 imbalance blink last")
-
-
 def test_ui_mirror_v117b():
     """[EN] v1.17b (user order 2026-09-27, "after a full charge the blinking
     must be gone"): the charger declares completion itself (FLOAT is entered
@@ -2216,9 +2040,8 @@ def test_ui_mirror_v117b():
     text_ch = CHARGER_H.read_text()
     text_cc = CHARGER_C.read_text()
     text_uic = (ROOT / "Firmware/Modules/Ui/ui_led.c").read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
-
     # --- charger: IsChargeComplete = installed+enabled, all in FLOAT ---
     check("func__Charger_IsChargeComplete" in text_ch
           and "bool func__Charger_IsChargeComplete(void)" in text_cc
@@ -2228,7 +2051,6 @@ def test_ui_mirror_v117b():
           "charger must offer IsChargeComplete (all installed+enabled channels in FLOAT, >=1 relevant)")
     check(text_cc.count("= CHG_STATE_FLOAT;") == 1,
           "FLOAT must be entered from exactly one place (ABSORB done: taper or 1 h) - FLOAT means DONE")
-
     # --- anti-hunt: the dip keeps the 1 h clock, fresh cycles reset it ---
     check("func__Charger_DipResetAbsorbWindow" in text_cc
           and text_cc.count("func__Charger_DipResetAbsorbWindow(") == 2,
@@ -2237,40 +2059,29 @@ def test_ui_mirror_v117b():
           "the 1 h clock must stamp once (dip-kept stamps survive, fresh cycles stamp anew)")
     check(text_cc.count("func__Charger_ClearAbsorbWindow(") >= 6,
           "fresh cycles (init/idle/off/retry/bulk/reentry) must still fully reset the absorb window")
-
     # --- UI: full = voltage latch OR charger completion ---
     check("func__Charger_IsChargeComplete() == true" in text_uic
           and "bool__isFull = true;" in text_uic,
           "the UI dispatcher must latch full on charger completion too")
-
     # --- panel: the board mirror that derived charger-done from the
-    #     telemetry is gone (v1.53); the card simulator decides "full" from
-    #     the full-entry percent the user typed, not from the live states.
-    #     v1.53: آینهٔ برد حذف شد؛ شبیه‌ساز «فول» را از درصد ورود فولِ
-    #     تایپ‌شده می‌فهمد، نه از وضعیت زندهٔ شارژرها.
-    check("UV." not in ino and "pct>=en" in ino,
-          "no telemetry-derived charger-done left; the simulator uses the typed full-entry percent")
-    check("فول: سبز ثابت، زرد خاموش" in ino and "شارژر بیکار" not in ino,
-          "the charge simulator must say full = green solid with the yellow off")
+    #     telemetry is gone (v1.53) and the card simulators went in v1.90
+    #     (user order), so neither the mirror nor the simulator may come back.
+    check("UV." not in ino and "pct>=en" not in ino,
+          "no telemetry-derived charger-done and no card simulator left in the panel")
+    check("شارژر بیکار" not in ino,
+          "the panel must not claim a charger-idle face any more")
     # [EN] The same rule, now read from the card's dark box instead of the
-    #      deleted روند line: the charge face ends when every active channel
     #      has finished absorb (taper or the one-hour ceiling), not when the
     #      charger merely goes idle.
-    # [FA] همان قانون، این‌بار از کادر مشکی کارت خوانده می‌شود نه خط حذف‌شدهٔ
-    #      «روند»: چهرهٔ شارژ با تمام‌شدن Absorb هر کانال فعال تمام می‌شود.
     check(("در FLOAT است" in ino) and ("Taper زیر" in ino) and ("Absorb" in ino),
           "the charging card must still say the face ends at absorb-done (FLOAT), not at idle")
-
     # --- bench: entry form above the table, page never jumps ---
     check('id="wF0"' in ino and "$('wF0')" in ino and "wsee(x)" in ino
           and "scrollIntoView" not in ino and "id='wX'" not in ino,
           "the DMM entry form must live above the table (wF0) with table-local auto-scroll")
-
     # --- preview: the demo cycle reaches FLOAT with enables on ---
     check("c.state = 3" in prev,
           "the offline preview must demo the FLOAT/completion face")
-
-
 def test_audit_batch_v116b():
     """v1.16 second audit sweep: locks, suspend, bulk TX, LUT guards, tail junk."""
     ch = CHARGER_H.read_text()
@@ -2282,7 +2093,6 @@ def test_audit_batch_v116b():
     nvmc = ESP_LINK_NVM_C.read_text()
     meas = MEASUREMENT_C.read_text()
     calh = CALIBRATION_H.read_text()
-
     def fn_body(text, name):
         # first mention can be a comment: take the occurrence whose next
         # newline-brace (definition) comes before any semicolon (decl/call)
@@ -2306,7 +2116,6 @@ def test_audit_batch_v116b():
                     return text[at:i]
             i += 1
         raise AssertionError("unbalanced braces for " + name)
-
     # --- race-artifact tails stay gone (74785d7 script junk) ---
     check(ch.count("#endif") == 1,
           "charger.h must end with exactly one header guard")
@@ -2315,7 +2124,6 @@ def test_audit_batch_v116b():
     stray = [ln for ln in meas.splitlines() if ln.strip() == "tage24OffsetMv;"]
     check(not stray,
           "measurement.c must not carry the stray tail fragment")
-
     # --- C11: writer-side scheduler locks in the multi-field setters ---
     for name in ["Charger_SetProfileParam", "Charger_SetAlarmParam"]:
         body = fn_body(cc, name)
@@ -2324,7 +2132,6 @@ def test_audit_batch_v116b():
     body = fn_body(fc, "Fault_SetAlarmParam")
     check("osKernelLock()" in body and "osKernelRestoreLock" in body,
           "Fault_SetAlarmParam must apply store+clamp under a scheduler lock")
-
     # --- F4 + G1: fault mask + charger ceilings volatile, Set/Clear locked ---
     check("static volatile fault_mask_t FAULT_MASK_T__G__Mask" in fc,
           "fault mask must be volatile")
@@ -2335,7 +2142,6 @@ def test_audit_batch_v116b():
     for var in ["ChargerHardFaultMa", "ChargerOvCutoffMv", "ChargerValidFloorMv"]:
         check("static volatile uint32_t UINT32_T__G__" + var in cc,
               var + " must be volatile (comm writer, control reader)")
-
     # --- NVM suspend: charger idles around the flash stall (user 2026-09-27) ---
     check("func__Charger_SetSuspended" in ch and "func__Charger_IsSuspended" in ch,
           "charger.h must declare the suspension API")
@@ -2347,7 +2153,6 @@ def test_audit_batch_v116b():
           "all four SaveNow exits (erase/program/verify fail + success) must resume")
     check("IsGatePulsing(BSP_PWM_CHARGER_1)" in nvmc and "IsGatePulsing(BSP_PWM_CHARGER_2)" in nvmc,
           "the suspend wait must poll the hardware truth of both gates")
-
     # --- E4/E1: bulk must fit the TX ring, off the comm stack ---
     ring_line = [ln for ln in uart.splitlines() if "BSP_UART_TX_RING_SIZE" in ln and "#define" in ln][0]
     ring_size = int("".join(ch for ch in ring_line.split()[-1] if ch.isdigit()))
@@ -2356,16 +2161,13 @@ def test_audit_batch_v116b():
     # [EN] v1.28: still static for the same reason, but sized to ONE CHUNK
     #      instead of the whole parameter list - that is what stops the buffer
     #      from growing every time a parameter is added.
-    # [FA] هنوز static به همان دلیل، ولی به اندازهٔ «یک تکه» نه کل فهرست -
-    #      همین است که نمی‌گذارد بافر با هر پارامتر تازه بزرگ شود.
     check("static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_BULK_MAX_ITEMS *" in link
           and "ESPLINK_BULK_ITEM_SIZE)];" in link,
           "bulk payload must be static (comm stack is 1 KiB) and sized to one chunk")
     check("NVM record too small for the persisted id set" in nvmc,
           "NVM must statically assert the record fits the WHOLE persisted id set (params + runtime slots)")
-    check("144 slots (12 + 144 x 8 + 4 = 1168 B)" in nvmh,
-          "NVM record comment must state the true record capacity for the expanded scenario-7 set")
-
+    check("172 entries (12 + 172 x 8 + 4 = 1392 B)" in nvmh,
+          "NVM record comment must state the true record capacity for the full persisted id set")
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__span == 0u" in meas,
           "LUT must guard the degenerate (equal-anchor) segment")
@@ -2376,7 +2178,6 @@ def test_audit_batch_v116b():
     # [EN] v1.63 (user question: may the table have more or fewer points?):
     #      the count is free, but two axes of different length would read
     #      past the end of the shorter one - that must not compile.
-    # [FA] تعداد نقاط آزاد است، ولی دو محور با طول متفاوت نباید کامپایل شود.
     check("sizeof(CAL_Current1LutCounts)" not in meas and "sizeof(CAL_Current2LutCounts)" not in meas,
           "2026-10-10: the compiled-table size asserts went away with the compiled tables")
     check("CHG_ETA_MIN" not in cc,
@@ -2386,8 +2187,6 @@ def test_audit_batch_v116b():
     nested = [ln for ln in calh.splitlines() if ln.startswith("/* [EN] v1.13")]
     check(not nested,
           "calibration.h must not nest a block comment inside the banner")
-
-
 def test_telemetry_frame_pins_v116c():
     """2026-09-27 full audit: the TLM_LIVE writer count must match the 84 B
     frame - 1 u16 (seq) + flags/reserved (2 B) + 20 u32. The source carries
@@ -2402,17 +2201,15 @@ def test_telemetry_frame_pins_v116c():
     #      not that the number never grows - v1.25 added five raw-count fields
     #      for calibration and a frozen literal would simply have blocked it
     #      while proving nothing.
-    # [FA] اندازه از تعداد فیلد مشتق می‌شود نه اینکه روی ۸۴ منجمد بماند. هدف
-    #      این چک هم‌خوانی اندازه با تعداد فیلدهاست، نه اینکه هرگز بزرگ نشود.
     tlm_fields = int(re.search(r"#define ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u",
-                               (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+                               (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1))
     tlm_size = int(re.search(r"#define ESPLINK_TLM_PAYLOAD_SIZE\s+(\d+)u", esp_h).group(1))
     check(tlm_size == 4 + (tlm_fields * 4),
           f"TLM payload size must be 2 seq + 2 flags + {tlm_fields}x4 = "
           f"{4 + tlm_fields * 4}, got {tlm_size} - any added field without a matching "
           "size bump truncates silently at SendFrame")
     check(int(re.search(r"#define ESP_LINK_TLM_SIZE\s+(\d+)u",
-              (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1)) == tlm_size,
+              (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1)) == tlm_size,
           "the ESP's expected TLM size must equal the firmware's payload size, or every "
           "frame is rejected as malformed")
     # [EN] Slice INSIDE SendTelemetry only: from right after its opening
@@ -2421,9 +2218,6 @@ def test_telemetry_frame_pins_v116c():
     #      is exactly where the closing brace sits (no code follows SendFrame
     #      inside SendTelemetry). Anchoring on prose banners broke once
     #      already when a comment block was removed (audit 2026-10-03).
-    # [FA] برش فقط داخل SendTelemetry: از بعد از آکولاد آغازین تا پایان خود
-    #      تابع (پرانتز پایانی SendFrame؛ پس از آن فقط آکولاد پایانی است).
-    #      لنگر روی بنر متنی یک‌بار با حذف کامنت شکست (ممیزی ۲۰۲۶-۱۰-۰۳).
     start = link.index("void func__EspLink_SendTelemetry")
     start = link.index("{", start) + 1
     body = link[start:link.index("(uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);", start)]
@@ -2442,14 +2236,6 @@ def test_telemetry_frame_pins_v116c():
     #      deliberately still 31: the payload layout and length are
     #      byte-identical in both branches, which is the property this
     #      check exists to protect.
-    # [FA] ۳۱ رایت زندهٔ u32 کل جدول را پر می‌کند (۴+۳۱×۴=۱۲۸ بایت، با سه‌تاییِ
-    #      سناریوی ۶ در t[28..30]) و ۳۰ صفرِ #else جایگزین‌اند.
-    #      ممیزی ۲۰۲۶-۱۰-۰۵: صفرها از ۲۵ به ۳۰ و بلوک‌های شرطی از ۹ به ۱۰
-    #      رسید، چون پنج رایت شمارش خام ADC آخرین رایت‌های بدون گارد این تابع
-    #      بودند و با ‎MODULE_MEASUREMENT=0‎ به ماژولی اشاره می‌کردند که کامپایل
-    #      نشده است. تعداد «زنده» عمداً همان ۳۱ مانده: چیدمان و طول payload در
-    #      هر دو شاخه بیت‌به‌بیت یکسان است و همین خاصیت است که این چک از آن
-    #      محافظت می‌کند.
     expected_writes = 31 + 30
     check(body.count("func__EspLink_PutU32(") == expected_writes,
           f"SendTelemetry must carry {expected_writes} textual u32 writes "
@@ -2461,8 +2247,6 @@ def test_telemetry_frame_pins_v116c():
           "SendTelemetry must keep its 10 conditional filler blocks "
           "(v1.72 added the scenario-6 pair, the 2026-10-05 audit added the "
           "raw-ADC-count block)")
-
-
 def test_flash_diet_pins_v116d():
     """2026-09-27 flash diet (region FLASH overflowed by 1840 B): the three
     panel-id families must stay dense so the indexed setters/getters
@@ -2475,13 +2259,17 @@ def test_flash_diet_pins_v116d():
         r"#define CHG_PROFILE_PARAM_[A-Z_0-9]+\s+(\d+)u", CHARGER_H.read_text()))
     check(chg_ids == list(range(20, 27)),
           f"charge-profile ids must be exactly dense 20..26, got {chg_ids}")
+    flt_text = FAULT_H.read_text()
     flt_ids = sorted(int(v) for v in re.findall(
-        r"#define FAULT_ALARM_PARAM_[A-Z_0-9]+\s+(\d+)u", FAULT_H.read_text()))
+        r"#define FAULT_ALARM_PARAM_(?!INPUT_HYST)[A-Z_0-9]+\s+(\d+)u", flt_text))
     check(flt_ids == list(range(27, 35)),
           f"fault-alarm ids must be exactly dense 27..34, got {flt_ids}")
+    flt_hyst_ids = sorted(int(v) for v in re.findall(
+        r"#define FAULT_ALARM_PARAM_INPUT_HYST_[A-Z_0-9]+\s+(\d+)u", flt_text))
+    check(flt_hyst_ids == [169, 170],
+          f"shared input Schmitt margins must be the separate ids 169/170, got {flt_hyst_ids}")
     # [EN] v1.49: the dense UI block is still 38..82; the charge-side percent
     #      map had to take 119/120 because 83..118 belong to other modules.
-    # [FA] بلوک متراکم همان ۳۸..۸۲؛ نگاشت درصد سمت شارژ ۱۱۹/۱۲۰ را گرفت.
     ui_ids = sorted(set(int(v) for v in re.findall(
         r"#define UI_ALARM_PARAM_(?!MIN_ID|MAX_ID|EXT_MIN_ID|EXT_MAX_ID)[A-Z_0-9]+\s+(\d+)u",
         UI_LED_H.read_text())))
@@ -2506,8 +2294,6 @@ def test_flash_diet_pins_v116d():
     #      serves two ranges (38..82 and 119..120). The index now comes from one
     #      shared helper, which is what both Set and Get must use - that is the
     #      property worth pinning, not the arithmetic being inline.
-    # [FA] ستر UI دیگر یک [id-FIRST] ساده نیست چون دو بازه دارد؛ نمایه از یک
-    #      تابع مشترک می‌آید و همان چیزی است که باید قفل شود.
     ui_body = UI_LED_C.read_text()
     check("static uint8_t func__Ui_AlarmParamIndex(uint8_t uint8_t__paramId)" in ui_body
           and ui_body.count("func__Ui_AlarmParamIndex(uint8_t__paramId)") == 2
@@ -2531,12 +2317,6 @@ def test_flash_diet_pins_v116d():
     #      unconditionally, which links timers.c AND queue.c - about 3 KB that
     #      no call in this firmware can reach. That is what pushed the image
     #      780 bytes past the 62K FLASH region on 2026-10-03.
-    # [FA] اینجا قبلاً ادعا می‌شد configUSE_TIMERS باید ۱ بماند چون خاموشی بیلد
-    #      را می‌شکند. نمی‌شکند. دو #error سر راه بود و هر دو قابل خاموش‌کردن:
-    #      timers.c:41 و freertos_os2.h:208. با تایمر روشن، tasks.c:2022 بی‌قید
-    #      تسک تایمر را راه می‌اندازد و timers.c و queue.c را لینک می‌کند -
-    #      حدود ۳ کیلوبایت بدون هیچ فراخوانی. همین ایمیج را ۷۸۰ بایت از ناحیهٔ
-    #      ۶۲ کیلوبایتی فلش بیرون زده بود.
     frtc = FREERTOSCONFIG_H.read_text()
     check(re.search(r"#define\s+configUSE_TIMERS\s+0\b", frtc),
           "configUSE_TIMERS must stay 0: nothing creates a timer and it costs ~3 KB of FLASH")
@@ -2549,16 +2329,12 @@ def test_flash_diet_pins_v116d():
     # [EN] CubeMX does not keep configUSE_TIMERS in the .ioc, so a regenerate
     #      would silently restore it and the only symptom would be an opaque
     #      "region FLASH overflowed". The guard turns that into a sentence.
-    # [FA] CubeMX این تنظیم را در .ioc نگه نمی‌دارد؛ تولید دوباره بی‌صدا برش
-    #      می‌گرداند و تنها نشانه پیام مبهم سرریز است. نگهبان آن را جمله می‌کند.
     hooks = FREERTOS_HOOKS_C.read_text()
     check("configUSE_TIMERS != 0" in hooks and "#error" in hooks,
           "freertos_hooks.c must #error if a CubeMX regenerate turns timers back on")
     # [EN] "region FLASH overflowed by 780 bytes" reads identically whether the
     #      fix is missing from the build or merely too small, so the build log
     #      has to say which. This marker prints in the CubeIDE console.
-    # [FA] پیام سرریز چه وقتی اصلاح در بیلد نباشد و چه وقتی کم باشد یک‌شکل است،
-    #      پس لاگ بیلد باید بگوید کدام. این نشانگر در کنسول CubeIDE چاپ می‌شود.
     check("#pragma message(" in hooks and "flash diet" in hooks,
           "freertos_hooks.c must print a build-log marker proving the diet compiled")
     check("*(.ARM.exidx*)" in FLASH_LD.read_text() and "/DISCARD/" in FLASH_LD.read_text(),
@@ -2571,8 +2347,6 @@ def test_flash_diet_pins_v116d():
                 if opt in ln and 'value="true"' in ln and "<option" in ln]
         check(len(hits) >= 2,
               f".cproject must force {opt}=true in both Debug and Release")
-
-
 def test_two_loop_pid_v124():
     """[EN] USER-ORDERED LOGIC CHANGE 2026-09-28/29: slow the absorb duty rise,
        replace the fixed-step regulator with a panel-tunable PID, then reduce
@@ -2590,8 +2364,7 @@ def test_two_loop_pid_v124():
     text_c = CHARGER_C.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
-
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     # --- 1. the 10 wire ids are dense 83..92 and agree on BOTH sides ---
     names = [f"{loop}_{f}" for loop in ("CURRENT", "VOLTAGE")
              for f in ("KP", "KI", "KD", "UP_RATE", "DOWN_RATE")]
@@ -2601,12 +2374,11 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+143u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 143 (scenario 7 ids 137..142 + 1)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+171u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 171 (shared input Schmitt margins 169/170)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
-
     # --- 2. each loop owns its own gain row (the min-select is meaningless
     #        with one shared Kp: simulated, the pack sails past 14.6 V) ---
     step = text_c[text_c.find("static uint16_t func__Charger_PidStep"):
@@ -2628,7 +2400,6 @@ def test_two_loop_pid_v124():
           "CC/CV must be a min-select on the P+D demand of the two branches")
     check("CHG_PID_MID_ENTER_MV" not in text_h and "midEnterMv" not in text_c,
           "the old fixed voltage border must be gone")
-
     # --- 3. the slew limit must sit on the INTEGRAL, not on the output.
     #        Limiting the output rectifies the P-term ripple that the whole-
     #        permille duty quantisation creates into a downward ratchet -
@@ -2646,7 +2417,6 @@ def test_two_loop_pid_v124():
     check(step.find("int32_t__pidIntegral = 0;") > integ_at
           and "int32_t__pidIntegral =\n            (int32_t)uint32_t__ceilingMilli;" in step,
           "anti-windup: the integral must be clamped into the same [0, ceiling] window as the duty")
-
     # --- 3b. output quantisation hysteresis: without it the PID reverses the
     #         duty MORE than the legacy chain it replaced (15570 vs 6456 over
     #         10 simulated hours) because it may move every 100 ms tick. The
@@ -2671,7 +2441,6 @@ def test_two_loop_pid_v124():
     check("_Static_assert(CHG_PID_OUTPUT_HYST_MILLI <" in text_c
           and "CHG_LIMIT_MAX_PID_OUT_HYST_MILLI" in text_c,
           "the hysteresis-vs-re-seed relationship must be proven at compile time")
-
     # --- 4. defaults: the absorb rise MUST be slower than bulk (the order) ---
     def g(name):
         m = re.search(rf"#define CHG_PID_{name}\s+(\d+)u", text_h)
@@ -2696,7 +2465,6 @@ def test_two_loop_pid_v124():
             check(g(f"{loop}_{f}") <= 20000, f"default {loop}_{f} must fit the panel window")
         for f in ("UP_RATE", "DOWN_RATE"):
             check(10 <= g(f"{loop}_{f}") <= 20000, f"default {loop}_{f} must fit the rate window")
-
     # --- 5. clamps and dispatch. v1.23: there is NO escape hatch any more -
     #        the legacy regulator is deleted, so the PID branch is the only
     #        branch and nothing selects between them. ---
@@ -2717,7 +2485,6 @@ def test_two_loop_pid_v124():
     check(reg.count("func__Charger_PidStep(") == 1
           and "CHG_STATE_ABSORB)" not in reg.split("func__Charger_PidStep(")[1],
           "PidStep must be the ONLY duty source outside FLOAT - no legacy branch may follow it")
-
     # --- 5b. the two hard backstops the user ordered (650 mA / 14.8 V).
     #         They must be proportional (a fixed step would re-create the
     #         hunting this rewrite removed), must read the RAW sample, and
@@ -2745,7 +2512,6 @@ def test_two_loop_pid_v124():
           "order must be hysteresis -> mis-tune slew cap -> absolute ceiling: the cap must "
           "never stand between a backstop and the hardware, and a cut smaller than the "
           "hysteresis must not be silently ignored")
-
     # --- 5d. the mis-tune cap. The backstops alone were NOT enough: the
     #         integral is rate-limited but P is not, so panel-maximum gains
     #         jumped the duty across its range in one pass (4475 mA for
@@ -2769,29 +2535,17 @@ def test_two_loop_pid_v124():
     #      by the clamp window instead of by unreachability, so that is what
     #      this checks: the ids exist, and the backstop voltage can only ever
     #      be moved DOWN from the factory ceiling.
-    # [FA] به دستور کاربر وارونه شد: «همهٔ گین‌ها و حدها و پارامترها باید از
-    #      پنل تغییرپذیر باشند». قانون قبلی «پشتیبان‌ها نباید از پنل تنظیم
-    #      شوند» بود. حالا ایمنی را پنجرهٔ گیره تأمین می‌کند نه دسترس‌ناپذیری،
-    #      پس همان چک می‌شود: شناسه‌ها هستند، و ولتاژ پشتیبان فقط پایین می‌رود.
 # [EN] v1.29 (user order): the separate card of fields is gone - the value
     #      in the operating table IS the input, clicked in place. So the thing
     #      to prove is no longer "a field exists" but "every id is drawn as an
     #      editable cell AND has a window to edit it with". A cell without an
     #      EVB row renders as an em dash and silently cannot be clicked.
-    # [FA] کادر جدای فیلدها حذف شد - خودِ مقدار در جدول عملکرد همان ورودی است
-    #      که درجا کلیک می‌شود. پس چیزی که باید اثبات شود دیگر «فیلد هست» نیست
-    #      بلکه «هر شناسه به‌صورت خانهٔ ویرایش‌پذیر رسم می‌شود و پنجره‌ای برای
-    #      ویرایش دارد» است. خانه‌ای که ردیف EVB نداشته باشد خط تیره می‌شود و
-    #      بی‌صدا کلیک‌ناپذیر است.
     evb = re.search(r"const EVB=\{(.*?)\};", ino, re.S)
     check(evb, "the panel must declare the click-to-edit bounds table EVB")
     evb_ids = {int(x) for x in re.findall(r"(\d+):\[", evb.group(1))}
     # [EN] v1.30 (user order): the chart edits, the table reports. Three
     #      renderers decide where each id is drawn - the two chart axes and
     #      the chip strip for values that are neither a voltage nor a current.
-    # [FA] نمودار ویرایش می‌کند و جدول گزارش می‌دهد. سه رندرکننده تعیین می‌کنند
-    #      هر شناسه کجا رسم شود - دو محور نمودار و نوار تراشه برای مقادیری که
-    #      نه ولتاژند و نه جریان.
     drawn = set()
     for name in ("EVV", "EVI"):
         m = re.search(r"const " + name + r"=\{(.*?)\};", ino, re.S)
@@ -2802,16 +2556,10 @@ def test_two_loop_pid_v124():
     #      two axes do not draw must be annotated inside the plot, and that
     #      set is DERIVED from the qgraph() body rather than declared - one
     #      less list to fall out of step with what is actually rendered.
-    # [FA] فهرست دستی سوم حذف شد. هر چیزی که EVB می‌تواند ویرایش کند و دو محور
-    #      رسمش نمی‌کنند باید داخل نمودار یادداشت شود، و آن مجموعه از بدنهٔ
-    #      qgraph «مشتق» می‌شود نه اعلام - یک فهرست کمتر برای عقب‌ماندن.
     # [EN] v1.35: the off-axis values moved from inline ann() groups to the
     #      chip strip under the chart, so the derived set now reads EVCT and
     #      EVCG. Still derived, never declared here - adding an id to a chip
     #      group is enough, and dropping one still fails loudly.
-    # [FA] مقادیر خارج از محور از گروه‌های ann به نوار تراشهٔ زیر نمودار منتقل
-    #      شدند، پس مجموعهٔ مشتق‌شده حالا EVCT و EVCG را می‌خواند. همچنان مشتق
-    #      است نه اعلام‌شده.
     chart_body = ino[ino.find("function qgraph()"):]
     chart_body = chart_body[:chart_body.find("\nfunction ")]
     for grp in re.findall(r"ann\((.*?)\);", chart_body, re.S):
@@ -2842,7 +2590,6 @@ def test_two_loop_pid_v124():
     bs = re.search(r"CHG_LIMIT_PARAM_BACKSTOP_MV[^\\n]*\\n[^\\n]*?(\\d+)u?,\\s*(\\d+)u?,\\s*(\\d+)u?", text_c)
     check("CHG_BACKSTOP_CURRENT_MV" not in ino,
           "the old compile-time backstop name must not linger in the panel")
-
     # --- 5c. the voltage prefilter. The current chain is filtered upstream,
     #         the pack voltage is not, and ~7 mV of ADC step times Kp lands
     #         straight on the duty. ---
@@ -2856,7 +2603,6 @@ def test_two_loop_pid_v124():
     check(nfilt >= 16, "a prefilter below N=16 leaves the voltage loop chattering on sensor noise")
     check("uint32_t__pidVoltFilt" in text_c and "uint32_t__pidVoltFilt =\n            uint32_t__batteryMv * CHG_LIM(CHG_LIMIT_PARAM_PID_VOLT_FILTER_N);" in text_c,
           "the prefilter must be seeded on re-seed so a bumpless transfer does not start from zero")
-
     # --- 6. the panel exposes every coefficient with its own guard ---
     check(all(f'id="q{i}"' in ino for i in range(83, 93)),
           "the panel must expose all 10 PID coefficients")
@@ -2882,13 +2628,10 @@ def test_two_loop_pid_v124():
     # [EN] v1.76: the all-in-one sdef() is gone; the six per-scenario keys all
     #      go through odef(), which skips any id pdflt() cannot answer for -
     #      so an undefined can no longer be sent to a PID id.
-    # [FA] کلید همه‌باهم حذف شد و شش کلید جداگانه از odef() رد می‌شوند.
     check("function sdef(" not in ino and "function odef(ids)" in ino
           and "const v=pdflt(id);if(v==null)return;" in ino,
           "every scenario key must go through odef()+pdflt(), which refuses an id "
           "with no printed factory default")
-
-
 def test_min_select_handover_v124():
     """[EN] The user asked, reading the parameter table: "how are you
        controlling one percent parameter with two duties? you have two
@@ -2904,10 +2647,8 @@ def test_min_select_handover_v124():
        پس نگهبان می‌خواهد وگرنه با اولین تغییر ضریب بی‌صدا غلط می‌شود."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import pid_tuning_sim as sim
-
     rec = sim.trace(hours=5.0)
     sw = sim.handovers(rec)
-
     # --- 1. exactly one handover: CC for the whole climb, CV from there on ---
     check(len(sw) == 1,
           f"a healthy CC/CV charge hands control over exactly ONCE, got {len(sw)} "
@@ -2915,7 +2656,6 @@ def test_min_select_handover_v124():
     check(rec[0]["win"] == "CURR" and rec[-1]["win"] == "VOLT",
           "the current loop must own the flat-pack climb and the voltage loop "
           "must own the absorb hold")
-
     # --- 2. the handover must be BUMPLESS. This is the whole reason the
     #        integrator is shared rather than one-per-loop: an idle private
     #        integral would have drifted and the duty would jump the moment
@@ -2926,7 +2666,6 @@ def test_min_select_handover_v124():
           "a jump here means the integrator is no longer shared")
     check(before["integ"] == after["integ"],
           f"handover must not move the integrator ({before['integ']} -> {after['integ']})")
-
     # --- 3. the direction of the selection must stay physical: while the pack
     #        is flat the voltage loop has huge headroom and would race; it is
     #        the CURRENT loop that must be the smaller (winning) demand. ---
@@ -2939,25 +2678,23 @@ def test_min_select_handover_v124():
           "in absorb the voltage loop must be the binding constraint and must be "
           "able to go NEGATIVE (pull the duty down)")
     check(late["pv"] < 0, "the voltage loop must actively reduce duty in absorb")
-
     # --- 4. the published explanation must exist in both places the user reads ---
     spec = (ROOT / "ESP_AGENT_SPEC.md").read_text(encoding="utf-8")
     check("How TWO loops drive ONE duty" in spec and "min-select" in spec,
           "spec section 12 must explain how two loops drive one output")
     check("199511" in spec,
           "the spec's bumpless claim must cite the measured integrator value")
-    panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")
+    panel = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text(encoding="utf-8")
     fa_integ = "199511".translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
     check("دو حلقه چطور یک duty را می‌رانند" in panel and fa_integ in panel,
           "the panel card must carry the same concrete explanation, in the Persian "
           "numerals the panel actually renders (the user reads the panel at the "
           "bench, not the spec)")
-
     # --- 5. AIDS must track the top real id. It was left at 97 when the third
     #        PID row was deleted, which made ap() build u93..u97 = undefined and
     #        put five phantom ids in the settings backup - the same class of bug
     #        as the v1.22 AIDS/ADEF mismatch. ---
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text(encoding="utf-8")
     m = re.search(r"for\(let _i=27;_i<=(\d+);_i\+\+\)AIDS", ino)
     check(m, "the panel must build AIDS from a bounded loop")
     pdef = re.search(r"const PDEF=\[([^\]]*)\]", ino).group(1).split(",")
@@ -2966,10 +2703,6 @@ def test_min_select_handover_v124():
     #      IDEF (108..118, the imbalance scenario) as the last block, so the
     #      top real id is where IDEF ends. Deriving it from all tables keeps
     #      this check honest the next time a block is appended.
-    # [FA] دیگر PDEF آخرین جدول پیش‌فرض نیست؛ LDEF (۹۳..۱۰۷) و در v1.43 بلوک
-    #      IDEF (۱۰۸..۱۱۸، سناریوی عدم‌توازن) آخر است، پس بالاترین شناسهٔ
-    #      واقعی جایی است که IDEF تمام می‌شود. مشتق‌کردن از هر سه جدول، این
-    #      چک را برای بلوک بعدی هم صادق نگه می‌دارد.
     ldef_m = re.search(r"const LDEF=\[([^\]]*)\]", ino)
     check(ldef_m, "the panel must define LDEF for the limits block")
     ldef = [x for x in ldef_m.group(1).split(",") if x.strip()]
@@ -2978,7 +2711,6 @@ def test_min_select_handover_v124():
     check(idef_m, "the panel must define IDEF for the imbalance scenario block")
     idef = [x for x in idef_m.group(1).split(",") if x.strip()]
     check(len(idef) == 11, f"IDEF must hold 11 imbalance defaults, got {len(idef)}")
-
     # [EN] v1.68 (user order 2026-10-05: "why does the red lamp not blink in
     #      the imbalance state? it must blink"): the latched face is a BLINK
     #      on both sides. The firmware must read ids 123/124 and drive the
@@ -2986,8 +2718,6 @@ def test_min_select_handover_v124():
     #      the old solid lamp sneaking back - and the panel simulator must
     #      show the same thing, because that simulator is what the operator
     #      checks the behaviour against.
-    # [FA] نسخهٔ ۱.۶۸ به دستور کاربر: چهرهٔ قفل باید چشمک باشد، هم روی برد و
-    #      هم در شبیه‌ساز پنل.
     uiled = (ROOT / "Firmware" / "Modules" / "Ui" / "ui_led.c").read_text(encoding="utf-8")
     imb_tick = uiled.split("void func__Ui_ScenarioImbalance_Tick(void)")[1].split("\n}")[0]
     check("IMBAL_PARAM_LATCH_BLINK_PERIOD_MS" in imb_tick and
@@ -3007,16 +2737,15 @@ def test_min_select_handover_v124():
           "the two id blocks (108..118 and 123..124) need an ownership and an index helper")
     check('id="q123"' in ino and 'id="q124"' in ino,
           "card 5 must expose the blink period and duty inputs")
-    check("c4v(123,1000)" in ino and "simblink(now-S5.lt,bper,bdt)" in ino,
-          "the card-6 simulator must blink its red lamp from the lock-start phase")
+    check("simblink" not in ino and "S5.lt" not in ino,
+          "the card-6 simulator is gone (v1.90) and nothing blinks from a lock-start phase")
     # [EN] v1.49 appends one more block after IDEF: CDEF, the charge-side
     #      percent map (119..120). Derive the top from every table so the next
     #      block keeps this check honest too.
-    # [FA] v1.49 یک بلوک دیگر بعد از IDEF اضافه می‌کند: CDEF (۱۱۹..۱۲۰).
     cdef_m = re.search(r"const CDEF=\[([^\]]*)\]", ino)
     check(cdef_m, "the panel must define CDEF for the charge-side percent map")
     cdef = [x for x in cdef_m.group(1).split(",") if x.strip()]
-    check(len(cdef) == 24, f"CDEF must hold 24 ext defaults through scenario 7 ids 137..142, got {len(cdef)}")
+    check(len(cdef) == 52, f"CDEF must hold 52 ext defaults through the shared input Schmitt ids 169/170 (ids 119..170), got {len(cdef)}")
     top = 83 + len(pdef) - 1 + len(ldef) + len(idef) + len(cdef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be
@@ -3027,10 +2756,6 @@ def test_min_select_handover_v124():
     #      so the reply is chunked. The assert that matters is now "one chunk fits",
     #      plus proof the sender actually emits the trailing partial chunk - an
     #      assert alone would be happy with a sender that dropped the tail.
-    # [FA] در v1.28 صورت مسئله عوض شد: دیگر 1 + COUNT*5 جا نمی‌شود (۵۴۱ > ۵۱۲)،
-    #      پس پاسخ تکه‌تکه می‌شود. assertِ مهم حالا «یک تکه جا شود» است، به‌علاوهٔ
-    #      اثبات این‌که فرستنده واقعاً تکهٔ ناقص پایانی را هم می‌فرستد - assert به
-    #      تنهایی با فرستنده‌ای که دُم را بیندازد هم راضی می‌شد.
     check("PARAMS_BULK chunk must fit the protocol payload ceiling" in espc
           and "ESPLINK_FRAME_MAX_PAYLOAD" in espc,
           "a _Static_assert must tie ONE CHUNK to the protocol payload ceiling, "
@@ -3043,12 +2768,9 @@ def test_min_select_handover_v124():
           "with COUNT=119 and 102 per chunk, dropping the tail loses ids 102..118")
     check("if (uint8_t__count > 0u)" in bulk_fn,
           "an empty trailing frame must NOT be sent - it reads as 'zero parameters known'")
-
     check(int(m.group(1)) == top,
           f"AIDS must stop at the top real id {top}, not {m.group(1)}: ap() and the "
           "settings backup both iterate it, so a stale bound injects phantom ids")
-
-
 def test_dynamic_disturbances_v124():
     """[EN] The scenario sweep only ever tested a STATIC operating point.
        These are the things that actually happen on a bench: someone edits
@@ -3061,7 +2783,6 @@ def test_dynamic_disturbances_v124():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import pid_tuning_sim as sim
     text_h_local = CHARGER_H.read_text()
-
     # --- 1. setpoint RAISED mid-charge: must track up and settle, not run away
     log = sim.run_events(hours=4.0, events=[(7200, "target", 14600)])
     lo, hi, _, _, tgt = sim._tail_stats(log)
@@ -3069,7 +2790,6 @@ def test_dynamic_disturbances_v124():
           f"a setpoint raised to 14.6 V mid-charge must be tracked (settled {hi:.1f})")
     check(max(r[1] for r in log) < 14800,
           "raising the setpoint must not push the pack through the 14.8 V backstop")
-
     # --- 2. setpoint LOWERED below the pack: a charger is a SOURCE and cannot
     #        pull a pack down, so the only correct answer is duty 0 / no
     #        current. The failure mode to catch is the opposite: winding up
@@ -3078,7 +2798,6 @@ def test_dynamic_disturbances_v124():
     tail = [r for r in log if r[0] >= 3.5 * 3600]
     check(all(r[3] == 0 for r in tail) and max(r[2] for r in tail) < 1.0,
           "an unreachable low setpoint must park the duty at ZERO, not wind up")
-
     # --- 3. duty ceiling cut hard mid-charge (panel write): the integral is
     #        clamped into [0, ceiling], so it must not wind up above the new
     #        ceiling and then overshoot when the ceiling is restored.
@@ -3089,7 +2808,6 @@ def test_dynamic_disturbances_v124():
           "while the duty ceiling is 60 permille the applied duty must never exceed it")
     check(max(r[1] for r in log) < 14800 and max(r[2] for r in log) < 950,
           "restoring the ceiling must not produce a stored-up surge")
-
     # --- 4. the backstop must react in ONE pass, not gradually. This is the
     #        property that makes it a safety net rather than another loop.
     log = sim.run_events(hours=3.0, events=[(9000, "voc_bump", 600.0)])
@@ -3097,7 +2815,6 @@ def test_dynamic_disturbances_v124():
     check(at[0][3] == 0,
           f"an over-voltage pack must drive the duty to 0 on the very first pass "
           f"(got {at[0][3]} permille)")
-
     # --- 4b. THE BACKSTOP MUST STAY IDLE during a normal charge. This is the
     #         whole distinction the v1.24 analysis rests on: a backstop is a
     #         reactive safety net, and the moment normal operation depends on
@@ -3106,9 +2823,6 @@ def test_dynamic_disturbances_v124():
     #         BELOW the profile limit. Measured: with the shipped 10 mA margin
     #         the current never once passes 650 mA over a 6 h charge; with the
     #         margin removed it does so on 13274 passes.
-    # [FA] پشتیبان باید در شارژ عادی بی‌کار بماند: لحظه‌ای که کار عادی به
-    #      شلیک آن وابسته شود، تور ایمنی جزئی از حلقهٔ کنترل شده و جریان
-    #      چرخهٔ حدی می‌زند.
     margin = int(re.search(r"#define CHG_PID_CURRENT_MARGIN_MA\s+(\d+)u",
                            text_h_local).group(1))
     check(margin >= 5,
@@ -3121,7 +2835,6 @@ def test_dynamic_disturbances_v124():
           f"the shipped tune must never reach the {limit} mA profile limit during a "
           f"normal charge (the backstop fired on {len(over)} passes) - a safety net "
           "that is routinely load-bearing is not a safety net")
-
     # --- 5. starting already at or above the setpoint must not kick
     for start, name in ((14400.0, "at the setpoint"), (14700.0, "above the setpoint")):
         log = sim.run_events(hours=3.0, events=(), voc=start)
@@ -3129,14 +2842,12 @@ def test_dynamic_disturbances_v124():
               f"a pack starting {name} must never be hit with bulk current")
         check(max(r[1] for r in log) < 14800,
               f"a pack starting {name} must not be pushed through the backstop")
-
-
 def test_battery_card_uses_measurement_current_not_legacy_iest():
     """The prominent card must show filtered Measurement current; iest stays
     in the per-channel diagnostics table so a stale legacy ETA cannot hide the
     raw -> filtered -> LUT mismatch."""
-    panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
-    preview = (ROOT / "esp_link_panel" / "panel_preview.html").read_text()
+    panel = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
+    preview = (ROOT / "ESP_Calibration" / "panel_preview.html").read_text()
     check("جریان باتری (کالیبره)" in panel and "جریان باتری (کالیبره)" in preview,
           "both live panel sources must label the main card as calibrated battery current")
     check("$('ie'+n).innerHTML=t[b+3]" in panel and
@@ -3144,8 +2855,6 @@ def test_battery_card_uses_measurement_current_not_legacy_iest():
           "the main card must use filtered Measurement current t[b+3], not the legacy iest t[b+4]")
     check("جریان باتری (iest = فیلترشده)" in panel and "جریان باتری (iest = فیلترشده)" in preview,
           "iest must remain visible as a diagnostic audit field (now equal to the filtered current)")
-
-
 def test_vdda_reference_measurement_v125():
     """[EN] The board "never calibrates" for a mathematical reason: the
        dominant error is a GAIN (the ADC reference is not the assumed 3.300 V)
@@ -3165,7 +2874,6 @@ def test_vdda_reference_measurement_v125():
     bsp_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
     cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
     meas_c = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
-
     check(ioc == ioc2,
           "the CubeMX and CubeIDE .ioc copies must stay identical - they were "
           "byte-identical before and a one-sided edit would make the next "
@@ -3177,8 +2885,6 @@ def test_vdda_reference_measurement_v125():
     #      cycle is 83.3 ns and 239.5 cycles = 19.96 us is the ONLY legal
     #      setting; anything shorter returns a silently wrong reference and so
     #      a silently wrong VDDA for every channel.
-    # [FA] VREFINT حداقل ۱۷٫۱ میکروثانیه نمونه‌برداری می‌خواهد و با کلاک ۱۲
-    #      مگاهرتز تنها گزینهٔ مجاز ۲۳۹٫۵ سیکل است.
     check("ADC1.SamplingTime-1-6=239.5" in ioc and "RCC.ADCFreqValue=12000000" in ioc,
           "VREFINT needs >=17.1 us; at a 12 MHz ADC clock only 239.5 cycles "
           "(19.96 us) qualifies - a shorter sample returns a wrong reference")
@@ -3191,7 +2897,6 @@ def test_vdda_reference_measurement_v125():
     check(re.search(r"#define BSP_ADC_CHANNEL_COUNT\s+6u", adc_h) and
           re.search(r"#define BSP_ADC_CHANNEL_VREFINT\s+5u", adc_h),
           "the BSP channel map must grow with the DMA frame")
-
     # --- the reference voltage must be passed IN, so the board port keeps no
     #     dependency on bench-calibration headers (layering) ---
     sig = ("func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,"
@@ -3203,7 +2908,6 @@ def test_vdda_reference_measurement_v125():
     check("BSP_MEASUREMENT_VDDA_MIN_MV" in bsp_c and "BSP_MEASUREMENT_VDDA_MAX_MV" in bsp_c,
           "an implausible VDDA (stuck or un-enabled VREFINT) must be rejected rather "
           "than silently rescaling every voltage and current on the board")
-
     # --- it must ship OFF: the F103 stores no factory VREFINT calibration, so
     #     un-calibrated tracking is +-3.3 % (worse than the 1.2 % it fixes) AND
     #     it lowers every reading, which moves the OV cut LATER. ---
@@ -3218,8 +2922,6 @@ def test_vdda_reference_measurement_v125():
           "BSP_ADC_CHANNEL_VREFINT" in meas_c,
           "the measured VDDA must be published even while tracking is off - the whole "
           "point is to look at it against a DMM first")
-
-
 def test_param_ranges_match_panel_v125():
     """[EN] Every parameter's legal range is written TWICE: as a `def D, LO..HI`
        comment beside the id in esp_link.h, and as real numbers in the panel's
@@ -3239,19 +2941,16 @@ def test_param_ranges_match_panel_v125():
        که ۶۶ و ۶۸ در آن‌ها شناسهٔ پارامترند نه مقدار - قید رابطه‌ای در فیلدی که
        همه‌جای دیگر مقدار ادبی نگه می‌دارد."""
     h = ESP_LINK_H.read_text()
-    params_h = (ROOT / "esp_link_panel" / "plink_params.h").read_text()
-
+    params_h = (ROOT / "ESP_Calibration" / "plink_params.h").read_text()
     def panel_arr(name):
         m = re.search(r"INT32_T__G__" + name + r"\[ESP_PARAM_COUNT\] = \{([^}]*)\}", params_h)
         check(m, f"the panel must declare {name}")
         return [int(x.strip()) for x in m.group(1).split(",")]
-
     pmin, pmax = panel_arr("ParamMin"), panel_arr("ParamMax")
     count = int(re.search(r"#define ESPLINK_PARAM_COUNT\s+(\d+)u", h).group(1))
     check(len(pmin) == count and len(pmax) == count,
           f"ParamMin/ParamMax must have exactly ESP_PARAM_COUNT entries "
           f"({len(pmin)}/{len(pmax)} vs {count})")
-
     checked, bad = 0, []
     for m in re.finditer(r"#define ESPLINK_PARAM_(\w+)\s+(\d+)u\s*/\*(.*?)\*/", h, re.S):
         name, pid, body = m.group(1), int(m.group(2)), m.group(3)
@@ -3268,8 +2967,6 @@ def test_param_ranges_match_panel_v125():
           "every documented firmware range must equal the panel's ParamMin/ParamMax, and a "
           "relational bound must NOT be written in the literal LO..HI field (use "
           "'0..10000, <= 66'): " + "; ".join(bad))
-
-
 def test_benchlog_row_matches_header_v125():
     """[EN] The bench CSV is the artefact the whole calibration is built from,
        and its row was 6 columns longer than its header. wrow() looped
@@ -3285,9 +2982,8 @@ def test_benchlog_row_matches_header_v125():
        بود در حالی که تعداد واقعی ۹۳ است، پس هرچه بعد از بلوک پارامتر می‌آمد
        زیر عنوان اشتباه نوشته می‌شد. از v1.23 غلط بود و کسی نفهمید، چون عنوان
        متن است در یک فایل و ردیف جاوااسکریپت است در فایلی دیگر."""
-    cfg = (ROOT / "esp_link_panel" / "plink_config.h").read_text()
-    pan = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
-
+    cfg = (ROOT / "ESP_Calibration" / "plink_config.h").read_text()
+    pan = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
     # --- count the column NAMES declared in the header block ---
     blk = re.search(r"#define ESP_BENCHLOG_HEADER(.*?)(?=\n#define )", cfg, re.S).group(1)
     names, group = [], None
@@ -3305,7 +3001,6 @@ def test_benchlog_row_matches_header_v125():
             continue
         names += [x for x in body.split(",") if x.strip()]
     header_n = len(names)
-
     # --- count what wrow() actually emits ---
     pn = int(re.search(r"const PN=(\d+);", pan).group(1))
     count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u", cfg).group(1))
@@ -3325,7 +3020,6 @@ def test_benchlog_row_matches_header_v125():
           f"the CSV row must emit exactly as many columns as the header declares "
           f"(row {row_n} vs header {header_n}) - a mismatch silently files every "
           "later value under the wrong name, which corrupts the calibration table")
-
     # --- the raw calibration columns must be present in both ---
     for col in ("vin_counts", "v24_counts", "v12_counts", "vrefint_counts", "vdda_mv"):
         check(col in cfg,
@@ -3335,8 +3029,6 @@ def test_benchlog_row_matches_header_v125():
     # [EN] The header naming a column proves nothing if the firmware never sends
     #      the value - the slot would just carry a zero and the calibration would
     #      be built on it. Require the actual globals to be transmitted.
-    # [FA] نام‌بردن ستون در عنوان وقتی فرم‌ور مقدارش را نمی‌فرستد چیزی را ثابت
-    #      نمی‌کند - آن خانه صفر می‌ماند و کالیبراسیون روی صفر ساخته می‌شود.
     link_c = ESP_LINK_C.read_text()
     for g in ("UINT32_T__G__MeasVinRawCounts", "UINT32_T__G__MeasV24RawCounts",
               "UINT32_T__G__MeasV12RawCounts", "UINT32_T__G__MeasVrefintRawCounts",
@@ -3344,8 +3036,6 @@ def test_benchlog_row_matches_header_v125():
         check(g in link_c,
               f"SendTelemetry must actually transmit {g}, not a placeholder - a named "
               "column carrying a constant zero is worse than no column")
-
-
 def test_whole_program_consistency_v125():
     """[EN] Runs tools/audit_consistency.py, which compares every number this
        project writes by hand in more than one place: the parameter ids,
@@ -3371,8 +3061,6 @@ def test_whole_program_consistency_v125():
           f"the audit must actually check a meaningful number of invariants "
           f"(got {m.group(1) if m else 'none'}) - an audit that checks nothing "
           "passes everything")
-
-
 def test_section_parameter_help_v125():
     """[EN] User order 2026-09-29: "in each section's ! help, explain the
        parameters too - what each one is and what it does."
@@ -3389,16 +3077,13 @@ def test_section_parameter_help_v125():
        دستی‌کپی‌شده همان چیزی است که قبلاً در این پروژه پوسیده. تلهٔ اصلی این
        است که بخشی شناسه‌ای را اعلام کند که در جدول نیست: آن‌وقت حباب بی‌صدا
        همان پارامتر را جا می‌اندازد و فهرست کامل به نظر می‌رسد."""
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
-
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
     # [EN] v1.73 (user order: "remove the ! badge on every section so the code
     #      gets lighter; explain above every section what the variables mean").
     #      The bubble renderer is gone; PX stays because the chips and the
     #      event popup read it. What is pinned now is the replacement: the
     #      badges must not come back, and every section must carry visible
     #      text of its own.
-    # [FA] از v1.73 حباب «!» حذف شده و توضیح هر بخش همیشه روی صفحه است؛ PX
-    #      می‌ماند چون تراشه‌ها و پنجرهٔ رویداد از آن می‌خوانند.
     check("const PX={" in ino and 'class="ib"' not in ino
           and "function pexp(" not in ino,
           "the ! help bubbles must stay removed while PX (chips, event popup) stays")
@@ -3408,12 +3093,9 @@ def test_section_parameter_help_v125():
     check(not nosx,
           f"every section must explain its variables above the fields; "
           f"sections with no explanation: {nosx}")
-
     # [EN] Parse ONLY the PX block - the panel has another id-keyed table (P,
     #      the manual-mode rows) whose entries have six fields, and a loose
     #      regex silently mixes the two.
-    # [FA] فقط بلوک PX خوانده شود - پنل جدول دیگری هم با کلید شناسه دارد و
-    #      regex شل، این دو را بی‌صدا قاطی می‌کند.
     px_blk = re.search(r"const PX=\{(.*?)\n?\};", ino, re.S)
     check(px_blk is not None, "the PX table must be findable as a single block")
     px_blk = px_blk.group(1)
@@ -3422,19 +3104,15 @@ def test_section_parameter_help_v125():
     #      what the user can actually edit - every q<id> field on the page must
     #      have a PX entry, so no editable number is left without a name and a
     #      description anywhere in the panel.
-    # [FA] از v1.73 قاعده روی خودِ فیلدهای ویرایش‌پذیر است: هر q<id> باید در
-    #      PX نام و توضیح داشته باشد.
     edited = {int(x) for x in re.findall(r'<input[^>]*id="q(\d+)"', ino)}
     missing = sorted(edited - px)
     check(not missing,
           f"editable fields with no PX entry: {missing} - a number the user can "
           "change but the panel never names")
-
     count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u",
-                          (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+                          (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1))
     stray = sorted(i for i in px if i >= count)
     check(not stray, f"PX describes ids that do not exist: {stray}")
-
     # the whole point is prose a bench user can act on, not a restated name
     descs = {int(i): d for i, d in
              re.findall(r"(\d+):\['[^']*','([^']*)'\]", px_blk)}
@@ -3444,13 +3122,10 @@ def test_section_parameter_help_v125():
     thin = sorted(i for i, d in descs.items() if len(d) < 25)
     check(not thin,
           f"these parameters have a description too short to explain anything: {thin}")
-
     for must in (83, 88, 35, 36, 20, 25):
         check(must in px,
               f"id {must} is one of the parameters that actually changes charging "
               "behaviour and must be explained")
-
-
 def test_theme_contrast_and_param_coverage_v125():
     """[EN] User order 2026-09-29: explain the variables everywhere, and fix the
        colouring.
@@ -3464,54 +3139,43 @@ def test_theme_contrast_and_param_coverage_v125():
        اندازه‌گیری نشان داد متن هیچ‌وقت مشکل نبود و همه AA را رد می‌کردند؛ ایراد
        این بود که سطح‌ها از هم تشخیص داده نمی‌شدند، پس کل صفحه یک ورق تخت بود.
        این تست کنتراست را حساب می‌کند نه اینکه به ظاهر کدهای رنگ اعتماد کند."""
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
-
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
     # ---------- every parameter is explained, and reachable from a section ----------
     px_blk = re.search(r"const PX=\{(.*?)\n?\};", ino, re.S)
     check(px_blk is not None, "the PX help table must exist")
     px = set(int(m) for m in re.findall(r"(\d+):\['", px_blk.group(1)))
     count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u",
-                          (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+                          (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1))
     missing = sorted(set(range(count)) - px)
     check(not missing,
           f"every parameter must be explained on the page; missing: {missing}")
-
     # [EN] v1.73: reachability is now about visible sections, not bubbles.
-    # [FA] از v1.73 دسترس‌پذیری با بخش‌های دیده‌شدنی سنجیده می‌شود نه حباب‌ها.
     check(ino.count('<div class="sx">') >= ino.count('<div class="sec">'),
           "every section must carry its own visible explanation")
-
     # ---------- the palette, computed ----------
     def lum(h):
         h = h.lstrip("#")
         ch = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
         ch = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in ch]
         return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
-
     def contrast(a, b):
         la, lb = lum(a), lum(b)
         return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
-
     root = re.search(r":root\{([^}]*)\}", ino)
     check(root is not None, "the theme must be declared in one :root block")
     V = dict(re.findall(r"--([a-z0-9]+):(#[0-9a-f]{6})", root.group(1)))
     for key in ("bg", "cd", "in", "rs", "ln", "tx", "mu", "ac", "ok", "wa", "er"):
         check(key in V, f"the theme is missing --{key}")
-
     # [EN] Text must clear WCAG AA 4.5:1.
-    # [FA] متن باید حد AA یعنی ۴٫۵ را رد کند.
     for label, fg, bgk in (("body on card", "tx", "cd"), ("muted on card", "mu", "cd"),
                            ("muted on raised", "mu", "rs"), ("accent on card", "ac", "cd"),
                            ("ok on card", "ok", "cd"), ("warn on card", "wa", "cd"),
                            ("error on card", "er", "cd")):
         r = contrast(V[fg], V[bgk])
         check(r >= 4.5, f"{label} contrast {r:.2f} is below AA 4.5")
-
     # [EN] Surfaces must form a visible ladder. The thresholds are GitHub dark's
     #      own measured ratios, so this is "at least as separated as a dark theme
     #      people read all day", not an arbitrary preference.
-    # [FA] سطح‌ها باید نردبان دیدنی بسازند. آستانه‌ها نسبت‌های اندازه‌گیری‌شدهٔ یک
-    #      تم تیرهٔ پرکاربردند، نه سلیقهٔ دلبخواه.
     for label, a, b, need in (("card vs page", "cd", "bg", 1.09),
                               ("raised vs card", "rs", "cd", 1.14),
                               ("border vs card", "ln", "cd", 1.42),
@@ -3520,13 +3184,9 @@ def test_theme_contrast_and_param_coverage_v125():
         check(r >= need,
               f"{label} separation {r:.2f} is below {need} - this is what made the "
               "page read as one flat dark sheet")
-
-    # [EN] The ladder must actually ascend: inset darker than card, card than page... 
-    # [FA] نردبان باید واقعاً بالا برود.
+    # [EN] The ladder must actually ascend: inset darker than card, card than page...
     check(lum(V["in"]) < lum(V["cd"]) < lum(V["rs"]),
           "inset < card < raised must hold, or the depth cues point the wrong way")
-
-
 def test_absorb_ceiling_arms_on_current_v2():
     """[EN] USER-ORDERED LOGIC CHANGE 2026-09-29. The one-hour absorb ceiling
        used to start the moment absorb was ENTERED, at 14.3 V, and it ended the
@@ -3545,7 +3205,6 @@ def test_absorb_ceiling_arms_on_current_v2():
        می‌شود."""
     h = CHARGER_H.read_text()
     c = CHARGER_C.read_text()
-
     arm = re.search(r"#define CHG_ABSORB_MAX_ARM_MA\s+(\d+)u", h)
     check(arm, "the absorb ceiling must have an explicit current arming threshold")
     arm_ma = int(arm.group(1))
@@ -3554,7 +3213,6 @@ def test_absorb_ceiling_arms_on_current_v2():
           f"the arming threshold ({arm_ma} mA) must sit ABOVE the taper-complete "
           f"current ({taper} mA) - arming at or below it would make the ceiling "
           "pointless, since the normal taper rule would already have finished")
-
     # the ceiling must count from the ARM tick, never from absorb entry again
     check("uint32_t__absorbMaxArmTick" in c,
           "the armed tick must be tracked per channel")
@@ -3564,14 +3222,12 @@ def test_absorb_ceiling_arms_on_current_v2():
     check("absorbMaxArmTick" in expr and "absorbEnterTick" not in expr,
           "the one-hour ceiling must count from the ARMED tick, not from absorb "
           "entry - counting from entry is what cut the charge off mid-tail")
-
     # arming must be latched, not re-evaluated every frame
     check(re.search(r"if \(\(charger_channel_state_t__channel->uint32_t__absorbMaxArmTick == 0u\) &&",
                     c),
           "arming must only happen when not already armed - re-arming on every "
           "frame that pops back above the threshold would let a sense chain "
           "specified at +/-10..20 mA defeat the ceiling entirely")
-
     # and it must be cleared wherever the absorb episode resets, or a stale arm
     # from the previous cycle would time the next one out immediately
     resets = len(re.findall(r"uint32_t__absorbMaxArmTick = 0u;", c))
@@ -3580,8 +3236,6 @@ def test_absorb_ceiling_arms_on_current_v2():
           f"the armed tick must be cleared everywhere the absorb episode is reset "
           f"({resets} vs {enters} for absorbEnterTick) - a stale arm would end the "
           "next absorb the moment it starts")
-
-
 def test_stage_graph_is_current_vs_voltage_v3():
     """[EN] User order 2026-09-29: "the horizontal axis of the chart should be
        current and the vertical axis voltage."
@@ -3597,13 +3251,11 @@ def test_stage_graph_is_current_vs_voltage_v3():
        عمودی ولتاژ بود و جریان اصلاً روی تصویر نبود. حالا صفحهٔ واقعی
        جریان-ولتاژ است: پای بالک عمودی روی سقف جریان و پای ابزورب افقی روی
        ولتاژ هدف."""
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
     # [EN] qchk() is defined BEFORE qgraph() in the file, so slice forwards
     #      from qgraph to the next top-level function, not to qchk.
-    # [FA] qchk پیش از qgraph تعریف شده، پس باید رو به جلو برش زد.
     _i = ino.index("\nfunction qgraph()")
     body = ino[_i:ino.index("\nfunction afresh()", _i)]
-
     # --- both axes must exist and map the right quantity ---
     check(re.search(r"const X=ma=>Math\.round\(X0\+\(X1-X0\)\*", body),
           "the horizontal axis must map CURRENT to x")
@@ -3614,7 +3266,6 @@ def test_stage_graph_is_current_vs_voltage_v3():
     check("جریان شارژ / Charge current (mA)" in body and
           "ولتاژ باتری / Battery voltage (V)" in body,
           "both axes must be labelled, bilingually")
-
     # --- the CC/CV path: a vertical leg at the current limit, a horizontal leg
     #     at the absorb voltage. This is the whole point of the new chart. ---
     poly = re.search(r"<polyline points=\"([^\"]*)\"", body)
@@ -3626,7 +3277,6 @@ def test_stage_graph_is_current_vs_voltage_v3():
     check("${X(im.v)},${Y(q.a.v)} ${X(tp.v)},${Y(q.a.v)}" in pts,
           "the absorb leg must be HORIZONTAL at the preview-aware absorb voltage - same y, "
           "falling current")
-
     # --- the current limit and taper are vertical now, not horizontal ---
     # [EN] v1.30 draws every current threshold through one EVI loop so they
     #      can all be clicked, so the literal per-line markup is gone. The
@@ -3634,9 +3284,6 @@ def test_stage_graph_is_current_vs_voltage_v3():
     #      mapping of 25/26 onto the preview-aware im.v/tp.v is checked too -
     #      reading only the applied d values would quietly drop the dashed
     #      "typed but not applied yet" preview.
-    # [FA] حالا همهٔ آستانه‌های جریان از یک حلقهٔ EVI رسم می‌شوند تا همه
-    #      کلیک‌پذیر باشند، پس مارک‌آپ جداگانهٔ هر خط رفته است. ولی همان خاصیت
-    #      باید برقرار بماند: x یکسان در دو سر، گسترده در y.
     check('x1="${x}" y1="12" x2="${x}" y2="${H-22}"' in body,
           "every current threshold must be a VERTICAL line now that current is "
           "the horizontal axis")
@@ -3651,14 +3298,11 @@ def test_stage_graph_is_current_vs_voltage_v3():
           "'typed but not applied yet' preview silently disappears")
     check("evat(id)" in body,
           "the current-axis labels must be clickable, not decoration")
-
     # --- live dots at their real operating point, not a fixed column ---
     check("const y=Y(b[1]),x=X(b[3]);" in body,
           "each battery's dot must be placed at its true (current, voltage) - "
           "b[1] is its voltage and b[3] its current; the old chart pinned x to a "
           "fixed fraction of the width, which carried no information")
-
-
 def test_direct_lut_push_v166():
     """v1.66 (user order 2026-10-05): "do I really have to paste the table into
     the micro's code and build? push it straight into the micro's table area -
@@ -3677,18 +3321,16 @@ def test_direct_lut_push_v166():
     import subprocess
     import tempfile
     import shutil
-
     cal_lut_h = (ROOT / "Firmware/Modules/CalLut/cal_lut.h").read_text(encoding="utf-8")
     cal_lut_c = (ROOT / "Firmware/Modules/CalLut/cal_lut.c").read_text(encoding="utf-8")
     esp_h = ESP_LINK_H.read_text(encoding="utf-8")
     esp_c = ESP_LINK_C.read_text(encoding="utf-8")
     meas_c = MEASUREMENT_C.read_text(encoding="utf-8")
     app_c = (ROOT / "Firmware/App/Src/app.c").read_text(encoding="utf-8")
-    ino = (ROOT / "esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
-    sketch = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text(encoding="utf-8")
-    plink_http = (ROOT / "esp_link_panel/plink_http.h").read_text(encoding="utf-8")
-    plink_link = (ROOT / "esp_link_panel/plink_link.h").read_text(encoding="utf-8")
-
+    ino = (ROOT / "ESP_Calibration/plink_panel.h").read_text(encoding="utf-8")
+    sketch = (ROOT / "ESP_Calibration/ESP_Calibration.ino").read_text(encoding="utf-8")
+    plink_http = (ROOT / "ESP_Calibration/plink_http.h").read_text(encoding="utf-8")
+    plink_link = (ROOT / "ESP_Calibration/plink_link.h").read_text(encoding="utf-8")
     # ---------- the storage path is SEPARATE, which is the actual order ----------
     check(re.search(r"CAL_LUT_PAGE_A_ADDR\s+0x0800F000u", cal_lut_h) and
           re.search(r"CAL_LUT_PAGE_B_ADDR\s+0x0800F400u", cal_lut_h),
@@ -3700,9 +3342,6 @@ def test_direct_lut_push_v166():
     #      (bsp_flash.h); the no-overlap half became a cross-file invariant in
     #      tools/audit_consistency.py, because cal_lut.c must not reference the
     #      parameter module (separate storage was the order, checked below).
-    # [FA] جدول دیگر «زیر» بلوک پارامترها نیست؛ v1.80 آن بلوک را پایین برد.
-    #      حالا جدول باید اثبات کند داخل پنجرهٔ مجاز نوشتن است و بررسی
-    #      هم‌پوشانی به ممیزی بین‌فایلی منتقل شده است.
     check("CalLut pages must sit inside the writable flash window" in cal_lut_c and
           "CalLut record must fit inside one flash page" in cal_lut_c,
           "a static assert must prove the LUT record fits its page AND that the block stays inside the writable flash window")
@@ -3712,9 +3351,8 @@ def test_direct_lut_push_v166():
           re.search(r"CAL_LUT_POINTS_MIN\s+2u", cal_lut_h),
           "the per-channel point window (2..24) must be declared where both sides can mirror it")
     check(re.search(r"ESP_LUT_POINTS_MAX\s+24u",
-                    (ROOT / "esp_link_panel/plink_config.h").read_text(encoding="utf-8")),
+                    (ROOT / "ESP_Calibration/plink_config.h").read_text(encoding="utf-8")),
           "the ESP must mirror the board's 24-point cap, or it would send a table the board refuses")
-
     # ---------- the table travels as its own messages, never as parameters ----------
     for name, value in (("LUT_BEGIN", "0x04u"), ("LUT_CHUNK", "0x05u"),
                         ("LUT_COMMIT", "0x06u"), ("LUT_RESET", "0x07u"),
@@ -3722,7 +3360,7 @@ def test_direct_lut_push_v166():
         check(re.search(r"ESPLINK_MSG_%s\s+%s" % (name, value), esp_h),
               "message %s must be defined on the STM32 side" % name)
         check(re.search(r"ESP_MSG_%s\s+%s" % (name, value),
-                        (ROOT / "esp_link_panel/plink_config.h").read_text(encoding="utf-8")),
+                        (ROOT / "ESP_Calibration/plink_config.h").read_text(encoding="utf-8")),
               "message %s must be mirrored on the ESP side with the SAME id" % name)
     check("func__EspLink_HandleLutFrame" in esp_c and "func__EspLink_SendLutAck" in esp_c,
           "the STM32 must handle the LUT frames and acknowledge every one of them")
@@ -3737,7 +3375,6 @@ def test_direct_lut_push_v166():
           "func__EspLink_NvmFlushForReset() != false" in reset_block and
           "CAL_LUT_ST_FLASH" in reset_block,
           "a valid zero-point commit may reset, but a failed NVM flush must refuse reset before consuming the grant")
-
     # ---------- 2026-10-10: measurement uses ONLY the panel table; no compiled fallback ----------
     check("func__Measurement_BenchTableMa(" in meas_c and
           meas_c.count("func__Measurement_BenchTableMa(") >= 3,
@@ -3747,7 +3384,6 @@ def test_direct_lut_push_v166():
               "channel %s must use the panel table when it is active and return the chain value (gain and offset line) otherwise" % ch)
     check("CAL_CURRENT1_LUT_POINTS" not in meas_c and "CAL_CURRENT2_LUT_POINTS" not in meas_c,
           "2026-10-10: there is no compiled table any more; the board starts from the max gain and zero offset")
-
     # ---------- the panel keeps BOTH routes and drives the handshake ----------
     check("calcode()" in ino and "calcdl()" in ino,
           "option (c), generating calibration.h for a rebuild, must still be offered")
@@ -3780,7 +3416,6 @@ def test_direct_lut_push_v166():
     check("func__Esp_LutTxPump()" in plink_link.split("func__Esp_PumpTx")[-1] or
           "if (func__Esp_LutTxPump())" in plink_link,
           "the paced sender must actually be driven from the link pump")
-
     # ---------- one CRC32, three implementations ----------
     import zlib
     table1 = [(0, 0), (48, 703), (130, 1914), (268, 3886)]
@@ -3791,7 +3426,6 @@ def test_direct_lut_push_v166():
         for chain, power in tab:
             content += chain.to_bytes(4, "little") + power.to_bytes(4, "little")
     py_crc = zlib.crc32(bytes(content)) & 0xFFFFFFFF
-
     node = shutil.which("node")
     if node is not None:
         src = re.search(r"function lcrc\(b\)\{.*?>>>0;\}", ino, re.S).group(0)
@@ -3799,7 +3433,6 @@ def test_direct_lut_push_v166():
         r = subprocess.run([node, "-e", js], capture_output=True, text=True)
         check(r.returncode == 0 and int(r.stdout.strip()) == py_crc,
               "the panel's JavaScript CRC32 must be the standard reflected CRC32 the board computes (got %r)" % r.stdout)
-
     # ---------- compiled fault-injection run of the EXACT commit state machine ----------
     gcc = shutil.which("gcc")
     if gcc is None:
@@ -3967,8 +3600,6 @@ int main(void){
               "the LUT commit state machine must survive the injected faults:\n" + r.stdout + r.stderr)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-
-
 def test_scenario7_technical_fault_lockout():
     """Scenario 7 contract: detect either transistor failure signature,
     latch a MCU-session lockout, and drive one synchronized three-LED face
@@ -3982,14 +3613,12 @@ def test_scenario7_technical_fault_lockout():
     esp_h = ESP_LINK_H.read_text()
     esp_c = ESP_LINK_C.read_text()
     app_types = APP_TYPES_H.read_text()
-
     check(re.search(r"#define FAULT_CHARGER_TECHNICAL\s+\(1u << 7\)", app_types),
           "scenario 7 must own a new central fault bit 7")
     check("static bool BOOL__G__TechnicalFaultLockout;" in charger_c,
           "scenario 7 lockout must be MCU-RAM state, not a panel/NVM setting")
     check("BOOL__G__TechnicalFaultLockout = false;" in charger_c.split("void func__Charger_Init", 1)[1].split("BOOL__G__ChargerInitialized", 1)[0],
           "only charger init/reset may release the technical lockout")
-
     eval_body = charger_c.split("void func__Charger_EvaluateTechnicalFault", 1)[1].split("bool func__Charger_IsAnyChannelActive", 1)[0]
     check("BOOL__G__RelayOpen" in eval_body and
           "func__Charger_GetAppliedDutyPermille" in eval_body and
@@ -4007,13 +3636,11 @@ def test_scenario7_technical_fault_lockout():
     check("if (BOOL__G__TechnicalFaultLockout != false)" in charger_c and
           "func__Charger_FinalDisconnect();" in charger_c,
           "the charger must keep both PWM paths stopped and the relay open while locked")
-
     jit_pos = task_c.find("func__Jitter_Run();")
     technical_pos = task_c.find("func__Charger_EvaluateTechnicalFault(")
     charger_pos = task_c.find("func__Charger_Evaluate(&measurement_snapshot_t__snap")
     check(0 <= jit_pos < technical_pos < charger_pos,
           "technical evaluation must run after JIT capture and before normal charger control")
-
     tech_face = ui_c.split("static void func__Ui_ScenarioTechnicalFault_Tick", 1)[1].split("/* ==================== Scenario Imbalance", 1)[0]
     check("func__red(bool__on)" in tech_face and
           "func__green(bool__on)" in tech_face and
@@ -4034,8 +3661,6 @@ def test_scenario7_technical_fault_lockout():
           "ESPLINK_PARAM_TECH_BEEP_COUNT" in esp_h and
           "ESPLINK_PARAM_TECH_LED_DUTY_PCT" in esp_h,
           "ESP protocol must route and name all scenario 7 controls")
-
-
 def test_panel_calibration_requires_readback_v127():
     """[EN] The calibration card must distinguish an HTTP queue response from
     a board acknowledgement. A successful /s request is not proof that the
@@ -4047,7 +3672,7 @@ def test_panel_calibration_requires_readback_v127():
     calmodalApply() باید برای هر پارامتر معتبر از setv() سریالی استفاده کند
     و بازخوانی متناظر تله‌متری را ببیند.
     """
-    panel = (ROOT / "esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
+    panel = (ROOT / "ESP_Calibration/plink_panel.h").read_text(encoding="utf-8")
     check("async function calapply()" in panel,
           "the panel must keep the explicit calibration apply function")
     body = panel.split("async function calapply()", 1)[1].split("/* ---------- v1.66", 1)[0]
@@ -4064,8 +3689,6 @@ def test_panel_calibration_requires_readback_v127():
           "the panel must show confirmed, mismatched and failed calibration values separately")
     check("calmodalClose();" in body and "calk" not in body and "calv" not in body,
           "the confirmation closes after one batch and no per-row controls remain")
-
-
 def test_boundary_concurrency_hardening_v126():
     """Static host checks for the cross-module edge cases not exercised by
     the pure charger model: flash address arithmetic, NVM id width, UART
@@ -4080,7 +3703,6 @@ def test_boundary_concurrency_hardening_v126():
     ui = UI_LED_C.read_text()
     imbalance = (ROOT / "Firmware/Modules/Imbalance/imbalance.c").read_text()
     esp = ESP_LINK_C.read_text()
-
     check("BSP_FLASH_STORAGE_END_ADDR - (uint32_t__count * 2u)" in flash and
           "uint32_t__address + (uint32_t__count * 2u)" not in flash,
           "flash program bounds must subtract the byte count, never add and wrap")
@@ -4116,8 +3738,6 @@ def test_boundary_concurrency_hardening_v126():
     check("uint32_t__stepMs >=" in charger and
           "= UINT32_MAX;" in charger,
           "dead-charge elapsed time must saturate at the exact UINT32_MAX boundary")
-
-
 def test_median_param_saturates():
     """[EN] A median size wider than 8 bits must saturate, not wrap (300 -> 44).
     [FA] اندازهٔ مدین بیشتر از ۸ بیت باید اشباع شود، نه بپیچد (۳۰۰ -> ۴۴)."""
@@ -4125,12 +3745,827 @@ def test_median_param_saturates():
     check("(uint32_t__value > 255u) ? 255u : uint32_t__value" in txt
           and "(uint8_t)(uint32_t__value & 0xFFu));" not in txt,
           "esp_link.c: FILTER_MEDIAN_SIZE must saturate before the 8-bit cast")
+def test_v1100_channel_independence_and_heal():
+    """[EN] v1.100 (user 2026-10-24): a battery event on one half stops only
+    its own channel; 10 healthy minutes heal the JIT strike budget. Source
+    contracts; the board itself is still the only proof.
+    [FA] v1.100 (دستور کاربر ۲۰۲۶-۱۰-۲۴): رویداد باتریِ هر نیم فقط کانال
+    خودش را نگه می‌دارد؛ ۱۰ دقیقه کار سالم شمارندهٔ ضربه‌ها را صفر می‌کند؛
+    قرارداد کد؛
+    اثبات نهایی فقط روی برد."""
+    charger_c = CHARGER_C.read_text()
+    charger_h = CHARGER_H.read_text()
+    check(re.search(r"#define CHG_JIT_TRIP_CLEAR_MS\s+600000u", charger_h),
+          "the strike budget must heal after 10 healthy minutes (600000 ms)")
+    jit_body = charger_c.split("static void func__Charger_HandleJitTrip", 1)[1].split(
+        "static uint16_t func__Charger_RetryDuty", 1)[0]
+    check("uint32_t__jitLastTripTick = uint32_t__nowTick;" in jit_body,
+          "every hardware trip must stamp its time for the heal clock")
+    heal_pos = charger_c.find("CHG_JIT_TRIP_CLEAR_MS")
+    check(heal_pos > 0,
+          "the heal must use the named 10-minute constant, not a magic number")
+    heal_body = charger_c[heal_pos - 1500:heal_pos + 400]
+    check("CHG_STATE_FINAL_FAULT" in heal_body and "CHG_STATE_JIT_RETRY_WAIT" in heal_body,
+          "the heal must never run while a final fault or a pending retry is active")
+    mirror_body = charger_c.split("Battery-lost mirror", 1)[1].split("#endif", 1)[0]
+    check("func__Fault_IsChannelBatteryAbsent(uint8_t__channelIndex)" in mirror_body,
+          "the bat-lost mirror must name the owner per channel, not stop both")
+    gate_pos = charger_c.find("v1.100 (user order 2026-10-24): a battery-presence episode alone")
+    check(gate_pos > 0,
+          "the global gate must document the battery-only carve-out")
+    gate_body = charger_c[gate_pos:gate_pos + 1800]
+    check("FAULT_CHARGER_BAT_LOST" in gate_body and "bool__faultBlocking" in gate_body,
+          "a battery-only episode must be carved out of the blanket stop")
+    check("bool__batteryFaultOnly" in gate_body and "APP_STATE_FAULT" in gate_body,
+          "an APP FAULT that is not the battery episode must keep the blanket stop")
+    check("(func__Fault_Get() != FAULT_NONE)" not in charger_c.split(
+        "func__Charger_CaptureDiag", 1)[1].split("bool__controlAllowed = false;", 1)[0],
+          "the old any-fault blanket stop must be gone from the main gate")
+    dead_body = charger_c.split("static void func__Charger_DeadBatteryTick", 1)[1].split("\n}", 1)[0]
+    zero_block = dead_body.split("Step 2:", 1)[1].split("bool__charging", 1)[0]
+    check("CHG_STATE_THERMAL_REST" in zero_block and
+          "UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;" in zero_block,
+          "until the user decides otherwise, the 2026-10-22 rule stands: the "
+          "thermal rest resets the dead-battery clock")
+def test_v1102_thermal_rest_panel_adjustable():
+    """[EN] v1.102 (user 2026-10-24): the thermal-rest trigger current and the
+    two rest times become panel parameters (166..168). Contracts: one X-macro
+    table owns window+default (CHG_THERMAL_ROWS); trigger 0 keeps the ORIGINAL
+    automatic band-edge rule (bulk - 50); either duration 0 disables the whole
+    feature and drops a stale arm; the fire still resets the dead-battery
+    clock; the setter clamps to the window under the scheduler lock; the
+    NVM/persisted window reaches id 168.
+    [FA] v1.102 (دستور کاربر ۲۰۲۶-۱۰-۲۴): آستانهٔ جریان استراحت و دو زمان
+    استراحت از پنل تنظیم می‌شوند (۱۶۶..۱۶۸). قراردادهای کد؛ اثبات نهایی فقط
+    روی برد."""
+    charger_c = CHARGER_C.read_text()
+    charger_h = CHARGER_H.read_text()
+    esp_c = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.c").read_text()
+    esp_h = ESP_LINK_H.read_text()
+    nvm_h = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link_nvm.h").read_text()
+    panel = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
+    # 1) One table owns window + factory default - same pattern as CHG_DEAD_ROWS.
+    rows = re.findall(r"X\((TRIGGER_MA|CONTINUOUS_MS|REST_MS),\s*(\d+)u,\s*(\d+)u,\s*(\d+)u\)", charger_c)
+    want = {("TRIGGER_MA", "0", "3000", "600"),
+            ("CONTINUOUS_MS", "0", "21600000", "3600000"),
+            ("REST_MS", "0", "3600000", "600000")}
+    check(set(rows) == want,
+          "CHG_THERMAL_ROWS must be the one source of window+default for 166..168: " + str(sorted(rows)))
+    check("CHG_THERMAL_ROWS(X)" in charger_c and
+          charger_c.count("CHG_THERMAL_ROWS(X)") == 1,
+          "the thermal rows must expand exactly once (factory defaults + clamp)")
+    # [EN] user order 2026-10-24: the factory default is the REAL old value
+    #      (600 mA = the factory ceiling 650 minus the 50 mA gap), never the
+    check(("TRIGGER_MA", "0", "3000", "600") in set(rows),
+          "the trigger default must be 600 mA = 650 - 50 (the old effective value)")
+    check(re.search(r"#define CHG_THERMAL_CURRENT_MARGIN_MA\s+50u", charger_h),
+          "the auto band edge keeps the 50 mA margin")
+    # 2) The live thermal block: 0 trigger = original rule, 0 duration = off.
+    th = charger_c.split("bool bool__atMax = false;", 1)[1].split("else\n                    {\n                        UINT32_T__G__ThermalContinuousSinceTick", 1)[0]
+    check("uint32_t__threshold == 0u" in th and
+          "uint32_t__bulkMax - CHG_THERMAL_CURRENT_MARGIN_MA" in th and
+          "uint32_t__threshold = uint32_t__bulkMax;" in th,
+          "trigger 0 must mean automatic: the original band-edge rule (bulk - 50)")
+    off_gate = th.split("(uint32_t__continuousMs == 0u) || (uint32_t__restMs == 0u)", 1)[1].split("else", 1)[0]
+    check("UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;" in th and
+          "continue;" not in off_gate,
+          "either duration 0 must disable the feature and drop a stale arm - "
+          "and must FALL THROUGH to the normal drive (a continue there froze "
+          "duty and silently stopped charging)")
+    check("else\n                    {\n                        bool__atMax =" in th,
+          "the arming must sit in the else of the off-gate so a disabled "
+          "feature never blocks the drive")
+    check("FALL" in th and "THROUGH" in th,
+          "the off-gate must document the fall-through contract")
+    check("func__Charger_DurationTicks(uint32_t__continuousMs)" in th and
+          "func__Charger_DurationTicks(uint32_t__restMs)" in th,
+          "the fire must use the two panel durations, not the hard-coded constants")
+    check("uint32_t__currentMa >= uint32_t__threshold" in th,
+          "the trigger comparison must use the panel threshold")
+    check("UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;" in th,
+          "the 2026-10-22 rule stands: entering thermal rest resets the "
+          "dead-battery clock")
+    check("CHG_THERMAL_1H_MS" not in charger_c and "CHG_THERMAL_10MIN_MS" not in charger_c,
+          "the hard-coded rest constants must be gone")
+    # 3) Wire ids and the OWNS route.
+    for name, pid, lo, hi, dflt in (
+            ("TRIGGER_MA", 166, 0, 3000, 0),
+            ("CONTINUOUS_MS", 167, 0, 21600000, 3600000),
+            ("REST_MS", 168, 0, 3600000, 600000)):
+        check(re.search(r"#define CHG_THERMAL_PARAM_%s\s+%du" % (name, pid), charger_h),
+              "charger.h must number the thermal param " + name + " as " + str(pid))
+    check("func__Charger_SetThermalParam" in esp_c and "CHG_THERMAL_PARAM_OWNS" in esp_c,
+          "the ESP link must route 166..168 to the thermal setter")
+    check("func__Charger_GetThermalParam" in esp_c,
+          "the ESP link must read 166..168 back through the thermal getter")
+    check("func__Charger_SetThermalParam" in charger_h and
+          "func__Charger_GetThermalParam" in charger_h,
+          "the thermal getter/setter must be declared in charger.h")
+    # 4) Setter shape: clamp-to-window write under the scheduler lock.
+    m = re.search(r"bool func__Charger_SetThermalParam\(.*?^\}", charger_c, re.S | re.M)
+    check(m is not None, "the thermal setter must exist")
+    setter = m.group(0) if m else ""
+    check("osKernelLock()" in setter and
+          "osKernelRestoreLock(int32_t__savedKernelLock)" in setter,
+          "the ESP task must write shared thermal state under the scheduler lock")
+    check("UINT32_T__A__ThermalLo[" in setter and "UINT32_T__A__ThermalHi[" in setter,
+          "the thermal setter must clamp to the table window (the wire format "
+          "cannot carry a rejection, so the clamp is the write guard)")
+    # 5) esp_link.h def values = factory defaults, ranges = the panel arrays.
+    for name, dflt, lo, hi in (
+            ("CHG_THERMAL_TRIGGER_MA", 600, 0, 3000),
+            ("CHG_THERMAL_CONTINUOUS_MS", 3600000, 0, 21600000),
+            ("CHG_THERMAL_REST_MS", 600000, 0, 3600000)):
+        m = re.search(r"#define ESPLINK_PARAM_%s\s+\d+u\s*/\*(.*?)\*/" % name, esp_h, re.S)
+        check(m is not None, "esp_link.h must document " + name)
+        body = m.group(1) if m else ""
+        rng = re.search(r"def\s+(-?\d+)\s*,\s*(-?\d+)\.\.(-?\d+)", body)
+        check(rng is not None and int(rng.group(1)) == dflt and
+              int(rng.group(2)) == lo and int(rng.group(3)) == hi,
+              name + " must document def %d, %d..%d" % (dflt, lo, hi))
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+171u", esp_h),
+          "ESP_PARAM_COUNT must reach 171")
+    check(re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+170u", nvm_h),
+          "the NVM persisted window must reach id 170 (COUNT - 1)")
+    # 6) Panel: the thermal card is in s0 with all three boxes.
+    check("استراحت حرارتی" in panel and 'id="q166"' in panel and
+          'id="q167"' in panel and 'id="q168"' in panel,
+          "the panel must host the thermal-rest card with all three boxes")
+    check("آستانهٔ جریان استراحت" in panel and "مدت شارژ تا استراحت" in panel and
+          "مدت استراحت حرارتی" in panel,
+          "the panel must name the three thermal values in plain Persian")
+    # 7) Factory restore (user order 2026-10-24): the thermal trio belongs to
+    #    the one charger key, and every default must be printable - a pdflt
+    #    window that stops at 165 leaves 166..168 with no default at all.
+    check("odef([166,167,168])" in panel and re.search(r"function qdef\(\)\{.*?odef\(\[166,167,168\]\)", panel),
+          "the charger factory key must restore the thermal trio 166..168")
+    check("id>=119&&id<=170" in panel.replace(" ", ""),
+          "the pdflt default window must cover the whole CDEF table (through 170)")
+    mdef = re.search(r"const MDEF=\[([^\]]*)\]", panel)
+    check(mdef and [int(x) for x in mdef.group(1).split(",")] == [0, 0, 3000, 3000, 0, 0, 0, 3, 10],
+          "MDEF must hold the real firmware defaults of ids 0..8 (offsets 0, gains 3000, windows 3/10)")
+    check("id<=8" in panel.replace(" ", "") and "MDEF[id]" in panel.replace(" ", ""),
+          "pdflt must answer for the measurement ids 0..8 from MDEF")
+def test_v1102_item3_stale_limits_fixed():
+    """[EN] v1.102 (user 2026-10-24, "fix the wrong items"): the advisory
+    limits and the docs must describe the REAL windows - Bulk up to 2950 (50
+    under the hard fault), Taper up to min(1475, bulk) - and the safety card
+    must not claim the ceilings are "lower only" when they are raiseable
+    within the factory maxima.
+    [FA] v1.102 (دستور کاربر ۲۰۲۶-۱۰-۲۴، «موارد اشتباه را اصلاح کن»): بازه‌های
+    توصیه‌ای و مستندات باید پنجرهٔ واقعی را بگویند (Bulk تا ۲۹۵۰، Taper تا
+    نیمی از آن) و کارت ایمنی دیگر نگوید سقف‌ها فقط پایین‌بردنی‌اند."""
+    panel = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
+    readme = (ROOT / "Firmware" / "Modules" / "Charger" / "README.md").read_text()
+    check("bad(im,100,2950)" in panel,
+          "the advisory Bulk window must be 100..2950")
+    check("bad(im,100,900)" not in panel,
+          "the stale 100..900 advisory window must be gone")
+    check("Math.min(1475,im)" in panel and "Math.min(300,im)" not in panel,
+          "the advisory Taper window must be 10..min(1475, bulk)")
+    check("`900mA`" not in readme and "2950mA" in readme,
+          "the charger README must document the real Bulk ceiling (2950 mA)")
+    check("فقط پایین‌بردنی" not in panel,
+          "the safety card must not claim the ceilings are lower-only")
+    check("هیچ‌کدام از سقف کارخانه بالاتر نمی‌روند" in panel,
+          "the safety card must state the real factory-ceiling rule")
+    check("حد سخت ۹۵۰ میلی‌آمپر جداست" not in panel,
+          "the Bulk description must not call the hard fault a fixed 950 mA")
+def test_relay_coil_gated_on_input_presence():
+    """[EN] Relay coil (BSP_GPIO_RELAY) must turn off whenever input is
+    disconnected during TechnicalFaultLockout / FINAL_FAULT so the coil does
+    not drain the battery (~40 mA), and re-energize immediately when input
+    returns (including overvoltage > 28 V), without touching Jitter latch.
+    [FA] کویل رله در زمان قطع‌بودن ورودی باید خاموش شود تا باتری تخلیه نشود و
+    با برگشت ورودی بلافاصله دوباره فعال گردد، بدون دست‌زدن به پرچم جیتر."""
+    import shutil, subprocess, tempfile
+    charger_c = CHARGER_C.read_text()
+    lockout_block = charger_c.split("if (BOOL__G__TechnicalFaultLockout != false)", 1)[1].split("return;", 1)[0]
+    check("func__Charger_IsInputPresentForRelay(measurement_snapshot_t__snap)" in lockout_block and
+          "func__Charger_FinalDisconnect();" in lockout_block and
+          "func__Charger_FinalDisconnectIdle();" in lockout_block,
+          "TechnicalFaultLockout must gate relay coil energization on input presence")
+    latch_body = charger_c.split("static void func__Charger_LatchFinalFault", 1)[1].split("#if MODULE_JITTER", 1)[0]
+    check("func__Jitter_ClearChannel" not in latch_body,
+          "LatchFinalFault must never clear Jitter_ChannelTripped")
+    gcc = shutil.which("gcc")
+    check(gcc is not None, "gcc must be available for compiled charger relay harness")
+    tmp = tempfile.mkdtemp(prefix="chg_relay_")
+    try:
+        harness = Path(tmp) / "harness.c"
+        harness.write_text(r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
+#include "charger.h"
+#include "bsp_gpio.h"
+#include "bsp_pwm.h"
+#include "fault.h"
+#include "jitter.h"
+#include "diag.h"
+#include "imbalance.h"
+#include "cmsis_os2.h"
 
+static uint32_t g_tick = 1000u;
+static bool g_relay_coil = false;
+static bool g_input_pin = true;
+static uint16_t g_pwm_duty[2] = {0u, 0u};
+static bool g_pwm_stopped = false;
+static bool g_jit_tripped[2] = {false, false};
+static fault_mask_t g_fault_mask = FAULT_NONE;
+
+uint32_t osKernelGetTickCount(void) { return g_tick; }
+uint32_t osKernelGetTickFreq(void) { return 1000u; }
+int32_t osKernelLock(void) { return 0; }
+int32_t osKernelRestoreLock(int32_t lock) { (void)lock; return 0; }
+osStatus_t osDelay(uint32_t ticks) { (void)ticks; return osOK; }
+
+void func__BspGpio_Write(bsp_gpio_id_t id, bool active)
+{
+    if (id == BSP_GPIO_RELAY) { g_relay_coil = active; }
+}
+bool func__BspGpio_Read(bsp_gpio_id_t id)
+{
+    if (id == BSP_GPIO_INPUT_24V_PRESENT) { return g_input_pin; }
+    return false;
+}
+void func__BspPwm_StopAll(void)
+{
+    g_pwm_stopped = true;
+    g_pwm_duty[0] = 0u;
+    g_pwm_duty[1] = 0u;
+}
+void func__BspPwm_Stop(bsp_pwm_channel_t ch)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = 0u; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = 0u; }
+}
+void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t ch, uint16_t duty)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = duty; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = duty; }
+}
+uint16_t func__BspPwm_GetAppliedDutyPermille(bsp_pwm_channel_t ch)
+{
+    return (ch == BSP_PWM_CHARGER_1) ? g_pwm_duty[0] : g_pwm_duty[1];
+}
+
+bool func__Jitter_ChannelTripped(uint8_t ch)
+{
+    return (ch >= 1u && ch <= 2u) ? g_jit_tripped[ch - 1u] : false;
+}
+void func__Jitter_ClearChannel(uint8_t ch)
+{
+    if (ch >= 1u && ch <= 2u) { g_jit_tripped[ch - 1u] = false; }
+}
+
+void func__Fault_Set(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask | m); }
+void func__Fault_Clear(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask & ~m); }
+fault_mask_t func__Fault_Get(void) { return g_fault_mask; }
+bool func__Fault_IsBatteryAbsent(void) { return false; }
+bool func__Fault_IsChannelBatteryAbsent(uint8_t ch) { (void)ch; return false; }
+bool func__Fault_GetAlarmParam(uint8_t id, uint32_t *val)
+{
+    if (id == FAULT_ALARM_PARAM_INPUT_MIN_MV) { *val = 21000u; return true; }
+    if (id == FAULT_ALARM_PARAM_INPUT_MAX_MV) { *val = 28000u; return true; }
+    if (id == FAULT_ALARM_PARAM_DISCONNECT_DEB_MS) { *val = 150u; return true; }
+    return false;
+}
+bool func__Fault_GetInputWindow(uint32_t *min_mv, uint32_t *max_mv)
+{
+    if ((min_mv == NULL) || (max_mv == NULL)) { return false; }
+    *min_mv = 21000u;
+    *max_mv = 28000u;
+    return true;
+}
+bool func__Fault_GetInputPermission(bool *snapshot_valid, bool *permitted)
+{
+    if ((snapshot_valid == NULL) || (permitted == NULL)) { return false; }
+    *snapshot_valid = true;
+    *permitted = true;
+    return true;
+}
+
+bool func__Imbalance_ChargerGateClosed(void) { return false; }
+void func__Imbalance_NotifyThermalRest(void) {}
+void func__Imbalance_GetOutputs(imbalance_outputs_t *out)
+{
+    if (out != NULL) { *out = (imbalance_outputs_t){0}; }
+}
+void func__Fault_OnSupervisionChange(void) {}
+void func__Diag_RecordChargeComplete(uint8_t ch) { (void)ch; }
+
+int main(void)
+{
+    measurement_snapshot_t snap = {0};
+    snap.valid = true;
+    snap.input_present = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat24_mv = 25000u;
+    snap.v_bat12_mv = 12500u;
+    snap.v_bat_low_mv = 12500u;
+    snap.v_bat_high_mv = 12500u;
+
+    func__Charger_Init();
+    assert(g_relay_coil == false);
+
+    /* Let settle timer elapse and trigger 3 JIT strikes on CH1 */
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+
+    /* Strike 1 -> retry wait -> revive */
+    g_jit_tripped[0] = true;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_relay_coil == false);
+    g_tick += 4000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_jit_tripped[0] == false);
+
+    /* Strike 2 -> retry wait -> revive */
+    g_jit_tripped[0] = true;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_relay_coil == false);
+    g_tick += 4000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_jit_tripped[0] == false);
+
+    /* Strike 3 -> FINAL_FAULT + RelayOpen + Jitter latch stays set -> Scenario 7 locks */
+    g_jit_tripped[0] = true;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_relay_coil == true);
+    assert(func__Charger_IsRelayOpen() == true);
+    assert(g_jit_tripped[0] == true);
+
+    g_tick += 10u;
+    func__Charger_EvaluateTechnicalFault(&snap);
+    assert(func__Charger_IsTechnicalFaultLocked() == true);
+    assert((g_fault_mask & FAULT_CHARGER_TECHNICAL) != 0u);
+
+    /* Input still 24 V -> coil stays ON */
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+    assert(g_pwm_duty[0] == 0u && g_pwm_duty[1] == 0u);
+
+    /* Input disconnected (0 V) -> coil MUST turn OFF, latches stay set */
+    snap.v_in_mv = 0u;
+    snap.input_present = false;
+    g_input_pin = false;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == false);
+    assert(func__Charger_IsRelayOpen() == true);
+    assert(func__Charger_IsTechnicalFaultLocked() == true);
+    assert(g_jit_tripped[0] == true);
+
+    /* Input returns at 24 V -> coil immediately turns ON again */
+    snap.v_in_mv = 24000u;
+    snap.input_present = true;
+    g_input_pin = true;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+
+    /* Overvoltage input (30 V > 28 V max) -> coil MUST still stay ON */
+    snap.v_in_mv = 30000u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+
+    /* Invalid snapshot while PB4=LOW -> coil OFF; while PB4=HIGH -> coil ON */
+    snap.valid = false;
+    g_input_pin = false;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == false);
+    g_input_pin = true;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(g_relay_coil == true);
+
+    printf("RELAY HARNESS OK\n");
+    return 0;
+}
+''', encoding="utf-8")
+        binary = str(Path(tmp) / "harness")
+        inc = [
+            "-I", str(ROOT / "CubeIDE/Core/Inc"),
+            "-I", str(ROOT / "CubeIDE/Drivers/CMSIS/Include"),
+            "-I", str(ROOT / "CubeIDE/Drivers/CMSIS/Device/ST/STM32F1xx/Include"),
+            "-I", str(ROOT / "CubeIDE/Drivers/STM32F1xx_HAL_Driver/Inc"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/include"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"),
+            "-I", str(ROOT / "Firmware/App/Inc"),
+            "-I", str(ROOT / "Firmware/Bsp/Inc"),
+            "-I", str(ROOT / "Firmware/Config/Inc"),
+            "-I", str(ROOT / "Firmware/Rtos/Inc"),
+            "-I", str(ROOT / "Firmware/Modules/Charger"),
+            "-I", str(ROOT / "Firmware/Modules/Measurement"),
+            "-I", str(ROOT / "Firmware/Modules/Fault"),
+            "-I", str(ROOT / "Firmware/Modules/Jitter"),
+            "-I", str(ROOT / "Firmware/Modules/Imbalance"),
+            "-I", str(ROOT / "Firmware/Modules/Diag"),
+        ]
+        r = subprocess.run(
+            [gcc, "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
+             "-DSTM32F103xB", "-DUSE_HAL_DRIVER", *inc,
+             str(CHARGER_C), str(ROOT / "Firmware/Rtos/Src/rtos_time.c"),
+             str(harness), "-o", binary],
+            capture_output=True, text=True)
+        check(r.returncode == 0, "relay harness must compile:\n" + r.stderr)
+        r = subprocess.run([binary], capture_output=True, text=True)
+        check(r.returncode == 0 and "RELAY HARNESS OK" in r.stdout,
+              "relay harness runtime assertions must pass:\n" + r.stdout + r.stderr)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+def test_blind_snapshot_resumes_from_70_percent():
+    """Compile charger.c and verify temporary blind ADC snapshot pauses PWM at 0%
+    while preserving FLOAT and resuming BULK/ABSORB at 70% duty (with Vin rise
+    compensation), whereas real faults or input loss still reset cleanly."""
+    import shutil, subprocess, tempfile
+    gcc = shutil.which("gcc") or shutil.which("cc")
+    assert gcc, "host C compiler required"
+    tmp = tempfile.mkdtemp(prefix="chg_blind_test_")
+    try:
+        harness = Path(tmp) / "harness.c"
+        harness.write_text(r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include "charger.h"
+#include "bsp_gpio.h"
+#include "bsp_pwm.h"
+#include "fault.h"
+#include "jitter.h"
+#include "diag.h"
+#include "imbalance.h"
+#include "cmsis_os2.h"
+
+static uint32_t g_tick = 1000u;
+static bool g_relay_coil = false;
+static bool g_input_pin = true;
+static uint16_t g_pwm_duty[2] = {0u, 0u};
+static bool g_jit_tripped[2] = {false, false};
+static fault_mask_t g_fault_mask = FAULT_NONE;
+
+uint32_t osKernelGetTickCount(void) { return g_tick; }
+uint32_t osKernelGetTickFreq(void) { return 1000u; }
+int32_t osKernelLock(void) { return 0; }
+int32_t osKernelRestoreLock(int32_t lock) { (void)lock; return 0; }
+osStatus_t osDelay(uint32_t ticks) { (void)ticks; return osOK; }
+
+void func__BspGpio_Write(bsp_gpio_id_t id, bool active)
+{
+    if (id == BSP_GPIO_RELAY) { g_relay_coil = active; }
+}
+bool func__BspGpio_Read(bsp_gpio_id_t id)
+{
+    if (id == BSP_GPIO_INPUT_24V_PRESENT) { return g_input_pin; }
+    return false;
+}
+void func__BspPwm_StopAll(void)
+{
+    g_pwm_duty[0] = 0u;
+    g_pwm_duty[1] = 0u;
+}
+void func__BspPwm_Stop(bsp_pwm_channel_t ch)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = 0u; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = 0u; }
+}
+void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t ch, uint16_t duty)
+{
+    if (ch == BSP_PWM_CHARGER_1) { g_pwm_duty[0] = duty; }
+    if (ch == BSP_PWM_CHARGER_2) { g_pwm_duty[1] = duty; }
+}
+uint16_t func__BspPwm_GetAppliedDutyPermille(bsp_pwm_channel_t ch)
+{
+    return (ch == BSP_PWM_CHARGER_1) ? g_pwm_duty[0] : g_pwm_duty[1];
+}
+
+bool func__Jitter_ChannelTripped(uint8_t ch)
+{
+    return (ch >= 1u && ch <= 2u) ? g_jit_tripped[ch - 1u] : false;
+}
+void func__Jitter_ClearChannel(uint8_t ch)
+{
+    if (ch >= 1u && ch <= 2u) { g_jit_tripped[ch - 1u] = false; }
+}
+
+void func__Fault_Set(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask | m); }
+void func__Fault_Clear(fault_mask_t m) { g_fault_mask = (fault_mask_t)(g_fault_mask & ~m); }
+fault_mask_t func__Fault_Get(void) { return g_fault_mask; }
+bool func__Fault_IsBatteryAbsent(void) { return false; }
+bool func__Fault_IsChannelBatteryAbsent(uint8_t ch) { (void)ch; return false; }
+bool func__Fault_GetAlarmParam(uint8_t id, uint32_t *val)
+{
+    if (id == FAULT_ALARM_PARAM_INPUT_MIN_MV) { *val = 21000u; return true; }
+    if (id == FAULT_ALARM_PARAM_INPUT_MAX_MV) { *val = 28000u; return true; }
+    if (id == FAULT_ALARM_PARAM_DISCONNECT_DEB_MS) { *val = 150u; return true; }
+    return false;
+}
+bool func__Fault_GetInputWindow(uint32_t *min_mv, uint32_t *max_mv)
+{
+    if ((min_mv == NULL) || (max_mv == NULL)) { return false; }
+    *min_mv = 21000u;
+    *max_mv = 28000u;
+    return true;
+}
+bool func__Fault_GetInputPermission(bool *snapshot_valid, bool *permitted)
+{
+    if ((snapshot_valid == NULL) || (permitted == NULL)) { return false; }
+    *snapshot_valid = true;
+    *permitted = true;
+    return true;
+}
+
+bool func__Imbalance_ChargerGateClosed(void) { return false; }
+void func__Imbalance_NotifyThermalRest(void) {}
+void func__Imbalance_GetOutputs(imbalance_outputs_t *out)
+{
+    if (out != NULL)
+    {
+        *out = (imbalance_outputs_t){0};
+        out->bool__chargingAllowed = true;
+    }
+}
+void func__Fault_OnSupervisionChange(void) {}
+void func__Diag_RecordChargeComplete(uint8_t ch) { (void)ch; }
+
+int main(void)
+{
+    measurement_snapshot_t snap = {0};
+    snap.valid = true;
+    snap.input_present = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat24_mv = 25000u;
+    snap.v_bat12_mv = 12500u;
+    snap.v_bat_low_mv = 12500u;
+    snap.v_bat_high_mv = 12500u;
+    snap.i_ch1_ma = 200u;
+    snap.i_ch2_ma = 200u;
+
+    func__Charger_Init();
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] == CHG_DUTY_START_PERMILLE);
+
+    /* Ramp BULK up into ~300 permille range */
+    snap.i_ch1_ma = 0u;
+    snap.i_ch2_ma = 0u;
+    for (int step = 0; step < 3000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    uint16_t duty_before = g_pwm_duty[0];
+    assert(duty_before >= 250u);
+
+    /* 1) Temporary blind ADC snapshot for 10 seconds -> PWM=0 while blind */
+    snap.valid = false;
+    for (int step = 0; step < 20; step++)
+    {
+        g_tick += 500u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+        assert(g_pwm_duty[0] == 0u);
+        assert(g_pwm_duty[1] == 0u);
+        assert(func__Charger_IsChannelActive(0u) == true);
+    }
+
+    /* 2) ADC recovers at same Vin (24 V) -> resumes at exact 70% of duty_before */
+    snap.valid = true;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    uint16_t expected_70 = (uint16_t)(((uint32_t)duty_before * CHG_BLIND_RESUME_PERCENT) / 100u);
+    assert(g_pwm_duty[0] == expected_70);
+    assert(g_pwm_duty[1] == expected_70);
+
+    /* 3) Vin rises during blind pause (22 V -> 27.5 V) -> scaled down proportionally */
+    snap.v_in_mv = 22000u;
+    g_tick += 100u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    duty_before = g_pwm_duty[0];
+    assert(duty_before >= 150u);
+
+    snap.valid = false;
+    g_tick += 1000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] == 0u);
+
+    snap.valid = true;
+    snap.v_in_mv = 27500u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    uint32_t base_resume = ((uint32_t)duty_before * CHG_BLIND_RESUME_PERCENT) / 100u;
+    uint16_t expected_vin_comp = (uint16_t)((base_resume * 22000u) / 27500u);
+    assert(g_pwm_duty[0] == expected_vin_comp);
+
+    /* 4) Reach FLOAT on both channels and verify blind snapshot preserves FLOAT */
+    snap.v_in_mv = 24000u;
+    snap.v_bat_high_mv = 14400u;
+    snap.v_bat_low_mv = 14400u;
+    snap.i_ch1_ma = 20u;
+    snap.i_ch2_ma = 20u;
+    for (int step = 0; step < 7000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == true);
+
+    snap.valid = false;
+    g_tick += 5000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(func__Charger_IsChargeComplete() == true);
+    assert(g_pwm_duty[0] == 0u);
+
+    snap.valid = true;
+    snap.v_bat_high_mv = 13200u;
+    snap.v_bat_low_mv = 13200u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(func__Charger_IsChargeComplete() == true);
+    assert(g_pwm_duty[0] == 0u);
+
+    /* 5) Persistent FAULT_ADC clears saved blind state via SafeIdle */
+    snap.v_bat_high_mv = 12400u;
+    snap.v_bat_low_mv = 12400u;
+    snap.i_ch1_ma = 200u;
+    snap.i_ch2_ma = 200u;
+    for (int step = 0; step < 1000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(g_pwm_duty[0] > 50u);
+    snap.valid = false;
+    g_tick += 100u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_fault_mask = FAULT_ADC;
+    g_tick += 100u;
+    func__Charger_Evaluate(&snap, APP_STATE_FAULT);
+    assert(func__Charger_IsChannelActive(0u) == false);
+
+    /* 6) ABSORB blind-resume: 0 mA PWM-off snapshot + below-knee ramp must NOT
+          falsely arm the 1-hour absorbMaxArmTick while real current >= 300 mA */
+    g_fault_mask = FAULT_NONE;
+    func__Charger_Init();
+    snap.valid = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat_high_mv = 13200u;
+    snap.v_bat_low_mv = 13200u;
+    snap.i_ch1_ma = 300u;
+    snap.i_ch2_ma = 300u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    for (int step = 0; step < 3000; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    /* Enter ABSORB at 14.35 V with 300 mA (> 150 mA arm threshold) */
+    snap.v_bat_high_mv = 14350u;
+    snap.v_bat_low_mv = 14350u;
+    snap.i_ch1_ma = 300u;
+    snap.i_ch2_ma = 300u;
+    for (int step = 0; step < 600; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == false);
+
+    /* Blind pause for 3 s, then recover with a 0 mA / 13.6 V PWM-off snapshot
+       followed by a 25 s below-knee ramp before returning to 14.35 V / 300 mA */
+    snap.valid = false;
+    g_tick += 3000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] == 0u);
+
+    snap.valid = true;
+    snap.v_bat_high_mv = 13600u;
+    snap.v_bat_low_mv = 13600u;
+    snap.i_ch1_ma = 0u;
+    snap.i_ch2_ma = 0u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    assert(g_pwm_duty[0] > 0u);
+    for (int step = 0; step < 250; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    snap.v_bat_high_mv = 14350u;
+    snap.v_bat_low_mv = 14350u;
+    snap.i_ch1_ma = 300u;
+    snap.i_ch2_ma = 300u;
+    /* Run 62 minutes at 300 mA: must NOT prematurely enter FLOAT! */
+    for (int step = 0; step < 37200; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == false);
+
+    /* 7) ABSORB blind-resume: 8 minutes of accumulated soak is preserved across
+          a temporary 13.6 V post-pause dip so 2.5 more minutes completes FLOAT */
+    func__Charger_Init();
+    snap.valid = true;
+    snap.v_in_mv = 24000u;
+    snap.v_bat_high_mv = 13200u;
+    snap.v_bat_low_mv = 13200u;
+    snap.i_ch1_ma = 200u;
+    snap.i_ch2_ma = 200u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    g_tick += 16000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    for (int step = 0; step < 2500; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    /* Accumulate 8 minutes (480 s) of ABSORB at 14.35 V, 200 mA */
+    snap.v_bat_high_mv = 14350u;
+    snap.v_bat_low_mv = 14350u;
+    for (int step = 0; step < 4800; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == false);
+
+    /* Blind pause 2 s -> resume with 13.6 V / 0 mA for 15 s while ramping up */
+    snap.valid = false;
+    g_tick += 2000u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+
+    snap.valid = true;
+    snap.v_bat_high_mv = 13600u;
+    snap.v_bat_low_mv = 13600u;
+    snap.i_ch1_ma = 0u;
+    snap.i_ch2_ma = 0u;
+    g_tick += 10u;
+    func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    for (int step = 0; step < 150; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+
+    /* Return to 14.4 V with 25 mA tail current: only 2.5 more minutes (150 s,
+       not a fresh 10 minutes!) must complete the preserved 8-min soak + 60s taper */
+    snap.v_bat_high_mv = 14400u;
+    snap.v_bat_low_mv = 14400u;
+    snap.i_ch1_ma = 25u;
+    snap.i_ch2_ma = 25u;
+    for (int step = 0; step < 1500; step++)
+    {
+        g_tick += 100u;
+        func__Charger_Evaluate(&snap, APP_STATE_INPUT);
+    }
+    assert(func__Charger_IsChargeComplete() == true);
+
+    printf("BLIND RESUME HARNESS OK\n");
+    return 0;
+}
+''', encoding="utf-8")
+        binary = str(Path(tmp) / "harness_blind")
+        inc = [
+            "-I", str(ROOT / "Firmware/Config/Inc"),
+            "-I", str(ROOT / "Firmware/Bsp/Inc"),
+            "-I", str(ROOT / "Firmware/Rtos/Inc"),
+            "-I", str(ROOT / "Firmware/Rtos/HostStub"),
+            "-I", str(ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2"),
+            "-I", str(ROOT / "Firmware/Modules/Charger"),
+            "-I", str(ROOT / "Firmware/Modules/Measurement"),
+            "-I", str(ROOT / "Firmware/Modules/Fault"),
+            "-I", str(ROOT / "Firmware/Modules/Jitter"),
+            "-I", str(ROOT / "Firmware/Modules/Imbalance"),
+            "-I", str(ROOT / "Firmware/Modules/Diag"),
+        ]
+        r = subprocess.run(
+            [gcc, "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
+             "-DSTM32F103xB", "-DUSE_HAL_DRIVER", *inc,
+             str(CHARGER_C), str(ROOT / "Firmware/Rtos/Src/rtos_time.c"),
+             str(harness), "-o", binary],
+            capture_output=True, text=True)
+        check(r.returncode == 0, "blind resume harness must compile:\n" + r.stderr)
+        r = subprocess.run([binary], capture_output=True, text=True)
+        check(r.returncode == 0 and "BLIND RESUME HARNESS OK" in r.stdout,
+              "blind resume harness runtime assertions must pass:\n" + r.stdout + r.stderr)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 def main():
     tests = [
         test_modules_enabled_build,
         test_median_param_saturates,
+        test_v1100_channel_independence_and_heal,
+        test_v1102_thermal_rest_panel_adjustable,
+        test_v1102_item3_stale_limits_fixed,
         test_master_enable_constant_is_single_gate,
         test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off,
         test_transformer_known_not_bypassable_bringup_only_when_zero,
@@ -4141,8 +4576,10 @@ def main():
         test_min_valid_battery_is_sense_not_setpoint,
         test_battery_voltage_upper_cutoff_applies_before_any_control,
         test_jit_is_active_low_and_retry_captures_duty_before_stop,
-        test_input_voltage_is_real_adc_22000mv,
+        test_input_voltage_uses_shared_fault_window,
         test_input_recovery_restarts_with_safe_duty,
+        test_input_wait_services_dead_battery_pause_counter,
+        test_manual_dead_battery_reset_clears_live_timer,
         test_no_shadowing_in_duty_adjustments,
         test_jit_per_channel_sequence,
         test_low_current_is_not_fault,
@@ -4180,12 +4617,12 @@ def main():
         test_scenario7_technical_fault_lockout,
         test_panel_calibration_requires_readback_v127,
         test_boundary_concurrency_hardening_v126,
+        test_relay_coil_gated_on_input_presence,
+        test_blind_snapshot_resumes_from_70_percent,
     ]
     for test in tests:
         test()
     print(f"ALL {len(tests)} CHARGER HOST TESTS PASSED")
     print("Note: physical board tests not performed; no real battery connected.")
-
-
 if __name__ == "__main__":
     main()

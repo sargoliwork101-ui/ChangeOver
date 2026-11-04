@@ -1,0 +1,8 @@
+{
+  "_note": "Read by tools/check_module_contract.py --strict. Only the modules listed in 'enforced' are gated; every other module is still reported and left exactly as it is. Turning a module on is a deliberate, reviewed change - the list starts empty so that adding this tool changed no behaviour at all.",
+  "_howto": "allow[module] lists the modules that module is permitted to include. allow_globals[module] lists the modules whose globals it is permitted to read. A module not in 'enforced' is never checked.",
+  "version": 1,
+  "enforced": [],
+  "allow": {},
+  "allow_globals": {}
+}

@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "projects": {
+    "ESP_USER": {
+      "root": "ESP_USER",
+      "contract": "ESP_USER/CONTRACT.md",
+      "route_source": "ESP_USER/ESP_USER.ino",
+      "locked_symbols": [
+        {
+          "file": "ESP_USER/simple_config.h",
+          "defines": {
+            "SIMPLE_LINK_BAUD_RATE": "921600u",
+            "SIMPLE_LINK_SOF_BYTE0": "0xAAu",
+            "SIMPLE_LINK_SOF_BYTE1": "0x55u",
+            "SIMPLE_LINK_PROTOCOL_VERSION": "2u",
+            "SIMPLE_LINK_CRC16_INIT": "0xFFFFu",
+            "SIMPLE_LINK_CRC16_POLY": "0x1021u",
+            "SIMPLE_MSG_SET_PARAM": "0x01u",
+            "SIMPLE_MSG_GET_PARAMS": "0x02u",
+            "SIMPLE_MSG_HELLO": "0x40u",
+            "SIMPLE_MSG_HELLO_ACK": "0x41u",
+            "SIMPLE_LINK_MAX_PAYLOAD": "512u",
+            "SIMPLE_LINK_TLM_SIZE": "128u",
+            "SIMPLE_LINK_TLM_FIELD_COUNT": "31u",
+            "SIMPLE_HELLO_LEN": "8u",
+            "SIMPLE_HELLO_ACK_LEN": "24u",
+            "SIMPLE_ESP_ROLE_USER": "1u",
+            "SIMPLE_PARAM_COUNT": "171u",
+            "SIMPLE_MSG_TLM_LIVE": "0x10u",
+            "SIMPLE_MSG_TIME_SYNC": "0x30u",
+            "SIMPLE_MSG_DIAG_REQ": "0x31u",
+            "SIMPLE_MSG_DIAG_DATA": "0x32u",
+            "SIMPLE_MSG_WIFI_CLIENT_STATE": "0x33u",
+            "SIMPLE_MSG_PARAM_NAK": "0x15u",
+            "SIMPLE_MSG_PARAM_REPORT": "0x11u",
+            "SIMPLE_MSG_PARAMS_BULK": "0x12u"
+          }
+        }
+      ]
+    },
+    "ESP_Calibration": {
+      "root": "ESP_Calibration",
+      "contract": "ESP_Calibration/CONTRACT.md",
+      "route_source": "ESP_Calibration/ESP_Calibration.ino",
+      "locked_symbols": [
+        {
+          "file": "ESP_Calibration/plink_config.h",
+          "defines": {
+            "ESP_LINK_BAUD_RATE": "921600u",
+            "ESP_LINK_SOF_BYTE0": "0xAAu",
+            "ESP_LINK_SOF_BYTE1": "0x55u",
+            "ESP_LINK_PROTOCOL_VERSION": "2u",
+            "ESP_LINK_CRC16_INIT": "0xFFFFu",
+            "ESP_LINK_CRC16_POLY": "0x1021u",
+            "ESP_LINK_MAX_PAYLOAD": "512u",
+            "ESP_MSG_SET_PARAM": "0x01u",
+            "ESP_MSG_GET_PARAMS": "0x02u",
+            "ESP_MSG_HELLO": "0x40u",
+            "ESP_MSG_HELLO_ACK": "0x41u",
+            "ESP_LINK_TLM_SIZE": "128u",
+            "ESP_LINK_TLM_FIELD_COUNT": "31u",
+            "ESP_MSG_TLM_LIVE": "0x10u",
+            "ESP_MSG_PARAM_REPORT": "0x11u",
+            "ESP_MSG_PARAMS_BULK": "0x12u",
+            "ESP_MSG_PARAM_NAK": "0x15u",
+            "ESP_MSG_LUT_BEGIN": "0x04u",
+            "ESP_MSG_LUT_CHUNK": "0x05u",
+            "ESP_MSG_LUT_COMMIT": "0x06u",
+            "ESP_MSG_LUT_RESET": "0x07u",
+            "ESP_MSG_LUT_READ": "0x08u",
+            "ESP_MSG_LUT_ACK": "0x13u",
+            "ESP_MSG_LUT_DATA": "0x14u",
+            "ESP_MSG_WIFI_CLIENT_STATE": "0x33u",
+            "ESP_HELLO_LEN": "8u",
+            "ESP_HELLO_ACK_LEN": "24u",
+            "ESP_ESP_ROLE_CALIBRATION": "2u",
+            "ESP_PARAM_COUNT": "171u",
+            "ESP_LUT_POINTS_MAX": "24u"
+          }
+        }
+      ]
+    },
+    "STM32": {
+      "roots": ["Firmware", "CubeIDE", "CubeMX", "Circuit", "Programmer"],
+      "contract": "Firmware/CONTRACT.md",
+      "locked_symbols": [
+        {
+          "file": "Firmware/Modules/EspLink/esp_link.h",
+          "defines": {
+            "ESPLINK_PROTOCOL_VERSION": "2u",
+            "ESPLINK_CRC16_INIT": "0xFFFFu",
+            "ESPLINK_CRC16_POLY": "0x1021u",
+            "ESPLINK_FRAME_MAX_PAYLOAD": "512u",
+            "ESPLINK_MSG_SET_PARAM": "0x01u",
+            "ESPLINK_MSG_GET_PARAMS": "0x02u",
+            "ESPLINK_MSG_LUT_BEGIN": "0x04u",
+            "ESPLINK_MSG_LUT_CHUNK": "0x05u",
+            "ESPLINK_MSG_LUT_COMMIT": "0x06u",
+            "ESPLINK_MSG_LUT_RESET": "0x07u",
+            "ESPLINK_MSG_LUT_READ": "0x08u",
+            "ESPLINK_MSG_LUT_ACK": "0x13u",
+            "ESPLINK_MSG_LUT_DATA": "0x14u",
+            "ESPLINK_MSG_TLM_LIVE": "0x10u",
+            "ESPLINK_MSG_PARAM_REPORT": "0x11u",
+            "ESPLINK_MSG_PARAMS_BULK": "0x12u",
+            "ESPLINK_MSG_HELLO": "0x40u",
+            "ESPLINK_MSG_HELLO_ACK": "0x41u",
+            "ESPLINK_SOF_BYTE0": "0xAAu",
+            "ESPLINK_SOF_BYTE1": "0x55u",
+            "ESPLINK_FRAME_HEADER_SIZE": "6u",
+            "ESPLINK_FRAME_CHECKSUM_SIZE": "2u",
+            "ESPLINK_TLM_PAYLOAD_SIZE": "128u",
+            "ESPLINK_PARAM_COUNT": "171u",
+            "ESPLINK_MSG_TIME_SYNC": "0x30u",
+            "ESPLINK_MSG_DIAG_REQ": "0x31u",
+            "ESPLINK_MSG_DIAG_DATA": "0x32u",
+            "ESPLINK_MSG_WIFI_CLIENT_STATE": "0x33u",
+            "ESPLINK_HELLO_LEN": "8u",
+            "ESPLINK_HELLO_ACK_LEN": "24u",
+            "ESPLINK_MSG_CAL_REFERENCE": "0x03u"
+          }
+        },
+        {
+          "file": "Firmware/Bsp/Src/bsp_uart.c",
+          "defines": {"BSP_UART_BAUD_RATE": "921600u"}
+        }
+      ]
+    }
+  },
+  "outside_directories": ["Calibration Data", "Documentation", "tools"],
+  "outside_files": [
+    ".gitignore",
+    "AI_AGENT_RULES.md",
+    "AI_EXECUTION_REPORT.md",
+    "ESP_AGENT_SPEC.md",
+    "ESP_BENCH_MANUAL.md",
+    "README.md"
+  ],
+  "ignored_root_entries": [".git", "node_modules"]
+}

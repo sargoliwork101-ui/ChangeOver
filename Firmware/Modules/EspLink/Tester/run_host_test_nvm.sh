@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 BUILD_DIR="$(mktemp -d)"
 trap 'rm -rf "$BUILD_DIR"' EXIT
-
 CC="${CC:-gcc}"
 COMMON=(-std=c11 -Wall -Wextra -Werror -Wno-int-to-pointer-cast -ffunction-sections -fdata-sections)
 INCLUDES=(
@@ -22,10 +20,8 @@ INCLUDES=(
   -I"$ROOT/Firmware/Rtos/Inc"
   -I"$ROOT/CubeIDE/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2"
 )
-
 "$CC" "${COMMON[@]}" "${INCLUDES[@]}" \
   "$ROOT/Firmware/Modules/EspLink/Tester/host_test_nvm.c" \
   "$ROOT/Firmware/Modules/EspLink/esp_link_nvm.c" \
   -Wl,--gc-sections -o "$BUILD_DIR/host_test_nvm"
-
 "$BUILD_DIR/host_test_nvm"

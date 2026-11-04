@@ -1,19 +1,12 @@
 /**
  * @file    esp_link_nvm.c
  * @brief   [EN] Panel parameter persistence in STM32 on-chip flash (v1.14).
- *          [FA] ماندگاری پارامترهای پنل در فلش رویتراشهٔ STM32 (v1.14).
- *
  * @note    [EN] Contract in esp_link_nvm.h. The PURE RECORD LOGIC block
  *              below (CRC32, validation, sequence compare, record build)
  *              is self-contained - the host test compiles exactly this
  *              block against a RAM-emulated flash to prove the power-cut
  *              behaviour without hardware.
- *          [FA] قرارداد در esp_link_nvm.h است. بلوک «منطق خالص رکورد»
- *              پایین خودکفاست - تست هاست همین بلوک را روی فلشِ شبیه‌سازی‌
- *              شدهٔ RAM کامپایل می‌کند تا رفتار قطع برق بدون سخت‌افزار
- *              اثبات شود.
  */
-
 #include "esp_link_nvm.h"
 #include "esp_link.h"
 #include "bsp_flash.h"
@@ -24,59 +17,49 @@
 #if MODULE_CHARGER
 #include "charger.h"
 #endif
-
 #include <stddef.h>
 #include <stdint.h>   /* [EN] uintptr_t for the portable address->pointer cast. */
-
-/* [EN] The save snapshot loop scans the WHOLE id space 0..255 because the
-   imbalance runtime slots 200..202 (v10) persist without being parameters:
-   fail the BUILD (not the board) if the persisted table ever outgrows the
-   record. The theoretical maximum of one-byte ids is 256 and the persisted
-   set is a small subset, so the cap, not the loop bound, governs space.
-   [FA] حلقهٔ عکس‌فوری کل فضای دوبیتی را می‌گرداند چون اسلات‌های
-   زمان‌اجرا بدون پارامتر بودن ذخیره می‌شوند؛ اگر مجموعهٔ ذخیره‌شونده از
-   رکورد بزرگ‌تر شد، «بیلد» بشکند نه برد. */
+/*
+ * [EN] The save snapshot loop scans the WHOLE id space 0..255 because the
+ * imbalance runtime slots 200..202 (v10) persist without being parameters:
+ * fail the BUILD (not the board) if the persisted table ever outgrows the
+ * record. The theoretical maximum of one-byte ids is 256 and the persisted
+ * set is a small subset, so the cap, not the loop bound, governs space.
+ */
 #ifdef ESPLINK_PARAM_RETIRED_LOWBAT_FIRST
 _Static_assert((ESP_LINK_NVM_RETIRED_ID_FIRST == ESPLINK_PARAM_RETIRED_LOWBAT_FIRST) &&
                (ESP_LINK_NVM_RETIRED_ID_LAST == ESPLINK_PARAM_RETIRED_LOWBAT_LAST),
                "NVM retired id window must match the link retired id window");
 #endif
-
 _Static_assert((((ESP_LINK_NVM_PERSISTED_ID_MAX_LOW + 1u) +
                  (ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH -
-                  ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH + 1u - 1u) +
+                  ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH + 1u - 2u) +
                  (ESP_LINK_NVM_SLOT_MAX_ID - ESP_LINK_NVM_SLOT_MIN_ID + 1u)) <=
                 (uint32_t)ESP_LINK_NVM_ENTRY_MAX),
                "NVM record too small for the persisted id set");
-
-/* [EN] v1.28: the record also has to FIT THE FLASH PAGE it is written into,
-   and nothing proved that. The slot cap grew from 93 to 108 with the
-   user-ordered limits block, taking the record from 760 B to 880 B against
-   a 1 KiB page - comfortable, but the comment saying so was arithmetic
-   somebody did by hand, which is exactly the kind of claim that has gone
-   stale in this project. The page span is derived from the two page
-   addresses rather than retyped.
-   [FA] در v1.28 رکورد باید در «صفحهٔ فلشی» هم که در آن نوشته می‌شود جا شود
-   و هیچ‌چیز این را اثبات نمی‌کرد. سقف جای‌ها با بلوک حدها از ۹۳ به ۱۰۸ رفت
-   و رکورد از ۷۶۰ به ۸۸۰ بایت در برابر صفحهٔ ۱KB - راحت، ولی کامنتی که این
-   را می‌گفت حساب دستی کسی بود، همان نوع ادعایی که در این پروژه کهنه شده.
-   اندازهٔ صفحه از فاصلهٔ دو آدرس صفحه مشتق می‌شود نه تایپ دوباره. */
+/*
+ * [EN] v1.28: the record also has to FIT THE FLASH PAGE it is written into,
+ * and nothing proved that. The slot cap grew from 93 to 108 with the
+ * user-ordered limits block, taking the record from 760 B to 880 B against
+ * a 1 KiB page - comfortable, but the comment saying so was arithmetic
+ * somebody did by hand, which is exactly the kind of claim that has gone
+ * stale in this project. The page span is derived from the two page
+ * addresses rather than retyped.
+ */
 _Static_assert(((ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR) %
                 ESP_LINK_NVM_FLASH_PAGE_SIZE) == 0u,
                "NVM bank must be a whole number of erase pages");
-
-/* [EN] 2026-10-05: the banks must sit inside the window the flash driver is
-   allowed to touch (bsp_flash.h). Until today nothing tied the two together
-   and v1.80 moved the banks out of the driver's range: every save was
-   refused on the board while the RAM-emulated host test stayed green. Now a
-   future move breaks the build instead.
-   [FA] بانک‌ها باید داخل پنجره‌ای باشند که درایور فلش حق نوشتن دارد؛ تا امروز
-   چیزی این دو را به هم گره نمی‌زد و v1.80 بانک‌ها را بیرون آن برد، پس ذخیره
-   روی برد رد می‌شد و تست هاست سبز می‌ماند. حالا جابه‌جایی بعدی بیلد را
-   می‌شکند. */
-/* [EN] Target build only: the host harness stubs the flash driver, so the
-   macro below does not exist there and the banks are RAM addresses.
-   [FA] فقط بیلد هدف: هارنس هاست درایور فلش را استاب می‌کند. */
+/*
+ * [EN] 2026-10-05: the banks must sit inside the window the flash driver is
+ * allowed to touch (bsp_flash.h). Until today nothing tied the two together
+ * and v1.80 moved the banks out of the driver's range: every save was
+ * refused on the board while the RAM-emulated host test stayed green. Now a
+ * future move breaks the build instead.
+ */
+/*
+ * [EN] Target build only: the host harness stubs the flash driver, so the
+ * macro below does not exist there and the banks are RAM addresses.
+ */
 #ifdef BSP_FLASH_STORAGE_BASE_ADDR
 _Static_assert(ESP_LINK_NVM_PAGE_A_ADDR >= BSP_FLASH_STORAGE_BASE_ADDR,
                "NVM bank A must sit inside the writable flash window");
@@ -85,20 +68,15 @@ _Static_assert((ESP_LINK_NVM_PAGE_B_ADDR +
                    BSP_FLASH_STORAGE_END_ADDR,
                "NVM bank B must end inside the writable flash window");
 #endif
-
 _Static_assert(sizeof(esp_link_nvm_record_t) <=
                    (ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR),
                "NVM record must fit inside one flash page");
-
 /* ====================================================================
  * ===== EspLink Nvm pure record logic (host-testable, no flash) =====
  * ==================================================================== */
-
 /**
  * @brief  [EN] Reflected CRC32 (poly 0xEDB88320, init/xor 0xFFFFFFFF) - the
  *              same standard zip PNG crc, bit-by-bit so no table in flash.
- *         [FA] CRC32 بازتابیده (چندجمله‌ای 0xEDB88320، مقدار اولی/پایانی
- *              0xFFFFFFFF) - همان CRC استاندارد، بیتی-به-بیتی بدون جدول.
  */
 uint32_t func__EspLink_NvmCrc32(const uint8_t *uint8_t__A__Data,
                                 uint32_t uint32_t__length)
@@ -106,7 +84,6 @@ uint32_t func__EspLink_NvmCrc32(const uint8_t *uint8_t__A__Data,
     uint32_t uint32_t__crc = 0xFFFFFFFFu;
     uint32_t uint32_t__i;
     uint8_t uint8_t__bit;
-
     for (uint32_t__i = 0u; uint32_t__i < uint32_t__length; uint32_t__i++)
     {
         uint32_t__crc ^= (uint32_t)uint8_t__A__Data[uint32_t__i];
@@ -122,33 +99,37 @@ uint32_t func__EspLink_NvmCrc32(const uint8_t *uint8_t__A__Data,
             }
         }
     }
-
     return (uint32_t__crc ^ 0xFFFFFFFFu);
 }
-
+/* ==================== EspLink_NvmParamPersisted ==================== */
 /**
  * @brief  [EN] Is this parameter id part of the persisted configuration?
- *         [FA] این شناسه جزو پیکربندی ذخیره‌شونده است؟
  */
 bool func__EspLink_NvmParamPersisted(uint8_t uint8_t__paramId)
 {
-    /* [EN] v1.17: id 76 (panel-session mute) sits inside the high range
-       and is excluded explicitly - it must never survive a reboot.
-       v10 (v1.43): the imbalance runtime slots 200..202 persist too - the
-       episode budget must survive power loss, or a power cycle would be a
-       free verdict eraser.
-       v1.74: ids 72/73 are RETIRED (the low-battery window became a
-       Changeover constant). They have no owner any more, so persisting them
-       would store a value nothing can read back - they are excluded here.
-       [FA] شناسهٔ ۷۶ گذرا و کنار گذاشته شده است. نسخه۱۰: اسلات‌های
-       زمان‌اجرا عدم‌توازن هم ذخیره می‌شوند تا قطع برق قضاوت را پاک نکند.
-       v1.74: شناسه‌های بازنشستهٔ ۷۲/۷۳ هم ذخیره نمی‌شوند. */
+    /*
+ * [EN] v1.17: id 76 (panel-session mute) sits inside the high range
+ * and is excluded explicitly - it must never survive a reboot.
+ * v10 (v1.43): the imbalance runtime slots 200..202 persist too - the
+ * episode budget must survive power loss, or a power cycle would be a
+ * free verdict eraser.
+ * v1.74: ids 72/73 are RETIRED (the low-battery window became a
+ * Changeover constant). They have no owner any more, so persisting them
+ * would store a value nothing can read back - they are excluded here.
+ */
     if ((uint8_t__paramId >= ESP_LINK_NVM_RETIRED_ID_FIRST) &&
         (uint8_t__paramId <= ESP_LINK_NVM_RETIRED_ID_LAST))
     {
         return false;
     }
-
+    /*
+ * [EN] v1.104: id 70 is derived from the shared q34 at runtime; it is
+ * never independently persisted.
+ */
+    if (uint8_t__paramId == ESP_LINK_NVM_DERIVED_ID_OV_THRESH)
+    {
+        return false;
+    }
     return ((uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_LOW) ||
             (((uint8_t__paramId >= ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH) &&
               (uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH)) &&
@@ -156,20 +137,16 @@ bool func__EspLink_NvmParamPersisted(uint8_t uint8_t__paramId)
             ((uint8_t__paramId >= ESP_LINK_NVM_SLOT_MIN_ID) &&
              (uint8_t__paramId <= ESP_LINK_NVM_SLOT_MAX_ID)));
 }
-
+/* ==================== EspLink_NvmSeqCompare ==================== */
 /**
  * @brief  [EN] Signed halfword sequence compare: +1 when a is newer, -1 when
  *              b is newer, 0 on a tie. The int16 difference makes the u16
  *              wrap-around at 65535 -> 0 monotonic.
- *         [FA] مقایسهٔ علامت‌دارِ ترتیب نیم‌کلمه: ‎+۱ اگر a تازه‌تر، ‎−۱ اگر
- *              b تازه‌تر، ۰ در برابری. تفاضل int16 چرخش u16 در 65535→0 را
- *              یکنوا می‌کند.
  */
 int8_t func__EspLink_NvmSeqCompare(uint16_t uint16_t__a, uint16_t uint16_t__b)
 {
     int16_t int16_t__diff =
         (int16_t)(uint16_t__a - uint16_t__b);
-
     if (int16_t__diff > 0)
     {
         return 1;
@@ -180,17 +157,12 @@ int8_t func__EspLink_NvmSeqCompare(uint16_t uint16_t__a, uint16_t uint16_t__b)
     }
     return 0;
 }
-
 /**
  * @brief  [EN] Full record check: magic, version, zero reserved field, entry
  *              count, every entry a UNIQUE persisted id, and the CRC over all
  *              bytes before the CRC field. A record with any transient id
  *              (15..19 test modes, 76 panel-session mute) is REJECTED on
  *              purpose.
- *         [FA] بررسی کامل رکورد: جادو، نسخه، فیلد reserved صفر، تعداد
- *              ورودی، persisted بودن و یکتایی شناسهٔ هر ورودی و CRC روی همهٔ
- *              بایت‌های قبل از فیلد CRC. رکوردی با هر شناسهٔ گذرا (مودهای
- *              تست ۱۵..۱۹ و میوت جلسه‌ای ۷۶) عمداً رد می‌شود.
  */
 bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
                                      *esp_link_nvm_record_t__record)
@@ -198,12 +170,10 @@ bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
     uint32_t uint32_t__crc;
     uint32_t uint32_t__seenIds[8u] = {0u};
     uint16_t uint16_t__i;
-
     if (esp_link_nvm_record_t__record == NULL)
     {
         return false;
     }
-
     if ((esp_link_nvm_record_t__record->uint32_t__magic != ESP_LINK_NVM_MAGIC) ||
         (esp_link_nvm_record_t__record->uint16_t__version != ESP_LINK_NVM_VERSION) ||
         (esp_link_nvm_record_t__record->uint16_t__count > ESP_LINK_NVM_ENTRY_MAX) ||
@@ -211,7 +181,6 @@ bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
     {
         return false;
     }
-
     for (uint16_t__i = 0u;
          uint16_t__i < esp_link_nvm_record_t__record->uint16_t__count;
          uint16_t__i++)
@@ -219,33 +188,28 @@ bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
         uint16_t uint16_t__id =
             esp_link_nvm_record_t__record
                 ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i].uint16_t__id;
-
-        /* [EN] The wire id is one byte. Check the stored halfword BEFORE the
-           narrowing cast: 256 must not alias id 0 (or any other valid id).
-           [FA] شناسهٔ روی سیم یک‌بایتی است؛ نیم‌کلمهٔ ذخیره‌شده را پیش از
-           cast بررسی کن تا ۲۵۶ به شناسهٔ معتبر دیگری alias نشود. */
+        /*
+ * [EN] The wire id is one byte. Check the stored halfword BEFORE the
+ * narrowing cast: 256 must not alias id 0 (or any other valid id).
+ */
         if ((uint16_t__id > (uint16_t)UINT8_MAX) ||
             (func__EspLink_NvmParamPersisted((uint8_t)uint16_t__id) == false))
         {
             return false;
         }
-
-        /* [EN] Records represent a map from id to applied value. The builder
-           emits each persisted id once, so a CRC-valid duplicate is not a
-           second value for the same setting; it is an ambiguous/corrupt
-           record and must not be replayed. Eight words cover the full
-           one-byte id space without a 256-byte boot stack allocation.
-           [FA] رکورد نگاشت شناسه به مقدار اعمال‌شده است. سازنده هر شناسهٔ
-           ماندگار را یک‌بار می‌نویسد؛ بنابراین duplicate حتی با CRC درست
-           رکورد مبهم/خراب است و نباید replay شود. هشت کلمه کل فضای شناسهٔ
-           یک‌بایتی را بدون تخصیص ۲۵۶ بایت روی استک بوت پوشش می‌دهد. */
+        /*
+ * [EN] Records represent a map from id to applied value. The builder
+ * emits each persisted id once, so a CRC-valid duplicate is not a
+ * second value for the same setting; it is an ambiguous/corrupt
+ * record and must not be replayed. Eight words cover the full
+ * one-byte id space without a 256-byte boot stack allocation.
+ */
         {
             uint8_t uint8_t__id = (uint8_t)uint16_t__id;
             uint32_t uint32_t__idMask = (uint32_t)1u <<
                                         (uint8_t__id & 31u);
             uint32_t *uint32_t__seenWord =
                 &uint32_t__seenIds[uint8_t__id >> 5u];
-
             if ((*uint32_t__seenWord & uint32_t__idMask) != 0u)
             {
                 return false;
@@ -253,21 +217,15 @@ bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
             *uint32_t__seenWord |= uint32_t__idMask;
         }
     }
-
     uint32_t__crc = func__EspLink_NvmCrc32(
         (const uint8_t *)esp_link_nvm_record_t__record,
         (uint32_t)(sizeof(esp_link_nvm_record_t) - sizeof(uint32_t)));
-
     return (uint32_t__crc == esp_link_nvm_record_t__record->uint32_t__crc32);
 }
-
 /**
  * @brief  [EN] Fill one record from the given entries (deterministic padding
  *              - the struct is zeroed first so identical inputs give an
  *              identical CRC) and stamp the sequence number.
- *         [FA] پرکردن یک رکورد از ورودی‌های داده‌شده (لایه‌گذاری قطعی -
- *              ابتدا صفر می‌شود تا ورودی یکسان، CRC یکسان بدهد) و زدن
- *              شمارهٔ ترتیب.
  */
 void func__EspLink_NvmRecordBuild(esp_link_nvm_record_t
                                   *esp_link_nvm_record_t__record,
@@ -277,14 +235,12 @@ void func__EspLink_NvmRecordBuild(esp_link_nvm_record_t
                                   uint16_t uint16_t__count)
 {
     uint16_t uint16_t__i;
-
     if ((esp_link_nvm_record_t__record == NULL) ||
         (ESP_LINK_NVM_ENTRY_T__A__Entry == NULL) ||
         (uint16_t__count > ESP_LINK_NVM_ENTRY_MAX))
     {
         return;
     }
-
     for (uint16_t__i = 0u;
          uint16_t__i < (uint16_t)(sizeof(esp_link_nvm_record_t) /
                                   sizeof(uint16_t));
@@ -292,14 +248,12 @@ void func__EspLink_NvmRecordBuild(esp_link_nvm_record_t
     {
         ((volatile uint16_t *)esp_link_nvm_record_t__record)[uint16_t__i] = 0u;
     }
-
     for (uint16_t__i = 0u; uint16_t__i < uint16_t__count; uint16_t__i++)
     {
         esp_link_nvm_record_t__record
             ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i] =
             ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i];
     }
-
     esp_link_nvm_record_t__record->uint32_t__magic = ESP_LINK_NVM_MAGIC;
     esp_link_nvm_record_t__record->uint16_t__version = ESP_LINK_NVM_VERSION;
     esp_link_nvm_record_t__record->uint16_t__seq = uint16_t__seq;
@@ -310,53 +264,44 @@ void func__EspLink_NvmRecordBuild(esp_link_nvm_record_t
             (const uint8_t *)esp_link_nvm_record_t__record,
             (uint32_t)(sizeof(esp_link_nvm_record_t) - sizeof(uint32_t)));
 }
-
 /* ====================================================================
  * ===== EspLink Nvm flash state machine (comm task / pre-scheduler) ==
  * ==================================================================== */
-
-/* [EN] 0 = clean; 1.. = debounce age in comm runs since the last change.
- * [FA] 0 = پاک؛ 1.. = سن دیبانس به تعداد اجرای تسک ارتباط از آخرین تغییر. */
+/*
+ * [EN] 0 = clean; 1.. = debounce age in comm runs since the last change.
+ */
 static uint16_t UINT16_T__G__NvmDirtyRuns = 0u;
 static uint8_t UINT8_T__G__NvmSaveRetries = 0u;
 /* [EN] Bumped by every change under the kernel lock; lets NvmTick tell a change
    that arrived during its flash write from the one it saved. */
 static uint32_t UINT32_T__G__NvmChangeSeq = 0u;
-/* [EN] Parked = the retry budget is spent. The value stays dirty in RAM (never
-   dropped): no more timed erases until a new persisted edit or the reset flush.
-   [FA] پارک = بودجهٔ تلاش تمام شده است. مقدار در RAM کثیف می‌ماند (هرگز حذف
-   نمی‌شود): تا ویرایش ماندگار جدید یا flush ریست، پاک‌کردن زمان‌بندی‌شده نیست. */
+/*
+ * [EN] Parked = the retry budget is spent. The value stays dirty in RAM (never
+ * dropped): no more timed erases until a new persisted edit or the reset flush.
+ */
 static bool BOOL__G__NvmParked = false;
-
-/* [EN] Sequence of the newest valid record on flash and which page holds it.
+/*
+ * [EN] Sequence of the newest valid record on flash and which page holds it.
  *      Fresh board (no valid record anywhere): the default routes the first
  *      save to page B - arbitrary, harmless, and it keeps the ping-pong rule
  *      "never erase the page holding the newest record" trivially true.
- * [FA] ترتیبِ تازه‌ترین رکورد معتبر روی فلش و صفحهٔ نگهدارندهٔ آن. برد نو
- *      (هیچ رکورد معتبری نیست): پیش‌فرض اولین ذخیره را به صفحهٔ B می‌فرستد
- *      - دلخواه، بی‌ضرر، و قانون پینگ‌پنگ «هرگز صفحهٔ نگهدارندهٔ تازه‌ترین
- *      رکورد را پاک نکن» را به‌سادگی برقرار نگه می‌دارد. */
+ */
 static uint16_t UINT16_T__G__NvmNewestSeq = 0u;
 static bool BOOL__G__NvmNewestIsPageB = false;
-
 /**
  * @brief  [EN] Read one page as a record candidate. The uintptr_t step keeps
  *              the flash-address -> pointer cast exact on every width
  *              (32-bit target: identical code; 64-bit host test builds: no
  *              size-mismatch warning).
- *         [FA] خواندن یک صفحه به‌عنوان نامزد رکورد. پلهٔ ‎uintptr_t‎ تبدیل
- *              «نشانی فلش به اشاره‌گر» را در هر پهنایی دقیق نگه می‌دارد
- *              (هدف ۳۲ بیتی: کد یکسان؛ ساخت تست هاست ۶۴ بیتی: بدون هشدار).
  */
 static const esp_link_nvm_record_t *func__EspLink_NvmPageRecord(
     uint32_t uint32_t__pageAddress)
 {
     return (const esp_link_nvm_record_t *)(uintptr_t)uint32_t__pageAddress;
 }
-
+/* ==================== EspLink_NvmInit ==================== */
 /**
  * @brief  [EN] Boot-time load (see header contract).
- *         [FA] بارگذاری هنگام بوت (قرارداد هدر).
  */
 void func__EspLink_NvmInit(void)
 {
@@ -370,7 +315,6 @@ void func__EspLink_NvmInit(void)
     bool bool__validB = func__EspLink_NvmRecordValidate(
         esp_link_nvm_record_t__pageB);
     uint16_t uint16_t__i;
-
     if ((bool__validA != false) && (bool__validB != false))
     {
         esp_link_nvm_record_t__newest =
@@ -390,29 +334,26 @@ void func__EspLink_NvmInit(void)
     }
     else
     {
-        /* [EN] Fresh board or both records corrupt: compiled defaults stay.
-           [FA] برد نو یا خرابی هر دو رکورد: پیش‌فرض کامپایل می‌ماند. */
+        /*
+ * [EN] Fresh board or both records corrupt: compiled defaults stay.
+ */
     }
-
     if (esp_link_nvm_record_t__newest == NULL)
     {
         UINT16_T__G__NvmNewestSeq = 0u;
         BOOL__G__NvmNewestIsPageB = false;
         return;
     }
-
-    /* [EN] Replay through the SAME clamped setters the panel path uses: a
-       stale record can only land inside the compiled safety windows, and a
-       single bad entry is skipped, never fatal.
-       [FA] بازپخش از همان setterهای گیره‌دارِ مسیر پنل: رکورد کهنه فقط
-       می‌تواند داخل پنجره‌های ایمنی کامپایل بنشیند و یک ورودی بد رد
-       می‌شود، هرگز مهلک نیست. */
+    /*
+ * [EN] Replay through the SAME clamped setters the panel path uses: a
+ * stale record can only land inside the compiled safety windows, and a
+ * single bad entry is skipped, never fatal.
+ */
     for (uint16_t__i = 0u;
          uint16_t__i < esp_link_nvm_record_t__newest->uint16_t__count;
          uint16_t__i++)
     {
         uint32_t uint32_t__applied = 0u;
-
         (void)func__EspLink_ApplyParam(
             (uint8_t)esp_link_nvm_record_t__newest
                 ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i].uint16_t__id,
@@ -420,29 +361,25 @@ void func__EspLink_NvmInit(void)
                 ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i].uint32_t__value,
             &uint32_t__applied);
     }
-
     UINT16_T__G__NvmNewestSeq = esp_link_nvm_record_t__newest->uint16_t__seq;
     BOOL__G__NvmNewestIsPageB =
         (esp_link_nvm_record_t__newest == esp_link_nvm_record_t__pageB);
 }
-
+/* ==================== EspLink_NvmMarkDirty ==================== */
 /**
  * @brief  [EN] Mark the persisted configuration dirty (see header contract).
- *         [FA] کثیف‌علامت‌کردن پیکربندی ذخیره‌شونده (قرارداد هدر).
  */
 void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
 {
     int32_t int32_t__savedKernelLock = osKernelLock();
     if (func__EspLink_NvmParamPersisted(uint8_t__paramId) != false)
     {
-        /* [EN] A new change starts a fresh save budget. Without resetting
-           retries here, a record that exhausted its previous retry budget
-           gets only one attempt after the next edit and is then abandoned
-           immediately; a healthy later edit could therefore never persist.
-           [FA] هر تغییر جدید باید بودجهٔ ذخیره را از نو شروع کند. اگر اینجا
-           retry ریست نشود، رکوردی که بودجهٔ قبلی‌اش تمام شده پس از ویرایش
-           بعدی فقط یک بار امتحان می‌شود و فوراً کنار گذاشته می‌شود؛ بنابراین
-           ویرایش سالم بعدی هم ممکن است هرگز ذخیره نشود. */
+        /*
+ * [EN] A new change starts a fresh save budget. Without resetting
+ * retries here, a record that exhausted its previous retry budget
+ * gets only one attempt after the next edit and is then abandoned
+ * immediately; a healthy later edit could therefore never persist.
+ */
         UINT16_T__G__NvmDirtyRuns = 1u;
         UINT8_T__G__NvmSaveRetries = 0u;
         BOOL__G__NvmParked = false;
@@ -450,7 +387,6 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
     }
     (void)osKernelRestoreLock(int32_t__savedKernelLock);
 }
-
 /**
  * @brief  [EN] Snapshot every persisted parameter and write the ping-pong
  *              record to the page that does NOT hold the newest one, then
@@ -459,21 +395,17 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
  *              256 words and a stack copy would overflow it on the first
  *              save (full-program audit 2026-09-26). Single task,
  *              non-reentrant, so static is race-free here.
- *         [FA] عکس‌فوری همهٔ پارامترهای ذخیره‌شونده و نوشتن رکورد پینگ‌پنگ
- *              در صفحه‌ای که تازه‌ترین را ندارد، بعد صحت‌سنجی با بازخوانی.
- *              بافر ~۱٫۲KB عمداً STATIC است: استک تسک ارتباط ۲۵۶ کلمه است
- *              و نسخهٔ استکی در اولین ذخیره سرریز می‌کرد. تک‌تسک و
- *              غیربازگشتی، پس بدون مسابقه.
- * @return bool [EN] true = record now on flash‎ / رکورد روی فلش است
+* @return bool true = record now on flash /
  */
 #if MODULE_CHARGER
-/* [EN] Charger quiet-down poll: every 5 ms, up to 200 ms (the control task
-   zeroes both gates on its next 10 ms pass after the flag is set).
-   [FA] نظرسنجی آرام‌شدن شارژر: هر ۵ms تا سقف ۲۰۰ms. */
+/*
+ * [EN] Charger quiet-down poll: every 5 ms, up to 200 ms (the control task
+ * zeroes both gates on its next 10 ms pass after the flag is set).
+ */
 #define ESP_LINK_NVM_SUSPEND_POLL_MS        5u
 #define ESP_LINK_NVM_SUSPEND_TIMEOUT_POLLS  40u
 #endif
-
+/* ==================== EspLink_NvmSuspendCharger ==================== */
 /**
  * @brief  [EN] Quiet the charger down for a flash save (user order
  *              2026-09-27: idle the charger, save, restart it). Sets the
@@ -482,25 +414,17 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
  *              params must persist; a dead control task is WDT business.
  *              Without MODULE_CHARGER or pre-kernel there is nothing to
  *              resume: return false immediately.
- *         [FA] آرام‌کردن شارژر برای ذخیرهٔ فلش (دستور کاربر): پرچم تعلیق
- *              ست و بعد حقیقت سخت‌افزار (هر دو compare صفر) نظرسنجی می‌شود.
- *              با timeout هم ذخیره انجام می‌شود (پارامترها باید بمانند).
- *              بدون شارژر یا پیش از کرنل بلافاصله false (چیزی برای ادامه
- *              نیست).
- * @return bool [EN] true = suspend flag set, caller must resume‎ / ادامه لازم است
+* @return bool true = suspend flag set, caller must resume /
  */
 static bool func__EspLink_NvmSuspendCharger(void)
 {
 #if MODULE_CHARGER
     uint8_t uint8_t__poll;
-
     if (osKernelGetState() != osKernelRunning)
     {
         return false;
     }
-
     func__Charger_SetSuspended(true);
-
     for (uint8_t__poll = 0u;
          uint8_t__poll < ESP_LINK_NVM_SUSPEND_TIMEOUT_POLLS;
          uint8_t__poll++)
@@ -512,18 +436,16 @@ static bool func__EspLink_NvmSuspendCharger(void)
         }
         func__Rtos_DelayMilliseconds(ESP_LINK_NVM_SUSPEND_POLL_MS);
     }
-
     return true;
 #else
     return false;
 #endif
 }
-
+/* ==================== EspLink_NvmResumeCharger ==================== */
 /**
  * @brief  [EN] Resume the charger after a flash save (no-op unless the
  *              suspend helper set the flag).
- *         [FA] ادامهٔ شارژر بعد از ذخیرهٔ فلش (بی‌اثر اگر پرچم ست نشده).
- * @param  bool__wasSuspended [EN] Suspend-helper return‎ / خروجی تابع تعلیق
+* @param bool__wasSuspended Suspend-helper return /
  */
 static void func__EspLink_NvmResumeCharger(bool bool__wasSuspended)
 {
@@ -536,7 +458,7 @@ static void func__EspLink_NvmResumeCharger(bool bool__wasSuspended)
     (void)bool__wasSuspended;
 #endif
 }
-
+/* ==================== EspLink_NvmSaveNow ==================== */
 static bool func__EspLink_NvmSaveNow(void)
 {
     static esp_link_nvm_record_t esp_link_nvm_record_t__record;
@@ -545,14 +467,13 @@ static bool func__EspLink_NvmSaveNow(void)
     uint16_t uint16_t__i;
     uint32_t uint32_t__pageAddress;
     bool bool__chargerSuspended = false;
-
-    /* [EN] 1-byte id space: 0..255. Anything not persisted or not readable
-       (module off) is skipped in O(1) per id - cheap for a debounced save.
-       [FA] فضای دوبیتی شناسه‌ها؛ موارد غیرماندگار/خاموش O(1) پرش می‌کنند. */
+    /*
+ * [EN] 1-byte id space: 0..255. Anything not persisted or not readable
+ * (module off) is skipped in O(1) per id - cheap for a debounced save.
+ */
     for (uint16_t__i = 0u; uint16_t__i < 256u; uint16_t__i++)
     {
         uint32_t uint32_t__value = 0u;
-
         if ((func__EspLink_NvmParamPersisted((uint8_t)uint16_t__i) != false) &&
             (func__EspLink_GetParam((uint8_t)uint16_t__i, &uint32_t__value) !=
              false))
@@ -565,38 +486,34 @@ static bool func__EspLink_NvmSaveNow(void)
             uint16_t__count++;
         }
     }
-
     if (uint16_t__count == 0u)
     {
         return false;
     }
-
     func__EspLink_NvmRecordBuild(&esp_link_nvm_record_t__record,
                                  (uint16_t)(UINT16_T__G__NvmNewestSeq + 1u),
                                  ESP_LINK_NVM_ENTRY_T__A__Entry,
                                  uint16_t__count);
-
-    /* [EN] Ping-pong: never touch the page that holds the only good record.
-       [FA] پینگ‌پنگ: هرگز صفحه‌ای را که تنها رکورد خوب را دارد نمی‌آزیم. */
+    /*
+ * [EN] Ping-pong: never touch the page that holds the only good record.
+ */
     uint32_t__pageAddress = (BOOL__G__NvmNewestIsPageB != false)
                                 ? ESP_LINK_NVM_PAGE_A_ADDR
                                 : ESP_LINK_NVM_PAGE_B_ADDR;
-
-    /* [EN] Idle the charger around the flash stall (user order 2026-09-27):
-       no switching inside the ~30..50 ms blind window. Every exit below
-       resumes first.
-       [FA] بیکارکردن شارژر دور استال فلش: بدون سوییچینگ داخل پنجرهٔ کور؛
-       هر خروجی پایین اول ادامه می‌دهد. */
+    /*
+ * [EN] Idle the charger around the flash stall (user order 2026-09-27):
+ * no switching inside the ~30..50 ms blind window. Every exit below
+ * resumes first.
+ */
     bool__chargerSuspended = func__EspLink_NvmSuspendCharger();
-
-    /* [EN] v1.80: a bank is two 1 KiB pages, so erase every page it spans -
-       the record is programmed across the whole bank as one blob.
-       [FA] هر بانک دو صفحهٔ ۱KB است، پس همهٔ صفحه‌هایش پاک می‌شود. */
+    /*
+ * [EN] v1.80: a bank is two 1 KiB pages, so erase every page it spans -
+ * the record is programmed across the whole bank as one blob.
+ */
     {
         uint32_t uint32_t__bankSpan =
             (uint32_t)(ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR);
         uint32_t uint32_t__offset;
-
         for (uint32_t__offset = 0u;
              uint32_t__offset < uint32_t__bankSpan;
              uint32_t__offset += (uint32_t)ESP_LINK_NVM_FLASH_PAGE_SIZE)
@@ -609,7 +526,6 @@ static bool func__EspLink_NvmSaveNow(void)
             }
         }
     }
-
     if (func__BspFlash_ProgramHalfWords(
             uint32_t__pageAddress,
             (const uint16_t *)&esp_link_nvm_record_t__record,
@@ -619,16 +535,15 @@ static bool func__EspLink_NvmSaveNow(void)
         func__EspLink_NvmResumeCharger(bool__chargerSuspended);
         return false;
     }
-
     for (uint16_t__i = 0u;
          uint16_t__i < (uint16_t)(sizeof(esp_link_nvm_record_t) /
                                   sizeof(uint16_t));
          uint16_t__i++)
     {
-        /* [EN] uintptr_t keeps the read-back cast exact on every width
-           (identical code on the 32-bit target).
-           [FA] ‎uintptr_t‎ تبدیل بازخوانی را در هر پهنایی دقیق نگه می‌دارد
-           (کد یکسان روی هدف ۳۲ بیتی). */
+        /*
+ * [EN] uintptr_t keeps the read-back cast exact on every width
+ * (identical code on the 32-bit target).
+ */
         if (((const volatile uint16_t *)(uintptr_t)
              uint32_t__pageAddress)[uint16_t__i] !=
             ((const uint16_t *)&esp_link_nvm_record_t__record)[uint16_t__i])
@@ -637,43 +552,53 @@ static bool func__EspLink_NvmSaveNow(void)
             return false;
         }
     }
-
     func__EspLink_NvmResumeCharger(bool__chargerSuspended);
-
     UINT16_T__G__NvmNewestSeq =
         esp_link_nvm_record_t__record.uint16_t__seq;
     BOOL__G__NvmNewestIsPageB =
         (uint32_t__pageAddress == ESP_LINK_NVM_PAGE_B_ADDR);
     return true;
 }
-
+/* ==================== EspLink_NvmFlushForReset ==================== */
 /**
  * @brief  [EN] Comm-task housekeeping (see header contract).
- *         [FA] نگهداری تسک ارتباط (قرارداد هدر).
  */
 bool func__EspLink_NvmFlushForReset(void)
 {
+    int32_t int32_t__savedKernelLock;
+    uint32_t uint32_t__seqAtStart;
+    bool bool__saved;
+    int32_t int32_t__lock;
+    int32_t__savedKernelLock = osKernelLock();
     if (UINT16_T__G__NvmDirtyRuns == 0u)
     {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
         return true;
     }
-
-    if (func__EspLink_NvmSaveNow() != false)
+    uint32_t__seqAtStart = UINT32_T__G__NvmChangeSeq;
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    bool__saved = func__EspLink_NvmSaveNow();
+    int32_t__lock = osKernelLock();
+    if (bool__saved != false)
     {
-        UINT16_T__G__NvmDirtyRuns = 0u;
-        UINT8_T__G__NvmSaveRetries = 0u;
-        BOOL__G__NvmParked = false;
+        if (UINT32_T__G__NvmChangeSeq == uint32_t__seqAtStart)
+        {
+            UINT16_T__G__NvmDirtyRuns = 0u;
+            UINT8_T__G__NvmSaveRetries = 0u;
+            BOOL__G__NvmParked = false;
+        }
+        (void)osKernelRestoreLock(int32_t__lock);
         return true;
     }
-    /* [EN] Keep the dirty flag and the LUT reset authorization intact after a
-       failed flush. The caller can report the failure and retry without
-       rebooting into an older calibration snapshot.
-       [FA] بعد از شکست flush پرچم dirty و مجوز ریست LUT دست‌نخورده بمانند؛
-       caller می‌تواند خطا را گزارش کند و بدون بوت‌شدن با snapshot قدیمی
-       دوباره تلاش کند. */
+    (void)osKernelRestoreLock(int32_t__lock);
+    /*
+ * [EN] Keep the dirty flag and the LUT reset authorization intact after a
+ * failed flush. The caller can report the failure and retry without
+ * rebooting into an older calibration snapshot.
+ */
     return false;
 }
-
+/* ==================== EspLink_NvmTick ==================== */
 void func__EspLink_NvmTick(void)
 {
     int32_t int32_t__savedKernelLock = osKernelLock();
@@ -682,26 +607,20 @@ void func__EspLink_NvmTick(void)
         (void)osKernelRestoreLock(int32_t__savedKernelLock);
         return;
     }
-
     UINT16_T__G__NvmDirtyRuns++;
-
     if (UINT16_T__G__NvmDirtyRuns < (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS)
     {
         (void)osKernelRestoreLock(int32_t__savedKernelLock);
         return;
     }
-
     uint32_t uint32_t__seqAtStart = UINT32_T__G__NvmChangeSeq;
     (void)osKernelRestoreLock(int32_t__savedKernelLock);
-
-    /* [EN] The flash write runs OUTSIDE the lock (milliseconds). A change that
-       lands during it bumps the sequence and re-arms the dirty flag; this save
-       must then not clear that flag, or the change is silently never saved.
-       [FA] نوشتن فلش بیرون از قفل انجام می‌شود. تغییری که وسط نوشتن برسد
-       شمارندهٔ ترتیب را جلو می‌برد و پرچم کثیف را دوباره روشن می‌کند؛ این
-       ذخیره نباید آن پرچم را پاک کند، وگرنه آن تغییر هرگز ذخیره نمی‌شود. */
+    /*
+ * [EN] The flash write runs OUTSIDE the lock (milliseconds). A change that
+ * lands during it bumps the sequence and re-arms the dirty flag; this save
+ * must then not clear that flag, or the change is silently never saved.
+ */
     bool bool__saved = func__EspLink_NvmSaveNow();
-
     int32_t int32_t__lock = osKernelLock();
     if (bool__saved != false)
     {
@@ -713,8 +632,9 @@ void func__EspLink_NvmTick(void)
     }
     else if (UINT32_T__G__NvmChangeSeq == uint32_t__seqAtStart)
     {
-        /* [EN] Retry budget. A newer change already got a fresh budget in MarkDirty.
-           [FA] بودجهٔ تلاش. تغییر جدیدتر در MarkDirty بودجهٔ تازه گرفته است. */
+        /*
+ * [EN] Retry budget. A newer change already got a fresh budget in MarkDirty.
+ */
         if (UINT8_T__G__NvmSaveRetries < (uint8_t)ESP_LINK_NVM_SAVE_RETRIES)
         {
             UINT8_T__G__NvmSaveRetries++;
@@ -722,8 +642,9 @@ void func__EspLink_NvmTick(void)
         }
         else
         {
-            /* [EN] Park instead of clearing the dirty flag, so the unsaved value is not
-               silently dropped. [FA] پارک، نه پاک‌کردن پرچم، تا مقدار ذخیره‌نشده بی‌صدا حذف نشود. */
+            /*
+ * [EN] Park instead of clearing the dirty flag, so the unsaved value is not
+ */
             UINT16_T__G__NvmDirtyRuns = (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS;
             BOOL__G__NvmParked = true;
         }

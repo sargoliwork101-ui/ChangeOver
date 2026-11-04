@@ -1,0 +1,163 @@
+/**
+ * @file    diag.h
+ * @brief   [EN] Diagnostic log: charge time, count, 10 last faults, power events, min/max.
+ *               Persisted in dedicated flash pages 0x0800F800 / 0x0800FC00 (2KB ping-pong).
+ */
+#ifndef DIAG_H
+#define DIAG_H
+/* ==================== Includes ==================== */
+#include <stdint.h>
+#include <stdbool.h>
+#include "app_types.h"
+/* ==================== Defines ==================== */
+#define DIAG_MAX_ERRORS               10u
+#define DIAG_MAX_POWER_EVENTS         20u
+#define DIAG_PAGE_A_ADDR              0x0800F800u
+#define DIAG_PAGE_B_ADDR              0x0800FC00u
+#define DIAG_MAGIC                    0x44494147u /* 'DIAG' */
+#define DIAG_VERSION                  1u
+/* ==================== Types ==================== */
+/**
+ * @brief  [EN] One fault entry with timestamp and snapshot.
+ */
+typedef struct
+{
+    uint32_t uint32_t__timestamp;
+    uint32_t uint32_t__faultMask;
+    uint32_t uint32_t__vInMv;
+    uint32_t uint32_t__vPackMv;
+    uint32_t uint32_t__vLowMv;
+    uint32_t uint32_t__vHighMv;
+    uint32_t uint32_t__state1;
+    uint32_t uint32_t__state2;
+} diag_error_t;
+/**
+ * @brief  [EN] One power off/on event.
+ */
+typedef struct
+{
+    uint32_t uint32_t__offTime;
+    uint32_t uint32_t__onTime;
+    uint32_t uint32_t__durationSec;
+} diag_power_event_t;
+/**
+ * @brief  [EN] Full persisted record.
+ */
+typedef struct
+{
+    uint32_t uint32_t__magic;
+    uint16_t uint16_t__version;
+    uint16_t uint16_t__seq;
+    uint16_t uint16_t__count; /* not used, kept for alignment */
+    uint16_t uint16_t__reserved;
+    uint32_t uint32_t__totalChargeSec;
+    uint32_t uint32_t__chargeSecCh1;
+    uint32_t uint32_t__chargeSecCh2;
+    uint32_t uint32_t__chargeCount;
+    uint32_t uint32_t__chargeCountCh1;
+    uint32_t uint32_t__chargeCountCh2;
+    uint32_t uint32_t__uptimeSec;
+    uint32_t uint32_t__resetCount;
+    uint32_t uint32_t__boardTimeBase;
+    uint32_t uint32_t__maxVinMv;
+    uint32_t uint32_t__minVinMv;
+    uint32_t uint32_t__maxVpackMv;
+    uint32_t uint32_t__minVpackMv;
+    uint32_t uint32_t__maxVlowMv;
+    uint32_t uint32_t__minVlowMv;
+    uint32_t uint32_t__maxVhighMv;
+    uint32_t uint32_t__minVhighMv;
+    uint32_t uint32_t__maxImbMv;
+    uint32_t uint32_t__maxIch1Ma;
+    uint32_t uint32_t__maxIch2Ma;
+    uint32_t uint32_t__imbalanceCount;
+    uint32_t uint32_t__lowBatteryCount;
+    uint32_t uint32_t__batLostCount;
+    uint32_t uint32_t__techFaultCount;
+    uint32_t uint32_t__ovCount;
+    uint8_t uint8_t__errorCount;
+    uint8_t uint8_t__powerEventCount;
+    uint8_t uint8_t__reserved[2];
+    diag_error_t diag_error_t__A__Errors[DIAG_MAX_ERRORS];
+    diag_power_event_t diag_power_event_t__A__PowerEvents[DIAG_MAX_POWER_EVENTS];
+    uint32_t uint32_t__crc32;
+} diag_record_t;
+/* ==================== Public Functions ==================== */
+/**
+ * @brief  [EN] Init diag from flash, pick newest valid record.
+ */
+void func__Diag_Init(void);
+/**
+ * @brief  [EN] Periodic tick: takes the uptime from the kernel tick counter and
+ *              runs the debounced flash save. Call about once a second from
+ *              TaskControl; a late call costs nothing because uptime is read
+ *              from the kernel, not counted here (v1.113).
+ */
+void func__Diag_Tick(void);
+/**
+ * @brief  [EN] Set board time from phone (Unix sec).
+* @param uint32_t__unixSec Unix seconds /
+ */
+void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec);
+/**
+ * @brief  [EN] Get current board time (Unix sec) = base + uptime.
+* @return uint32_t Unix sec or 0 if never synced /
+ */
+uint32_t func__Diag_GetBoardTime(void);
+/**
+ * @brief  [EN] Count the charge time this channel has run since the previous
+ *              call. The seconds are taken from the real uptime delta, so they
+ *              never depend on how often the caller comes (v1.113).
+* @param uint8_t__channel 0 or 1 /
+ */
+void func__Diag_AddChargeSec(uint8_t uint8_t__channel);
+/**
+ * @brief  [EN] Record a complete charge cycle.
+* @param uint8_t__channel Channel /
+ */
+void func__Diag_RecordChargeComplete(uint8_t uint8_t__channel);
+/**
+ * @brief  [EN] Record a fault with current snapshot.
+* @param fault_mask_t__faults Fault mask /
+* @param measurement_snapshot_t__snap Snapshot /
+ */
+void func__Diag_RecordFault(fault_mask_t fault_mask_t__faults, const measurement_snapshot_t *measurement_snapshot_t__snap);
+/**
+ * @brief  [EN] Record input power off event start.
+ */
+void func__Diag_RecordPowerOff(void);
+/**
+ * @brief  [EN] Record input power on event end.
+ */
+void func__Diag_RecordPowerOn(void);
+/**
+ * @brief  [EN] Clear stored diagnostic error and power event histories.
+ */
+void func__Diag_ClearHistory(void);
+/**
+ * @brief  [EN] Update min/max voltages and currents from snapshot.
+* @param measurement_snapshot_t__snap Snapshot /
+ */
+void func__Diag_UpdateMinMax(const measurement_snapshot_t *measurement_snapshot_t__snap);
+/**
+ * @brief  [EN] Get active record for ESP-Link transmission.
+* @return const diag_record_t* Pointer /
+ */
+const diag_record_t *func__Diag_GetRecord(void);
+/**
+ * @brief  [EN] Force immediate flash save (e.g. before reset).
+* @return bool true on success /
+ */
+bool func__Diag_SaveNow(void);
+/**
+ * @brief  [EN] Lock the scheduler around a cross-task read of the active
+ *              diagnostic record.
+* @return int32_t Previous kernel lock state /
+ */
+int32_t func__Diag_LockRecord(void);
+/**
+ * @brief  [EN] Restore the scheduler lock after reading the active record.
+* @param int32_t__savedLock Value returned by func__Diag_LockRecord /
+ */
+void func__Diag_UnlockRecord(int32_t int32_t__savedLock);
+#endif /* DIAG_H */

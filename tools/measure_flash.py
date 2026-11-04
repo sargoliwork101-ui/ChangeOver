@@ -36,10 +36,8 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-
 ROOT = Path(__file__).resolve().parent.parent
 TARGET = ["-target", "thumb-linux-musleabi", "-mcpu=cortex_m3"]
-
 INCLUDES = [
     "CubeIDE/Core/Inc",
     "CubeIDE/Drivers/CMSIS/Include",
@@ -55,17 +53,17 @@ INCLUDES = [
     "Firmware/Modules/Fault", "Firmware/Modules/EspLink", "Firmware/Modules/McuPowerPath",
     # [EN] v1.53: the Imbalance module was missing, so five translation units
     #      failed and the "total" silently excluded them.
-    # [FA] ماژول Imbalance جا افتاده بود و پنج فایل بی‌صدا از مجموع می‌افتادند.
     "Firmware/Modules/Imbalance",
     # [EN] v1.66: the CalLut module (its own flash block for the pushed bench
     #      table) joins the build; without this include path its translation
     #      unit would fail and drop out of the total silently.
-    # [FA] v1.66: ماژول CalLut به بیلد اضافه شد؛ بدون این مسیر، فایل آن
-    #      بی‌صدا از مجموع می‌افتاد.
     "Firmware/Modules/CalLut",
+    # [EN] 2026-10-15: the Diag module was missing, so four translation units
+    #      that include diag.h (app.c, charger.c, esp_link.c, task_control.c)
+    #      failed and the link died on undefined symbols - measure_ram.py
+    #      could not measure RAM at all. Same fix as v1.53/v1.66 above.
+    "Firmware/Modules/Diag",
 ]
-
-
 def sources():
     """[EN] The same set CubeIDE compiles. / [FA] همان مجموعه‌ای که CubeIDE می‌سازد."""
     out = []
@@ -77,10 +75,7 @@ def sources():
     out += [frt / "portable/GCC/ARM_CM3/port.c"]  # static allocation only: no heap_4
     out += sorted(f for f in (ROOT / "Firmware").rglob("*.c")
                   if "Tester" not in f.parts)   # [EN] host tests are not flashed
-                                                # [FA] تست‌های هاست روی برد نمی‌روند
     return [p for p in out if p.is_file()]
-
-
 def section_sizes(obj):
     """[EN] Flash-resident sections only. / [FA] فقط بخش‌هایی که روی فلش می‌نشینند."""
     from elftools.elf.elffile import ELFFile
@@ -97,8 +92,6 @@ def section_sizes(obj):
             elif name.startswith(".data") and ".rel" not in name:
                 data += size
     return text, rodata, data
-
-
 def build(outdir):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -118,9 +111,6 @@ def build(outdir):
         t, r, d = section_sizes(obj)
         rows.append({"file": str(rel), "text": t, "rodata": r, "data": d, "total": t + r + d})
     return rows, failures
-
-
-
 def lld_linker_script(outdir):
     """[EN] The project's own script, with two things lld will not take: a
        MEMORY block referenced before it is defined, and the GCC-11 READONLY
@@ -138,8 +128,6 @@ def lld_linker_script(outdir):
     path = Path(outdir) / "measure.ld"
     path.write_text(out)
     return path
-
-
 def link(outdir):
     """[EN] Link the objects the way the board links them, with --gc-sections,
        and report the flash-resident total. Newlib is absent here, so
@@ -172,18 +160,14 @@ def link(outdir):
             if (sec["sh_flags"] & 0x2) and sec["sh_type"] != "SHT_NOBITS":
                 total += sec["sh_size"]
     return total, ""
-
-
 def main():
     outdir = sys.argv[1] if len(sys.argv) > 1 else "/tmp/flashmeasure"
     save = sys.argv[2] if len(sys.argv) > 2 else None
     rows, failures = build(outdir)
-
     text = sum(r["text"] for r in rows)
     rodata = sum(r["rodata"] for r in rows)
     data = sum(r["data"] for r in rows)
     total = text + rodata + data
-
     print(f"objects built    : {len(rows)}")
     if failures:
         print(f"COMPILE FAILURES : {len(failures)}")
@@ -193,11 +177,9 @@ def main():
     print(f".rodata          : {rodata:>7}")
     print(f".data            : {data:>7}")
     print(f"FLASH TOTAL      : {total:>7} bytes (Thumb, zig/LLVM - compare deltas, not absolutes)")
-
     print("\nlargest contributors:")
     for r in sorted(rows, key=lambda x: -x["total"])[:12]:
         print(f"  {r['total']:>6}  {r['file']}")
-
     total_linked, err = link(outdir)
     if total_linked is None:
         print("\nLINK FAILED (this is a real finding, not a tooling glitch):")
@@ -206,13 +188,10 @@ def main():
     print(f"\nLINKED IMAGE     : {total_linked} bytes of flash-resident sections")
     print("   (zig/LLVM + stub libc: compare this number against another run,")
     print("    not against what CubeIDE prints)")
-
     if save:
         Path(save).write_text(json.dumps(
             {"rows": rows, "linked_total": total_linked}, indent=1), encoding="utf-8")
         print(f"saved: {save}")
     return 1 if failures else 0
-
-
 if __name__ == "__main__":
     sys.exit(main())

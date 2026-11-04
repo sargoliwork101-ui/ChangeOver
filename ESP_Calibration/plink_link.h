@@ -1,0 +1,1463 @@
+/* plink_link.h - UART frame transmit/receive, TLM store, bench statistics window.
+   Included by ESP_Calibration.ino (single translation unit, order matters).
+   No include guard on purpose: including twice would redefine everything. */
+/* ==================== Byte Helpers ==================== */
+/**
+ * @brief  [EN] Read a little-endian u32 from a byte buffer.
+* @param uint8_t__ptr_buffer Source buffer, at least offset+4 bytes / offset+4
+* @param uint8_t__offset Byte offset, 0..108 (payload max 112) / ( payload )
+* @return Decoded value /
+ */
+static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t uint8_t__offset)
+{
+    uint32_t uint32_t__byte0 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset];
+    uint32_t uint32_t__byte1 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset + 1u] << 8;
+    uint32_t uint32_t__byte2 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset + 2u] << 16;
+    uint32_t uint32_t__byte3 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset + 3u] << 24;
+    uint32_t uint32_t__lowHalf = uint32_t__byte0 | uint32_t__byte1;
+    uint32_t uint32_t__highHalf = uint32_t__byte2 | uint32_t__byte3;
+    return uint32_t__lowHalf | uint32_t__highHalf;
+}
+/* ==================== Frame Transmit ==================== */
+/**
+ * @brief  [EN] CRC-16/CCITT-FALSE, identical to the firmware's implementation.
+ *              Both sides must agree bit for bit or every frame is rejected.
+* @param uint16_t__crc Running value /
+* @param uint8_t__byte Next byte /
+* @return uint16_t Updated CRC / CRC
+ */
+static uint16_t func__Esp_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
+{
+    uint8_t uint8_t__bit;
+    uint16_t__crc = (uint16_t)(uint16_t__crc ^ ((uint16_t)uint8_t__byte << 8));
+    for (uint8_t__bit = 0u; uint8_t__bit < 8u; uint8_t__bit++)
+    {
+        if ((uint16_t__crc & 0x8000u) != 0u)
+        {
+            uint16_t__crc = (uint16_t)(((uint16_t)(uint16_t__crc << 1)) ^ (uint16_t)ESP_LINK_CRC16_POLY);
+        }
+        else
+        {
+            uint16_t__crc = (uint16_t)(uint16_t__crc << 1);
+        }
+    }
+    return uint16_t__crc;
+}
+/*
+ * [EN] Link health, surfaced to the page. A version mismatch means the STM32
+ * and this panel were flashed out of step - the failure that used to look
+ * exactly like a dead cable.
+ */
+static uint32_t UINT32_T__G__RxCrcError = 0u;
+/* [EN] v2 NAK: how many SET_PARAM were refused, and the last id and reason. */
+static uint32_t UINT32_T__G__NakCount = 0u;
+static uint8_t  UINT8_T__G__NakId = 0xFFu;
+static uint8_t  UINT8_T__G__NakReason = 0u;
+static uint32_t UINT32_T__G__RxVersionMismatch = 0u;
+static uint16_t UINT16_T__G__RxCrc = 0u;
+static uint8_t  UINT8_T__G__RxCrcLow = 0u;
+/*
+ * [EN] Two-sided handshake state (v1.111). Everything here is proven by a real
+ * HELLO_ACK that the board sent; nothing is inferred from telemetry alone.
+ */
+static bool     BOOL__G__HelloSeen = false;
+static uint32_t UINT32_T__G__LastHelloAckMs = 0u;
+static uint32_t UINT32_T__G__LastHelloTxMs = 0u;
+static uint32_t UINT32_T__G__HelloAckCount = 0u;
+static uint32_t UINT32_T__G__HelloLossCount = 0u;
+static uint8_t  UINT8_T__G__BoardProtoVersion = 0u;
+static uint8_t  UINT8_T__G__BoardFwVersion = 0u;
+static uint8_t  UINT8_T__G__BoardFlags = 0u;
+static uint32_t UINT32_T__G__BoardUptimeSec = 0u;
+static uint32_t UINT32_T__G__BoardRxFrames = 0u;
+static uint16_t UINT16_T__G__BoardCrcErrors = 0u;
+static uint16_t UINT16_T__G__BoardVerErrors = 0u;
+static uint16_t UINT16_T__G__BoardParamCount = 0u;
+static uint16_t UINT16_T__G__BoardPeriodMs = 0u;
+/**
+ * @brief  [EN] Build and write one frame: AA 55 type len payload xor.
+* @param uint8_t__type Message type (0x01 SET_PARAM / 0x02 GET_PARAMS) / (0x01 0x02)
+* @param uint8_t__ptr_payload Payload bytes, may be NULL when len = 0 / payload NULL
+* @param uint16_t__len Payload length, 0..512 bytes, u16 LE on the wire (SET frames use 5) / payload ( SET )
+* @return None /
+ */
+static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__ptr_payload, uint16_t uint16_t__len)
+{
+    uint8_t UINT8_T__A__Frame[ESP_LINK_HEADER_SIZE + ESP_LINK_MAX_PAYLOAD + ESP_LINK_CRC_SIZE];
+    uint8_t uint8_t__lenLo = (uint8_t)(uint16_t__len & 0xFFu);
+    uint8_t uint8_t__lenHi = (uint8_t)((uint16_t__len >> 8) & 0xFFu);
+    uint16_t uint16_t__crc = (uint16_t)ESP_LINK_CRC16_INIT;
+    uint16_t uint16_t__index;
+    if (uint16_t__len > ESP_LINK_MAX_PAYLOAD)
+    {
+        return;
+    }
+    UINT8_T__A__Frame[0] = ESP_LINK_SOF_BYTE0;
+    UINT8_T__A__Frame[1] = ESP_LINK_SOF_BYTE1;
+    UINT8_T__A__Frame[2] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = uint8_t__type;
+    UINT8_T__A__Frame[4] = uint8_t__lenLo;
+    UINT8_T__A__Frame[5] = uint8_t__lenHi;
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, (uint8_t)ESP_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__type);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__lenLo);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__lenHi);
+    for (uint16_t__index = 0u; uint16_t__index < uint16_t__len; uint16_t__index++)
+    {
+        uint8_t uint8_t__byte = uint8_t__ptr_payload[uint16_t__index];
+        UINT8_T__A__Frame[ESP_LINK_HEADER_SIZE + uint16_t__index] = uint8_t__byte;
+        uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__byte);
+    }
+    uint16_t uint16_t__crcPosition = (uint16_t)(ESP_LINK_HEADER_SIZE + uint16_t__len);
+    UINT8_T__A__Frame[uint16_t__crcPosition] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[uint16_t__crcPosition + 1u] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+    uint16_t uint16_t__frameSize = (uint16_t)(uint16_t__crcPosition + ESP_LINK_CRC_SIZE);
+    (void)Serial.write(UINT8_T__A__Frame, uint16_t__frameSize);
+    UINT32_T__G__LastTxMs = (uint32_t)millis();
+    /*
+ * [EN] Every valid frame feeds the STM32 dead-man, so it also counts as the keepalive.
+ */
+    UINT32_T__G__LastKeepaliveMs = UINT32_T__G__LastTxMs;
+}
+/* ==================== v1.66 direct LUT push ==================== */
+/*
+ * [EN] Last LUT_ACK the board sent, exposed to the browser by GET /lut. The
+ * push is a HANDSHAKE, not a fire-and-forget: the panel only offers the
+ * reboot after the board has echoed the same CRC32 and the active point pairs
+ * have matched the staged table.
+ */
+static uint8_t  UINT8_T__G__LutAckStage = 0u;
+static uint8_t  UINT8_T__G__LutAckStatus = 0u;
+static uint8_t  UINT8_T__G__LutAckPoints1 = 0u;
+static uint8_t  UINT8_T__G__LutAckPoints2 = 0u;
+static uint32_t UINT32_T__G__LutAckCrc32 = 0u;
+static uint32_t UINT32_T__G__LutAckMs = 0u;
+static uint32_t UINT32_T__G__LutAckCount = 0u;
+static uint32_t UINT32_T__G__LutSentCrc32 = 0u;
+/*
+ * [EN] v1.67 link audit, finding L1 - the push MUST be paced.
+ * The STM32 receives on a 256-byte circular DMA ring that the comm task
+ * drains on its own period. v1.66 wrote BEGIN + CHUNK + CHUNK + COMMIT
+ * back to back: about 430 bytes at 921600 baud, i.e. the whole burst lands
+ * in under 5 ms and overruns the 256-byte ring before the board can read
+ * it. The second chunk was being silently overwritten, so a two-channel
+ * table would fail its CRC (safe, but the feature would simply never work).
+ * The fix: one frame at a time, the next only after the board's LUT_ACK for
+ * the previous one, with a timeout, retries and a visible error. That also
+ * makes the push robust against a genuinely lost frame.
+ */
+#define ESP_LUT_TX_ACK_TIMEOUT_MS       600u
+/*
+ * [EN] COMMIT erases and programs a flash page on the board, which stalls it
+ * for tens of ms; give that step a much longer leash.
+ */
+#define ESP_LUT_TX_COMMIT_TIMEOUT_MS    2500u
+#define ESP_LUT_TX_RETRY_MAX            3u
+/*
+ * [EN] Staged table (filled by POST /lut, sent by func__Esp_LutTxPump).
+ */
+static uint32_t UINT32_T__G__LutCounts1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutMa1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutCounts2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutMa2[ESP_LUT_POINTS_MAX];
+static uint8_t  UINT8_T__G__LutTxCount1 = 0u;
+static uint8_t  UINT8_T__G__LutTxCount2 = 0u;
+static uint32_t UINT32_T__G__LutTxCrc32 = 0u;
+/*
+ * [EN] 0 = idle, 1 = BEGIN, 2 = chunk ch1, 3 = chunk ch2, 4 = COMMIT.
+ */
+static uint8_t  UINT8_T__G__LutTxStage = 0u;
+static uint8_t  UINT8_T__G__LutTxRetry = 0u;
+static bool     BOOL__G__LutTxWaiting = false;
+static uint32_t UINT32_T__G__LutTxSentMs = 0u;
+static uint32_t UINT32_T__G__LutTxAckMark = 0u;
+/*
+ * [EN] 0 = none, 1 = no answer (link/board), 2 = board refused the step.
+ */
+static uint8_t  UINT8_T__G__LutTxError = 0u;
+/*
+ * [EN] Active-table readback requested by POST /lut/read. The arrays hold
+ * values returned by STM32, never values reconstructed from the panel's
+ * proposal; this distinction is what makes the before/after comparison real.
+ */
+static uint32_t UINT32_T__G__LutReadCounts1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadMa1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadCounts2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadMa2[ESP_LUT_POINTS_MAX];
+static uint8_t  UINT8_T__G__LutReadCount1 = 0u;
+static uint8_t  UINT8_T__G__LutReadCount2 = 0u;
+static uint8_t  UINT8_T__G__LutReadMask = 0u;
+static bool     BOOL__G__LutReadPending = false;
+static bool     BOOL__G__LutReadReady = false;
+static uint8_t  UINT8_T__G__LutReadError = 0u;
+static uint32_t UINT32_T__G__LutReadMs = 0u;
+/**
+ * @brief  [EN] Append one little-endian u32 to a payload buffer.
+ */
+static uint16_t func__Esp_PutU32(uint8_t *uint8_t__ptr_buffer, uint16_t uint16_t__offset, uint32_t uint32_t__value)
+{
+    uint8_t__ptr_buffer[uint16_t__offset] = (uint8_t)(uint32_t__value & 0xFFu);
+    uint8_t__ptr_buffer[uint16_t__offset + 1u] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+    uint8_t__ptr_buffer[uint16_t__offset + 2u] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+    uint8_t__ptr_buffer[uint16_t__offset + 3u] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+    return (uint16_t)(uint16_t__offset + 4u);
+}
+/* ==================== LUT read request / LUT ==================== */
+/**
+ * @brief  [EN] Start one active-table readback request. It owns no staged
+ *              table and is refused while a push is in flight.
+* @return true when the request was sent /
+ */
+static bool func__Esp_LutReadStart(void)
+{
+    if (UINT8_T__G__LutTxStage != 0u)
+    {
+        return false;
+    }
+    UINT8_T__G__LutReadCount1 = 0u;
+    UINT8_T__G__LutReadCount2 = 0u;
+    UINT8_T__G__LutReadMask = 0u;
+    BOOL__G__LutReadPending = true;
+    BOOL__G__LutReadReady = false;
+    UINT8_T__G__LutReadError = 0u;
+    UINT32_T__G__LutReadMs = 0u;
+    func__Esp_WriteFrame(ESP_MSG_LUT_READ, NULL, 0u);
+    return true;
+}
+/**
+ * @brief  [EN] Store one STM32 LUT_DATA frame and mark readback ready after
+ *              both channels have arrived.
+* @param uint8_t__ptr_payload Data payload / payload
+* @param uint16_t__length Payload length in bytes / payload
+* @return None /
+ */
+static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
+                                   uint16_t uint16_t__length)
+{
+    uint8_t uint8_t__channel;
+    uint8_t uint8_t__first;
+    uint8_t uint8_t__count;
+    uint16_t uint16_t__expected;
+    uint16_t uint16_t__offset;
+    uint8_t uint8_t__index;
+    uint32_t *uint32_t__ptr_chain;
+    uint32_t *uint32_t__ptr_battery;
+    uint8_t uint8_t__mask;
+    if (!BOOL__G__LutReadPending)
+    {
+        /*
+ * [EN] Do not let an unsolicited/stale response overwrite a complete
+ * readback; only a response to the current request is authoritative.
+ */
+        return;
+    }
+    if (uint16_t__length < 3u)
+    {
+        UINT8_T__G__LutReadError = 1u;
+        BOOL__G__LutReadPending = false;
+        return;
+    }
+    uint8_t__channel = uint8_t__ptr_payload[0];
+    uint8_t__first = uint8_t__ptr_payload[1];
+    uint8_t__count = uint8_t__ptr_payload[2];
+    uint16_t__expected = (uint16_t)(3u + (8u * (uint16_t)uint8_t__count));
+    if ((uint8_t__channel < 1u) || (uint8_t__channel > 2u) ||
+        (uint8_t__first != 0u) ||
+        (uint8_t__count > (uint8_t)ESP_LUT_POINTS_MAX) ||
+        (uint16_t__length != uint16_t__expected))
+    {
+        UINT8_T__G__LutReadError = 1u;
+        BOOL__G__LutReadPending = false;
+        return;
+    }
+    if (uint8_t__channel == 1u)
+    {
+        uint32_t__ptr_chain = UINT32_T__G__LutReadCounts1;
+        uint32_t__ptr_battery = UINT32_T__G__LutReadMa1;
+    }
+    else
+    {
+        uint32_t__ptr_chain = UINT32_T__G__LutReadCounts2;
+        uint32_t__ptr_battery = UINT32_T__G__LutReadMa2;
+    }
+    uint16_t__offset = 3u;
+    for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
+    {
+        uint32_t__ptr_chain[uint8_t__index] = func__Esp_ReadU32(
+            uint8_t__ptr_payload, (uint8_t)uint16_t__offset);
+        uint32_t__ptr_battery[uint8_t__index] = func__Esp_ReadU32(
+            uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
+        uint16_t__offset = (uint16_t)(uint16_t__offset + 8u);
+    }
+    if (uint8_t__channel == 1u)
+    {
+        UINT8_T__G__LutReadCount1 = uint8_t__count;
+        uint8_t__mask = 1u;
+    }
+    else
+    {
+        UINT8_T__G__LutReadCount2 = uint8_t__count;
+        uint8_t__mask = 2u;
+    }
+    UINT8_T__G__LutReadMask = (uint8_t)(UINT8_T__G__LutReadMask | uint8_t__mask);
+    if (UINT8_T__G__LutReadMask == 3u)
+    {
+        BOOL__G__LutReadPending = false;
+        BOOL__G__LutReadReady = true;
+        UINT32_T__G__LutReadMs = (uint32_t)millis();
+    }
+}
+/**
+ * @brief  [EN] Confirm that the latest readback is the exact point table that
+ *              the last push staged, not merely a matching count or CRC.
+* @return true on a complete point-by-point match /
+ */
+static bool func__Esp_LutReadMatchesStaged(void)
+{
+    uint8_t uint8_t__index;
+    if ((!BOOL__G__LutReadReady) ||
+        (UINT8_T__G__LutReadCount1 != UINT8_T__G__LutTxCount1) ||
+        (UINT8_T__G__LutReadCount2 != UINT8_T__G__LutTxCount2))
+    {
+        return false;
+    }
+    for (uint8_t__index = 0u; uint8_t__index < UINT8_T__G__LutTxCount1; uint8_t__index++)
+    {
+        if ((UINT32_T__G__LutReadCounts1[uint8_t__index] != UINT32_T__G__LutCounts1[uint8_t__index]) ||
+            (UINT32_T__G__LutReadMa1[uint8_t__index] != UINT32_T__G__LutMa1[uint8_t__index]))
+        {
+            return false;
+        }
+    }
+    for (uint8_t__index = 0u; uint8_t__index < UINT8_T__G__LutTxCount2; uint8_t__index++)
+    {
+        if ((UINT32_T__G__LutReadCounts2[uint8_t__index] != UINT32_T__G__LutCounts2[uint8_t__index]) ||
+            (UINT32_T__G__LutReadMa2[uint8_t__index] != UINT32_T__G__LutMa2[uint8_t__index]))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * @brief  [EN] Send one channel's staged points as a single LUT_CHUNK
+ *              (3 + 8 x N bytes; N <= 24 keeps it at 195 bytes, well inside
+ *              the 512-byte frame ceiling).
+ */
+static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uint32_t__ptr_counts,
+                                   const uint32_t *uint32_t__ptr_batteryMa, uint8_t uint8_t__count)
+{
+    uint8_t UINT8_T__A__Payload[3u + (8u * ESP_LUT_POINTS_MAX)];
+    uint16_t uint16_t__used = 3u;
+    uint8_t uint8_t__index;
+    if ((uint8_t__count == 0u) || (uint8_t__count > (uint8_t)ESP_LUT_POINTS_MAX))
+    {
+        return;
+    }
+    UINT8_T__A__Payload[0] = uint8_t__channel;
+    UINT8_T__A__Payload[1] = 0u;
+    UINT8_T__A__Payload[2] = uint8_t__count;
+    for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
+    {
+        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_counts[uint8_t__index]);
+        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_batteryMa[uint8_t__index]);
+    }
+    func__Esp_WriteFrame(ESP_MSG_LUT_CHUNK, UINT8_T__A__Payload, uint16_t__used);
+}
+/**
+ * @brief  [EN] Stage a whole table for sending. Nothing goes out here: the
+ *              frames are released one at a time by func__Esp_LutTxPump as
+ *              the board acknowledges them (see finding L1 above). Any push
+ *              in flight is replaced.
+* @param uint8_t__count1 Points staged for channel 1, 0..24 /
+* @param uint8_t__count2 Points staged for channel 2, 0..24 /
+* @param uint32_t__crc32 CRC32 the browser computed / CRC32
+* @return None /
+ */
+static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count2,
+                                 uint32_t uint32_t__crc32)
+{
+    UINT8_T__G__LutTxCount1 = uint8_t__count1;
+    UINT8_T__G__LutTxCount2 = uint8_t__count2;
+    UINT32_T__G__LutTxCrc32 = uint32_t__crc32;
+    UINT32_T__G__LutSentCrc32 = uint32_t__crc32;
+    UINT8_T__G__LutTxStage = 1u;
+    UINT8_T__G__LutTxRetry = 0u;
+    UINT8_T__G__LutTxError = 0u;
+    BOOL__G__LutTxWaiting = false;
+    UINT32_T__G__LutTxAckMark = UINT32_T__G__LutAckCount;
+    /*
+ * [EN] A new push invalidates the previous readback; reset may only use
+ * data that belongs to this transaction.
+ */
+    UINT8_T__G__LutReadCount1 = 0u;
+    UINT8_T__G__LutReadCount2 = 0u;
+    UINT8_T__G__LutReadMask = 0u;
+    BOOL__G__LutReadPending = false;
+    BOOL__G__LutReadReady = false;
+    UINT8_T__G__LutReadError = 0u;
+    UINT32_T__G__LutReadMs = 0u;
+}
+/**
+ * @brief  [EN] Advance the staged push by at most one frame per call: send
+ *              the current step, then wait for its LUT_ACK before the next.
+ *              A step whose ACK does not arrive within the timeout is resent
+ *              up to ESP_LUT_TX_RETRY_MAX times; after that the push stops
+ *              with error 1 so the panel can say so instead of hanging on a
+ *              spinner. A step the board refuses (status != 0) stops it with
+ *              error 2 - a half-written table is never committed.
+* @return true while a push owns the link /
+ */
+static bool func__Esp_LutTxPump(void)
+{
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+    uint8_t uint8_t__expectStage;
+    uint32_t uint32_t__timeoutMs;
+    if (UINT8_T__G__LutTxStage == 0u)
+    {
+        return false;
+    }
+    uint8_t__expectStage = (UINT8_T__G__LutTxStage == 1u) ? 1u :
+                           ((UINT8_T__G__LutTxStage == 4u) ? 3u : 2u);
+    uint32_t__timeoutMs = (UINT8_T__G__LutTxStage == 4u) ? ESP_LUT_TX_COMMIT_TIMEOUT_MS
+                                                         : ESP_LUT_TX_ACK_TIMEOUT_MS;
+    if (BOOL__G__LutTxWaiting)
+    {
+        /*
+ * [EN] The ACK must be NEW and describe the step we are waiting for.
+ * Matching the echoed point counts as well means a duplicate ACK
+ * caused by a retry cannot be mistaken for the next step's answer.
+ */
+        bool bool__fresh = (UINT32_T__G__LutAckCount != UINT32_T__G__LutTxAckMark) &&
+                           (UINT8_T__G__LutAckStage == uint8_t__expectStage);
+        if (bool__fresh && (UINT8_T__G__LutTxStage == 2u))
+        {
+            bool__fresh = (UINT8_T__G__LutAckPoints1 == UINT8_T__G__LutTxCount1);
+        }
+        if (bool__fresh && (UINT8_T__G__LutTxStage == 3u))
+        {
+            bool__fresh = (UINT8_T__G__LutAckPoints2 == UINT8_T__G__LutTxCount2);
+        }
+        if (bool__fresh)
+        {
+            if (UINT8_T__G__LutAckStatus != 0u)
+            {
+                UINT8_T__G__LutTxError = 2u;
+                UINT8_T__G__LutTxStage = 0u;
+                BOOL__G__LutTxWaiting = false;
+                return false;
+            }
+            BOOL__G__LutTxWaiting = false;
+            UINT8_T__G__LutTxRetry = 0u;
+            UINT8_T__G__LutTxStage++;
+            /*
+ * [EN] Skip the chunk of a channel that was sent as 0 points.
+ */
+            if ((UINT8_T__G__LutTxStage == 2u) && (UINT8_T__G__LutTxCount1 == 0u))
+            {
+                UINT8_T__G__LutTxStage = 3u;
+            }
+            if ((UINT8_T__G__LutTxStage == 3u) && (UINT8_T__G__LutTxCount2 == 0u))
+            {
+                UINT8_T__G__LutTxStage = 4u;
+            }
+            if (UINT8_T__G__LutTxStage > 4u)
+            {
+                UINT8_T__G__LutTxStage = 0u;
+                return false;
+            }
+        }
+        else if ((uint32_t__nowMs - UINT32_T__G__LutTxSentMs) < uint32_t__timeoutMs)
+        {
+            return true;
+        }
+        else if (UINT8_T__G__LutTxRetry >= (uint8_t)ESP_LUT_TX_RETRY_MAX)
+        {
+            UINT8_T__G__LutTxError = 1u;
+            UINT8_T__G__LutTxStage = 0u;
+            BOOL__G__LutTxWaiting = false;
+            return false;
+        }
+        else
+        {
+            UINT8_T__G__LutTxRetry++;
+            BOOL__G__LutTxWaiting = false;
+        }
+    }
+    if (UINT8_T__G__LutTxStage == 1u)
+    {
+        uint8_t UINT8_T__A__Begin[2];
+        UINT8_T__A__Begin[0] = UINT8_T__G__LutTxCount1;
+        UINT8_T__A__Begin[1] = UINT8_T__G__LutTxCount2;
+        func__Esp_WriteFrame(ESP_MSG_LUT_BEGIN, UINT8_T__A__Begin, 2u);
+    }
+    else if (UINT8_T__G__LutTxStage == 2u)
+    {
+        func__Esp_SendLutChunk(1u, UINT32_T__G__LutCounts1, UINT32_T__G__LutMa1,
+                               UINT8_T__G__LutTxCount1);
+    }
+    else if (UINT8_T__G__LutTxStage == 3u)
+    {
+        func__Esp_SendLutChunk(2u, UINT32_T__G__LutCounts2, UINT32_T__G__LutMa2,
+                               UINT8_T__G__LutTxCount2);
+    }
+    else
+    {
+        uint8_t UINT8_T__A__Commit[4];
+        (void)func__Esp_PutU32(UINT8_T__A__Commit, 0u, UINT32_T__G__LutTxCrc32);
+        func__Esp_WriteFrame(ESP_MSG_LUT_COMMIT, UINT8_T__A__Commit, 4u);
+    }
+    UINT32_T__G__LutTxAckMark = UINT32_T__G__LutAckCount;
+    UINT32_T__G__LutTxSentMs = uint32_t__nowMs;
+    BOOL__G__LutTxWaiting = true;
+    return true;
+}
+/**
+ * @brief  [EN] Ask the board to reboot so every module starts from the new
+ *              table. The literal 'R','S','T','!' magic means a stray frame
+ *              can never restart a charging board by accident.
+ */
+static void func__Esp_SendLutReset(void)
+{
+    uint8_t UINT8_T__A__Payload[4] = { (uint8_t)'R', (uint8_t)'S', (uint8_t)'T', (uint8_t)'!' };
+    func__Esp_WriteFrame(ESP_MSG_LUT_RESET, UINT8_T__A__Payload, 4u);
+}
+/**
+ * @brief  [EN] Send SET_PARAM [id:u8][value:u32 LE].
+* @param uint8_t__id Parameter ID, 0..82 (83 params since v1.17) / ( .)
+* @param uint32_t__value Raw wire value (signed IDs as two's complement) / ( )
+* @return None /
+ */
+static void func__Esp_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
+{
+    uint8_t UINT8_T__A__Payload[ESP_LINK_PARAM_ITEM_SIZE];
+    UINT8_T__A__Payload[0] = uint8_t__id;
+    UINT8_T__A__Payload[1] = (uint8_t)(uint32_t__value & 0xFFu);
+    UINT8_T__A__Payload[2] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+    UINT8_T__A__Payload[3] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+    UINT8_T__A__Payload[4] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+    func__Esp_WriteFrame(ESP_MSG_SET_PARAM, UINT8_T__A__Payload, ESP_LINK_PARAM_ITEM_SIZE);
+}
+/**
+ * @brief  [EN] Send at most one queued command per ESP_LINK_TX_INTERVAL_MS
+ *              (priority order UINT8_T__G__TxOrder), plus the manual-mode keepalive or, with no
+ *              browser, the manual-exit request (ID 19 = 0). Never blocks.
+* @return None /
+ */
+static void func__Esp_PumpTx(void)
+{
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+    uint32_t uint32_t__elapsedMs = uint32_t__nowMs - UINT32_T__G__LastTxMs;
+    uint8_t uint8_t__step;
+    /*
+ * [EN] A LUT push owns the link while it runs (a few hundred ms at most):
+ * its frames are big, and interleaving a SET_PARAM between a chunk and
+ * its ACK is exactly how the board's RX ring would be overrun again.
+ * Parameter writes stay queued and go out right after; nothing is lost.
+ */
+    if (func__Esp_LutTxPump())
+    {
+        return;
+    }
+    if (uint32_t__elapsedMs < ESP_LINK_TX_INTERVAL_MS)
+    {
+        return;
+    }
+    for (uint8_t__step = 0u; uint8_t__step < ESP_PARAM_COUNT; uint8_t__step++)
+    {
+        uint8_t uint8_t__id = UINT8_T__G__TxOrder[uint8_t__step];
+        if (BOOL__G__TxParamPending[uint8_t__id])
+        {
+            BOOL__G__TxParamPending[uint8_t__id] = false;
+            func__Esp_SendSetParam(uint8_t__id, UINT32_T__G__TxParamValue[uint8_t__id]);
+            return;
+        }
+    }
+    for (uint8_t__step = 0u; uint8_t__step < ESP_SLOT_QUEUE_LEN; uint8_t__step++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__step])
+        {
+            BOOL__G__SlotQueuePending[uint8_t__step] = false;
+            func__Esp_SendSetParam(UINT8_T__G__SlotQueueId[uint8_t__step],
+                                   UINT32_T__G__SlotQueueValue[uint8_t__step]);
+            return;
+        }
+    }
+    /*
+ * [EN] Manual-mode keepalive: every ESP_LINK_KEEPALIVE_MS while manual is active (b5 or param 19),
+ * whether or not a browser is polling (spec section 19: from every tab and in the background).
+ */
+    bool bool__flagManual = ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_MANUAL_MODE) != 0u);
+    bool bool__paramManual = BOOL__G__ParamKnown[ESP_PARAM_MANUAL_TEST_MODE] &&
+                             (UINT32_T__G__ParamApplied[ESP_PARAM_MANUAL_TEST_MODE] != 0u);
+    bool bool__manualActive = bool__flagManual || bool__paramManual;
+    /*
+ * [EN] Closed-panel guard: no /t poll for ESP_LINK_BROWSER_LOST_MS -> the keepalive is replaced by
+ * SET ID 19 = 0, repeated every ESP_LINK_KEEPALIVE_MS until the STM32 reports manual off
+ * (a lost frame is simply retried). A throttled background tab still polls about once per
+ * second and is not affected.
+ */
+    /*
+ * [EN] No browser since boot counts as lost: an ESP reset while the STM32 is in manual mode
+ * must not keep the mode alive for 10 s without anyone watching.
+ */
+    uint32_t uint32_t__browserAgeMs = uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs;
+    bool bool__browserLost = (!BOOL__G__BrowserSeen) || (uint32_t__browserAgeMs >= ESP_LINK_BROWSER_LOST_MS);
+    uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
+    bool bool__keepaliveDue = bool__manualActive && (uint32_t__keepaliveAgeMs >= ESP_LINK_KEEPALIVE_MS);
+    if (bool__keepaliveDue && bool__browserLost)
+    {
+        func__Esp_SendSetParam(ESP_PARAM_MANUAL_TEST_MODE, 0u);
+        return;
+    }
+    /*
+ * [EN] Periodic parameter refresh: the seq-restart detector is blind while the
+ * sequence counter sits in its wrap window (0xFF00..0xFFFF), so a board reboot
+ * inside that ~26 s window (once per ~109 min) would leave the applied-value
+ * table stale forever. One GET_PARAMS every ESP_LINK_PARAM_REFRESH_MS keeps the
+ * display truthful; it does NOT re-apply user parameters (that only happens on
+ * a detected restart, so a JIT-parked channel can never be re-armed by this).
+ */
+    /*
+ * [EN] v1.54 (user order 2026-10-05: "the panel no longer displays the
+ * board's LED/buzzer state, so stop asking the board for things
+ * nobody needs"): the refresh exists only to keep a WATCHED page
+ * truthful, so it is now skipped while no browser is polling. With
+ * the tab closed the STM32 is never asked to dump its 123-value
+ * parameter table again; the first poll after a gap re-arms it, so
+ * whoever opens the page still sees fresh applied values.
+ */
+    if (bool__browserLost)
+    {
+        UINT32_T__G__LastParamRefreshMs = uint32_t__nowMs - ESP_LINK_PARAM_REFRESH_MS;
+    }
+    else if ((uint32_t__nowMs - UINT32_T__G__LastParamRefreshMs) >= ESP_LINK_PARAM_REFRESH_MS)
+    {
+        UINT32_T__G__LastParamRefreshMs = uint32_t__nowMs;
+        BOOL__G__TxGetPending = true;
+    }
+    else
+    {
+    }
+    if (bool__keepaliveDue)
+    {
+        BOOL__G__TxGetPending = true;
+    }
+    if (BOOL__G__TxGetPending)
+    {
+        BOOL__G__TxGetPending = false;
+        func__Esp_WriteFrame(ESP_MSG_GET_PARAMS, NULL, 0u);
+    }
+}
+/* ==================== Frame Receive ==================== */
+/**
+ * @brief  [EN] Store one parameter value reported by the STM32 (applied value).
+* @param uint8_t__ptr_item 5-byte item [id][value LE] / [id][value LE]
+* @return None /
+ */
+static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
+{
+    uint8_t uint8_t__id = uint8_t__ptr_item[0];
+    uint32_t uint32_t__value = func__Esp_ReadU32(uint8_t__ptr_item, 1u);
+    if (uint8_t__id < ESP_PARAM_COUNT)
+    {
+        UINT32_T__G__ParamApplied[uint8_t__id] = uint32_t__value;
+        BOOL__G__ParamKnown[uint8_t__id] = true;
+    }
+    else if ((uint8_t__id >= ESP_SLOT_FIRST_ID) && (uint8_t__id <= ESP_SLOT_LAST_ID))
+    {
+        uint8_t uint8_t__index;
+        UINT8_T__G__SlotLastId    = uint8_t__id;
+        UINT32_T__G__SlotLastValue = uint32_t__value;
+        BOOL__G__SlotLastKnown    = true;
+        UINT32_T__G__SlotReportCount++;
+        for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
+        {
+            if (BOOL__G__SlotQueuePending[uint8_t__index] &&
+                (UINT8_T__G__SlotQueueId[uint8_t__index] == uint8_t__id))
+            {
+                BOOL__G__SlotQueuePending[uint8_t__index] = false;
+            }
+        }
+    }
+    else
+    {
+    }
+}
+/**
+ * @brief  [EN] Add the just-stored TLM frame to the bench statistics window.
+* @return None /
+ */
+static void func__Esp_StatAccumulate(void)
+{
+    uint8_t uint8_t__index;
+    if (UINT32_T__G__StatCount >= ESP_STAT_MAX_FRAMES)
+    {
+        return;
+    }
+    for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
+    {
+        uint32_t uint32_t__value = UINT32_T__G__TlmField[uint8_t__index];
+        UINT32_T__G__StatLast[uint8_t__index] = uint32_t__value;
+        bool bool__first = (UINT32_T__G__StatCount == 0u);
+        /*
+ * [EN] Full-program audit: saturate instead of wrapping. A field
+ * that sits near its ceiling for the whole 60000-frame window
+ * (e.g. a dead-battery elapsed counter near 24 h at 1 Hz) would
+ * otherwise wrap the sum and corrupt the bench average.
+ */
+        if ((UINT32_MAX - UINT32_T__G__StatSum[uint8_t__index]) < uint32_t__value)
+        {
+            UINT32_T__G__StatSum[uint8_t__index] = UINT32_MAX;
+        }
+        else
+        {
+            UINT32_T__G__StatSum[uint8_t__index] += uint32_t__value;
+        }
+        if (bool__first || (uint32_t__value < UINT32_T__G__StatMin[uint8_t__index]))
+        {
+            UINT32_T__G__StatMin[uint8_t__index] = uint32_t__value;
+        }
+        if (bool__first || (uint32_t__value > UINT32_T__G__StatMax[uint8_t__index]))
+        {
+            UINT32_T__G__StatMax[uint8_t__index] = uint32_t__value;
+        }
+    }
+    UINT32_T__G__StatFaultOr |= UINT32_T__G__TlmField[ESP_STAT_FAULT_FIELD];
+    UINT16_T__G__StatSeq = UINT16_T__G__TlmSeq;
+    UINT8_T__G__StatFlags = UINT8_T__G__TlmFlags;
+    UINT32_T__G__StatCount++;
+}
+/**
+ * @brief  [EN] Send one HELLO so the board proves it hears us (v1.111).
+* @return None /
+ */
+static void func__Esp_SendHello(void)
+{
+    uint8_t UINT8_T__A__Payload[ESP_HELLO_LEN];
+    uint32_t uint32_t__uptimeSec = (uint32_t)((uint32_t)millis() / 1000u);
+    uint8_t uint8_t__flags = 0u;
+    uint8_t uint8_t__index;
+    /*
+ * [EN] Flags say what this panel knows: bit0 telemetry seen, bit1 a browser
+ * is polling. The board stores them but never acts on them.
+ */
+    if (BOOL__G__TlmSeen) { uint8_t__flags |= 0x01u; }
+    if (BOOL__G__BrowserSeen &&
+        ((uint32_t)((uint32_t)millis() - UINT32_T__G__LastBrowserPollMs) < ESP_LINK_BROWSER_LOST_MS))
+    {
+        uint8_t__flags |= 0x02u;
+    }
+    UINT8_T__A__Payload[0] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Payload[1] = (uint8_t)ESP_ESP_FW_VERSION;
+    UINT8_T__A__Payload[2] = (uint8_t)ESP_ESP_ROLE_CALIBRATION;
+    UINT8_T__A__Payload[3] = uint8_t__flags;
+    for (uint8_t__index = 0u; uint8_t__index < 4u; uint8_t__index++)
+    {
+        UINT8_T__A__Payload[4u + uint8_t__index] =
+            (uint8_t)((uint32_t__uptimeSec >> (8u * uint8_t__index)) & 0xFFu);
+    }
+    func__Esp_WriteFrame((uint8_t)ESP_MSG_HELLO, UINT8_T__A__Payload, (uint16_t)ESP_HELLO_LEN);
+    UINT32_T__G__LastHelloTxMs = (uint32_t)millis();
+}
+/**
+ * @brief  [EN] Store the board's answer: its identity plus its own receive health.
+* @param uint8_t__ptr_payload 24 payload bytes / payload
+* @return None /
+ */
+static void func__Esp_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
+{
+    UINT8_T__G__BoardProtoVersion = uint8_t__ptr_payload[0];
+    UINT8_T__G__BoardFwVersion    = uint8_t__ptr_payload[1];
+    UINT8_T__G__BoardFlags        = uint8_t__ptr_payload[2];
+    UINT32_T__G__BoardUptimeSec   = func__Esp_ReadU32(uint8_t__ptr_payload, 4u);
+    UINT32_T__G__BoardRxFrames    = func__Esp_ReadU32(uint8_t__ptr_payload, 8u);
+    UINT16_T__G__BoardCrcErrors   = (uint16_t)((uint16_t)uint8_t__ptr_payload[12] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[13] << 8));
+    UINT16_T__G__BoardVerErrors   = (uint16_t)((uint16_t)uint8_t__ptr_payload[14] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[15] << 8));
+    UINT16_T__G__BoardParamCount  = (uint16_t)((uint16_t)uint8_t__ptr_payload[16] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[17] << 8));
+    UINT16_T__G__BoardPeriodMs    = (uint16_t)((uint16_t)uint8_t__ptr_payload[18] |
+                                               (uint16_t)((uint16_t)uint8_t__ptr_payload[19] << 8));
+    /*
+ * [EN] Bytes 20..23 echo our uptime; used only to pair request and answer.
+ */
+    /*
+ * [EN] Hand the board's own uptime to the log: it is the only clock that
+ * kept running while this panel was off (user order 2026-10-27).
+ */
+    func__EspLog_NoteBoardTime(UINT32_T__G__BoardUptimeSec);
+    UINT32_T__G__LastHelloAckMs = (uint32_t)millis();
+    BOOL__G__HelloSeen = true;
+    UINT32_T__G__HelloAckCount++;
+}
+/**
+ * @brief  [EN] Handshake clock: send HELLO on cadence, drop the link when silent.
+* @param uint32_t__nowMs current millis(), 0..2^32-1 ms / millis ^-
+* @return None /
+ */
+static void func__Esp_HandshakeTick(uint32_t uint32_t__nowMs)
+{
+    if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloTxMs) >= ESP_HELLO_INTERVAL_MS)
+    {
+        func__Esp_SendHello();
+    }
+    if (BOOL__G__HelloSeen &&
+        ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastHelloAckMs) > ESP_HELLO_TIMEOUT_MS))
+    {
+        BOOL__G__HelloSeen = false;
+        UINT32_T__G__HelloLossCount++;
+    }
+}
+/**
+ * @brief  [EN] Dispatch one checksum-valid frame from the STM32.
+* @return None /
+ */
+static void func__Esp_HandleFrame(void)
+{
+    const uint8_t *uint8_t__ptr_payload = UINT8_T__G__RxPayload;
+    uint8_t uint8_t__index;
+    if ((UINT8_T__G__RxType == ESP_MSG_TLM_LIVE) && (UINT16_T__G__RxLen == ESP_LINK_TLM_SIZE))
+    {
+        uint16_t uint16_t__seqLow = (uint16_t)uint8_t__ptr_payload[0];
+        uint16_t uint16_t__seqHigh = (uint16_t)((uint16_t)uint8_t__ptr_payload[1] << 8);
+        uint16_t uint16_t__seq = (uint16_t)(uint16_t__seqLow | uint16_t__seqHigh);
+        /*
+ * [EN] First frame or STM32 restart (seq jumps back): refresh the parameter table.
+ */
+        bool bool__seqRestart = BOOL__G__TlmSeen && (uint16_t__seq < UINT16_T__G__TlmSeq) && (UINT16_T__G__TlmSeq < 0xFF00u);
+        if ((!BOOL__G__TlmSeen) || bool__seqRestart)
+        {
+            BOOL__G__TxGetPending = true;
+        }
+        /*
+ * [EN] STM32 flash-persists ids 0..14 + 20..75 (v1.14 NVM), so the
+ * re-send below only matters for the transient test modes
+ * 15..19 (+76): re-send values the user set in this session.
+ * Manual test mode (ID 19) is never re-enabled automatically.
+ */
+        if (bool__seqRestart)
+        {
+            for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
+            {
+                bool bool__isManualSwitch = (uint8_t__index == ESP_PARAM_MANUAL_TEST_MODE);
+                if (BOOL__G__ParamUserSet[uint8_t__index] && (!bool__isManualSwitch))
+                {
+                    BOOL__G__TxParamPending[uint8_t__index] = true;
+                }
+            }
+        }
+        for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
+        {
+            uint8_t uint8_t__fieldBytes = (uint8_t)(uint8_t__index * 4u);
+            uint8_t uint8_t__offset = (uint8_t)(ESP_LINK_TLM_FIELD_OFFSET + uint8_t__fieldBytes);
+            UINT32_T__G__TlmField[uint8_t__index] = func__Esp_ReadU32(uint8_t__ptr_payload, uint8_t__offset);
+        }
+        UINT16_T__G__TlmSeq = uint16_t__seq;
+        UINT8_T__G__TlmFlags = uint8_t__ptr_payload[2];
+        /*
+ * [EN] v1.43: byte 3 = imbalance scenario 5 status bits.
+ */
+        UINT8_T__G__TlmFlags2 = uint8_t__ptr_payload[3];
+        UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        UINT32_T__G__TlmFrameCount++;
+        BOOL__G__TlmSeen = true;
+        func__Esp_StatAccumulate();
+        /*
+ * [EN] v1.93: the state history watches every decoded frame and writes
+ * a row only when something really changed.
+ */
+        func__EspLog_OnFrame();
+    }
+    else if (UINT8_T__G__RxType == ESP_MSG_HELLO_ACK)
+    {
+        /*
+ * [EN] Exact length only: a half-written answer must not claim the link.
+ */
+        if (UINT16_T__G__RxLen == (uint16_t)ESP_HELLO_ACK_LEN)
+        {
+            func__Esp_HandleHelloAck(uint8_t__ptr_payload);
+        }
+    }
+    else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen == ESP_LINK_PARAM_ITEM_SIZE))
+    {
+        func__Esp_StoreParamItem(uint8_t__ptr_payload);
+    }
+    else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_NAK) && (UINT16_T__G__RxLen == 2u))
+    {
+        /* [EN] v2: the board refused this SET_PARAM; its value was NOT applied. */
+        UINT8_T__G__NakId = uint8_t__ptr_payload[0];
+        UINT8_T__G__NakReason = uint8_t__ptr_payload[1];
+        UINT32_T__G__NakCount++;
+        if ((UINT8_T__G__NakId >= ESP_SLOT_FIRST_ID) && (UINT8_T__G__NakId <= ESP_SLOT_LAST_ID))
+        {
+            UINT32_T__G__SlotNakCount++;
+        }
+    }
+    else if ((UINT8_T__G__RxType == ESP_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
+    {
+        /*
+ * [EN] v1.16: 77 items need u16 offsets (52 x 5 already overflows u8);
+ * v1.17: 83 items, same count-driven loop.
+ */
+        uint8_t uint8_t__count = uint8_t__ptr_payload[0];
+        uint16_t uint16_t__item;
+        for (uint16_t__item = 0u; uint16_t__item < (uint16_t)uint8_t__count; uint16_t__item++)
+        {
+            uint16_t uint16_t__offset = (uint16_t)(1u + (uint16_t__item * ESP_LINK_PARAM_ITEM_SIZE));
+            uint16_t uint16_t__itemEnd = (uint16_t)(uint16_t__offset + ESP_LINK_PARAM_ITEM_SIZE);
+            if (uint16_t__itemEnd > UINT16_T__G__RxLen)
+            {
+                break;
+            }
+            func__Esp_StoreParamItem(&uint8_t__ptr_payload[uint16_t__offset]);
+        }
+    }
+    else if ((UINT8_T__G__RxType == ESP_MSG_LUT_ACK) && (UINT16_T__G__RxLen == 8u))
+    {
+        /*
+ * [EN] v1.66: the board's answer to one LUT push step. Stored, not
+ * acted on: the browser polls GET /lut and decides, because only it
+ * knows which table it asked for.
+ */
+        UINT8_T__G__LutAckStage = uint8_t__ptr_payload[0];
+        UINT8_T__G__LutAckStatus = uint8_t__ptr_payload[1];
+        UINT8_T__G__LutAckPoints1 = uint8_t__ptr_payload[2];
+        UINT8_T__G__LutAckPoints2 = uint8_t__ptr_payload[3];
+        UINT32_T__G__LutAckCrc32 = func__Esp_ReadU32(uint8_t__ptr_payload, 4u);
+        UINT32_T__G__LutAckMs = (uint32_t)millis();
+        UINT32_T__G__LutAckCount++;
+    }
+    else if (UINT8_T__G__RxType == ESP_MSG_LUT_DATA)
+    {
+        /*
+ * [EN] Active values are stored separately from the push ACK. The
+ * browser must compare these pairs; a point count or CRC alone is not
+ * a value readback. Store also sees short frames so truncation becomes
+ * an explicit readback error instead of a silent timeout.
+ */
+        func__Esp_StoreLutData(uint8_t__ptr_payload, UINT16_T__G__RxLen);
+    }
+    else
+    {
+    }
+}
+/*
+ * [EN] Preserve AA as a possible SOF0 on every parser error. This mirrors
+ * the firmware parser: if an error byte is AA, the next 55 can complete a
+ * frame immediately; discarding AA would lose that frame.
+ */
+static void func__Esp_ResyncFromByte(uint8_t uint8_t__byte)
+{
+    ESP_RX_STATE_T__G__RxState =
+        (uint8_t__byte == ESP_LINK_SOF_BYTE0) ? ESP_RX_WAIT_SOF1 : ESP_RX_WAIT_SOF0;
+}
+/**
+ * @brief  [EN] Feed one received byte to the frame parser; resyncs on AA 55.
+* @param uint8_t__byte Received byte, 0..255 /
+* @return None /
+ */
+static void func__Esp_ParseByte(uint8_t uint8_t__byte)
+{
+    switch (ESP_RX_STATE_T__G__RxState)
+    {
+        case ESP_RX_WAIT_SOF0:
+            if (uint8_t__byte == ESP_LINK_SOF_BYTE0)
+            {
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF1;
+            }
+            break;
+        case ESP_RX_WAIT_SOF1:
+            if (uint8_t__byte == ESP_LINK_SOF_BYTE1)
+            {
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_VERSION;
+            }
+            else if (uint8_t__byte != ESP_LINK_SOF_BYTE0)
+            {
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+            }
+            else
+            {
+            }
+            break;
+        case ESP_RX_WAIT_VERSION:
+            /*
+ * [EN] A frame from a firmware we do not speak. Counted and dropped,
+ * so the page can say "the two boards were flashed out of step"
+ * instead of showing an empty panel with no explanation.
+ */
+            if (uint8_t__byte != (uint8_t)ESP_LINK_PROTOCOL_VERSION)
+            {
+                UINT32_T__G__RxVersionMismatch++;
+                func__Esp_ResyncFromByte(uint8_t__byte);
+            }
+            else
+            {
+                UINT16_T__G__RxCrc = func__Esp_Crc16((uint16_t)ESP_LINK_CRC16_INIT, uint8_t__byte);
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_TYPE;
+            }
+            break;
+        case ESP_RX_WAIT_TYPE:
+            UINT8_T__G__RxType = uint8_t__byte;
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
+            ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_LEN_LO;
+            break;
+        case ESP_RX_WAIT_LEN_LO:
+            UINT16_T__G__RxLen = (uint16_t)uint8_t__byte;
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
+            ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_LEN_HI;
+            break;
+        case ESP_RX_WAIT_LEN_HI:
+            UINT16_T__G__RxLen = (uint16_t)(UINT16_T__G__RxLen | ((uint16_t)((uint16_t)uint8_t__byte << 8)));
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
+            if (UINT16_T__G__RxLen > ESP_LINK_MAX_PAYLOAD)
+            {
+                /*
+ * [EN] Keep an AA high length byte as the next SOF0.
+ */
+                func__Esp_ResyncFromByte(uint8_t__byte);
+            }
+            else
+            {
+                UINT16_T__G__RxIndex = 0u;
+                ESP_RX_STATE_T__G__RxState = (UINT16_T__G__RxLen == 0u) ? ESP_RX_WAIT_CRC_LO : ESP_RX_WAIT_PAYLOAD;
+            }
+            break;
+        case ESP_RX_WAIT_PAYLOAD:
+            UINT8_T__G__RxPayload[UINT16_T__G__RxIndex] = uint8_t__byte;
+            UINT16_T__G__RxIndex++;
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
+            if (UINT16_T__G__RxIndex >= UINT16_T__G__RxLen)
+            {
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_CRC_LO;
+            }
+            break;
+        case ESP_RX_WAIT_CRC_LO:
+            UINT8_T__G__RxCrcLow = uint8_t__byte;
+            ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_CRC_HI;
+            break;
+        case ESP_RX_WAIT_CRC_HI:
+            if (((uint16_t)(((uint16_t)uint8_t__byte << 8) | (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__RxCrc)
+            {
+                func__Esp_HandleFrame();
+            }
+            else
+            {
+                UINT32_T__G__RxCrcError++;
+            }
+            /*
+ * [EN] CRC-HI can itself be AA, so retain it for AA 55 recovery.
+ */
+            func__Esp_ResyncFromByte(uint8_t__byte);
+            break;
+        default:
+            func__Esp_ResyncFromByte(uint8_t__byte);
+            break;
+    }
+}
+/**
+ * @brief  [EN] Drain every pending UART byte into the frame parser without
+ *              blocking. Called from loop() AND from the long HTTP send
+ *              paths: the STM32 streams telemetry every 100 ms no matter
+ *              what, so while a multi-second response (the ~375 KB panel
+ *              page, a bench-log download) keeps the handler busy, nobody
+ *              would otherwise empty the RX ring - it overflows, bytes are
+ *              lost mid-frame and every lost frame lands in the panel's
+ *              yellow "rejected by CRC" counter. Draining inside the send
+ *              loop keeps the ring empty and the link lossless.
+* @return None /
+ */
+static void func__Esp_DrainSerial(void)
+{
+    while (Serial.available() > 0)
+    {
+        int32_t int32_t__byte = (int32_t)Serial.read();
+        if (int32_t__byte >= 0)
+        {
+            func__Esp_ParseByte((uint8_t)int32_t__byte);
+        }
+    }
+}
+/* ==================== Hybrid Wi-Fi Power-Saving ==================== */
+/**
+ * @brief  [EN] Send the 1-byte ESPLINK_MSG_WIFI_CLIENT_STATE (0x33) frame to
+ *              the STM32 without disturbing the SET_PARAM TX rate limiter.
+ * @param  bool__connected [EN] true when a Wi-Fi client is active /
+ */
+static void func__Esp_SendWifiClientState(bool bool__connected)
+{
+    uint8_t UINT8_T__A__Frame[9];
+    uint8_t uint8_t__stateByte = bool__connected ? 1u : 0u;
+    uint16_t uint16_t__crc = (uint16_t)ESP_LINK_CRC16_INIT;
+    UINT8_T__A__Frame[0] = ESP_LINK_SOF_BYTE0;
+    UINT8_T__A__Frame[1] = ESP_LINK_SOF_BYTE1;
+    UINT8_T__A__Frame[2] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = ESP_MSG_WIFI_CLIENT_STATE;
+    UINT8_T__A__Frame[4] = 1u;
+    UINT8_T__A__Frame[5] = 0u;
+    UINT8_T__A__Frame[6] = uint8_t__stateByte;
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, (uint8_t)ESP_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, ESP_MSG_WIFI_CLIENT_STATE);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, 1u);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, 0u);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__stateByte);
+    UINT8_T__A__Frame[7] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[8] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+    (void)Serial.write(UINT8_T__A__Frame, 9u);
+}
+/**
+ * @brief  [EN] Check whether a user is connected to the Wi-Fi AP or actively
+ *              polling the HTTP panel.
+ * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
+ * @return [EN] true if a client is connected, false otherwise /
+ */
+static bool func__Esp_IsWifiClientConnected(uint32_t uint32_t__nowMs)
+{
+    bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
+    bool bool__browserActive = BOOL__G__BrowserSeen &&
+        ((uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) < ESP_LINK_BROWSER_LOST_MS);
+    return bool__stationConnected || bool__browserActive;
+}
+static uint32_t func__Esp_GetWifiParam(uint8_t uint8_t__id, uint32_t uint32_t__defaultValue)
+{
+    if ((uint8_t__id < ESP_PARAM_COUNT) && BOOL__G__ParamKnown[uint8_t__id])
+    {
+        return UINT32_T__G__ParamApplied[uint8_t__id];
+    }
+    return uint32_t__defaultValue;
+}
+static uint32_t func__Esp_ComputeBatteryPercent(void)
+{
+    uint32_t uint32_t__vBat24Mv = UINT32_T__G__TlmField[15];
+    uint32_t uint32_t__vMinMv = func__Esp_GetWifiParam(74u, 21000u);
+    uint32_t uint32_t__vMaxMv = func__Esp_GetWifiParam(75u, 29000u);
+    if ((!BOOL__G__TlmSeen) || (uint32_t__vBat24Mv == 0u) || (uint32_t__vMaxMv <= uint32_t__vMinMv))
+    {
+        return 100u;
+    }
+    if (uint32_t__vBat24Mv <= uint32_t__vMinMv)
+    {
+        return 0u;
+    }
+    if (uint32_t__vBat24Mv >= uint32_t__vMaxMv)
+    {
+        return 100u;
+    }
+    return ((uint32_t__vBat24Mv - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
+}
+/**
+ * @brief  [EN] Start the non-blocking UDP port-53 NXDOMAIN responder so phones
+ *              and Windows laptops finish connectivity probing immediately
+ *              instead of stalling 3-7 s waiting for a silent DNS server.
+* @return None /
+ */
+static void func__Esp_DnsStart(void)
+{
+    if (BOOL__G__DnsRunning == false)
+    {
+        BOOL__G__DnsRunning = (WIFI_UDP_T__G__DnsUdp.begin(ESP_WIFI_DNS_PORT) != 0u);
+    }
+}
+/**
+ * @brief  [EN] Stop the UDP port-53 responder before turning SoftAP off.
+* @return None /
+ */
+static void func__Esp_DnsStop(void)
+{
+    if (BOOL__G__DnsRunning != false)
+    {
+        WIFI_UDP_T__G__DnsUdp.stop();
+        BOOL__G__DnsRunning = false;
+    }
+}
+/**
+ * @brief  [EN] Answer up to 4 pending DNS queries per loop pass with an
+ *              authoritative NXDOMAIN (RCODE=3) using a fixed stack buffer.
+* @return None /
+ */
+static void func__Esp_DnsTick(void)
+{
+    uint8_t uint8_t__handled = 0u;
+    if ((BOOL__G__WifiApActive == false) || (BOOL__G__DnsRunning == false))
+    {
+        return;
+    }
+    while (uint8_t__handled < 4u)
+    {
+        int int__pktLen = WIFI_UDP_T__G__DnsUdp.parsePacket();
+        uint8_t uint8_t__buf[256];
+        size_t size_t__readLen;
+        size_t size_t__replyLen = 12u;
+        uint16_t uint16_t__qdCount;
+        if (int__pktLen <= 0)
+        {
+            break;
+        }
+        uint8_t__handled++;
+        size_t__readLen = (size_t)WIFI_UDP_T__G__DnsUdp.read(uint8_t__buf, sizeof(uint8_t__buf));
+        if (size_t__readLen < 12u)
+        {
+            continue;
+        }
+        /* Ignore DNS responses (QR=1) to prevent any UDP echo loop */
+        if ((uint8_t__buf[2] & 0x80u) != 0u)
+        {
+            continue;
+        }
+        uint16_t__qdCount = (uint16_t)(((uint16_t)uint8_t__buf[4] << 8) |
+                                       (uint16_t)uint8_t__buf[5]);
+        if (uint16_t__qdCount == 1u)
+        {
+            size_t size_t__pos = 12u;
+            bool bool__ok = false;
+            while (size_t__pos < size_t__readLen)
+            {
+                uint8_t uint8_t__lab = uint8_t__buf[size_t__pos];
+                if (uint8_t__lab == 0u)
+                {
+                    size_t__pos++;
+                    bool__ok = ((size_t__pos + 4u) <= size_t__readLen);
+                    break;
+                }
+                if (((uint8_t__lab & 0xC0u) != 0u) ||
+                    ((size_t__pos + 1u + (size_t)uint8_t__lab) >= size_t__readLen))
+                {
+                    break;
+                }
+                size_t__pos += (1u + (size_t)uint8_t__lab);
+            }
+            if (bool__ok != false)
+            {
+                size_t__replyLen = size_t__pos + 4u;
+            }
+            else
+            {
+                uint8_t__buf[4] = 0u;
+                uint8_t__buf[5] = 0u;
+            }
+        }
+        else
+        {
+            uint8_t__buf[4] = 0u;
+            uint8_t__buf[5] = 0u;
+        }
+        /* QR=1 (response), AA=1, preserve RD; RA=1, RCODE=3 (NXDOMAIN) */
+        uint8_t__buf[2] = (uint8_t)(0x84u | (uint8_t__buf[2] & 0x01u));
+        uint8_t__buf[3] = 0x83u;
+        uint8_t__buf[6] = 0u;
+        uint8_t__buf[7] = 0u;
+        uint8_t__buf[8] = 0u;
+        uint8_t__buf[9] = 0u;
+        uint8_t__buf[10] = 0u;
+        uint8_t__buf[11] = 0u;
+        if (WIFI_UDP_T__G__DnsUdp.beginPacket(WIFI_UDP_T__G__DnsUdp.remoteIP(),
+                                              WIFI_UDP_T__G__DnsUdp.remotePort()) != 0)
+        {
+            (void)WIFI_UDP_T__G__DnsUdp.write(uint8_t__buf, size_t__replyLen);
+            (void)WIFI_UDP_T__G__DnsUdp.endPacket();
+        }
+    }
+}
+/**
+ * @brief  [EN] Bring up SoftAP with radio sleep disabled, router advertisement
+ *              suppressed (0.0.0.0), and the fast NXDOMAIN responder bound.
+* @return None /
+ */
+static void func__Esp_StartSoftAp(void)
+{
+    WiFi.mode(WIFI_AP);
+    /* ESP8266 only: no radio sleep, so the panel answers a phone immediately. */
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+    (void)WiFi.softAPConfig(IPAddress(192, 168, 4, 1),
+                            IPAddress(0, 0, 0, 0),
+                            IPAddress(255, 255, 255, 0));
+    (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
+    BOOL__G__WifiApActive = true;
+    func__Esp_DnsStart();
+}
+/**
+ * @brief  [EN] Tear down SoftAP and its UDP port-53 socket cleanly.
+* @return None /
+ */
+static void func__Esp_StopSoftAp(void)
+{
+    func__Esp_DnsStop();
+    (void)WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+    BOOL__G__WifiApActive = false;
+}
+/**
+ * @brief  [EN] Apply one antenna level, once, through a mirror flag that always
+ *              states what is really on the chip. AP creation forces a write
+ *              because the previous level survives softAP().
+* @param bool__high true = maximum TX power / =
+* @param bool__force true = write even if the flag agrees / =
+* @return None /
+ */
+static void func__Esp_ApplyTxPower(bool bool__high, bool bool__force)
+{
+    if ((bool__force == false) && (BOOL__G__WifiHighPower == bool__high))
+    {
+        return;
+    }
+#if defined(ESP8266)
+    WiFi.setOutputPower(bool__high ? ESP_WIFI_TX_MAX_DBM : ESP_WIFI_TX_LOW_DBM);
+#endif
+    BOOL__G__WifiHighPower = bool__high;
+}
+/**
+ * @brief  [EN] Hybrid Wi-Fi TX power and battery duty-cycling tick:
+ *              - Mains input present: AP stays ON at maximum TX power (20.5 dBm).
+ *              - On battery with battery percentage below the configured
+ *                cutoff (default 20 %): AP is turned completely OFF and does
+ *                not turn on at all.
+ *              - On battery at/above cutoff with user connected: AP stays ON
+ *                at maximum TX power.
+ *              - On battery at/above cutoff with no user connected:
+ *                * First window (default 30 minutes = 1800000 ms): AP stays ON
+ *                  at low TX power (10 dBm).
+ *                * After initial window: AP cycles OFF/ON (default 2 minutes
+ *                  OFF / 1 minute ON) at low TX power until a user connects.
+ * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
+ */
+static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
+{
+    bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
+        ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_INPUT_PRESENT) != 0u);
+    bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
+    bool bool__clientConnected = func__Esp_IsWifiClientConnected(uint32_t__nowMs);
+    uint32_t uint32_t__idleLowPowerMs = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_IDLE_LOW_POWER_MS, ESP_WIFI_IDLE_LOW_POWER_MS);
+    uint32_t uint32_t__cycleOnMs = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_CYCLE_ON_MS, ESP_WIFI_CYCLE_ON_MS);
+    uint32_t uint32_t__cycleOffMs = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_CYCLE_OFF_MS, ESP_WIFI_CYCLE_OFF_MS);
+    uint32_t uint32_t__batCutoffPct = func__Esp_GetWifiParam(
+        ESP_PARAM_WIFI_BAT_CUTOFF_PCT, ESP_WIFI_BAT_CUTOFF_PCT);
+    uint32_t uint32_t__batteryPct = func__Esp_ComputeBatteryPercent();
+    if (bool__inputPresent || (uint32_t__batCutoffPct == 0u))
+    {
+        BOOL__G__WifiBatCutoffLatched = false;
+    }
+    else if (uint32_t__batteryPct < uint32_t__batCutoffPct)
+    {
+        BOOL__G__WifiBatCutoffLatched = true;
+    }
+    else if (BOOL__G__WifiBatCutoffLatched)
+    {
+        uint32_t uint32_t__recoverPct = uint32_t__batCutoffPct + 2u;
+        if (uint32_t__recoverPct > 100u)
+        {
+            uint32_t__recoverPct = 100u;
+        }
+        if (uint32_t__batteryPct >= uint32_t__recoverPct)
+        {
+            BOOL__G__WifiBatCutoffLatched = false;
+        }
+    }
+    if ((!bool__inputPresent) && BOOL__G__WifiBatCutoffLatched)
+    {
+        BOOL__G__WifiClientConnected = false;
+        if (BOOL__G__WifiLastReportedConnected && (UINT8_T__G__LutTxStage == 0u))
+        {
+            func__Esp_SendWifiClientState(false);
+            BOOL__G__WifiLastReportedConnected = false;
+            UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
+        }
+        if (BOOL__G__WifiApActive)
+        {
+            func__Esp_StopSoftAp();
+        }
+        return;
+    }
+    BOOL__G__WifiClientConnected = bool__clientConnected;
+    if ((UINT8_T__G__LutTxStage == 0u) &&
+        (((!bool__inputPresent) &&
+          ((bool__clientConnected != BOOL__G__WifiLastReportedConnected) ||
+           (bool__clientConnected &&
+            ((uint32_t__nowMs - UINT32_T__G__WifiLastReportMs) >= ESP_WIFI_CLIENT_REPORT_MS)))) ||
+         ((!bool__clientConnected) && BOOL__G__WifiLastReportedConnected)))
+    {
+        func__Esp_SendWifiClientState(bool__clientConnected);
+        BOOL__G__WifiLastReportedConnected = bool__clientConnected;
+        UINT32_T__G__WifiLastReportMs = uint32_t__nowMs;
+    }
+    if (bool__stationConnected)
+    {
+        if (UINT32_T__G__WifiStationSinceMs == 0u)
+        {
+            UINT32_T__G__WifiStationSinceMs = uint32_t__nowMs;
+        }
+    }
+    else
+    {
+        UINT32_T__G__WifiStationSinceMs = 0u;
+    }
+    if (bool__inputPresent || bool__clientConnected)
+    {
+        bool bool__apJustCreated = false;
+        bool bool__viewerActive;
+        bool bool__newcomer;
+        bool bool__wantHighPower;
+        BOOL__G__WifiBatteryIdleTracking = false;
+        UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
+        if (!BOOL__G__WifiApActive)
+        {
+            func__Esp_StartSoftAp();
+            bool__apJustCreated = true;
+        }
+        /*
+ * [EN] Maximum TX only when it is worth the battery: mains present, a
+ * fresh HTTP request (someone is watching), or a device that joined
+ * inside the viewer window. Otherwise the AP stays on at low power.
+ */
+        bool__viewerActive = BOOL__G__BrowserSeen &&
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs) <
+             (uint32_t)ESP_WIFI_VIEWER_HOLD_MS);
+        bool__newcomer = bool__stationConnected &&
+            (UINT32_T__G__WifiStationSinceMs != 0u) &&
+            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__WifiStationSinceMs) <
+             (uint32_t)ESP_WIFI_VIEWER_HOLD_MS);
+        bool__wantHighPower = bool__inputPresent || bool__viewerActive || bool__newcomer;
+        func__Esp_ApplyTxPower(bool__wantHighPower, bool__apJustCreated);
+        return;
+    }
+    if (!BOOL__G__WifiBatteryIdleTracking)
+    {
+        BOOL__G__WifiBatteryIdleTracking = true;
+        UINT32_T__G__WifiBatteryIdleStartMs = uint32_t__nowMs;
+    }
+    uint32_t uint32_t__idleElapsedMs = uint32_t__nowMs - UINT32_T__G__WifiBatteryIdleStartMs;
+    bool bool__shouldApBeOn = true;
+    if ((uint32_t__idleElapsedMs >= uint32_t__idleLowPowerMs) &&
+        (uint32_t__cycleOffMs > 0u))
+    {
+        uint32_t uint32_t__afterIdleMs =
+            uint32_t__idleElapsedMs - uint32_t__idleLowPowerMs;
+        uint32_t uint32_t__cyclePeriodMs = uint32_t__cycleOffMs + uint32_t__cycleOnMs;
+        uint32_t uint32_t__cycleOffsetMs =
+            uint32_t__afterIdleMs % uint32_t__cyclePeriodMs;
+        bool__shouldApBeOn = (uint32_t__cycleOffsetMs >= uint32_t__cycleOffMs);
+    }
+    if (bool__shouldApBeOn)
+    {
+        bool bool__apJustCreated = false;
+        if (!BOOL__G__WifiApActive)
+        {
+            func__Esp_StartSoftAp();
+            bool__apJustCreated = true;
+        }
+        /*
+ * [EN] Nobody is watching inside the duty cycle: low power only.
+ */
+        func__Esp_ApplyTxPower(false, bool__apJustCreated);
+    }
+    else
+    {
+        if (BOOL__G__WifiApActive)
+        {
+            func__Esp_StopSoftAp();
+        }
+    }
+}

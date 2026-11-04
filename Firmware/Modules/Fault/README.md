@@ -47,10 +47,25 @@
 دیوایدر آرام خالی می‌شود و تشخیص حالت دوم ~۲۰-۴۰ ثانیه طول می‌کشد (حین شارژ
 همان ۱۵۰ms قاعده اول است). با نبودِ snapshot معتبر هیچ Set/Clear رخ نمی‌دهد.
 
-## بیت ۷ — خطای فنی برد / Scenario 7
+### نشانهٔ زنده برای ریست تعویض باتری
 
-ماژول Fault فقط مالک بیت مرکزی `FAULT_CHARGER_TECHNICAL` است:
-`(1u << 7)`. تشخیص امضای ترانزیستور در `Charger` انجام می‌شود، سپس
+`func__Fault_IsBatteryAbsent()` یک نشانهٔ زنده و جدا از بیت قفل‌شدهٔ خطای ۶
+می‌دهد. این نشانه فقط پس از `func__Fault_Evaluate()` و snapshot معتبر به‌روز
+می‌شود؛ snapshot نامعتبر و مود تست دستی آن را خاموش می‌کنند. امضاها:
+
+- نیمِ نصب‌شده زیر ۳V، حتی وقتی ورودی برق نیست؛
+- نیمِ نصب‌شده زیر ۶V با ورودی سالم؛
+- نیمِ متناظر با کانال شارژ فعال، بالاتر از حد قطع قابل‌تنظیم (پیش‌فرض ۱۴٫۸V).
+
+این getter خودش `FAULT_CHARGER_BAT_LOST` را set یا clear نمی‌کند. در
+`task_control.c` سیگنال به `bool__batAbsent` داده می‌شود؛ Imbalance نبود پیوسته
+را ۳ ثانیه می‌سنجد و سپس شناسه‌های ماندگار ۲۰۰ تا ۲۰۲ را پاک می‌کند. پس debounce
+۱۵۰ms/۱s خطای مشترک با زمان ۳s ریست یکی نیست. حد سخت ۳V هنوز روی برد اندازه‌گیری
+و تأیید نشده است.
+
+## `FAULT_CHARGER_TECHNICAL` (بیت ۷) — خطای فنی برد / Scenario 7
+
+ماژول Fault فقط مالک بیت مرکزی `FAULT_CHARGER_TECHNICAL` (بیت ۷) است. تشخیص امضای ترانزیستور در `Charger` انجام می‌شود، سپس
 `func__Fault_Set()` این بیت را latch می‌کند تا UI و Changeover همان fault را
 ببینند. این بیت در NVM ذخیره نمی‌شود و `func__Fault_Init()` آن را مثل تمام
 بیت‌های دیگر در reset پاک می‌کند؛ قفل فیزیکی PWM/رله را خود Charger نگه می‌دارد.
@@ -60,10 +75,10 @@
 | فایل | نقش |
 |---|---|
 | `fault.h` / `fault.c` | ماسک خطای قفل‌شده (`FAULT_MASK_T__G__Mask`) و `func__Fault_Evaluate` |
-| `../../Config/Inc/app_types.h` | `FAULT_*`، شامل بیت ۷ `FAULT_CHARGER_TECHNICAL` |
-| `../Charger/charger.c` | تشخیص امضای سناریوی ۷ و فراخوانی `func__Fault_Set`; آینهٔ بیت ۶ به `CHG_STATE_BAT_LOST` |
+| `../../Config/Inc/app_types.h` | `FAULT_*`، شامل `FAULT_CHARGER_TECHNICAL` (بیت ۷) |
+| `../Charger/charger.c` | تشخیص امضای سناریوی ۷ و فراخوانی `func__Fault_Set`; آینهٔ `FAULT_CHARGER_BAT_LOST` (بیت ۶) به `CHG_STATE_BAT_LOST` |
 
-به بیلد LED لازم نیست.
+برای این ماژول بیلد جدا لازم نیست؛ با همان بیلد اعتبارسنجی برد (MODULE_FAULT=1) کار می‌کند.
 
 ## توابع
 
@@ -75,9 +90,30 @@
 | `func__Fault_Get` | ماسک فعلی |
 | `func__Fault_Any` | اگر چیزی غیر از NONE باشد true |
 | `func__Fault_Evaluate` | هر پاس از `task_control` (قبل از Get): تشخیص/پاک‌سازی متمرکز `FAULT_CHARGER_BAT_LOST` از snapshot |
+| `func__Fault_IsBatteryAbsent` | خواندن نشانهٔ زندهٔ reset-only؛ مستقل از بیت خطای ۶ و فقط با snapshot معتبر |
+| `func__Fault_GetInputWindow` | کپی اتمیک جفت مشترک ورودی سالم `q33/q34` زیر قفل زمان‌بند؛ مرجع لبه‌های خام |
+| `func__Fault_SetInputHystParam` / `func__Fault_GetInputHystParam` | حاشیه‌های قابل‌تنظیم پنل `q169/q170` (پیش‌فرض ۵۰۰/۵۰۰، گیره `0..3000` و `span/4`) |
+| `func__Fault_GetInputPermission` | مجوز مشترک اشمیت ورودی + اعتبار snapshot؛ تنها تصمیم ولتاژی UI، McuPowerPath و Charger |
 
 بیت‌ها: `FAULT_ADC`، بیت‌های رزرو جریان/جیتر، `FAULT_CHARGER_BAT_LOST` (بیت ۶) و
 `FAULT_CHARGER_TECHNICAL` (بیت ۷، سناریوی خطای فنی برد).
+
+## پنجرهٔ مشترک ورودی سالم (q33/q34)
+
+شناسه‌های ۳۳ و ۳۴ کف و سقف ورودی سالم‌اند و فقط در همین ماژول ذخیره/گیره
+می‌شوند. `func__Fault_GetInputWindow` هر دو را زیر یک قفل زمان‌بند کپی می‌کند
+تا مصرف‌کننده هنگام نوشتن پنل، کف جدید را با سقف قدیمی نبیند.
+
+حاشیه‌های اشمیت نیز قابل‌تنظیم پنل‌اند: `q169` حاشیهٔ لبهٔ پایین و `q170`
+حاشیهٔ لبهٔ بالا (پیش‌فرض هر کدام `500mV`). هر دو به `0..3000mV` و یک‌چهارم
+فاصلهٔ زندهٔ `q33/q34` گیره می‌خورند. `func__Fault_Evaluate` در هر پاس، حتی
+پیش از بازگشت زودهنگام مود دستی یا snapshot نامعتبر، یک مجوز مشترک منتشر
+می‌کند: بیرون `[q33,q34]` مجوز فوراً می‌افتد؛ از حالت رهاشده فقط داخل
+`[q33+H_low, q34-H_high]` دوباره مسلح می‌شود. UI، مسیر خودتغذیهٔ MCU و مجوز
+شارژر (شامل هر شروع `OFF->BULK`) همگی همین یک پرچم را مصرف می‌کنند.
+زمان‌بندی‌های اختصاصی سر جای خود می‌مانند: احراز ۵ ثانیهٔ MCU و ثبات ۱۵
+ثانیهٔ باتری در شارژر. آلارم اضافه‌ولتاژ سناریو ۱ آستانه‌اش را از همان `q34`
+می‌گیرد (`q70` آینهٔ فقط‌خواندنی) و فقط هیسترزیس `q71` مستقل است.
 
 ## پایه‌ها
 
@@ -93,7 +129,7 @@ Init همه بیت‌ها را صفر می‌کند.
 
 ```text
 protection.c      func__Fault_Set
-task_control.c    func__Fault_Evaluate + func__Fault_Get
+task_control.c    func__Fault_Evaluate + func__Fault_Get + func__Fault_IsBatteryAbsent
 task_comm.c       func__Fault_Get
 charger.c         func__Fault_Set (سناریوی ۷) + func__Fault_Get (آینهٔ CHG_STATE_BAT_LOST)
 ui_led.c          func__Fault_Get (سناریو ۵ و سناریو ۷)
@@ -113,11 +149,13 @@ fault.c
 
 ## تستر
 
-`Tester/` — تست هاست ماژول خطا با ساعت و شارژر بدلی (۴۴ بررسی: API ماسک، دو
-آشکارساز قطع باتری با دبانس، بازیابی، فریز مود تست دستی، گیرهٔ پارامترها و
-سرریز تیک). اجرا با `Tester/run_host_test_fault.sh`؛ داخل
-`tools/check_firmware_syntax.sh` هم اجرا می‌شود. توضیح کامل در
-`Tester/README.md`.
+`Tester/` — تست هاست ماژول خطا با ساعت و شارژر بدلی (۱۲۸ بررسی: API ماسک، دو
+آشکارساز قفل‌شونده، getter زندهٔ reset-only، مرز ۳V، snapshot نامعتبر، مود تست
+دستی، گیرهٔ پارامترها و سرریز تیک). اجرا با `Tester/run_host_test_fault.sh`؛
+داخل `tools/check_firmware_syntax.sh` هم اجرا می‌شود. تست یکپارچهٔ
+`../Imbalance/Tester/run_host_test_battery_swap.sh` مسیر Fault→TaskControl→Imbalance
+را با ۱۳۰ بررسی میزبان و آزمون اتصال کد پوشش می‌دهد. نتیجه‌ها جای تست برد را
+نمی‌گیرند.
 
 ## ماشین حالت
 

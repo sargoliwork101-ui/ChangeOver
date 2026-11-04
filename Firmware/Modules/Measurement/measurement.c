@@ -8,93 +8,87 @@
  *              first (median + moving average), converted to mA after;
  *              battery voltages keep their median-5 spike guard on the
  *              raw counts.
- *          [FA] شمارش ADC به واحد مهندسی (‎mV/mA)‎ گام‌به‌گام؛ آخرین snapshot
- *              مشترک با تسک‌های دیگر. فقط چند تبدیل + یک خواندن GPIO و بعد
- *              yield - بدون HAL_Delay. جریان شارژ = نمونهٔ سنکرون وسط ON که
- *              اول روی شمارش خام فیلتر می‌شود (مدین + میانگین متحرک) و بعد
- *              تبدیل؛ ولتاژ باتری محافظ مدین-۵ روی شمارش خام دارد.
  * @note    [EN] Divider/gain constants are private to bsp_measurement.c;
  *              converted values are exposed as UINT32_T__G__Meas* /
  *              BOOL__G__Meas* globals - written only by this task,
  *              readable by any module (and the debugger via Live
  *              Expressions).
- *          [FA] ثابت‌های تقسیم/گین خصوصی bsp_measurement.c است؛ مقادیر
- *              تبدیل‌شده در گلوبال‌های Meas* فقط با نوشتن همین تسک در
- *              دسترس همه‌اند (از جمله دیباگ با Live Expressions).
  */
-
 #include "measurement.h"
+#include "modules_enable.h"
 #include "calibration.h"
 #include "cal_lut.h"
 #include "bsp_adc.h"
 #include "bsp_measurement.h"
 #include "bsp_gpio.h"
+#if MODULE_FAULT
+#include "fault.h"
+#endif
 #include "cmsis_os2.h"
 #include <stddef.h>
-
 /* ==================== Static State ==================== */
-
-/* [EN] Shared snapshot for the other tasks (UI / protection / comm).
+/*
+ * [EN] Shared snapshot for the other tasks (UI / protection / comm).
  *      Written only by the measurement task, read by GetSnapshot.
- *      [FA] snapshot مشترک برای تسک‌های دیگر (‎UI / protection / comm)‎.
- *      فقط توسط تسک measurement نوشته و با GetSnapshot خوانده می‌شود. */
+ */
 static volatile measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
-
-/* [EN] Number of completed stable normalized ADC frames collected during
+/*
+ * [EN] Number of completed stable normalized ADC frames collected during
  *      startup warm-up. Unit: completed ADC frame.
- * [FA] تعداد فریم‌های کامل و پایدار ADC استانداردشده در ‎warm-up‎ شروع.
- *      واحد: فریم کامل ADC. */
+ */
 static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
-
-/* [EN] Median-of-5 history of the RAW counts of the two battery ADC
-   channels (0=V24_BAT, 1=V12_BAT; user order 2026-09-27: filters run on
-   the raw ADC data, conversion/derivation happen after): raised
-   2026-09-19 from median-3 because a false buzzer
-   still fired WHILE the charger genuinely pumped (absorb mode) - that
-   means glitch bursts of two consecutive frames also cross 14.8 V, and
-   median-3 passes a 2-frame burst straight through. Median-of-5 only
-   outputs the middle sample, so any burst shorter than 3 frames is dead
-   while real voltage steps pass with ~20 ms of lag at the 10 ms frame
-   cadence - nothing the control loop can notice.
-   [FA] تاریخچهٔ مدین-۵ شمارش خام دو کانال ADC باتری: چون بوق فیک حین ابزوربِ
-   واقعی هم زده شد، پرش‌های دو-فریمی پشت‌سر از مدین-۳ رد می‌شدند؛ مدین-۵
-   هر ترکیدگی کوتاه‌تر از ۳ فریم را نابود می‌کند و پلهٔ واقعی با حدود دو
-   فریم تأخیر عبور می‌کند. */
+/*
+ * [EN] Median-of-5 history of the RAW counts of the two battery ADC
+ * channels (0=V24_BAT, 1=V12_BAT; user order 2026-09-27: filters run on
+ * the raw ADC data, conversion/derivation happen after): raised
+ * 2026-09-19 from median-3 because a false buzzer
+ * still fired WHILE the charger genuinely pumped (absorb mode) - that
+ * means glitch bursts of two consecutive frames also cross 14.8 V, and
+ * median-3 passes a 2-frame burst straight through. Median-of-5 only
+ * outputs the middle sample, so any burst shorter than 3 frames is dead
+ * while real voltage steps pass with ~20 ms of lag at the 10 ms frame
+ * cadence - nothing the control loop can notice.
+ */
 static uint32_t UINT32_T__G__BatVoltageMedianHistoryCounts[2][5];
-
+static bool BOOL__G__BatVoltageMedianSeeded[2];
+/*
+ * [EN] Two-stage ADC1+DMA self-healing supervisor state (60 s pre-reset +
+ *      1 software reset + 60 s post-reset -> latched FAULT_ADC).
+ */
+static bool BOOL__G__AdcStallActive = false;
+static bool BOOL__G__AdcFirstRetryDone = false;
+static uint32_t UINT32_T__G__AdcStallStartMs = 0u;
+static uint32_t UINT32_T__G__AdcLastRecoverMs = 0u;
+static bool BOOL__G__AdcHealthyActive = false;
+static uint32_t UINT32_T__G__AdcHealthyStartMs = 0u;
+static bool BOOL__G__AdcPostResetUsed = false;
+static bool BOOL__G__AdcFaultLatched = false;
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-/* [EN] Median history per current channel (0=Current1, 1=Current2), window
+/*
+ * [EN] Median history per current channel (0=Current1, 1=Current2), window
  *      = runtime median size 1/3/5 with default 3 (user order 2026-09-22):
  *      kills single-sample jumps of the synchronized mid-ON reading with
  *      zero added lag. Exists only when the compile-time filter switch is
  *      on.
- * [FA] تاریخچهٔ مدین برای هر کانال جریان (۰=جریان ۱، ۱=جریان ۲)، پنجره
- *      = اندازهٔ مدین زمان اجرا ۱/۳/۵ با پیش‌فرض ۳ (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲): پرش‌های تک‌نمونه‌ای خوانش سنکرون وسط ON را بدون
- *      تأخیر اضافه حذف می‌کند. فقط وقتی کلید فیلتر کامپایل روشن است
- *      وجود دارد. */
+ */
 static uint32_t UINT32_T__G__CurrentMedianHistoryCounts[2][MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX];
+static bool BOOL__G__CurrentMedianSeeded[2];
 #endif
-
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
-/* [EN] Moving-average window per current channel (user order 2026-09-22):
+/*
+ * [EN] Moving-average window per current channel (user order 2026-09-22):
  *      the last MEASUREMENT_CURRENT_AVERAGE_WINDOW raw count samples (user
  *      order 2026-09-27: filters run on the raw ADC data), a fill counter
  *      for the startup ramp and the next slot index. Exists only when the
  *      filter switch is on.
- * [FA] پنجرهٔ میانگین متحرک برای هر کانال جریان (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲): آخرین MEASUREMENT_CURRENT_AVERAGE_WINDOW نمونهٔ شمارش
- *      خام (دستور کاربر ۲۰۲۶-۰۹-۲۷: فیلتر روی دادهٔ خام ADC)، شمارندهٔ
- *      پرشدن برای شیب شروع و اندیس خانهٔ بعدی. فقط وقتی کلید فیلتر روشن
- *      است وجود دارد. */
+ */
 static uint32_t UINT32_T__G__CurrentAverageWindowCounts[2][MEASUREMENT_CURRENT_AVERAGE_WINDOW];
 static uint16_t UINT16_T__G__CurrentAverageFillCount[2];
 static uint16_t UINT16_T__G__CurrentAverageNextIndex[2];
 #endif
-
 /* ==================== Runtime filter config / voltage offsets (ESP panel) ==================== */
-
-/* [EN] Full-program audit 2026-10-05: this whole group used to sit INSIDE
+/*
+ * [EN] Full-program audit 2026-10-05: this whole group used to sit INSIDE
  *      the MEASUREMENT_CURRENT_AVERAGE_ENABLE block above, although none of
  *      it belongs to the moving-average filter - the runtime median size and
  *      the three voltage offsets are read unconditionally by
@@ -103,57 +97,45 @@ static uint16_t UINT16_T__G__CurrentAverageNextIndex[2];
  *      build with eight "undeclared" errors. The
  *      declarations are unconditional now; behaviour with the switch at 1u
  *      is bit-for-bit identical.
- * [FA] ممیزی کل برنامه ۲۰۲۶-۱۰-۰۵: این گروه قبلاً داخل بلوک
- *      MEASUREMENT_CURRENT_AVERAGE_ENABLE بود، در حالی‌که هیچ‌کدامشان به
- *      فیلتر میانگین متحرک ربط ندارند؛ اندازهٔ مدین زمان اجرا و سه آفست
- *      ولتاژ بدون شرط خوانده می‌شوند. پس صفرکردن آن کلید بیلد را با هشت
- *      خطای undeclared می‌شکست. حالا بدون شرط‌اند و با کلید ۱ رفتار دقیقاً
- *      همان است. */
-
-/* [EN] Runtime copies of the current-filter configuration (resizable
+ */
+/*
+ * [EN] Runtime copies of the current-filter configuration (resizable
  *      live from the ESP panel; size 1 = bypass, no separate on/off
  *      switch). The compile-time switches stay the capability gates; the
  *      measurement task detects a change and resets the filter state in
  *      its own context, so no cross-task locking (written by EspLink,
  *      volatile).
- * [FA] نسخهٔ زمان اجرای پیکربندی فیلتر جریان (قابل تغییر زنده از پنل؛
- *      اندازهٔ ۱ = عبور مستقیم). کلیدهای کامپایل ظرفیت را تعیین می‌کنند و
- *      تسک اندازه‌گیری تغییر را در زمینهٔ خودش ریست می‌کند - بدون قفل
- *      بین‌تسکی (نوشته از تسک EspLink، volatile). */
+ */
 static volatile uint8_t UINT8_T__G__FilterMedianSize = 3u;
 static volatile uint16_t UINT16_T__G__FilterAverageWindow =
     (uint16_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
-
-/* [EN] Last configuration the measurement task applied; owned by the
+/*
+ * [EN] Last configuration the measurement task applied; owned by the
  *      measurement task only (change detection).
- * [FA] آخرین پیکربندی اعمال‌شده توسط تسک اندازه‌گیری؛ فقط مالکش همین
- *      تسک است (تشخیص تغییر). */
+ */
 static uint8_t UINT8_T__G__FilterMedianSizeApplied = 3u;
 static uint16_t UINT16_T__G__FilterAverageWindowApplied =
     (uint16_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
-
-/* [EN] Runtime voltage calibration offsets in mV, default 0 = today's
+/*
+ * [EN] Runtime voltage calibration offsets in mV, default 0 = today's
  *      behavior; applied AFTER the divider conversion, before the
  *      low/high derivation. Flash-persisted since v1.14 (NVM ids 4/5/6).
- * [FA] آفست‌های کالیبراسیون ولتاژ بر حسب mV در زمان اجرا؛ پیش‌فرض ۰ یعنی
- *      رفتار فعلی؛ بعد از تبدیل مقسم و قبل از محاسبهٔ پایین/بالا اعمال
- *      می‌شوند. روی فلش می‌مانند (NVM نسخهٔ ۱.۱۴، شناسه‌های ۴/۵/۶). */
+ */
 static volatile int32_t INT32_T__G__VoltageInOffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage24OffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage12OffsetMv = 0;
-
-/* [EN] Median-of-5 for the battery voltage channel prefilter: plain
-   insertion sort of a LOCAL copy keeps the live history untouched; the
-   middle element is the spike-immune sample. Five-element sorting network
-   avoided on purpose - clarity beats cycle-pinching at a 10 ms cadence.
-   [FA] مدین-۵ برای پیش‌فیلتر ولتاژ: مرتب‌سازی درجی روی کپی محلی است تا
-   تاریخچهٔ زنده دست‌نخورده بماند و عنصر میانی برگردد. */
+/* ==================== Measurement_Median5 ==================== */
+/*
+ * [EN] Median-of-5 for the battery voltage channel prefilter: plain
+ * insertion sort of a LOCAL copy keeps the live history untouched; the
+ * middle element is the spike-immune sample. Five-element sorting network
+ * avoided on purpose - clarity beats cycle-pinching at a 10 ms cadence.
+ */
 static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
 {
     uint32_t uint32_t__sorted[5u];
     uint8_t  uint8_t__index;
     uint8_t  uint8_t__pass;
-
     for (uint8_t__index = 0u; uint8_t__index < 5u; uint8_t__index++)
     {
         uint32_t__sorted[uint8_t__index] = uint32_t__samples[uint8_t__index];
@@ -162,7 +144,6 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
     {
         uint32_t uint32_t__key = uint32_t__sorted[uint8_t__pass];
         int32_t  int32_t__slot = (int32_t)uint8_t__pass - 1;
-
         while ((int32_t__slot >= 0) &&
                (uint32_t__sorted[int32_t__slot] > uint32_t__key))
         {
@@ -173,10 +154,8 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
     }
     return uint32_t__sorted[2u];
 }
-
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
 /* ==================== Measurement Current Median3 ==================== */
-
 /**
  * @brief  [EN] Shift one new raw current count sample into the channel's
  *              median history and return the middle value. Window size =
@@ -185,15 +164,10 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
  *              with zero added lag. Insertion sort of a LOCAL copy keeps
  *              the live history untouched (same pattern as the voltage
  *              median-5).
- *         [FA] نمونهٔ خام جدید را در تاریخچهٔ مدین کانال جابه‌جا و مقدار
- *              میانی را برمی‌گرداند. اندازهٔ پنجره = اندازهٔ مدین زمان اجرا
- *              (هر ۱..۱۵، زوج هم)؛ پرش تک‌نمونه‌ای بدون تأخیر اضافه دور
- *              داده می‌شود. مرتب‌سازی درجی روی کپی محلی، تاریخچهٔ زنده دست
- *              نمی‌خورد (الگوی مدین-۵ ولتاژ).
- * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
- * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
- * @param  uint8_t__medianSize [EN] Active median window (1..15)‎ / پنجرهٔ فعال
- * @return uint32_t [EN] Median-filtered counts‎ / شمارش مدین‌شده
+* @param uint8_t__channelIndex Current channel 0 or 1 /
+* @param uint32_t__sampleCounts New raw count sample /
+* @param uint8_t__medianSize Active median window (1..15) /
+* @return uint32_t Median-filtered counts /
  */
 static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
                                                 uint32_t uint32_t__sampleCounts,
@@ -203,30 +177,36 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
     uint32_t *uint32_t__historyCounts;
     uint8_t uint8_t__index;
     uint8_t uint8_t__pass;
-
     if ((uint8_t__channelIndex >= 2u) ||
         (uint8_t__medianSize < 1u) ||
         (uint8_t__medianSize > (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX))
     {
         return uint32_t__sampleCounts;
     }
-
     if (uint8_t__medianSize == 1u)
     {
-        /* [‎EN] Window of one = bypass. [FA]‎ پنجرهٔ یک‌تایی = عبور مستقیم. */
         return uint32_t__sampleCounts;
     }
-
     uint32_t__historyCounts = UINT32_T__G__CurrentMedianHistoryCounts[uint8_t__channelIndex];
-    for (uint8_t__index = (uint8_t)(uint8_t__medianSize - 1u);
-         uint8_t__index > 0u;
-         uint8_t__index--)
+    if (BOOL__G__CurrentMedianSeeded[uint8_t__channelIndex] == false)
     {
-        uint32_t__historyCounts[uint8_t__index] =
-            uint32_t__historyCounts[uint8_t__index - 1u];
+        for (uint8_t__index = 0u; uint8_t__index < uint8_t__medianSize; uint8_t__index++)
+        {
+            uint32_t__historyCounts[uint8_t__index] = uint32_t__sampleCounts;
+        }
+        BOOL__G__CurrentMedianSeeded[uint8_t__channelIndex] = true;
     }
-    uint32_t__historyCounts[0] = uint32_t__sampleCounts;
-
+    else
+    {
+        for (uint8_t__index = (uint8_t)(uint8_t__medianSize - 1u);
+             uint8_t__index > 0u;
+             uint8_t__index--)
+        {
+            uint32_t__historyCounts[uint8_t__index] =
+                uint32_t__historyCounts[uint8_t__index - 1u];
+        }
+        uint32_t__historyCounts[0] = uint32_t__sampleCounts;
+    }
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__medianSize; uint8_t__index++)
     {
         UINT32_T__A__Sorted[uint8_t__index] = uint32_t__historyCounts[uint8_t__index];
@@ -235,7 +215,6 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
     {
         uint32_t uint32_t__key = UINT32_T__A__Sorted[uint8_t__pass];
         int32_t int32_t__slot = (int32_t)uint8_t__pass - 1;
-
         while ((int32_t__slot >= 0) &&
                (UINT32_T__A__Sorted[int32_t__slot] > uint32_t__key))
         {
@@ -244,26 +223,19 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
         }
         UINT32_T__A__Sorted[int32_t__slot + 1] = uint32_t__key;
     }
-
     return UINT32_T__A__Sorted[uint8_t__medianSize / 2u];
 }
 #endif
-
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
 /* ==================== Measurement Current Moving Average ==================== */
-
 /**
  * @brief  [EN] Push one new raw current count sample into the channel's
  *              moving-average window and return the average. Until the
  *              window fills after a restart, the average runs over the
  *              collected samples only (no zero-drag from empty slots).
- *         [FA] نمونهٔ خام جدید را در پنجرهٔ میانگین متحرک کانال می‌نویسد
- *              و میانگین را برمی‌گرداند. تا پرشدن پنجره، میانگین فقط روی
- *              نمونه‌های جمع‌شده اجرا می‌شود (بدون کشیده‌شدن به صفرِ
- *              خانه‌های خالی).
- * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
- * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
- * @return uint32_t [EN] Moving-average counts‎ / شمارش میانگین‌گرفته
+* @param uint8_t__channelIndex Current channel 0 or 1 /
+* @param uint32_t__sampleCounts New raw count sample /
+* @return uint32_t Moving-average counts /
  */
 static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelIndex,
                                                        uint32_t uint32_t__sampleCounts)
@@ -271,34 +243,30 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
     uint32_t uint32_t__windowSumCounts;
     uint32_t uint32_t__windowSlot;
     uint32_t uint32_t__averageCounts;
-
     if (uint8_t__channelIndex >= 2u)
     {
         return uint32_t__sampleCounts;
     }
-
-    /* [EN] Replace the oldest slot, then advance the ring index by hand (no
-       modulo, keeps the index inside the window under MISRA rules).
-       [FA] قدیمی‌ترین خانه جایگزین می‌شود، بعد اندیس حلقه دستی جلو می‌رود
-       (بدون باقیماندهٔ تقسیم تا اندیس طبق قواعد MISRA داخل پنجره بماند). */
+    /*
+ * [EN] Replace the oldest slot, then advance the ring index by hand (no
+ * modulo, keeps the index inside the window under MISRA rules).
+ */
     UINT32_T__G__CurrentAverageWindowCounts[uint8_t__channelIndex]
         [UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]] = uint32_t__sampleCounts;
-
     UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]++;
     if (UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] >=
         UINT16_T__G__FilterAverageWindow)
     {
         UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] = 0u;
     }
-
     if (UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex] <
         UINT16_T__G__FilterAverageWindow)
     {
         UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex]++;
     }
-
-    /* [EN] Sum only the filled slots and divide once by the fill count.
-       [FA] جمع فقط روی خانه‌های پر و یک تقسیم بر تعداد خانه‌های پر. */
+    /*
+ * [EN] Sum only the filled slots and divide once by the fill count.
+ */
     uint32_t__windowSumCounts = 0u;
     for (uint32_t__windowSlot = 0u;
          uint32_t__windowSlot < (uint32_t)UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
@@ -307,39 +275,31 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
         uint32_t__windowSumCounts +=
             UINT32_T__G__CurrentAverageWindowCounts[uint8_t__channelIndex][uint32_t__windowSlot];
     }
-
     uint32_t__averageCounts =
         uint32_t__windowSumCounts / (uint32_t)UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
-
     return uint32_t__averageCounts;
 }
 #endif
-
-/* ==================== Measurement ApplyCurrentFilters / اعمال فیلترهای جریان ==================== */
-
+/* ==================== Measurement ApplyCurrentFilters ==================== */
 /**
  * @brief  [EN] Run the enabled current-filter chain of one channel in the
  *              fixed order: median first (kill single jumps), then the
  *              moving average (smooth) - exactly as the two compile-time
  *              switches select. Both off = pass-through unchanged.
- *         [FA] زنجیرهٔ فیلتر جریان فعال کانال را با ترتیب ثابت اجرا
- *              می‌کند: اول مدین (حذف پرش تکی) بعد میانگین متحرک (صاف‌کردن)
- *              - دقیقاً طبق دو کلید کامپایل. هر دو خاموش = عبور بدون تغییر.
- * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
- * @param  uint32_t__sampleCounts [EN] Raw count sample / نمونهٔ شمارش خام
- * @return uint32_t [EN] Filtered counts / شمارش فیلترشده
+* @param uint8_t__channelIndex Current channel 0 or 1 /
+* @param uint32_t__sampleCounts Raw count sample /
+* @return uint32_t Filtered counts /
  */
 static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIndex,
                                                       uint32_t uint32_t__sampleCounts)
 {
     (void)uint8_t__channelIndex;
-
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-    /* [EN] Runtime window (ESP panel): the compiled switch is the
-       capability, the size is the live setting (v1.4: 1..2 = bypass,
-       3..15 = active, any value).
-       [FA] پنجرهٔ زمان اجرا (پنل ESP): کلید کامپایل ظرفیت است و اندازه
-       تنظیم زنده (v1.4: ۱..۲ = عبور مستقیم، ۳..۱۵ = فعال، هر مقدار). */
+    /*
+ * [EN] Runtime window (ESP panel): the compiled switch is the
+ * capability, the size is the live setting (v1.4: 1..2 = bypass,
+ * 3..15 = active, any value).
+ */
     if (UINT8_T__G__FilterMedianSize >= 3u)
     {
         uint32_t__sampleCounts =
@@ -348,33 +308,25 @@ static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIn
                                             UINT8_T__G__FilterMedianSize);
     }
 #endif
-
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
-    /* [EN] Runtime window (ESP panel): window 1 = bypass, >= 2 = active.
-       [FA] پنجرهٔ زمان اجرا (پنل ESP): پنجرهٔ ۱ = عبور مستقیم، ≥۲ = فعال. */
+    /*
+ * [EN] Runtime window (ESP panel): window 1 = bypass, >= 2 = active.
+ */
     if (UINT16_T__G__FilterAverageWindow >= 2u)
     {
         uint32_t__sampleCounts =
             func__Measurement_CurrentMovingAverage(uint8_t__channelIndex, uint32_t__sampleCounts);
     }
 #endif
-
     return uint32_t__sampleCounts;
 }
-
 /* ==================== Measurement ResetCurrentFilters ==================== */
-
 /**
  * @brief  [EN] Zero both current-filter histories and restart both average
  *              ramps. Called from Init and whenever the measurement task
  *              sees that the runtime filter configuration changed, so a
  *              window resize never mixes stale slots into the average.
  *              Only the measurement task may call this.
- *         [FA] تاریخچهٔ هر دو فیلتر جریان را صفر و شیب هر دو میانگین را
- *              از نو شروع می‌کند؛ از Init و هر بار که تسک اندازه‌گیری تغییر
- *              پیکربندی زمان اجرا را ببیند صدا زده می‌شود تا تغییر پنجره
- *              هرگز خانه‌های قدیمی را داخل میانگین نیامیزد. فقط تسک
- *              اندازه‌گیری اجازهٔ صدا زدن دارد.
  */
 static void func__Measurement_ResetCurrentFilters(void)
 {
@@ -387,9 +339,9 @@ static void func__Measurement_ResetCurrentFilters(void)
         {
             UINT32_T__G__CurrentMedianHistoryCounts[uint32_t__i][uint32_t__j] = 0u;
         }
+        BOOL__G__CurrentMedianSeeded[uint32_t__i] = false;
     }
 #endif
-
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
     for (uint32_t uint32_t__i = 0u; uint32_t__i < 2u; uint32_t__i++)
     {
@@ -402,67 +354,66 @@ static void func__Measurement_ResetCurrentFilters(void)
     }
 #endif
 }
-
 /**
  * @brief  [EN] Shift one new RAW count sample of a battery ADC channel
  *         into the median-5 history and return the filtered counts. The
  *         charger state machine and the battery-lost detector consume the
  *         voltages DERIVED from these filtered conversions, so a short
  *         spike burst cannot fake "battery gone".
- *         [FA] نمونهٔ خام کانال ADC باتری را در تاریخچهٔ مدین-۵ جابه‌جا و
- *         شمارش فیلترشده را برمی‌گرداند. شارژر و آشکارساز قطع باتری از
- *         ولتاژهای مشتق‌شده از همین تبدیل‌ها استفاده می‌کنند تا ترکیدگی
- *         کوتاه «باتری رفت» را جعل نکند.
- * @param  uint8_t__channelIndex [EN] 0 = V24_BAT raw, 1 = V12_BAT raw‎ / شمارش خام
- * @param  uint32_t__sampleCounts [EN] New raw count sample / شمارش خام جدید
- * @return uint32_t [EN] Median-of-5 filtered counts‎ / شمارش مدین‌شده
+* @param uint8_t__channelIndex 0 = V24_BAT raw, 1 = V12_BAT raw /
+* @param uint32_t__sampleCounts New raw count sample /
+* @return uint32_t Median-of-5 filtered counts /
  */
 static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__channelIndex,
                                                             uint32_t uint32_t__sampleCounts)
 {
     uint32_t *uint32_t__historyCounts;
-
     if (uint8_t__channelIndex >= 2u)
     {
         return uint32_t__sampleCounts;
     }
-
     uint32_t__historyCounts = UINT32_T__G__BatVoltageMedianHistoryCounts[uint8_t__channelIndex];
-    uint32_t__historyCounts[0] = uint32_t__historyCounts[1];
-    uint32_t__historyCounts[1] = uint32_t__historyCounts[2];
-    uint32_t__historyCounts[2] = uint32_t__historyCounts[3];
-    uint32_t__historyCounts[3] = uint32_t__historyCounts[4];
-    uint32_t__historyCounts[4] = uint32_t__sampleCounts;
-
+    if (BOOL__G__BatVoltageMedianSeeded[uint8_t__channelIndex] == false)
+    {
+        uint32_t__historyCounts[0] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[1] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[2] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[3] = uint32_t__sampleCounts;
+        uint32_t__historyCounts[4] = uint32_t__sampleCounts;
+        BOOL__G__BatVoltageMedianSeeded[uint8_t__channelIndex] = true;
+    }
+    else
+    {
+        uint32_t__historyCounts[0] = uint32_t__historyCounts[1];
+        uint32_t__historyCounts[1] = uint32_t__historyCounts[2];
+        uint32_t__historyCounts[2] = uint32_t__historyCounts[3];
+        uint32_t__historyCounts[3] = uint32_t__historyCounts[4];
+        uint32_t__historyCounts[4] = uint32_t__sampleCounts;
+    }
     return func__Measurement_Median5(uint32_t__historyCounts);
 }
-
-
 /* ==================== Global Shared Values ==================== */
-/* [EN] The engineering values of the newest frame, shared to all tasks.
+/*
+ * [EN] The engineering values of the newest frame, shared to all tasks.
  *      Written ONLY by the measurement task (Run/Init); any module reads
  *      them after including measurement.h. Meas* prefix avoids a link
  *      collision with the UI manual test globals (task_ui.c).
- * [FA] مقادیر مهندسی آخرین فریم، مشترک برای همهٔ تسک‌ها. فقط تسک
- *      ‎measurement (Run/Init)‎ می‌نویسد؛ هر ماژول بعد از include کردن
- *      measurement.h می‌خواند. پیشوند Meas* از تداخل لینک با متغیرهای
- *      تست دستی UI (task_ui.c) جلوگیری می‌کند. */
+ */
 volatile uint32_t UINT32_T__G__MeasInputVoltageMv = 0u;
 volatile uint32_t UINT32_T__G__MeasBattery24Mv = 0u;
 volatile uint32_t UINT32_T__G__MeasBattery12Mv = 0u;
 volatile uint32_t UINT32_T__G__MeasBatteryLowMv = 0u;
 volatile uint32_t UINT32_T__G__MeasBatteryHighMv = 0u;
-/* [EN] Measured ADC reference (VDDA) in mV, from the internal 1.20 V channel.
+/*
+ * [EN] Measured ADC reference (VDDA) in mV, from the internal 1.20 V channel.
  *      Published even while CAL_VDDA_TRACKING_ENABLE is 0, because the whole
  *      point is to LOOK at it first: compare this against a DMM on the 3.3 V
  *      rail, and the gap is the global scale error every channel carries.
  *      0 = not available / reading outside a plausible 3.0..3.6 V.
- * [FA] مرجع ADC اندازه‌گیری‌شده بر حسب mV از کانال داخلی ۱٫۲۰ ولت. حتی وقتی
- *      ردیابی خاموش است منتشر می‌شود، چون هدف همین است که اول ببینیدش: این را
- *      با مولتی‌متر روی ریل ۳٫۳ ولت مقایسه کنید؛ اختلاف، همان خطای مقیاس
- *      سراسری است که همهٔ کانال‌ها حمل می‌کنند. صفر یعنی در دسترس نیست. */
+ */
 volatile uint32_t UINT32_T__G__MeasVddaMv = 0u;
-/* [EN] Raw ADC counts of the voltage channels. WHY THEY ARE ALWAYS ON rather
+/*
+ * [EN] Raw ADC counts of the voltage channels. WHY THEY ARE ALWAYS ON rather
  *      than behind a "calibration mode": a mode that neutralises gains and
  *      offsets would also neutralise them for the CONTROL path, so the
  *      over-voltage cut and the current fault would be judging uncalibrated
@@ -471,26 +422,19 @@ volatile uint32_t UINT32_T__G__MeasVddaMv = 0u;
  *      alongside costs nothing, can never mis-protect, and is strictly MORE
  *      informative: from counts plus a DMM every coefficient can be rebuilt
  *      from scratch, including ones a bypass mode would still have applied.
- * [FA] چرا همیشه روشن‌اند نه پشت «مود کالیبره»: مودی که ضرایب و آفست‌ها را
- *      خنثی کند، آن‌ها را برای مسیر کنترل هم خنثی می‌کند، پس تا وقتی آن مود
- *      روشن است قطع اضافه‌ولتاژ و خطای جریان دارند روی اعداد کالیبره‌نشده قضاوت
- *      می‌کنند - و مودی که سهواً روشن بماند سر بنچ یک حالت خرابی واقعی است.
- *      انتشار شمارش خام در کنارش هیچ هزینه‌ای ندارد، هرگز نمی‌تواند حفاظت را
- *      خراب کند، و اطلاعات بیشتری می‌دهد: از شمارش به‌اضافهٔ مولتی‌متر هر ضریبی
- *      از صفر بازساخته می‌شود، حتی ضرایبی که مود بایپس همچنان اعمالشان می‌کرد. */
+ */
 volatile uint32_t UINT32_T__G__MeasVinRawCounts = 0u;
 volatile uint32_t UINT32_T__G__MeasV24RawCounts = 0u;
 volatile uint32_t UINT32_T__G__MeasV12RawCounts = 0u;
 volatile uint32_t UINT32_T__G__MeasVrefintRawCounts = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
-/* [EN] Live current-chain diagnostics, unfiltered single-frame values of
+/*
+ * [EN] Live current-chain diagnostics, unfiltered single-frame values of
  *      the last frame (user order 2026-09-22: raw counts -> shunt uV ->
  *      mA before any filter, so the chain can be checked against a scope
  *      and an ammeter step by step).
- * [FA] دیاگ زندهٔ زنجیرهٔ جریان، مقادیر تک‌فریمیِ فیلترنشدهٔ آخرین فریم
- *      (دستور کاربر ۲۰۲۶-۰۹-۲۲: شمارش خام -> ولتاژ شانت ‎uV -> mA‎ قبل از
- *      هر فیلتر، تا زنجیره گام‌به‌گام با اسکوپ و آمپرمتر چک شود). */
+ */
 volatile uint32_t UINT32_T__G__MeasCurrent1RawCounts = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1ShuntUv = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1MaUnfiltered = 0u;
@@ -499,32 +443,27 @@ volatile uint32_t UINT32_T__G__MeasCurrent2ShuntUv = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent2MaUnfiltered = 0u;
 volatile bool BOOL__G__MeasInputPresent = false;
 volatile bool BOOL__G__MeasDataValid = false;
-
 /* ==================== Measurement Init ==================== */
-
 /**
  * @brief  [EN] Zero the last snapshot (valid = false).
- *         [FA] آخرین نمونه را صفر می‌کند (‎valid = false)‎.
  */
 void func__Measurement_Init(void)
 {
-    /* [EN] Zero the warm-up counter, shared globals and snapshot; nothing is
-       valid until the required number of stable frames is collected.
-       [FA] شمارندهٔ ‎warm-up‎، گلوبال‌های مشترک و snapshot را صفر می‌کند؛
-       تا جمع‌شدن تعداد لازم فریم‌های پایدار چیزی معتبر نیست. */
-
+    /*
+ * [EN] Zero the warm-up counter, shared globals and snapshot; nothing is
+ * valid until the required number of stable frames is collected.
+ */
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
-
-    /* [EN] Clean filter state and re-sync the applied-copy of the runtime
-       filter configuration (a config that arrived before Init cannot
-       survive into the first frame).
-       [FA] وضعیت فیلتر تمیز و همگام‌سازی دوبارهٔ کپیِ اعمال‌شدهٔ پیکربندی
-       زمان اجرا (پیکربندی‌ای که قبل از Init رسیده باشد به اولین فریم
-       نمی‌رسد). */
+    BOOL__G__BatVoltageMedianSeeded[0u] = false;
+    BOOL__G__BatVoltageMedianSeeded[1u] = false;
+    /*
+ * [EN] Clean filter state and re-sync the applied-copy of the runtime
+ * filter configuration (a config that arrived before Init cannot
+ * survive into the first frame).
+ */
     func__Measurement_ResetCurrentFilters();
     UINT8_T__G__FilterMedianSizeApplied = UINT8_T__G__FilterMedianSize;
     UINT16_T__G__FilterAverageWindowApplied = UINT16_T__G__FilterAverageWindow;
-
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
     UINT32_T__G__MeasBattery12Mv = 0u;
@@ -545,7 +484,6 @@ void func__Measurement_Init(void)
     UINT32_T__G__MeasCurrent2MaUnfiltered = 0u;
     BOOL__G__MeasInputPresent = false;
     BOOL__G__MeasDataValid = false;
-
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat12_mv = 0u;
@@ -555,67 +493,60 @@ void func__Measurement_Init(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+    BOOL__G__AdcStallActive = false;
+    BOOL__G__AdcFirstRetryDone = false;
+    UINT32_T__G__AdcStallStartMs = 0u;
+    UINT32_T__G__AdcLastRecoverMs = 0u;
+    BOOL__G__AdcHealthyActive = false;
+    UINT32_T__G__AdcHealthyStartMs = 0u;
+    BOOL__G__AdcPostResetUsed = func__BspAdc_WasRecoveryReset();
+    BOOL__G__AdcFaultLatched = false;
 }
-
 /* ==================== Counts To Mv ==================== */
-
 /**
  * @brief  [EN] Convert normalized ADC counts through the board calibration port.
- *         [FA] شمارش استاندارد ADC را از طریق پورت کالیبراسیون برد تبدیل می‌کند.
- * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
- * @return uint32_t [EN] Voltage in mV / ولتاژ بر حسب mV
+* @param uint16_t__counts Normalized ADC count / ADC
+* @return uint32_t Voltage in mV / mV
  */
 uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_CountsToMv(uint16_t__counts);
 }
-
 /* ==================== V24 Counts To Mv ==================== */
-
 /**
  * @brief  [EN] Convert a normalized 24 V channel through board calibration.
- *         [FA] کانال استاندارد ۲۴ ولت را از طریق کالیبراسیون برد تبدیل می‌کند.
- * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
- * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع mV
+* @param uint16_t__counts Normalized ADC count / ADC
+* @return uint32_t Source voltage in mV / mV
  */
 uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_V24CountsToMv(uint16_t__counts);
 }
-
 /* ==================== Battery24 Counts To Mv ==================== */
-
 /**
  * @brief  [EN] Convert the battery-PACK 24 V channel through the USER divider
  *              factor (2026-09-25): the pack sense path attenuates
  *              6.8k/69.2k to the pin, NOT the input net's 6.8k/76k.
- *         [FA] کانال باتری‌پک ۲۴ ولت را با ضریب مقسم «کاربر» تبدیل می‌کند
- *              (۲۰۲۶-۰۹-۲۵): مسیر سنس پک تا پایه ‎6.8k/69.2k‎ تضعیف دارد،
- *              نه ‎6.8k/76k‎ مثل نت ورودی.
- * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
- * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک mV
+* @param uint16_t__counts Normalized ADC count / ADC
+* @return uint32_t Pack voltage in mV / mV
  */
 uint32_t func__Measurement_Battery24CountsToMv(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_Battery24CountsToMv(uint16_t__counts);
 }
-
 /* ==================== V12 Counts To Mv ==================== */
-
 /**
  * @brief  [EN] Convert the normalized 12 V channel through board calibration.
- *         [FA] کانال استاندارد ۱۲ ولت را از طریق کالیبراسیون برد تبدیل می‌کند.
- * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
- * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع mV
+* @param uint16_t__counts Normalized ADC count / ADC
+* @return uint32_t Source voltage in mV / mV
  */
 uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_V12CountsToMv(uint16_t__counts);
 }
-
 /* ==================== Measurement Current Counts To Ma (bench table, current) ==================== */
-
-/* [EN] Bench correction on the COUNTS axis (user order 2026-10-10).
+/*
+ * [EN] Bench correction on the COUNTS axis (user order 2026-10-10).
  *      - Table axis X = raw ADC counts (fixed fold only, no gain, no offset),
  *        so calibrating gain or offset can never change a table output
  *        inside the table range.
@@ -627,49 +558,31 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  *        above the table only the gain matters.
  *      - No table in flash: out = BSPfull(c), the full gain/offset line.
  *      No intermediate rounding, no auto-inserted point, no silent drop.
- *  [FA] اصلاح جدول بنچ روی محور «شمارش» (دستور کاربر ۲۰۲۶-۱۰-۱۰).
- *      - محور جدول X = شمارش خام ADC (فقط تجمیع ثابت)، بدون گین و آفست؛
- *        پس تنظیم گین یا آفست هرگز خروجی جدول را در بازهٔ جدول تغییر نمی‌دهد.
- *      - بین لنگرها: درون‌یابی خطی بر حسب شمارش، فقط یک‌بار رُند.
- *      - زیر اولین لنگر: مقدار Y[0] نگه داشته می‌شود.
- *      - بالای آخرین لنگر: خروجی = ‎lastY + (BSPfull(c) - BSPfull(lastCounts))‎،
- *        تفاضل فقط یک‌بار رُند می‌شود. آفست در این تفاضل حذف می‌شود (وقتی
- *        lastCounts >= آفست)، پس بالای جدول فقط گین اثر دارد.
- *      - بدون جدول در فلش: خروجی = BSPfull(c) یعنی خط کامل گین و آفست.
- *      بدون رُند میانی، بدون نقطهٔ خودکار، بدون حذف بی‌صدا. */
-
+ */
 /**
  * @brief  [EN] Table lookup in counts; the caller supplies the above-table
  *              extension (BSPfull delta from the last anchor, one rounding).
- *         [FA] جستجوی جدول بر حسب شمارش؛ فراخوان‌کننده برون‌یابی بالای جدول
- *              (تفاضل BSPfull از آخرین لنگر، با یک رُند) را می‌دهد.
- * @param  UINT32_T__A__Counts   [EN] Anchor counts, strictly increasing / شمارش لنگرها
- * @‎param  UINT32_T__A__BatteryTenthMa [EN] Anchor battery mA, non-decreasing / mA‎ باتری
- * @param  uint32_t__points      [EN] Anchor count (>= 1) / تعداد لنگر
- * @param  uint16_t__counts      [EN] Raw counts / شمارش خام
+* @param UINT32_T__A__Counts Anchor counts, strictly increasing /
+* @param UINT32_T__A__BatteryTenthMa Anchor battery mA, non-decreasing / mA
+* @param uint32_t__points Anchor count (>= 1) /
+* @param uint16_t__counts Raw counts /
  * @param  uint32_t__aboveTenthMa     [EN] Extension used only when counts > last anchor
- * @‎return uint32_t [EN] Battery mA / mA‎ باتری
+* @return uint32_t Battery mA / mA
  */
 /**
  * @brief  [EN] Ceiling of n / d (d > 0). The table is capped by CalLut at
  *              CAL_LUT_BATTERY_TENTHS_MAX, so every numerator here fits 32 bits.
- *         [FA] سقف ‎n / d (d > 0)‎. جدول در CalLut به CAL_LUT_BATTERY_TENTHS_MAX
- *              محدود است، پس همهٔ صورت‌ها در ۳۲ بیت جا می‌شوند.
  */
 static uint32_t func__Measurement_CeilDivU32(uint32_t uint32_t__numerator,
                                              uint32_t uint32_t__denominator)
 {
     return (uint32_t__numerator + uint32_t__denominator - 1u) / uint32_t__denominator;
 }
-
 /**
  * @brief  [EN] Bench table lookup. The table and the above-anchor extension
  *              are in TENTHS of mA. The interpolation stays exact (no
  *              intermediate rounding) and the result is rounded UP once, to
  *              whole mA, so a reading is never below the true current.
- *         [FA] جستجوی جدول بنچ. جدول و افزایش بالای آخرین نقطه بر حسب دهم mA
- *              هستند. درون‌یابی دقیق است (بدون گرد میانی) و خروجی فقط یک بار
- *              به بالا به mA صحیح گرد می‌شود.
  */
 static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Counts,
                                                const uint32_t *UINT32_T__A__BatteryTenthMa,
@@ -679,24 +592,20 @@ static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Coun
 {
     uint32_t uint32_t__index;
     uint32_t uint32_t__c = (uint32_t)uint16_t__counts;
-
     if (uint32_t__c <= UINT32_T__A__Counts[0u])
     {
         return func__Measurement_CeilDivU32(UINT32_T__A__BatteryTenthMa[0u], 10u);
     }
-
     for (uint32_t__index = 1u; uint32_t__index < uint32_t__points; uint32_t__index++)
     {
         uint32_t uint32_t__xLow = UINT32_T__A__Counts[uint32_t__index - 1u];
         uint32_t uint32_t__xHigh = UINT32_T__A__Counts[uint32_t__index];
-
         if (uint32_t__c <= uint32_t__xHigh)
         {
             uint32_t uint32_t__yLow = UINT32_T__A__BatteryTenthMa[uint32_t__index - 1u];
             uint32_t uint32_t__yHigh = UINT32_T__A__BatteryTenthMa[uint32_t__index];
             uint32_t uint32_t__span = uint32_t__xHigh - uint32_t__xLow;
             uint32_t uint32_t__step = uint32_t__c - uint32_t__xLow;
-
             if (uint32_t__span == 0u)
             {
                 return func__Measurement_CeilDivU32(uint32_t__yHigh, 10u);
@@ -715,29 +624,25 @@ static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Coun
                 uint32_t__span * 10u);
         }
     }
-
     /* [EN] Above the last anchor: last point + extension, both in tenths. */
     return func__Measurement_CeilDivU32(
         UINT32_T__A__BatteryTenthMa[uint32_t__points - 1u] + uint32_t__aboveTenthMa,
         10u);
 }
-
+/* ==================== Measurement_Current1CountsToMaLocked ==================== */
 static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__counts)
 {
     const uint32_t *UINT32_T__A__Counts;
     const uint32_t *UINT32_T__A__BatteryTenthMa;
     uint32_t uint32_t__points;
     uint32_t uint32_t__aboveTenthMa = 0u;
-
     if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_1) == false)
     {
         return func__BspMeasurement_Current1CountsToMa(uint16_t__counts);
     }
-
     UINT32_T__A__Counts = func__CalLut_Counts((uint8_t)CAL_LUT_CHANNEL_1);
     UINT32_T__A__BatteryTenthMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_1);
     uint32_t__points = func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_1);
-
     if (uint16_t__counts > UINT32_T__A__Counts[uint32_t__points - 1u])
     {
         uint32_t__aboveTenthMa = func__BspMeasurement_Current1DeltaTenthMa(
@@ -749,28 +654,33 @@ static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__co
                                           uint16_t__counts,
                                           uint32_t__aboveTenthMa);
 }
-
+/* ==================== Measurement_Current1CountsToMa ==================== */
 /**
  * @brief  [EN] Channel-1 counts to battery mA, read under the kernel lock so a
  *              CalLut commit cannot swap the table mid-lookup (race fix 2026-10-10).
- *         [FA] شمارش کانال 1 به mA باتری، زیر قفل کرنل؛ commit جدول CalLut
- *              نمی‌تواند وسط جستجو جدول را عوض کند.
  */
 uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 {
     int32_t int32_t__savedKernelLock = osKernelLock();
-    uint32_t uint32_t__ma = func__Measurement_Current1CountsToMaLocked(uint16_t__counts);
-    (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    uint32_t uint32_t__ma;
+    uint32_t__ma = func__Measurement_Current1CountsToMaLocked(uint16_t__counts);
+    /*
+ * [EN] Restore only after a lock that actually succeeded: a negative
+ * return means the kernel was not running (or we are in an ISR) and
+ * there is no lock state to put back.
+ */
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
     return uint32_t__ma;
 }
-
+/* ==================== Measurement_Current2CountsToMaLocked ==================== */
 /**
  * @brief  [EN] Channel-2 counts to battery-2 mA. Table present: bench table on
  *              the counts axis. No table: the full gain/offset line BSPfull.
- *         [FA] شمارش کانال ۲ به mA باتری ۲. با جدول: جدول بنچ روی محور شمارش.
- *              بدون جدول: خط کامل گین/آفست BSPfull.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @‎return uint32_t [EN] Battery-2 current in mA‎ / جریان باتری ۲ بر حسب mA
+* @param uint16_t__counts ADC count / ADC
+* @return uint32_t Battery-2 current in mA / mA
  */
 static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__counts)
 {
@@ -778,16 +688,13 @@ static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__co
     const uint32_t *UINT32_T__A__BatteryTenthMa;
     uint32_t uint32_t__points;
     uint32_t uint32_t__aboveTenthMa = 0u;
-
     if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_2) == false)
     {
         return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
     }
-
     UINT32_T__A__Counts = func__CalLut_Counts((uint8_t)CAL_LUT_CHANNEL_2);
     UINT32_T__A__BatteryTenthMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_2);
     uint32_t__points = func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_2);
-
     if (uint16_t__counts > UINT32_T__A__Counts[uint32_t__points - 1u])
     {
         uint32_t__aboveTenthMa = func__BspMeasurement_Current2DeltaTenthMa(
@@ -799,88 +706,76 @@ static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__co
                                           uint16_t__counts,
                                           uint32_t__aboveTenthMa);
 }
-
+/* ==================== Measurement_Current2CountsToMa ==================== */
 /**
  * @brief  [EN] Channel-2 counts to battery mA, read under the kernel lock so a
  *              CalLut commit cannot swap the table mid-lookup (race fix 2026-10-10).
- *         [FA] شمارش کانال 2 به mA باتری، زیر قفل کرنل؛ commit جدول CalLut
- *              نمی‌تواند وسط جستجو جدول را عوض کند.
  */
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
     int32_t int32_t__savedKernelLock = osKernelLock();
-    uint32_t uint32_t__ma = func__Measurement_Current2CountsToMaLocked(uint16_t__counts);
-    (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    uint32_t uint32_t__ma;
+    uint32_t__ma = func__Measurement_Current2CountsToMaLocked(uint16_t__counts);
+    /*
+ * [EN] Restore only after a lock that actually succeeded: a negative
+ * return means the kernel was not running (or we are in an ISR) and
+ * there is no lock state to put back.
+ */
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
     return uint32_t__ma;
 }
-
+/* ==================== Measurement_CurrentIsBatteryCalibrated ==================== */
 bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex)
 {
-    /* [EN] Channels 1 and 2 always return BATTERY-side current (chain with
+    /*
+ * [EN] Channels 1 and 2 always return BATTERY-side current (chain with
      *      gain and offset, then the bench table when present). Whether the
      *      table has been calibrated is a separate question for the panel.
-     * [FA] کانال ۱ و ۲ همیشه جریان سمت باتری برمی‌گردانند (زنجیره با گین و
-     *      آفست، و جدول بنچ در صورت وجود). اینکه جدول کالیبره شده یا نه،
-     *      موضوعی جداست که پنل نشان می‌دهد. */
+ */
     return (uint8_t__channelIndex <= 1u);
 }
-
 /* ==================== Measurement Current Counts To Shunt Uv ==================== */
-
 /**
  * @brief  [EN] Raw current counts to the pure-hardware shunt voltage in uV
  *              via the BSP (no zero offset, no bench trim) - live
  *              diagnostic for the current-chain review (user order
  *              2026-09-22).
- *         [FA] شمارش خام جریان به ولتاژ شانتِ فقط-سخت‌افزاری بر حسب uV از
- *              طریق BSP (بدون آفست صفر، بدون اصلاح بنچ) - دیاگ زندهٔ
- *              بررسی زنجیرهٔ جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV
+* @param uint16_t__counts ADC count / ADC
+* @return uint32_t Shunt voltage in uV / uV
  */
 uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_CurrentCountsToShuntUv(uint16_t__counts);
 }
-
 /* ==================== Measurement Battery12 Bench Compensation (user order 2026-09-25) ==================== */
-
 /* ==================== Measurement ApplyVoltageOffsetMv ==================== */
-
 /**
  * @brief  [EN] Saturating signed add of one runtime calibration offset to a
  *              voltage in mV; the result is never below 0 mV. The offset is
  *              clamped to +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV by its
  *              setter, so the sum cannot overflow int32_t.
- *         [FA] جمع علامتدارِ اشباع‌شوندهٔ یک آفست کالیبراسیون زمان اجرا
- *              به ولتاژ بر حسب mV؛ نتیجه هرگز زیر ۰mV نمی‌رود. آفست در
- *              setter خودش به ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV گیره
- *              می‌شود، پس جمع در int32_t سرریز نمی‌کند.
- * @param  uint32_t__voltageMv [EN] Converted voltage, mV / ولتاژ تبدیل‌شده
- * @param  int32_t__offsetMv [EN] Runtime offset, mV / آفست زمان اجرا
- * @return uint32_t [EN] Offset voltage, mV / ولتاژ آفست‌خورده
+* @param uint32_t__voltageMv Converted voltage, mV /
+* @param int32_t__offsetMv Runtime offset, mV /
+* @return uint32_t Offset voltage, mV /
  */
 static uint32_t func__Measurement_ApplyVoltageOffsetMv(uint32_t uint32_t__voltageMv,
                                                        int32_t int32_t__offsetMv)
 {
     int32_t int32_t__resultMv;
-
     int32_t__resultMv = (int32_t)uint32_t__voltageMv + int32_t__offsetMv;
     if (int32_t__resultMv < 0)
     {
         return 0u;
     }
-
     return (uint32_t)int32_t__resultMv;
 }
-
 /* ==================== Measurement Run ==================== */
-
 /**
  * @brief  [EN] Pull one stable raw frame from the BSP, convert all ADC
  *              channels and publish one coherent shared snapshot.
- *         [FA] یک فریم خام پایدار را از BSP می‌گیرد، همهٔ کانال‌های ADC را
- *              تبدیل می‌کند و یک snapshot مشترک منسجم منتشر می‌کند.
  */
 void func__Measurement_Run(void)
 {
@@ -903,21 +798,34 @@ void func__Measurement_Run(void)
     bool bool__frameCopied;
     bool bool__inputPresent;
     int32_t int32_t__savedKernelLock;
-
-    /* [EN] GetRaw copies only a completed DMA half-frame; no ADC register
-       polling is performed here.
-       [FA] GetRaw فقط یک نیم‌فریم کامل DMA را کپی می‌کند؛ اینجا رجیستر ADC
-       پالت نمی‌شود. */
+    /*
+ * [EN] Once both 60 s recovery windows (pre-reset and post-reset) have
+ * failed and FAULT_ADC is latched, never publish sporadic frames again in
+ * this power session.
+ */
+    if (BOOL__G__AdcFaultLatched != false)
+    {
+        UINT8_T__G__MeasurementWarmupFrameCount = 0u;
+        BOOL__G__MeasDataValid = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+        return;
+    }
+    /*
+ * [EN] GetRaw copies only a completed DMA half-frame; no ADC register
+ * polling is performed here.
+ */
     bool__frameCopied = func__BspAdc_GetRaw(uint16_t__raw);
-
     if (bool__frameCopied == false)
     {
-        /* [EN] A missing stable frame restarts warm-up and invalidates the
-           ADC result; input presence is not evaluated in this path.
-           [FA] نبود فریم پایدار ‎warm-up‎ را از نو شروع و نتیجهٔ ADC را
-           نامعتبر می‌کند؛ در این مسیر حضور ورودی ارزیابی نمی‌شود. */
+        /*
+ * [EN] A missing stable frame restarts warm-up, clears the voltage and
+ * current filter histories so pre-outage samples cannot bleed into
+ * recovered readings, and invalidates the ADC snapshot.
+ */
         UINT8_T__G__MeasurementWarmupFrameCount = 0u;
-
+        BOOL__G__BatVoltageMedianSeeded[0u] = false;
+        BOOL__G__BatVoltageMedianSeeded[1u] = false;
+        func__Measurement_ResetCurrentFilters();
         int32_t__savedKernelLock = osKernelLock();
         if (int32_t__savedKernelLock >= 0)
         {
@@ -932,26 +840,21 @@ void func__Measurement_Run(void)
         }
         return;
     }
-
-    /* [EN] Count only completed stable frames; saturation keeps the small
-       warm-up counter from wrapping after validity is reached.
-       [FA] فقط فریم‌های کامل و پایدار شمرده می‌شوند؛ اشباع شمارندهٔ کوچک
-       از سرریز پس از معتبرشدن داده جلوگیری می‌کند. */
+    /*
+ * [EN] Count only completed stable frames; saturation keeps the small
+ * warm-up counter from wrapping after validity is reached.
+ */
     if (UINT8_T__G__MeasurementWarmupFrameCount < MEASUREMENT_WARMUP_FRAME_COUNT)
     {
         UINT8_T__G__MeasurementWarmupFrameCount++;
     }
-
-    /* [EN] Runtime filter-config change detection (ESP panel, user order
+    /*
+ * [EN] Runtime filter-config change detection (ESP panel, user order
  *          2026-09-22): when the median size or the average window moved,
  *          reset the filter state in this task's own context and take over
  *          the new configuration - a resize never mixes stale slots into
  *          the filters and no cross-task lock is needed.
- * [FA] تشخیص تغییر پیکربندی زندهٔ فیلتر (پنل ESP، دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲): با جابه‌جاشدن اندازهٔ مدین یا پنجرهٔ میانگین، وضعیت
- *      فیلتر در زمینهٔ همین تسک ریست و پیکربندی جدید تحویل گرفته
- *      می‌شود - تغییر اندازه هرگز خانه‌های قدیمی را داخل فیلترها
- *      نمی‌آمیزد و قفل بین‌تسکی لازم نیست. */
+ */
     if ((UINT8_T__G__FilterMedianSizeApplied != UINT8_T__G__FilterMedianSize) ||
         (UINT16_T__G__FilterAverageWindowApplied != UINT16_T__G__FilterAverageWindow))
     {
@@ -959,31 +862,24 @@ void func__Measurement_Run(void)
         UINT8_T__G__FilterMedianSizeApplied = UINT8_T__G__FilterMedianSize;
         UINT16_T__G__FilterAverageWindowApplied = UINT16_T__G__FilterAverageWindow;
     }
-
-    /* [EN] Convert into locals first so other tasks never observe a partly
-       updated measurement set.
-       [FA] ابتدا در متغیرهای محلی تبدیل می‌کند تا تسک‌های دیگر مجموعهٔ
-       اندازه‌گیری نیمه‌به‌روزشده نبینند. */
-    /* [EN] Currents: the board port delivers the PWM mid-ON synchronized
-       raw counts in the CURRENT1/CURRENT2 frame positions; this module
-       runs the switchable filter chain on the RAW counts first (median to
-       kill single-sample jumps, moving average to smooth) and converts the
-       filtered counts to mA after. Voltages keep their median-5 spike
-       guard, likewise on the raw counts.
-       [FA] جریان‌ها: پورت برد شمارش‌های خام سنکرونِ وسط ON را در جایگاه‌های
-       ‎CURRENT1/2‎ فریم می‌گذارد؛ این ماژول اول زنجیرهٔ فیلتر کلیددار را
-       روی شمارش خام اجرا می‌کند (مدین برای حذف پرش، میانگین متحرک برای
-       صاف‌کردن) و بعد شمارش فیلترشده را به mA تبدیل می‌کند. ولتاژها هم
-       محافظ مدین-۵ خود را روی شمارش خام نگه می‌دارند. */
-
-/* [EN] Filters run on the RAW ADC counts (user order 2026-09-27):
-       median/average of 12-bit counts cannot exceed 4095, so the u16 casts
-       at the conversion calls are airtight. The unfiltered converted
-       samples stay for telemetry (unf) and diagnostics.
-       [FA] فیلترها روی شمارش خام ADC اجرا می‌شوند (دستور کاربر ۲۰۲۶-۰۹-۲۷):
-       مدین/میانگین شمارش ۱۲بیتی از ۴۰۹۵ بیشتر نمی‌شود پس castهای u16 سر
-       تبدیل‌ها قطعی‌اند. نمونه‌های تبدیل‌شدهٔ بدون فیلتر برای تله‌متری
-       (unf) می‌مانند. */
+    /*
+ * [EN] Convert into locals first so other tasks never observe a partly
+ * updated measurement set.
+ */
+    /*
+ * [EN] Currents: the board port delivers the PWM mid-ON synchronized
+ * raw counts in the CURRENT1/CURRENT2 frame positions; this module
+ * runs the switchable filter chain on the RAW counts first (median to
+ * kill single-sample jumps, moving average to smooth) and converts the
+ * filtered counts to mA after. Voltages keep their median-5 spike
+ * guard, likewise on the raw counts.
+ */
+/*
+ * [EN] Filters run on the RAW ADC counts (user order 2026-09-27):
+ * median/average of 12-bit counts cannot exceed 4095, so the u16 casts
+ * at the conversion calls are airtight. The unfiltered converted
+ * samples stay for telemetry (unf) and diagnostics.
+ */
     uint32_t__current1CountsFiltered =
         func__Measurement_ApplyCurrentFilters(0u,
             (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
@@ -995,10 +891,10 @@ void func__Measurement_Run(void)
         func__Measurement_Current1CountsToMa((uint16_t)uint32_t__current1CountsFiltered);
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
-    /* [EN] Median-5 on the raw counts of the two battery ADC channels
-       (Vin keeps no filter, exactly as before).
-       [FA] مدین-۵ روی شمارش خام دو کانال ADC باتری (ورودی مثل قبل بدون
-       فیلتر می‌ماند). */
+    /*
+ * [EN] Median-5 on the raw counts of the two battery ADC channels
+ * (Vin keeps no filter, exactly as before).
+ */
     uint16_t__battery24CountsFiltered =
         (uint16_t)func__Measurement_MedianFilterVoltageSample(0u,
             (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
@@ -1009,15 +905,12 @@ void func__Measurement_Run(void)
         func__Measurement_Battery24CountsToMv(uint16_t__battery24CountsFiltered);
     uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__battery12CountsFiltered);
-
-    /* [EN] Channel-2 sample conversion moved BEFORE the voltage chain (user
-            order 2026-09-25): the V12 bench compensation needs the corrected
-            channel-2 current. Pure function of the raw frame - no state, so
-            the earlier position changes nothing else.
-       [FA] تبدیل نمونهٔ کانال ۲ به قبل از زنجیرهٔ ولتاژ منتقل شد (دستور
-            کاربر ۲۰۲۶-۰۹-۲۵): جبران بنچ V12 به جریان اصلاح‌شدهٔ کانال ۲
-            نیاز دارد. تابع خالصِ فریم خام است - بدون وضعیت - پس جابه‌جایی
-            چیز دیگری را عوض نمی‌کند. */
+    /*
+ * [EN] Channel-2 sample conversion moved BEFORE the voltage chain (user
+ * order 2026-09-25): the V12 bench compensation needs the corrected
+ * channel-2 current. Pure function of the raw frame - no state, so
+ * the earlier position changes nothing else.
+ */
     uint32_t__current2SampleMa =
         func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
     uint32_t__current2CountsFiltered =
@@ -1025,17 +918,13 @@ void func__Measurement_Run(void)
             (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
     uint32_t__current2ShuntUv =
         func__Measurement_CurrentCountsToShuntUv(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
-
-    /* [EN] Runtime voltage calibration offsets (ESP panel, user order
+    /*
+ * [EN] Runtime voltage calibration offsets (ESP panel, user order
  *          2026-09-22): applied after the divider conversion and before the
  *          low/high derivation, each clamped by the setter to
  *          +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV; default 0 keeps today's
  *          behavior. Saturating signed add, result never below 0 mV.
- * [FA] آفست‌های کالیبراسیون ولتاژ زمان اجرا (پنل ESP، دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲): بعد از تبدیل مقسم و قبل از محاسبهٔ پایین/بالا اعمال
- *      می‌شوند؛ هر یک در setter به ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV
- *      گیره می‌شود و پیش‌فرض ۰ همان رفتار فعلی است. جمع علامتدارِ
- *      اشباع‌شونده؛ نتیجه هرگز زیر ۰mV نمی‌رود. */
+ */
     uint32_t__inputVoltageMv = func__Measurement_ApplyVoltageOffsetMv(
         uint32_t__inputVoltageMv, INT32_T__G__VoltageInOffsetMv);
     uint32_t__battery24Mv = func__Measurement_ApplyVoltageOffsetMv(
@@ -1051,35 +940,30 @@ void func__Measurement_Run(void)
     {
         uint32_t__batteryHighMv = 0u;
     }
-
-    /* [EN] No median here anymore: the median-5 ran on the raw V24/V12
-       counts above (user order 2026-09-27), so a single-frame ADC spike on
-       the switching node is already dead before the conversion; low/high
-       derive from the filtered conversions. Real steps pass with only a
-       few frames of lag, no moving average.
-       [FA] مدین اینجا دیگر نیست: مدین-۵ روی شمارش خام ‎V24/V12‎ بالا اجرا شد
-       پس اسپایک تک‌فریمی پیش از تبدیل مرده است؛ ‎low/high‎ از تبدیل‌های
-       فیلترشده مشتق می‌شوند. */
-
-    /* [EN] Convert the filtered counts once per pass (counts axis, no
-       voltage input).
-       [FA] تبدیل شمارش فیلترشده یک‌بار در هر پاس (محور شمارش، بدون ورودی ولتاژ). */
+    /*
+ * [EN] No median here anymore: the median-5 ran on the raw V24/V12
+ * counts above (user order 2026-09-27), so a single-frame ADC spike on
+ * the switching node is already dead before the conversion; low/high
+ * derive from the filtered conversions. Real steps pass with only a
+ * few frames of lag, no moving average.
+ */
+    /*
+ * [EN] Convert the filtered counts once per pass (counts axis, no
+ * voltage input).
+ */
     uint32_t__current2Ma =
         func__Measurement_Current2CountsToMa((uint16_t)uint32_t__current2CountsFiltered);
-
-    /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;
-       polarity and physical pin mapping remain inside the board port.
-       [FA] BSP سیگنال تشخیص ورودی برد را به‌صورت GPIO منطقی ارائه می‌کند؛
-       قطبیت و نگاشت پایهٔ فیزیکی داخل پورت برد می‌ماند. */
+    /*
+ * [EN] The BSP exposes the board input-detect signal as a logical GPIO;
+ * polarity and physical pin mapping remain inside the board port.
+ */
     bool__inputPresent =
         func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
-
-    /* [EN] Publish globals and snapshot while the RTOS scheduler is locked.
-       The snapshot valid bit is written last; this uses CMSIS-RTOS2 rather
-       than an MCU-specific interrupt instruction.
-       [FA] گلوبال‌ها و snapshot را هنگام قفل بودن scheduler منتشر می‌کند.
-       بیت معتبر بودن snapshot در آخر نوشته می‌شود؛ این کار به‌جای دستور
-       وابسته به MCU از ‎CMSIS-RTOS2‎ استفاده می‌کند. */
+    /*
+ * [EN] Publish globals and snapshot while the RTOS scheduler is locked.
+ * The snapshot valid bit is written last; this uses CMSIS-RTOS2 rather
+ * than an MCU-specific interrupt instruction.
+ */
     int32_t__savedKernelLock = osKernelLock();
     if (int32_t__savedKernelLock < 0)
     {
@@ -1087,12 +971,11 @@ void func__Measurement_Run(void)
         MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
         return;
     }
-
     UINT32_T__G__MeasCurrent1Ma = uint32_t__current1Ma;
-    /* [EN] Unfiltered current-chain diagnostics of this frame: raw counts,
-       pure-hardware shunt uV and pre-filter mA (user order 2026-09-22).
-       [FA] دیاگ فیلترنشدهٔ زنجیرهٔ جریان همین فریم: شمارش خام، ولتاژ شانت
-       فقط-سخت‌افزاری و mA قبل از فیلتر (دستور کاربر ۲۰۲۶-۰۹-۲۲). */
+    /*
+ * [EN] Unfiltered current-chain diagnostics of this frame: raw counts,
+ * pure-hardware shunt uV and pre-filter mA (user order 2026-09-22).
+ */
     UINT32_T__G__MeasCurrent1RawCounts =
         (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1];
     UINT32_T__G__MeasCurrent1ShuntUv = uint32_t__current1ShuntUv;
@@ -1106,17 +989,14 @@ void func__Measurement_Run(void)
         uint16_t__raw[BSP_ADC_CHANNEL_VREFINT], CAL_VREFINT_MV);
     UINT32_T__G__MeasVinRawCounts =
         (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_IN];
-    /* [EN] Audit fix 2026-10-03: the V24/V12 slots used to publish the
-       median+average filtered counts under a "RawCounts" name, so the
-       calibration-ground-truth channel lied during sweeps (v1.25 esp_link
-       comment: counts BEFORE any processing). Now all three voltage slots
-       carry the true DMA frame counts, matching Vin; the filtered copy still
-       feeds the mV maths above and the control loops, which are untouched.
-       [FA] اصلاح ممیزی ۲۰۲۶-۱۰-۰۳: قبلاً جای‌های ‎V24/V12‎ شمارشِ
-       فیلترشدهٔ median+میانگین را با نام «RawCounts» منتشر می‌کردند، پس
-       کانال مبنای کالیبراسیون حین سوییپ دروغ می‌گفت. حالا هر سه جای ولتاژ
-       شمارش واقعی فریم DMA را می‌دهند (مثل Vin)؛ کپی فیلترشده همچنان به
-       ریاضیات mV بالا و حلقه‌های کنترل می‌خورد و دست نخورده است. */
+    /*
+ * [EN] Audit fix 2026-10-03: the V24/V12 slots used to publish the
+ * median+average filtered counts under a "RawCounts" name, so the
+ * calibration-ground-truth channel lied during sweeps (v1.25 esp_link
+ * comment: counts BEFORE any processing). Now all three voltage slots
+ * carry the true DMA frame counts, matching Vin; the filtered copy still
+ * feeds the mV maths above and the control loops, which are untouched.
+ */
     UINT32_T__G__MeasV24RawCounts =
         (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT];
     UINT32_T__G__MeasV12RawCounts =
@@ -1129,7 +1009,6 @@ void func__Measurement_Run(void)
     UINT32_T__G__MeasCurrent2ShuntUv = uint32_t__current2ShuntUv;
     UINT32_T__G__MeasCurrent2MaUnfiltered = uint32_t__current2SampleMa;
     BOOL__G__MeasInputPresent = bool__inputPresent;
-
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch1_ma = uint32_t__current1Ma;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = uint32_t__inputVoltageMv;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = uint32_t__battery24Mv;
@@ -1138,11 +1017,10 @@ void func__Measurement_Run(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_high_mv = uint32_t__batteryHighMv;
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = uint32_t__current2Ma;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = bool__inputPresent;
-
-    /* [EN] ADC validity depends only on the warm-up count, never on input
-       voltage or input presence. Write the public flag before snapshot.valid.
-       [FA] اعتبار ADC فقط به شمارندهٔ ‎warm-up‎ وابسته است، نه ولتاژ یا حضور
-       ورودی. پرچم عمومی پیش از snapshot.valid نوشته می‌شود. */
+    /*
+ * [EN] ADC validity depends only on the warm-up count, never on input
+ * voltage or input presence. Write the public flag before snapshot.valid.
+ */
     if (UINT8_T__G__MeasurementWarmupFrameCount >= MEASUREMENT_WARMUP_FRAME_COUNT)
     {
         BOOL__G__MeasDataValid = true;
@@ -1151,53 +1029,39 @@ void func__Measurement_Run(void)
     {
         BOOL__G__MeasDataValid = false;
     }
-
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = BOOL__G__MeasDataValid;
-
     (void)osKernelRestoreLock(int32_t__savedKernelLock);
 }
-
 /* ==================== Measurement Get Snapshot ==================== */
-
 /**
  * @brief  [EN] Copy the last snapshot. Returns false if pointer is NULL or
  *              data is not valid yet.
- *         [FA] آخرین نمونه را کپی می‌کند. اگر اشاره‌گر NULL یا داده نامعتبر
- *              باشد false برمی‌گرداند.
  * @param  measurement_snapshot_t__out [EN] Output pointer, must not be NULL /
- *                                          اشاره‌گر خروجی
- * @return bool [EN] true if a valid snapshot was copied / اگر نمونهٔ معتبر
- *                   کپی شد true
+* @return bool true if a valid snapshot was copied /
  */
 bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_t__out)
 {
     int32_t int32_t__savedKernelLock;
     bool bool__snapshotValid;
-
     if (measurement_snapshot_t__out == NULL)
     {
         return false;
     }
-
-    /* [EN] Prevent a task switch while copying the multi-field snapshot.
-       CMSIS-RTOS2 keeps this independent of the MCU core instructions.
-       [FA] هنگام کپی snapshot چندفیلدی، تعویض تسک را متوقف می‌کند.
-       ‎CMSIS-RTOS2‎ این بخش را از دستورهای هستهٔ MCU مستقل نگه می‌دارد. */
+    /*
+ * [EN] Prevent a task switch while copying the multi-field snapshot.
+ * CMSIS-RTOS2 keeps this independent of the MCU core instructions.
+ */
     int32_t__savedKernelLock = osKernelLock();
     if (int32_t__savedKernelLock < 0)
     {
         return false;
     }
-
     *measurement_snapshot_t__out = MEASUREMENT_SNAPSHOT_T__G__Snap;
     bool__snapshotValid = MEASUREMENT_SNAPSHOT_T__G__Snap.valid;
     (void)osKernelRestoreLock(int32_t__savedKernelLock);
-
     return bool__snapshotValid;
 }
-
 /* ==================== Measurement runtime config API (ESP panel) ==================== */
-
 /**
  * @brief  [EN] Set the runtime median window size of the current filter
  *              (one size parameter per filter; 1 = bypass, so no separate
@@ -1205,22 +1069,16 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
  *              no odd rounding; 1..2 behave as bypass). The compiled
  *              switch stays the capability gate: 0 clamps the request to
  *              1. Flash-persisted (NVM id 7).
- *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا (یک پارامتر
- *              اندازه؛ ۱ = عبور مستقیم). هر اندازهٔ ۱..MAX مجاز است (زوج
- *              هم، بدون گرد به فرد؛ ۱..۲ عبور مستقیم‌اند). کلید کامپایل
- *              ظرفیت را تعیین می‌کند: ۰ یعنی درخواست به ۱ گیره می‌شود. روی
- *              فلش می‌ماند (شناسهٔ NVM ۷).
- * @param  uint8_t__medianSize [EN] Requested size / اندازهٔ درخواستی
- * @return uint8_t [EN] Applied size / اندازهٔ اعمال‌شده
+* @param uint8_t__medianSize Requested size /
+* @return uint8_t Applied size /
  */
 uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize)
 {
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-    /* [EN] v1.4 (user order 2026-09-25): ANY size 1..MAX - even sizes
-       allowed, no odd rounding. 1..2 behave as bypass in the task.
-       [FA] ‌v1.4 (دستور کاربر ۲۰۲۶-۰۹-۲۵): هر اندازهٔ ۱..MAX - زوج هم
-       مجاز، بدون گردکردن به فرد. ۱..۲ در تسک مثل عبور مستقیم رفتار
-       می‌کنند. */
+    /*
+ * [EN] v1.4 (user order 2026-09-25): ANY size 1..MAX - even sizes
+ * allowed, no odd rounding. 1..2 behave as bypass in the task.
+ */
     if (uint8_t__medianSize < 1u)
     {
         uint8_t__medianSize = 1u;
@@ -1231,42 +1089,35 @@ uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize)
     }
     else
     {
-        /* [EN] Any value inside 1..MAX is taken as-is.
-           [FA] هر مقدار داخل ۱..MAX همان‌طور که هست پذیرفته می‌شود. */
+        /*
+ * [EN] Any value inside 1..MAX is taken as-is.
+ */
     }
 #else
     (void)uint8_t__medianSize;
     uint8_t__medianSize = 1u;
 #endif
-
     UINT8_T__G__FilterMedianSize = uint8_t__medianSize;
     return uint8_t__medianSize;
 }
-
+/* ==================== Measurement_SetFilterAverageWindow ==================== */
 /**
  * @brief  [EN] Set the runtime moving-average window size, clamped to
  *              1..MEASUREMENT_CURRENT_AVERAGE_WINDOW (the compiled ring
  *              size is the hard ceiling). The measurement task resets the
  *              filter state on the next frame after a change.
- *         [FA] اندازهٔ پنجرهٔ میانگین متحرک در زمان اجرا، گیره در
- *              ۱..MEASUREMENT_CURRENT_AVERAGE_WINDOW (اندازهٔ حلقهٔ کامپایل
- *              سقف قطعی است). تسک اندازه‌گیری پس از تغییر در فریم بعدی
- *              وضعیت فیلتر را ریست می‌کند.
- * @param  uint32_t__windowSamples [EN] Requested window / پنجرهٔ درخواستی
- * @return uint16_t [EN] Applied window / پنجرهٔ اعمال‌شده
+* @param uint32_t__windowSamples Requested window /
+* @return uint16_t Applied window /
  */
 uint16_t func__Measurement_SetFilterAverageWindow(uint32_t uint32_t__windowSamples)
 {
     uint16_t uint16_t__appliedWindow;
-
-    /* [EN] Clamp-then-narrow (full-program audit 2026-09-26): the old u8
-       path sliced 256..300 to 0..44 AND clamped the ceiling to (u8)300 =
-       44, so windows above 44 were unreachable. The wire/u32 value is
-       clamped first, then narrowed - the storage/index/counters are u16.
-       [FA] اول گیره بعد باریک‌کردن (ممیزی کل برنامه): مسیر u8 قدیم
-       ۲۵۶..۳۰۰ را به ۰..۴۴ می‌برید و سقف را هم روی (u8)300=۴۴ می‌گذاشت،
-       پس پنجره‌های بالای ۴۴ دست‌نیافتنی بودند. مقدار u32 اول گیره
-       می‌خورد بعد باریک می‌شود. */
+    /*
+ * [EN] Clamp-then-narrow (full-program audit 2026-09-26): the old u8
+ * path sliced 256..300 to 0..44 AND clamped the ceiling to (u8)300 =
+ * 44, so windows above 44 were unreachable. The wire/u32 value is
+ * clamped first, then narrowed - the storage/index/counters are u16.
+ */
     if (uint32_t__windowSamples < 1u)
     {
         uint16_t__appliedWindow = 1u;
@@ -1279,44 +1130,36 @@ uint16_t func__Measurement_SetFilterAverageWindow(uint32_t uint32_t__windowSampl
     {
         uint16_t__appliedWindow = (uint16_t)uint32_t__windowSamples;
     }
-
     UINT16_T__G__FilterAverageWindow = uint16_t__appliedWindow;
     return uint16_t__appliedWindow;
 }
-
+/* ==================== Measurement_GetFilterMedianSize ==================== */
 /**
  * @brief  [EN] Read the live median window size of the current filter.
- *         [FA] اندازهٔ زندهٔ پنجرهٔ مدین فیلتر جریان.
- * @return uint8_t [EN] 1, 3 or 5 / اندازهٔ فعال
+* @return uint8_t 1, 3 or 5 /
  */
 uint8_t func__Measurement_GetFilterMedianSize(void)
 {
     return UINT8_T__G__FilterMedianSize;
 }
-
+/* ==================== Measurement_GetFilterAverageWindow ==================== */
 /**
  * @brief  [EN] Read the live moving-average window size.
- *         [FA] اندازهٔ زندهٔ پنجرهٔ میانگین متحرک.
- * @return uint16_t [EN] Window in samples / پنجره بر حسب نمونه
+* @return uint16_t Window in samples /
  */
 uint16_t func__Measurement_GetFilterAverageWindow(void)
 {
     return UINT16_T__G__FilterAverageWindow;
 }
-
 /**
  * @brief  [EN] Set one runtime voltage calibration offset, clamped to
  *              +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. Index 0 = 24 V
  *              input, 1 = 24 V battery pack, 2 = 12 V (middle node)
  *              battery. Default 0 = today's behavior; flash-persisted
  *              since v1.14 (NVM ids 4/5/6).
- *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا، گیره در
- *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
- *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V (نود میانی). پیش‌فرض ۰ همان
- *              رفتار فعلی؛ روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴).
- * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
- * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
- * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده
+* @param uint8_t__channelIndex 0 = VIN, 1 = V24, 2 = V12 /
+* @param int32_t__offsetMv Requested offset, mV /
+* @return int32_t Applied offset, mV /
  */
 int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
                                              int32_t int32_t__offsetMv)
@@ -1331,9 +1174,7 @@ int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
     }
     else
     {
-        /* [EN] Value already inside the window. [FA] مقدار داخل بازه است. */
     }
-
     if (uint8_t__channelIndex == 0u)
     {
         INT32_T__G__VoltageInOffsetMv = int32_t__offsetMv;
@@ -1346,15 +1187,13 @@ int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
     {
         INT32_T__G__Voltage12OffsetMv = int32_t__offsetMv;
     }
-
     return int32_t__offsetMv;
 }
-
+/* ==================== Measurement_GetVoltageOffsetMv ==================== */
 /**
  * @brief  [EN] Read one runtime voltage calibration offset.
- *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
- * @return int32_t [EN] Live offset, mV / آفست زنده
+* @param uint8_t__channelIndex 0 = VIN, 1 = V24, 2 = V12 /
+* @return int32_t Live offset, mV /
  */
 int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)
 {
@@ -1366,6 +1205,95 @@ int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)
     {
         return INT32_T__G__Voltage24OffsetMv;
     }
-
     return INT32_T__G__Voltage12OffsetMv;
+}
+/* ==================== Measurement_SuperviseAdc ==================== */
+/**
+ * @brief  [EN] Supervise ADC1+DMA liveness on every measurement pass: silently
+ *              retry in-place hardware recovery for 60 s, perform at most one
+ *              MCU software reset, retry silently for another 60 s after that
+ *              reset, and latch FAULT_ADC only if still unrecovered.
+* @param uint32_t__nowMs Monotonic kernel time in milliseconds /
+ */
+void func__Measurement_SuperviseAdc(uint32_t uint32_t__nowMs)
+{
+    uint32_t uint32_t__stallElapsedMs;
+    uint32_t uint32_t__healthyElapsedMs;
+    uint32_t uint32_t__retryElapsedMs;
+    if (BOOL__G__AdcFaultLatched != false)
+    {
+#if MODULE_FAULT
+        func__Fault_Set(FAULT_ADC);
+#endif
+        return;
+    }
+    if (BOOL__G__MeasDataValid != false)
+    {
+        BOOL__G__AdcStallActive = false;
+        BOOL__G__AdcFirstRetryDone = false;
+        /*
+ * [EN] Re-arm the single-reset budget only after 60 s of continuous
+ * healthy operation so an intermittent short-lived boot can never loop.
+ */
+        if (BOOL__G__AdcPostResetUsed != false)
+        {
+            if (BOOL__G__AdcHealthyActive == false)
+            {
+                BOOL__G__AdcHealthyActive = true;
+                UINT32_T__G__AdcHealthyStartMs = uint32_t__nowMs;
+            }
+            else
+            {
+                uint32_t__healthyElapsedMs =
+                    uint32_t__nowMs - UINT32_T__G__AdcHealthyStartMs;
+                if (uint32_t__healthyElapsedMs >= MEASUREMENT_ADC_RECOVER_WINDOW_MS)
+                {
+                    BOOL__G__AdcPostResetUsed = false;
+                    BOOL__G__AdcHealthyActive = false;
+                }
+            }
+        }
+        return;
+    }
+    BOOL__G__AdcHealthyActive = false;
+    if (BOOL__G__AdcStallActive == false)
+    {
+        BOOL__G__AdcStallActive = true;
+        BOOL__G__AdcFirstRetryDone = false;
+        UINT32_T__G__AdcStallStartMs = uint32_t__nowMs;
+        UINT32_T__G__AdcLastRecoverMs = uint32_t__nowMs;
+    }
+    uint32_t__stallElapsedMs = uint32_t__nowMs - UINT32_T__G__AdcStallStartMs;
+    if (uint32_t__stallElapsedMs >= MEASUREMENT_ADC_RECOVER_WINDOW_MS)
+    {
+        if (BOOL__G__AdcPostResetUsed == false)
+        {
+            BOOL__G__AdcPostResetUsed = true;
+            BOOL__G__AdcStallActive = false;
+            BOOL__G__AdcFirstRetryDone = false;
+            func__BspAdc_TriggerRecoveryReset();
+            return;
+        }
+        BOOL__G__AdcFaultLatched = true;
+#if MODULE_FAULT
+        func__Fault_Set(FAULT_ADC);
+#endif
+        return;
+    }
+    /*
+ * [EN] While warm-up frames are actively arriving (1..2 frames after boot
+ * or after a successful Recover), let warm-up finish without resetting ADC.
+ */
+    if (UINT8_T__G__MeasurementWarmupFrameCount > 0u)
+    {
+        return;
+    }
+    uint32_t__retryElapsedMs = uint32_t__nowMs - UINT32_T__G__AdcLastRecoverMs;
+    if ((BOOL__G__AdcFirstRetryDone == false) ||
+        (uint32_t__retryElapsedMs >= MEASUREMENT_ADC_RECOVER_RETRY_MS))
+    {
+        BOOL__G__AdcFirstRetryDone = true;
+        UINT32_T__G__AdcLastRecoverMs = uint32_t__nowMs;
+        (void)func__BspAdc_Recover();
+    }
 }

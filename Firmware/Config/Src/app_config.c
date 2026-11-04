@@ -1,18 +1,12 @@
 /**
  * @file    app_config.c
  * @brief   [EN] Default configuration values. Uses ui_led.h and ui_buzzer.h split per user request, constants in own headers.
- *          [FA] مقادیر پیش‌فرض پیکربندی. آستانه‌ها از ui_led.h و ui_buzzer.h می‌آید (ثابت‌ها در هدر خودش).
- *
  * @note    [EN] Fully RTOS, no delay, naming with __ after type, func__ prefix. LED constants in ui_led.h, buzzer in ui_buzzer.h.
- *          [FA] کاملاً RTOS بدون delay، نام‌گذاری با __، ثابت‌های LED و BUZZER جدا.
  */
-
-/* ==================== Includes / شامل‌ها ==================== */
-
+/* ==================== Includes ==================== */
 #include "app_config.h"
-#include "ui_led.h"     /* [EN] LED constants in own header / ثابت‌های LED در هدر خودش */
-#include "ui_buzzer.h"  /* [EN] Buzzer constants in own header / ثابت‌های بازر در هدر خودش */
-
+#include "ui_led.h"
+#include "ui_buzzer.h"
 const app_config_t APP_CONFIG =
 {
     .ui_selftest_led_ms  = UI_SELFTEST_LED_MS,

@@ -1,51 +1,60 @@
 /**
  * @file    app.c
  * @brief   [EN] Starts the application through the CMSIS-RTOS2 boundary.
- *          [FA] برنامه را از مرز ‎CMSIS-RTOS2‎ راه‌اندازی می‌کند.
  */
-
 #include "app.h"
 #include "rtos_app.h"
 #include "modules_enable.h"
 #include "esp_link_nvm.h"
 #include "cal_lut.h"
-
+#if MODULE_FLASH_LOCK
+#include "flash_lock.h"
+#endif
+#if MODULE_DIAG
+#include "diag.h"
+#endif
+/* ==================== App_Init ==================== */
 /**
  * @brief  [EN] Application initialization hook; thread-owned module init runs in its thread.
- *         [FA] نقطهٔ مقداردهی اولیهٔ برنامه؛ Init ماژول صاحب تسک داخل همان تسک انجام می‌شود.
  */
 void func__App_Init(void)
 {
+#if MODULE_FLASH_LOCK
+    /*
+ * [EN] One-time read-out lock (user order 2026-10-20). Runs before the
+ * scheduler so the option-byte erase cannot stall a running task; on
+ * success the MCU resets inside this call and the boot repeats with the
+ * part already locked, which makes the second pass a no-op. Default
+ * MODULE_FLASH_LOCK = 0, so this block is not compiled into normal builds.
+ */
+    (void)func__FlashLock_ApplyOnce();
+#endif
 #if MODULE_ESP
-    /* [EN] v1.14 (user order 2026-09-25: panel values must survive power
-       loss): replay the newest CRC-valid flash record through the clamped
-       parameter setters BEFORE the scheduler starts. The module Init
-       functions that run later inside their own threads only reset channel
-       state and measurement outputs - never the settable statics - so the
-       loaded values survive them. A missing or corrupt record changes
-       nothing (compiled defaults stay).
-       [FA] v1.14 (دستور کاربر: مقادیر پنل با قطع برق باید بمانند):
-       بازپخش تازه‌ترین رکورد سالمِ CRC فلش از setterهای گیره‌دار «قبل از
-       راه‌افتادن زمان‌بند». Initهای ماژول که بعداً داخل تسک خودشان اجرا
-       می‌شوند فقط وضعیت کانال و خروجی‌های اندازه‌گیری را ریست می‌کنند -
-       هرگز staticهای قابل‌تنظیم را نه - پس مقادیر بارگذاری‌شده از آنها
-       جان سالم به در می‌برند. رکورد گم یا خراب هیچ چیزی را عوض نمی‌کند
-       (پیش‌فرض کامپایل می‌ماند). */
+    /*
+ * [EN] v1.14 (user order 2026-09-25: panel values must survive power
+ * loss): replay the newest CRC-valid flash record through the clamped
+ * parameter setters BEFORE the scheduler starts. The module Init
+ * functions that run later inside their own threads only reset channel
+ * state and measurement outputs - never the settable statics - so the
+ * loaded values survive them. A missing or corrupt record changes
+ * nothing (compiled defaults stay).
+ */
     func__EspLink_NvmInit();
-    /* [EN] v1.66 (user order 2026-10-05: push the calibration table straight
-       into the micro, on its OWN storage path): load the bench LUT from its
-       dedicated flash block. No valid record = the gain and offset line stays in
-       charge (there is no compiled table any more).
-       [FA] v1.66 (دستور کاربر: جدول مستقیم به میکرو، روی «مسیر ذخیره‌سازی
-       جدا»): جدول بنچ از بلوک فلش اختصاصی‌اش بار می‌شود. نبودِ رکورد معتبر
-       یعنی خط گین و آفست سر کار است (جدول کامپایل‌شده دیگر وجود ندارد). */
+    /*
+ * [EN] v1.66 (user order 2026-10-05: push the calibration table straight
+ * into the micro, on its OWN storage path): load the bench LUT from its
+ * dedicated flash block. No valid record = the gain and offset line stays in
+ * charge (there is no compiled table any more).
+ */
     func__CalLut_Init();
 #endif
+#if MODULE_DIAG
+    func__Diag_Init();
+#endif
 }
-
+/* ==================== App_Start ==================== */
 /**
  * @brief  [EN] Initialize the CMSIS-RTOS2 application and start its threads.
- *         [FA] برنامهٔ ‎CMSIS-RTOS2‎ را مقداردهی و تسک‌های آن را شروع می‌کند.
  */
 void func__App_Start(void)
 {

@@ -5,70 +5,50 @@
  *              addresses: the harness mmaps RAM at 0x0800F000 so the
  *              module's direct flash reads land on an emulated page pair,
  *              and the erase/program BSP calls write into the same RAM.
- *          [FA] تست هاست ماژول CalLut: کد محصول با همان آدرس‌های واقعی
- *              صفحه کامپایل می‌شود؛ هارنس با mmap حافظه‌ای در ۰x0800F000
- *              می‌سازد تا خواندن مستقیم فلش به صفحهٔ شبیه‌سازی‌شده بیفتد و
- *              پاک/نوشتن BSP هم در همان حافظه انجام شود.
- *
  * @note    [EN] What is proven here: a fresh board falls back to the
  *              gain and offset fallback, a staged table must be complete and
  *              monotonic, the panel CRC must match byte for byte, a
  *              successful commit survives a reload, the ping-pong page
  *              alternation works, and a torn/corrupt record is rejected
  *              without ever disturbing the active table.
- *          [FA] آنچه اثبات می‌شود: برد نو به جدول کامپایل برمی‌گردد، جدول
- *              چیده‌شده باید کامل و صعودی باشد، CRC پنل باید بایت‌به‌بایت
- *              بخورد، کامیت موفق پس از بارگذاری دوباره می‌ماند، تناوب دو
- *              صفحه کار می‌کند و رکورد خراب بدون آسیب به جدول فعال رد می‌شود.
  */
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/mman.h>
-
 #include "cal_lut.h"
 #include "bsp_flash.h"
 #include "bsp_pwm.h"
 #include "esp_link.h"
-
-/* ==================== Check helper / کمک‌کنندهٔ بررسی ==================== */
-
+/* ==================== Check helper ==================== */
 static int INT32_T__G__Checks = 0;
 static int INT32_T__G__Fails  = 0;
-
 #define CHECK(cond) do { \
         INT32_T__G__Checks++; \
         if (!(cond)) { INT32_T__G__Fails++; \
             printf("FAIL line %d: %s\n", __LINE__, #cond); } \
     } while (0)
-
-/* ==================== Emulated flash / فلش شبیه‌سازی‌شده ==================== */
-
+/* ==================== Emulated flash ==================== */
 #define HOST_PAGE_SIZE   (CAL_LUT_PAGE_B_ADDR - CAL_LUT_PAGE_A_ADDR)
 #define HOST_MAP_BASE    (CAL_LUT_PAGE_A_ADDR & ~0xFFFu)
 #define HOST_MAP_SIZE    0x2000u
-
 static uint32_t UINT32_T__G__EraseCalls   = 0u;
 static uint32_t UINT32_T__G__ProgramCalls = 0u;
 static bool     BOOL__G__FlashFails       = false;   /* [EN] simulate a dead sector */
 static uint32_t UINT32_T__G__SuspendCalls = 0u;
 static bool     BOOL__G__ChargerSuspended = false;
 static bool     BOOL__G__GatePulsing      = false;
-
 bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 {
     if (BOOL__G__FlashFails != false)
     {
         return false;
     }
-
     UINT32_T__G__EraseCalls++;
     memset((void *)(uintptr_t)uint32_t__pageAddress, 0xFF, HOST_PAGE_SIZE);
     return true;
 }
-
 bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
                                      const uint16_t *uint16_t__A__data,
                                      uint32_t uint32_t__count)
@@ -77,27 +57,27 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
     {
         return false;
     }
-
     UINT32_T__G__ProgramCalls++;
     memcpy((void *)(uintptr_t)uint32_t__address,
            uint16_t__A__data,
            (size_t)uint32_t__count * sizeof(uint16_t));
     return true;
 }
-
 bool func__BspPwm_IsGatePulsing(bsp_pwm_channel_t bsp_pwm_channel_t__channel)
 {
     (void)bsp_pwm_channel_t__channel;
     return BOOL__G__GatePulsing;
 }
-
-/* [EN] ESP-Link UART double: captures every transmitted frame byte so the
-   LUT_ACK regression below can read the real ACK the module emits.
-   [FA] بدل UART لینک ESP: بایت‌های ارسالی را نگه می‌دارد تا واپس‌آزمون
-   LUT_ACK بتواند همان فریم واقعی را بخواند. */
+void func__BspPwm_StopAll(void)
+{
+    BOOL__G__GatePulsing = false;
+}
+/*
+ * [EN] ESP-Link UART double: captures every transmitted frame byte so the
+ * LUT_ACK regression below can read the real ACK the module emits.
+ */
 static uint8_t  UINT8_T__G__TxCap[600];
 static uint16_t UINT16_T__G__TxCapLen = 0u;
-
 bool func__BspUart_Write(const uint8_t *uint8_t__data,
                          uint16_t uint16_t__length)
 {
@@ -111,71 +91,61 @@ bool func__BspUart_Write(const uint8_t *uint8_t__data,
     }
     return true;
 }
-
 bool func__BspUart_ReadByte(uint8_t *uint8_t__byte)
 {
     (void)uint8_t__byte;
     return false;
 }
-
 void func__BspUart_Init(void)
 {
 }
-
-/* [EN] esp_link.c's reset branch flushes the debounced NVM save; this test
-   does not exercise persistence, so the host double reports success.
-   [FA] شاخهٔ ریستِ esp_link.c ذخیرهٔ دیبانس‌شده را فلاش می‌کند؛ این تست
-   پایداری را نمی‌آزماید، پس بدل هاست موفقیت را گزارش می‌کند. */
+/*
+ * [EN] esp_link.c's reset branch flushes the debounced NVM save; this test
+ * does not exercise persistence, so the host double reports success.
+ */
 bool func__EspLink_NvmFlushForReset(void)
 {
     return true;
 }
-
 void func__Charger_SetSuspended(bool bool__suspended)
 {
     BOOL__G__ChargerSuspended = bool__suspended;
     UINT32_T__G__SuspendCalls++;
 }
-
 void func__Rtos_DelayMilliseconds(uint32_t uint32_t__milliseconds)
 {
     (void)uint32_t__milliseconds;       /* [EN] no clock on the host */
 }
-
-/* [EN] Kernel lock stubs: the production commit swaps the active record under
+/*
+ * [EN] Kernel lock stubs: the production commit swaps the active record under
  *      osKernelLock(). On the PC there is no scheduler, so the lock is a no-op.
- * [FA] استاب قفل کرنل: commit تولیدی رکورد فعال را زیر osKernelLock() عوض می‌کند.
- *      روی PC زمان‌بند نیست و قفل بی‌اثر است. */
+ */
 int32_t osKernelLock(void);
 int32_t osKernelLock(void)
 {
     return 0;
 }
-
 int32_t osKernelRestoreLock(int32_t int32_t__state);
 int32_t osKernelRestoreLock(int32_t int32_t__state)
 {
     return int32_t__state;
 }
-
 int32_t osKernelGetState(void);
 int32_t osKernelGetState(void)
 {
     return 2;                           /* [EN] osKernelRunning */
 }
-
-/* ==================== Panel-side CRC / CRC سمت پنل ==================== */
-
-/* [EN] Byte-for-byte the CRC32 the panel computes over the staged content:
-       per channel the point count as one byte, then every (counts, mA)
-       pair little endian. If this drifts from the module's own version the
-       commit is refused - which is exactly the end-to-end property the
-       handshake exists for.
-   [FA] همان CRC32 که پنل روی محتوای چیده‌شده حساب می‌کند. */
+/* ==================== Panel-side CRC / CRC ==================== */
+/*
+ * [EN] Byte-for-byte the CRC32 the panel computes over the staged content:
+ * per channel the point count as one byte, then every (counts, mA)
+ * pair little endian. If this drifts from the module's own version the
+ * commit is refused - which is exactly the end-to-end property the
+ * handshake exists for.
+ */
 static uint32_t func__HostCrc32Byte(uint32_t uint32_t__crc, uint8_t uint8_t__byte)
 {
     uint8_t uint8_t__bit;
-
     uint32_t__crc ^= (uint32_t)uint8_t__byte;
     for (uint8_t__bit = 0u; uint8_t__bit < 8u; uint8_t__bit++)
     {
@@ -188,22 +158,17 @@ static uint32_t func__HostCrc32Byte(uint32_t uint32_t__crc, uint8_t uint8_t__byt
             uint32_t__crc = (uint32_t__crc >> 1);
         }
     }
-
     return uint32_t__crc;
 }
-
 static uint32_t UINT32_T__G__A__Points[2];
 static uint32_t UINT32_T__G__A__Chain[2][CAL_LUT_POINTS_MAX];
 static uint32_t UINT32_T__G__A__BatteryMa[2][CAL_LUT_POINTS_MAX];
-
-/* ==================== Host u32 reader / خواندن u32 در تست هاست ==================== */
-
+/* ==================== Host u32 reader / u32 ==================== */
 /**
  * @brief  [EN] Read one little-endian u32 from a captured link frame.
- *         [FA] یک u32 لیتل‌اندین را از فریم ضبط‌شدهٔ لینک می‌خواند.
- * @‎param  uint8_t__ptr_data [EN] Capture buffer / [FA]‎ بافر ضبط‌شده
- * @‎param  uint16_t__offset [EN] Byte offset / [FA]‎ آفست بایتی
- * @‎return uint32_t [EN] Decoded value / [FA]‎ مقدار رمزگشایی‌شده
+* @param uint8_t__ptr_data Capture buffer /
+* @param uint16_t__offset Byte offset /
+* @return uint32_t Decoded value /
  */
 static uint32_t func__HostReadU32(const uint8_t *uint8_t__ptr_data,
                                   uint16_t uint16_t__offset)
@@ -213,28 +178,23 @@ static uint32_t func__HostReadU32(const uint8_t *uint8_t__ptr_data,
             ((uint32_t)uint8_t__ptr_data[uint16_t__offset + 2u] << 16) |
             ((uint32_t)uint8_t__ptr_data[uint16_t__offset + 3u] << 24));
 }
-
 static uint32_t func__HostPanelCrc(void)
 {
     uint32_t uint32_t__crc = 0xFFFFFFFFu;
     uint8_t  uint8_t__channel;
     uint32_t uint32_t__i;
     uint8_t  uint8_t__b;
-
     for (uint8_t__channel = 0u; uint8_t__channel < 2u; uint8_t__channel++)
     {
         uint32_t__crc = func__HostCrc32Byte(
             uint32_t__crc, (uint8_t)UINT32_T__G__A__Points[uint8_t__channel]);
-
         for (uint32_t__i = 0u;
              uint32_t__i < UINT32_T__G__A__Points[uint8_t__channel];
              uint32_t__i++)
         {
             uint32_t uint32_t__pair[2];
-
             uint32_t__pair[0] = UINT32_T__G__A__Chain[uint8_t__channel][uint32_t__i];
             uint32_t__pair[1] = UINT32_T__G__A__BatteryMa[uint8_t__channel][uint32_t__i];
-
             for (uint8_t__b = 0u; uint8_t__b < 8u; uint8_t__b++)
             {
                 uint32_t__crc = func__HostCrc32Byte(
@@ -244,33 +204,25 @@ static uint32_t func__HostPanelCrc(void)
             }
         }
     }
-
     return (uint32_t__crc ^ 0xFFFFFFFFu);
 }
-
 /**
  * @brief  [EN] Stage a simple straight table on both channels.
- *         [FA] چیدن یک جدول سادهٔ خطی روی هر دو کانال.
  */
 static void func__StageTable(uint32_t uint32_t__points, uint32_t uint32_t__powerStep)
 {
     uint8_t  uint8_t__channel;
     uint32_t uint32_t__i;
-
     CHECK(func__CalLut_StageBegin(uint32_t__points, uint32_t__points) == true);
-
     for (uint8_t__channel = 0u; uint8_t__channel < 2u; uint8_t__channel++)
     {
         UINT32_T__G__A__Points[uint8_t__channel] = uint32_t__points;
-
         for (uint32_t__i = 0u; uint32_t__i < uint32_t__points; uint32_t__i++)
         {
             uint32_t uint32_t__chain = 100u + (uint32_t__i * 100u);
             uint32_t uint32_t__power = uint32_t__i * uint32_t__powerStep;
-
             UINT32_T__G__A__Chain[uint8_t__channel][uint32_t__i] = uint32_t__chain;
             UINT32_T__G__A__BatteryMa[uint8_t__channel][uint32_t__i] = uint32_t__power;
-
             CHECK(func__CalLut_StagePoint((uint8_t)(uint8_t__channel + 1u),
                                           uint32_t__i,
                                           uint32_t__chain,
@@ -278,7 +230,6 @@ static void func__StageTable(uint32_t uint32_t__points, uint32_t uint32_t__power
         }
     }
 }
-
 int main(void)
 {
     void     *void_ptr__map;
@@ -287,12 +238,11 @@ int main(void)
     uint32_t  uint32_t__firstCrc;
     uint32_t  uint32_t__secondCrc;
     uint8_t   uint8_t__status;
-
     printf("== CalLut host test ==\n");
-
-    /* [EN] Emulate the two dedicated flash pages at their real addresses so
-           the module's direct reads work unmodified.
-       [FA] دو صفحهٔ فلش در همان آدرس واقعی شبیه‌سازی می‌شود. */
+    /*
+ * [EN] Emulate the two dedicated flash pages at their real addresses so
+ * the module's direct reads work unmodified.
+ */
     void_ptr__map = mmap((void *)(uintptr_t)HOST_MAP_BASE, HOST_MAP_SIZE,
                          PROT_READ | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
@@ -302,38 +252,32 @@ int main(void)
         return 1;
     }
     memset(void_ptr__map, 0xFF, HOST_MAP_SIZE);     /* [EN] erased flash */
-
     /* ---- 1. a fresh board: no record, gain and offset line stays in charge ---- */
     func__CalLut_Init();
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == false);
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_2) == false);
     CHECK(func__CalLut_ActiveCrc32() == 0u);
-
     /* ---- 2. the point count is range checked at LUT_BEGIN ---- */
     CHECK(func__CalLut_StageBegin(CAL_LUT_POINTS_MIN - 1u, 4u) == false);
     CHECK(func__CalLut_StageBegin(CAL_LUT_POINTS_MAX + 1u, 4u) == false);
     CHECK(func__CalLut_StageBegin(0u, 0u) == false);
     CHECK(func__CalLut_StageBegin(CAL_LUT_POINTS_MIN, CAL_LUT_POINTS_MAX) == true);
-
     /* ---- 3. a commit without a begin is refused ---- */
     func__CalLut_Init();
     uint8_t__status = func__CalLut_Commit(0u, &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_NO_STAGE);
-
     /* ---- 4. a staged table with a hole never reaches flash ---- */
     CHECK(func__CalLut_StageBegin(4u, 4u) == true);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 0u, 100u, 0u) == true);
     uint8_t__status = func__CalLut_Commit(0u, &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_MISSING);
     CHECK(UINT32_T__G__EraseCalls == 0u);
-
-    /* ---- 4b. duplicate delivery is idempotent and cannot hide a hole ----
-       [EN] A lost ACK makes the sender retry an already received index. The
-            duplicate must not consume another missing-point slot; otherwise
-            repeated delivery can make an incomplete table look complete.
-       [FA] گم‌شدن ACK باعث ارسال دوبارهٔ اندیسی می‌شود که قبلاً رسیده است.
-            duplicate نباید یک خانهٔ گمشدهٔ دیگر را مصرف کند؛ وگرنه جدول
-            ناقص با تکرار ارسال کامل به نظر می‌رسد. */
+    /*
+ * ---- 4b. duplicate delivery is idempotent and cannot hide a hole ----
+ * [EN] A lost ACK makes the sender retry an already received index. The
+ * duplicate must not consume another missing-point slot; otherwise
+ * repeated delivery can make an incomplete table look complete.
+ */
     CHECK(func__CalLut_StageBegin(4u, 4u) == true);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 0u, 100u, 0u) == true);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 1u, 200u, 1000u) == true);
@@ -346,43 +290,42 @@ int main(void)
     uint8_t__status = func__CalLut_Commit(0u, &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_MISSING);
     CHECK(UINT32_T__G__EraseCalls == 0u);
-
     /* ---- 5. a point index outside the staged count is refused ---- */
     CHECK(func__CalLut_StageBegin(4u, 4u) == true);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 4u, 100u, 0u) == false);
     CHECK(func__CalLut_StagePoint(3u, 0u, 100u, 0u) == false);      /* [EN] no channel 3 */
-
-    /* ---- 6. the chain axis must be strictly increasing ----
-       [EN] A flat or falling chain axis would divide by zero or run the
-            interpolation backwards.
-       [FA] محور زنجیرهٔ صاف یا نزولی، تقسیم بر صفر یا درون‌یابی وارونه می‌دهد. */
+    /*
+ * ---- 6. the chain axis must be strictly increasing ----
+ * [EN] A flat or falling chain axis would divide by zero or run the
+ * interpolation backwards.
+ */
     func__StageTable(4u, 1000u);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 2u, 100u, 2000u) == true);
     UINT32_T__G__A__Chain[0][2] = 100u;
     uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_CHAIN);
-
-    /* ---- 7. the mA axis may be flat but never dip ----
-       [EN] An unsigned dip wraps the interpolation to about 4e9 mA.
-       [FA] افت در حساب بدون‌علامت نتیجه را به حدود ۴e۹ mA می‌پیچاند. */
+    /*
+ * ---- 7. the mA axis may be flat but never dip ----
+ * [EN] An unsigned dip wraps the interpolation to about 4e9 mA.
+ */
     func__StageTable(4u, 1000u);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 2u, 300u, 500u) == true);
     UINT32_T__G__A__BatteryMa[0][2] = 500u;
     uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_DIP);
-
-    /* ---- 7b. every count must fit the 12-bit ADC (<= 4095) ----
-       [EN] A count above full scale can never be produced by the ADC, so the
-            table is refused rather than silently clipped.
-       [FA] شمارشی بالاتر از تمام‌مقیاس ADC هرگز تولید نمی‌شود؛ جدول رد می‌شود و
-            بی‌صدا برش نمی‌خورد. */
+    /*
+ * ---- 7b. every count must fit the 12-bit ADC (<= 4095) ----
+ * [EN] A count above full scale can never be produced by the ADC, so the
+ * table is refused rather than silently clipped.
+ */
     func__StageTable(4u, 1000u);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 3u, 4096u, 3000u) == true);
     UINT32_T__G__A__Chain[0][3] = 4096u;
     uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_RANGE);
-    /* ---- 7c. the battery axis is capped (tenths of mA) so the bench math stays
-            inside 32 bits. [FA] سقف محور جریان باتری (دهم mA) برای ۳۲ بیت. ---- */
+    /*
+ * ---- 7c. the battery axis is capped (tenths of mA) so the bench math stays
+ */
     func__StageTable(4u, 1000u);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 3u, 400u,
                                   CAL_LUT_BATTERY_TENTHS_MAX + 1u) == true);
@@ -395,7 +338,6 @@ int main(void)
     CHECK(uint8_t__status == CAL_LUT_ST_CRC);
     CHECK(UINT32_T__G__EraseCalls == 0u);
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == false);
-
     /* ---- 9. the happy path: commit, verify, reload ---- */
     func__StageTable(5u, 1000u);
     uint32_t__crc = func__HostPanelCrc();
@@ -409,35 +351,33 @@ int main(void)
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
     CHECK(func__CalLut_Counts(CAL_LUT_CHANNEL_1)[0] == 100u);
     CHECK(func__CalLut_BatteryMa(CAL_LUT_CHANNEL_1)[4] == 4000u);
-
-    /* [EN] ActiveCrc32() reports the CRC of the RECORD in flash, which is a
-            different number from the panel content CRC; what matters is that
-            it is non-zero and stable across a reload.
-       [FA] ‎ActiveCrc32‎ کدِ خود «رکورد فلش» را می‌دهد نه CRC محتوای پنل؛
-            مهم این است که صفر نباشد و پس از بارگذاری دوباره نچرخد. */
+    /*
+ * [EN] ActiveCrc32() reports the CRC of the RECORD in flash, which is a
+ * different number from the panel content CRC; what matters is that
+ * it is non-zero and stable across a reload.
+ */
     CHECK(func__CalLut_ActiveCrc32() != 0u);
     uint32_t__firstCrc = func__CalLut_ActiveCrc32();
-
-    /* [EN] The charger must have been suspended around the write and
-            released afterwards - a flash write while a gate pulses is the
-            one thing this module must never do.
-       [FA] شارژر باید دور نوشتن معلق و بعدش آزاد شده باشد. */
+    /*
+ * [EN] The charger must have been suspended around the write and
+ * released afterwards - a flash write while a gate pulses is the
+ * one thing this module must never do.
+ */
     CHECK(UINT32_T__G__SuspendCalls >= 2u);
     CHECK(BOOL__G__ChargerSuspended == false);
-
-    /* [EN] A reboot (Init again) must find the record and keep it.
-       [FA] بوت دوباره باید همان رکورد را پیدا و حفظ کند. */
+    /*
+ * [EN] A reboot (Init again) must find the record and keep it.
+ */
     func__CalLut_Init();
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == true);
     CHECK(func__CalLut_ActiveCrc32() == uint32_t__firstCrc);
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_2) == 5u);
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
-
-    /* ---- 10. the second commit lands on the OTHER page (ping-pong) ----
-       [EN] Writing the same page twice would leave a window with no valid
-            record at all; the newest sequence number decides on boot.
-       [FA] نوشتن دوبارهٔ همان صفحه، پنجره‌ای بدون رکورد معتبر می‌سازد؛ در
-            بوت، بزرگ‌ترین شمارهٔ ترتیب برنده است. */
+    /*
+ * ---- 10. the second commit lands on the OTHER page (ping-pong) ----
+ * [EN] Writing the same page twice would leave a window with no valid
+ * record at all; the newest sequence number decides on boot.
+ */
     func__StageTable(6u, 2000u);
     uint32_t__crc = func__HostPanelCrc();
     uint8_t__status = func__CalLut_Commit(uint32_t__crc, &uint32_t__boardCrc);
@@ -448,20 +388,18 @@ int main(void)
     func__CalLut_Init();
     CHECK(func__CalLut_ActiveCrc32() == uint32_t__secondCrc);
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 6u);
-
-    /* ---- 10b. LUT_READ returns the active values, including channel 2 ----
-       [EN] This is deliberately checked against the captured DATA frames,
-            not merely against counts or the record CRC: the panel's before /
-            after comparison needs the actual chain and power numbers.
-       [FA] این بخش عمداً خود فریم‌های DATA را بررسی می‌کند، نه فقط تعداد یا
-            CRC رکورد؛ مقایسهٔ قبل/بعد پنل به عدد واقعی chain و power نیاز دارد. */
+    /*
+ * ---- 10b. LUT_READ returns the active values, including channel 2 ----
+ * [EN] This is deliberately checked against the captured DATA frames,
+ * not merely against counts or the record CRC: the panel's before /
+ * after comparison needs the actual chain and power numbers.
+ */
     {
         const uint16_t uint16_t__framePayloadLength =
             (uint16_t)(3u + (8u * 6u));
         const uint16_t uint16_t__frameLength =
             (uint16_t)(6u + uint16_t__framePayloadLength + 2u);
         const uint16_t uint16_t__secondFrame = uint16_t__frameLength;
-
         func__EspLink_HostTest_Reset();
         UINT16_T__G__TxCapLen = 0u;
         CHECK(func__EspLink_HostTest_HandleLutFrame(0x08u, NULL, 0u) == true);
@@ -479,13 +417,12 @@ int main(void)
         CHECK(func__HostReadU32(UINT8_T__G__TxCap, 49u) == 600u &&
               func__HostReadU32(UINT8_T__G__TxCap, 53u) == 10000u);
     }
-
-    /* ---- 11. a corrupted newest record falls back to the older one ----
-       [EN] Flip one payload byte of whichever page is newest; validation
-            must reject it and boot must pick the surviving record instead
-            of running on a half-written table.
-       [FA] یک بایت از صفحهٔ تازه‌تر خراب می‌شود؛ اعتبارسنجی باید ردش کند و
-            بوت باید رکورد سالم قدیمی‌تر را بردارد. */
+    /*
+ * ---- 11. a corrupted newest record falls back to the older one ----
+ * [EN] Flip one payload byte of whichever page is newest; validation
+ * must reject it and boot must pick the surviving record instead
+ * of running on a half-written table.
+ */
     {
         const cal_lut_record_t *cal_lut_record_t__pageA =
             (const cal_lut_record_t *)(uintptr_t)CAL_LUT_PAGE_A_ADDR;
@@ -496,22 +433,18 @@ int main(void)
                 : CAL_LUT_PAGE_B_ADDR;
         volatile uint8_t *uint8_t_ptr__newest =
             (volatile uint8_t *)(uintptr_t)uint32_t__newestAddr;
-
         uint8_t_ptr__newest[16] = (uint8_t)(uint8_t_ptr__newest[16] ^ 0xFFu);
         func__CalLut_Init();
         CHECK(func__CalLut_ActiveCrc32() == uint32_t__firstCrc);
         CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
     }
-
-    /* ---- 11b. zero points are a real override deletion -----------------
-       [EN] Start from the surviving record where both channels have points,
-            then commit a valid channel 1 and zero points for channel 2. The
-            new record must remain valid, keep channel 1, and remove channel
-            2's flash override; zero is not a missing-frame error.
-       [FA] از رکورد سالمی که هر دو کانال نقطه دارند شروع می‌کنیم و کانال ۱
-            معتبر را همراه صفر نقطه برای کانال ۲ کامیت می‌کنیم. رکورد جدید
-            باید معتبر بماند، کانال ۱ را نگه دارد و override فلش کانال ۲ را
-            حذف کند؛ صفر خطای فریم ناقص نیست. */
+    /*
+ * ---- 11b. zero points are a real override deletion -----------------
+ * [EN] Start from the surviving record where both channels have points,
+ * then commit a valid channel 1 and zero points for channel 2. The
+ * new record must remain valid, keep channel 1, and remove channel
+ * 2's flash override; zero is not a missing-frame error.
+ */
     CHECK(func__CalLut_StageBegin(5u, 0u) == true);
     UINT32_T__G__A__Points[0] = 5u;
     UINT32_T__G__A__Points[1] = 0u;
@@ -532,11 +465,10 @@ int main(void)
     func__CalLut_Init();
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_2) == false);
-
-    /* [EN] The wire contract is also checked after the deletion: channel 2
-            still gets its own independent LUT_DATA frame, with count zero.
-       [FA] قرارداد سیم هم بعد از حذف بررسی می‌شود: کانال ۲ هنوز فریم مستقل
-            LUT_DATA خودش را با تعداد صفر می‌گیرد. */
+    /*
+ * [EN] The wire contract is also checked after the deletion: channel 2
+ * still gets its own independent LUT_DATA frame, with count zero.
+ */
     {
         const uint16_t uint16_t__frame1 = (uint16_t)(6u + 3u + (8u * 5u) + 2u);
         const uint16_t uint16_t__frame2 = (uint16_t)(6u + 3u + 2u);
@@ -547,13 +479,11 @@ int main(void)
         CHECK(UINT8_T__G__TxCap[uint16_t__frame1 + 6u] == 2u &&
               UINT8_T__G__TxCap[uint16_t__frame1 + 8u] == 0u);
     }
-
     /* ---- 12. both pages unreadable: back to the gain and offset line ---- */
     memset(void_ptr__map, 0xFF, HOST_MAP_SIZE);
     func__CalLut_Init();
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == false);
     CHECK(func__CalLut_ActiveCrc32() == 0u);
-
     /* ---- 13. a dead flash sector is reported, never silently ignored ---- */
     BOOL__G__FlashFails = true;
     func__StageTable(5u, 1000u);
@@ -561,28 +491,24 @@ int main(void)
     CHECK(uint8_t__status == CAL_LUT_ST_FLASH);
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == false);
     BOOL__G__FlashFails = false;
-
-    /* ---- 14. housekeeping without an armed reset must do nothing ----
-       [EN] The reset itself is NOT exercised on the host: the test double
-            for stm32f1xx.h fails loudly if NVIC_SystemReset is ever reached.
-       [FA] خود ریست روی هاست اجرا نمی‌شود؛ بدل هدر اگر به آن برسد تست را
-            با خطا تمام می‌کند. */
+    /*
+ * ---- 14. housekeeping without an armed reset must do nothing ----
+ * [EN] The reset itself is NOT exercised on the host: the test double
+ * for stm32f1xx.h fails loudly if NVIC_SystemReset is ever reached.
+ */
     UINT32_T__G__SuspendCalls = 0u;
     func__CalLut_Tick();
     func__CalLut_Tick();
     CHECK(UINT32_T__G__SuspendCalls == 0u);
-
-    /* ---- 15. LUT_ACK echoes the STAGED counts, not the active table ----
-       [EN] User board bug 2026-10-07: the ACK used to carry
-            func__CalLut_Points() (the ACTIVE table). On a fresh board that
-            is 0, the ESP rejected its own first push's good ACKs and the
-            panel said "board did not answer the send stage". The staged
-            count here is deliberately active+1 so a regression to the old
-            echo can never pass by coincidence.
-       [FA] باگ برد کاربر ۲۰۲۶-۱۰-۰۷: ACK قبلاً تعداد جدول فعال را
-            می‌گفت که در برد نو صفر است و ESP تأیید سالم اولین ارسال را رد
-            می‌کرد. تعداد چیده‌شده عمداً «فعال+۱» است تا بازگشت باگ تصادفی
-            قبول نشود. */
+    /*
+ * ---- 15. LUT_ACK echoes the STAGED counts, not the active table ----
+ * [EN] User board bug 2026-10-07: the ACK used to carry
+ * func__CalLut_Points() (the ACTIVE table). On a fresh board that
+ * is 0, the ESP rejected its own first push's good ACKs and the
+ * panel said "board did not answer the send stage". The staged
+ * count here is deliberately active+1 so a regression to the old
+ * echo can never pass by coincidence.
+ */
     {
         uint8_t uint8_t__n1 =
             (uint8_t)(func__CalLut_Points(CAL_LUT_CHANNEL_1) + 1u);
@@ -590,27 +516,25 @@ int main(void)
         uint8_t UINT8_T__A__Chunk[3u + (8u * 24u)];
         uint16_t uint16_t__len = 3u;
         uint32_t uint32_t__i;
-
         if ((uint8_t__n1 < (uint8_t)CAL_LUT_POINTS_MIN) ||
             (uint8_t__n1 > (uint8_t)CAL_LUT_POINTS_MAX))
         {
-            /* [EN] Empty active table (0+1 < MIN) or full one: fall back to
-               MIN, which still differs from the active count in both cases.
-               [FA] جدول فعال خالی (۰+۱ کمتر از MIN) یا پر: MIN که در هر دو
-               حالت با تعداد فعال فرق دارد. */
+            /*
+ * [EN] Empty active table (0+1 < MIN) or full one: fall back to
+ * MIN, which still differs from the active count in both cases.
+ */
             uint8_t__n1 = (uint8_t)CAL_LUT_POINTS_MIN;
         }
         UINT8_T__A__Begin[0] = uint8_t__n1;
         UINT8_T__A__Begin[1] = 0u;
-        UINT8_T__A__Chunk[0] = 1u;   /* [EN] channel 1 / کانال ۱ */
-        UINT8_T__A__Chunk[1] = 0u;   /* [EN] first index / اندیس شروع */
+        UINT8_T__A__Chunk[0] = 1u;
+        UINT8_T__A__Chunk[1] = 0u;
         UINT8_T__A__Chunk[2] = uint8_t__n1;
         for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint8_t__n1;
              uint32_t__i++)
         {
             uint32_t uint32_t__pair[2];
             uint8_t uint8_t__b;
-
             uint32_t__pair[0] = 100u + (100u * uint32_t__i);
             uint32_t__pair[1] = 1000u + (1000u * uint32_t__i);
             for (uint8_t__b = 0u; uint8_t__b < 8u; uint8_t__b++)
@@ -621,7 +545,6 @@ int main(void)
                 uint16_t__len++;
             }
         }
-
         func__EspLink_HostTest_Reset();
         UINT16_T__G__TxCapLen = 0u;
         CHECK(func__EspLink_HostTest_HandleLutFrame(0x04u, UINT8_T__A__Begin,
@@ -632,7 +555,6 @@ int main(void)
         CHECK(UINT8_T__G__TxCap[7] == 0u);     /* status = OK */
         CHECK(UINT8_T__G__TxCap[8] == uint8_t__n1); /* staged n1, not active */
         CHECK(UINT8_T__G__TxCap[9] == 0u);     /* staged n2 */
-
         UINT16_T__G__TxCapLen = 0u;
         CHECK(func__EspLink_HostTest_HandleLutFrame(0x05u, UINT8_T__A__Chunk,
                                                     uint16_t__len) == true);
@@ -642,15 +564,14 @@ int main(void)
         CHECK(UINT8_T__G__TxCap[8] == uint8_t__n1);
         CHECK(UINT8_T__G__TxCap[9] == 0u);
     }
-
-    /* ---- 12. the 4095 boundary is accepted (last check: it writes flash) ----
-       [EN] Full scale is the largest legal count, so 4095 must commit OK.
-       [FA] تمام‌مقیاس بزرگ‌ترین شمارش مجاز است، پس ۴۰۹۵ باید OK کامیت شود. */
+    /*
+ * ---- 12. the 4095 boundary is accepted (last check: it writes flash) ----
+ * [EN] Full scale is the largest legal count, so 4095 must commit OK.
+ */
     func__StageTable(4u, 1000u);
     UINT32_T__G__A__Chain[0][3] = 4095u;
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 3u, 4095u, 3000u) == true);
     CHECK(func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc) == CAL_LUT_ST_OK);
-
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;
 }

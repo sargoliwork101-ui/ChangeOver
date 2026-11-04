@@ -20,7 +20,7 @@ test that guards it are never separated.
 
 | File | What it is | Why it exists |
 |---|---|---|
-| `host_test_charger.py` | 40 host tests | The safety + contract gate. Runs on a PC, no board needed. |
+| `host_test_charger.py` | 53 host tests | The safety + contract gate. Runs on a PC, no board needed. Includes a guard that scenario-6 reset clears the selected channel's live timer under the scheduler lock. |
 | `pid_tuning_sim.py` | Charge simulator | Produces the *numbers* the PID design is justified with. |
 | `README.md` | This file | — |
 
@@ -30,7 +30,7 @@ test that guards it are never separated.
 
 ```bash
 python3 Firmware/Modules/Charger/Tester/host_test_charger.py
-# expected: ALL 40 CHARGER HOST TESTS PASSED
+# expected: ALL 53 CHARGER HOST TESTS PASSED
 ```
 
 **[EN] What it actually checks.** Most tests are *static*: they read

@@ -7,29 +7,17 @@
  *               supervision hook the charger calls when one of its own
  *               thresholds moves. A latched bit forces the application into
  *               FAULT and keeps it there until something clears it.
- *          [FA] رابط عمومی بیت‌ماسک خطاهای قفل‌شده: خودِ تعریف بیت‌ها، ای‌پی‌آیِ
- *               ست/پاک/پرسش، ثابت‌های تشخیص قطع باتری، قرارداد آستانه‌های
- *               زمان اجرا (شناسه‌های ۲۷ تا ۳۴) و قلابِ نظارتی که شارژر هنگام
- *               جابه‌جایی آستانهٔ خودش صدا می‌زند. هر بیت قفل‌شده برنامه را به
- *               حالت FAULT می‌برد و تا پاک‌شدن صریح همان‌جا نگه می‌دارد.
  * @note    [EN] Full-program audit 2026-10-05: the old header line called
  *               this file a placeholder/skeleton. It has not been one for a
  *               long time - the module carries the battery-lost detector,
  *               the alarm set and the supervision cascade - so the stale
  *               label was removed.
- *          [FA] ممیزی ۲۰۲۶-۱۰-۰۵: سرخط قبلی این فایل را «اسکلت» می‌نامید.
- *               مدت‌هاست که اسکلت نیست (آشکارسازِ قطع باتری، مجموعهٔ آلارم و
- *               آبشار نظارتی اینجاست)، پس آن برچسب کهنه برداشته شد.
  */
-
 #ifndef FAULT_H
 #define FAULT_H
-
 /* ==================== Includes ==================== */
 #include "app_types.h"
-
-/* ==================== Battery-lost detection constants / ثابت‌های تشخیص قطع باتری ==================== */
-
+/* ==================== Battery-lost detection constants ==================== */
 /**
  * @brief  [EN] Central battery-lost detection (Charger only mirrors the
  *         bit). Two cases, one shared bit FAULT_CHARGER_BAT_LOST:
@@ -45,94 +33,105 @@
  *         Recovery: BOTH halves >= FAULT_BATTERY_BACK_MV (7 V, not 6 V - a
  *         half can sit near 6 V while charging) and no pump, for
  *         FAULT_BAT_RECOVER_MS => clear the bit.
- *         [FA] تشخیص متمرکز قطع باتری (شارژر فقط آینه است). دو حالت با یک
- *         بیت: (۱) شارژ فعال + سیم قطع: نیم‌باتری بالای ۱۴٫۸V به‌مدت ۱۵۰ms
- *         (قطع ۱۵٫۰V پمپ را در حد میلی‌ثانیه می‌خواباند؛ گره ~۰٫۵s بالای
- *         ۱۴٫۸V شناور می‌ماند)؛ v1.21: مسلح‌شدن به‌ازای هر نیم - هر نیم فقط
- *         وقتی کانال شارژر خودش پمپ می‌کند قضاوت می‌شود (کانال پارک‌شده
- *         نمی‌تواند نیمش را بالا بفرستد)؛ (۲) ورودی سالم ولی هر نیم زیر ۶V
- *         به‌مدت ۱s. بازیابی: هر دو نیم >= ۷V بدون پمپ به‌مدت ۱s ← پاک‌شدن
- *         بیت.
  * @note   [EN] Case 2 runs only with the input inside
  *         [FAULT_INPUT_PRESENT_MIN_MV, FAULT_INPUT_PRESENT_MAX_MV].
- *         [FA] حالت ۲ فقط با ورودی سالم ارزیابی می‌شود.
  */
-/* [EN] The macros below are BOOT DEFAULTS only: the live values live in
+/*
+ * [EN] The macros below are BOOT DEFAULTS only: the live values live in
  *      FAULT_ALARM_T__G__Alarm (fault.c) as panel ids 27..34, flash-persisted
  *      and clamped as a set on every write (func__Fault_ClampAlarms).
- * [FA] ماکروها فقط پیش‌فرض بوت‌اند: مقادیر زنده در
- *      FAULT_ALARM_T__G__Alarm (fault.c) با شناسه‌های ۲۷..۳۴ از پنل، ماندگار
- *      روی فلش و گیره‌شده به‌صورت مجموعه. */
+ */
 #define FAULT_BAT_DISCONNECT_MV           14800u
 #define FAULT_BAT_DISCONNECT_DEBOUNCE_MS    150u
-/* [EN] Absence threshold, case 2. Recovery stays at the higher
+/*
+ * [EN] Absence threshold, case 2. Recovery stays at the higher
  *      FAULT_BATTERY_BACK_MV: the 1 V gap is the set/clear hysteresis.
- * [FA] آستانهٔ غیبت (حالت ۲)؛ بازیابی روی ۷V بالاتر می‌ماند: فاصلهٔ ۱V
- *      هیسترزیس جفت ‎Set/Clear‎ است. */
+ */
 #define FAULT_BAT_ABSENT_MV                6000u
-/* [EN] Recovery threshold: >= 7 V on BOTH halves, not 6 V (a half can
+/*
+ * [EN] Reset-only hard-open signature: a fitted 12 V half below 3 V is
+ *      treated as physically removed even when the mains input is absent.
+ *      This does not set the shared charger fault bit; Imbalance still
+ *      requires its own 3 s continuous qualifier.
+ */
+#define FAULT_BAT_HARD_ABSENT_MV           3000u
+/*
+ * [EN] Recovery threshold: >= 7 V on BOTH halves, not 6 V (a half can
  *      sit near 6 V while charging).
- * [FA] آستانهٔ بازیابی: هر دو نیم >= ۷V نه ۶V (حین شارژ ممکن است نزدیک
- *      ۶V بنشیند). */
+ */
 #define FAULT_BATTERY_BACK_MV              7000u
 #define FAULT_BAT_ABSENT_DEBOUNCE_MS      1000u
 #define FAULT_BAT_RECOVER_MS              1000u
 #define FAULT_INPUT_PRESENT_MIN_MV        21000u
 #define FAULT_INPUT_PRESENT_MAX_MV        28000u
-
+/*
+ * [EN] Shared input Schmitt margins, panel ids 169/170. Boot defaults are
+ *      500 mV on each edge; the live values are clamped to 0..3000 mV and
+ *      to one quarter of the live q33/q34 span so the re-arm band never
+ *      inverts. All input consumers use the same published permission.
+ */
+#define FAULT_INPUT_HYST_LOW_DEFAULT_MV     500u
+#define FAULT_INPUT_HYST_HIGH_DEFAULT_MV    500u
+#define FAULT_INPUT_HYST_MAX_MV            3000u
+#define FAULT_ALARM_PARAM_INPUT_HYST_LOW_MV  169u
+#define FAULT_ALARM_PARAM_INPUT_HYST_HIGH_MV 170u
 /**
  * @brief  [EN] Clear all fault bits.
- *         [FA] همه بیت‌های خطا را پاک می‌کند.
  */
 /* ==================== Functions ==================== */
 void func__Fault_Init(void);
-
 /**
  * @brief  [EN] Latch bits (OR).
- *         [FA] بیت‌ها را قفل می‌کند (OR).
- * @param  fault_mask_t__bits [EN] Bits to set / بیت‌هایی که باید قفل شود
+* @param fault_mask_t__bits Bits to set /
  */
 void func__Fault_Set(fault_mask_t fault_mask_t__bits);
-
 /**
  * @brief  [EN] Clear bits (AND NOT).
- *         [FA] بیت‌ها را پاک می‌کند.
- * @param  fault_mask_t__bits [EN] Bits to clear / بیت‌هایی که باید پاک شود
+* @param fault_mask_t__bits Bits to clear /
  */
 void func__Fault_Clear(fault_mask_t fault_mask_t__bits);
-
 /**
  * @brief  [EN] Return current mask.
- *         [FA] ماسک فعلی را برمی‌گرداند.
- * @return fault_mask_t [EN] Current mask / ماسک فعلی
+* @return fault_mask_t Current mask /
  */
 fault_mask_t func__Fault_Get(void);
-
 /**
  * @brief  [EN] True if any bit is set.
- *         [FA] اگر هر بیتی روشن باشد true.
- * @return bool [EN] true if any fault / اگر خطایی باشد true
+* @return bool true if any fault / true
  */
 bool func__Fault_Any(void);
-
 /**
  * @brief  [EN] Evaluate battery-lost detection from the latest snapshot
  *         (once per control pass, BEFORE Fault_Get). Only installed halves
  *         participate; the pump rule is armed only while a channel really
  *         pumps. Sets/clears FAULT_CHARGER_BAT_LOST only.
- *         [FA] ارزیابی تشخیص قطع باتری از snapshot تازه (هر پاس کنترل، قبل
- *         از Fault_Get). فقط نیم‌های نصب‌شده شرکت می‌کنند؛ قانون پمپ فقط حین
- *         پمپ واقعی مسلح است. فقط بیت BAT_LOST را ست/پاک می‌کند.
- * @param  measurement_snapshot_t__snap [EN] Snapshot pointer, may be NULL / اشاره‌گر snapshot
+* @param measurement_snapshot_t__snap Snapshot pointer, may be NULL / snapshot
  */
 void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap);
-
+/**
+ * @brief  [EN] Return the live battery-removal signal for the imbalance
+ *         battery-swap reset. It is separate from the latched shared fault
+ *         bit: pumped-overvoltage, the existing low-half/input signature, or
+ *         a fitted half below FAULT_BAT_HARD_ABSENT_MV. False after an invalid
+ *         snapshot or during manual charger testing. Call after Evaluate().
+* @return bool true while a removal signature is present / true
+ */
+bool func__Fault_IsBatteryAbsent(void);
+/**
+ * @brief  [EN] Return the live per-channel battery-removal signal (channel 0
+ *         = high half, channel 1 = low half) prepared by the latest valid
+ *         Fault_Evaluate() call. Used by Scenario 6 dead-battery supervision
+ *         so removing one battery only clears that channel's latch/timer.
+* @param uint8_t__channelIndex Channel index (0 or 1) / ( )
+* @return bool true while that channel's removal signature is present / true
+ */
+bool func__Fault_IsChannelBatteryAbsent(uint8_t uint8_t__channelIndex);
 /* ==================== Runtime alarm thresholds (v1.15) ==================== */
-/* [EN] The eight FAULT_* numbers above are runtime panel ids 27..34,
+/*
+ * [EN] The eight FAULT_* numbers above are runtime panel ids 27..34,
  *      flash-persisted and clamped as a set on every write; the macros
  *      stay boot defaults only.
- * [FA] هشت عدد FAULT_* بالا = شناسه‌های زمان‌اجرای ۲۷..۳۴ از پنل، ماندگار
- *      روی فلش و گیره‌شده به‌صورت مجموعه؛ ماکروها فقط پیش‌فرض بوت‌اند. */
+ */
 #define FAULT_ALARM_PARAM_DISCONNECT_MV        27u  /* [EN] mV, 14000..15000, independent of absorbOver and OV cutoff / mV */
 #define FAULT_ALARM_PARAM_DISCONNECT_DEB_MS    28u  /* [EN] ms, 50..1000 / ms */
 #define FAULT_ALARM_PARAM_ABSENT_MV            29u  /* [EN] mV, 3000..8000, < back-500 / mV */
@@ -141,12 +140,9 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
 #define FAULT_ALARM_PARAM_RECOVER_MS           32u  /* [EN] ms, 100..5000 / ms */
 #define FAULT_ALARM_PARAM_INPUT_MIN_MV         33u  /* [EN] mV, 18000..24000, < max-1000 / mV */
 #define FAULT_ALARM_PARAM_INPUT_MAX_MV         34u  /* [EN] mV, 24000..30000, > min+1000 / mV */
-
 /**
  * @brief  [EN] Live alarm-threshold set (one struct, like the charger
  *              profile). Evaluate() reads these, never the macros.
- *         [FA] مجموعهٔ زندهٔ آستانه‌های آلارم (یک struct مثل پروفایل
- *              شارژر). Evaluate این‌ها را می‌خواند، نه ماکروها.
  */
 typedef struct
 {
@@ -159,39 +155,74 @@ typedef struct
     uint32_t uint32_t__inputMinMv;
     uint32_t uint32_t__inputMaxMv;
 } fault_alarm_t;
-
 /**
  * @brief  [EN] Write one alarm threshold (27..34): store, re-clamp the whole
  *              set, report the applied value.
- *         [FA] نوشتن یک آستانهٔ آلارم (۲۷..۳۴): ذخیره، گیرهٔ کل مجموعه،
- *              گزارش مقدار اعمال‌شده.
- * @param  uint8_t__paramId [EN] 27..34‎ / شناسه
- * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
- * @param  uint32_t__appliedValue [EN] Required applied value out; NULL rejects the write / خروجی الزامی؛ NULL نوشتن را رد می‌کند
- * @return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
+* @param uint8_t__paramId 27..34 /
+* @param uint32_t__value Requested value /
+* @param uint32_t__appliedValue Required applied value out; NULL rejects the write / NULL
+* @return bool true when the id is 27..34 /
  */
 bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue);
-
 /**
  * @brief  [EN] Read one live alarm threshold (27..34).
- *         [FA] خواندن یک آستانهٔ زندهٔ آلارم (۲۷..۳۴).
- * @param  uint8_t__paramId [EN] 27..34‎ / شناسه
- * @param  uint32_t__value [EN] Value out / مقدار
- * @return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
+* @param uint8_t__paramId 27..34 /
+* @param uint32_t__value Value out /
+* @return bool true when the id is 27..34 /
  */
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);
-
+/**
+ * @brief  [EN] Read the shared healthy-input window (panel ids 33/34) as one
+ *              atomic pair. UI input indication, the MCU self-supply path and
+ *              the charger permission all use this same lower/upper reference;
+ *              each consumer keeps its own internal hysteresis and timing.
+* @param uint32_t__minMv Out: lower healthy input bound, mV / :
+* @param uint32_t__maxMv Out: upper healthy input bound, mV / :
+* @return bool true when both outputs were written / true
+ */
+bool func__Fault_GetInputWindow(uint32_t *uint32_t__minMv,
+                                uint32_t *uint32_t__maxMv);
+/**
+ * @brief  [EN] Write one shared input Schmitt margin (panel ids 169/170).
+ *              The value is clamped to 0..FAULT_INPUT_HYST_MAX_MV and to one
+ *              quarter of the live q33/q34 span; the applied value is read
+ *              back. Changing q33/q34 re-clamps both margins as well.
+* @param uint8_t__paramId 169 or 170 /
+* @param uint32_t__value Requested margin, mV /
+* @param uint32_t__appliedValue Required applied value out /
+* @return bool true when the id was accepted /
+ */
+bool func__Fault_SetInputHystParam(uint8_t uint8_t__paramId,
+                                   uint32_t uint32_t__value,
+                                   uint32_t *uint32_t__appliedValue);
+/**
+ * @brief  [EN] Read one live shared input Schmitt margin (169/170).
+* @param uint8_t__paramId 169 or 170 /
+* @param uint32_t__value Value out, mV /
+* @return bool true when the id was accepted /
+ */
+bool func__Fault_GetInputHystParam(uint8_t uint8_t__paramId,
+                                   uint32_t *uint32_t__value);
+/**
+ * @brief  [EN] Read the shared input permission published by the last
+ *              Fault_Evaluate() pass. The rule is one Schmitt trigger for
+ *              every consumer: permission drops immediately outside
+ *              [q33,q34] and re-arms only inside
+ *              [q33+H_low, q34-H_high]. snapshotValid=false means the ADC
+ *              snapshot was not trustworthy and permission is false.
+* @param bool__snapshotValid Out: last snapshot was valid / : snapshot
+* @param bool__permitted Out: shared Schmitt permission / :
+* @return bool true when both outputs were written / true
+ */
+bool func__Fault_GetInputPermission(bool *bool__snapshotValid,
+                                    bool *bool__permitted);
 /**
  * @brief  [EN] Re-apply the fault module's own hard windows after a
  *         profile/OV replay. q27 remains an independent 14000..15000 mV
  *         setting; this hook does not impose a charger-side relationship.
- *         [FA] اعمال دوبارهٔ پنجره‌های سختِ خود ماژول فالت پس از بازپخش
- *              پروفایل/OV. q27 همچنان تنظیم مستقل ۱۴۰۰۰..۱۵۰۰۰ میلی‌ولت است
- *              و این قلاب رابطه‌ای از سمت شارژر تحمیل نمی‌کند.
  */
 void func__Fault_OnSupervisionChange(void);
-
 #endif /* FAULT_H */

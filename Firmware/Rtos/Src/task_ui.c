@@ -1,52 +1,43 @@
 /**
  * @file    task_ui.c
  * @brief   [EN] CMSIS-RTOS2 UI thread - selects LED scenarios from the real Measurement snapshot.
- *          [FA] تسک ‎CMSIS-RTOS2‎ رابط کاربر - سناریوهای LED را از snapshot واقعی Measurement انتخاب می‌کند.
- *
  * @note    [EN] Production battery voltage comes ONLY from snapshot.v_bat24_mv via
  *              func__Measurement_GetSnapshot(). The snapshot.valid flag is checked
  *              before any UI decision; invalid snapshot forces safe-off, clears the
  *              UI battery alarm flag and no stale/manual values are used.
  *              CMSIS-RTOS2 simple: osDelay yields, other tasks run, MCU not locked. No HAL_Delay.
- *          [FA] ولتاژ باتری تولید فقط از snapshot.v_bat24_mv می‌آید و قبل از هر تصمیم
- *          UI مقدار snapshot.valid بررسی می‌شود.
  */
-
 #include "rtos_tasks.h"
 #include "ui_led.h"
 #include "app_config.h"
 #include "modules_enable.h"
 #include "cmsis_os2.h"
 #include "rtos_time.h"
-
 #if MODULE_MEASUREMENT
 #include "measurement.h"
 #endif
 #if MODULE_UI
 #include "bsp_iwdg.h"
 #endif
-
 #include <stdint.h>
 #include "app_types.h"
-
-/* ==================== Task Ui / تسک UI ==================== */
-
+/* ==================== Task Ui / UI ==================== */
 /**
  * @brief  [EN] Run the UI task and select the scenario from the real Measurement snapshot.
- *         [FA] تسک UI را اجرا می‌کند و سناریو را از snapshot واقعی Measurement انتخاب می‌کند.
- * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused‎ / آرگومان استفاده‌نشده
+* @param void_ptr__argument CMSIS-RTOS2 thread argument, unused /
  */
 void func__TaskUi(void *void_ptr__argument)
 {
     (void)void_ptr__argument;
-
     func__Ui_Init();
+#if MODULE_UI
+    func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI,
+                          func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
+#endif
     func__Ui_BoardTest_Start();
-
     for (;;)
     {
         measurement_snapshot_t measurement_snapshot_t__snap;
-
         measurement_snapshot_t__snap.valid = false;
         measurement_snapshot_t__snap.v_in_mv = 0u;
         measurement_snapshot_t__snap.v_bat24_mv = 0u;
@@ -56,20 +47,19 @@ void func__TaskUi(void *void_ptr__argument)
         measurement_snapshot_t__snap.i_ch1_ma = 0u;
         measurement_snapshot_t__snap.i_ch2_ma = 0u;
         measurement_snapshot_t__snap.input_present = false;
-
 #if MODULE_MEASUREMENT
         (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #else
         measurement_snapshot_t__snap.valid = false;
 #endif
-
-        /* [EN] v1.74: the UI no longer owns a low-battery flag - that decision
-           moved inside Changeover. func__Ui_Tick only drives LEDs and the buzzer.
-           [FA] از v1.74 فلگ باتری کم در UI نیست و داخل Changeover تصمیم‌گیری می‌شود. */
+        /*
+ * [EN] v1.74: the UI no longer owns a low-battery flag - that decision
+ * moved inside Changeover. func__Ui_Tick only drives LEDs and the buzzer.
+ */
         func__Ui_Tick(&measurement_snapshot_t__snap);
-
 #if MODULE_UI
-        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI, osKernelGetTickCount());
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI,
+                              func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
 #endif
         func__Rtos_DelayMilliseconds(UI_TICK_MS);
     }

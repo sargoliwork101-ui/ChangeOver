@@ -14,18 +14,18 @@ CubeIDE/STM32CubeIDE/.settings/*
 *.bin
 __pycache__/
 
-# Excel/Office lock+temp files (e.g. DOC/~$State.xlsx)
+# Excel/Office lock+temp files (e.g. Documentation/~$State.xlsx)
 ~$*
 *.tmp
 
-# node tooling for the optional panel behaviour test (esp_link_panel/Tester)
+# node tooling for the optional panel behaviour test (ESP_Calibration/Tester)
 node_modules/
 
 # generated diagnostic snapshot, not source
-esp_link_panel/chart_now.svg
+ESP_Calibration/chart_now.svg
 
 # [EN] ESP host-test binaries / [FA] باینری تست هاست ESP
-esp_link_panel/Tester/build/
+ESP_Calibration/Tester/build/
 
 # [EN] host flash-measurement objects / [FA] آبجکت‌های اندازه‌گیری فلش روی هاست
 /tmp/flashmeasure/
@@ -39,3 +39,12 @@ Firmware/Modules/Jitter/Tester/host_test_jitter
 Firmware/Modules/McuPowerPath/Tester/host_test_mcu_power_path
 Firmware/Modules/CalLut/Tester/host_test_cal_lut
 Firmware/Modules/Measurement/Tester/host_test_measurement
+
+# host test binaries (compiled by the runners in Modules/*/Tester and Bsp/Tester)
+Firmware/Modules/*/Tester/host_test_*
+!Firmware/Modules/*/Tester/host_test_*.c
+!Firmware/Modules/*/Tester/host_test_*.cpp
+Firmware/Bsp/Tester/host_test_bsp_gpio
+
+# programmer working files (data-area backups / evidence read from a board)
+Programmer/backups/
