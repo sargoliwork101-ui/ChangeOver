@@ -359,6 +359,23 @@ static void func__T_TestResetOrderAndHandshake(void)
         }
         func__T_Check(bool__onlyInside,
                       "هر شش کار تغییر (قفل، رمز، تاریخچه، لاگ، وای‌فای) فقط داخل کارت مدیریت صدا زده می‌شود");
+        /* برد برای ریست قفل عدد n می‌خواهد (۵ کامل، ۶ ماسک مرده، ۸ ضعیف)؛
+           بدون آن درخواست با ۴۰۰ رد می‌شد و دکمه بی‌اثر بود. */
+        func__T_Check((string__panel.find("'/latch/reset',{n:5}") != std::string::npos) &&
+                      (string__panel.find("'/latch/reset',{n:6}") != std::string::npos) &&
+                      (string__panel.find("'/latch/reset',{n:8}") != std::string::npos) &&
+                      (string__panel.find("'/latch/reset',{}") == std::string::npos),
+                      "هر سه دکمهٔ قفل عدد n لازم برد را می‌فرستند");
+        func__T_Check((string__panel.find("const ADM_ERR=") != std::string::npos) &&
+                      (string__panel.find("function admWhy(") != std::string::npos) &&
+                      (string__panel.find("رمز فعلی درست نیست") != std::string::npos),
+                      "پیام خطای برد (فیلد e) به فارسی ترجمه می‌شود، نه «انجام نشد»");
+        func__T_Check((string__panel.find("همهٔ لاگ‌ها پاک شد") != std::string::npos) &&
+                      (string__panel.find("پاک‌کردن امروز") == std::string::npos),
+                      "برچسب پاک‌کردن لاگ با کار واقعی برد (حذف همهٔ روزها) یکی است");
+        func__T_Check((string__panel.find("function admDl(") != std::string::npos) &&
+                      (string__panel.find("'/evt/dl'+(day?") != std::string::npos),
+                      "لینک دانلود همان روزِ انتخابی کارت لاگ را می‌گیرد");
         func__T_Check((string__panel.find("onclick=\"setPass(") == std::string::npos) &&
                       (string__panel.find("onclick=\"latchReset(") == std::string::npos) &&
                       (string__panel.find("function admLogin(") != std::string::npos) &&

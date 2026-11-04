@@ -624,10 +624,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/latch/reset" and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
-            BOARD.latch["rep"] += 1
-            BOARD.latch["val"] = 0
-            BOARD.latch["known"] = 1
-            return self.send(json_bytes({"ok": 1, "n": args.get("n", "")}))
+            # مثل خود برد: بدون n (یا n بیرون از ۵/۶/۸) درخواست رد می‌شود.
+            n = str(args.get("n", "")).strip()
+            if n not in ("5", "6", "8"):
+                return self.send(json_bytes({"ok": 0, "e": 2}, 400))
+            if n == "5":
+                BOARD.latch["rep"] += 1
+                BOARD.latch["val"] = 0
+                BOARD.latch["known"] = 1
+            return self.send(json_bytes({"ok": 1, "n": n}))
         if path == "/clock" and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))

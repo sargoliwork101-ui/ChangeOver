@@ -330,10 +330,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
 .evtt{color:var(--mu);white-space:nowrap;min-width:58px}
 .evtd{flex:1}
 /* ===== لایهٔ داینامیک ۲۰۲۶ =====
-   هیچ اندازهٔ ثابتی برای هیچ صفحه‌ای لازم نیست: اندازهٔ فونت، فاصله‌ها،
-   ستون‌های شبکه و ارتفاع نمودار با clamp و auto-fit از خودِ عرض صفحه
-   حساب می‌شوند. این لایه بعد از همهٔ media queryها می‌آید تا بر آن‌ها
-   مقدم باشد و دیگر لازم نباشد برای هر عرض یک بلوک جدا نوشته شود. */
+   فونت، فاصله، ستون‌ها و ارتفاع نمودار با clamp/auto-fit از عرض صفحه
+   حساب می‌شوند؛ بعد از media queryها می‌آید تا بر آن‌ها مقدم باشد. */
 body{font-size:clamp(12px,0.35vw + 11.2px,13.6px);padding:0 clamp(10px,2vw,20px) clamp(24px,5vw,40px)}
 header{padding:clamp(8px,1.6vw,14px) clamp(10px,2vw,20px);margin:0 calc(-1 * clamp(8px,2vw,20px)) clamp(10px,2vw,18px)}
 main{padding:0;max-width:min(1180px,100%)}
@@ -362,9 +360,7 @@ canvas{height:auto;max-width:100%}
 .evtrow{font-size:clamp(10.5px,2.4vw,12px)}
 .footer{flex-wrap:wrap;font-size:clamp(9.5px,2.2vw,11px)}
 /* ===== دسترسی مدیر (مخفی) =====
-   کاربر عادی هیچ چیزی از مدیریت نمی‌بیند: نه دکمه، نه لینک، نه نشانه‌ای.
-   فقط اگر کسی عمداً پنج بار روی «نسخهٔ» پایین صفحه بزند، کادر رمز باز
-   می‌شود؛ با رمز درست، کارت مدیریت در صفحهٔ تنظیمات ظاهر می‌شود. */
+   تا رمز درست نیاید هیچ نشانه‌ای از مدیریت دیده نمی‌شود. */
 .fwtap{cursor:default;-webkit-user-select:none;user-select:none;opacity:.75}
 .gate{position:fixed;inset:0;background:rgba(4,7,13,.72);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px}
 .gate[hidden],#adminCard[hidden]{display:none}
@@ -632,8 +628,8 @@ canvas{height:auto;max-width:100%}
    <div class="cd" id="adminCard" hidden>
     <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="admLogout()">خروج</button></div>
     <div class="arow"><span>ساعت برد</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admClock()">همگام با این گوشی</button></div>
-    <div class="arow"><span>قفل خطا</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{},'قفل ریست شد')">ریست قفل</button></div>
-    <div class="arow"><span>فایل لاگ</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/snap',{},'عکس لحظه ثبت شد')">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/clr',{},'لاگ امروز پاک شد')">پاک‌کردن امروز</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl">دانلود</a></div>
+    <div class="arow"><span>قفل خطا</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:5},'قفل خطا ریست شد')">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد')">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد')">ریست ضعیف</button></div>
+    <div class="arow"><span>فایل لاگ</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/snap',{},'عکس لحظه ثبت شد')">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/clr',{},'همهٔ لاگ‌ها پاک شد')">پاک‌کردن همهٔ لاگ‌ها</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl" onclick="return admDl(this)">دانلود</a></div>
     <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admWifi()">ذخیره</button></div>
     <div class="arow"><span>رمز مدیر</span><input id="admOld" type="password" placeholder="رمز فعلی"><input id="admNew" type="password" placeholder="رمز تازه"><input id="admNew2" type="password" placeholder="تکرار رمز تازه"><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPass()">تغییر</button></div>
     <div class="arow"><span>تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">عیب‌یابی</option></select><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admClear()">پاک‌کردن</button></div>
@@ -1103,10 +1099,8 @@ function fmtTimeLabel(ts, range){
 }
 
 /* ==================== آماده‌سازی بوم نمودار ====================
-   بوم به اندازهٔ واقعیِ خودش روی صفحه ساخته می‌شود و با تراکم پیکسل دستگاه
-   بزرگ می‌شود؛ بعد با setTransform دوباره به مقیاس CSS برمی‌گردد. بدون این
-   کار، بوم ۷۰۰ پیکسلی روی گوشی به ۳۳۰ پیکسل کوچک می‌شد و عددهای محور مثل
-   یک تصویر تار دیده می‌شدند. */
+   بوم به اندازهٔ واقعی خودش و با تراکم پیکسل دستگاه ساخته می‌شود تا عددهای
+   محور تیز و خوانا باشند. */
 function prepCanvas(c){
  let dpr=Math.max(1, Math.min(3, window.devicePixelRatio||1));
  let w=Math.max(160, Math.round(c.clientWidth||c.width||300));
@@ -1184,11 +1178,8 @@ function drawChartNotice(ctx, w, h, styles, text){
  ctx.textAlign='left';
 }
 /* ==================== بازهٔ خودکار محور ====================
-   پیش‌تر بازهٔ محور در کد ثابت بود (درصد: ۰ تا ۱۰۰، ولتاژ: ۱۸ تا ۳۰ ولت).
-   اگر ولتاژ پک یک روز ۲۴ ولت بود یا ۴۸ ولت، خط بیرون کادر می‌افتاد و اگر
-   درصد بین ۸۵ و ۹۵ بود، نمودار صاف و بی‌معنی دیده می‌شد. الان بازه از
-   خودِ داده گرفته می‌شود: کمینه و بیشینهٔ واقعی، گرد‌شده به یک گام «خوش‌عدد»،
-   و تعداد خط‌های محور از ارتفاع خود بوم حساب می‌شود. */
+   بازه از خود داده می‌آید (کمینه/بیشینهٔ واقعی با گام خوش‌عدد) و تعداد خط
+   محور از ارتفاع بوم؛ پیش‌تر ۰..۱۰۰ و ۱۸..۳۰ ولت در کد ثابت بود. */
 function niceStep(span, count){
  if(!(span>0) || !(count>0)) return 1;
  let raw=span/count, mag=Math.pow(10, Math.floor(Math.log10(raw))), n=raw/mag;
@@ -2046,11 +2037,10 @@ function showTab(n){
  if(n===0) pollDiag();
 }
 /* ==================== دسترسی مدیر ====================
-   پنل برای کاربر عادی فقط نمایش است: هیچ دکمه یا لینک مدیریتی روی صفحه نیست.
-   مدیر با پنج ضربهٔ پشت‌سرهم روی «نسخهٔ» پایین صفحه کادر رمز را باز می‌کند.
-   اگر رمز درست باشد، خود برد یک کوکی نشست می‌دهد و کارت مدیریت باز می‌شود؛
-   تمام کارها از همان راه انجام می‌شوند و اگر نشست تمام شود (۳۰ دقیقه) کارت
-   خودش قفل می‌شود و دوباره رمز می‌خواهد. */
+   کاربر عادی هیچ چیز مدیریتی نمی‌بیند؛ مدیر با پنج ضربه روی «نسخهٔ» رمز
+   می‌زند، برد کوکی نشست می‌دهد و کارت مدیریت باز می‌شود. با پایان نشست
+   کارت خودش قفل می‌شود. پاسخ خطای برد (فیلد e) به پیام فارسی برگردانده
+   می‌شود تا مدیر بداند کدام ورودی ایراد دارد. */
 let admTapCount=0, admTapAt=0, admReady=false;
 function admTap(){
  let now=Date.now();
@@ -2103,6 +2093,18 @@ function admCall(path, obj){
    return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, body:j}; });
   });
 }
+/* برد دلیل رد شدن درخواست را در فیلد e می‌دهد (old، mismatch، 2، admin، ...).
+   پیش‌تر پنل فقط msg را می‌شناخت و همهٔ خطاها «انجام نشد» دیده می‌شد. */
+const ADM_ERR={old:'رمز فعلی درست نیست', mismatch:'رمز تازه و تکرارش یکی نیست',
+ 'pass 4-32':'رمز باید ۴ تا ۳۲ کاراکتر باشد', admin:'نشست مدیر لازم است',
+ user:'ذخیره نشد', ts:'زمان نامعتبر است', 'ssid/pass':'نام و رمز وای‌فای لازم است',
+ new:'رمز تازه را بزن', 2:'این درخواست را برد نمی‌شناسد'};
+function admWhy(x){
+ let j=x.body||{};
+ if(x.status===409) return 'برد مشغول است؛ چند لحظه بعد دوباره بزن';
+ if(j.e!==undefined && j.e!==null) return ADM_ERR[j.e] || ('رد شد: '+j.e);
+ return j.msg || 'انجام نشد';
+}
 function admPost(path, obj, okMsg){
  return admCall(path, obj).then(function(x){
   if(x.status===403){
@@ -2111,12 +2113,19 @@ function admPost(path, obj, okMsg){
   }
   let j=x.body||{};
   if(j.ok!==1){
-   admSay('admCardMsg', j.msg || 'انجام نشد', false);
+   admSay('admCardMsg', admWhy(x), false);
    return null;
   }
   admSay('admCardMsg', okMsg||'انجام شد', true);
   return j;
  }).catch(function(){ admSay('admCardMsg','ارتباط با برد برقرار نشد', false); return null; });
+}
+/* لینک دانلود همان روزی را می‌گیرد که در کارت لاگ انتخاب شده است */
+function admDl(a){
+ let sel=document.getElementById('evtDay');
+ let day=sel?sel.value.trim():'';
+ a.href='/evt/dl'+(day?'?day='+encodeURIComponent(day):'');
+ return true;
 }
 function admLogin(){
  let pw=document.getElementById('admPass');
@@ -2158,7 +2167,10 @@ function admWifi(){
  if(!v1){ admSay('admCardMsg','نام وای‌فای را بنویس', false); return; }
  if(v2.length<8){ admSay('admCardMsg','رمز وای‌فای باید ۸ کاراکتر یا بیشتر باشد', false); return; }
  admPost('/wifi',{ssid:v1, pass:v2}, 'وای‌فای ذخیره شد').then(function(j){
-  if(j && pass) pass.value='';
+  if(!j) return;
+  if(pass) pass.value='';
+  if(j.reboot) admSay('admCardMsg','ذخیره شد؛ برد ریاستارت می‌شود و چند ثانیه بعد برمی‌گردد', true);
+  loadWifi();
  });
 }
 function admPass(){
