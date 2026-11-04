@@ -1037,6 +1037,23 @@ function fmtTimeLabel(ts, range){
  return fmtJalaliAxis(ts, range);
 }
 
+/* ==================== آماده‌سازی بوم نمودار ====================
+   بوم به اندازهٔ واقعیِ خودش روی صفحه ساخته می‌شود و با تراکم پیکسل دستگاه
+   بزرگ می‌شود؛ بعد با setTransform دوباره به مقیاس CSS برمی‌گردد. بدون این
+   کار، بوم ۷۰۰ پیکسلی روی گوشی به ۳۳۰ پیکسل کوچک می‌شد و عددهای محور مثل
+   یک تصویر تار دیده می‌شدند. */
+function prepCanvas(c){
+ let dpr=Math.max(1, Math.min(3, window.devicePixelRatio||1));
+ let w=Math.max(160, Math.round(c.clientWidth||c.width||300));
+ let h=Math.max(110, Math.round(c.clientHeight||c.height||170));
+ let bw=Math.round(w*dpr), bh=Math.round(h*dpr);
+ if(c.width!==bw || c.height!==bh){ c.width=bw; c.height=bh; }
+ let ctx=c.getContext('2d');
+ if(!ctx) return null;
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ ctx.clearRect(0,0,w,h);
+ return {ctx:ctx, w:w, h:h, dpr:dpr};
+}
 /* ==================== ابزارهای مشترک نمودارها ====================
    هر نمودار یک ناحیهٔ ترسیم دارد: از چپ به‌اندازهٔ محور عمودی و از راست
    کمی فاصله. همین اعداد برای برچسب‌های محور زمان هم استفاده می‌شوند تا
@@ -1060,7 +1077,7 @@ function drawAxisY(ctx, ticks, min, max, w, h, styles, format){
  ctx.setLineDash([4,5]);
  ctx.strokeStyle='rgba(100,116,139,.22)';
  ctx.fillStyle=line;
- ctx.font='9px Vazirmatn';
+ ctx.font='10px Vazirmatn, Tahoma, sans-serif';
  ctx.textAlign='right';
  ctx.textBaseline='middle';
  for(let i=0;i<ticks.length;i++){
@@ -1110,7 +1127,7 @@ function drawChart(canvasId, data, color, min, max, timeData, range){
  if(c._sig===sig && c._drawn){ return; }   /* همان تصویر: دوباره رسم نکن (بدون چشمک) */
  c._sig=sig; c._drawn=true;
 
- let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ let prep=prepCanvas(c); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
  ctx.clearRect(0,0,w,h);
@@ -1165,7 +1182,7 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  if(c._sig===sig && c._drawn){ return; }
  c._sig=sig; c._drawn=true;
 
- let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ let prep=prepCanvas(c); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
  ctx.clearRect(0,0,w,h);
@@ -1260,7 +1277,7 @@ async function pollCharts(){ await pollChartsPct(); await pollChartsVolt(); }
 function drawChargeHistory(events, range){
  window._lastChargeHistory=events;
  let c=document.getElementById('cCharge'); if(!c) return;
- let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ let prep=prepCanvas(c); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  ctx.clearRect(0,0,w,h);
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
@@ -1897,6 +1914,23 @@ function showTab(n){
  }
  if(n===1) pollCharts();
  if(n===0) pollDiag();
+}
+/* ==================== رسم دوباره پس از تغییر اندازه یا آمدن فونت ====================
+   اگر صفحه بچرخد یا فونت دیر برسد، عددهای محور باید دوباره و تیز نوشته شوند. */
+function redrawCharts(){
+ ['cPct','cVolt','cCharge'].forEach(function(id){
+  let c=document.getElementById(id);
+  if(c){ c._sig=null; c._drawn=false; }
+ });
+ pollCharts();
+ if(window._lastChargeHistory) drawChargeHistory(window._lastChargeHistory, chartRanges.charge);
+}
+window.addEventListener('resize',function(){
+ clearTimeout(window._rzT);
+ window._rzT=setTimeout(redrawCharts,200);
+});
+if(document.fonts && document.fonts.ready){
+ document.fonts.ready.then(function(){ redrawCharts(); });
 }
 function init(){ poll(); pollCharts(); pollDiag(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(tickDiagClocks,1000); }
 window.addEventListener('DOMContentLoaded', init);
