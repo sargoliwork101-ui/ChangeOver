@@ -701,6 +701,27 @@ function main() {
                   cells(0)[9] && cells(0)[9].textContent.trim() === "30",
                   "and both commands as a percentage",
                   (cells(0)[8] ? cells(0)[8].textContent : "?") + "/" + (cells(0)[9] ? cells(0)[9].textContent : "?"));
+            /* v1.124 (user order): the tags stay one or two words, and the
+               explanation lives in a tooltip on the tag itself. */
+            {
+                const spans = [...cells(0)[1].querySelectorAll(".ep")];
+                check(spans.length >= 1 && spans.every(sp => (sp.getAttribute("title") || "").length > 3),
+                      "every event tag carries its own explanation as a tooltip",
+                      spans.map(sp => sp.textContent + "=" + (sp.getAttribute("title") || "")).join(" | "));
+                check(spans.length >= 1 && spans.every(sp => sp.textContent.trim().split(/\s+/).length <= 3),
+                      "and the tag itself stays one or two words",
+                      spans.map(sp => sp.textContent.trim()).join(" | "));
+                const heads = [...ths()];
+                check(heads.length === 11 && heads.every(h2 => (h2.getAttribute("title") || "").length > 3),
+                      "every column header explains itself on hover too",
+                      heads.map(h2 => h2.textContent + "=" + (h2.getAttribute("title") || "")).join(" | "));
+                const cardSx = d.querySelector('#evtlist') &&
+                      d.querySelector('#evtlist').parentElement.querySelector('.sx');
+                check(!!cardSx && cardSx.textContent.trim().split(/\s+/).length <= 20 &&
+                      (cardSx.getAttribute("title") || "").length > 20,
+                      "the card's own description is one short line, the details are on hover",
+                      cardSx ? cardSx.textContent.trim() : "none");
+            }
             check(cells(0)[1] && cells(0)[1].querySelectorAll(".ep").length >= 1,
                   "the event tags keep their own cell and their own spans",
                   cells(0)[1] ? cells(0)[1].textContent : "none");

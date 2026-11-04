@@ -537,7 +537,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 57fe679</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 03755a4</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -564,7 +564,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <div class="cd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر ردیف یک اتفاق واقعی است (برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط) و هر ستون یک کمیت — ولتاژها، جریان‌ها، فرمان‌ها و درصد — تا تفاوت دو پله را در یک ستون ببینید. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. کارت ۳۰ ردیف آخر را نشان می‌دهد؛ «۳۰ ردیف قدیمی‌تر» بقیهٔ همان روز را می‌آورد و «همهٔ ردیف‌ها» کل روز را یک‌جا. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر یک ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
+<div class="sx" title="هر روز یک فایل تا ۳۰ روز · فقط با تغییر یک خط نوشته می‌شود · هر پلهٔ ۲۰۰mV یک خط · یک ساعت بی‌اتفاق = یک خط ضربان · ساعت از دستگاه شما">هر ردیف یک اتفاق و هر ستون یک کمیت — کلیدها را بالای جدول ببینید.</div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
 <button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
@@ -4181,6 +4181,46 @@ poll();
         into Persian lines and keeps the phone's clock on the panel.
    [FA] ESP برای هر تغییر واقعی یک ردیف می‌نویسد؛ این کد فقط آن ردیف‌ها را به
         خط فارسی تبدیل می‌کند و ساعت گوشی را به پنل می‌رساند. */
+/*
+ * [EN] v1.124 (user order: "keep the states as those one or two words, and if a
+ *      state needs explaining, put the explanation in a tooltip that appears on
+ *      hover"). Every tag keeps its short form in the cell; the sentence behind
+ *      it lives here and is hung on the tag as a title, so nothing was lost and
+ *      the column stays narrow.
+ * [FA] نسخهٔ ۱٫۱۲۴ (دستور کاربر): هر تگ همان یکی-دو کلمه در خانه می‌ماند و
+ *      توضیحش اینجاست و روی خود تگ به‌صورت tooltip می‌نشیند؛ پس هیچ معنایی گم
+ *      نشد و ستون هم شلوغ نمی‌شود.
+ */
+const EVT_TIP={
+  'Boot':'پنل روشن شد',
+  'FW update':'فرم‌ور تازه روی برد نشست و پنل با نسخهٔ نو روشن شد',
+  'Low-batt back':'دفعهٔ قبل روی مرز قطع باتری خاموش شده بود',
+  'Link lost':'ارتباط با برد STM32 قطع شد',
+  'Link back':'ارتباط با برد STM32 دوباره برقرار شد',
+  'Mains on':'برق شهر وصل شد',
+  'Mains off':'برق شهر قطع شد',
+  'V step':'ولتاژ پک یک پلهٔ ۲۰۰ میلی‌ولتی جابه‌جا شد',
+  'Clock set':'ساعت با ساعت دستگاه شما تنظیم شد',
+  'Near cut':'ولتاژ باتری به مرز قطع نزدیک شد',
+  'Above cut':'ولتاژ باتری از مرز قطع بالا آمد',
+  'Heartbeat':'گزارش دوره‌ای — یک ساعت هیچ اتفاقی نیفتاد و پنل زنده است',
+  'Manual':'ثبت دستی با کلید «به‌روزرسانی»',
+  'Day full':'سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',
+  'Day start':'فایل این روز از این لحظه ساخته شد',
+  'Flags off':'کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است'
+};
+/* [EN] A tag is explained by its own title, plus the reason for a phase tag
+        ("CH1 absorb" -> what absorb means for channel 1).
+   [FA] هر تگ با عنوانش توضیح داده می‌شود و تگ مرحله، معنی همان مرحله را هم دارد. */
+function evtTip(t){
+  if(EVT_TIP[t])return EVT_TIP[t];
+  if(t.indexOf('CH1 ')==0)return 'مرحلهٔ شارژ کانال ۱: '+t.slice(4);
+  if(t.indexOf('CH2 ')==0)return 'مرحلهٔ شارژ کانال ۲: '+t.slice(4);
+  if(t.indexOf('Fault: ')==0)return (t.slice(7)==='clear')?'همهٔ خطاها پاک شد':'خطای برد: '+t.slice(7);
+  if(t.indexOf('Lock: ')==0)return (t.slice(6)==='clear')?'قفل‌ها و پرچم‌ها پاک شد':'قفل/پرچم روشن: '+t.slice(6);
+  if(t.indexOf('Dead: ')==0)return 'حکم فرسودگی برای '+t.slice(6);
+  return t;
+}
 /* [EN] v1.123 (user order): the event column is English, one or two words
         per state. These are the fault-bit names, in the same order as the
         board's bits (bit 0 first).
@@ -4386,7 +4426,8 @@ function evtParse(line){
    [FA] v1.99: هر تکه از خط در span خودش می‌نشیند و هر عدد یا واژهٔ انگلیسی
    جدا نگه داشته می‌شود تا متن قاطی نشود. */
 const xiso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
-const xspr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+xiso(x)+'</span>').join('');
+const xspr=(s,c,tip)=>s.split(' · ').map(x=>'<span class="'+c+'" title="'+
+  esc(tip?tip(x):evtTip(x))+'">'+xiso(x)+'</span>').join('');
 /*
  * [EN] v1.121 (user report: "the morning rows are gone"). The board answers
  *      /evt with a TAIL of 30 rows, so a busy day looked as if its morning had
@@ -4405,7 +4446,19 @@ const EVT_PAGE=30;
 function evtParseAll(text){
   return (text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
 }
-const EVT_COLS=['ساعت','اتفاق','پک V','Δ نیم mV','ورودی V','۱۲V V','I۱ A','I۲ A','D۱ ٪','D۲ ٪','باتری ٪'];
+/* [EN] v1.124: a header is a short label with its own explanation on hover.
+   [FA] نسخهٔ ۱٫۱۲۴: سرصفحه کوتاه است و توضیحش با نگه‌داشتن موس می‌آید. */
+const EVT_COLS=[['ساعت','ساعت رویداد — از گوشی یا کامپیوتری که این صفحه را باز کرده'],
+ ['اتفاق','هر تگ یک اتفاق است؛ توضیح کاملش با نگه‌داشتن موس روی همان تگ'],
+ ['پک V','ولتاژ کل پک باتری (۲۴ ولت)'],
+ ['Δ نیم mV','اختلاف دو نیم‌باتری به میلی‌ولت'],
+ ['ورودی V','ولتاژ ورودی (برق شهر یا منبع)'],
+ ['۱۲V V','ولتاژ نود ۱۲ ولت'],
+ ['I۱ A','جریان باتری کانال ۱'],
+ ['I۲ A','جریان باتری کانال ۲'],
+ ['D۱ ٪','درصد فرمان PWM کانال ۱'],
+ ['D۲ ٪','درصد فرمان PWM کانال ۲'],
+ ['باتری ٪','درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵)']];
 function evtLine(r){
   const t=evtRowText(r);
   return '<tr class="evtrow lv'+t.lv+'"><td class="evtt">'+xiso(t.time)+'</td>'+
@@ -4442,7 +4495,7 @@ function evtPaint(){
   if(sum)sum.innerHTML=evtFsWarn+'<span class="r">خطا و قفل: '+evtFa(nf)+'</span><span class="y">هشدار: '+evtFa(nw)+'</span><span class="g">برگشت به سلامتی: '+evtFa(ng)+'</span><span>مجموع: '+evtFa(n)+' خط</span>';
   /* جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
   box.innerHTML='<table class="evttbl"><thead><tr>'+
-    EVT_COLS.map(c=>'<th>'+xiso(c)+'</th>').join('')+
+    EVT_COLS.map(c=>'<th title="'+esc(c[1])+'">'+xiso(c[0])+'</th>').join('')+
     '</tr></thead><tbody>'+
     evtRows.slice(from,end).reverse().map(evtLine).join('')+'</tbody></table>';
 }
