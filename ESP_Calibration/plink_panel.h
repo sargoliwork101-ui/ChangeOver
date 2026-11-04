@@ -401,12 +401,17 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evtrow.lv2>td:first-child{border-inline-start-color:#c9a227}
 .evtrow.lv1{background:rgba(47,158,99,.10)}
 .evtrow.lv1>td:first-child{border-inline-start-color:#2f9e63}
-/* [EN] v1.122 (user order): the three page keys share the row in equal thirds
-        and stack under each other when the panel is narrow.
-   [FA] نسخهٔ ۱٫۱۲۲ (دستور کاربر): سه کلید صفحه‌گردی یک‌سومِ مساویِ ردیف‌اند و
-        وقتی پنل باریک شد زیر هم می‌آیند. */
-#evtpage{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-#evtpage .sb{flex:1 1 calc(33.333% - 8px);min-width:132px;text-align:center}
+/* [EN] v1.123 (user order): the keys sit centred under the table, with "all
+        rows" between them, and the two page keys are arrows - >> for the older
+        thirty, << for the newer thirty (right is "back" in a right-to-left
+        page). The Persian wording moved into the tooltip, so nothing is lost.
+   [FA] نسخهٔ ۱٫۱۲۳ (دستور کاربر): کلیدها وسطِ زیر جدول‌اند، «همهٔ ردیف‌ها» بین
+        آن‌ها، و دو کلید صفحه‌گردی فلش‌اند - >> برای ۳۰ ردیف قدیمی‌تر و << برای
+        ۳۰ ردیف جدیدتر (در صفحهٔ راست‌به‌چپ، راست یعنی عقب). متن فارسی به
+        tooltip رفت تا هیچ معنایی گم نشود. */
+#evtpage{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin-top:8px}
+#evtpage .sb{flex:0 0 auto;min-width:64px;text-align:center}
+#evtpage #evtpv,#evtpage #evtnx{font-weight:700;letter-spacing:2px}
 @media (max-width:520px){#evtpage .sb{flex:1 1 100%}}
 .evtsum{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
 .evtsum span{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)}
@@ -424,7 +429,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e9d752d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 57fe679</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -464,9 +469,9 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="evtsum" id="evtsum"></div>
 <div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
 <div id="evtpage">
-<button class="sb" type="button" id="evtpv" onclick="evtOlder()">۳۰ ردیف قدیمی‌تر</button>
-<button class="sb" type="button" id="evtnx" onclick="evtNewer()">۳۰ ردیف جدیدتر</button>
+<button class="sb" type="button" id="evtpv" onclick="evtOlder()" title="۳۰ ردیف قدیمی‌تر" aria-label="۳۰ ردیف قدیمی‌تر">&gt;&gt;</button>
 <button class="sb" type="button" id="evtal" onclick="evtAllRows()">همهٔ ردیف‌ها</button>
+<button class="sb" type="button" id="evtnx" onclick="evtNewer()" title="۳۰ ردیف جدیدتر" aria-label="۳۰ ردیف جدیدتر">&lt;&lt;</button>
 </div>
 </div>
 </div>
@@ -4068,15 +4073,24 @@ poll();
         into Persian lines and keeps the phone's clock on the panel.
    [FA] ESP برای هر تغییر واقعی یک ردیف می‌نویسد؛ این کد فقط آن ردیف‌ها را به
         خط فارسی تبدیل می‌کند و ساعت گوشی را به پنل می‌رساند. */
-const EVT_FAULT=['اندازه‌گیری (ADC)','اضافه‌جریان کانال ۱','اضافه‌جریان کانال ۲','ولتاژ باتری','تلاش دوبارهٔ ۱','تلاش دوبارهٔ ۲','قطع باتری','خطای فنی','قفل عدم‌توازن','باتری فرسوده'];
-const EVT_FLAG=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌توازن'],[4,'خروجی مسدود شد'],[8,'قطع شارژ'],[16,'باتری ضعیف شناخته شد'],[32,'مسیر باتری قطع'],[64,'استراحت حرارتی']];
+/* [EN] v1.123 (user order): the event column is English, one or two words
+        per state. These are the fault-bit names, in the same order as the
+        board's bits (bit 0 first).
+   [FA] نسخهٔ ۱٫۱۲۳ (دستور کاربر): ستون اتفاق انگلیسی است، هر حالت یکی دو
+        واژه. اینها نام بیت‌های خطا به همان ترتیب بیت‌های برد هستند. */
+const EVT_FAULT=['ADC','OC1','OC2','Batt V','Retry1','Retry2','Batt cut','HW fault','Imb lock','Batt worn'];
+/* [FA] نسخهٔ ۱٫۱۲۳: نام بیت‌های بایت وضعیت، کوتاه و انگلیسی. */
+const EVT_FLAG=[[1,'Imb episode'],[2,'Imb lock'],[4,'Out blocked'],[8,'Chg cut'],[16,'Batt weak'],[32,'Path open'],[64,'Thermal rest']];
+/* [FA] نسخهٔ ۱٫۱۲۳: نام مرحله‌های شارژ برای تاریخچه؛ کارت زندهٔ سناریوها
+   همان نام فارسی (STFA) را نگه می‌دارد. */
+const EVT_ST=['off','bulk','absorb','float','bring-up','jit wait','input wait','final fault','no batt','manual','thermal'];
 /* [EN] The general byte of the frame, one line per bit. Nothing here is a
         guess: each text is the meaning the board gives that bit.
    [FA] بایت عمومی فریم، هر بیت یک معنی. هیچ‌کدام حدس نیست؛ هر متن همان
         معنایی است که برد به آن بیت می‌دهد. */
-const EVT_FL=[[1,'دادهٔ لحظه‌ای رسید','دادهٔ لحظه‌ای نرسید'],[2,'برق ورودی وصل شد','برق ورودی قطع شد'],
-              [4,'اندازه‌گیری معتبر شد','اندازه‌گیری نامعتبر شد'],[8,'شارژر ۱ اجازه گرفت','شارژر ۱ از کار افتاد'],
-              [16,'شارژر ۲ اجازه گرفت','شارژر ۲ از کار افتاد'],[32,'مود دستی روشن شد','مود دستی خاموش شد']];
+const EVT_FL=[[1,'Data ok','Data lost'],[2,'Input on','Input off'],
+              [4,'Meas ok','Meas bad'],[8,'CH1 ok','CH1 fail'],
+              [16,'CH2 ok','CH2 fail'],[32,'Manual on','Manual off']];
 let evtBusy=false,evtClkBusy=false;
 async function evtHttp(u,m,ms){
   const o={method:m||'GET',cache:'no-store'};
@@ -4183,69 +4197,69 @@ function evtCols(r){
         still drawn red.
    [FA] هر ردیف به یک خط فارسی و یک شدت تبدیل می‌شود: ۳ خطا، ۲ هشدار،
         ۱ برگشت به سلامتی، ۰ تغییر ساده. بالاترین شدت همان ردیف برنده است. */
+/*
+ * [EN] v1.123 (user order: "replace every event state with one or two English
+ *      words that mean the same thing"). The event column of the table is a tag
+ *      list now, not a Persian sentence: one glance says WHAT happened, the
+ *      columns next to it say HOW MUCH, and the severity - and with it the row
+ *      colour - is unchanged from v1.95.
+ * [FA] نسخهٔ ۱٫۱۲۳ (دستور کاربر): ستون «اتفاق» حالا فهرست تگ است، نه جملهٔ
+ *      فارسی: یک نگاه می‌گوید چه شد و ستون‌های کنارش می‌گویند چقدر؛ شدت - و
+ *      در نتیجه رنگ ردیف - همان نسخهٔ ۱٫۹۵ است.
+ */
 function evtRowText(r){
   const chg=r.chg|0,mains=r.mains|0,c1=r.c1|0,c2=r.c2|0,fault=r.fault|0,f2=r.flags2|0,fl=r.fl|0;
   const parts=[];let lv=0;
   const add=(txt,l)=>{parts.push(txt);if(l>lv)lv=l;};
-  const stName=v=>((typeof STFA!=='undefined'&&STFA[v])?STFA[v]:(ST[v]||('#'+v)));
-  /* [EN] v1.118 (audit item 3): since v1.115 the boot bit no longer means "the
-          panel came on" - a plain switch-on writes nothing. It now rides only
-          on an update row or on a row that says the last run stopped at the
-          battery cut line. The label follows the real meaning; the old
-          sentence stays for files written by v1.114 and earlier, which really
-          did have a row per switch-on.
-     [FA] نسخهٔ ۱٫۱۱۸ (بند ۳ ممیزی): از ۱٫۱۱۵ بیت «روشن شدن» دیگر معنایش
-          «پنل روشن شد» نیست؛ روشن‌شدن ساده هیچ ردیفی نمی‌نویسد. این بیت حالا
-          فقط روی ردیف آپدیت یا ردیفِ «دفعهٔ قبل روی مرز قطع بود» می‌آید.
-          برچسب با معنای واقعی هم‌خوان شد؛ متن قدیمی برای فایل‌های نسخهٔ
-          ۱٫۱۱۴ و پیش از آن می‌ماند که واقعاً هر روشن‌شدن یک ردیف داشت. */
+  /*
+ * [EN] The log speaks English; the live chips on the scenario page keep their
+ *      Persian phase names (STFA), so the two never share a table.
+ */
+  const stName=v=>((typeof EVT_ST!=='undefined'&&EVT_ST[v])?EVT_ST[v]:('#'+v));
+  /* [EN] v1.118: the boot bit is not "the panel came on" any more (v1.115); it
+          rides on an update row or on "the last run stopped at the cut line".
+     [FA] نسخهٔ ۱٫۱۱۸: بیت بوت دیگر «پنل روشن شد» نیست (نسخهٔ ۱٫۱۱۵)؛ روی ردیف
+          آپدیت یا ردیفِ «دفعهٔ قبل روی مرز قطع بود» می‌آید. */
   if(chg&1){
-    if(chg&4096){add('بروزرسانی فرم‌ور انجام شد — پنل با نسخهٔ نو روشن شد',2);}
-    else if(r.note===1){add('بازگشت از قطع باتری — دفعهٔ قبل روی مرز قطع بود',2);}
-    else{add('پنل روشن شد',2);}
+    if(chg&4096){add('FW update',2);}
+    else if(r.note===1){add('Low-batt back',2);}
+    else{add('Boot',2);}
   }
-  if((chg&4096)&&!(chg&1)){add('بروزرسانی فرم‌ور انجام شد',2);}
-  if(chg&128){add(r.note===2?'ارتباط با برد قطع شد':'ارتباط با برد دوباره برقرار شد',(r.note===2)?2:1);}
-  if(chg&2){add(mains?'برق شهر وصل شد':'برق شهر قطع شد',(mains?(r.band?2:1):2));}
-  if(chg&4){add('کانال ۱ به مرحلهٔ «'+stName(c1)+'» رفت',(c1>=7&&c1<=8)?3:((c1===10)?2:0));}
-  if(chg&8){add('کانال ۲ به مرحلهٔ «'+stName(c2)+'» رفت',(c2>=7&&c2<=8)?3:((c2===10)?2:0));}
-  if(chg&16){add('خطا: '+(evtFaults(fault)||'همه پاک شد'),fault?3:1);}
+  if((chg&4096)&&!(chg&1)){add('FW update',2);}
+  if(chg&128){add(r.note===2?'Link lost':'Link back',(r.note===2)?2:1);}
+  if(chg&2){add(mains?'Mains on':'Mains off',(mains?(r.band?2:1):2));}
+  if(chg&4){add('CH1 '+stName(c1),(c1>=7&&c1<=8)?3:((c1===10)?2:0));}
+  if(chg&8){add('CH2 '+stName(c2),(c2>=7&&c2<=8)?3:((c2===10)?2:0));}
+  if(chg&16){add('Fault: '+(evtFaults(fault)||'clear'),fault?3:1);}
   if(chg&32){
     const t=evtFlags(f2);
-    add('قفل و وضعیت: '+(t||'همه پاک شد'),(f2&(2|16))?3:((f2&(1|4|8|32|64))?2:1));
+    add('Lock: '+(t||'clear'),(f2&(2|16))?3:((f2&(1|4|8|32|64))?2:1));
   }
-  if(chg&1024){add('ولتاژ پک یک پلهٔ ۲۰۰ میلی‌ولتی جابه‌جا شد',0);}
-  if(chg&2048){add('ساعت با ساعت دستگاه شما تنظیم شد',0);}
-  if(chg&64){add(r.v24<21200?'ولتاژ باتری به مرز قطع نزدیک شد':'ولتاژ باتری از مرز قطع بالا آمد',(r.v24<21200)?3:1);}
+  if(chg&1024){add('V step',0);}
+  if(chg&2048){add('Clock set',0);}
+  if(chg&64){add(r.v24<21200?'Near cut':'Above cut',(r.v24<21200)?3:1);}
   if(chg&512){
-    const who=((r.dm&3)===3)?'هر دو باتری':(((r.dm&1)!==0)?'باتری ۱':'باتری ۲');
-    add('نتیجه: '+who+' فرسوده شناخته شد',3);
+    const who=((r.dm&3)===3)?'both':(((r.dm&1)!==0)?'CH1':'CH2');
+    add('Dead: '+who,3);
   }
   if(chg&256){
     /* [EN] only the bits that are ON are named.
        [FA] فقط بیت‌های روشن نام برده می‌شوند. */
     let any=0;
     EVT_FL.forEach(b=>{if(fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
-    if(!any)add('کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است',2);
+    if(!any)add('Flags off',2);
   }
-  /* [EN] a row written without any known change bit still says which phase
-          both channels are in - the log never shows a blank line.
-     [FA] ردیفی که هیچ بیت تغییری ندارد هم مرحلهٔ دو کانال را می‌گوید تا هرگز
-          خط خالی دیده نشود. */
-  /* [EN] v1.96 heartbeat: nothing happened, the panel is alive.
-     [FA] ضربان: هیچ اتفاقی نیفتاد و پنل زنده است. */
-  if(r.note===5){add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);}
-  if(r.note===6){add('ثبت دستی (به‌روزرسانی) — کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
-  if(r.note===4){add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);}
-  /* [EN] v1.117: the first row of a day file says the day's log starts here.
-     [FA] نسخهٔ ۱٫۱۱۷: اولین ردیف فایل هر روز می‌گوید ثبت آن روز از اینجا شروع شده. */
-  if(r.note===7){add('ایجاد فایل روز — ثبت این روز از این لحظه شروع شد',0);}
-  if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
-  /* [EN] v1.122: the battery percent is its own table column now, and the
-          side it is on follows from the mains/phase cells, so this sentence
-          no longer repeats them.
-     [FA] نسخهٔ ۱٫۱۲۲: درصد باتری حالا ستون خودش را دارد و سمتِ آن از خانه‌های
-          برق و مرحله پیدا است، پس این جمله دیگر تکرارشان نمی‌کند. */
+  if(r.note===5){add('Heartbeat',0);}
+  if(r.note===6){add('Manual',0);}
+  if(r.note===4){add('Day full',3);}
+  if(r.note===7){add('Day start',0);}
+  /* [EN] a row with no known bit still says where both channels are, so the
+          column is never blank; two short tags instead of a sentence.
+     [FA] ردیفی که هیچ بیت شناخته‌شده‌ای ندارد هم مرحلهٔ دو کانال را می‌گوید تا
+          ستون هیچ‌وقت خالی نماند؛ دو تگ کوتاه به‌جای جمله. */
+  if(!parts.length){add('CH1 '+stName(c1),0);add('CH2 '+stName(c2),0);}
+  /* [EN] v1.122: the battery percent is its own table column.
+     [FA] نسخهٔ ۱٫۱۲۲: درصد باتری ستون خودش را دارد. */
   return {txt:parts.join(' · '),lv:lv,time:evtTime(r.epoch)};
 }
 function evtParse(line){

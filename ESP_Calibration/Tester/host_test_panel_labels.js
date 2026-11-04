@@ -1,18 +1,20 @@
 /**
- * [EN] Behavioural test for the Persian label the history card prints for a
- *      row that carries the boot bit.
- *      Why a file of its own: the label is JavaScript inside a PROGMEM string,
- *      so neither the C++ host test nor the Python audit can call it - they can
- *      only see that the characters exist. v1.118 (audit item 3) changed what
- *      the boot bit MEANS (since v1.115 a plain switch-on writes no row), so
- *      the sentence had to follow the meaning, and the old sentence had to stay
- *      for files written by v1.114 and earlier.
- *      This reads the real function out of plink_panel.h and calls it with
- *      three rows. No jsdom needed: only the label logic is exercised.
+ * [EN] Behavioural test for the short English tags the history card prints in
+ *      its event column.
+ *      Why a file of its own: the labels are JavaScript inside a PROGMEM string,
+ *      so neither the C++ host test nor the Python audit can call them - they can
+ *      only see that the characters exist. v1.123 (user order: "replace every
+ *      event state with one or two English words that keep the same meaning")
+ *      turned the Persian sentences into tags, and this file is what keeps them
+ *      honest: the boot bit still is not an update row, the tag stays short, and
+ *      no tag may fall back to Persian.
+ *      This reads the real function out of plink_panel.h and calls it with a
+ *      handful of rows. No jsdom needed: only the label logic is exercised.
  *      Run: node ESP_Calibration/Tester/host_test_panel_labels.js
- * [FA] تست برچسب فارسی ردیف‌های «روشن شدن» در کارت تاریخچه. برچسب داخل یک
- *      رشتهٔ PROGMEM است، پس نه تست C++ و نه ممیزی پایتون نمی‌توانند صدایش
- *      بزنند. اینجا خودِ تابع از plink_panel.h خوانده و با سه ردیف اجرا می‌شود.
+ * [FA] تست برچسب‌های کوتاهِ انگلیسیِ ستون «اتفاق» در کارت تاریخچه. برچسب‌ها داخل
+ *      یک رشتهٔ PROGMEM هستند، پس نه تست C++ و نه ممیزی پایتون نمی‌توانند صدایشان
+ *      بزنند. نسخهٔ ۱٫۱۲۳ (دستور کاربر) جمله‌های فارسی را به تگ انگلیسی تبدیل
+ *      کرد و این فایل نگهبان آن است: تگ کوتاه بماند و هیچ‌وقت فارسی نشود.
  */
 "use strict";
 const fs = require("fs");
@@ -59,8 +61,9 @@ function extractFunction(name) {
 }
 
 const sandbox = {
-    STFA: { 0: "خاموش", 1: "شارژ سریع" },
-    ST: { 0: "خاموش", 1: "شارژ سریع" },
+    EVT_ST: ["off", "bulk", "absorb", "float", "bring-up", "jit wait",
+             "input wait", "final fault", "no batt", "manual", "thermal"],
+    ST: {},
     EVT_FL: [],
     EVT_FLAG: [],
     P: [],
@@ -81,45 +84,82 @@ function row(over) {
     return Object.assign(base, over);
 }
 
-console.log("panel history labels / برچسب‌های تاریخچهٔ پنل");
+console.log("panel history tags / تگ‌های تاریخچهٔ پنل");
 
-/* 1. a real switch-on row from an OLD file (v1.114 and earlier) */
-check(evtRowText(row({ chg: 1, note: 0 })).txt.indexOf("پنل روشن شد") === 0,
-      "old file: the v1.114 switch-on row still reads 'پنل روشن شد'",
-      evtRowText(row({ chg: 1, note: 0 })).txt);
+const FA_RANGE = /[\u0600-\u06FF]/;
+function tag(over) { return evtRowText(row(over)).txt; }
 
-/* 2. the update row: it is NOT a switch-on any more (v1.115) */
+/* 1. a switch-on row: one word, and NOT the update tag */
+check(tag({ chg: 1, note: 0 }) === "Boot",
+      "a switch-on row is tagged 'Boot'", tag({ chg: 1, note: 0 }));
+
+/* 2. the update row is not a switch-on (v1.115 rule, kept by the tag) */
 {
-    const t = evtRowText(row({ chg: 1 | 4096, note: 0 })).txt;
-    check(t.indexOf("پنل روشن شد") < 0,
-          "update row: it no longer pretends the panel just came on", t);
-    check(t.indexOf("بروزرسانی فرم‌ور") >= 0,
-          "update row: it says the firmware was updated", t);
+    const t = tag({ chg: 1 | 4096, note: 0 });
+    check(t.indexOf("Boot") < 0, "update row: it is not tagged as a switch-on", t);
+    check(t.indexOf("FW update") >= 0, "update row: it says the firmware was updated", t);
 }
 
-/* 3. the danger-band row: also not a switch-on */
+/* 3. the danger-band row is not a switch-on either */
 {
-    const t = evtRowText(row({ chg: 1, note: 1 })).txt;
-    check(t.indexOf("پنل روشن شد") < 0,
-          "danger row: it no longer pretends the panel just came on", t);
-    check(t.indexOf("مرز قطع") >= 0,
+    const t = tag({ chg: 1, note: 1 });
+    check(t.indexOf("Boot") < 0, "danger row: it is not tagged as a switch-on", t);
+    check(t.indexOf("Low-batt back") >= 0,
           "danger row: it says the last run stopped at the cut line", t);
 }
 
-/* 4. an update row without the boot bit keeps its own sentence */
-check(evtRowText(row({ chg: 4096, note: 0 })).txt.indexOf("بروزرسانی فرم‌ور") >= 0,
-      "update-only row: still says the firmware was updated",
-      evtRowText(row({ chg: 4096, note: 0 })).txt);
+/* 4. an update row without the boot bit keeps its own tag */
+check(tag({ chg: 4096, note: 0 }).indexOf("FW update") >= 0,
+      "update-only row: still says the firmware was updated", tag({ chg: 4096, note: 0 }));
 
 /* 5. v1.117 day-start marker */
-check(evtRowText(row({ chg: 0, note: 7 })).txt.indexOf("ایجاد فایل روز") >= 0,
+check(tag({ chg: 0, note: 7 }).indexOf("Day start") >= 0,
       "day start: the first row of a day file says the file was created",
-      evtRowText(row({ chg: 0, note: 7 })).txt);
+      tag({ chg: 0, note: 7 }));
 
-/* 6. v1.96 heartbeat, so the three labels above cannot quietly eat it */
-check(evtRowText(row({ chg: 0, note: 5 })).txt.indexOf("گزارش دوره‌ای") >= 0,
-      "heartbeat: the hourly row still says the panel is alive",
-      evtRowText(row({ chg: 0, note: 5 })).txt);
+/* 6. v1.96 heartbeat */
+check(tag({ chg: 0, note: 5 }).indexOf("Heartbeat") >= 0,
+      "heartbeat: the periodic row still says the panel is alive",
+      tag({ chg: 0, note: 5 }));
+
+/* 7. v1.123 (user order): every state tag is ENGLISH, never a Persian sentence */
+{
+    const noisy = tag({ chg: 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096,
+                        note: 4, mains: 0, c1: 7, c2: 10, fault: 1023, flags2: 127,
+                        fl: 63, dm: 3, v24: 20000 });
+    check(!FA_RANGE.test(noisy),
+          "every state tag is English, no Persian character left in the event column", noisy);
+    const extra = [tag({ chg: 0, note: 6 }), tag({ chg: 0, note: 0 }),
+                   tag({ chg: 2, note: 2, mains: 0 }),
+                   tag({ chg: 128, note: 2 }), tag({ chg: 128, note: 0 })];
+    check(extra.every(x => !FA_RANGE.test(x)),
+          "and the rows with no change bits are English too", extra.join(" | "));
+}
+
+/* 8. the order said "one or two words": no tag may grow back into a sentence */
+{
+    const long = [];
+    for (const rowTest of [{ chg: 1, note: 0 }, { chg: 2, mains: 1 }, { chg: 4, c1: 5 },
+                           { chg: 16, fault: 1 }, { chg: 32, flags2: 2 },
+                           { chg: 512, dm: 3 }, { chg: 256, fl: 33 }, { chg: 0, note: 4 }]) {
+        long.push(tag(rowTest));
+    }
+    const worst = long.map(x => x.split(/\s+/).length).reduce((a, b) => Math.max(a, b), 0);
+    check(worst <= 3,
+          "every tag stays at one or two words (three with its colon prefix)",
+          worst + " words: " + long.join(" | "));
+}
+
+/* 9. the charging phases are English in the log, and none falls back to #n */
+{
+    const out = [];
+    for (let p = 0; p <= 10; p++) out.push(tag({ chg: 4, c1: p }));
+    check(out.every(x => x.indexOf("#") < 0 && !FA_RANGE.test(x)),
+          "all eleven charger phases have a short English name in the log",
+          out.join(" | "));
+    check(out[2].indexOf("absorb") >= 0,
+          "phase 2 reads 'CH1 absorb', the same word the card shows", out[2]);
+}
 
 console.log("");
 if (failures > 0) {

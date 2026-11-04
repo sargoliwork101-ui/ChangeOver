@@ -621,6 +621,9 @@ function main() {
                 [ep, 12, chg, note, mains, fl, c1, c2, fault, f2, v, v - 40, v + 40, 20].join(",");
             const rows = () => [...w.document.querySelectorAll("#evtlist .evtrow")];
             const txt = (i2) => rows()[i2] ? rows()[i2].textContent : "";
+            const tbl = () => w.document.querySelectorAll("#evtlist table.evttbl");
+            const ths = () => w.document.querySelectorAll("#evtlist table.evttbl thead th");
+            const cells = (i4) => rows()[i4] ? [...rows()[i4].querySelectorAll("td")] : [];
             w.evtRender([
                 row(2, 0, 1, 0, 1, 3, 0, 0, 24000),          /* mains back */
                 row(16, 0, 1, 0, 1, 3, 8, 0, 24000),         /* a fault */
@@ -638,25 +641,26 @@ function main() {
             check(rows()[2] && rows()[2].className.indexOf("lv1") >= 0,
                   "a healthy board coming back is green",
                   rows()[2] ? rows()[2].className : "none");
-            check(txt(1).indexOf("خطا: ولتاژ باتری") >= 0,
-                  "the red line names the fault, not just its colour", txt(1));
-            check(txt(1).indexOf("24.00") >= 0,
-                  "and every line carries the measured pack voltage", txt(1));
-            check(txt(0).indexOf("مود دستی") >= 0,
-                  "the mode line says hand mode in words", txt(0));
-            check(txt(2).indexOf("برق شهر وصل شد") >= 0,
-                  "a mains return is written in words too", txt(2));
+            check(txt(1).indexOf("Fault") >= 0 && txt(1).indexOf("Batt V") >= 0,
+                  "the red line names the fault in two English words, not just by colour", txt(1));
+            check(cells(1)[2] && cells(1)[2].textContent.trim() === "24.00",
+                  "and the measured pack voltage has its own cell",
+                  cells(1)[2] ? cells(1)[2].textContent : "none");
+            check(txt(0).indexOf("Manual on") >= 0,
+                  "the hand-mode step is tagged in English", txt(0));
+            check(txt(2).indexOf("Mains on") >= 0,
+                  "a mains return is tagged in English too", txt(2));
             /* every charger phase has a Persian name - none may fall back to #n */
             const all = [];
             for (let s1 = 0; s1 <= 10; s1++) all.push(row(4, 0, 0, 0, s1, s1, 0, 0, 24000));
             w.evtRender(all.join("\n"), "");
-            check(txt(0).indexOf("#") < 0,
-                  "every charging phase has a Persian name in the log",
+            check(txt(0).indexOf("#") < 0 && txt(0).indexOf("thermal") >= 0,
+                  "every charging phase has a short English name in the log",
                   txt(0));
             /* the condemned-battery verdict has its own column and its own bit */
             w.evtRender("1792756800,12,512,0,0,0,1,3,0,0,24000,23960,24040,20,1", "");
             check(rows()[0] && rows()[0].className.indexOf("lv3") >= 0 &&
-                  txt(0).indexOf("نتیجه: باتری ۱ فرسوده") >= 0,
+                  txt(0).indexOf("Dead: CH1") >= 0,
                   "a condemned-battery verdict is a red line that names the battery",
                   txt(0));
             /*
@@ -665,16 +669,17 @@ function main() {
  * quiet board writes a heartbeat line.
  */
             w.evtRender("1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
-            check(txt(0).indexOf("ولتاژ پک یک پله") >= 0,
-                  "a voltage step is a line of its own", txt(0));
+            check(txt(0).indexOf("V step") >= 0,
+                  "a voltage step is a tag of its own", txt(0));
+            /* v1.123 (user order): one or two English words per state, and no
+               Persian sentence may creep back into that column. */
+            check(!/[\u0600-\u06FF]/.test(txt(0)),
+                  "the event column holds only English tags", txt(0));
             /*
  * [EN] v1.122 (user order): the history is a TABLE, so two steps can be
  *      compared column by column instead of guessed from a sentence. Same
  *      colours, same theme; the event sentence keeps its own cell.
  */
-            const tbl = () => w.document.querySelectorAll("#evtlist table.evttbl");
-            const ths = () => w.document.querySelectorAll("#evtlist table.evttbl thead th");
-            const cells = (i4) => rows()[i4] ? [...rows()[i4].querySelectorAll("td")] : [];
             check(tbl().length === 1,
                   "the history card draws one table, not a stack of lines",
                   String(tbl().length));
@@ -697,10 +702,10 @@ function main() {
                   "and both commands as a percentage",
                   (cells(0)[8] ? cells(0)[8].textContent : "?") + "/" + (cells(0)[9] ? cells(0)[9].textContent : "?"));
             check(cells(0)[1] && cells(0)[1].querySelectorAll(".ep").length >= 1,
-                  "the event sentence keeps its own cell and its own spans",
+                  "the event tags keep their own cell and their own spans",
                   cells(0)[1] ? cells(0)[1].textContent : "none");
             w.evtRender("1792756800,12,0,5,1,1,3,0,0,0,24000,23960,24040,20,0", "");
-            check(txt(0).indexOf("گزارش دوره‌ای") >= 0 && rows()[0].className.indexOf("lv0") >= 0,
+            check(txt(0).indexOf("Heartbeat") >= 0 && rows()[0].className.indexOf("lv0") >= 0,
                   "a heartbeat line says the panel is alive, in grey", txt(0));
             /* an old 15-column file still reads, without the new columns */
             w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0", "");
@@ -751,7 +756,7 @@ function main() {
             const pv = d.getElementById("evtpv");
             const nx = d.getElementById("evtnx");
             const al = d.getElementById("evtal");
-            check(!!pv && !!nx && !!al && pv.textContent.indexOf("قدیمی") >= 0 &&
+            check(!!pv && !!nx && !!al && pv.getAttribute("title").indexOf("قدیمی") >= 0 &&
                   al.textContent.indexOf("همه") >= 0,
                   "the history card carries a previous-page key and a show-all key");
             w.evtDayLoad(dayRows.join("\n"), "");
@@ -778,19 +783,32 @@ function main() {
             check(pv.disabled === false && pRows().length === 3,
                   "a fresh tail view leaves the previous-page key usable",
                   String(pRows().length));
-            /* v1.122 (user order): the three keys sit on one row, each a third
-               of the width, and they stack when the screen gets too narrow. */
+            /* v1.123 (user order): the keys are centred between the rows, and
+               the two page keys are arrows (>> and <<) instead of sentences. */
             const pg = d.getElementById("evtpage");
             check(!!pg && pg.querySelectorAll("button").length === 3,
                   "the three page keys live in their own row");
+            check(d.getElementById("evtpv").textContent.trim() === ">>" &&
+                  d.getElementById("evtnx").textContent.trim() === "<<",
+                  "the page keys are the two arrows, not sentences",
+                  d.getElementById("evtpv").textContent.trim() + "/" +
+                  d.getElementById("evtnx").textContent.trim());
+            check(d.getElementById("evtal").textContent.indexOf("همه") >= 0,
+                  "the all-rows key stays between them, in words",
+                  d.getElementById("evtal").textContent);
+            check(d.getElementById("evtpv").getAttribute("title").indexOf("۳۰") >= 0 &&
+                  d.getElementById("evtnx").getAttribute("title").indexOf("۳۰") >= 0,
+                  "each arrow carries a Persian tooltip that says what it does",
+                  d.getElementById("evtpv").getAttribute("title") + " / " +
+                  d.getElementById("evtnx").getAttribute("title"));
             const css = [...d.querySelectorAll("style")].map(s2 => s2.textContent).join("\n");
             const row = (css.match(/#evtpage\{[^}]*}/) || [""])[0].replace(/\s+/g, "");
-            check(row.indexOf("display:flex") >= 0 && row.indexOf("flex-wrap:wrap") >= 0,
-                  "the keys sit on one row that wraps when the panel gets narrow", row);
-            const btn = (css.match(/#evtpage \.sb\{[^}]*}/) || [""])[0].replace(/\s+/g, "");
-            check((btn.indexOf("flex:1 1") >= 0 || btn.indexOf("flex:11") >= 0) &&
-                  btn.indexOf("33.333%") >= 0,
-                  "each key stretches to exactly a third of that row", btn);
+            check(row.indexOf("display:flex") >= 0 &&
+                  row.indexOf("justify-content:center") >= 0 &&
+                  row.indexOf("flex-wrap:wrap") >= 0,
+                  "the key row is centred and wraps when the panel gets narrow", row);
+            check(row.indexOf("33.333%") < 0,
+                  "the old thirds rule is gone, the row is centred now", row);
         }
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));

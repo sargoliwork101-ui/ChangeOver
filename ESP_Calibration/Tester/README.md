@@ -16,7 +16,7 @@ live here was deleted with the simulator on 2026-11-01, `AI_AGENT_RULES.md:30-40
 | file | what it proves |
 |---|---|
 | `host_test_panel_click.js` | the click-to-edit operating table: a cell opens an editor, the editor carries the raw value, Enter commits, Escape does not, a telemetry re-render does not delete the field being typed into, a clamped value is visible, and the read-only derived cell is inert |
-| `host_test_panel_labels.js` | the Persian sentence a history row gets (v1.118): the function `evtRowText` is lifted out of `plink_panel.h` and called with an update row, a danger row and a legacy row. It fails if the card goes back to saying "the panel came on" for a row that is really a firmware update or a return from the battery cut. No jsdom, so it always runs - 8 checks |
+| `host_test_panel_labels.js` | the short English tag a history row gets (v1.123): the function `evtRowText` is lifted out of `plink_panel.h` and called with an update row, a danger row and a legacy row. It fails if the card goes back to saying "the panel came on" for a row that is really a firmware update or a return from the battery cut. No jsdom, so it always runs - 8 checks |
 
 ### Why this exists
 
@@ -50,7 +50,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 The normal way is `bash ESP_Calibration/Tester/run_esp_tests.sh`, which runs the
 host tests, then the label checks (always, they need no DOM) and then the click
 tests (skipped with exit code 0 when jsdom is absent). Current counts:
-**484** host checks, **8** label checks, **209** click checks.
+**484** host checks, **13** label checks, **221** click checks.
 
 `node_modules/` is git-ignored. The test reads `ESP_Calibration/panel_preview.html`,
 so run `python3 tools/make_panel_preview.py` first if you have edited
@@ -126,7 +126,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 
 راه معمول `bash ESP_Calibration/Tester/run_esp_tests.sh` است: تست‌های هاست، بعد
 چک برچسب‌ها (همیشه، DOM نمی‌خواهد) و بعد تست کلیک (بدون jsdom با کد ۰ SKIP
-می‌شود). شمارش فعلی: **۴۸۴** بررسی هاست، **۸** چک برچسب، **۲۰۹** چک کلیک.
+می‌شود). شمارش فعلی: **۴۸۴** بررسی هاست، **۱۳** چک برچسب، **۲۲۱** چک کلیک.
 
 پوشهٔ `node_modules/` در gitignore است. تست فایل
 `ESP_Calibration/panel_preview.html` را می‌خواند، پس اگر `plink_panel.h` را ویرایش
