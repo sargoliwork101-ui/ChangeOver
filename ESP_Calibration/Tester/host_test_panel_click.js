@@ -753,6 +753,52 @@ function main() {
                   "each message sits in its own span and each measurement in its own cell",
                   rows()[0].querySelectorAll(".ep").length + "/" +
                   cells(0).filter(td => td.textContent.trim() !== "" && td.textContent.trim() !== "\u2014").length);
+            /*
+ * [EN] v1.125 (user order): clicking a row must show, in phosphor, what changed
+ *      against the step BELOW it (the older one) - two steps, one comparison.
+ * [FA] نسخهٔ ۱٫۱۲۵ (دستور کاربر): کلیک روی هر ردیف باید با رنگ فسفری نشان دهد
+ *      نسبت به پلهٔ پایین‌تر (قدیمی‌تر) چه چیزی عوض شده.
+ */
+            {
+                const newer = "1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,80,0,23000,12100,1200,1100,450,300";
+                const older = "1792756200,12,0,5,1,2,1,3,0,0,23800,23760,23840,80,0,23000,12100,1200,1100,450,300";
+                w.evtRender(newer + "\n" + older, "");
+                const sel = () => d.querySelectorAll("#evtlist tr.sel");
+                const chg = (i5) => cells(i5).filter(td => td.classList.contains("chg")).length;
+                const top = rows()[0];
+                top.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                check(sel().length === 1 && top.classList.contains("sel"),
+                      "clicking a row selects exactly that row", String(sel().length));
+                check(cells(0)[2].classList.contains("chg"),
+                      "a value that changed against the step below is highlighted",
+                      cells(0)[2].className);
+                check(cells(0)[4] && !cells(0)[4].classList.contains("chg"),
+                      "a value that did NOT change keeps its normal colour",
+                      cells(0)[4] ? cells(0)[4].className : "none");
+                check((cells(0)[2].getAttribute("title") || "").indexOf("23.80") >= 0,
+                      "the highlighted cell says what the older step had",
+                      cells(0)[2].getAttribute("title") || "none");
+                /* in this pair only the pack voltage and the battery percent
+                   it drives are different: 24.00/23.80, and the same 80 mV
+                   imbalance in both steps must NOT light up. */
+                check(chg(0) === 2 && cells(0)[2].classList.contains("chg") &&
+                      cells(0)[10].classList.contains("chg") &&
+                      !cells(0)[3].classList.contains("chg"),
+                      "exactly the two cells that changed light up, the equal imbalance does not",
+                      String(chg(0)) + " @ " + cells(0).map(td => td.classList.contains("chg") ? "x" : ".").join(""));
+                /* the oldest row has nothing below it: it must not throw or paint */
+                rows()[1].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                check(sel().length === 1 && rows()[1].classList.contains("sel"),
+                      "clicking the oldest row moves the selection to it");
+                check(chg(0) === 0 && chg(1) === 0,
+                      "and paints nothing, because there is no older step to compare with",
+                      chg(0) + "/" + chg(1));
+                const css2 = [...d.querySelectorAll("style")].map(s2 => s2.textContent).join("\n");
+                check(/\.evttbl[^{]*td\.chg\{[^}]*#a3ff3c/i.test(css2) ||
+                      /\.evttbl[^{]*td\.chg\{[^}]*#c6ff3c/i.test(css2),
+                      "the highlight colour is the phosphor green the owner asked for",
+                      (css2.match(/td\.chg\{[^}]*}/) || [""])[0]);
+            }
             check(rows()[0].querySelectorAll(".lt").length >= 9,
                   "numbers and latin words run inside their own left-to-right spans",
                   String(rows()[0].querySelectorAll(".lt").length));
@@ -809,9 +855,9 @@ function main() {
             const pg = d.getElementById("evtpage");
             check(!!pg && pg.querySelectorAll("button").length === 3,
                   "the three page keys live in their own row");
-            check(d.getElementById("evtpv").textContent.trim() === ">>" &&
-                  d.getElementById("evtnx").textContent.trim() === "<<",
-                  "the page keys are the two arrows, not sentences",
+            check(d.getElementById("evtpv").textContent.trim() === "<<" &&
+                  d.getElementById("evtnx").textContent.trim() === ">>",
+                  "the page keys are the two arrows, the way the owner reads them (v1.125 swapped the glyphs)",
                   d.getElementById("evtpv").textContent.trim() + "/" +
                   d.getElementById("evtnx").textContent.trim());
             check(d.getElementById("evtal").textContent.indexOf("همه") >= 0,

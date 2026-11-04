@@ -398,13 +398,23 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evtrow.lv1{background:rgba(47,158,99,.10)}
 .evtrow.lv1>td:first-child{border-inline-start-color:#2f9e63}
 /* [EN] v1.123 (user order): the keys sit centred under the table, with "all
-        rows" between them, and the two page keys are arrows - >> for the older
-        thirty, << for the newer thirty (right is "back" in a right-to-left
-        page). The Persian wording moved into the tooltip, so nothing is lost.
+        rows" between them, and the two page keys are arrows. v1.125 (user order):
+        the glyphs were the other way round, so the older key now carries << and
+        the newer key >>. The Persian wording stays in the tooltip.
    [FA] نسخهٔ ۱٫۱۲۳ (دستور کاربر): کلیدها وسطِ زیر جدول‌اند، «همهٔ ردیف‌ها» بین
-        آن‌ها، و دو کلید صفحه‌گردی فلش‌اند - >> برای ۳۰ ردیف قدیمی‌تر و << برای
-        ۳۰ ردیف جدیدتر (در صفحهٔ راست‌به‌چپ، راست یعنی عقب). متن فارسی به
-        tooltip رفت تا هیچ معنایی گم نشود. */
+        آن‌ها، و دو کلید صفحه‌گردی فلش‌اند. نسخهٔ ۱٫۱۲۵ (دستور کاربر): جای فلش‌ها
+        برعکس بود، پس کلید قدیمی‌تر حالا << و کلید جدیدتر >> را دارد. متن فارسی
+        همچنان در tooltip است. */
+/* [EN] v1.125 (user order): click a step and the cells that differ from the step
+        BELOW it light up in phosphor - old value in the tooltip, arrow in the
+        text. Two steps, one comparison, no extra column.
+   [FA] نسخهٔ ۱٫۱۲۵ (دستور کاربر): روی هر پله کلیک کنی، خانه‌هایی که با پلهٔ
+        پایین‌تر فرق دارند فسفری روشن می‌شوند - مقدار قبلی در tooltip و جهت
+        تغییر در خودِ عدد. */
+.evttbl tbody tr.evtrow{cursor:pointer}
+.evttbl tbody tr.sel{outline:1px solid rgba(163,255,60,.55);outline-offset:-1px;background:rgba(163,255,60,.07)}
+.evttbl tbody td.chg{color:#a3ff3c;font-weight:700;background:rgba(163,255,60,.13);text-shadow:0 0 7px rgba(163,255,60,.55)}
+.evttbl tbody td.chg b{color:#a3ff3c}
 #evtpage{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin-top:8px}
 #evtpage .sb{flex:0 0 auto;min-width:64px;text-align:center}
 #evtpage #evtpv,#evtpage #evtnx{font-weight:700;letter-spacing:2px}
@@ -537,7 +547,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 03755a4</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9d1ee20</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -577,9 +587,9 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="evtsum" id="evtsum"></div>
 <div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
 <div id="evtpage">
-<button class="sb" type="button" id="evtpv" onclick="evtOlder()" title="۳۰ ردیف قدیمی‌تر" aria-label="۳۰ ردیف قدیمی‌تر">&gt;&gt;</button>
+<button class="sb" type="button" id="evtpv" onclick="evtOlder()" title="۳۰ ردیف قدیمی‌تر" aria-label="۳۰ ردیف قدیمی‌تر">&lt;&lt;</button>
 <button class="sb" type="button" id="evtal" onclick="evtAllRows()">همهٔ ردیف‌ها</button>
-<button class="sb" type="button" id="evtnx" onclick="evtNewer()" title="۳۰ ردیف جدیدتر" aria-label="۳۰ ردیف جدیدتر">&lt;&lt;</button>
+<button class="sb" type="button" id="evtnx" onclick="evtNewer()" title="۳۰ ردیف جدیدتر" aria-label="۳۰ ردیف جدیدتر">&gt;&gt;</button>
 </div>
 </div>
 </div>
@@ -4461,7 +4471,7 @@ const EVT_COLS=[['ساعت','ساعت رویداد — از گوشی یا کام
  ['باتری ٪','درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵)']];
 function evtLine(r){
   const t=evtRowText(r);
-  return '<tr class="evtrow lv'+t.lv+'"><td class="evtt">'+xiso(t.time)+'</td>'+
+  return '<tr class="evtrow lv'+t.lv+'" onclick="evtPick(this)"><td class="evtt">'+xiso(t.time)+'</td>'+
          '<td class="evtd">'+xspr(t.txt,'ep')+'</td>'+
          evtCols(r).map(x=>'<td>'+xiso(x)+'</td>').join('')+'</tr>';
 }
@@ -4472,6 +4482,51 @@ function evtPager(){
   if(pv)pv.disabled=(evtWhole&&!evtAll&&evtFrom<=0);
   if(nx)nx.disabled=(!evtWhole||evtRows.length<=EVT_PAGE);
   if(al)al.disabled=(!evtRows.length||evtAll);
+}
+/*
+ * [EN] v1.125 (user order: "when I click a record, show me in phosphor what is
+ *      different from the step below it"). The table is newest first, so the row
+ *      BELOW a step is the one before it. Each numeric cell that differs gets the
+ *      phosphor class, the old value in its tooltip and an arrow in the text, so
+ *      the change is readable on a phone where a tooltip cannot be hovered. The
+ *      comparison uses the parsed numbers, not the printed text: "24.00" and
+ *      "24000" are the same reading.
+ * [FA] نسخهٔ ۱٫۱۲۵ (دستور کاربر): ردیف‌ها از جدید به قدیم‌اند، پس ردیف پایین‌تر
+ *      همان پلهٔ قبلی است. هر خانهٔ عددی که فرق داشته باشد کلاس فسفری می‌گیرد،
+ *      مقدار قبلی‌اش در tooltip می‌آید و جهت تغییر با فلش در خودِ عدد نوشته
+ *      می‌شود تا روی گوشی هم - که tooltip ندارد - خوانده شود. مقایسه با عدد
+ *      انجام می‌شود نه با متنِ چاپ‌شده.
+ */
+let EVT_SEL=null;
+function evtPick(tr){
+  if(!tr||!tr.parentNode)return 0;
+  const body=tr.parentNode;
+  [...body.querySelectorAll('tr.evtrow')].forEach(function(x){
+    x.classList.remove('sel');
+    [...x.querySelectorAll('td.chg')].forEach(function(td){
+      td.classList.remove('chg');
+      if(td.dataset.v0!=null){td.textContent=td.dataset.v0;delete td.dataset.v0;}
+      td.removeAttribute('title');
+    });
+  });
+  tr.classList.add('sel');
+  EVT_SEL=tr;
+  const below=tr.nextElementSibling;
+  if(!below)return 0;
+  const now=[...tr.querySelectorAll('td')],was=[...below.querySelectorAll('td')];
+  let changed=0;
+  for(let k=2;k<now.length;k++){
+    const a=now[k].textContent.trim(),b=was[k]?was[k].textContent.trim():'';
+    if(b===''||a===b||a==='\u2014'||b==='\u2014')continue;
+    const na=parseFloat(a),nb=parseFloat(b);
+    if(isFinite(na)&&isFinite(nb)&&na===nb)continue;
+    now[k].dataset.v0=a;
+    now[k].classList.add('chg');
+    now[k].textContent=a+(isFinite(na)&&isFinite(nb)?(na>nb?' \u25b2':'\u25bc'):'');
+    now[k].setAttribute('title','پلهٔ پایین‌تر: '+b+' \u2192 این پله: '+a);
+    changed++;
+  }
+  return changed;
 }
 function evtPaint(){
   const box=$('evtlist'),sum=$('evtsum'),st=$('evtst');
