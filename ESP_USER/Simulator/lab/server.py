@@ -236,10 +236,10 @@ def findings_data():
         },
         {
             "id": 3, "sev": "critical", "proof": "measured",
-            "title": "قواعد ساخت کاربر دور زده می‌شود: رمز یک‌حرفی و نقش بی‌معنا",
+            "title": "قواعد ساخت کاربر دور زده می‌شود: رمز یک‌حرفی و نقش بی‌معنا - در این نسخه برطرف شد (مسیر افزودن کاربر حذف شد)",
             "summary": "مسیر «افزودن کاربر» فقط طول صفر را رد می‌کند؛ حداقل ۴ کاراکترِ مسیر تغییر رمز اینجا اعمال نمی‌شود و نقش هم هر عددی پذیرفته می‌شود، در حالی که همه‌جای دیگر فقط ۰ (ساده) و ۱ (ادمین) معنا دارد.",
             "example": "AddUser(bob, «1») قبول شد و bob با همان رمز یک‌حرفی وارد شد؛ AddUser(eve, «1234», نقش ۹) هم قبول شد.",
-            "fix": "همان اعتبارسنجی تغییر رمز اینجا هم اجرا شود و نقش فقط ۰/۱ باشد؛ نقش ۹ نباید ذخیره شود.",
+            "fix": "برطرف شد: تنها کاربر admin می‌ماند و مسیرهای افزودن/حذف کاربر از فرم‌ور حذف شده‌اند؛ فایل چندکاربری قدیمی هم فقط admin را نگه می‌دارد.",
         },
         {
             "id": 4, "sev": "high", "proof": "measured",
@@ -368,6 +368,11 @@ def render_lab_page():
         '\u0645\u062c\u062f\u062f\u0627\u064b \u0627\u062c\u0631\u0627\u0634 \u06a9\u0646\u06cc. '
         '<a href="/">\u0628\u0627\u0632\u06af\u0634\u062a \u0628\u0647 \u067e\u0646\u0644</a></div></header>'
         '<div class="wrap">'
+        '<section class="card" id="now"><h2>وضعیت همین حالا در این نسخه</h2>'
+        '<p>دیدن آزاد است: پنل، نمودار، تشخیص، دفترچهٔ رویداد، وضعیت قفل و نام وای‌فای بدون رمز باز می‌شوند. '
+        'رمز مدیر فقط برای تغییر پرسیده می‌شود: پاک‌کردن قفل، پاک‌کردن تاریخچه، تغییر رمز، تنظیم ساعت، تغییر تم و تغییر وای‌فای.</p>'
+        '<p>تنها کاربر پنل <b>admin</b> است؛ مسیرهای افزودن/حذف کاربر حذف شده و فایل چندکاربری قدیمی روی برد فقط admin را نگه می‌دارد. '
+        'رمز وای‌فای ذخیره‌شده بدون ورود مدیر فرستاده نمی‌شود.</p></section>'
         + "".join(cards) +
         '<section class="card" id="tools"><h2>ابزار شیمیولیتور</h2>'
         '<p>بدون ورود همین آدرس‌ها را باز کن (ایراد ۵): '
@@ -572,43 +577,32 @@ class Handler(BaseHTTPRequestHandler):
             self.extra_headers.append((
                 "Set-Cookie", "%s=; Path=/; HttpOnly; Max-Age=0" % SESSION_COOKIE))
             return self.send(json_bytes({"ok": 1}))
-        if path == "/users" and method == "GET":
-            return self.send(json_bytes({"users": [{"name": u["name"], "role": u["role"]}
-                                                   for u in BOARD.users]}))
-        if path in ("/users", "/adduser") and method == "POST":
-            action = args.get("action", "add")
-            if action == "del" or path == "/deluser":
-                BOARD.users = [u for u in BOARD.users if u["name"] != args.get("user", "")]
-                return self.send(json_bytes({"ok": 1}))
-            name = args.get("user", "")
-            if not name:
-                return self.send(json_bytes({"ok": 0}, 400))
-            role = int(args.get("role", "0") or 0)
-            existing = next((u for u in BOARD.users if u["name"] == name), None)
-            if existing:
-                existing["pass"] = args.get("pass", existing["pass"])
-                existing["role"] = role
-            else:
-                BOARD.users.append({"name": name, "role": role, "pass": args.get("pass", "")})
-            return self.send(json_bytes({"ok": 1}))
-        if path == "/deluser" and method == "POST":
-            BOARD.users = [u for u in BOARD.users if u["name"] != args.get("user", "")]
-            return self.send(json_bytes({"ok": 1}))
         if path == "/setpass" and method == "POST":
-            target = next((u for u in BOARD.users if u["name"] == args.get("user", "")), None)
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
+            target = next((u for u in BOARD.users if u["name"] == "admin"), None)
             if target is None:
                 return self.send(json_bytes({"ok": 0, "e": "user"}, 400))
-            target["pass"] = args.get("new", target["pass"])
+            new_pass = args.get("new", "")
+            if len(new_pass) < 4 or len(new_pass) > 32:
+                return self.send(json_bytes({"ok": 0, "e": "pass 4-32"}, 400))
+            if args.get("old", "") != target["pass"]:
+                return self.send(json_bytes({"ok": 0, "e": "old"}, 400))
+            target["pass"] = new_pass
             return self.send(json_bytes({"ok": 1}))
         if path == "/theme":
             return self.send(json_bytes({"theme": BOARD.theme}))
         if path == "/settheme" and method == "POST":
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             BOARD.theme = int(args.get("theme", "0") or 0)
             return self.send(json_bytes({"ok": 1}))
         if path == "/wifi" and method == "GET":
+            payload = dict(BOARD.wifi)
+            payload["passSet"] = 1
             if not self.session_ok():
-                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
-            return self.send(json_bytes(BOARD.wifi))
+                payload["pass"] = ""
+            return self.send(json_bytes(payload))
         if path in ("/wifi", "/setwifi") and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
@@ -625,6 +619,8 @@ class Handler(BaseHTTPRequestHandler):
             BOARD.latch["known"] = 1
             return self.send(json_bytes({"ok": 1, "n": args.get("n", "")}))
         if path == "/clock" and method == "POST":
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             return self.send(json_bytes({"ok": 1, "sec": int(time.time())}))
         if path == "/time" and method == "POST":
             if not self.session_ok():

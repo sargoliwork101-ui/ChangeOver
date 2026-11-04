@@ -101,25 +101,24 @@ int main(void)
         (void)printf("[4] truncated users file: admin/admin = %d, AnotherGoodPass = %d\n",
                      factoryAccount, ownerPassword);
     }
-    /* 5) AddUser: one character password, role 9. */
+    /* 5) One account only: a legacy three-user file must collapse to admin. */
     {
-        char cookie[128];
-        func__Simple_AuthLogout();
-        CHAR__G__CurrentUser[0] = 'a';
-        CHAR__G__CurrentUser[1] = '\0';
-        UINT8_T__G__CurrentRole = 1u;
-        UINT32_T__G__SessionStartMs = (uint32_t)millis();
-        func__Simple_SessionTokenMake(CHAR__G__SessionToken);
-        (void)snprintf(cookie, sizeof(cookie), "%s=%s", SIMPLE_SESSION_COOKIE, CHAR__G__SessionToken);
-        SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("Cookie", cookie);
-        int addShort = func__Simple_AddUser("bob", "1", 0u) ? 1 : 0;
-        int addRole9 = func__Simple_AddUser("eve", "1234", 9u) ? 1 : 0;
-        int bobLogin;
-        (void)printf("[5] AddUser(bob,'1') = %d, AddUser(eve,'1234',9) = %d\n", addShort, addRole9);
-        func__Simple_AuthLogout();
-        UINT32_T__G__SessionStartMs = 0u;
-        bobLogin = func__Simple_AuthLogin("bob", "1");
-        (void)printf("[5] login bob with the one character password = %d\n", bobLogin);
+        uint8_t usersBefore;
+        uint8_t usersAfter;
+        int otherName;
+        int adminName;
+        String legacy = "{\"users\":[{\"name\":\"admin\",\"pass\":\"x\",\"role\":1},"
+                        "{\"name\":\"viewer1\",\"pass\":\"y\",\"role\":0},"
+                        "{\"name\":\"viewer2\",\"pass\":\"z\",\"role\":0}]}";
+        usersBefore = UINT8_T__G__UserCount;
+        func__Simple_AuthParse(legacy);
+        usersAfter = UINT8_T__G__UserCount;
+        adminName = (func__Simple_FindUser("admin") >= 0) ? 1 : 0;
+        otherName = (func__Simple_FindUser("viewer1") >= 0) ? 1 : 0;
+        (void)printf("[5] SIMPLE_USERS_MAX = %u, users before = %u, after a 3-user file = %u,"
+                     " admin kept = %d, viewer1 kept = %d\n",
+                     (unsigned)SIMPLE_USERS_MAX, (unsigned)usersBefore, (unsigned)usersAfter,
+                     adminName, otherName);
     }
     /* 6) Real row size against the log budget. */
     {
