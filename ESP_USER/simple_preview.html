@@ -1164,22 +1164,26 @@ code,pre,.mono{font-family:Vazirmatn !important}
   <div style="text-align:center;margin-bottom:20px">
    <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:20px;margin:0 auto 12px;box-shadow:var(--acglow)">CO</div>
    <div style="font-size:16px;font-weight:900;letter-spacing:-.2px">ChangeOver</div>
-   <div style="font-size:11px;color:var(--mu);margin-top:4px;letter-spacing:.5px">SMART BATTERY • ورود به پنل</div>
+   <div style="font-size:11px;color:var(--mu);margin-top:4px;letter-spacing:.5px">SMART BATTERY • قفل تغییرات</div>
   </div>
-  <div class="ti">ورود</div>
+  <div class="ti">تأیید مدیر برای تغییر</div>
+  <div style="font-size:11.5px;color:var(--mu);line-height:1.8;margin:0 0 12px;text-align:center">دیدن پنل آزاد است. برای هر تغییری رمز مدیر لازم است.</div>
   <div class="form">
-   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">نام کاربری</span><input id="loginUserMain" placeholder="admin"></div>
-   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز عبور</span><div class="pass-wrap"><input id="loginPassMain" type="password" placeholder="••••••••"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPassMain',this)">👁</button></div></div>
-   <button class="btn pri" onclick="doLoginMain()" style="width:100%;margin-top:4px">ورود به پنل</button>
+   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">کاربر</span><div style="padding:10px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--in);font-weight:800" id="loginUserMain">admin</div></div>
+   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز مدیر</span><div class="pass-wrap"><input id="loginPassMain" type="password" placeholder="••••••••"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPassMain',this)">👁</button></div></div>
+   <div class="row2" style="margin-top:4px">
+    <button class="btn pri" onclick="mdLogin()">تأیید و ادامه</button>
+    <button class="btn sec" onclick="cancelLogin()">انصراف</button>
+   </div>
    <div id="loginMsgMain" style="font-size:12px;color:var(--mu);text-align:center;min-height:18px"></div>
-   <div id="recoveryMsgMain" class="bdg warn" style="display:none;margin:8px auto 0;text-align:center;line-height:1.7;font-size:11px">بازیابی انجام شد - کاربران به پیش‌فرض برگشتند: admin / admin - بعد از ورود، رمز را عوض کنید</div>
-   <div style="font-size:10.5px;color:var(--mu2);text-align:center;margin-top:8px;line-height:1.6">پیش‌فرض: نام کاربری <b style="color:var(--tx)">admin</b> و رمز <b style="color:var(--tx)">admin</b></div>
+   <div id="recoveryMsgMain" class="bdg warn" style="display:none;margin:8px auto 0;text-align:center;line-height:1.7;font-size:11px">بازیابی انجام شد - رمز به پیش‌فرض برگشت: admin / admin - بعد از ورود، رمز را عوض کنید</div>
+   <div style="font-size:10.5px;color:var(--mu2);text-align:center;margin-top:8px;line-height:1.6">پیش‌فرض: رمز <b style="color:var(--tx)">admin</b> - تنهاترین کاربر همین است</div>
   </div>
  </div>
 </div>
 <header>
  <div class="brand"><div class="brand-mark">CO</div><div class="brand-text"><b>ChangeOver</b><span>SMART BATTERY • INDUSTRIAL</span></div></div>
- <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span><button class="btn sec" style="padding:5px 12px;font-size:11px;min-height:30px" onclick="doLogout()">خروج</button></div>
+ <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span><button class="btn pri" id="btnAdminIn" style="padding:5px 12px;font-size:11px;min-height:30px;display:none" onclick="askAdmin('برای تغییر رمز مدیر لازم است')">ورود مدیر</button><button class="btn sec" id="btnAdminOut" style="padding:5px 12px;font-size:11px;min-height:30px;display:none" onclick="doLogout()">خروج</button></div>
 </header>
 <nav>
  <button id="tab0" class="a" onclick="showTab(0)">وضعیت</button>
@@ -1396,17 +1400,13 @@ code,pre,.mono{font-family:Vazirmatn !important}
  </div>
 
  <div id="pg2" class="pgx">
-  <div class="cd login-box" id="loginCard">
-   <div class="ti">ورود به پنل</div>
-   <div class="form">
-    <input id="loginUser" placeholder="نام کاربری - پیش‌فرض admin">
-    <div class="pass-wrap"><input id="loginPass" type="password" placeholder="رمز - پیش‌فرض admin"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPass',this)">👁</button></div>
-    <button class="btn pri" onclick="doLogin()">ورود</button>
-    <div id="loginMsg" style="font-size:12px;color:var(--mu)"></div>
-   </div>
+  <div class="cd" id="adminHintCard">
+   <div class="ti">تغییر تنظیمات</div>
+   <div style="font-size:11.5px;color:var(--mu);line-height:1.8;margin-bottom:10px">همهٔ کارت‌های این صفحه دیده می‌شوند. دکمه‌های تغییر، رمز مدیر را می‌پرسند و تا ۳۰ دقیقه به یاد می‌مانند.</div>
+   <button class="btn pri" onclick="askAdmin('برای تغییر رمز مدیر لازم است')">تأیید مدیر</button>
   </div>
 
-  <div id="settingsContent" style="display:none">
+  <div id="settingsContent" style="display:grid;gap:16px">
    <div class="cd">
     <div class="ti">تم - دو حالت: تیره و روشن - فقط ادمین</div>
     <div class="theme-grid" style="grid-template-columns:1fr 1fr">
@@ -1446,22 +1446,10 @@ code,pre,.mono{font-family:Vazirmatn !important}
    </div>
 
    <div class="cd">
-    <div class="ti">مدیریت کاربران - دو نقش <span id="usersCount" style="margin-right:auto;background:var(--in);border:1px solid var(--ln);border-radius:999px;padding:2px 8px;font-size:10px;color:var(--mu)">--</span></div>
-    <div id="usersList" class="log" style="margin-bottom:12px;max-height:260px">--</div>
+    <div class="ti">تغییر رمز مدیر</div>
+    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:10px">تنها کاربر این پنل admin است. برای عوض کردن رمزش، رمز فعلی لازم است. رمز جدید حداقل ۴ کاراکتر.</div>
     <div class="form">
-     <div class="row2"><input id="newUserName" placeholder="نام کاربری جدید"><select id="newUserRole"><option value="0">کاربر ساده - فقط دیدن</option><option value="1">ادمین - همه کار</option></select></div>
-     <input id="newUserPass" placeholder="رمز عبور">
-     <button class="btn pri" onclick="addUser()">افزودن / ویرایش کاربر</button>
-     <div class="row2"><input id="delUserName" placeholder="نام کاربری برای حذف"><button class="btn danger" onclick="delUser()">حذف کاربر</button></div>
-     <div id="userMsg" style="font-size:12px;color:var(--mu)"></div>
-    </div>
-   </div>
-
-   <div class="cd">
-    <div class="ti">تغییر رمز عبور</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:10px">هر کاربر رمز خودش را عوض می‌کند (رمز فعلی را باید بداند). ادمین رمز هر کاربری را می‌تواند عوض کند. رمز جدید حداقل ۴ کاراکتر.</div>
-    <div class="form">
-     <input id="setPassUser" placeholder="نام کاربری" maxlength="24">
+     <div style="padding:10px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--in);font-weight:800">کاربر: admin</div>
      <div class="pass-wrap"><input id="setPassOld" type="password" placeholder="رمز فعلی" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassOld',this)">👁</button></div>
      <div class="pass-wrap"><input id="setPassNew" type="password" placeholder="رمز جدید - حداقل ۴ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew',this)">👁</button></div>
      <div class="pass-wrap"><input id="setPassNew2" type="password" placeholder="تکرار رمز جدید" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew2',this)">👁</button></div>
@@ -1530,6 +1518,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
 </main>
 <script>
 let currentTheme=0;
+let gUser='', gRole=false, loginWaiter=null;
 function applyTheme(t){
  t=(t===1)?1:0;   /* فقط دو تم داریم: ۰ تیره، ۱ روشن (تم سوم حذف شد) */
  currentTheme=t;
@@ -1539,7 +1528,7 @@ function applyTheme(t){
 }
 function selectTheme(t){
  applyTheme(t);
- fetch('/settheme?theme='+t,{method:'POST'}).then(r=>r.json()).then(j=>{
+ authFetch('/settheme?theme='+t,{method:'POST'}).then(r=>r.json()).then(j=>{
   let tm=document.getElementById('themeMsg'); if(tm) tm.textContent=j.ok?'تم ذخیره شد':'خطا - فقط ادمین';
   setTimeout(()=>{let tmm=document.getElementById('themeMsg'); if(tmm) tmm.textContent='';},3000);
  }).catch(()=>{ let tmc=document.getElementById('themeMsg'); if(tmc) tmc.textContent='تم در مرورگر ذخیره شد (آفلاین)'; });
@@ -2520,31 +2509,25 @@ function render(data){
  setTxt('hdrText', data.on?'متصل':'قطع');
  setTxt('hdrUser', data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'');
  /* فرم تغییر رمز: نام کاربری پیش‌فرض = همان کاربر واردشده */
- { let spu=document.getElementById('setPassUser'); if(spu && data.user && !spu.value) spu.value=data.user; }
- let loginPage=document.getElementById('loginPage');
- let loginCard=document.getElementById('loginCard'), setContent=document.getElementById('settingsContent');
- if(data.user){
-  if(loginPage) loginPage.style.display='none';
-  document.body.style.overflow='';
-  if(loginCard) loginCard.style.display='none'; if(setContent) setContent.style.display='grid';
- } else {
-  if(loginPage) loginPage.style.display='grid';
-  document.body.style.overflow='hidden';
-  if(loginCard) loginCard.style.display='block'; if(setContent) setContent.style.display='none';
- }
+ /* دیدن پنل آزاد است؛ صفحهٔ رمز فقط وقتی باز می‌شود که کاربری تغییری بخواهد */
+ gUser=data.user||''; gRole=(data.user && data.role==1);
+ { let lp=document.getElementById('loginPage'); if(lp && loginWaiter===null) lp.style.display='none'; }
+ document.body.style.overflow='';
+ { let bi=document.getElementById('btnAdminIn'), bo=document.getElementById('btnAdminOut');
+   if(bi) bi.style.display=gRole?'none':'inline-flex';
+   if(bo) bo.style.display=gRole?'inline-flex':'none'; }
  let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=fmtJalaliFull(Math.floor(Date.now()/1000));
  /* اگر در همین بوت رمزها به پیش‌فرض برگشته باشند، به کاربر گفته می‌شود */
  setShow('recoveryMsgMain', data.recovery==1);
  if(data.theme!==undefined && data.theme!==currentTheme){ let saved=localStorage.getItem('co_theme'); if(saved===null) applyTheme(data.theme); }
- let isAdmin=data.role==1;
  let clearCard=document.getElementById('clearHistoryCard');
- if(clearCard) clearCard.style.display=isAdmin?'block':'none';
+ if(clearCard) clearCard.style.display='block';
  let clearPct=document.getElementById('clearPctBtn');
- if(clearPct) clearPct.style.display=isAdmin?'inline-flex':'none';
+ if(clearPct) clearPct.style.display='inline-flex';
  let clearCharge=document.getElementById('clearChargeBtn');
- if(clearCharge) clearCharge.style.display=isAdmin?'inline-flex':'none';
+ if(clearCharge) clearCharge.style.display='inline-flex';
  let latchCard=document.getElementById('latchCard');
- if(latchCard) latchCard.style.display=isAdmin?'block':'none';
+ if(latchCard) latchCard.style.display='block';
 }
 
 /* ==================== ساعت‌های زندهٔ کارت آمار ====================
@@ -2618,7 +2601,8 @@ async function clearHistory(type){
  if(!confirm('آیا مطمئن هستید؟ تاریخچه '+type+' پاک خواهد شد - غیرقابل بازگشت')) return;
  let msgEl=document.getElementById('clearMsg');
  try{
-  let r=await fetch('/clear?type='+encodeURIComponent(type),{method:'POST'});
+  let r=await authFetch('/clear?type='+encodeURIComponent(type),{method:'POST'});
+  if(r.status===403){ if(msgEl) msgEl.textContent='بدون تأیید مدیر پاک نمی‌شود'; return; }
   let j=await r.json();
   if(j.ok){
    if(msgEl) msgEl.textContent='تاریخچه '+type+' پاک شد';
@@ -2641,12 +2625,64 @@ async function clearHistory(type){
  setTimeout(()=>{ if(msgEl) msgEl.textContent=''; },3000);
 }
 
-function doLogin(){ let u=document.getElementById('loginUser').value, p=document.getElementById('loginPass').value; fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p})}).then(r=>r.json()).then(j=>{ let m=document.getElementById('loginMsg'); if(j.ok){ m.textContent='ورود موفق'; poll(); } else { m.textContent=j.msg||'خطا'; } }).catch(()=>{ let m=document.getElementById('loginMsg'); if(m) m.textContent='خطا در ارتباط'; }); }
-function doLoginMain(){ let u=document.getElementById('loginUserMain').value, p=document.getElementById('loginPassMain').value; fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p})}).then(r=>r.json()).then(j=>{ let m=document.getElementById('loginMsgMain'); if(j.ok){ m.textContent='ورود موفق'; if(m) m.parentElement.parentElement.parentElement.style.display='none'; document.body.style.overflow=''; poll(); } else { m.textContent=j.msg||'خطا'; let box=document.querySelector('.login-box'); if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); } } }).catch(()=>{ let m=document.getElementById('loginMsgMain'); if(m) m.textContent='خطا در ارتباط'; }); }
+/* ==================== قفل تغییرات ====================
+   دیدن پنل بدون رمز آزاد است. هر تغییری اول رمز مدیر را می‌پرسد و
+   تا پایان مهلت نشست (۳۰ دقیقه) دیگر نمی‌پرسد. */
+function showLogin(on, reason){
+ let p=document.getElementById('loginPage'); if(!p) return;
+ let m=document.getElementById('loginMsgMain'); if(m && reason) m.textContent=reason;
+ p.style.display=on?'grid':'none';
+ document.body.style.overflow=on?'hidden':'';
+ if(on){ let i=document.getElementById('loginPassMain'); if(i){ i.value=''; setTimeout(()=>{ try{ i.focus(); }catch(e){} },60); } }
+}
+function askAdmin(reason){
+ if(gRole) return Promise.resolve(true);
+ return new Promise((resolve)=>{ try{ loginWaiter=resolve; }catch(e){} showLogin(true, reason||''); });
+}
+function cancelLogin(){
+ showLogin(false,'');
+ let w=loginWaiter; loginWaiter=null; if(w) w(false);
+}
+function finishLogin(ok){
+ showLogin(false,'');
+ let w=loginWaiter; loginWaiter=null;
+ if(w) w(ok);
+}
+async function authFetch(url, opts){
+ let o=opts||{};
+ let r=await fetch(url,o);
+ if(r.status===403){
+  const ok=await askAdmin('برای این تغییر رمز مدیر لازم است');
+  if(!ok) return r;
+  r=await fetch(url,o);
+ }
+ return r;
+}
+function mdLogin(){
+ let p=document.getElementById('loginPassMain');
+ let pass=(p&&p.value)||'';
+ let m=document.getElementById('loginMsgMain');
+ if(!pass){ if(m) m.textContent='رمز مدیر لازم است'; return; }
+ fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:'admin',pass:pass})})
+  .then(r=>r.json().then(j=>({s:r.status,j:j})))
+  .then(o=>{
+   if(o.j && o.j.ok){
+    gUser=o.j.user||'admin'; gRole=(o.j.role==1);
+    let bi=document.getElementById('btnAdminIn'), bo=document.getElementById('btnAdminOut');
+    if(bi) bi.style.display='none'; if(bo) bo.style.display='inline-flex';
+    if(p) p.value='';
+    finishLogin(true); poll();
+   } else {
+    if(m) m.textContent=((o.j&&(o.j.msg||o.j.e))?'':'')+((o.j&&o.j.msg)?o.j.msg:(o.s===409?'یک ورود فعال هست؛ اول از دستگاه دیگر خارج شو':'رمز اشتباه است'));
+    let box=document.querySelector('#loginPage .login-box');
+    if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); }
+   }
+  })
+  .catch(()=>{ if(m) m.textContent='خطا در ارتباط'; });
+}
+/* ==================== خروج ==================== */
 function doLogout(){ fetch('/logout',{method:'POST'}).then(()=>{ location.reload(); }).catch(()=>{ location.reload(); }); }
 function showTab(n){ for(let i=0;i<3;i++){ let pg=document.getElementById('pg'+i), tb=document.getElementById('tab'+i); if(pg) pg.classList.toggle('a', i===n); if(tb) tb.classList.toggle('a', i===n); } if(n===1) pollCharts(); if(n===0) pollDiag(); }
-async function addUser(){ let u=document.getElementById('newUserName').value, r=document.getElementById('newUserRole').value, p=document.getElementById('newUserPass').value; let res=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add',user:u,role:parseInt(r),pass:p})}); let j=await res.json(); let m=document.getElementById('userMsg'); if(m) m.textContent=j.ok?'کاربر ذخیره شد':(j.msg||'خطا'); loadUsers(); }
-async function delUser(){ let u=document.getElementById('delUserName').value; let res=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'del',user:u})}); let j=await res.json(); let m=document.getElementById('userMsg'); if(m) m.textContent=j.ok?'کاربر حذف شد':(j.msg||'خطا'); loadUsers(); }
 /* ریست قفل‌ها: درخواست به برد می‌رود و تأیید از پژواک REPORT خوانده می‌شود
    (‎rep‎ بالاتر و مقدار صفر)؛ NAK یعنی برد نپذیرفت. فقط ادمین. */
 async function latchReset(n){
@@ -2661,7 +2697,7 @@ async function latchReset(n){
   const b=await beforeResp.json();
   if(!Number.isFinite(Number(b.rep))||!Number.isFinite(Number(b.nak)))
    throw new Error('وضعیت فعلی قفل ناقص است؛ بعد از وصل لینک دوباره بزن');
-  const postResp=await fetch('/latch/reset?n='+n,{method:'POST'});
+  const postResp=await authFetch('/latch/reset?n='+n,{method:'POST'});
   const j=await postResp.json();
   if(!postResp.ok||!j.ok){ if(m)m.textContent=(j.e===1?'صف پر است؛ چند لحظه بعد دوباره بزن':'درخواست رد شد - فقط ادمین'); return; }
   for(let k=0;k<25;k++){
@@ -2676,8 +2712,7 @@ async function latchReset(n){
   if(m)m.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک را ببین';
  }catch(e){ if(m)m.textContent='⚠ '+(e&&e.message?e.message:'خطای شبکه'); }
 }
-async function loadUsers(){ try{ let r=await fetch('/users',{cache:'no-store'}); let j=await r.json(); let div=document.getElementById('usersList'); let cnt=document.getElementById('usersCount'); if(cnt) cnt.textContent=(j.users?j.users.length:0)+' کاربر'; if(div){ if(!j.users||j.users.length==0) div.textContent='کاربری ثبت نشده'; else { let html=''; for(let u of j.users){ html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><span>'+(u.name||u.user)+' <span class=badge '+(u.role==1?'admin':'viewer')+'>'+(u.role==1?'ادمین':'ساده')+'</span></span><span style="font-size:10px;color:var(--mu)">'+(u.lastLogin?fmtTime(u.lastLogin):'--')+'</span></div>'; } div.innerHTML=html; } } }catch(e){} }
-async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
+async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await authFetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
 async function loadWifi(){ try{ let r=await fetch('/wifi',{cache:'no-store'}); let j=await r.json(); let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--'; }catch(e){} }
 async function syncTime(){ 
  let ts=Math.floor(Date.now()/1000); 
@@ -2685,7 +2720,7 @@ async function syncTime(){
  if(m) m.textContent='در حال ارسال ساعت گوشی ('+fmtJalaliFull(Math.floor(Date.now()/1000))+') به برد...';
  try{
   let tz=-new Date().getTimezoneOffset()*60;
-  let r=await fetch('/time?ts='+ts+'&tz='+tz,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts,tz:tz})});
+  let r=await authFetch('/time?ts='+ts+'&tz='+tz,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts,tz:tz})});
   let j=await r.json(); 
   if(m) m.textContent=j.ok?'ساعت برد تنظیم شد به '+fmtTime(ts):('خطا: '+(j.e||j.msg||'نامشخص'));
   if(j.ok){ setTimeout(poll,500); setTimeout(pollDiag,600); }
@@ -2702,20 +2737,20 @@ function togglePass(id, btn){
 
 /* ==================== تغییر رمز عبور - /setpass ==================== */
 async function setPass(){
- let u=(document.getElementById('setPassUser')||{}).value||'';
+ let u='admin';
  let o=(document.getElementById('setPassOld')||{}).value||'';
  let n=(document.getElementById('setPassNew')||{}).value||'';
  let n2=(document.getElementById('setPassNew2')||{}).value||'';
  let m=document.getElementById('setPassMsg');
  u=u.trim();
- if(!u || !n){ if(m) m.textContent='نام کاربری و رمز جدید لازم است'; return; }
+ if(!n){ if(m) m.textContent='رمز جدید لازم است'; return; }
  if(n!==n2){ if(m) m.textContent='رمز جدید و تکرارش یکی نیست'; return; }
  try{
-  let r=await fetch('/setpass',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,old:o,new:n,new2:n2})});
+  let r=await authFetch('/setpass',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,old:o,new:n,new2:n2})});
   let j=await r.json();
   if(m) m.textContent=j.ok?'رمز عوض شد':'خطا: '+(j.e||j.msg||'نامشخص');
   if(j.ok){ let a=document.getElementById('setPassOld'), b=document.getElementById('setPassNew'), c=document.getElementById('setPassNew2');
-            if(a) a.value=''; if(b) b.value=''; if(c) c.value=''; loadUsers(); }
+            if(a) a.value=''; if(b) b.value=''; if(c) c.value=''; }
  }catch(e){ if(m) m.textContent='خطا در ارتباط'; }
 }
 
@@ -2822,7 +2857,11 @@ async function evtHttp(u,m,ms){
  const o={method:m||'GET',cache:'no-store'};
  let ac=null,tm=0;
  if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
- try{return await fetch(u,o);}finally{if(tm)clearTimeout(tm);}
+ try{
+  let r=await fetch(u,o);
+  if(r.status===403){ const ok=await askAdmin('برای این تغییر رمز مدیر لازم است'); if(!ok) return r; r=await fetch(u,o); }
+  return r;
+ }finally{if(tm)clearTimeout(tm);}
 }
 function evtEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function evtKb(b){return evtFaNum(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
@@ -3030,7 +3069,7 @@ addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
 addEventListener('online',()=>evtClock());
 setInterval(evtTick,10000);
 
-function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); setInterval(tickDiagClocks,1000); }
+function init(){ poll(); pollCharts(); pollDiag(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(tickDiagClocks,1000); }
 window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>

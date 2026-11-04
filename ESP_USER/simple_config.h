@@ -100,7 +100,7 @@
 #define SIMPLE_CHARTS_FILE              "/charts.json"
 #define SIMPLE_DIAG_MAX_ERRORS          10u
 #define SIMPLE_DIAG_MAX_POWER_EVENTS    20u
-#define SIMPLE_USERS_MAX                8u
+#define SIMPLE_USERS_MAX                1u
 #define SIMPLE_USER_NAME_MAX            24u
 #define SIMPLE_USER_PASS_MAX            32u
 #define SIMPLE_USER_PASS_MIN            4u

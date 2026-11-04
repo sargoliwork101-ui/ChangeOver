@@ -516,129 +516,6 @@ static void func__Simple_HttpLogout(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
-static void func__Simple_HttpUsers(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    size_t size_t__used = 0u;
-    size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE, "{\"users\":[");
-    bool bool__first = true;
-    uint8_t uint8_t__i;
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
-    {
-        if (!SIMPLE_USER_T__G__Users[uint8_t__i].active) continue;
-        if (!bool__first) size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], SIMPLE_JSON_BUFFER_SIZE - size_t__used, ",");
-        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], SIMPLE_JSON_BUFFER_SIZE - size_t__used,
-            "{\"name\":\"%s\",\"role\":%u}", SIMPLE_USER_T__G__Users[uint8_t__i].name, (unsigned int)SIMPLE_USER_T__G__Users[uint8_t__i].role);
-        bool__first = false;
-    }
-    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], SIMPLE_JSON_BUFFER_SIZE - size_t__used, "]}");
-    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
-}
-/* ==================== - JSON ==================== */
-static void func__Simple_HttpAddUser(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__user, string__pass, string__roleStr;
-    if (!func__Simple_GetArg("user", string__user) || !func__Simple_GetArg("pass", string__pass))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        return;
-    }
-    int32_t int32_t__role = 0;
-    if (func__Simple_GetArg("role", string__roleStr))
-    {
-        func__Simple_ParseInt(string__roleStr.c_str(), &int32_t__role);
-    }
-    if (func__Simple_AddUser(string__user.c_str(), string__pass.c_str(), (uint8_t)int32_t__role))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-    }
-    else
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"full\"}");
-    }
-}
-/* ==================== - JSON ==================== */
-static void func__Simple_HttpDelUser(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__user;
-    if (!func__Simple_GetArg("user", string__user))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        return;
-    }
-    if (func__Simple_DeleteUser(string__user.c_str()))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-    }
-    else
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-    }
-}
-/* ==================== : POST /users action ==================== */
-static void func__Simple_HttpUsersPost(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__action, string__user, string__pass, string__roleStr;
-    func__Simple_GetArg("action", string__action);
-    if (string__action == "del")
-    {
-        if (!func__Simple_GetArg("user", string__user))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user\"}");
-            return;
-        }
-        if (func__Simple_DeleteUser(string__user.c_str()))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-        }
-        else
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        }
-        return;
-    }
-    else /* add */
-    {
-        if (!func__Simple_GetArg("user", string__user) || !func__Simple_GetArg("pass", string__pass))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user/pass\"}");
-            return;
-        }
-        int32_t int32_t__role = 0;
-        if (func__Simple_GetArg("role", string__roleStr))
-        {
-            func__Simple_ParseInt(string__roleStr.c_str(), &int32_t__role);
-        }
-        if (func__Simple_AddUser(string__user.c_str(), string__pass.c_str(), (uint8_t)int32_t__role))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-        }
-        else
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"full\"}");
-        }
-    }
-}
 static void func__Simple_HttpGetTheme(void)
 {
     char char__buf[64];
@@ -672,13 +549,17 @@ static void func__Simple_HttpSetTheme(void)
 }
 static void func__Simple_HttpGetWifi(void)
 {
+    char char__buf[128];
     if (!func__Simple_IsAdmin())
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        (void)snprintf(char__buf, sizeof(char__buf),
+                       "{\"ssid\":\"%s\",\"pass\":\"\",\"passSet\":1}", CHAR__G__WifiSsid);
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
         return;
     }
-    char char__buf[128];
-    (void)snprintf(char__buf, sizeof(char__buf), "{\"ssid\":\"%s\",\"pass\":\"%s\"}", CHAR__G__WifiSsid, CHAR__G__WifiPass);
+    (void)snprintf(char__buf, sizeof(char__buf),
+                   "{\"ssid\":\"%s\",\"pass\":\"%s\",\"passSet\":1}", CHAR__G__WifiSsid, CHAR__G__WifiPass);
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
 }
@@ -721,20 +602,17 @@ static void func__Simple_HttpSetWifi(void)
  */
 static void func__Simple_HttpSetPass(void)
 {
-    String string__user;
     String string__oldPass;
     String string__newPass;
     String string__newPass2;
-    bool bool__isAdmin;
-    bool bool__isSelf;
-    if (!func__Simple_SessionValid())
+    if (!func__Simple_IsAdmin())
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"login\"}");
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-    if (!func__Simple_GetArg("user", string__user) || !func__Simple_GetArg("new", string__newPass))
+    if (!func__Simple_GetArg("new", string__newPass))
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user/new\"}");
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"new\"}");
         return;
     }
     (void)func__Simple_GetArg("old", string__oldPass);
@@ -749,22 +627,12 @@ static void func__Simple_HttpSetPass(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mismatch\"}");
         return;
     }
-    bool__isAdmin = (UINT8_T__G__CurrentRole == 1u);
-    bool__isSelf = (strcmp(CHAR__G__CurrentUser, string__user.c_str()) == 0);
-    if (!bool__isAdmin && !bool__isSelf)
+    if (!func__Simple_VerifyUserPass("admin", string__oldPass.c_str()))
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"self\"}");
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"old\"}");
         return;
     }
-    if (bool__isSelf)
-    {
-        if (!func__Simple_VerifyUserPass(string__user.c_str(), string__oldPass.c_str()))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"old\"}");
-            return;
-        }
-    }
-    if (!func__Simple_SetUserPass(string__user.c_str(), string__newPass.c_str()))
+    if (!func__Simple_SetUserPass("admin", string__newPass.c_str()))
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user\"}");
         return;
@@ -856,11 +724,6 @@ static void func__Simple_HttpLatchState(void)
     uint8_t uint8_t__i;
     uint8_t uint8_t__pending = 0u;
     char char__A__Out[160];
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
     {
         if (BOOL__G__SlotQueuePending[uint8_t__i])
