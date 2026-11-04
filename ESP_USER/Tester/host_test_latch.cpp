@@ -333,15 +333,38 @@ static void func__T_TestResetOrderAndHandshake(void)
     func__T_Check(size_t__routeStart != std::string::npos && size_t__routeEnd != std::string::npos &&
                   size_t__events < size_t__cycles && size_t__cycles < size_t__latch,
                   "مسیر واقعی اول شمارندهٔ رویداد/سیکل و در آخر قفل را صف می‌کند");
-    /* دستور کاربر ۲۰۲۶-۱۱-۰۴: هر چه رمز ادمین می‌خواهد، در پنل دیده نمی‌شود */
-    func__T_Check(string__panel.find("latchReset(") == std::string::npos,
-                  "پنل هیچ دکمهٔ ریست قفل ندارد");
-    func__T_Check((string__panel.find("'/login'") == std::string::npos) &&
-                  (string__panel.find("authFetch(") == std::string::npos) &&
-                  (string__panel.find("onclick=\"setPass(") == std::string::npos) &&
-                  (string__panel.find("onclick=\"setWifi(") == std::string::npos) &&
-                  (string__panel.find("onclick=\"clearHistory(") == std::string::npos),
-                  "پنل هیچ ورودی تغییر (رمز، وای‌فای، تاریخچه) و هیچ ورودی ادمین ندارد");
+    /* دستور کاربر ۲۰۲۶-۱۱-۰۴ (به‌روزشده): کاربر عادی هیچ چیز مدیریتی نمی‌بیند؛
+       مدیر با پنج ضربه روی «نسخهٔ» پایین صفحه رمز می‌زند و تنها پس از رمز
+       درست کارت مدیریت باز می‌شود. */
+    func__T_Check((string__panel.find("id=\"adminCard\" hidden") != std::string::npos) &&
+                  (string__panel.find("id=\"admGate\" class=\"gate\" hidden") != std::string::npos) &&
+                  (string__panel.find("admTap()") != std::string::npos) &&
+                  (string__panel.find("admProbe(") != std::string::npos),
+                  "کارت مدیریت و کادر رمز در آغاز پنهان‌اند و فقط با پنج ضربه روی نسخه باز می‌شوند");
+    {
+        const std::size_t size_t__card = string__panel.find("id=\"adminCard\"");
+        const std::size_t size_t__tail = string__panel.find("id=\"admCardMsg\"");
+        func__T_Check((size_t__card != std::string::npos) && (size_t__tail > size_t__card),
+                      "کارت مدیریت در انتهای صفحهٔ تنظیمات می‌نشیند");
+        static const char *char__ptr_adminOnly[] = {"'/latch/reset'", "'/setpass'", "'/clear'",
+                                                    "'/evt/clr'", "'/evt/snap'", "'/wifi'"};
+        bool bool__onlyInside = true;
+        for (std::size_t size_t__i = 0u; size_t__i < 6u; ++size_t__i)
+        {
+            const std::size_t size_t__pos = string__panel.find(char__ptr_adminOnly[size_t__i]);
+            if ((size_t__pos == std::string::npos) || (size_t__pos < size_t__card))
+            {
+                bool__onlyInside = false;
+            }
+        }
+        func__T_Check(bool__onlyInside,
+                      "هر شش کار تغییر (قفل، رمز، تاریخچه، لاگ، وای‌فای) فقط داخل کارت مدیریت صدا زده می‌شود");
+        func__T_Check((string__panel.find("onclick=\"setPass(") == std::string::npos) &&
+                      (string__panel.find("onclick=\"latchReset(") == std::string::npos) &&
+                      (string__panel.find("function admLogin(") != std::string::npos) &&
+                      (string__panel.find("'/login'") != std::string::npos),
+                      "ورود فقط از راه تابع admLogin انجام می‌شود و هیچ دکمهٔ قدیمی بیرون کارت نمانده");
+    }
     func__T_Check((string__panel.find("class=\"evtv\"") == std::string::npos) &&
                   (string__panel.find("span class=\"evtd\"") != std::string::npos),
                   "فهرست لاگ فقط پیام کوتاه را نشان می‌دهد و جزئیات را نمایش نمی‌دهد");

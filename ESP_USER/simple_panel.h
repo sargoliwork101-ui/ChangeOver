@@ -361,6 +361,21 @@ canvas{height:auto;max-width:100%}
 .log{max-height:clamp(160px,38vw,320px)}
 .evtrow{font-size:clamp(10.5px,2.4vw,12px)}
 .footer{flex-wrap:wrap;font-size:clamp(9.5px,2.2vw,11px)}
+/* ===== دسترسی مدیر (مخفی) =====
+   کاربر عادی هیچ چیزی از مدیریت نمی‌بیند: نه دکمه، نه لینک، نه نشانه‌ای.
+   فقط اگر کسی عمداً پنج بار روی «نسخهٔ» پایین صفحه بزند، کادر رمز باز
+   می‌شود؛ با رمز درست، کارت مدیریت در صفحهٔ تنظیمات ظاهر می‌شود. */
+.fwtap{cursor:default;-webkit-user-select:none;user-select:none;opacity:.75}
+.gate{position:fixed;inset:0;background:rgba(4,7,13,.72);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px}
+.gate[hidden],#adminCard[hidden]{display:none}
+.gatebox{background:var(--cd);border:1px solid var(--ln2);border-radius:16px;padding:18px;width:min(340px,100%);display:grid;gap:10px;box-shadow:var(--sh)}
+.gatebox input,.arow input,.arow select{width:100%;background:var(--in);border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit;padding:8px 10px;min-height:34px}
+.gmsg{font-size:11px;color:var(--wa);min-height:14px;line-height:1.5}
+.gmsg.ok{color:var(--ok)}
+.arow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 0;border-top:1px solid var(--ln)}
+.arow > span{color:var(--mu);font-size:11px;min-width:64px}
+.arow input,.arow select{flex:1 1 110px;min-width:0}
+.arow .btn{white-space:nowrap}
 </style>
 </head>
 <body data-theme="0">
@@ -614,11 +629,28 @@ canvas{height:auto;max-width:100%}
    </div>
 
    <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
+   <div class="cd" id="adminCard" hidden>
+    <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="admLogout()">خروج</button></div>
+    <div class="arow"><span>ساعت برد</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admClock()">همگام با این گوشی</button></div>
+    <div class="arow"><span>قفل خطا</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{},'قفل ریست شد')">ریست قفل</button></div>
+    <div class="arow"><span>فایل لاگ</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/snap',{},'عکس لحظه ثبت شد')">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/clr',{},'لاگ امروز پاک شد')">پاک‌کردن امروز</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl">دانلود</a></div>
+    <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admWifi()">ذخیره</button></div>
+    <div class="arow"><span>رمز مدیر</span><input id="admOld" type="password" placeholder="رمز فعلی"><input id="admNew" type="password" placeholder="رمز تازه"><input id="admNew2" type="password" placeholder="تکرار رمز تازه"><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPass()">تغییر</button></div>
+    <div class="arow"><span>تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">عیب‌یابی</option></select><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admClear()">پاک‌کردن</button></div>
+    <div class="gmsg" id="admCardMsg"></div>
+   </div>
+
   </div>
  </div>
 
 <div id="chartTooltip" class="chart-tooltip"></div>
-<div id="toastMsg" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span></div>
+<div id="toastMsg" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
+<div id="admGate" class="gate" hidden><div class="gatebox">
+ <div class="ti" style="margin:0">دسترسی مدیر</div>
+ <input id="admPass" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter')admLogin()">
+ <div class="gmsg" id="admMsg"></div>
+ <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="admLogin()">ورود</button><button class="btn gh" style="flex:1" onclick="admClose()">انصراف</button></div>
+</div></div>
 </main>
 <script>
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
@@ -2012,6 +2044,136 @@ function showTab(n){
  }
  if(n===1) pollCharts();
  if(n===0) pollDiag();
+}
+/* ==================== دسترسی مدیر ====================
+   پنل برای کاربر عادی فقط نمایش است: هیچ دکمه یا لینک مدیریتی روی صفحه نیست.
+   مدیر با پنج ضربهٔ پشت‌سرهم روی «نسخهٔ» پایین صفحه کادر رمز را باز می‌کند.
+   اگر رمز درست باشد، خود برد یک کوکی نشست می‌دهد و کارت مدیریت باز می‌شود؛
+   تمام کارها از همان راه انجام می‌شوند و اگر نشست تمام شود (۳۰ دقیقه) کارت
+   خودش قفل می‌شود و دوباره رمز می‌خواهد. */
+let admTapCount=0, admTapAt=0, admReady=false;
+function admTap(){
+ let now=Date.now();
+ if(now-admTapAt>1500) admTapCount=0;
+ admTapAt=now;
+ if(++admTapCount<5) return;
+ admTapCount=0;
+ admProbe();
+}
+function admSay(id, txt, ok){
+ let el=document.getElementById(id);
+ if(!el) return;
+ el.textContent=txt||'';
+ el.className='gmsg'+(ok?' ok':'');
+}
+function admOpen(){
+ let g=document.getElementById('admGate'); if(!g) return;
+ g.hidden=false;
+ admSay('admMsg','');
+ let pw=document.getElementById('admPass');
+ if(pw){ pw.value=''; try{pw.focus();}catch(e){} }
+}
+function admClose(){
+ let g=document.getElementById('admGate'); if(!g) return;
+ g.hidden=true;
+ admSay('admMsg','');
+}
+function admUnlock(who){
+ admReady=true;
+ let c=document.getElementById('adminCard'); if(c) c.hidden=false;
+ let w=document.getElementById('admWho'); if(w) w.textContent=who||'ادمین';
+ if(typeof showTab==='function') showTab(2);   /* کارت مدیریت در صفحهٔ تنظیمات است */
+ admSay('admCardMsg','');
+}
+function admLock(){
+ admReady=false;
+ let c=document.getElementById('adminCard'); if(c) c.hidden=true;
+}
+function admBody(obj){
+ let out=[];
+ Object.keys(obj||{}).forEach(function(k){
+  out.push(encodeURIComponent(k)+'='+encodeURIComponent(obj[k]===undefined?'':obj[k]));
+ });
+ return out.join('&');
+}
+function admCall(path, obj){
+ return fetch(path,{method:'POST',credentials:'same-origin',
+  headers:{'Content-Type':'application/x-www-form-urlencoded'},
+  body:admBody(obj)}).then(function(r){
+   return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, body:j}; });
+  });
+}
+function admPost(path, obj, okMsg){
+ return admCall(path, obj).then(function(x){
+  if(x.status===403){
+   admLock(); admSay('admCardMsg','نشست مدیر تمام شد؛ دوباره روی «نسخهٔ» پنج ضربه بزن', false);
+   return null;
+  }
+  let j=x.body||{};
+  if(j.ok!==1){
+   admSay('admCardMsg', j.msg || 'انجام نشد', false);
+   return null;
+  }
+  admSay('admCardMsg', okMsg||'انجام شد', true);
+  return j;
+ }).catch(function(){ admSay('admCardMsg','ارتباط با برد برقرار نشد', false); return null; });
+}
+function admLogin(){
+ let pw=document.getElementById('admPass');
+ let pass=pw?pw.value:'';
+ if(!pass){ admSay('admMsg','رمز را بزن', false); return; }
+ admSay('admMsg','در حال بررسی...', true);
+ admCall('/login',{user:'admin', pass:pass}).then(function(x){
+  let j=x.body||{};
+  if(x.status===200 && j.ok===1){ admClose(); admUnlock(j.user||'admin'); showToast('دسترسی مدیر باز شد'); return; }
+  if(x.status===409){ admSay('admMsg','یک نشست باز است؛ چند دقیقه بعد دوباره تلاش کن', false); return; }
+  admSay('admMsg','رمز نادرست است', false);
+ }).catch(function(){ admSay('admMsg','ارتباط با برد برقرار نشد', false); });
+}
+function admLogout(){
+ admCall('/logout',{}).then(function(){ admLock(); showToast('از حالت مدیر خارج شد'); })
+ .catch(function(){ admLock(); });
+}
+/* پیش از پرسیدن رمز، نگاه می‌کنیم شاید نشست مدیر هنوز باز باشد */
+function admProbe(){
+ admCall('/clock',{}).then(function(x){
+  if(x.status===200){ admUnlock('ادمین'); return; }
+  admOpen();
+ }).catch(function(){ admOpen(); });
+}
+function admClock(){
+ let ts=Math.floor(Date.now()/1000), tz=-new Date().getTimezoneOffset()*60;
+ admCall('/time',{ts:ts}).then(function(x){
+  if(x.status===403){ admLock(); admSay('admCardMsg','نشست مدیر تمام شد', false); return null; }
+  return admCall('/clock',{tz:tz});
+ }).then(function(x){
+  if(!x) return;
+  if(x.status===200) admSay('admCardMsg','ساعت برد با این گوشی هم‌گام شد', true);
+  else admSay('admCardMsg','تنظیم ساعت انجام نشد', false);
+ }).catch(function(){ admSay('admCardMsg','ارتباط با برد برقرار نشد', false); });
+}
+function admWifi(){
+ let ssid=document.getElementById('admSsid'), pass=document.getElementById('admWpass');
+ let v1=ssid?ssid.value.trim():'', v2=pass?pass.value:'';
+ if(!v1){ admSay('admCardMsg','نام وای‌فای را بنویس', false); return; }
+ if(v2.length<8){ admSay('admCardMsg','رمز وای‌فای باید ۸ کاراکتر یا بیشتر باشد', false); return; }
+ admPost('/wifi',{ssid:v1, pass:v2}, 'وای‌فای ذخیره شد').then(function(j){
+  if(j && pass) pass.value='';
+ });
+}
+function admPass(){
+ let o=document.getElementById('admOld'), n1=document.getElementById('admNew'), n2=document.getElementById('admNew2');
+ let v0=o?o.value:'', v1=n1?n1.value:'', v2=n2?n2.value:'';
+ if(v1.length<4){ admSay('admCardMsg','رمز تازه باید ۴ کاراکتر یا بیشتر باشد', false); return; }
+ if(v1!==v2){ admSay('admCardMsg','رمز تازه و تکرارش یکی نیست', false); return; }
+ admPost('/setpass',{old:v0, new:v1, new2:v2}, 'رمز مدیر عوض شد').then(function(j){
+  if(j){ [o,n1,n2].forEach(function(el){ if(el) el.value=''; }); }
+ });
+}
+function admClear(){
+ let sel=document.getElementById('admClearType');
+ let t=sel?sel.value:'all';
+ admPost('/clear',{type:t}, 'تاریخچه پاک شد');
 }
 /* ==================== رسم دوباره پس از تغییر اندازه یا آمدن فونت ====================
    اگر صفحه بچرخد یا فونت دیر برسد، عددهای محور باید دوباره و تیز نوشته شوند. */

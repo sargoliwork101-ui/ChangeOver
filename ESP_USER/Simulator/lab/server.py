@@ -502,12 +502,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.route("POST")
     def session_ok(self):
+        # مثل خود برد: پس از خروج یا پایان نشست، توکن پاک می‌شود و کوکی قدیمی
+        # دیگر پذیرفته نیست (وگرنه پس از «خروج» هم کارهای مدیر اجرا می‌شد).
+        if BOARD.session is None:
+            return False
+        if time.time() - BOARD.session_start > SESSION_TIMEOUT_S:
+            return False
         cookie = self.headers.get("Cookie") or ""
         for part in cookie.split(";"):
             name, _, value = part.strip().partition("=")
             if name == SESSION_COOKIE and value == SESSION_TOKEN:
-                if time.time() - BOARD.session_start > SESSION_TIMEOUT_S:
-                    return False
                 return True
         return False
     def send(self, result):
