@@ -762,7 +762,7 @@ function main() {
             {
                 const newer = "1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,80,0,23000,12100,1200,1100,450,300";
                 const older = "1792756200,12,0,5,1,2,1,3,0,0,23800,23760,23840,80,0,23000,12100,1200,1100,450,300";
-                w.evtRender(newer + "\n" + older, "");
+                w.evtRender(older + "\n" + newer, "");
                 const sel = () => d.querySelectorAll("#evtlist tr.sel");
                 const chg = (i5) => cells(i5).filter(td => td.classList.contains("chg")).length;
                 const top = rows()[0];
@@ -793,6 +793,36 @@ function main() {
                 check(chg(0) === 0 && chg(1) === 0,
                       "and paints nothing, because there is no older step to compare with",
                       chg(0) + "/" + chg(1));
+                /*
+ * [EN] v1.126 (audit finding): restoring a cell used to write plain text into
+ *      it, so the bidi span the page wrapped around every number was destroyed
+ *      by the first click and never came back - three spans lost per click.
+ *      A selected cell must return to exactly the markup it had.
+ * [FA] نسخهٔ ۱٫۱۲۶ (یافتهٔ ممیزی): بازگرداندن خانه با متن ساده انجام می‌شد و
+ *      span دوسویه‌ای که دور هر عدد بود را برای همیشه پاک می‌کرد. خانهٔ آزادشده
+ *      باید دقیقاً همان مارک‌آپ اولش را پس بگیرد.
+ */
+                {
+                    const pairNew = "1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300";
+                    const pairOld = "1792756200,12,0,5,1,2,1,3,0,0,23800,23760,23840,20,0,23000,12100,1200,1100,450,300";
+                    w.evtRender(pairOld + "\n" + pairNew, "");
+                    const numericLt = () => rows().reduce((n, r2) => n + [...r2.querySelectorAll("td")].slice(2)
+                        .reduce((m, td) => m + td.querySelectorAll(".lt").length, 0), 0);
+                    const fresh = numericLt();
+                    rows()[0].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                    const hot = cells(0)[2];
+                    check(hot.classList.contains("chg") && hot.innerHTML.indexOf('class="lt"') >= 0,
+                          "a highlighted cell keeps its bidi span around the number",
+                          hot.innerHTML);
+                    rows()[1].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                    check(numericLt() === fresh,
+                          "releasing the row gives every bidi span back",
+                          fresh + " -> " + numericLt());
+                    check(cells(0)[2].innerHTML.indexOf('class="lt"') >= 0 &&
+                          cells(0)[2].textContent.trim() === "24.00",
+                          "and the released cell is the original markup and the original value again",
+                          cells(0)[2].innerHTML + " / " + cells(0)[2].textContent.trim());
+                }
                 const css2 = [...d.querySelectorAll("style")].map(s2 => s2.textContent).join("\n");
                 check(/\.evttbl[^{]*td\.chg\{[^}]*#a3ff3c/i.test(css2) ||
                       /\.evttbl[^{]*td\.chg\{[^}]*#c6ff3c/i.test(css2),
@@ -877,10 +907,34 @@ function main() {
             check(row.indexOf("33.333%") < 0,
                   "the old thirds rule is gone, the row is centred now", row);
         }
+        /*
+ * [EN] v1.126: the "N rows were lost" warning must survive the v1.121 move of
+ *      the status line into the table renderer - it is the only place the board
+ *      admits it could not store a row. The fetch is asynchronous, so this is a
+ *      promise the final block waits for before it prints the verdict.
+ * [FA] نسخهٔ ۱٫۱۲۶: هشدار «N ردیف از دست رفت» باید بعد از انتقال خط وضعیت به
+ *      رندر جدول هم زنده بماند؛ تنها جایی که برد اعتراف می‌کند ردیفی را ذخیره
+ *      نکرده همین است. گرفتن داده ناهمگام است، پس این یک Promise است و بلوک
+ *      پایانی پیش از چاپ نتیجه منتظرش می‌ماند.
+ */
+        const lostCheck = (async () => {
+            const savedHttp = w.evtHttp;
+            w.evtHttp = async () => ({
+                ok: true,
+                headers: { get: (h) => (h === "X-Log-Lost" ? "4" : (h === "X-Log-Fs" ? "1" : null)) },
+                text: async () => "1792756800,12,0,5,1,1,3,0,0,0,24000,23960,24040,20,0"
+            });
+            await w.evtfetch(0);
+            const line = d.getElementById("evtst").textContent;
+            check(line.indexOf("از دست رفت") >= 0 && line.indexOf("۴") >= 0,
+                  "rows the board could not store are still counted in the status line", line);
+            w.evtHttp = savedHttp;
+        })();
+
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
             const p1 = w.pmConfirm("تست کادر");
-            setTimeout(() => {
+            setTimeout(async () => {
                 check(pm.classList.contains("on") && d.getElementById("pmt").textContent === "تست کادر",
                       "pmConfirm opens the panel's own dialog with the text");
                 press("Enter");
@@ -890,8 +944,9 @@ function main() {
                 const p2 = w.pmConfirm("تست لغو");
                 setTimeout(() => press("Escape"), 30);
                 return p2;
-            }).then((v) => {
+            }).then(async (v) => {
                 check(v === false && !pm.classList.contains("on"), "Escape cancels the confirm dialog");
+                await lostCheck;
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

@@ -414,7 +414,6 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evttbl tbody tr.evtrow{cursor:pointer}
 .evttbl tbody tr.sel{outline:1px solid rgba(163,255,60,.55);outline-offset:-1px;background:rgba(163,255,60,.07)}
 .evttbl tbody td.chg{color:#a3ff3c;font-weight:700;background:rgba(163,255,60,.13);text-shadow:0 0 7px rgba(163,255,60,.55)}
-.evttbl tbody td.chg b{color:#a3ff3c}
 #evtpage{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin-top:8px}
 #evtpage .sb{flex:0 0 auto;min-width:64px;text-align:center}
 #evtpage #evtpv,#evtpage #evtnx{font-weight:700;letter-spacing:2px}
@@ -547,7 +546,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9d1ee20</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e82867b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -4497,7 +4496,6 @@ function evtPager(){
  *      می‌شود تا روی گوشی هم - که tooltip ندارد - خوانده شود. مقایسه با عدد
  *      انجام می‌شود نه با متنِ چاپ‌شده.
  */
-let EVT_SEL=null;
 function evtPick(tr){
   if(!tr||!tr.parentNode)return 0;
   const body=tr.parentNode;
@@ -4505,12 +4503,17 @@ function evtPick(tr){
     x.classList.remove('sel');
     [...x.querySelectorAll('td.chg')].forEach(function(td){
       td.classList.remove('chg');
-      if(td.dataset.v0!=null){td.textContent=td.dataset.v0;delete td.dataset.v0;}
+      /* [EN] v1.126 (audit finding): the cell is put back from the markup it was
+              built with, not from its text - writing text here threw away the
+              bidi span around every number for good.
+         [FA] نسخهٔ ۱٫۱۲۶ (یافتهٔ ممیزی): خانه از همان مارک‌آپی که ساخته شده بود
+              برمی‌گردد، نه از متنش؛ نوشتن متن، span دوسویهٔ هر عدد را برای همیشه
+              دور می‌ریخت. */
+      if(td._h0!=null){td.innerHTML=td._h0;delete td._h0;}
       td.removeAttribute('title');
     });
   });
   tr.classList.add('sel');
-  EVT_SEL=tr;
   const below=tr.nextElementSibling;
   if(!below)return 0;
   const now=[...tr.querySelectorAll('td')],was=[...below.querySelectorAll('td')];
@@ -4520,10 +4523,10 @@ function evtPick(tr){
     if(b===''||a===b||a==='\u2014'||b==='\u2014')continue;
     const na=parseFloat(a),nb=parseFloat(b);
     if(isFinite(na)&&isFinite(nb)&&na===nb)continue;
-    now[k].dataset.v0=a;
+    now[k]._h0=now[k].innerHTML;
     now[k].classList.add('chg');
-    now[k].textContent=a+(isFinite(na)&&isFinite(nb)?(na>nb?' \u25b2':'\u25bc'):'');
-    now[k].setAttribute('title','پلهٔ پایین‌تر: '+b+' \u2192 این پله: '+a);
+    now[k].innerHTML='<span class="lt">'+esc(a)+(isFinite(na)&&isFinite(nb)?(na>nb?' ▲':'▼'):'')+'</span>';
+    now[k].setAttribute('title','پلهٔ پایین‌تر: '+b+' → این پله: '+a);
     changed++;
   }
   return changed;
