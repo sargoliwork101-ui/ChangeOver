@@ -995,9 +995,12 @@ function main() {
             w.evtRender(pairOld + "\n" + pairNew, "");
             pRows3()[0].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
             const keptSel = selN(), keptChg = chgN();
+            /* the board has nothing new to say, so this tick must not redraw at
+               all; the repaint path is covered by the liveCheck block below */
+            body = pairOld + "\n" + pairNew;
             await w.evtTick();
             check(keptSel === 1 && selN() === 1 && keptChg > 0 && chgN() === keptChg,
-                  "a row the reader picked keeps its selection and its phosphor cells through the tick",
+                  "a picked row keeps its selection and its phosphor cells when the tick brings nothing new",
                   selN() + " sel / " + chgN() + " chg");
             /* 3) the plain tail view still refreshes, but an identical answer is
                   not repainted (that redraw is what looked like a page refresh) */
@@ -1020,6 +1023,74 @@ function main() {
             w.evtHttp = savedHttp;
             w.evtDays = savedDays;
         });
+        /*
+ * [EN] v1.127 audit (the fix itself put under the same question the owner
+ *      asked): stopping the tick while a row is picked would cure the jump by
+ *      freezing the card forever, and nothing on screen can un-pick a row. The
+ *      reader's state therefore has to SURVIVE a repaint, not block it: a new
+ *      row must still arrive, the picked row must keep its selection and its
+ *      phosphor cells, and a second click must release it.
+ * [FA] ممیزی نسخهٔ ۱٫۱۲۷ (همان پرسشی که کاربر پرسید، این بار روی خودِ درمان):
+ *      متوقف‌کردن تیک وقتی ردیفی انتخاب شده، «پریدن» را با «قفل‌شدن همیشگی»
+ *      عوض می‌کند و هیچ‌جای صفحه هم ردیف را آزاد نمی‌کند. پس حالت کاربر باید
+ *      از بازکشیدن جان سالم ببرد، نه آن را ممنوع کند: ردیف تازه باید برسد،
+ *      ردیف انتخاب‌شده انتخاب و خانه‌های فسفری‌اش را نگه دارد، و کلیک دوم
+ *      آزادش کند.
+ */
+        const liveCheck = tickCheck.then(async () => {
+            const pRows4 = () => [...d.querySelectorAll("#evtlist .evtrow")];
+            const selN4 = () => d.querySelectorAll("#evtlist tr.sel").length;
+            const chgN4 = () => d.querySelectorAll("#evtlist td.chg").length;
+            const savedHttp = w.evtHttp;
+            const savedDays = w.evtDays;
+            let fetches = 0;
+            let body = "";
+            w.evtDays = async () => {};
+            w.evtHttp = async () => {
+                fetches++;
+                return {
+                    ok: true,
+                    headers: { get: (h) => (h === "X-Log-Fs" ? "1" : (h === "X-Log-Lost" ? "0" : null)) },
+                    text: async () => body
+                };
+            };
+            const o = "1792756200,12,0,5,1,2,1,3,0,0,23800,23760,23840,20,0,23000,12100,1200,1100,450,300";
+            const n1 = "1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300";
+            const n2 = "1792757400,14,1024,0,1,2,1,3,0,0,24300,24260,24340,20,0,23000,12100,1200,1100,450,300";
+            body = o + "\n" + n1;
+            await w.evtfetch(0);
+            pRows4()[0].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+            const pickedSel = selN4(), pickedChg = chgN4();
+            const pickedKey = pRows4()[0].dataset.k || "";
+            /* 1) a new row arrives while a row is picked */
+            body = o + "\n" + n1 + "\n" + n2;
+            await w.evtTick();
+            check(pRows4().length === 3 && pRows4()[0].textContent.indexOf("24.30") >= 0,
+                  "a picked row does not stop the live tail: the new row still arrives",
+                  pRows4().length + " rows / " + pRows4()[0].textContent.slice(0, 22));
+            /* 2) and the picked row kept its selection and its phosphor cells */
+            const still = pRows4().find(r => r.dataset.k === pickedKey);
+            check(!!still && still.classList.contains("sel") && selN4() === pickedSel &&
+                  chgN4() === pickedChg,
+                  "the picked row survives the repaint with its selection and its phosphor cells",
+                  (still ? still.dataset.k : "row gone") + " / " + selN4() + " sel / " + chgN4() + " chg");
+            check(!!still && still.querySelectorAll("td.chg").length > 0 &&
+                  [...still.querySelectorAll("td.chg")].every(td => td.innerHTML.indexOf('class="lt"') >= 0),
+                  "and every highlighted cell still carries its own bidi span");
+            /* 3) a second click on the same row releases it */
+            if (still) { still.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); }
+            check(!!still && selN4() === 0 && chgN4() === 0,
+                  "a second click on the picked row releases it",
+                  selN4() + " sel / " + chgN4() + " chg");
+            /* 4) and a released row does not come back on the next repaint */
+            body = o + "\n" + n1 + "\n" + n2 + "\n" + "1792758000,14,1024,0,1,2,1,3,0,0,24300,24260,24340,20,0,23000,12100,1200,1100,450,300";
+            await w.evtTick();
+            check(selN4() === 0 && chgN4() === 0 && pRows4().length === 4,
+                  "the release sticks: the next tick repaints without a selection",
+                  selN4() + " sel / " + pRows4().length + " rows");
+            w.evtHttp = savedHttp;
+            w.evtDays = savedDays;
+        });
 
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
@@ -1038,6 +1109,7 @@ function main() {
                 check(v === false && !pm.classList.contains("on"), "Escape cancels the confirm dialog");
                 await lostCheck;
                 await tickCheck;
+                await liveCheck;
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

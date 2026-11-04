@@ -546,7 +546,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5c5bc07</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1c0059c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -4451,8 +4451,10 @@ const xspr=(s,c,tip)=>s.split(' · ').map(x=>'<span class="'+c+'" title="'+
  */
 let evtRows=[],evtFrom=0,evtWhole=false,evtAll=false,evtPicked=false;
 /* [EN] v1.127: the answer currently drawn (see evtRender).
-   [FA] نسخهٔ ۱٫۱۲۷: پاسخی که همین حالا روی صفحه است. */
-let evtKey='';
+   v1.128: the name of the picked row, so a repaint can find it again.
+   [FA] نسخهٔ ۱٫۱۲۷: پاسخی که همین حالا روی صفحه است.
+   نسخهٔ ۱٫۱۲۸: نام ردیف انتخاب‌شده، تا بازکشیدن دوباره پیدایش کند. */
+let evtKey='',evtSelKey='';
 let evtFsWarn='',evtGap='',evtWhere='',evtDayLab='';
 const EVT_PAGE=30;
 function evtParseAll(text){
@@ -4471,9 +4473,16 @@ const EVT_COLS=[['ساعت','ساعت رویداد — از گوشی یا کام
  ['D۱ ٪','درصد فرمان PWM کانال ۱'],
  ['D۲ ٪','درصد فرمان PWM کانال ۲'],
  ['باتری ٪','درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵)']];
+/* [EN] v1.128: epoch+uptime is the row's name - unique inside a day, and the
+        same name before and after a repaint, which is what lets a tick rebuild
+        the table without taking the reader's picked row away from him.
+   [FA] نسخهٔ ۱٫۱۲۸: epoch+uptime نام ردیف است - در یک روز یکتاست و پیش و پس از
+        بازکشیدن یکی می‌ماند؛ همین است که تیک می‌تواند جدول را از نو بسازد بی‌آنکه
+        ردیف انتخاب‌شدهٔ کاربر را از او بگیرد. */
+const evtRowKey=r=>r.epoch+':'+r.uptime;
 function evtLine(r){
   const t=evtRowText(r);
-  return '<tr class="evtrow lv'+t.lv+'" onclick="evtPick(this)"><td class="evtt">'+xiso(t.time)+'</td>'+
+  return '<tr class="evtrow lv'+t.lv+'" data-k="'+evtRowKey(r)+'" onclick="evtPick(this)"><td class="evtt">'+xiso(t.time)+'</td>'+
          '<td class="evtd">'+xspr(t.txt,'ep')+'</td>'+
          evtCols(r).map(x=>'<td>'+xiso(x)+'</td>').join('')+'</tr>';
 }
@@ -4502,6 +4511,12 @@ function evtPager(){
 function evtPick(tr){
   if(!tr||!tr.parentNode)return 0;
   const body=tr.parentNode;
+  /* [EN] v1.128: tapping the picked row again lets it go. Without this the
+          reader had no way back to a live, updating card.
+     [FA] نسخهٔ ۱٫۱۲۸: کلیک دوباره روی همان ردیف آزادش می‌کند؛ وگرنه کاربر
+          هیچ راهی برای برگشتن به کارتِ زندهٔ در حال به‌روزرسانی نداشت. */
+  const again=tr.classList.contains('sel');
+  evtSelKey='';
   [...body.querySelectorAll('tr.evtrow')].forEach(function(x){
     x.classList.remove('sel');
     [...x.querySelectorAll('td.chg')].forEach(function(td){
@@ -4516,7 +4531,9 @@ function evtPick(tr){
       td.removeAttribute('title');
     });
   });
+  if(again)return 0;
   tr.classList.add('sel');
+  evtSelKey=tr.dataset.k||'';
   const below=tr.nextElementSibling;
   if(!below)return 0;
   const now=[...tr.querySelectorAll('td')],was=[...below.querySelectorAll('td')];
@@ -4559,6 +4576,16 @@ function evtPaint(){
     EVT_COLS.map(c=>'<th title="'+esc(c[1])+'">'+xiso(c[0])+'</th>').join('')+
     '</tr></thead><tbody>'+
     evtRows.slice(from,end).reverse().map(evtLine).join('')+'</tbody></table>';
+  /* [EN] v1.128: the table is new, the reader's place is not. If the row he
+          picked is still in this window it is picked again - same selection,
+          same phosphor cells - so a tick can repaint without moving anything.
+     [FA] نسخهٔ ۱٫۱۲۸: جدول نو است، جای کاربر نه. اگر ردیفی که انتخاب کرده در
+          همین پنجره هست دوباره انتخاب می‌شود - همان انتخاب، همان خانه‌های فسفری -
+          تا تیک بتواند از نو بسازد بی‌آنکه چیزی را جابه‌جا کند. */
+  if(evtSelKey){
+    const back=box.querySelector('tr.evtrow[data-k="'+evtSelKey+'"]');
+    if(back)evtPick(back);else evtSelKey='';
+  }
 }
 /* The board's answer is a TAIL: 30 rows, never the whole day. */
 function evtRender(text,code,ram,src){
@@ -4781,20 +4808,21 @@ async function evtclr(){
 /* [EN] v1.127 (user report: "I click a row or page back, and every few seconds
         it jumps away"). The tick asked for /evt - a 30-row tail - and repainted
         the card, so the turned page, the picked row and its phosphor cells were
-        lost every 10 s. evtReading() names the two states in which the card is
-        the reader's: a whole day file is open, or a row is picked. There only
-        the DAY LIST is refreshed; back on the plain tail the rows refresh too.
+        lost every 10 s. v1.128 finishes the job: only a DAY FILE being browsed
+        makes the tick step back (the tail cannot describe that window at all),
+        and a picked row no longer freezes anything - evtPaint puts it back by
+        name, so the rows keep arriving AND the selection stays.
    [FA] نسخهٔ ۱٫۱۲۷ (گزارش کاربر): تیک، /evt را می‌گرفت که ۳۰ ردیف آخر است و
         کارت را از نو می‌ساخت؛ پس صفحهٔ ورق‌خورده، ردیف انتخاب‌شده و خانه‌های
-        فسفری هر ۱۰ ثانیه می‌رفت. تا وقتی کارت در اختیار کاربر است فقط لیست
-        روزها تازه می‌شود؛ در تیل ساده ردیف‌ها هم. */
-function evtReading(){
-  return evtWhole||evtAll||!!document.querySelector('#evtlist tr.sel');
-}
+        فسفری هر ۱۰ ثانیه می‌رفت. نسخهٔ ۱٫۱۲۸ کار را تمام می‌کند: فقط وقتی
+        فایل یک روز ورق می‌خورد تیک کنار می‌کشد (تیل آن پنجره را نمی‌تواند
+        توصیف کند) و ردیف انتخاب‌شده دیگر چیزی را قفل نمی‌کند - evtPaint آن را با
+        نامش برمی‌گرداند؛ هم ردیف‌ها می‌رسند، هم انتخاب می‌ماند. */
+function evtBrowsing(){return evtWhole||evtAll;}
 async function evtTick(){
   if(document.hidden||evtBusy)return;
   evtBusy=true;
-  try{await evtDays();if(evtReading())return;await evtfetch(0);}finally{evtBusy=false;}
+  try{await evtDays();if(evtBrowsing())return;await evtfetch(0);}finally{evtBusy=false;}
 }
 evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
