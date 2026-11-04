@@ -329,35 +329,12 @@ code,pre,.mono{font-family:Vazirmatn !important}
 .m{display:inline-block;margin:1px 2px;padding:1px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:11px}
 .evtt{color:var(--mu);white-space:nowrap;min-width:58px}
 .evtd{flex:1}
-.evtv{color:var(--mu)}
 </style>
 </head>
 <body data-theme="0">
-<div id="loginPage" style="position:fixed;inset:0;z-index:100;background:radial-gradient(800px 400px at 50% -100px,var(--acbg),transparent 60%),var(--bg);display:none;place-items:center;padding:20px">
- <div class="cd login-box login-animate" style="width:100%;max-width:400px;margin:0;box-shadow:var(--sh);border:1px solid var(--ln2)">
-  <div style="text-align:center;margin-bottom:20px">
-   <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:20px;margin:0 auto 12px;box-shadow:var(--acglow)">CO</div>
-   <div style="font-size:16px;font-weight:900;letter-spacing:-.2px">ChangeOver</div>
-   <div style="font-size:11px;color:var(--mu);margin-top:4px;letter-spacing:.5px">SMART BATTERY • قفل تغییرات</div>
-  </div>
-  <div class="ti">تأیید مدیر برای تغییر</div>
-  <div style="font-size:11.5px;color:var(--mu);line-height:1.8;margin:0 0 12px;text-align:center">دیدن پنل آزاد است. برای هر تغییری رمز مدیر لازم است.</div>
-  <div class="form">
-   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">کاربر</span><div style="padding:10px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--in);font-weight:800" id="loginUserMain">admin</div></div>
-   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز مدیر</span><div class="pass-wrap"><input id="loginPassMain" type="password" placeholder="••••••••"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPassMain',this)">👁</button></div></div>
-   <div class="row2" style="margin-top:4px">
-    <button class="btn pri" onclick="mdLogin()">تأیید و ادامه</button>
-    <button class="btn sec" onclick="cancelLogin()">انصراف</button>
-   </div>
-   <div id="loginMsgMain" style="font-size:12px;color:var(--mu);text-align:center;min-height:18px"></div>
-   <div id="recoveryMsgMain" class="bdg warn" style="display:none;margin:8px auto 0;text-align:center;line-height:1.7;font-size:11px">بازیابی انجام شد - رمز به پیش‌فرض برگشت: admin / admin - بعد از ورود، رمز را عوض کنید</div>
-   <div style="font-size:10.5px;color:var(--mu2);text-align:center;margin-top:8px;line-height:1.6">پیش‌فرض: رمز <b style="color:var(--tx)">admin</b> - تنهاترین کاربر همین است</div>
-  </div>
- </div>
-</div>
 <header>
  <div class="brand"><div class="brand-mark">CO</div><div class="brand-text"><b>ChangeOver</b><span>SMART BATTERY • INDUSTRIAL</span></div></div>
- <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span><button class="btn pri" id="btnAdminIn" style="padding:5px 12px;font-size:11px;min-height:30px;display:none" onclick="askAdmin('برای تغییر رمز مدیر لازم است')">ورود مدیر</button><button class="btn sec" id="btnAdminOut" style="padding:5px 12px;font-size:11px;min-height:30px;display:none" onclick="doLogout()">خروج</button></div>
+ <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span></div>
 </header>
 <nav>
  <button id="tab0" class="a" onclick="showTab(0)">وضعیت</button>
@@ -520,7 +497,6 @@ code,pre,.mono{font-family:Vazirmatn !important}
     <span class="bdg" id="pctRangeInfo">--</span>
     <span style="display:flex;gap:6px;margin-right:auto">
      <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('pct')">خروجی CSV</button>
-     <button class="btn danger" id="clearPctBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charts')">پاک کردن</button>
     </span>
    </div>
   </div>
@@ -541,7 +517,6 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div id="cChargeLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
     <span style="font-size:11px;color:var(--mu)">لیست ۲۰ شارژ آخر</span>
-    <button class="btn danger" id="clearChargeBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
    </div>
    <div style="display:flex;gap:6px;margin-top:10px">
     <button class="btn" title="دانلود خروجی CSV تاریخچه شارژ" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('charge')">خروجی CSV</button>
@@ -574,75 +549,21 @@ code,pre,.mono{font-family:Vazirmatn !important}
  </div>
 
  <div id="pg2" class="pgx">
-  <div class="cd" id="adminHintCard">
-   <div class="ti">تغییر تنظیمات</div>
-   <div style="font-size:11.5px;color:var(--mu);line-height:1.8;margin-bottom:10px">همهٔ کارت‌های این صفحه دیده می‌شوند. دکمه‌های تغییر، رمز مدیر را می‌پرسند و تا ۳۰ دقیقه به یاد می‌مانند.</div>
-   <button class="btn pri" onclick="askAdmin('برای تغییر رمز مدیر لازم است')">تأیید مدیر</button>
-  </div>
-
   <div id="settingsContent" style="display:grid;gap:16px">
    <div class="cd">
-    <div class="ti">وای‌فای - نام و رمز - فقط ادمین</div>
+    <div class="ti">وای‌فای</div>
     <div class="form">
-     <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
-     <div class="kv" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">رمز فعلی</span><span style="display:flex;align-items:center;gap:8px"><b id="wifiCurrentPass" style="font-family:Vazirmatn">••••••••</b><button class="eye-btn" type="button" title="نمایش رمز" onclick="toggleWifiPass(this)">👁</button></span></div>
-     <input id="wifiNewSsid" placeholder="نام وای‌فای جدید - مثل changeover_userpannel" maxlength="32">
-     <div class="pass-wrap"><input id="wifiNewPass" type="password" placeholder="رمز جدید - حداقل ۸ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('wifiNewPass',this)">👁</button></div>
-     <button class="btn pri" onclick="setWifi()">ذخیره وای‌فای - نیاز به ریستارت برد</button>
-     <div id="wifiMsg" style="font-size:11px;color:var(--mu);line-height:1.6">بعد از ذخیره، برد را خاموش و روشن کنید تا با نام جدید بالا بیاید</div>
+     <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
+     <div style="font-size:11px;color:var(--mu);line-height:1.6">تغییر نام و رمز وای‌فای از این پنل انجام نمی‌شود.</div>
     </div>
    </div>
 
    <div class="cd">
-    <div class="ti">همگام‌سازی ساعت برد</div>
+    <div class="ti">ساعت برد</div>
     <div class="form">
      <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:Vazirmatn">--</b></div>
      <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:Vazirmatn">--</b></div>
-     <button class="btn pri" onclick="syncTime()">ارسال ساعت گوشی به برد (ادمین)</button>
-     <div id="timeMsg" style="font-size:12px;color:var(--mu)"></div>
-    </div>
-   </div>
-
-   <div class="cd">
-    <div class="ti">تغییر رمز مدیر</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:10px">تنها کاربر این پنل admin است. برای عوض کردن رمزش، رمز فعلی لازم است. رمز جدید حداقل ۴ کاراکتر.</div>
-    <div class="form">
-     <div style="padding:10px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--in);font-weight:800">کاربر: admin</div>
-     <div class="pass-wrap"><input id="setPassOld" type="password" placeholder="رمز فعلی" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassOld',this)">👁</button></div>
-     <div class="pass-wrap"><input id="setPassNew" type="password" placeholder="رمز جدید - حداقل ۴ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew',this)">👁</button></div>
-     <div class="pass-wrap"><input id="setPassNew2" type="password" placeholder="تکرار رمز جدید" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew2',this)">👁</button></div>
-     <button class="btn pri" onclick="setPass()">تغییر رمز عبور</button>
-     <div id="setPassMsg" style="font-size:12px;color:var(--mu);min-height:18px"></div>
-    </div>
-   </div>
-
-   <div class="cd" id="clearHistoryCard" style="display:none">
-    <div class="ti">پاک‌سازی تاریخچه - فقط ادمین</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">تاریخچه‌های ذخیره شده در حافظه داخلی ESP را پاک می‌کند - این عمل غیرقابل بازگشت است</div>
-    <div class="form">
-     <div class="row2">
-      <button class="btn danger" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
-      <button class="btn danger" onclick="clearHistory('charts')">پاک کردن نمودارها</button>
-     </div>
-     <div class="row2">
-      <button class="btn danger" onclick="clearHistory('diag')">پاک کردن خطاها و قطعی‌ها</button>
-      <button class="btn danger" style="background:var(--er);color:#fff;border-color:var(--er)" onclick="clearHistory('all')">پاک کردن همه تاریخچه‌ها</button>
-     </div>
-     <div id="clearMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
-    </div>
-   </div>
-
-   <div class="cd" id="latchCard" style="display:none">
-    <div class="ti">ریست قفل‌ها - فقط ادمین</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">قفل عدم‌توازن و حکم‌های «باتری خراب» و «باتری ضعیف» با حافظه کار می‌کنند و با خاموش/روشن شدن پاک نمی‌شوند. از اینجا پاکشان کنید تا خطا برود و شمارش از صفر شروع شود.</div>
-    <div class="form">
-     <div class="row2">
-      <button class="btn danger" onclick="latchReset(5)">ریست قفل عدم‌توازن و شمارنده‌ها</button>
-      <button class="btn danger" onclick="latchReset(6)">ریست حکم باتری خراب</button>
-      <button class="btn danger" onclick="latchReset(8)">ریست حکم باتری ضعیف</button>
-     </div>
-     <div id="latchState" style="font-size:12px;color:var(--mu);line-height:1.9;margin-top:6px;text-align:center">—</div>
-    <div id="latchMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
+     <div style="font-size:11px;color:var(--mu);line-height:1.6">تنظیم ساعت از این پنل انجام نمی‌شود.</div>
     </div>
    </div>
 
@@ -659,11 +580,9 @@ code,pre,.mono{font-family:Vazirmatn !important}
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
    <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
-   <button class="btn" type="button" onclick="evtSnap()">به‌روزرسانی</button>
    <button class="btn" type="button" onclick="evtFs(1)">حافظهٔ ESP</button>
    <button class="btn" type="button" onclick="evtDl()">دانلود این روز</button>
    <button class="btn" type="button" onclick="evtDlAll()">دانلود همهٔ روزها</button>
-   <button class="btn" type="button" onclick="evtClear()">پاک کردن</button>
   </div>
   <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
   <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
@@ -675,8 +594,6 @@ code,pre,.mono{font-family:Vazirmatn !important}
 <div id="toastMsg" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span></div>
 </main>
 <script>
-let gUser='', gRole=false, loginWaiter=null;
-let gWifiPass='', gWifiShown=false;
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
@@ -1569,12 +1486,6 @@ function render(data){
   else if(!charging && sameState && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
   else { setCls(ib,'imb'); setTxt('imbBox',''); }
  }
- /* وضعیت زندهٔ سه قفل در کارت «قفل‌ها» — همان بیت‌های فریم زنده */
- {let ls=document.getElementById('latchState');
-  if(ls){
-   const lat=v=>'<b style="color:'+(v?'#e05252':'#2ea36b')+'">'+(v?'قفل است':'پاک است')+'</b>';
-   ls.innerHTML='عدم‌توازن: '+lat(isImbLatched)+' · باتری خراب: '+lat(isDead)+' · باتری ضعیف: '+lat(isWeak);
-  }}
  let bIn=document.getElementById('bdgInput');
  if(bIn){
   if(inputOV){ setHtml('bdgInput','<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg err'); }
@@ -1645,26 +1556,10 @@ function render(data){
  setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ در بازهٔ ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':''));
  setCls(document.getElementById('hdrDot'), 'dot '+(data.on?'on':''));
  setTxt('hdrText', data.on?'متصل':'قطع');
- setTxt('hdrUser', data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'');
- /* فرم تغییر رمز: نام کاربری پیش‌فرض = همان کاربر واردشده */
  /* دیدن پنل آزاد است؛ صفحهٔ رمز فقط وقتی باز می‌شود که کاربری تغییری بخواهد */
- gUser=data.user||''; gRole=(data.user && data.role==1);
- { let lp=document.getElementById('loginPage'); if(lp && loginWaiter===null) lp.style.display='none'; }
  document.body.style.overflow='';
- { let bi=document.getElementById('btnAdminIn'), bo=document.getElementById('btnAdminOut');
-   if(bi) bi.style.display=gRole?'none':'inline-flex';
-   if(bo) bo.style.display=gRole?'inline-flex':'none'; }
  let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=fmtJalaliFull(Math.floor(Date.now()/1000));
  /* اگر در همین بوت رمزها به پیش‌فرض برگشته باشند، به کاربر گفته می‌شود */
- setShow('recoveryMsgMain', data.recovery==1);
- let clearCard=document.getElementById('clearHistoryCard');
- if(clearCard) clearCard.style.display='block';
- let clearPct=document.getElementById('clearPctBtn');
- if(clearPct) clearPct.style.display='inline-flex';
- let clearCharge=document.getElementById('clearChargeBtn');
- if(clearCharge) clearCharge.style.display='inline-flex';
- let latchCard=document.getElementById('latchCard');
- if(latchCard) latchCard.style.display='block';
 }
 
 /* ==================== ساعت‌های زندهٔ کارت آمار ====================
@@ -1734,151 +1629,11 @@ function renderDiag(j){
 async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
 async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
 
-async function clearHistory(type){
- if(!confirm('آیا مطمئن هستید؟ تاریخچه '+type+' پاک خواهد شد - غیرقابل بازگشت')) return;
- let msgEl=document.getElementById('clearMsg');
- try{
-  let r=await authFetch('/clear?type='+encodeURIComponent(type),{method:'POST'});
-  if(r.status===403){ if(msgEl) msgEl.textContent='بدون تأیید مدیر پاک نمی‌شود'; return; }
-  let j=await r.json();
-  if(j.ok){
-   if(msgEl) msgEl.textContent='تاریخچه '+type+' پاک شد';
-   if(type==='charge' || type==='all'){
-    window._lastChargeHistory=[];
-    drawChargeHistory([], chartRanges.charge); renderChargeHistoryList([]);
-   }
-   if(type==='charts' || type==='all'){
-    chartDataPct.pct=[]; chartDataPct.time=[];
-    chartDataVolt.vin=[]; chartDataVolt.vpack=[]; chartDataVolt.time=[];
-    drawChart('cPct', [], '#ffb84d', 0, 100, [], '1d');
-    drawVoltChart('cVolt', [], [], [], '1d');
-   }
-   if(type==='diag' || type==='all'){
-    let errDiv=document.getElementById('diagErrors'); if(errDiv) errDiv.textContent='خطایی ثبت نشده';
-    let pDiv=document.getElementById('powerLog'); if(pDiv) pDiv.textContent='قطعی ثبت نشده';
-   }
-  } else { if(msgEl) msgEl.textContent='خطا: '+(j.msg||'نامشخص'); }
- }catch(e){ if(msgEl) msgEl.textContent='خطا در ارتباط'; }
- setTimeout(()=>{ if(msgEl) msgEl.textContent=''; },3000);
-}
 
 /* ==================== قفل تغییرات ====================
    دیدن پنل بدون رمز آزاد است. هر تغییری اول رمز مدیر را می‌پرسد و
    تا پایان مهلت نشست (۳۰ دقیقه) دیگر نمی‌پرسد. */
-function showLogin(on, reason){
- let p=document.getElementById('loginPage'); if(!p) return;
- let m=document.getElementById('loginMsgMain'); if(m && reason) m.textContent=reason;
- p.style.display=on?'grid':'none';
- document.body.style.overflow=on?'hidden':'';
- if(on){ let i=document.getElementById('loginPassMain'); if(i){ i.value=''; setTimeout(()=>{ try{ i.focus(); }catch(e){} },60); } }
-}
-function askAdmin(reason){
- if(gRole) return Promise.resolve(true);
- return new Promise((resolve)=>{ try{ loginWaiter=resolve; }catch(e){} showLogin(true, reason||''); });
-}
-function cancelLogin(){
- showLogin(false,'');
- let w=loginWaiter; loginWaiter=null; if(w) w(false);
-}
-function finishLogin(ok){
- showLogin(false,'');
- let w=loginWaiter; loginWaiter=null;
- if(w) w(ok);
-}
-async function authFetch(url, opts){
- let o=opts||{};
- let r=await fetch(url,o);
- if(r.status===403){
-  const ok=await askAdmin('برای این تغییر رمز مدیر لازم است');
-  if(!ok) return r;
-  r=await fetch(url,o);
- }
- return r;
-}
-function mdLogin(){
- let p=document.getElementById('loginPassMain');
- let pass=(p&&p.value)||'';
- let m=document.getElementById('loginMsgMain');
- if(!pass){ if(m) m.textContent='رمز مدیر لازم است'; return; }
- fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:'admin',pass:pass})})
-  .then(r=>r.json().then(j=>({s:r.status,j:j})))
-  .then(o=>{
-   if(o.j && o.j.ok){
-    gUser=o.j.user||'admin'; gRole=(o.j.role==1);
-    let bi=document.getElementById('btnAdminIn'), bo=document.getElementById('btnAdminOut');
-    if(bi) bi.style.display='none'; if(bo) bo.style.display='inline-flex';
-    if(p) p.value='';
-    finishLogin(true); poll();
-   } else {
-    if(m) m.textContent=((o.j&&(o.j.msg||o.j.e))?'':'')+((o.j&&o.j.msg)?o.j.msg:(o.s===409?'یک ورود فعال هست؛ اول از دستگاه دیگر خارج شو':'رمز اشتباه است'));
-    let box=document.querySelector('#loginPage .login-box');
-    if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); }
-   }
-  })
-  .catch(()=>{ if(m) m.textContent='خطا در ارتباط'; });
-}
 /* ==================== خروج ==================== */
-function doLogout(){ fetch('/logout',{method:'POST'}).then(()=>{ location.reload(); }).catch(()=>{ location.reload(); }); }
-function showTab(n){ for(let i=0;i<3;i++){ let pg=document.getElementById('pg'+i), tb=document.getElementById('tab'+i); if(pg) pg.classList.toggle('a', i===n); if(tb) tb.classList.toggle('a', i===n); } if(n===1) pollCharts(); if(n===0) pollDiag(); }
-/* ریست قفل‌ها: درخواست به برد می‌رود و تأیید از پژواک REPORT خوانده می‌شود
-   (‎rep‎ بالاتر و مقدار صفر)؛ NAK یعنی برد نپذیرفت. فقط ادمین. */
-async function latchReset(n){
- let m=document.getElementById('latchMsg');
- if(!confirm(n===5?'قفل عدم‌توازن پاک شود و شمارنده‌ها از صفر شمرده شوند؟':n===6?'حکم «باتری خراب» پاک شود و شارژ آن کانال آزاد شود؟':'حکم «باتری ضعیف» پاک شود و یک بار وصل دوباره آزاد شود؟'))return;
- if(m)m.textContent='در حال ارسال…';
- const targetId=n===5?202:(n===6?203:204);
- const requiredEchoes=n===5?3:1;
- try{
-  const beforeResp=await fetch('/latch',{cache:'no-store'});
-  if(!beforeResp.ok)throw new Error('وضعیت فعلی قفل خوانده نشد؛ بعد از وصل لینک دوباره بزن');
-  const b=await beforeResp.json();
-  if(!Number.isFinite(Number(b.rep))||!Number.isFinite(Number(b.nak)))
-   throw new Error('وضعیت فعلی قفل ناقص است؛ بعد از وصل لینک دوباره بزن');
-  const postResp=await authFetch('/latch/reset?n='+n,{method:'POST'});
-  const j=await postResp.json();
-  if(!postResp.ok||!j.ok){ if(m)m.textContent=(j.e===1?'صف پر است؛ چند لحظه بعد دوباره بزن':'درخواست رد شد - فقط ادمین'); return; }
-  for(let k=0;k<25;k++){
-   await new Promise(r=>setTimeout(r,200));
-   const resp=await fetch('/latch',{cache:'no-store'});
-   if(!resp.ok)continue;
-   const st=await resp.json();
-   if(Number(st.nak)>Number(b.nak)){ if(m)m.textContent='⚠ برد درخواست را نپذیرفت'; return; }
-   if(Number(st.rep)>=Number(b.rep)+requiredEchoes&&Number(st.id)===targetId&&
-      Number(st.val)===0&&Number(st.q)===0){ if(m)m.textContent='✅ پاک شد'+(n===5?'؛ از صفر شمرده می‌شود':''); showToast('قفل پاک شد'); return; }
-  }
-  if(m)m.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک را ببین';
- }catch(e){ if(m)m.textContent='⚠ '+(e&&e.message?e.message:'خطای شبکه'); }
-}
-async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await authFetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
-async function loadWifi(){
- try{
-  let r=await fetch('/wifi',{cache:'no-store'});
-  let j=await r.json();
-  let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--';
-  gWifiPass=j.pass||'';
-  let pass=document.getElementById('wifiCurrentPass');
-  if(pass) pass.textContent=gWifiPass?(gWifiShown?gWifiPass:'••••••••'):'— ورود مدیر —';
- }catch(e){}
-}
-function toggleWifiPass(btn){
- let pass=document.getElementById('wifiCurrentPass');
- if(!gWifiPass){ showToast('رمز فقط بعد از ورود مدیر دیده می‌شود'); return; }
- gWifiShown=!gWifiShown;
- if(pass) pass.textContent=gWifiShown?gWifiPass:'••••••••';
- if(btn) btn.style.opacity=gWifiShown?'1':'.6';
-}
-async function syncTime(){ 
- let ts=Math.floor(Date.now()/1000); 
- let m=document.getElementById('timeMsg'); 
- if(m) m.textContent='در حال ارسال ساعت گوشی ('+fmtJalaliFull(Math.floor(Date.now()/1000))+') به برد...';
- try{
-  let tz=-new Date().getTimezoneOffset()*60;
-  let r=await authFetch('/time?ts='+ts+'&tz='+tz,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts,tz:tz})});
-  let j=await r.json(); 
-  if(m) m.textContent=j.ok?'ساعت برد تنظیم شد به '+fmtTime(ts):('خطا: '+(j.e||j.msg||'نامشخص'));
-  if(j.ok){ setTimeout(poll,500); setTimeout(pollDiag,600); }
- }catch(e){ if(m) m.textContent='خطا در ارتباط - '+e; }
-}
 /* ==================== نمایش/پنهان رمز ====================
    همان دکمهٔ چشم: هر بار که زده شود نوع ورودی بین password و text عوض می‌شود */
 function togglePass(id, btn){
@@ -1889,23 +1644,6 @@ function togglePass(id, btn){
 }
 
 /* ==================== تغییر رمز عبور - /setpass ==================== */
-async function setPass(){
- let u='admin';
- let o=(document.getElementById('setPassOld')||{}).value||'';
- let n=(document.getElementById('setPassNew')||{}).value||'';
- let n2=(document.getElementById('setPassNew2')||{}).value||'';
- let m=document.getElementById('setPassMsg');
- u=u.trim();
- if(!n){ if(m) m.textContent='رمز جدید لازم است'; return; }
- if(n!==n2){ if(m) m.textContent='رمز جدید و تکرارش یکی نیست'; return; }
- try{
-  let r=await authFetch('/setpass',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,old:o,new:n,new2:n2})});
-  let j=await r.json();
-  if(m) m.textContent=j.ok?'رمز عوض شد':'خطا: '+(j.e||j.msg||'نامشخص');
-  if(j.ok){ let a=document.getElementById('setPassOld'), b=document.getElementById('setPassNew'), c=document.getElementById('setPassNew2');
-            if(a) a.value=''; if(b) b.value=''; if(c) c.value=''; }
- }catch(e){ if(m) m.textContent='خطا در ارتباط'; }
-}
 
 
 /* ==================== تاریخچهٔ وضعیت (لاگ روزانه) ====================
@@ -2012,7 +1750,6 @@ async function evtHttp(u,m,ms){
  if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
  try{
   let r=await fetch(u,o);
-  if(r.status===403){ const ok=await askAdmin('برای این تغییر رمز مدیر لازم است'); if(!ok) return r; r=await fetch(u,o); }
   return r;
  }finally{if(tm)clearTimeout(tm);}
 }
@@ -2052,29 +1789,11 @@ function evtRenderFa(text,day,ram,src){
      [EN] v1.109: every row also speaks the battery state - percent (stored on
      the row since v1.109, or recomputed for older files), the side it is on,
      and the battery power in watts (V x A2). */
-  const bpct=((r.pct!==null&&r.pct!==undefined)?r.pct:(function(){
-   const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
-         vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
-   if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
-   return Math.round((r.v24-vmin)*100/(vmax-vmin));})());
-  const phn=x=>((typeof EVT_CHG_FA!=='undefined')&&EVT_CHG_FA[x])?EVT_CHG_FA[x]:('#'+x);
-  const bmode=(!r.mains)?'دشارژ':(((r.c1>0)||(r.c2>0))?('شارژ — '+phn(r.c1>=r.c2?r.c1:r.c2)):'برق وصل — شارژ خاموش');
-  let v='باتری '+bpct+'٪ · حالت: '+bmode+' · ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
-  /* ولتاژ ورودی و نود، جریان و duty هر دو کانال؛ فایل‌های قدیمی این ستون‌ها
-     را ندارند و فقط ولتاژها را نشان می‌دهند. */
-  const extra=[];
-  if(r.vin!==null)extra.push('ولتاژ ورودی '+(r.vin/1000).toFixed(2)+'V');
-  if(r.v12!==null)extra.push('نود ۱۲ ولت '+(r.v12/1000).toFixed(2)+'V');
-  if(r.i1!==null)extra.push('جریان کانال ۱ '+(r.i1/1000).toFixed(2)+'A');
-  if(r.i2!==null)extra.push('جریان کانال ۲ '+(r.i2/1000).toFixed(2)+'A');
-  if(r.d1!==null)extra.push('فرمان کانال ۱ '+(r.d1/10).toFixed(0)+'٪');
-  if(r.d2!==null)extra.push('فرمان کانال ۲ '+(r.d2/10).toFixed(0)+'٪');
-  if(r.i2!==null)extra.push('توان باتری '+(r.v24*(r.i2||0)/1e6).toFixed(0)+'W');
-  if(extra.length)v+=' · '+extra.join(' · ');
+  /* دستور کاربر: در فهرست لاگ فقط پیام کوتاه دیده می‌شود؛ ولتاژها، جریان‌ها و
+     بقیهٔ جزئیات در فایل همان روز ذخیره می‌شوند ولی اینجا نمایش داده نمی‌شوند. */
   return '<div class="evtrow" style="border-inline-start:3px solid '+EVT_LVC[t.lv]+';background:'+EVT_LVB[t.lv]+'">'+
    '<span class="evtt">'+evtIso(evtTimeFa(r.epoch))+'</span>'+
-   '<span class="evtd">'+evtSpr(t.txt,'ep')+'</span>'+
-   '<span class="evtv">'+evtSpr(v,'m')+'</span></div>';
+   '<span class="evtd">'+evtSpr(t.txt,'ep')+'</span></div>';
  }).join('');
 }
 async function evtFetch(manual){
@@ -2091,12 +1810,6 @@ async function evtFetch(manual){
   if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFaNum(lost)+' ردیف از دست رفت'):'');}
  }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
 }
-async function evtSnap(){
- const sel=document.getElementById('evtDay');if(sel)sel.value='';
- try{await evtHttp('/evt/snap','POST',4000);}catch(e){}
- await evtDays();await evtFetch(0);
- const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
-}
 async function evtFs(toggle){
  const box=document.getElementById('evtFs');if(!box)return;
  if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
@@ -2108,8 +1821,6 @@ async function evtFs(toggle){
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
   h+='<button class="btn" type="button" onclick="evtFs(0)">بروزرسانی فهرست</button> ';
-  if(oldCnt>0)h+='<button class="btn" type="button" onclick="evtClean()">حذف فایل‌های جامانده ('+evtFaNum(oldCnt)+')</button> ';
-  h+='<button class="btn" type="button" onclick="evtfmt()">فرمت کامل حافظهٔ ESP</button></span></div>';
   if(!j.fs){
    h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
   }else{
@@ -2127,29 +1838,6 @@ async function evtFs(toggle){
   }
   box.innerHTML=h;
  }catch(e){box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
-}
-async function evtClean(){
- if(!confirm('فقط فایل‌های جامانده از برنامه‌های قبلی پاک شوند؟ تنظیمات و تاریخچهٔ برنامهٔ فعلی حفظ می‌شوند.'))return;
- const st=document.getElementById('evtSt');
- try{
-  const r=await evtHttp('/evt/clean','POST',5000);
-  if(r.status===403){if(st)st.textContent='فقط ادمین اجازهٔ پاک‌سازی حافظه را دارد';return;}
-  const j=await r.json();
-  if(st)st.textContent=(j&&j.removed>0)?('پاک‌سازی انجام شد: '+evtFaNum(j.removed)+' فایل قدیمی حذف شد'):'فایل جامانده‌ای برای حذف نبود';
- }catch(e){}
- await evtFs(0);await evtDays();await evtFetch(1);
-}
-async function evtfmt(){
- if(!confirm('کل حافظهٔ فلش ESP فرمت و همهٔ فایل‌های قبلی و تاریخچه پاک شوند؟ (حساب کاربری و وای‌فای حفظ می‌شوند)'))return;
- const st=document.getElementById('evtSt');
- try{
-  const r=await evtHttp('/evt/format','POST',8000);
-  if(r.status===403){if(st)st.textContent='فقط ادمین اجازهٔ فرمت حافظه را دارد';return;}
-  const t=(await r.text()).trim();
-  if(st)st.textContent=(t==='ok')?'حافظهٔ فلش ESP کامل فرمت و آماده شد':'فرمت حافظه انجام نشد';
- }catch(e){if(st)st.textContent='فرمت حافظه ناموفق بود';}
- await evtDays();await evtFetch(1);
- const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
 }
 async function evtDays(){
  try{
@@ -2186,32 +1874,6 @@ async function evtDlAll(){
  a.href=URL.createObjectURL(new Blob([out],{type:'text/csv;charset=utf-8'}));
  a.download='تاریخچه-کامل.csv';a.click();URL.revokeObjectURL(a.href);
 }
-async function evtClear(){
- if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟'))return;
- const st=document.getElementById('evtSt');
- try{
-  const r=await evtHttp('/evt/clr','POST',5000);
-  let j={};try{j=await r.json();}catch(e){}
-  const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
-  /* [EN] v1.113: the answer says how many day files really went. "Cleared" is
-          only printed when something WAS cleared, so a button that hits a file
-          system it cannot reach can no longer look successful (user report
-          2026-10-28: rows that could not be deleted).
-     [FA] نسخهٔ ۱٫۱۱۳: پاسخ می‌گوید واقعاً چند فایل روز پاک شد. «پاک شد» فقط
-          وقتی نوشته می‌شود که چیزی پاک شده باشد، تا دکمه‌ای که به فایل‌سیستم
-          نمی‌رسد دیگر موفق به نظر نرسد (گزارش کاربر ۲۰۲۶-۱۰-۲۸: ردیف‌هایی که
-          پاک نمی‌شدند). */
-  if(st){
-   if(r.status===403)st.textContent='فقط ادمین اجازهٔ پاک‌کردن تاریخچه را دارد';
-   else if(r.status!==200)st.textContent='پاک نشد (پاسخ '+r.status+')';
-   else if(src!=='1')st.textContent='پاک نشد: حافظهٔ پنل سوار نشد؛ فقط رم پاک شد';
-   else if((j&&j.removed)>0)st.textContent='پاک شد: '+evtFaNum(j.removed)+' روز';
-   else st.textContent='چیزی برای پاک‌کردن نبود';
-  }
-  await evtDays();await evtFetch(1);
-  const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
- }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
-}
 async function evtTick(){
  if(document.hidden||evtBusy)return;
  evtBusy=true;
@@ -2222,6 +1884,14 @@ addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
 addEventListener('online',()=>evtClock());
 setInterval(evtTick,10000);
 
+async function loadWifi(){
+ try{
+  let r=await fetch('/wifi',{cache:'no-store'});
+  let j=await r.json();
+  let cur=document.getElementById('wifiCurrentSsid');
+  if(cur) cur.textContent=j.ssid||'--';
+ }catch(e){}
+}
 function init(){ poll(); pollCharts(); pollDiag(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(tickDiagClocks,1000); }
 window.addEventListener('DOMContentLoaded', init);
 </script>

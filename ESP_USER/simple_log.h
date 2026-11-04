@@ -761,7 +761,6 @@ static bool func__SimpleLog_OpenDay(void)
 {
     return func__SimpleLog_ResolveDay(true);
 }
-static void func__SimpleLog_SaveLast(void);
 /**
  * @brief  [EN] Battery percent from the DISCHARGE map (param 74/75, factory
  *              21,000..29,000 mV), stored with every row so later analysis
@@ -1079,49 +1078,165 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     }
     return true;
 }
-static void func__SimpleLog_SaveLast(void)
+/**
+ * @brief  [EN] Read one comma field of a log row as an unsigned number.
+ * @param  char__ptr_row   the CSV row / text
+ * @param  uint8_t__index  zero-based field number /
+ * @return uint32_t value, 0 when the field is missing /
+ */
+static uint32_t func__SimpleLog_RowField(const char *char__ptr_row, uint8_t uint8_t__index)
 {
-    if (BOOL__G__FsOk == false)
+    uint32_t uint32_t__value = 0u;
+    uint8_t uint8_t__field = 0u;
+    uint8_t uint8_t__i = 0u;
+    bool bool__digits = false;
+    while (char__ptr_row[uint8_t__i] != '\0')
     {
-        return;
+        char char__ch = char__ptr_row[uint8_t__i];
+        if (char__ch == ',')
+        {
+            if (uint8_t__field >= uint8_t__index)
+            {
+                return uint32_t__value;
+            }
+            uint8_t__field++;
+            uint32_t__value = 0u;
+            bool__digits = false;
+        }
+        else if ((uint8_t__field == uint8_t__index) &&
+                 (char__ch >= '0') && (char__ch <= '9'))
+        {
+            uint32_t__value = (uint32_t__value * 10u) + (uint32_t)(char__ch - '0');
+            bool__digits = true;
+        }
+        else
+        {
+            /* not a digit in our field: ignore the character */
+        }
+        uint8_t__i++;
     }
-    File file__last = LittleFS.open(SIMPLE_LOG_LAST_PATH, "w");
-    if (!file__last)
+    if ((uint8_t__field < uint8_t__index) || (bool__digits == false))
     {
-        return;
+        return 0u;
     }
-    file__last.print((unsigned long)func__Simple_NowSec());
-    file__last.print(",");
-    file__last.print((unsigned long)UINT32_T__G__TlmField[15]);
-    file__last.print(",");
-    file__last.print((unsigned long)UINT32_T__G__TlmField[19]);
-    file__last.print(",");
-    file__last.print((unsigned int)UINT8_T__G__TlmFlags2);
-    file__last.print(",");
-    file__last.println((UINT32_T__G__TlmField[15] < SIMPLE_LOG_CUT_BAND_MV) ? 1 : 0);
-    file__last.close();
+    return uint32_t__value;
 }
-static uint8_t func__SimpleLog_LoadLastDanger(void)
+/**
+ * @brief  [EN] Copy the LAST data row of a day file into a buffer.
+ *              It walks backward from the end of the file in one bounded
+ *              window, so a 400 row day file costs no RAM and no full read.
+ * @param  char__ptr_path   day file path / text
+ * @param  char__ptr_out    destination / buffer, at least 4 bytes
+ * @param  size_t__outSize  destination size / bytes
+ * @return true when a real data row was copied /
+ */
+static bool func__SimpleLog_LastRowOf(const char *char__ptr_path,
+                                      char *char__ptr_out,
+                                      size_t size_t__outSize)
 {
-    String string__content;
-    int32_t int32_t__lastComma;
-    if ((BOOL__G__FsOk == false) || (LittleFS.exists(SIMPLE_LOG_LAST_PATH) == false))
+    static char CHAR__LogTailWindow[400];
+    uint32_t uint32_t__size;
+    uint32_t uint32_t__span;
+    uint32_t uint32_t__offset = 0u;
+    size_t size_t__best = 0u;
+    size_t size_t__bestLen = 0u;
+    bool bool__found = false;
+    File file__day = LittleFS.open(char__ptr_path, "r");
+    if ((!file__day) || (size_t__outSize < 4u))
     {
-        return 0u;
+        return false;
     }
-    File file__last = LittleFS.open(SIMPLE_LOG_LAST_PATH, "r");
-    if (!file__last)
+    uint32_t__size = (uint32_t)file__day.size();
+    if (uint32_t__size == 0u)
     {
-        return 0u;
+        file__day.close();
+        return false;
     }
-    string__content = file__last.readString();
-    file__last.close();
-    int32_t__lastComma = string__content.lastIndexOf(',');
-    if (int32_t__lastComma < 0)
+    uint32_t__span = (uint32_t__size > (uint32_t)sizeof(CHAR__LogTailWindow)) ?
+                     (uint32_t)sizeof(CHAR__LogTailWindow) : uint32_t__size;
+    if (file__day.seek(uint32_t__size - uint32_t__span) == false)
     {
-        return 0u;
+        file__day.close();
+        return false;
     }
-    return (string__content.substring((uint32_t)int32_t__lastComma + 1u).toInt() != 0) ? 1u : 0u;
+    for (uint32_t__offset = 0u; uint32_t__offset < uint32_t__span; uint32_t__offset++)
+    {
+        int int__ch = file__day.read();
+        if (int__ch < 0)
+        {
+            break;
+        }
+        CHAR__LogTailWindow[uint32_t__offset] = (char)int__ch;
+    }
+    file__day.close();
+    /* split the window into lines and keep the newest one that is a data row */
+    for (uint32_t__offset = 0u; uint32_t__offset < uint32_t__span; )
+    {
+        size_t size_t__lineStart = (size_t)uint32_t__offset;
+        while ((uint32_t__offset < uint32_t__span) && (CHAR__LogTailWindow[uint32_t__offset] != '\n'))
+        {
+            uint32_t__offset++;
+        }
+        {
+            size_t size_t__lineLen = (size_t)uint32_t__offset - size_t__lineStart;
+            bool bool__complete = ((uint32_t__offset < uint32_t__span) ||
+                                   (uint32_t__span == uint32_t__size));
+            if ((bool__complete != false) && (size_t__lineLen > 1u) &&
+                (CHAR__LogTailWindow[size_t__lineStart] != '#') &&
+                (CHAR__LogTailWindow[size_t__lineStart] != '\r'))
+            {
+                size_t__best = size_t__lineStart;
+                size_t__bestLen = size_t__lineLen;
+                bool__found = true;
+            }
+        }
+        uint32_t__offset++;
+    }
+    if (bool__found == false)
+    {
+        return false;
+    }
+    if (size_t__bestLen > (size_t__outSize - 1u))
+    {
+        size_t__bestLen = size_t__outSize - 1u;
+    }
+    (void)memcpy(char__ptr_out, &CHAR__LogTailWindow[size_t__best], size_t__bestLen);
+    char__ptr_out[size_t__bestLen] = '\0';
+    return true;
+}
+/**
+ * @brief  [EN] Restore the change detector from the last row of the newest
+ *              day file. A power cycle therefore needs no helper file on the
+ *              flash: the log is its own memory (user order 2026-11-04).
+ * @return None /
+ */
+static void func__SimpleLog_RestoreFromLastRow(void)
+{
+    static char CHAR__LogLastRow[400];
+    char char__path[32];
+    uint32_t uint32_t__day;
+    if ((BOOL__G__FsOk == false) || (UINT8_T__G__LogIndexCount == 0u))
+    {
+        return;
+    }
+    uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
+    func__SimpleLog_PathOf(char__path, uint32_t__day);
+    if (func__SimpleLog_LastRowOf(char__path, CHAR__LogLastRow, sizeof(CHAR__LogLastRow)) == false)
+    {
+        return;
+    }
+    UINT8_T__G__LogPrevMains = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 4u);
+    UINT8_T__G__LogPrevFl = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 5u);
+    UINT8_T__G__LogPrevChg1 = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 6u);
+    UINT8_T__G__LogPrevChg2 = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 7u);
+    UINT32_T__G__LogPrevFault = func__SimpleLog_RowField(CHAR__LogLastRow, 8u);
+    UINT8_T__G__LogPrevFlags2 = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 9u);
+    UINT32_T__G__LogPrevV24 = func__SimpleLog_RowField(CHAR__LogLastRow, 10u);
+    UINT32_T__G__LogPrevDead = func__SimpleLog_RowField(CHAR__LogLastRow, 14u);
+    UINT8_T__G__LogPrevBand = (UINT32_T__G__LogPrevV24 < SIMPLE_LOG_CUT_BAND_MV) ? 1u : 0u;
+    UINT8_T__G__LogPrevNote = (UINT8_T__G__LogPrevBand != 0u) ?
+                              SIMPLE_LOG_NOTE_LOW_STOP : SIMPLE_LOG_NOTE_NONE;
+    BOOL__G__LogHasPrev = true;
 }
 /**
  * @brief  [EN] Absolute difference of two unsigned readings.
@@ -1269,14 +1384,6 @@ static void func__SimpleLog_DetectChanges(void)
     {
         func__SimpleLog_Queue(uint16_t__mask, SIMPLE_LOG_NOTE_NONE);
     }
-    if ((uint16_t__mask & (SIMPLE_LOG_CHG_FAULT | SIMPLE_LOG_CHG_FLAGS)) != 0u)
-    {
-        func__SimpleLog_SaveLast();
-    }
-    if ((uint8_t__band != 0u) && (UINT8_T__G__LogPrevBand == 0u))
-    {
-        func__SimpleLog_SaveLast();
-    }
     UINT8_T__G__LogPrevMains = uint8_t__mains;
     UINT8_T__G__LogPrevChg1 = uint8_t__chg1;
     UINT8_T__G__LogPrevChg2 = uint8_t__chg2;
@@ -1313,7 +1420,6 @@ static void func__SimpleLog_Tick(void)
         uint16_t uint16_t__mask = SIMPLE_LOG_CHG_BOOT;
         BOOL__G__LogBootRowPending = false;
         UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
-        UINT8_T__G__LogPrevNote = func__SimpleLog_LoadLastDanger();
         /*
  * [EN] v1.113: the update joins the boot row, so one switch-on gives one
  * row. Only log timers are zeroed just before it.
@@ -1389,6 +1495,16 @@ static void func__SimpleLog_Begin(void)
         return;
     }
     (void)func__SimpleLog_ScanDays(true);
+    /*
+ * [EN] A panel updated from an older version may still carry the helper file
+ * that used to hold the last state. The log rows are the only memory now, so
+ * the leftover is removed once and never written again.
+ */
+    if (LittleFS.exists(SIMPLE_LOG_LAST_PATH) != false)
+    {
+        (void)LittleFS.remove(SIMPLE_LOG_LAST_PATH);
+    }
+    func__SimpleLog_RestoreFromLastRow();
     func__SimpleLog_FwCheck();
 }
 /**

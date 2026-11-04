@@ -329,27 +329,22 @@ static void func__T_TestResetOrderAndHandshake(void)
     const std::size_t size_t__events = string__route.find("func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u)");
     const std::size_t size_t__cycles = string__route.find("func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u)");
     const std::size_t size_t__latch = string__route.find("func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u)");
-    const std::size_t size_t__panelStart = string__panel.find("async function latchReset(n){");
-    const std::size_t size_t__panelEnd = string__panel.find("/* ====================", size_t__panelStart);
-    const std::string string__panelReset = (size_t__panelStart != std::string::npos &&
-                                            size_t__panelEnd != std::string::npos)
-        ? string__panel.substr(size_t__panelStart, size_t__panelEnd - size_t__panelStart)
-        : std::string();
-    const std::size_t size_t__baseline = string__panelReset.find("const beforeResp=await fetch('/latch'");
-    const std::size_t size_t__post = string__panelReset.find("const postResp=await authFetch('/latch/reset?n='+n");
-
-    (void)printf("\n== ترتیب ریست و تأیید پنل ==\n");
+    (void)printf("\n== ترتیب ریست و پنل فقط‌خواندنی ==\n");
     func__T_Check(size_t__routeStart != std::string::npos && size_t__routeEnd != std::string::npos &&
                   size_t__events < size_t__cycles && size_t__cycles < size_t__latch,
                   "مسیر واقعی اول شمارندهٔ رویداد/سیکل و در آخر قفل را صف می‌کند");
-    func__T_Check(size_t__baseline != std::string::npos && size_t__post > size_t__baseline &&
-                  string__panelReset.find("if(!beforeResp.ok)") < size_t__post,
-                  "پنل پیش از ارسال، وضعیت قبلی را با پاسخ سالم می‌خواند");
-    func__T_Check(string__panelReset.find("const targetId=n===5?202:(n===6?203:204);") != std::string::npos &&
-                  string__panelReset.find("const requiredEchoes=n===5?3:1;") != std::string::npos &&
-                  string__panelReset.find("Number(st.id)===targetId") != std::string::npos &&
-                  string__panelReset.find("Number(st.val)===0") != std::string::npos,
-                  "موفقیت فقط با پژواک صفرِ شناسهٔ هدف و هر سه پژواک سناریوی ۵ اعلام می‌شود");
+    /* دستور کاربر ۲۰۲۶-۱۱-۰۴: هر چه رمز ادمین می‌خواهد، در پنل دیده نمی‌شود */
+    func__T_Check(string__panel.find("latchReset(") == std::string::npos,
+                  "پنل هیچ دکمهٔ ریست قفل ندارد");
+    func__T_Check((string__panel.find("'/login'") == std::string::npos) &&
+                  (string__panel.find("authFetch(") == std::string::npos) &&
+                  (string__panel.find("onclick=\"setPass(") == std::string::npos) &&
+                  (string__panel.find("onclick=\"setWifi(") == std::string::npos) &&
+                  (string__panel.find("onclick=\"clearHistory(") == std::string::npos),
+                  "پنل هیچ ورودی تغییر (رمز، وای‌فای، تاریخچه) و هیچ ورودی ادمین ندارد");
+    func__T_Check((string__panel.find("class=\"evtv\"") == std::string::npos) &&
+                  (string__panel.find("span class=\"evtd\"") != std::string::npos),
+                  "فهرست لاگ فقط پیام کوتاه را نشان می‌دهد و جزئیات را نمایش نمی‌دهد");
 }
 
 static void func__T_TestQueue(void)
@@ -953,8 +948,16 @@ static void func__T_TestStateHistoryLog(void)
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 3u,
                   "رسیدن باتری به مرز قطع یک ردیف می‌نویسد");
-    func__T_Check(LittleFS.exists(SIMPLE_LOG_LAST_PATH),
-                  "آخرین وضعیت روی فلش می‌ماند تا ردیف بوت بداند پنل کجا خاموش شد");
+    func__T_Check(LittleFS.exists(SIMPLE_LOG_LAST_PATH) == false,
+                  "فایل کمکی «آخرین وضعیت» دیگر ساخته نمی‌شود؛ خودِ ردیف لاگ حافظه است");
+    /* خاموش/روشن شدن پنل: همان آخرین ردیف، وضعیت قبلی را برمی‌گرداند */
+    BOOL__G__LogHasPrev = false;
+    UINT8_T__G__LogPrevBand = 0u;
+    UINT32_T__G__LogPrevV24 = 0u;
+    func__SimpleLog_RestoreFromLastRow();
+    func__T_Check((BOOL__G__LogHasPrev != false) && (UINT8_T__G__LogPrevBand == 1u) &&
+                  (UINT32_T__G__LogPrevV24 == 20608u),
+                  "پس از روشن شدن دوباره، آخرین ردیفِ همان روز وضعیت قبلی را برمی‌گرداند");
 
     /* مود دستی هم یک وضعیت است و باید در تاریخچه بیاید */
     UINT8_T__G__TlmFlags = 0x22u;   /* برق شهر + مود دستی */

@@ -519,17 +519,13 @@ static void func__Simple_HttpLogout(void)
 /* ==================== - /wifi ==================== */
 static void func__Simple_HttpGetWifi(void)
 {
-    char char__buf[128];
-    if (!func__Simple_IsAdmin())
-    {
-        (void)snprintf(char__buf, sizeof(char__buf),
-                       "{\"ssid\":\"%s\",\"pass\":\"\",\"passSet\":1}", CHAR__G__WifiSsid);
-        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
-        return;
-    }
+    char char__buf[96];
+    /*
+ * [EN] The saved Wi-Fi password never leaves the board: the panel only shows
+ * the network name, and nothing in the page can change it any more.
+ */
     (void)snprintf(char__buf, sizeof(char__buf),
-                   "{\"ssid\":\"%s\",\"pass\":\"%s\",\"passSet\":1}", CHAR__G__WifiSsid, CHAR__G__WifiPass);
+                   "{\"ssid\":\"%s\",\"passSet\":1}", CHAR__G__WifiSsid);
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
 }
