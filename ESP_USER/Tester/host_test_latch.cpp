@@ -352,10 +352,31 @@ static void func__T_TestResetOrderAndHandshake(void)
         func__T_Check((size_t__pg0 != std::string::npos) && (size_t__evt > size_t__pg0) &&
                       (size_t__evt < size_t__pg1),
                       "کارت لاگ فقط داخل صفحهٔ وضعیت می‌نشیند، نه هر سه صفحه");
-        func__T_Check((string__panel.find("function showTab(") != std::string::npos) &&
-                      (string__panel.find("رنگ نوار کنار هر خط") == std::string::npos) &&
-                      (string__panel.find("این جدول می‌گوید") == std::string::npos),
-                      "دکمه‌های صفحه‌ها کار می‌کنند و متن توضیحی لاگ حذف شده است");
+    }
+    {
+        /* نمودارها دیگر بازهٔ ثابت ندارند: کمینه/بیشینه و تعداد خط محور از
+           خود داده و از ارتفاع بوم حساب می‌شود. اگر کسی دوباره عدد ثابت
+           بگذارد (۰ تا ۱۰۰ یا ۱۸ تا ۳۰ ولت) این بررسی قرمز می‌شود. */
+        func__T_Check((string__panel.find("function autoScale(") != std::string::npos) &&
+                      (string__panel.find("function niceStep(") != std::string::npos) &&
+                      (string__panel.find("function ticksBetween(") != std::string::npos),
+                      "بازهٔ محور نمودارها از خود داده حساب می‌شود");
+        func__T_Check((string__panel.find("drawAxisY(ctx, [0,25,50,75,100]") == std::string::npos) &&
+                      (string__panel.find("drawAxisY(ctx, [18000,21000,24000,27000,30000]") == std::string::npos) &&
+                      (string__panel.find("let min=18000, max=30000") == std::string::npos),
+                      "هیچ محور نموداری بازهٔ دستی و ثابت ندارد");
+        func__T_Check((string__panel.find("محور عمودی: ولتاژ ۱۸ تا ۳۰ ولت") == std::string::npos) &&
+                      (string__panel.find("هر نقطه یک ساعت یا یک روز") == std::string::npos) &&
+                      (string__panel.find("لیست ۲۰ شارژ آخر") == std::string::npos) &&
+                      (string__panel.find("id=\"voltAxisInfo\"") != std::string::npos) &&
+                      (string__panel.find("id=\"pctAxisInfo\"") != std::string::npos),
+                      "متن زیر نمودارها هم از داده نوشته می‌شود، نه دستی");
+        func__T_Check((string__panel.find("repeat(auto-fit,minmax(min(100%") != std::string::npos) &&
+                      (string__panel.find(".canvas-wrap canvas{width:100%!important;height:clamp(") != std::string::npos) &&
+                      (string__panel.find("font-size:clamp(") != std::string::npos) &&
+                      (string__panel.find("function prepCanvas(") != std::string::npos) &&
+                      (string__panel.find("devicePixelRatio") != std::string::npos),
+                      "چیدمان با clamp و auto-fit داینامیک است و بوم با تراکم پیکسل دستگاه رسم می‌شود");
     }
 }
 

@@ -329,6 +329,38 @@ code,pre,.mono{font-family:Vazirmatn !important}
 .m{display:inline-block;margin:1px 2px;padding:1px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:11px}
 .evtt{color:var(--mu);white-space:nowrap;min-width:58px}
 .evtd{flex:1}
+/* ===== لایهٔ داینامیک ۲۰۲۶ =====
+   هیچ اندازهٔ ثابتی برای هیچ صفحه‌ای لازم نیست: اندازهٔ فونت، فاصله‌ها،
+   ستون‌های شبکه و ارتفاع نمودار با clamp و auto-fit از خودِ عرض صفحه
+   حساب می‌شوند. این لایه بعد از همهٔ media queryها می‌آید تا بر آن‌ها
+   مقدم باشد و دیگر لازم نباشد برای هر عرض یک بلوک جدا نوشته شود. */
+body{font-size:clamp(12px,0.35vw + 11.2px,13.6px);padding:0 clamp(10px,2vw,20px) clamp(24px,5vw,40px)}
+header{padding:clamp(8px,1.6vw,14px) clamp(10px,2vw,20px);margin:0 calc(-1 * clamp(8px,2vw,20px)) clamp(10px,2vw,18px)}
+main{padding:0;max-width:min(1180px,100%)}
+nav{top:clamp(48px,9vw,64px);gap:clamp(3px,0.8vw,6px);padding:clamp(3px,0.8vw,5px)}
+nav button{padding:clamp(7px,1.4vw,10px) clamp(4px,1vw,10px);font-size:clamp(10.5px,2.6vw,12.5px)}
+.cd{padding:clamp(10px,2.4vw,18px)}
+.half-grid,.stat-grid,.row2,.dynamic-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,clamp(150px,42vw,270px)),1fr))!important}
+.hero-grid{flex-wrap:wrap;min-height:0!important}
+.hero-visual{width:clamp(80px,17vw,120px)!important;height:clamp(112px,21vw,158px)!important;min-height:0!important;max-height:none!important}
+.hero-visual .bat-wrap{width:100%!important;height:100%!important;min-height:0!important;max-height:none!important}
+.hero-info{min-width:0!important;padding:clamp(10px,2.4vw,22px)!important}
+select,input{max-width:100%}
+.hero-pct{font-size:clamp(26px,6.4vw,40px)!important}
+.hero-title{font-size:clamp(12px,2.6vw,14px)!important}
+.hero-sub,.hero-fault{font-size:clamp(10.5px,2.4vw,12px)!important}
+.bat-wrap{width:clamp(64px,15vw,90px)!important;height:clamp(100px,22vw,130px)!important}
+.segmented,.segmented.sm{min-width:0!important;width:auto!important;flex:1 1 auto;max-width:100%}
+.segmented button{font-size:clamp(10px,2.4vw,11.5px);padding:clamp(4px,1vw,7px) clamp(4px,1vw,9px)}
+canvas{height:auto;max-width:100%}
+.canvas-wrap canvas{width:100%!important;height:clamp(120px,24vw,210px)!important;aspect-ratio:auto!important}
+#cCharge{height:clamp(130px,26vw,220px)!important}
+.ti{flex-wrap:wrap;gap:clamp(4px,1vw,10px)}
+.ti > div{flex-wrap:wrap}
+.stat b,.half-stat b{font-size:clamp(15px,3.4vw,19px)}
+.log{max-height:clamp(160px,38vw,320px)}
+.evtrow{font-size:clamp(10.5px,2.4vw,12px)}
+.footer{flex-wrap:wrap;font-size:clamp(9.5px,2.2vw,11px)}
 </style>
 </head>
 <body data-theme="0">
@@ -503,7 +535,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
      </div>
     </div>
    </div>
-   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی زمان واقعی - هر نقطه یک ساعت یا یک روز</div>
+   <div id="pctAxisInfo" style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی: زمان واقعی</div>
    <div class="canvas-wrap"><canvas id="cPct" width="700" height="180"></canvas></div>
    <div id="cPctLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
    <div id="pctInfo" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
@@ -530,7 +562,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div class="canvas-wrap"><canvas id="cCharge" width="700" height="200"></canvas></div>
    <div id="cChargeLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
-    <span style="font-size:11px;color:var(--mu)">لیست ۲۰ شارژ آخر</span>
+    <span id="chargeCap" style="font-size:11px;color:var(--mu)">شارژهای اخیر</span>
    </div>
    <div style="display:flex;gap:6px;margin-top:10px">
     <button class="btn" title="دانلود خروجی CSV تاریخچه شارژ" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('charge')">خروجی CSV</button>
@@ -552,7 +584,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
      <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('volt')">خروجی CSV</button>
     </div>
    </div>
-   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور عمودی: ولتاژ ۱۸ تا ۳۰ ولت - محور افقی: زمان واقعی - هر نقطه با ریت کم (۱ دقیقه اولیه، بعد ساعتی/روزانه) - دو خط روی هم</div>
+   <div id="voltAxisInfo" style="font-size:10px;color:var(--mu);margin-bottom:8px">محور عمودی: خودکار از دادهٔ همین بازه - محور افقی: زمان واقعی</div>
    <div class="canvas-wrap" style="position:relative">
     <canvas id="cVolt" width="700" height="200"></canvas>
    </div>
@@ -1119,12 +1151,61 @@ function drawChartNotice(ctx, w, h, styles, text){
  ctx.fillText(text, w/2, h/2);
  ctx.textAlign='left';
 }
+/* ==================== بازهٔ خودکار محور ====================
+   پیش‌تر بازهٔ محور در کد ثابت بود (درصد: ۰ تا ۱۰۰، ولتاژ: ۱۸ تا ۳۰ ولت).
+   اگر ولتاژ پک یک روز ۲۴ ولت بود یا ۴۸ ولت، خط بیرون کادر می‌افتاد و اگر
+   درصد بین ۸۵ و ۹۵ بود، نمودار صاف و بی‌معنی دیده می‌شد. الان بازه از
+   خودِ داده گرفته می‌شود: کمینه و بیشینهٔ واقعی، گرد‌شده به یک گام «خوش‌عدد»،
+   و تعداد خط‌های محور از ارتفاع خود بوم حساب می‌شود. */
+function niceStep(span, count){
+ if(!(span>0) || !(count>0)) return 1;
+ let raw=span/count, mag=Math.pow(10, Math.floor(Math.log10(raw))), n=raw/mag;
+ let k = n<=1?1 : n<=2?2 : n<=2.5?2.5 : n<=5?5 : 10;
+ return k*mag;
+}
+function ticksBetween(min, max, h){
+ let count=Math.max(3, Math.min(6, Math.round((h||170)/42)));
+ let step=niceStep(max-min, count-1);
+ let lo=Math.floor(min/step)*step, hi=Math.ceil(max/step)*step;
+ if(hi-lo<step) hi=lo+step;
+ let out=[]; for(let v=lo; v<=hi+step*0.001; v+=step) out.push(Math.round(v*1000)/1000);
+ return out;
+}
+function autoScale(lists, h, hardMin, hardMax){
+ let vals=[];
+ (lists||[]).forEach(function(a){ (a||[]).forEach(function(v){ if(v!==null && v!==undefined && isFinite(v)) vals.push(Number(v)); }); });
+ if(vals.length===0) return {min:0, max:1, ticks:[0,0.5,1]};
+ let lo=Math.min.apply(null, vals), hi=Math.max.apply(null, vals);
+ if(hardMin!==undefined && hardMin!==null && lo<hardMin) lo=hardMin;
+ if(hardMax!==undefined && hardMax!==null && hi>hardMax) hi=hardMax;
+ if(hi===lo){ let d=Math.abs(lo)*0.02 || 1; lo-=d; hi+=d; }
+ if(hardMin!==undefined && hardMin!==null && lo<hardMin) lo=hardMin;
+ if(hardMax!==undefined && hardMax!==null && hi>hardMax) hi=hardMax;
+ let ticks=ticksBetween(lo, hi, h);
+ return {min:ticks[0], max:ticks[ticks.length-1], ticks:ticks};
+}
+function fmtVolt(v){
+ let k=v/1000;
+ let t=(Math.abs(k-Math.round(k))<0.05) ? Math.round(k) : Math.round(k*10)/10;
+ return faNum(t)+'V';
+}
+/* گام نمونه‌برداری از فاصلهٔ خود زمان‌ها درمی‌آید، نه از یک متن ثابت */
+function sampleStep(timeData){
+ if(!timeData || timeData.length<2) return '';
+ let d=[]; for(let i=1;i<timeData.length;i++){ let x=timeData[i]-timeData[i-1]; if(x>0) d.push(x); }
+ if(!d.length) return '';
+ d.sort(function(a,b){ return a-b; });
+ let m=d[Math.floor(d.length/2)];
+ if(m<3600) return faNum(Math.max(1,Math.round(m/60)))+' دقیقه';
+ if(m<86400) return faNum(Math.round(m/3600))+' ساعت';
+ return faNum(Math.round(m/86400))+' روز';
+}
 function chartSignature(parts){ return parts.join('|'); }
 
 function drawChart(canvasId, data, color, min, max, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
  let n=(data&&data.length)?data.length:0;
- let sig=chartSignature(['p', range, n, n?data[n-1]:'-', n?(timeData&&timeData[n-1]||0):0, color]);
+ let sig=chartSignature(['p', range, n, n?data[n-1]:'-', n?Math.min.apply(null,data):0, n?Math.max.apply(null,data):0, n?(timeData&&timeData[n-1]||0):0, color]);
  if(c._sig===sig && c._drawn){ return; }   /* همان تصویر: دوباره رسم نکن (بدون چشمک) */
  c._sig=sig; c._drawn=true;
 
@@ -1150,7 +1231,9 @@ function drawChart(canvasId, data, color, min, max, timeData, range){
   c._hasTooltip=true;
  }
 
- drawAxisY(ctx, [0,25,50,75,100], min, max, w, h, styles, function(v){ return faNum(v)+'٪'; });
+ let sc=autoScale([data], h, min, max);
+ min=sc.min; max=sc.max;
+ drawAxisY(ctx, sc.ticks, min, max, w, h, styles, function(v){ return faNum(v)+'٪'; });
 
  if(n===0){
   drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
@@ -1179,7 +1262,7 @@ function drawChart(canvasId, data, color, min, max, timeData, range){
 function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
  let n=(vinData&&vinData.length)?vinData.length:0;
- let sig=chartSignature(['v', range, n, n?vinData[n-1]:'-', n?vpackData[n-1]:'-', n?(timeData&&timeData[n-1]||0):0]);
+ let sig=chartSignature(['v', range, n, n?vinData[n-1]:'-', n?vpackData[n-1]:'-', n?Math.min.apply(null,vinData.concat(vpackData)):0, n?Math.max.apply(null,vinData.concat(vpackData)):0, n?(timeData&&timeData[n-1]||0):0]);
  if(c._sig===sig && c._drawn){ return; }
  c._sig=sig; c._drawn=true;
 
@@ -1189,8 +1272,11 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  ctx.clearRect(0,0,w,h);
  ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
 
- let min=18000, max=30000, rangeVal=max-min;
- drawAxisY(ctx, [18000,21000,24000,27000,30000], min, max, w, h, styles, function(v){ return (v/1000)+'V'; });
+ let sc=autoScale([vinData, vpackData], h);
+ let min=sc.min, max=sc.max, rangeVal=(max-min)||1;
+ drawAxisY(ctx, sc.ticks, min, max, w, h, styles, fmtVolt);
+ let axisInfo=document.getElementById('voltAxisInfo');
+ if(axisInfo) axisInfo.textContent='محور عمودی: '+fmtVolt(min)+' تا '+fmtVolt(max)+' (خودکار از دادهٔ همین بازه) - محور افقی: زمان واقعی';
 
  if(n===0){
   drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
@@ -1254,6 +1340,9 @@ function renderPctFromServer(j){
  if(n>0){ setTxt('pctCurrent', faNum(chartDataPct.pct[n-1])+' ٪'); }
  else { setTxt('pctCurrent', '-- ٪'); }
  setTxt('pctRangeInfo', 'بازه: '+rangeTitle(chartDataPct.range)+' - '+n+' نمونه'+(n<2?' - در حال جمع‌آوری':''));
+ let st=sampleStep(chartDataPct.time);
+ let ai=document.getElementById('pctAxisInfo');
+ if(ai) ai.textContent='محور افقی: زمان واقعی'+(st?' - هر نقطه '+st:'')+' - محور عمودی: خودکار از دادهٔ همین بازه';
 }
 function renderVoltFromServer(j){
  if(!j || !j.vin || !j.vpack) return;
@@ -1334,12 +1423,16 @@ function drawChargeHistory(events, range){
   if(labelDiv.innerHTML!==html) labelDiv.innerHTML=html;
  }
 }
+const CHARGE_LIST_MAX=20;   /* سقف نمایش؛ عدد داخل متن دستی نوشته نمی‌شود */
 function renderChargeHistoryList(events){
  let div=document.getElementById('chargeHistoryList'); if(!div) return;
- if(!events || events.length==0){ div.textContent='تاریخچه شارژی ثبت نشده'; return; }
+ let cap=document.getElementById('chargeCap');
+ if(!events || events.length==0){ div.textContent='تاریخچه شارژی ثبت نشده'; if(cap) cap.textContent='شارژهای اخیر'; return; }
  let sorted=[...events].sort((a,b)=>b.ts-a.ts);
+ let shown=Math.min(sorted.length, CHARGE_LIST_MAX);
+ if(cap) cap.textContent=faNum(shown)+' شارژ آخر از '+faNum(sorted.length)+' رویداد';
  let html='';
- for(let i=0;i<Math.min(sorted.length,20);i++){
+ for(let i=0;i<shown;i++){
   let e=sorted[i];
   let dateStr=fmtJalaliFull(e.ts);
   let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
@@ -1350,9 +1443,13 @@ function renderChargeHistoryList(events){
 }
 
 function getBatStatus(pct){
- if(pct>=80) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'عالی',cls:'high'};
- if(pct>=50) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'خوب',cls:'high'};
- if(pct>=20) return {grad:'url(#gm)',gradMain:'url(#gMainM)',txt:'متوسط',cls:'mid'};
+ /* آستانه‌ها درصدی از «درصد پرِ خود برد» هستند (brd.hEnt که از /t می‌آید)؛
+    اگر کاربر روی برد آن را عوض کند، برچسب عالی/خوب/متوسط هم جابه‌جا می‌شود. */
+ let full=(brd && brd.hEnt>0) ? brd.hEnt : 100;
+ let hi=full*0.8, mid=full*0.5, low=full*0.2;
+ if(pct>=hi) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'عالی',cls:'high'};
+ if(pct>=mid) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'خوب',cls:'high'};
+ if(pct>=low) return {grad:'url(#gm)',gradMain:'url(#gMainM)',txt:'متوسط',cls:'mid'};
  if(pct>0) return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'کم',cls:'low'};
  return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'خالی',cls:'low'};
 }
