@@ -438,7 +438,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e82867b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5c5bc07</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -4342,6 +4342,9 @@ const xspr=(s,c,tip)=>s.split(' · ').map(x=>'<span class="'+c+'" title="'+
  *      را یک‌جا. سمت برد هیچ‌چیز عوض نشد؛ بافرش همان ۳۶۰۰ بایت است.
  */
 let evtRows=[],evtFrom=0,evtWhole=false,evtAll=false,evtPicked=false;
+/* [EN] v1.127: the answer currently drawn (see evtRender).
+   [FA] نسخهٔ ۱٫۱۲۷: پاسخی که همین حالا روی صفحه است. */
+let evtKey='';
 let evtFsWarn='',evtGap='',evtWhere='',evtDayLab='';
 const EVT_PAGE=30;
 function evtParseAll(text){
@@ -4451,6 +4454,15 @@ function evtPaint(){
 }
 /* The board's answer is a TAIL: 30 rows, never the whole day. */
 function evtRender(text,code,ram,src){
+  /* [EN] v1.127: the 10 s tick asks for the same tail - redrawing the table for
+          an answer identical to what is on screen is what looked like a reload.
+          No skip while a whole day file is open: that table is not this answer.
+     [FA] نسخهٔ ۱٫۱۲۷: تیک همان تیل را می‌پرسد؛ بازکشیدن جدول برای پاسخ
+          یکسان، همان «رفرش شدن» بود. وقتی فایل کل روز باز است این مقایسه
+          انجام نمی‌شود، چون آن جدول این پاسخ نیست. */
+  const key=text+'\u0001'+code+'\u0001'+ram+'\u0001'+src+'\u0001'+evtGap;
+  if(!evtWhole&&!evtAll&&key===evtKey)return;
+  evtKey=key;
   /* src 0 = no file system, 2 = the flash refused the write, 3 = it did not mount. */
   evtFsWarn=(src==='2')?'<span class="r">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
               :(src==='3')?'<span class="r">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
@@ -4465,6 +4477,7 @@ function evtRender(text,code,ram,src){
 }
 /* A full day file (the CSV /evt/dl saves) - every row, oldest first. */
 function evtDayLoad(text,day){
+  evtKey=''; /* the table on screen is a day file, not a tail (v1.127) */
   evtRows=evtParseAll(text);
   evtWhole=true;evtAll=false;
   evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
@@ -4539,7 +4552,7 @@ async function evtfetch(manual){
     /* evtRender paints the status line, so the day name, the row count and the
        lost-row warning keep coming from one place. */
     evtRender(t,day,ram,src);
-  }catch(e){ if($('evtst'))$('evtst').textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود'; }
+  }catch(e){ evtKey=''; if($('evtst'))$('evtst').textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود'; }
 }
 async function evtsnap(){
   if($('evtday'))$('evtday').value='';
@@ -4657,10 +4670,23 @@ async function evtclr(){
     const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
   }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
 }
+/* [EN] v1.127 (user report: "I click a row or page back, and every few seconds
+        it jumps away"). The tick asked for /evt - a 30-row tail - and repainted
+        the card, so the turned page, the picked row and its phosphor cells were
+        lost every 10 s. evtReading() names the two states in which the card is
+        the reader's: a whole day file is open, or a row is picked. There only
+        the DAY LIST is refreshed; back on the plain tail the rows refresh too.
+   [FA] نسخهٔ ۱٫۱۲۷ (گزارش کاربر): تیک، /evt را می‌گرفت که ۳۰ ردیف آخر است و
+        کارت را از نو می‌ساخت؛ پس صفحهٔ ورق‌خورده، ردیف انتخاب‌شده و خانه‌های
+        فسفری هر ۱۰ ثانیه می‌رفت. تا وقتی کارت در اختیار کاربر است فقط لیست
+        روزها تازه می‌شود؛ در تیل ساده ردیف‌ها هم. */
+function evtReading(){
+  return evtWhole||evtAll||!!document.querySelector('#evtlist tr.sel');
+}
 async function evtTick(){
   if(document.hidden||evtBusy)return;
   evtBusy=true;
-  try{await evtDays();await evtfetch(0);}finally{evtBusy=false;}
+  try{await evtDays();if(evtReading())return;await evtfetch(0);}finally{evtBusy=false;}
 }
 evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});

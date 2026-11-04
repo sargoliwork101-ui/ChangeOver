@@ -930,6 +930,96 @@ function main() {
                   "rows the board could not store are still counted in the status line", line);
             w.evtHttp = savedHttp;
         })();
+        /*
+ * [EN] v1.127 (user report 2026-11-04: "I click a log row, or page back 30
+ *      rows, and every few seconds it jumps away as if it refreshed"). The
+ *      10 s tick refetched /evt - which is a 30-row TAIL, never the whole day -
+ *      and repainted the card, so the page the reader had turned to, the row he
+ *      had picked and the phosphor cells were all thrown away. These checks
+ *      pin the three things that must stay true afterwards: the reader's place
+ *      survives the tick, the day list still refreshes while it does, and the
+ *      plain tail view still takes a genuinely new row.
+ *      It runs AFTER the lost-row check, because both drive the same fetch
+ *      helper and must not fight over the stub.
+ * [FA] نسخهٔ ۱٫۱۲۷ (گزارش کاربر): تیک ۱۰ ثانیه‌ای دوباره /evt را می‌گرفت -
+ *      که فقط ۳۰ ردیف آخر است - و کارت را از نو می‌ساخت؛ صفحه‌ای که کاربر
+ *      ورق زده بود، ردیف انتخاب‌شده و خانه‌های فسفری از دست می‌رفت. این
+ *      بررسی‌ها سه چیز را قفل می‌کنند: جای کاربر در تیک می‌ماند، لیست روزها
+ *      همچنان تازه می‌شود، و نمای پیش‌فرض ردیف تازه را می‌گیرد. بعد از بررسی
+ *      ردیف‌های ازدست‌رفته اجرا می‌شود تا دو استاب با هم نجنگند.
+ */
+        const tickCheck = lostCheck.then(async () => {
+            const pRows3 = () => [...d.querySelectorAll("#evtlist .evtrow")];
+            const stTxt = () => d.getElementById("evtst").textContent;
+            const selN = () => d.querySelectorAll("#evtlist tr.sel").length;
+            const chgN = () => d.querySelectorAll("#evtlist td.chg").length;
+            const ep3 = 1792756800;
+            const many = [];
+            for (let i4 = 0; i4 < 75; i4++) {
+                many.push([ep3 + i4 * 600, 12 + i4, 0, 5, 1, 1, 3, 0, 0, 0,
+                           24000, 23960, 24040, 20, 0].join(","));
+            }
+            const pairOld = "1792756200,12,0,5,1,2,1,3,0,0,23800,23760,23840,20,0,23000,12100,1200,1100,450,300";
+            const pairNew = "1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300";
+            const savedHttp = w.evtHttp;
+            const savedDays = w.evtDays;
+            let daysCalls = 0;
+            let fetches = 0;
+            /* the board's usual answer: the last 30 rows, nothing more */
+            let body = "";
+            w.evtDays = async () => { daysCalls++; };
+            w.evtHttp = async () => {
+                fetches++;
+                return {
+                    ok: true,
+                    headers: { get: (h) => (h === "X-Log-Fs" ? "1" : (h === "X-Log-Lost" ? "0" : null)) },
+                    text: async () => body
+                };
+            };
+            /* 1) the reader turned back a page: the tick must not take it away */
+            body = many.slice(-30).join("\n");
+            w.evtDayLoad(many.join("\n"), "");
+            w.evtPageOlder();
+            const pText = pRows3()[0].textContent;
+            const pLine = stTxt();
+            const d0 = daysCalls, f0 = fetches;
+            await w.evtTick();
+            check(pRows3().length === 30 && pRows3()[0].textContent === pText &&
+                  stTxt() === pLine && pLine.indexOf("از ۷۵") >= 0,
+                  "the 10 s tick leaves the page the reader turned to exactly where it was",
+                  ((pRows3()[0] || { textContent: "no rows" }).textContent.slice(0, 24)) + " / " + stTxt());
+            check(daysCalls > d0 && fetches === f0,
+                  "and it keeps the day list fresh without refetching the tail at all",
+                  "days+" + (daysCalls - d0) + " fetches+" + (fetches - f0));
+            /* 2) a picked row keeps its selection and its phosphor cells */
+            w.evtRender(pairOld + "\n" + pairNew, "");
+            pRows3()[0].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+            const keptSel = selN(), keptChg = chgN();
+            await w.evtTick();
+            check(keptSel === 1 && selN() === 1 && keptChg > 0 && chgN() === keptChg,
+                  "a row the reader picked keeps its selection and its phosphor cells through the tick",
+                  selN() + " sel / " + chgN() + " chg");
+            /* 3) the plain tail view still refreshes, but an identical answer is
+                  not repainted (that redraw is what looked like a page refresh) */
+            body = pairOld;
+            await w.evtfetch(0); /* the tail on screen, drawn from a clean status line */
+            const table0 = d.querySelector("#evtlist table");
+            const f1 = fetches;
+            await w.evtTick();
+            check(fetches === f1 + 1, "in the plain tail view the tick still asks the board",
+                  "fetches+" + (fetches - f1));
+            check(d.querySelector("#evtlist table") === table0,
+                  "and an answer identical to what is on screen is not redrawn",
+                  table0 === d.querySelector("#evtlist table") ? "same node" : "rebuilt");
+            /* 4) but a genuinely new row must still land */
+            body = pairOld + "\n" + pairNew;
+            await w.evtTick();
+            check(pRows3().length === 2 && d.querySelector("#evtlist table") !== table0,
+                  "a new row still reaches the tail view on the next tick",
+                  String(pRows3().length));
+            w.evtHttp = savedHttp;
+            w.evtDays = savedDays;
+        });
 
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
@@ -947,6 +1037,7 @@ function main() {
             }).then(async (v) => {
                 check(v === false && !pm.classList.contains("on"), "Escape cancels the confirm dialog");
                 await lostCheck;
+                await tickCheck;
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");
