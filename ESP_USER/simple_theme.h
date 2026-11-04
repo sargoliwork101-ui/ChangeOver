@@ -20,24 +20,6 @@ static void func__Simple_ThemeLoad(void)
         UINT8_T__G__Theme = (uint8_t)int32_t__theme;
     }
 }
-static void func__Simple_ThemeSave(void)
-{
-    if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_THEME_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"theme\":");
-    file__f.print(UINT8_T__G__Theme);
-    file__f.print("}");
-    file__f.close();
-}
-static bool func__Simple_SetTheme(uint8_t uint8_t__theme)
-{
-    if (uint8_t__theme > SIMPLE_THEME_MAX) return false;
-    if (UINT8_T__G__Theme == uint8_t__theme) return true;
-    UINT8_T__G__Theme = uint8_t__theme;
-    func__Simple_ThemeSave();
-    return true;
-}
 static void func__Simple_WifiSave(void)
 {
     String string__plain;

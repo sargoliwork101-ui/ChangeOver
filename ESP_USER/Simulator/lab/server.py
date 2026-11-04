@@ -45,6 +45,19 @@ SESSION_COOKIE = "co_sess"
 SESSION_TOKEN = "0" * 64
 SESSION_TIMEOUT_S = 1800
 # ==================== panel page ====================
+def panel_literal_bytes():
+    """Return the byte length of the panel HTML that the firmware really compiles.
+
+    The preview copy (index.html) carries the JS shim, so it is about 13 KB
+    bigger than the raw string inside simple_panel.h. Size checks must use the
+    literal, otherwise the panel looks over its cap while it is not.
+    """
+    text = open(PANEL_SOURCE, encoding="utf-8").read()
+    start = text.index('R"rawliteral(') + len('R"rawliteral(')
+    end = text.index(')rawliteral"')
+    return len(text[start:end].encode("utf-8"))
+
+
 def load_panel_html():
     """Return the exact HTML string compiled into the firmware."""
     text = open(PANEL_SOURCE, encoding="utf-8").read()
@@ -265,8 +278,8 @@ def findings_data():
         {
             "id": 7, "sev": "high", "proof": "measured",
             "title": "حجم صفحهٔ پنل از سقف خودش گذشته و هیچ‌جا چک نمی‌شود",
-            "summary": "سقف ۱۷۵٬۰۰۰ بایت تعریف شده ولی صفحه ۱۸۲٬۸۳۶ بایت است و هیچ بررسی زمان کامپایل یا تستی جلوی رشد بعدی را نمی‌گیرد.",
-            "example": "اندازهٔ رشتهٔ HTML همان‌طور که در فرم‌ور کامپایل می‌شود: ۱۸۲٬۸۳۶ بایت (سقف: ۱۷۵٬۰۰۰) — یعنی ۷٬۸۳۶ بایت بیشتر.",
+            "summary": "سقف ۱۷۵٬۰۰۰ بایت تعریف شده ولی رشتهٔ HTML در فرم‌ور ۱۷۹٬۷۸۹ بایت است و هیچ بررسی زمان کامپایل یا تستی جلوی رشد بعدی را نمی‌گیرد. حذف کارت‌های کاربران و تم روشن ۳٬۰۴۷ بایت از این عدد کم کرد، ولی هنوز بالای سقف است.",
+            "example": "اندازهٔ بایتِ رشتهٔ همان‌طور که در فرم‌ور کامپایل می‌شود: ۱۷۹٬۷۸۹ بایت (سقف: ۱۷۵٬۰۰۰) — یعنی ۴٬۷۸۹ بایت بیشتر. پیش از تغییرهای امروز ۱۸۲٬۸۳۶ بایت بود.",
             "fix": "یک بررسی کامپایل‌زمان مثل ماژول کالیبراسیون اضافه شود و صفحه واقعاً زیر سقف بیاید یا سقف واقعی‌تر شود.",
         },
         {
@@ -438,6 +451,7 @@ def build_and_run_harness():
                 handle.write(stub_block + "\n" + probe_body)
             build = subprocess.run(
                 ["g++", "-std=gnu++17", "-Wall", "-Wextra", "-Wno-unused-function",
+                 "-DPANEL_LITERAL_BYTES=%d" % panel_literal_bytes(),
                  "-Wno-unused-variable", "-fsanitize=address,undefined",
                  "-fno-omit-frame-pointer", "-g",
                  "-I", os.path.join(SIM_DIR, "stubinc"), "-I", SIM_DIR,
@@ -590,13 +604,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(json_bytes({"ok": 0, "e": "old"}, 400))
             target["pass"] = new_pass
             return self.send(json_bytes({"ok": 1}))
-        if path == "/theme":
-            return self.send(json_bytes({"theme": BOARD.theme}))
-        if path == "/settheme" and method == "POST":
-            if not self.session_ok():
-                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
-            BOARD.theme = int(args.get("theme", "0") or 0)
-            return self.send(json_bytes({"ok": 1}))
         if path == "/wifi" and method == "GET":
             payload = dict(BOARD.wifi)
             payload["passSet"] = 1
@@ -656,6 +663,8 @@ class Handler(BaseHTTPRequestHandler):
                 BOARD.rows = {}
             return self.send(json_bytes({"ok": 1, "removed": 1, "freed": 1024}))
         if path == "/evt/snap" and method == "POST":
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             BOARD.rows.setdefault(BOARD.today(), []).append(
                 BOARD.row(int(time.time()), 0, 6))
             return self.send(json_bytes({"ok": 1}))

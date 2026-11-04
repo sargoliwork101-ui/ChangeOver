@@ -154,7 +154,7 @@
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 #define SIMPLE_PARAMS_FILE              "/params.json"
 #define SIMPLE_THEME_FILE               "/theme.json"
-#define SIMPLE_THEME_MAX                1u
+#define SIMPLE_THEME_MAX                0u
 #define SIMPLE_CRYPTO_TAG_LEN           16u
 #define SIMPLE_CRYPTO_KEY_LEN           32u
 #define SIMPLE_CRYPTO_SALT              "ChangeOver_FS_2026_v1"

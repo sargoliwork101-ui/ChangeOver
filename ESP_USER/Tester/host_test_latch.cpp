@@ -1835,6 +1835,14 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
     UINT32_T__G__LastDiagReqMs = 5151u;
     UINT32_T__G__WifiBatteryIdleStartMs = 8282u;
 
+    /* ثبت دستی ردیف هم تغییر است: بدون نشست مدیر باید رد شود */
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventSnap();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403,
+                  "ثبت دستی ردیف بدون ورود مدیر با ۴۰۳ رد می‌شود");
+    (void)func__T_Login("admin", "admin");
     SIMPLE_WEB_SERVER_T__G__Server.simClear();
     func__Simple_HttpEventSnap();
     func__T_Check(BOOL__G__LogLastStepValid == false && UINT32_T__G__LogLastStepMs == 0u &&
@@ -1862,6 +1870,8 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
         func__T_Check(size_t__hits == 2u,
                       "دو بار زدن پیاپی دکمهٔ به‌روزرسانی دو رکورد دستی با note=6 ثبت می‌کند");
     }
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
     (void)func__SimpleLog_Clear();
 
     /* بررسی ضربان ۱ ساعته، یکسان‌سازی مسیرهای با اسلش ابتدایی، پاک‌سازی فایل‌های جامانده و پیشگیری‌های وای‌فای */

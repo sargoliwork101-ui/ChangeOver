@@ -24,20 +24,6 @@ body[data-theme="0"]{
  --sh2:0 6px 20px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.03) inset;
  --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg),var(--acglow);
 }
-body[data-theme="1"]{
- --bg:#f6f8fb;--bg2:#eef2f7;--bg3:#e4eaf3;
- --cd:#ffffff;--cd2:#f8fafc;--cd3:#f1f5f9;
- --in:#f1f5f9;--in2:#e2e8f0;
- --ln:#dde4ee;--ln2:#cbd5e1;--ln3:#b8c5d6;
- --tx:#0f172a;--tx2:#334155;--mu:#7a8699;--mu2:#94a3b8;
- --ac:#3b6bf6;--ac2:#5b8def;--ac3:#2f5ad6;--acbg:rgba(59,107,246,.08);--acbd:rgba(59,107,246,.18);--acglow:0 0 20px rgba(59,107,246,.15);
- --ok:#059669;--ok2:#10b981;--okbg:rgba(5,150,105,.08);--okbd:rgba(5,150,105,.16);
- --wa:#b45309;--wabg:rgba(180,83,9,.08);--wabd:rgba(180,83,9,.16);
- --er:#dc2626;--erbg:rgba(220,38,38,.06);--erbd:rgba(220,38,38,.12);
- --sh:0 8px 28px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.04);
- --sh2:0 4px 14px rgba(0,0,0,.05),0 0 0 1px rgba(0,0,0,.03);
- --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg);
-}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth}
 body{
@@ -60,7 +46,6 @@ header{
  background:rgba(7,10,16,.72);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
  border-bottom:1px solid var(--ln);transition:.3s;
 }
-body[data-theme="1"] header{background:rgba(246,248,251,.82)}
 header .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-.2px}
 header .brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:14px;box-shadow:var(--acglow),0 4px 12px var(--acbg);position:relative;overflow:hidden}
 header .brand-mark::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.2),transparent);pointer-events:none}
@@ -597,26 +582,10 @@ code,pre,.mono{font-family:Vazirmatn !important}
 
   <div id="settingsContent" style="display:grid;gap:16px">
    <div class="cd">
-    <div class="ti">تم - دو حالت: تیره و روشن - فقط ادمین</div>
-    <div class="theme-grid" style="grid-template-columns:1fr 1fr">
-     <div class="theme-card" id="themeCard0" onclick="selectTheme(0)">
-      <div class="theme-preview" style="background:#070a10"><div class="tp1" style="background:#121826"></div><div class="tp2" style="background:#5b8def"></div><div class="tp3" style="background:#1ee6a0"></div></div>
-      <div class="theme-name">تیره</div>
-      <div class="theme-desc">پیش‌فرض</div>
-     </div>
-     <div class="theme-card" id="themeCard1" onclick="selectTheme(1)">
-      <div class="theme-preview" style="background:#f6f8fb"><div class="tp1" style="background:#ffffff"></div><div class="tp2" style="background:#3b6bf6"></div><div class="tp3" style="background:#059669"></div></div>
-      <div class="theme-name">روشن</div>
-      <div class="theme-desc">روز</div>
-     </div>
-    </div>
-    <div id="themeMsg" style="font-size:12px;color:var(--mu);margin-top:10px"></div>
-   </div>
-
-   <div class="cd">
     <div class="ti">وای‌فای - نام و رمز - فقط ادمین</div>
     <div class="form">
      <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
+     <div class="kv" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">رمز فعلی</span><span style="display:flex;align-items:center;gap:8px"><b id="wifiCurrentPass" style="font-family:Vazirmatn">••••••••</b><button class="eye-btn" type="button" title="نمایش رمز" onclick="toggleWifiPass(this)">👁</button></span></div>
      <input id="wifiNewSsid" placeholder="نام وای‌فای جدید - مثل changeover_userpannel" maxlength="32">
      <div class="pass-wrap"><input id="wifiNewPass" type="password" placeholder="رمز جدید - حداقل ۸ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('wifiNewPass',this)">👁</button></div>
      <button class="btn pri" onclick="setWifi()">ذخیره وای‌فای - نیاز به ریستارت برد</button>
@@ -706,28 +675,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
 <div id="toastMsg" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span></div>
 </main>
 <script>
-let currentTheme=0;
 let gUser='', gRole=false, loginWaiter=null;
-function applyTheme(t){
- t=(t===1)?1:0;   /* فقط دو تم داریم: ۰ تیره، ۱ روشن (تم سوم حذف شد) */
- currentTheme=t;
- document.body.setAttribute('data-theme', String(t));
- localStorage.setItem('co_theme', String(t));
- for(let i=0;i<=1;i++){ let c=document.getElementById('themeCard'+i); if(c) c.classList.toggle('a', i===t); }
-}
-function selectTheme(t){
- applyTheme(t);
- authFetch('/settheme?theme='+t,{method:'POST'}).then(r=>r.json()).then(j=>{
-  let tm=document.getElementById('themeMsg'); if(tm) tm.textContent=j.ok?'تم ذخیره شد':'خطا - فقط ادمین';
-  setTimeout(()=>{let tmm=document.getElementById('themeMsg'); if(tmm) tmm.textContent='';},3000);
- }).catch(()=>{ let tmc=document.getElementById('themeMsg'); if(tmc) tmc.textContent='تم در مرورگر ذخیره شد (آفلاین)'; });
-}
-async function loadTheme(){
- try{ let r=await fetch('/theme',{cache:'no-store'}); let j=await r.json(); if(j.theme!==undefined){ applyTheme(j.theme); return; } }catch(e){}
- let saved=localStorage.getItem('co_theme'); if(saved!==null){ applyTheme(parseInt(saved)); } else { applyTheme(0); }
-}
-loadTheme();
-
+let gWifiPass='', gWifiShown=false;
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
@@ -1708,7 +1657,6 @@ function render(data){
  let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=fmtJalaliFull(Math.floor(Date.now()/1000));
  /* اگر در همین بوت رمزها به پیش‌فرض برگشته باشند، به کاربر گفته می‌شود */
  setShow('recoveryMsgMain', data.recovery==1);
- if(data.theme!==undefined && data.theme!==currentTheme){ let saved=localStorage.getItem('co_theme'); if(saved===null) applyTheme(data.theme); }
  let clearCard=document.getElementById('clearHistoryCard');
  if(clearCard) clearCard.style.display='block';
  let clearPct=document.getElementById('clearPctBtn');
@@ -1902,7 +1850,23 @@ async function latchReset(n){
  }catch(e){ if(m)m.textContent='⚠ '+(e&&e.message?e.message:'خطای شبکه'); }
 }
 async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await authFetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
-async function loadWifi(){ try{ let r=await fetch('/wifi',{cache:'no-store'}); let j=await r.json(); let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--'; }catch(e){} }
+async function loadWifi(){
+ try{
+  let r=await fetch('/wifi',{cache:'no-store'});
+  let j=await r.json();
+  let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--';
+  gWifiPass=j.pass||'';
+  let pass=document.getElementById('wifiCurrentPass');
+  if(pass) pass.textContent=gWifiPass?(gWifiShown?gWifiPass:'••••••••'):'— ورود مدیر —';
+ }catch(e){}
+}
+function toggleWifiPass(btn){
+ let pass=document.getElementById('wifiCurrentPass');
+ if(!gWifiPass){ showToast('رمز فقط بعد از ورود مدیر دیده می‌شود'); return; }
+ gWifiShown=!gWifiShown;
+ if(pass) pass.textContent=gWifiShown?gWifiPass:'••••••••';
+ if(btn) btn.style.opacity=gWifiShown?'1':'.6';
+}
 async function syncTime(){ 
  let ts=Math.floor(Date.now()/1000); 
  let m=document.getElementById('timeMsg'); 

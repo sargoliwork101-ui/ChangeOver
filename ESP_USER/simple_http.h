@@ -516,37 +516,7 @@ static void func__Simple_HttpLogout(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
-static void func__Simple_HttpGetTheme(void)
-{
-    char char__buf[64];
-    (void)snprintf(char__buf, sizeof(char__buf), "{\"theme\":%u}", (unsigned int)UINT8_T__G__Theme);
-    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
-}
-static void func__Simple_HttpSetTheme(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__themeStr;
-    int32_t int32_t__theme = 0;
-    if (!func__Simple_GetArg("theme", string__themeStr))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        return;
-    }
-    func__Simple_ParseInt(string__themeStr.c_str(), &int32_t__theme);
-    if (func__Simple_SetTheme((uint8_t)int32_t__theme))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-    }
-    else
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-    }
-}
+/* ==================== - /wifi ==================== */
 static void func__Simple_HttpGetWifi(void)
 {
     char char__buf[128];
@@ -767,6 +737,11 @@ static void func__Simple_HttpClockSet(void)
     int32_t int32_t__sec = 0;
     int32_t int32_t__tz = 0;
     bool bool__ok = false;
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
     if (func__Simple_GetArg("tz", string__tz))
     {
         if (func__Simple_ParseInt(string__tz.c_str(), &int32_t__tz) &&
@@ -806,7 +781,6 @@ static void func__Simple_HttpEventFormat(void)
     {
         func__Simple_AuthSave();
         func__Simple_WifiSave();
-        func__Simple_ThemeSave();
         UINT32_T__G__LastSavedTimeSec = 0u;
         func__Simple_TimeSave();
         func__SimpleLog_Begin();
@@ -933,6 +907,11 @@ static void func__Simple_HttpEventClear(void)
 }
 static void func__Simple_HttpEventSnap(void)
 {
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
     bool bool__stored;
     bool__stored = func__SimpleLog_SnapshotNow();
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");

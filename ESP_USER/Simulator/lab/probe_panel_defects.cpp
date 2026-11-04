@@ -119,6 +119,7 @@ int main(void)
                      " admin kept = %d, viewer1 kept = %d\n",
                      (unsigned)SIMPLE_USERS_MAX, (unsigned)usersBefore, (unsigned)usersAfter,
                      adminName, otherName);
+        (void)func__Simple_AuthDefaults();
     }
     /* 6) Real row size against the log budget. */
     {
@@ -144,9 +145,9 @@ int main(void)
                      (unsigned)SIMPLE_LOG_TOTAL_BUDGET_BYTES,
                      (unsigned)(SIMPLE_LOG_TOTAL_BUDGET_BYTES / ((strlen(row) + 1u) * 400u)));
     }
-    /* 7) Panel page size against its own cap. */
-    (void)printf("[7] panel html = %u bytes, cap = %u bytes\n",
-                 (unsigned)(sizeof(SIMPLE_PANEL_HTML) - 1u),
+    /* 7) Panel size: the firmware literal, measured by the lab, against its cap. */
+    (void)printf("[7] panel html literal = %u bytes, cap = %u bytes\n",
+                 (unsigned)PANEL_LITERAL_BYTES,
                  (unsigned)SIMPLE_PANEL_HTML_MAX_BYTES);
     /* 8) One session at a time. */
     {
