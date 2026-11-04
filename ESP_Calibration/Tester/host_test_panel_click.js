@@ -667,21 +667,47 @@ function main() {
             w.evtRender("1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
             check(txt(0).indexOf("ولتاژ پک یک پله") >= 0,
                   "a voltage step is a line of its own", txt(0));
-            check(txt(0).indexOf("ورودی 23.00V") >= 0,
-                  "the line shows the input rail", txt(0));
-            check(txt(0).indexOf("جریان کانال ۱ 1.20A") >= 0 &&
-                  txt(0).indexOf("جریان کانال ۲ 1.10A") >= 0,
-                  "and both battery currents", txt(0));
-            check(txt(0).indexOf("فرمان کانال ۱ 45٪") >= 0 &&
-                  txt(0).indexOf("فرمان کانال ۲ 30٪") >= 0,
-                  "and both commands as a percentage", txt(0));
+            /*
+ * [EN] v1.122 (user order): the history is a TABLE, so two steps can be
+ *      compared column by column instead of guessed from a sentence. Same
+ *      colours, same theme; the event sentence keeps its own cell.
+ */
+            const tbl = () => w.document.querySelectorAll("#evtlist table.evttbl");
+            const ths = () => w.document.querySelectorAll("#evtlist table.evttbl thead th");
+            const cells = (i4) => rows()[i4] ? [...rows()[i4].querySelectorAll("td")] : [];
+            check(tbl().length === 1,
+                  "the history card draws one table, not a stack of lines",
+                  String(tbl().length));
+            check(ths().length === 11,
+                  "the table has one header per column", String(ths().length));
+            check(rows()[0] && rows()[0].tagName === "TR" &&
+                  cells(0).length === 11,
+                  "every step is a row with one cell per column",
+                  rows()[0] ? rows()[0].tagName + "/" + cells(0).length : "none");
+            check(cells(0)[2] && cells(0)[2].textContent.trim() === "24.00",
+                  "the pack voltage sits in its own column", cells(0)[2] ? cells(0)[2].textContent : "none");
+            check(cells(0)[4] && cells(0)[4].textContent.trim() === "23.00",
+                  "and the input rail in the next one", cells(0)[4] ? cells(0)[4].textContent : "none");
+            check(cells(0)[6] && cells(0)[6].textContent.trim() === "1.20" &&
+                  cells(0)[7] && cells(0)[7].textContent.trim() === "1.10",
+                  "both battery currents are comparable cells",
+                  (cells(0)[6] ? cells(0)[6].textContent : "?") + "/" + (cells(0)[7] ? cells(0)[7].textContent : "?"));
+            check(cells(0)[8] && cells(0)[8].textContent.trim() === "45" &&
+                  cells(0)[9] && cells(0)[9].textContent.trim() === "30",
+                  "and both commands as a percentage",
+                  (cells(0)[8] ? cells(0)[8].textContent : "?") + "/" + (cells(0)[9] ? cells(0)[9].textContent : "?"));
+            check(cells(0)[1] && cells(0)[1].querySelectorAll(".ep").length >= 1,
+                  "the event sentence keeps its own cell and its own spans",
+                  cells(0)[1] ? cells(0)[1].textContent : "none");
             w.evtRender("1792756800,12,0,5,1,1,3,0,0,0,24000,23960,24040,20,0", "");
             check(txt(0).indexOf("گزارش دوره‌ای") >= 0 && rows()[0].className.indexOf("lv0") >= 0,
                   "a heartbeat line says the panel is alive, in grey", txt(0));
             /* an old 15-column file still reads, without the new columns */
             w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0", "");
-            check(txt(0).indexOf("ورودی") < 0 && txt(0).indexOf("24.00") >= 0,
-                  "a day file written before v1.96 still opens", txt(0));
+            check(cells(0)[2] && cells(0)[2].textContent.trim() === "24.00" &&
+                  cells(0)[4] && cells(0)[4].textContent.trim() === "\u2014",
+                  "a day file written before v1.96 still opens, and its missing columns stay empty instead of inventing zeros",
+                  (cells(0)[2] ? cells(0)[2].textContent : "?") + "/" + (cells(0)[4] ? cells(0)[4].textContent : "?"));
             /* an empty day says so instead of an empty box */
             w.evtRender("", "");
             check(w.document.getElementById("evtlist").textContent.indexOf("هنوز چیزی ثبت نشده") >= 0,
@@ -697,10 +723,10 @@ function main() {
                   "the download name carries the Iranian date too", w.evtDaySh("20261023"));
             w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
             check(rows()[0].querySelectorAll(".ep").length >= 1 &&
-                  rows()[0].querySelectorAll(".evtv .m").length >= 8,
-                  "each message and each measurement sits in its own span",
+                  cells(0).filter(td => td.textContent.trim() !== "" && td.textContent.trim() !== "\u2014").length >= 8,
+                  "each message sits in its own span and each measurement in its own cell",
                   rows()[0].querySelectorAll(".ep").length + "/" +
-                  rows()[0].querySelectorAll(".evtv .m").length);
+                  cells(0).filter(td => td.textContent.trim() !== "" && td.textContent.trim() !== "\u2014").length);
             check(rows()[0].querySelectorAll(".lt").length >= 9,
                   "numbers and latin words run inside their own left-to-right spans",
                   String(rows()[0].querySelectorAll(".lt").length));
@@ -752,6 +778,19 @@ function main() {
             check(pv.disabled === false && pRows().length === 3,
                   "a fresh tail view leaves the previous-page key usable",
                   String(pRows().length));
+            /* v1.122 (user order): the three keys sit on one row, each a third
+               of the width, and they stack when the screen gets too narrow. */
+            const pg = d.getElementById("evtpage");
+            check(!!pg && pg.querySelectorAll("button").length === 3,
+                  "the three page keys live in their own row");
+            const css = [...d.querySelectorAll("style")].map(s2 => s2.textContent).join("\n");
+            const row = (css.match(/#evtpage\{[^}]*}/) || [""])[0].replace(/\s+/g, "");
+            check(row.indexOf("display:flex") >= 0 && row.indexOf("flex-wrap:wrap") >= 0,
+                  "the keys sit on one row that wraps when the panel gets narrow", row);
+            const btn = (css.match(/#evtpage \.sb\{[^}]*}/) || [""])[0].replace(/\s+/g, "");
+            check((btn.indexOf("flex:1 1") >= 0 || btn.indexOf("flex:11") >= 0) &&
+                  btn.indexOf("33.333%") >= 0,
+                  "each key stretches to exactly a third of that row", btn);
         }
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));

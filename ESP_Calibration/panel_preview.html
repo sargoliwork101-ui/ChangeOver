@@ -377,18 +377,33 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #pmt{white-space:pre-line;font-size:14px;line-height:1.9;margin-bottom:12px}
 #pmbtn{display:flex;gap:8px;flex-wrap:wrap}
 /* [‎EN] v1.93 state history rows (bottom card) / [FA]‎ ردیف‌های تاریخچهٔ وضعیت */
-.evtlist{max-height:360px;overflow:auto;border-top:1px solid var(--ln);margin-top:8px;font-size:12px;line-height:1.9}
-/* [‎EN] v1.95: one line per event, each line carrying its own colour bar so a
-   fault is red, a warning amber, a recovery green and a plain state change
-   grey - the colour is the first thing the eye finds.
-   [FA] نسخهٔ ۱٫۹۵: هر خط یک نوار رنگی خودش دارد: خطا قرمز، هشدار نارنجی،
-   برگشت به سلامتی سبز و تغییر سادهٔ وضعیت خاکستری. */
-.evtrow{display:flex;gap:8px;flex-wrap:wrap;padding:5px 8px;margin:3px 0;border-radius:8px;align-items:baseline;background:rgba(255,255,255,.02);border-inline-start:3px solid #4a5568}
-.evtrow.lv3{border-inline-start-color:#e5484d;background:rgba(229,72,77,.10)}
-.evtrow.lv2{border-inline-start-color:#c9a227;background:rgba(201,162,39,.10)}
-.evtrow.lv1{border-inline-start-color:#2f9e63;background:rgba(47,158,99,.10)}
-.evtrow.lv0{border-inline-start-color:#4a5568}
-.evtrow:last-child{border-bottom:none}
+.evtlist{max-height:420px;overflow:auto;border-top:1px solid var(--ln);margin-top:8px;font-size:12px}
+/* [EN] v1.122 (user order): the history is a TABLE. One row per step and one
+        column per measured value, so two steps are compared by reading down a
+        column instead of parsing a sentence. The colours are unchanged: the
+        same severity classes colour the same rows (v1.95).
+   [FA] نسخهٔ ۱٫۱۲۲ (دستور کاربر): تاریخچه جدول است. هر پله یک ردیف و هر مقدار
+        یک ستون، تا تفاوت دو پله با نگاه به یک ستون دیده شود، نه با خواندن
+        جمله. رنگ‌بندی همان است: همان کلاس‌های شدت (نسخهٔ ۱٫۹۵). */
+.evttbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.evttbl thead th{position:sticky;top:0;z-index:2;background:var(--cd);color:var(--mu);font-size:11px;font-weight:700;padding:6px;border-bottom:1px solid var(--ln);white-space:nowrap;text-align:center}
+.evttbl tbody td{padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;text-align:center}
+.evttbl tbody td.evtd{text-align:start;white-space:normal;min-width:170px;line-height:1.75}
+.evtrow{background:rgba(255,255,255,.02)}
+.evtrow>td:first-child{border-inline-start:3px solid #4a5568}
+.evtrow.lv3{background:rgba(229,72,77,.10)}
+.evtrow.lv3>td:first-child{border-inline-start-color:#e5484d}
+.evtrow.lv2{background:rgba(201,162,39,.10)}
+.evtrow.lv2>td:first-child{border-inline-start-color:#c9a227}
+.evtrow.lv1{background:rgba(47,158,99,.10)}
+.evtrow.lv1>td:first-child{border-inline-start-color:#2f9e63}
+/* [EN] v1.122 (user order): the three page keys share the row in equal thirds
+        and stack under each other when the panel is narrow.
+   [FA] نسخهٔ ۱٫۱۲۲ (دستور کاربر): سه کلید صفحه‌گردی یک‌سومِ مساویِ ردیف‌اند و
+        وقتی پنل باریک شد زیر هم می‌آیند. */
+#evtpage{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#evtpage .sb{flex:1 1 calc(33.333% - 8px);min-width:132px;text-align:center}
+@media (max-width:520px){#evtpage .sb{flex:1 1 100%}}
 .evtsum{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
 .evtsum span{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)}
 .evtsum span.r{background:rgba(229,72,77,.16);color:#ffb4b4}
@@ -396,10 +411,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evtsum span.g{background:rgba(47,158,99,.16);color:#9ff0c0}
 .lt{direction:ltr;unicode-bidi:isolate}
 .ep+.ep:before{content:'·';margin:0 5px;color:var(--mu);opacity:.7}
-.m{display:inline-block;margin:1px 2px;padding:1px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:11px}
 .evtt{color:var(--mu);font-family:Vazirmatn;white-space:nowrap;min-width:64px}
-.evtd{flex:1}
-.evtv{color:var(--mu);font-family:Vazirmatn}
 .mok{color:#2f9e63;font-weight:700}.mbad{color:#e5484d;font-weight:700}
 </style><script>
 /* ============================================================================
@@ -520,7 +532,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d3c8572</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e9d752d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -547,7 +559,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <div class="cd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
-<div class="sx">هر خط یک اتفاق واقعی است: برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. کارت ۳۰ ردیف آخر را نشان می‌دهد؛ «۳۰ ردیف قدیمی‌تر» بقیهٔ همان روز را می‌آورد و «همهٔ ردیف‌ها» کل روز را یک‌جا. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر یک ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
+<div class="sx">هر ردیف یک اتفاق واقعی است (برق شهر، مرحلهٔ شارژ هر کانال، خطاها، قفل‌ها، حکم‌ها، مسیر باتری، مود دستی و قطع/برگشت ارتباط) و هر ستون یک کمیت — ولتاژها، جریان‌ها، فرمان‌ها و درصد — تا تفاوت دو پله را در یک ستون ببینید. <b>فقط با تغییر، یک خط نوشته می‌شود</b>؛ وضعیت ثابت خط نمی‌سازد. هر روز یک فایل جدا، تا ۳۰ روز. کارت ۳۰ ردیف آخر را نشان می‌دهد؛ «۳۰ ردیف قدیمی‌تر» بقیهٔ همان روز را می‌آورد و «همهٔ ردیف‌ها» کل روز را یک‌جا. ساعت از گوشی یا کامپیوتری است که این صفحه را باز کرده.<br><b>هر خط چه دارد؟</b> ولتاژ پک و دو نیم‌باتری و اختلافشان، ورودی، نود ۱۲ ولت، جریان و درصد فرمان هر دو کانال. هر پلهٔ ۲۰۰ میلی‌ولتی یک خط می‌سازد و اگر یک ساعت هیچ اتفاقی نیفتد یک خط «گزارش دوره‌ای».<br><span class="lb"><b style="color:#ffb4b4">قرمز = خطا یا قفل</b> · <b style="color:#ffe08a">نارنجی = هشدار</b> · <b style="color:#9ff0c0">سبز = برگشت به سلامتی</b> · خاکستری = تغییر ساده</span></div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
 <button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
@@ -559,7 +571,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <div id="evtfs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
 <div class="evtsum" id="evtsum"></div>
 <div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
-<div class="bqr">
+<div id="evtpage">
 <button class="sb" type="button" id="evtpv" onclick="evtOlder()">۳۰ ردیف قدیمی‌تر</button>
 <button class="sb" type="button" id="evtnx" onclick="evtNewer()">۳۰ ردیف جدیدتر</button>
 <button class="sb" type="button" id="evtal" onclick="evtAllRows()">همهٔ ردیف‌ها</button>
@@ -4240,6 +4252,39 @@ function evtTime(epoch){
   const p=n=>String(n).padStart(2,'0');
   return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
 }
+/* [EN] v1.122: the battery percentage of a row - taken from the row itself when
+        the file has it (v1.109 and later), otherwise recomputed from the same
+        discharge map the board uses (74/75), so old files read the same way.
+   [FA] نسخهٔ ۱٫۱۲۲: درصد باتریِ هر ردیف - اگر خود ردیف داشته باشد (نسخهٔ ۱٫۱۰۹
+        به بعد) همان، وگرنه از همان نگاشت دشارژ برد (۷۴/۷۵) دوباره حساب می‌شود
+        تا فایل قدیمی هم یک‌جور خوانده شود. */
+function evtBattPct(r){
+  if(r.pct!==null&&r.pct!==undefined)return r.pct;
+  const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
+        vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
+  if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
+  return Math.round((r.v24-vmin)*100/(vmax-vmin));
+}
+/* [EN] v1.122: the numeric columns of the table, in header order. A column the
+        file does not have (files older than v1.96) shows an em dash instead of
+        a zero, so a missing reading is never mistaken for a measured one.
+   [FA] نسخهٔ ۱٫۱۲۲: ستون‌های عددی جدول به ترتیب سرصفحه. ستونی که فایل ندارد
+        (فایل‌های پیش از ۱٫۹۶) خط تیره نشان می‌دهد نه صفر، تا خوانشِ نبوده با
+        خوانشِ اندازه‌گیری‌شده اشتباه نشود. */
+function evtCols(r){
+  const num=(v,f)=>(v===null||v===undefined)?'\u2014':f(v);
+  return [
+    (r.v24/1000).toFixed(2),                 /* pack */
+    String(r.imbal|0),                       /* half-battery difference */
+    num(r.vin,x=>(x/1000).toFixed(2)),       /* input rail */
+    num(r.v12,x=>(x/1000).toFixed(2)),       /* 12 V node */
+    num(r.i1,x=>(x/1000).toFixed(2)),        /* channel 1 current */
+    num(r.i2,x=>(x/1000).toFixed(2)),        /* channel 2 current */
+    num(r.d1,x=>(x/10).toFixed(0)),          /* channel 1 command */
+    num(r.d2,x=>(x/10).toFixed(0)),          /* channel 2 command */
+    String(evtBattPct(r))                    /* battery percent */
+  ];
+}
 /* [EN] One row -> a Persian line and a severity: 3 = fault, 2 = warning,
         1 = back to healthy, 0 = plain state change. The highest severity in
         the row wins, so a frame that carries a fault and a mains return is
@@ -4304,32 +4349,12 @@ function evtRowText(r){
      [FA] نسخهٔ ۱٫۱۱۷: اولین ردیف فایل هر روز می‌گوید ثبت آن روز از اینجا شروع شده. */
   if(r.note===7){add('ایجاد فایل روز — ثبت این روز از این لحظه شروع شد',0);}
   if(!parts.length){add('وضعیت: کانال ۱ «'+stName(c1)+'» · کانال ۲ «'+stName(c2)+'»',0);}
-  /* [EN] v1.109: every row also speaks the battery state - percent (stored
-          on the row since v1.109, or recomputed for older files), the side it
-          is on (discharge / which charge phase / input with no charge) and the
-          battery power in watts (V x A2).
-     [FA] نسخهٔ ۱٫۱۰۹: هر ردیف وضعیت باتری را هم می‌گوید - درصد (از نسخهٔ
-          ۱٫۱۰۹ روی خود ردیف است و برای فایل قدیمی دوباره حساب می‌شود)،
-          سمتی که هست (دشارژ / کدام مرحلهٔ شارژ / برق وصل بدون شارژ) و توان
-          باتری بر حسب وات (ولتاژ × جریان ۲). */
-  const bpct=((r.pct!==null&&r.pct!==undefined)?r.pct:(function(){
-    const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
-          vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
-    if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
-    return Math.round((r.v24-vmin)*100/(vmax-vmin));})());
-  const bmode=(!mains)?'دشارژ':(((c1>0)||(c2>0))?('شارژ — '+stName(c1>=c2?c1:c2)):'برق وصل — شارژ خاموش');
-  const v='باتری '+bpct+'٪ · حالت: '+bmode+' · ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
-  /* [EN] v1.96: rails, currents and duties; old files just skip them.
-     [FA] ولتاژها، جریان‌ها و duty؛ فایل قدیمی این ستون‌ها را ندارد. */
-  const extra=[];
-  if(r.vin!==null)extra.push('ولتاژ ورودی '+(r.vin/1000).toFixed(2)+'V');
-  if(r.v12!==null)extra.push('نود ۱۲ ولت '+(r.v12/1000).toFixed(2)+'V');
-  if(r.i1!==null)extra.push('جریان کانال ۱ '+(r.i1/1000).toFixed(2)+'A');
-  if(r.i2!==null)extra.push('جریان کانال ۲ '+(r.i2/1000).toFixed(2)+'A');
-  if(r.d1!==null)extra.push('فرمان کانال ۱ '+(r.d1/10).toFixed(0)+'٪');
-  if(r.d2!==null)extra.push('فرمان کانال ۲ '+(r.d2/10).toFixed(0)+'٪');
-  if(r.i2!==null)extra.push('توان باتری '+(r.v24*(r.i2||0)/1e6).toFixed(0)+'W');
-  return {txt:parts.join(' · '),lv:lv,v:v+(extra.length?' · '+extra.join(' · '):''),time:evtTime(r.epoch)};
+  /* [EN] v1.122: the battery percent is its own table column now, and the
+          side it is on follows from the mains/phase cells, so this sentence
+          no longer repeats them.
+     [FA] نسخهٔ ۱٫۱۲۲: درصد باتری حالا ستون خودش را دارد و سمتِ آن از خانه‌های
+          برق و مرحله پیدا است، پس این جمله دیگر تکرارشان نمی‌کند. */
+  return {txt:parts.join(' · '),lv:lv,time:evtTime(r.epoch)};
 }
 function evtParse(line){
   const f=line.split(',');
@@ -4366,11 +4391,12 @@ const EVT_PAGE=30;
 function evtParseAll(text){
   return (text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
 }
+const EVT_COLS=['ساعت','اتفاق','پک V','Δ نیم mV','ورودی V','۱۲V V','I۱ A','I۲ A','D۱ ٪','D۲ ٪','باتری ٪'];
 function evtLine(r){
   const t=evtRowText(r);
-  return '<div class="evtrow lv'+t.lv+'"><span class="evtt">'+xiso(t.time)+
-         '</span><span class="evtd">'+xspr(t.txt,'ep')+
-         '</span><span class="evtv">'+xspr(t.v,'m')+'</span></div>';
+  return '<tr class="evtrow lv'+t.lv+'"><td class="evtt">'+xiso(t.time)+'</td>'+
+         '<td class="evtd">'+xspr(t.txt,'ep')+'</td>'+
+         evtCols(r).map(x=>'<td>'+xiso(x)+'</td>').join('')+'</tr>';
 }
 function evtPager(){
   const pv=$('evtpv'),nx=$('evtnx'),al=$('evtal');
@@ -4401,7 +4427,10 @@ function evtPaint(){
   evtRows.forEach(r=>{const t=evtRowText(r);if(t.lv===3)nf++;else if(t.lv===2)nw++;else if(t.lv===1)ng++;});
   if(sum)sum.innerHTML=evtFsWarn+'<span class="r">خطا و قفل: '+evtFa(nf)+'</span><span class="y">هشدار: '+evtFa(nw)+'</span><span class="g">برگشت به سلامتی: '+evtFa(ng)+'</span><span>مجموع: '+evtFa(n)+' خط</span>';
   /* جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
-  box.innerHTML=evtRows.slice(from,end).reverse().map(evtLine).join('');
+  box.innerHTML='<table class="evttbl"><thead><tr>'+
+    EVT_COLS.map(c=>'<th>'+xiso(c)+'</th>').join('')+
+    '</tr></thead><tbody>'+
+    evtRows.slice(from,end).reverse().map(evtLine).join('')+'</tbody></table>';
 }
 /* The board's answer is a TAIL: 30 rows, never the whole day. */
 function evtRender(text,code,ram,src){
