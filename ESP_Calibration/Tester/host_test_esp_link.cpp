@@ -2559,6 +2559,135 @@ int main(void)
               "and nothing can be appended after the cap");
     }
 
+    /* ---- 36d. the 40 KiB log budget holds itself (v1.131) ----------------
+       [EN] Owner decision 2026-11-05: "40 KB in total is set aside for this, and
+            the day cap may be 200 rows". The old budget constant was 200 000
+            bytes - five times the flash - so it never trimmed anything, and the
+            panel only stopped when the file system itself refused the write
+            (the "حافظه پر شده" the owner saw). Now the budget is the real number,
+            one 4 KiB block is always kept free, and a day that would eat the last
+            block is dropped oldest-first instead of stopping the log.
+       [FA] تصمیم کاربر ۲۰۲۶-۱۱-۰۵: «کلا ۴۰ کیلوبایت برای این کار و سقف روز
+            ۲۰۰ ردیف». ثابت بودجهٔ قبلی ۲۰۰ ۰۰۰ بایت بود - پنج برابر فلش - پس
+            هیچ‌وقت چیزی را کوتاه نمی‌کرد و پنل فقط وقتی می‌ایستاد که خودِ
+            فایل‌سیستم نوشتن را رد می‌کرد (همان «حافظه پر شده»). حالا بودجه همان
+            عدد واقعی است، یک بلوک ۴ کیلوبایتی همیشه خالی می‌ماند، و روزی که
+            می‌خواهد آخرین بلوک را بخورد قدیمی‌ترین‌اول حذف می‌شود، نه اینکه لاگ
+            بایستد. */
+    {
+        check(ESP_LOG_TOTAL_BUDGET_BYTES == 40000u,
+              "the log budget is the 40 KiB the owner set aside",
+              std::to_string((unsigned)ESP_LOG_TOTAL_BUDGET_BYTES));
+        check(ESP_LOG_MAX_ROWS_PER_DAY == 200u,
+              "the day cap is 200 rows, as the owner ordered",
+              std::to_string((unsigned)ESP_LOG_MAX_ROWS_PER_DAY));
+        check((sizeof(ESP_LOG_HEADER) - 1u) <= 400u,
+              "a day file opens with a short header, not a 735-byte legend",
+              std::to_string((unsigned)(sizeof(ESP_LOG_HEADER) - 1u)) + " bytes");
+    }
+    {
+        /* a 40 KiB LittleFS whose space is taken by FOREIGN files: our two day
+           files add up to well under the budget, so only a real free-block check
+           can save the next row (this is the /evt/fs list the panel shows, and
+           the "حافظه پر شده" the owner saw). */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        BOOL__G__FsOk = true;
+        LittleFS.failWrites = false;
+        std::string day;
+        for (int k = 0; k < 107; k++)
+        {
+            day += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        LittleFS.files["/evt-20261020.csv"] = std::string(ESP_LOG_HEADER) + day;
+        LittleFS.files["/evt-20261021.csv"] = std::string(ESP_LOG_HEADER) + day;
+        LittleFS.files["/stray-from-an-older-sketch.bin"] = std::string(23000u, 'z');
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogLastRowValid = true;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        BOOL__G__LogClockValid = true;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        INT32_T__G__LogTzSec = 0;
+        {
+            FSInfo info;
+            (void)LittleFS.info(info);
+            check((uint32_t)(info.totalBytes - info.usedBytes) < ESP_LOG_FREE_RESERVE_BYTES,
+                  "the test starts with less than one free block",
+                  std::to_string((unsigned long)(info.totalBytes - info.usedBytes)) + " bytes");
+        }
+        const bool stored = func__EspLog_WriteRow(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE);
+        check(stored != false,
+              "with no free block left the panel still stores today's row",
+              "files: " + std::to_string((unsigned)LittleFS.files.size()));
+        check(LittleFS.files.count("/evt-20261020.csv") == 0,
+              "and it made room by dropping the OLDEST day, not by giving up",
+              [&] { std::string left; for (auto &kv : LittleFS.files) { left += kv.first + " "; } return left; }());
+        check(LittleFS.files.count("/evt-20261021.csv") == 1,
+              "the newer day and the foreign file are left alone");
+        {
+            FSInfo info;
+            (void)LittleFS.info(info);
+            const uint32_t freeNow = (uint32_t)(info.totalBytes - info.usedBytes);
+            check(freeNow >= ESP_LOG_FREE_RESERVE_BYTES,
+                  "one block is free again for the next row",
+                  std::to_string((unsigned long)freeNow) + " bytes free");
+        }
+        LittleFS.totalCapacityBytes = 2097152u;
+        LittleFS.files.clear();
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+    {
+        /* and the declared budget itself: four big days on a roomy flash are
+           trimmed to the 40 KiB the owner set, oldest first, before the month
+           count ever matters. */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 2097152u;
+        std::string bigDay;
+        for (int k = 0; k < 150; k++)
+        {
+            bigDay += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        LittleFS.files["/evt-20260901.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        LittleFS.files["/evt-20260902.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        LittleFS.files["/evt-20260903.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        LittleFS.files["/evt-20260904.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        BOOL__G__LogClockValid = true;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        INT32_T__G__LogTzSec = 0;
+        BOOL__G__LogLastRowValid = true;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        (void)func__EspLog_WriteRow(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE);
+        uint32_t total = 0u;
+        for (auto &kv : LittleFS.files) { if (kv.first.compare(0, 5, "/evt-") == 0) { total += (uint32_t)kv.second.size(); } }
+        check(total <= (ESP_LOG_TOTAL_BUDGET_BYTES - ESP_LOG_FREE_RESERVE_BYTES),
+              "the day files never exceed the 40 KiB budget minus its reserve",
+              std::to_string((unsigned long)total) + " bytes");
+        check(LittleFS.files.count("/evt-20260901.csv") == 0,
+              "and the oldest of them went first");
+        LittleFS.files.clear();
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+
     /* ---- 37. the clock never runs backward ------------------------------ */
     {
         bool accepted;

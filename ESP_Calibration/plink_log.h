@@ -1307,9 +1307,64 @@ static void func__EspLog_TrimDays(void)
         {
             uint32_t__bytes += UINT32_T__G__LogIndexBytes[uint8_t__slot];
         }
-        if (uint32_t__bytes <= ESP_LOG_TOTAL_BUDGET_BYTES)
+        /*
+ * [EN] v1.131: the budget includes the reserve, or the trim would stop one
+ * block short of what a write actually needs.
+ */
+        if (uint32_t__bytes <= (ESP_LOG_TOTAL_BUDGET_BYTES - ESP_LOG_FREE_RESERVE_BYTES))
         {
             break;
+        }
+        func__EspLog_DropOldest();
+        BOOL__G__LogScanValid = false;
+    }
+}
+/**
+ * @brief  [EN] Make sure one LittleFS block is free before a row is appended.
+ *              When the flash is tighter than ESP_LOG_FREE_RESERVE_BYTES the
+ *              oldest day is dropped - never the day being written - so the log
+ *              keeps rolling instead of stopping at "flash full". Bounded by the
+ *              number of days the index can hold.
+ * @return None
+ */
+static void func__EspLog_EnsureSpace(void)
+{
+    uint8_t uint8_t__guard;
+    for (uint8_t__guard = 0u;
+         uint8_t__guard < (ESP_LOG_MAX_DAYS + 2u);
+         uint8_t__guard++)
+    {
+        FSInfo fsInfo__stat;
+        uint32_t uint32_t__freeBytes;
+        uint32_t uint32_t__usedBytes = 0u;
+        if ((BOOL__G__FsOk == false) || (LittleFS.info(fsInfo__stat) == false))
+        {
+            return;
+        }
+        if (fsInfo__stat.totalBytes == 0u)
+        {
+            return;
+        }
+        uint32_t__usedBytes = (uint32_t)fsInfo__stat.usedBytes;
+        if (uint32_t__usedBytes >= (uint32_t)fsInfo__stat.totalBytes)
+        {
+            uint32_t__freeBytes = 0u;
+        }
+        else
+        {
+            uint32_t__freeBytes = (uint32_t)fsInfo__stat.totalBytes - uint32_t__usedBytes;
+        }
+        if (uint32_t__freeBytes >= ESP_LOG_FREE_RESERVE_BYTES)
+        {
+            return;
+        }
+        if (UINT8_T__G__LogIndexCount <= 1u)
+        {
+            return;   /* nothing left to give away */
+        }
+        if (UINT32_T__G__LogIndexDay[0] == UINT32_T__G__LogDayCode)
+        {
+            return;   /* the oldest day IS this day: never delete it under its own row */
         }
         func__EspLog_DropOldest();
         BOOL__G__LogScanValid = false;
@@ -1728,6 +1783,11 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     if ((BOOL__G__FsOk != false) && (bool__dayOpen != false) &&
         ((BOOL__G__LogDayFull == false) || (BOOL__A__LogForceRow != false)))
     {
+        /*
+ * [EN] v1.131: room first, append second. Without this the append was the
+ * thing that discovered a full flash, and a full flash means the row was lost.
+ */
+        func__EspLog_EnsureSpace();
         /*
  * [EN] the flash is taking rows again: the ones waiting in RAM go
  * first, so the history keeps its order.
