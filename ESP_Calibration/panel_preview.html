@@ -418,6 +418,8 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #evtpage .sb{flex:0 0 auto;min-width:64px;text-align:center}
 #evtpage #evtpv,#evtpage #evtnx{font-weight:700;letter-spacing:2px}
 @media (max-width:520px){#evtpage .sb{flex:1 1 100%}}
+.evtalert{display:none}
+.evtalert.on{display:block;margin:6px 0 2px;padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.9;background:rgba(229,72,77,.16);color:#ffb4b4;border:1px solid rgba(229,72,77,.45)}
 .evtsum{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
 .evtsum span{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)}
 .evtsum span.r{background:rgba(229,72,77,.16);color:#ffb4b4}
@@ -546,7 +548,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d2a4faf</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bc93a08</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -584,6 +586,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div id="evtfs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
 <div class="evtsum" id="evtsum"></div>
+<div class="evtalert" id="evtalert" role="status"></div>
 <div id="evtlist" class="evtlist"><span class="lb">در حال خواندن…</span></div>
 <div id="evtpage">
 <button class="sb" type="button" id="evtpv" onclick="evtOlder()" title="۳۰ ردیف قدیمی‌تر" aria-label="۳۰ ردیف قدیمی‌تر">&lt;&lt;</button>
@@ -4597,6 +4600,38 @@ function evtPick(tr){
   }
   return changed;
 }
+/*
+ * [EN] v1.130 (owner report: "from 19:00 to 23:00 nothing came"). The card used
+ *      to say nothing at all about silence, so a stopped log and a healthy one
+ *      looked the same. Two facts are now stated on the card itself: how long
+ *      ago the newest row was written, and whether the day has reached its row
+ *      cap - after which only the hourly heartbeat is still stored. Nothing here
+ *      guesses: the hours come from the newest row's own stamp.
+ * [FA] نسخهٔ ۱٫۱۳۰ (گزارش کاربر: «از ۱۹ تا ۲۳ هیچ علائمی نیامد»). کارت هیچ
+ *      چیزی دربارهٔ سکوت نمی‌گفت، پس تاریخچهٔ ایستاده و سالم یک‌شکل بودند. حالا
+ *      دو واقعیت روی خودِ کارت نوشته می‌شود: آخرین ردیف چند وقت پیش نوشته شده،
+ *      و آیا روز به سقف ردیف رسیده - که بعد از آن فقط ضربان ساعتی ذخیره
+ *      می‌شود. هیچ‌جا حدس زده نمی‌شود: ساعت‌ها از مهرِ خودِ ردیف آخر می‌آید.
+ */
+function evtAlert(){
+  const box=$('evtalert');
+  if(!box)return;
+  const n=evtRows.length;
+  if(!n){box.className='evtalert';box.textContent='';return;}
+  const last=evtRows[n-1];
+  const full=evtRows.some(r=>r.note===4);
+  const quiet=Math.floor((evtNow()-last.epoch)/60);
+  let txt='';
+  if(full)txt='سقف ردیف‌های این روز پر شد؛ از اینجا به بعد فقط ضربان ساعتی ثبت می‌شود.';
+  if(quiet>=70){
+    const hours=Math.floor(quiet/60);
+    const when=(hours>=2)?(evtFa(hours)+' ساعت پیش'):(evtFa(quiet)+' دقیقه پیش');
+    const line='آخرین ردیف '+when+' نوشته شده؛ از آن به بعد چیزی ثبت نشده است.';
+    txt=txt?txt+' '+line:line;
+  }
+  box.textContent=txt;
+  box.className=txt?'evtalert on':'evtalert';
+}
 function evtPaint(){
   const box=$('evtlist'),sum=$('evtsum'),st=$('evtst');
   const n=evtRows.length;
@@ -4608,6 +4643,7 @@ function evtPaint(){
     st.textContent=evtWhere+evtDayLab+' · '+win+evtGap;
   }
   evtPager();
+  evtAlert();
   if(sum)sum.innerHTML=evtFsWarn;
   if(!box)return;
   if(!n){

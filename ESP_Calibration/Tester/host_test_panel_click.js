@@ -1188,6 +1188,49 @@ function main() {
             w.evtHttp = savedHttp;
             w.evtDays = savedDays;
         });
+        /*
+ * [EN] v1.130 (owner report 2026-11-05: "from 19:00 to 23:00 nothing came and
+ *      nothing was stored"). A silence in the history card must never be a
+ *      mystery again: the card itself says how long ago the last row was, and
+ *      when the day has reached its row cap it says that the day is full and
+ *      only the hourly heartbeat is still being written.
+ * [FA] نسخهٔ ۱٫۱۳۰ (گزارش کاربر ۲۰۲۶-۱۱-۰۵: «از ساعت ۱۹ تا ۲۳ هیچ علائمی
+ *      نیامده و ذخیره نشده»). سکوت در کارت تاریخچه دیگر نباید معما باشد: خود
+ *      کارت می‌گوید آخرین ردیف چند وقت پیش بوده، و وقتی روز به سقف ردیف رسیده
+ *      می‌گوید روز پر است و از آن به بعد فقط ضربان ساعتی نوشته می‌شود.
+ */
+        const alertCheck = structCheck.then(async () => {
+            const box = () => d.getElementById("evtalert") || { className: "", textContent: "" };
+            const nowSec = Math.floor(Date.now() / 1000);
+            const mk = (epoch, note, chg) => [epoch, 12, chg || 0, note || 0, 1, 1, 3, 0, 0, 0,
+                                              24000, 23960, 24040, 20, 0].join(",");
+            /* 1) a fresh row: nothing to announce */
+            w.evtRender(mk(nowSec - 600, 0, 1024), "");
+            check(!!box() && box().textContent.trim() === "",
+                  "a card whose newest row is ten minutes old says nothing",
+                  box() ? box().textContent : "no element");
+            check(box().className.indexOf("on") < 0,
+                  "and the alert line stays hidden");
+            /* 2) three hours of silence: the card says so, in hours */
+            w.evtRender(mk(nowSec - 3 * 3600 - 120, 0, 1024), "");
+            check(box().className.indexOf("on") >= 0 && box().textContent.indexOf("۳") >= 0 &&
+                  box().textContent.indexOf("پیش") >= 0,
+                  "three hours without a row is announced, with the number of hours",
+                  box().textContent);
+            /* 3) a full day: the newest row is the day-full marker */
+            w.evtRender(mk(nowSec - 600, 0, 1024) + "\n" + mk(nowSec - 300, 4, 0), "");
+            check(box().className.indexOf("on") >= 0 && box().textContent.indexOf("سقف") >= 0,
+                  "a day that hit its row cap says so on the card",
+                  box().textContent);
+            check(box().textContent.indexOf("ضربان") >= 0,
+                  "and it says the hourly heartbeat is what still comes",
+                  box().textContent);
+            /* 4) that marker may be older than the cap, the message must stay */
+            w.evtRender(mk(nowSec - 6 * 3600, 0, 1024) + "\n" + mk(nowSec - 5 * 3600, 4, 0), "");
+            check(box().textContent.indexOf("سقف") >= 0,
+                  "the cap message does not need a fresh row to stay on screen",
+                  box().textContent);
+        });
 
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
@@ -1208,6 +1251,7 @@ function main() {
                 await tickCheck;
                 await liveCheck;
                 await structCheck;
+                await alertCheck;
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

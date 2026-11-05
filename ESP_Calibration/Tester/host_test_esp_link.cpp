@@ -2559,6 +2559,100 @@ int main(void)
               "and nothing can be appended after the cap");
     }
 
+    /* ---- 36b. a full day must never look like a dead panel (v1.130) ------
+       [EN] Owner report 2026-11-05: "the heartbeat should be recorded when
+            mains is connected - why is there nothing at all between 19:00 and
+            23:00?". Proven here: once a day reaches its row cap, EVERY write is
+            refused - the hourly heartbeat included - so the history stops dead
+            with no way to tell "the panel is alive but cannot store" from "the
+            panel is off". The liveness row and the day-full marker are now
+            exempt from the cap (a bounded 25 rows a day), while change rows
+            still stop exactly where they did.
+       [FA] گزارش کاربر ۲۰۲۶-۱۱-۰۵: «ضربان باید با وصل بودن برق ثبت شود؛ چرا
+            بین ۱۹ تا ۲۳ هیچ‌چیز نیست؟». اینجا ثابت می‌شود: وقتی روز به سقف
+            ردیف می‌رسد، هر نوشتن رد می‌شود - حتی ضربان ساعتی - و تاریخچه
+            یک‌باره می‌ایستد، بی‌آنکه «پنل زنده است ولی جا ندارد» از «پنل خاموش
+            است» قابل تشخیص باشد. ردیف لایو‌نس و نشانهٔ پر بودن روز از سقف
+            مستثنا می‌شوند (روزی حداکثر ۲۵ ردیف)، ولی ردیف‌های تغییر همان‌جا که
+            بودند می‌ایستند. */
+    {
+        char capPath[32];
+        (void)snprintf(capPath, sizeof capPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        const uint16_t rowsAtCap = UINT16_T__G__LogRowsToday;
+        check(BOOL__G__LogDayFull && rowsAtCap == ESP_LOG_MAX_ROWS_PER_DAY,
+              "the day is full and sitting exactly on its cap",
+              std::to_string(rowsAtCap));
+        /* A change row is still refused: the cap protects the file. */
+        check(func__EspLog_WriteRow(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE) == false,
+              "a change row is still refused once the day is full");
+        {
+            const std::string before = LittleFS.files[std::string(capPath)];
+            check(before.size() == LittleFS.files[std::string(capPath)].size(),
+                  "and it appended nothing");
+        }
+        /* THE BUG: an hour later the liveness row must still be written. */
+        G_StubMillis += (ESP_LOG_HEARTBEAT_MS + 1000u);
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsAtCap + 1u),
+              "a full day still writes its hourly heartbeat, so silence is never unexplained",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday) + " rows");
+        {
+            char beat[256] = { 0 };
+            (void)func__EspLog_Tail(beat, sizeof beat, func__EspLog_TodayCode(), 1u);
+            check(func__EspLog_RowFieldAt(beat, 3u) == (uint32_t)ESP_LOG_NOTE_HEARTBEAT,
+                  "and that row is marked as a heartbeat",
+                  std::to_string((unsigned)func__EspLog_RowFieldAt(beat, 3u)));
+        }
+        /* One hour later again: one row, not a stream. */
+        const uint16_t afterBeat = UINT16_T__G__LogRowsToday;
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == afterBeat,
+              "the next tick, five minutes on, adds nothing at all",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday));
+        G_StubMillis += (ESP_LOG_HEARTBEAT_MS + 1000u);
+        func__EspLog_Tick();
+        check(UINT16_T__G__LogRowsToday == (uint16_t)(afterBeat + 1u),
+              "the following hour adds exactly one more",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday));
+    }
+    /* ---- 36c. a day that is ALREADY full when the panel boots ----------- */
+    {
+        char fullPath[32];
+        char oneRow[128];
+        File file__full;
+        (void)snprintf(fullPath, sizeof fullPath, "/evt-%08lu.csv",
+                       (unsigned long)func__EspLog_TodayCode());
+        (void)LittleFS.remove(fullPath);
+        LittleFS.files.erase(std::string(fullPath));
+        file__full = LittleFS.open(fullPath, "w");
+        check((bool)file__full, "the test could create a day file that is already full");
+        (void)file__full.print(ESP_LOG_HEADER);
+        for (uint16_t k = 0u; k < ESP_LOG_MAX_ROWS_PER_DAY; k++) {
+            (void)snprintf(oneRow, sizeof oneRow,
+                           "1792756000,%u,0,5,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n",
+                           (unsigned)k);
+            (void)file__full.print(oneRow);
+        }
+        file__full.close();
+        /* a restart: the day is not counted yet and no marker was ever written */
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogLastBeatValid = false;
+        func__EspLog_Tick();
+        char lastRow[256] = { 0 };
+        (void)func__EspLog_Tail(lastRow, sizeof lastRow, func__EspLog_TodayCode(), 1u);
+        check(func__EspLog_RowFieldAt(lastRow, 3u) == (uint32_t)ESP_LOG_NOTE_DAY_FULL,
+              "a day that was already full at boot still gets its day-full marker",
+              "last note: " + std::to_string((unsigned)func__EspLog_RowFieldAt(lastRow, 3u)));
+        check(UINT16_T__G__LogRowsToday == (uint16_t)(ESP_LOG_MAX_ROWS_PER_DAY + 1u) ||
+              UINT16_T__G__LogRowsToday == ESP_LOG_MAX_ROWS_PER_DAY,
+              "and the marker is the only row added to the full day",
+              std::to_string((unsigned)UINT16_T__G__LogRowsToday));
+    }
+
     /* ---- 37. the clock never runs backward ------------------------------ */
     {
         bool accepted;
