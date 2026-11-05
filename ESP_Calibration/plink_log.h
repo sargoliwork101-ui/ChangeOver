@@ -1361,43 +1361,6 @@ static uint16_t func__EspLog_CountRows(const char *char__path)
     return uint16_t__rows;
 }
 /**
- * @brief  [EN] The note tag (fourth field) of the LAST data line of a day file,
- *              or 0 when the file has none. Used to tell a day that really ended
- *              with its day-full marker from one that was simply cut off.
- * @param  const char *char__path day file
- * @return uint8_t note tag, 0 when unknown
- */
-static uint8_t func__EspLog_LastNote(const char *char__path)
-{
-    File file__day;
-    String string__line;
-    String string__last;
-    uint8_t uint8_t__note = 0u;
-    file__day = LittleFS.open(char__path, "r");
-    if (!file__day)
-    {
-        return 0u;
-    }
-    while (file__day.available())
-    {
-        string__line = file__day.readStringUntil('\n');
-        if ((string__line.length() > 0u) && (string__line[0] != '#'))
-        {
-            string__last = string__line;
-        }
-    }
-    file__day.close();
-    if (string__last.length() > 0u)
-    {
-        const int32_t int32_t__start = func__EspLog_FieldStart(string__last, 4u);
-        if (int32_t__start > 0)
-        {
-            uint8_t__note = (uint8_t)string__last.substring((size_t)int32_t__start).toInt();
-        }
-    }
-    return uint8_t__note;
-}
-/**
  * @brief  [EN] A power cut in the middle of a row leaves no closing newline, so
  *              the next append would glue a good row onto a broken one and make
  *              BOTH unreadable. This runs once when a day file is opened: if the
@@ -1575,34 +1538,8 @@ static bool func__EspLog_OpenDay(void)
             }
         }
     }
-    /*
- * [EN] v1.130: a day that is found full is NOT assumed to carry its day-full
- * marker. A panel that restarted right on the cap - or a file filled by an
- * older firmware - used to be treated as "already explained", and the silenced
- * day then had no marker at all. The last line decides.
- */
     BOOL__G__LogDayFull = (UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY);
-    BOOL__G__LogMarkerDone = (BOOL__G__LogDayFull != false) &&
-                             (func__EspLog_LastNote(char__path) ==
-                              (uint8_t)ESP_LOG_NOTE_DAY_FULL);
-    /*
- * [EN] v1.130: a day found full and unexplained gets its marker right here, at
- * open - not only on the next row that happens to arrive, which a full day may
- * never get. This is the row that says "the rest of today is not recorded".
- */
-    if ((BOOL__G__LogDayFull != false) && (BOOL__G__LogMarkerDone == false))
-    {
-        char char__fullMark[ESP_LOG_ROW_MAX];
-        BOOL__G__LogMarkerDone = true;
-        if (func__EspLog_BuildRow(char__fullMark, sizeof(char__fullMark),
-                                  0u, ESP_LOG_NOTE_DAY_FULL) != false)
-        {
-            if (func__EspLog_AppendRow(uint32_t__dayCode, char__fullMark) != false)
-            {
-                UINT16_T__G__LogRowsToday++;
-            }
-        }
-    }
+    BOOL__G__LogMarkerDone = BOOL__G__LogDayFull;
     /*
  * [EN] the day list is the directory itself: read it again now that this
  * day's file exists, then drop the oldest days if the count or the
@@ -1774,28 +1711,12 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     /*
  * [EN] v1.113: a forced row (the firmware-update row) ignores this cap as
  * well - the user asked for it "with no conditions".
- * v1.130 (owner report: "nothing at all between 19:00 and 23:00, although
- * mains was connected"): the cap refused EVERY row once a day was full, the
- * hourly liveness row included, so a full day and a dead panel looked exactly
- * the same in the history. The rows that prove the panel is alive and explain
- * the gap - the heartbeat and the day-full marker - are exempt and bounded to
- * 25 a day; a change row still stops at the cap, and the cap still writes its
- * one marker the moment it is reached, however the day got there (a restart
- * that recounts the file no longer skips it).
  */
-    bool bool__capped = ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
-                         (BOOL__G__LogDayFull != false));
-    bool bool__exempt = (uint8_t__note == ESP_LOG_NOTE_HEARTBEAT) ||
-                        (uint8_t__note == ESP_LOG_NOTE_DAY_FULL) ||
-                        (uint8_t__note == ESP_LOG_NOTE_DAY_START);
-    if ((BOOL__A__LogForceRow == false) && (bool__capped != false) && (bool__exempt == false))
+    if ((BOOL__A__LogForceRow == false) &&
+        ((UINT16_T__G__LogRowsToday >= ESP_LOG_MAX_ROWS_PER_DAY) ||
+         (BOOL__G__LogDayFull != false)))
     {
         BOOL__G__LogDayFull = true;
-        if (BOOL__G__LogMarkerDone == false)
-        {
-            BOOL__G__LogMarkerDone = true;
-            (void)func__EspLog_WriteRow(0u, ESP_LOG_NOTE_DAY_FULL);
-        }
         return false;
     }
     if (func__EspLog_BuildRow(char__row, sizeof(char__row),
@@ -1804,14 +1725,8 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         func__EspLog_FaultRaise();
         return false;
     }
-    /*
- * [EN] v1.130: the second gate - the one that decides whether the row goes to
- * the flash or to the RAM ring - must honour the same exemption, otherwise a
- * full day sends its own heartbeat to RAM and the file still ends in silence.
- */
     if ((BOOL__G__FsOk != false) && (bool__dayOpen != false) &&
-        ((BOOL__G__LogDayFull == false) || (BOOL__A__LogForceRow != false) ||
-         (bool__exempt != false)))
+        ((BOOL__G__LogDayFull == false) || (BOOL__A__LogForceRow != false)))
     {
         /*
  * [EN] the flash is taking rows again: the ones waiting in RAM go

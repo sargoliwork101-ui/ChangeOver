@@ -50,7 +50,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 The normal way is `bash ESP_Calibration/Tester/run_esp_tests.sh`, which runs the
 host tests, then the label checks (always, they need no DOM) and then the click
 tests (skipped with exit code 0 when jsdom is absent). Current counts:
-**494** host checks, **13** label checks, **265** click checks.
+**484** host checks, **13** label checks, **259** click checks.
 
 `node_modules/` is git-ignored. The test reads `ESP_Calibration/panel_preview.html`,
 so run `python3 tools/make_panel_preview.py` first if you have edited
@@ -126,7 +126,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 
 راه معمول `bash ESP_Calibration/Tester/run_esp_tests.sh` است: تست‌های هاست، بعد
 چک برچسب‌ها (همیشه، DOM نمی‌خواهد) و بعد تست کلیک (بدون jsdom با کد ۰ SKIP
-می‌شود). شمارش فعلی: **۴۹۴** بررسی هاست، **۱۳** چک برچسب، **۲۶۵** چک کلیک.
+می‌شود). شمارش فعلی: **۴۸۴** بررسی هاست، **۱۳** چک برچسب، **۲۵۹** چک کلیک.
 
 پوشهٔ `node_modules/` در gitignore است. تست فایل
 `ESP_Calibration/panel_preview.html` را می‌خواند، پس اگر `plink_panel.h` را ویرایش
