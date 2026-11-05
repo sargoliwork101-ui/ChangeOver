@@ -546,7 +546,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1c0059c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d2a4faf</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -4421,7 +4421,13 @@ function evtRowText(r){
 }
 function evtParse(line){
   const f=line.split(',');
-  return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
+  /* [EN] v1.129: the raw line travels with the row. The API a page is served by
+          a board that writes 22 fields and no id, so the only identity a row can
+          honestly carry is the data it shows.
+     [FA] نسخهٔ ۱٫۱۲۹: خط خام همراه ردیف می‌آید. برد ۲۲ فیلد می‌نویسد و شناسه
+          نمی‌دهد، پس تنها هویتی که ردیف می‌تواند صادقانه داشته باشد دادهٔ خودش
+          است. */
+  return {id:line,epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
           fl:+f[5]||0,c1:+f[6]||0,c2:+f[7]||0,fault:+f[8]||0,flags2:+f[9]||0,
           v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0,
           vin:(f.length>15)?+f[15]:null,v12:(f.length>16)?+f[16]:null,
@@ -4451,10 +4457,8 @@ const xspr=(s,c,tip)=>s.split(' · ').map(x=>'<span class="'+c+'" title="'+
  */
 let evtRows=[],evtFrom=0,evtWhole=false,evtAll=false,evtPicked=false;
 /* [EN] v1.127: the answer currently drawn (see evtRender).
-   v1.128: the name of the picked row, so a repaint can find it again.
-   [FA] نسخهٔ ۱٫۱۲۷: پاسخی که همین حالا روی صفحه است.
-   نسخهٔ ۱٫۱۲۸: نام ردیف انتخاب‌شده، تا بازکشیدن دوباره پیدایش کند. */
-let evtKey='',evtSelKey='';
+   [FA] نسخهٔ ۱٫۱۲۷: پاسخی که همین حالا روی صفحه است. */
+let evtKey='';
 let evtFsWarn='',evtGap='',evtWhere='',evtDayLab='';
 const EVT_PAGE=30;
 function evtParseAll(text){
@@ -4473,18 +4477,62 @@ const EVT_COLS=[['ساعت','ساعت رویداد — از گوشی یا کام
  ['D۱ ٪','درصد فرمان PWM کانال ۱'],
  ['D۲ ٪','درصد فرمان PWM کانال ۲'],
  ['باتری ٪','درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵)']];
-/* [EN] v1.128: epoch+uptime is the row's name - unique inside a day, and the
-        same name before and after a repaint, which is what lets a tick rebuild
-        the table without taking the reader's picked row away from him.
-   [FA] نسخهٔ ۱٫۱۲۸: epoch+uptime نام ردیف است - در یک روز یکتاست و پیش و پس از
-        بازکشیدن یکی می‌ماند؛ همین است که تیک می‌تواند جدول را از نو بسازد بی‌آنکه
-        ردیف انتخاب‌شدهٔ کاربر را از او بگیرد. */
-const evtRowKey=r=>r.epoch+':'+r.uptime;
-function evtLine(r){
+/* [EN] v1.129 (owner: "do what the industry does"). Keyed reconciliation, the
+        way React and every list-diff library do it:
+          1. a row is identified by the DATA it shows - the raw line - so two
+             rows that share a second are still two different rows;
+          2. an element that is still on screen is REUSED, not rebuilt, so the
+             selection, the phosphor cells and the reader's scroll all survive an
+             update by construction, with no re-finding and no key hunting;
+          3. only the difference is touched: a new row is inserted, the row that
+             fell off the window is removed, everything else is left alone.
+     [FA] نسخهٔ ۱٫۱۲۹ (دستور کاربر: «کار روز دنیا را بکن»). تطبیق کلیددار، همان
+        کاری که React و هر کتابخانهٔ diff فهرست می‌کند:
+          ۱. ردیف با دادهٔ خودش شناخته می‌شود - خط خام - پس دو ردیف هم‌ثانیه
+             هنوز دو ردیف متفاوت‌اند؛
+          ۲. عنصری که روی صفحه مانده بازاستفاده می‌شود نه بازساخته، پس انتخاب،
+             خانه‌های فسفری و اسکرول کاربر به‌خودی خود می‌مانند: نه جست‌وجوی
+             دوباره، نه شکار کلید؛
+          ۳. فقط تفاوت دست می‌خورد: ردیف تازه درج می‌شود، ردیفی که از پنجره
+             افتاده حذف می‌شود، بقیه دست‌نخورده می‌مانند. */
+const evtRowKey=r=>r.id||'';
+function evtRowEl(r){
   const t=evtRowText(r);
-  return '<tr class="evtrow lv'+t.lv+'" data-k="'+evtRowKey(r)+'" onclick="evtPick(this)"><td class="evtt">'+xiso(t.time)+'</td>'+
-         '<td class="evtd">'+xspr(t.txt,'ep')+'</td>'+
-         evtCols(r).map(x=>'<td>'+xiso(x)+'</td>').join('')+'</tr>';
+  const tr=document.createElement('tr');
+  tr.className='evtrow lv'+t.lv;
+  tr.dataset.k=evtRowKey(r);
+  tr.setAttribute('onclick','evtPick(this)');
+  tr.innerHTML='<td class="evtt">'+xiso(t.time)+'</td>'+
+               '<td class="evtd">'+xspr(t.txt,'ep')+'</td>'+
+               evtCols(r).map(x=>'<td>'+xiso(x)+'</td>').join('');
+  return tr;
+}
+/* [EN] The table exists once; only its rows are reconciled afterwards. */
+function evtTableBody(box){
+  const body=box.querySelector('table.evttbl > tbody');
+  if(body)return body;
+  const head=EVT_COLS.map(c=>'<th title="'+esc(c[1])+'">'+xiso(c[0])+'</th>').join('');
+  box.innerHTML='<table class="evttbl"><thead><tr>'+head+'</tr></thead><tbody></tbody></table>';
+  return box.querySelector('table.evttbl > tbody');
+}
+/* [EN] rows: oldest..newest already ordered the way they are drawn. */
+function evtSync(body,rows){
+  const want=rows.map(evtRowKey);
+  const have=[...body.children];
+  if(have.length===want.length){
+    let same=true;
+    for(let i=0;i<want.length;i++){if(have[i].dataset.k!==want[i]){same=false;break;}}
+    if(same)return 0;               /* nothing changed: do not touch the DOM */
+  }
+  const pool=new Map();
+  have.forEach(tr=>{const k=tr.dataset.k;if(!pool.has(k))pool.set(k,[]);pool.get(k).push(tr);});
+  const frag=document.createDocumentFragment();
+  rows.forEach((r,i)=>{
+    const spare=pool.get(want[i]);
+    frag.appendChild((spare&&spare.length)?spare.shift():evtRowEl(r));
+  });
+  body.replaceChildren(frag);
+  return 1;
 }
 function evtPager(){
   const pv=$('evtpv'),nx=$('evtnx'),al=$('evtal');
@@ -4516,7 +4564,6 @@ function evtPick(tr){
      [FA] نسخهٔ ۱٫۱۲۸: کلیک دوباره روی همان ردیف آزادش می‌کند؛ وگرنه کاربر
           هیچ راهی برای برگشتن به کارتِ زندهٔ در حال به‌روزرسانی نداشت. */
   const again=tr.classList.contains('sel');
-  evtSelKey='';
   [...body.querySelectorAll('tr.evtrow')].forEach(function(x){
     x.classList.remove('sel');
     [...x.querySelectorAll('td.chg')].forEach(function(td){
@@ -4533,7 +4580,6 @@ function evtPick(tr){
   });
   if(again)return 0;
   tr.classList.add('sel');
-  evtSelKey=tr.dataset.k||'';
   const below=tr.nextElementSibling;
   if(!below)return 0;
   const now=[...tr.querySelectorAll('td')],was=[...below.querySelectorAll('td')];
@@ -4572,20 +4618,7 @@ function evtPaint(){
   evtRows.forEach(r=>{const t=evtRowText(r);if(t.lv===3)nf++;else if(t.lv===2)nw++;else if(t.lv===1)ng++;});
   if(sum)sum.innerHTML=evtFsWarn+'<span class="r">خطا و قفل: '+evtFa(nf)+'</span><span class="y">هشدار: '+evtFa(nw)+'</span><span class="g">برگشت به سلامتی: '+evtFa(ng)+'</span><span>مجموع: '+evtFa(n)+' خط</span>';
   /* جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
-  box.innerHTML='<table class="evttbl"><thead><tr>'+
-    EVT_COLS.map(c=>'<th title="'+esc(c[1])+'">'+xiso(c[0])+'</th>').join('')+
-    '</tr></thead><tbody>'+
-    evtRows.slice(from,end).reverse().map(evtLine).join('')+'</tbody></table>';
-  /* [EN] v1.128: the table is new, the reader's place is not. If the row he
-          picked is still in this window it is picked again - same selection,
-          same phosphor cells - so a tick can repaint without moving anything.
-     [FA] نسخهٔ ۱٫۱۲۸: جدول نو است، جای کاربر نه. اگر ردیفی که انتخاب کرده در
-          همین پنجره هست دوباره انتخاب می‌شود - همان انتخاب، همان خانه‌های فسفری -
-          تا تیک بتواند از نو بسازد بی‌آنکه چیزی را جابه‌جا کند. */
-  if(evtSelKey){
-    const back=box.querySelector('tr.evtrow[data-k="'+evtSelKey+'"]');
-    if(back)evtPick(back);else evtSelKey='';
-  }
+  evtSync(evtTableBody(box),evtRows.slice(from,end).reverse());
 }
 /* The board's answer is a TAIL: 30 rows, never the whole day. */
 function evtRender(text,code,ram,src){
@@ -4621,9 +4654,26 @@ function evtDayLoad(text,day){
   evtPaint();
   return evtRows.length;
 }
+/*
+ * [EN] v1.129 audit: decide first, then commit. The old pair changed evtAll and
+ *      only afterwards asked whether the view could move at all, so a press that
+ *      did nothing still left the state saying "a page" while the screen showed
+ *      the whole day. From the whole-day view one press now lands on the last
+ *      page, which is the page the reader was on before show-all.
+ * [FA] ممیزی ۱٫۱۲۹: اول تصمیم، بعد تغییر. جفت قدیمی اول evtAll را عوض می‌کرد و
+ *      بعد می‌پرسید آیا نما می‌تواند تکان بخورد؛ پس فشاری که کاری نمی‌کرد، وضعیت
+ *      را «یک صفحه» می‌گذاشت در حالی که صفحه کل روز را نشان می‌داد. حالا از نمای
+ *      همهٔ ردیف‌ها، یک فشار به صفحهٔ آخر می‌رسد - همان صفحه‌ای که پیش از
+ *      «همهٔ ردیف‌ها» روی آن بود.
+ */
 function evtPageOlder(){
   if(!evtWhole)return false;
-  if(evtAll){evtAll=false;evtFrom=Math.max(0,evtRows.length-EVT_PAGE);}
+  if(evtAll){
+    evtAll=false;
+    evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
+    evtPaint();
+    return true;
+  }
   if(evtFrom<=0)return false;
   evtFrom=Math.max(0,evtFrom-EVT_PAGE);
   evtPaint();
@@ -4631,8 +4681,14 @@ function evtPageOlder(){
 }
 function evtPageNewer(){
   if(!evtWhole)return false;
+  if((evtFrom+EVT_PAGE)>=evtRows.length){
+    if(!evtAll)return false;
+    evtAll=false;
+    evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
+    evtPaint();
+    return true;
+  }
   evtAll=false;
-  if((evtFrom+EVT_PAGE)>=evtRows.length)return false;
   evtFrom=evtFrom+EVT_PAGE;
   evtPaint();
   return true;

@@ -876,6 +876,35 @@ function main() {
                   "show-all draws every row of the day", String(pRows().length));
             check(w.evtPageNewer() === true && pRows().length === 30,
                   "the next-page key returns to the last page", String(pRows().length));
+            /* [EN] v1.129 audit: a key that cannot move must leave the view exactly
+                    as it was. The old code cleared evtAll first and then returned
+                    false, so the card said "one page" while the screen still showed
+                    the whole day - the next press could then undo a page for no
+                    reason. Reached the way a reader reaches it: a day is read
+                    (last page), he presses show-all, then presses the next key.
+               [FA] ممیزی ۱٫۱۲۹: کلیدی که نمی‌تواند تکان بخورد باید نما را
+                    دست‌نخورده بگذارد. کد قدیم اول evtAll را پاک می‌کرد و بعد false
+                    برمی‌گرداند؛ یعنی کارت می‌گفت «یک صفحه» ولی صفحه هنوز کل روز را
+                    نشان می‌داد. همان‌طور که کاربر می‌رسد سنجیده می‌شود: روز خوانده
+                    می‌شود (صفحهٔ آخر)، «همهٔ ردیف‌ها» زده می‌شود، بعد کلید بعدی. */
+            w.evtDayLoad(dayRows.join("\n"), "");
+            w.evtShowAll();
+            const allRows = pRows().length, allLine = d.getElementById("evtst").textContent;
+            check(allRows === 75 && allLine.indexOf("۷۵") >= 0,
+                  "the whole-day view really holds all 75 rows", allRows + " / " + allLine);
+            check(w.evtPageNewer() === true && pRows().length === 30,
+                  "from the whole-day view the next key gives a page back, it does not do nothing",
+                  String(pRows().length));
+            check(d.getElementById("evtst").textContent.indexOf("ردیف") >= 0,
+                  "and the status line agrees: the card is a page again",
+                  d.getElementById("evtst").textContent);
+            check(w.evtPageNewer() === false && pRows().length === 30,
+                  "a second press, which cannot move, leaves the screen alone",
+                  String(pRows().length));
+            w.evtShowAll();
+            check(w.evtPageOlder() === true && pRows().length === 30,
+                  "the previous key also leaves the whole-day view for a page",
+                  String(pRows().length));
             w.evtRender(dayRows.slice(0, 3).join("\n"), "");
             check(pv.disabled === false && pRows().length === 3,
                   "a fresh tail view leaves the previous-page key usable",
@@ -1014,12 +1043,16 @@ function main() {
             check(d.querySelector("#evtlist table") === table0,
                   "and an answer identical to what is on screen is not redrawn",
                   table0 === d.querySelector("#evtlist table") ? "same node" : "rebuilt");
-            /* 4) but a genuinely new row must still land */
+            /* 4) but a genuinely new row must still land - and, since v1.129,
+                  it lands as ONE inserted row, not as a rebuilt table */
             body = pairOld + "\n" + pairNew;
             await w.evtTick();
-            check(pRows3().length === 2 && d.querySelector("#evtlist table") !== table0,
+            check(pRows3().length === 2 && pRows3()[0].textContent.indexOf("24.00") >= 0,
                   "a new row still reaches the tail view on the next tick",
                   String(pRows3().length));
+            check(d.querySelector("#evtlist table") === table0 && pRows3()[0].dataset.k === pairNew,
+                  "and it arrives by inserting that one row into the table that was already there",
+                  pRows3()[0].dataset.k === pairNew ? "row inserted" : "unexpected key");
             w.evtHttp = savedHttp;
             w.evtDays = savedDays;
         });
@@ -1091,6 +1124,70 @@ function main() {
             w.evtHttp = savedHttp;
             w.evtDays = savedDays;
         });
+        /*
+ * [EN] v1.129 (owner: "change your method - do what the industry does"). The
+ *      history card rebuilt the whole table on every tick and then hunted for
+ *      the picked row by a name made of "epoch:uptime". Two rows CAN share a
+ *      second - a day file opens with its own "day starts here" row
+ *      (plink_log.h:1529) and the boot row of that session is written by tick()
+ *      at the same instant (plink_log.h:2348) - so that name is not unique and
+ *      the highlight could land on the neighbour. The industry answer is the
+ *      one React and every keyed-diff library uses: identify a list item by the
+ *      DATA it shows, reuse its element while it is still there, and touch only
+ *      the rows that really changed.
+ * [FA] نسخهٔ ۱٫۱۲۹ (دستور کاربر: «روشت را عوض کن، کار روز دنیا را بکن»). کارت
+ *      تاریخچه هر بار کل جدول را از نو می‌ساخت و بعد ردیف انتخاب‌شده را با نامی
+ *      از «epoch:uptime» می‌جست. دو ردیف می‌توانند یک ثانیه داشته باشند - ردیف
+ *      «شروع روز» (plink_log.h:1529) و ردیف روشن‌شدن همان لحظه
+ *      (plink_log.h:2348) - پس آن نام یکتا نیست و هایلایت می‌توانست روی همسایه
+ *      بیفتد. پاسخ روز دنیا همان است که React و هر کتابخانهٔ keyed-diff
+ *      می‌دهند: هر آیتم را با دادهٔ خودش بشناس، عنصرش را دوباره به کار ببر و
+ *      فقط ردیف‌هایی را دست بزن که واقعاً عوض شده‌اند.
+ */
+        const structCheck = liveCheck.then(async () => {
+            const pRows5 = () => [...d.querySelectorAll("#evtlist .evtrow")];
+            const tagOf = (tr) => tr.querySelector("td.evtd").textContent.trim();
+            const savedHttp = w.evtHttp;
+            const savedDays = w.evtDays;
+            let body = "";
+            w.evtDays = async () => {};
+            w.evtHttp = async () => ({
+                ok: true,
+                headers: { get: (h) => (h === "X-Log-Fs" ? "1" : (h === "X-Log-Lost" ? "0" : null)) },
+                text: async () => body
+            });
+            const dayStart = "1792756800,12,0,7,1,1,3,0,0,0,24000,23960,24040,20,0";
+            const bootRow = "1792756800,12,1024,0,1,1,3,0,0,0,24000,23960,24040,20,0";
+            const later = "1792757400,13,1024,0,1,1,3,0,0,0,24000,23960,24040,20,0";
+            const latest = "1792758000,14,1024,0,1,1,3,0,0,0,24000,23960,24040,20,0";
+            body = dayStart + "\n" + bootRow;
+            await w.evtfetch(0);
+            const keys = pRows5().map(tr => tr.dataset.k);
+            check(new Set(keys).size === keys.length && keys.length === 2,
+                  "two rows written in the same second still carry different names",
+                  keys.join(" | "));
+            const start = pRows5().find(tr => tagOf(tr).indexOf("Day start") >= 0);
+            w.evtPick(start);
+            body = dayStart + "\n" + bootRow + "\n" + later;
+            await w.evtTick();
+            const keptStart = pRows5().find(tr => tr.dataset.k === start.dataset.k);
+            check(keptStart === start && start.classList.contains("sel"),
+                  "the picked row keeps the selection even though its neighbour shares its second",
+                  (keptStart ? tagOf(keptStart) : "row gone") + " / same element: " + (keptStart === start));
+            /* the industry assertion: a row still on screen is the SAME element,
+               not a fresh copy of itself */
+            const tb = d.querySelector("#evtlist tbody");
+            body = dayStart + "\n" + bootRow + "\n" + later + "\n" + latest;
+            await w.evtTick();
+            check(d.querySelector("#evtlist tbody") === tb,
+                  "the table body is patched in place, never rebuilt");
+            check(pRows5().length === 4, "the new row is added and the older ones stay",
+                  String(pRows5().length));
+            check(pRows5().indexOf(start) >= 0,
+                  "the row the reader picked is literally the same element after the update");
+            w.evtHttp = savedHttp;
+            w.evtDays = savedDays;
+        });
 
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
@@ -1110,6 +1207,7 @@ function main() {
                 await lostCheck;
                 await tickCheck;
                 await liveCheck;
+                await structCheck;
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");
