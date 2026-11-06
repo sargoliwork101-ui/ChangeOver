@@ -1192,6 +1192,41 @@ static void func__Esp_HttpEventSnap(void)
                    "{\"ok\":%u}", (bool__stored != false) ? 1u : 0u);
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+/* ==================== v1.134 history share ==================== */
+/**
+ * @brief  [EN] GET /evt/pct : {ok, p, min, max, budget, total}; POST /evt/pct?p=N :
+ *              adopt that share (clamped to min..max) and trim at once.
+ *              The panel's log card shows a menu with this range, so the owner
+ *              decides how much of his flash the history may take.
+* @return None /
+ */
+static void func__Esp_HttpEventPct(void)
+{
+    const String string__arg = ESP_WEB_SERVER_T__G__Server.arg("p");
+    if (string__arg.length() != 0u)
+    {
+        const uint8_t uint8_t__asked = func__EspLog_PercentFromText(string__arg.c_str());
+        if (uint8_t__asked != 0u)
+        {
+            (void)func__EspLog_PercentSet(uint8_t__asked);
+        }
+    }
+    FSInfo fsInfo__stat;
+    uint32_t uint32_t__total = 0u;
+    if ((BOOL__G__FsOk != false) && (LittleFS.info(fsInfo__stat) != false))
+    {
+        uint32_t__total = (uint32_t)fsInfo__stat.totalBytes;
+    }
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":1,\"p\":%u,\"min\":%u,\"max\":%u,\"budget\":%lu,\"total\":%lu}",
+                   (unsigned int)UINT8_T__G__LogBudgetPercent,
+                   (unsigned int)ESP_LOG_BUDGET_PERCENT_MIN,
+                   (unsigned int)ESP_LOG_BUDGET_PERCENT_MAX,
+                   (unsigned long)func__EspLog_BudgetBytes(),
+                   (unsigned long)uint32_t__total);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
 /* ==================== Flash inspection & cleanup routes ==================== */
 /**
  * @brief  [EN] GET /evt/fs : inspect LittleFS capacity, used bytes, and all

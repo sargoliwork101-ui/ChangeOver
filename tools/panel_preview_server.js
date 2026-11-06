@@ -937,6 +937,8 @@ const evtStartSec = Math.floor(Date.now() / 1000);
  * [FA] نسخهٔ ۱٫۱۰۹: شمارندهٔ ضربان فقط هنگام خدمت‌رسانی سرور می‌دود. در حالت
  *      خودآزمای قبلاً پروسه را برای همیشه زنده نگه می‌داشت و دروازهٔ نحویِ هاست
  *      را پس از خطِ «قبول» قفل می‌کرد. */
+/* [EN] v1.134: the history share the menu shows (percent of the flash). */
+let simPct = 85;
 let simForeignFiles = [
     { name: "/old_sketch_cfg.bin", size: 24576 }
 ];
@@ -1168,6 +1170,26 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ ok: 1, removed }));
         return;
     }
+    /*
+     * [EN] v1.134: the owner's history share, so the preview's new menu is a real
+     *      control here too (the board keeps it on its own flash; this keeps it
+     *      in memory).
+     */
+    if (url.pathname === "/evt/pct") {
+        const asked = url.searchParams.get("p");
+        if (asked !== null) {
+            const n = parseInt(asked, 10);
+            if (!Number.isNaN(n)) {
+                simPct = Math.min(95, Math.max(40, n));
+            }
+        }
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(JSON.stringify({
+            ok: 1, p: simPct, min: 40, max: 95,
+            budget: Math.floor((2097152 * simPct) / 100), total: 2097152
+        }));
+        return;
+    }
     if (req.method === "GET" && url.pathname === "/evt/fs") {
         const days = evtDaysList();
         const files = days.map((d) => {
@@ -1176,6 +1198,7 @@ const server = http.createServer((req, res) => {
             return { name: "/evt-" + d + ".csv", size, own: 1 };
         });
         files.push({ name: "/evt-clock.txt", size: 28, own: 1 });
+        files.push({ name: "/logpct.txt", size: 3, own: 1 });
         if (benchSize > 0) {
             files.push({ name: "/benchlog.csv", size: benchSize, own: 1 });
         }

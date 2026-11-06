@@ -108,6 +108,13 @@ static uint32_t UINT32_T__G__LogBootMs = 0u;
  * panel that has never seen a phone. Storage must never wait for the clock.
  */
 static uint32_t UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+/*
+ * [EN] v1.134: how big a share of the flash the history may take, in percent.
+ *      The owner sets it from the panel (the log card's menu) and the board
+ *      keeps it on its own flash; ESP_LOG_BUDGET_PERCENT is only the default it
+ *      starts with on a board that has never been told otherwise.
+ */
+static uint8_t  UINT8_T__G__LogBudgetPercent = (uint8_t)ESP_LOG_BUDGET_PERCENT;
 static uint16_t UINT16_T__G__LogRowsToday = 0u;
 static bool     BOOL__G__LogDayFull = false;
 static bool     BOOL__G__LogBootRowPending = true;
@@ -1282,6 +1289,134 @@ static void func__EspLog_DropOldest(void)
     UINT8_T__G__LogIndexCount--;
 }
 /**
+ * @brief  [EN] Read a percentage out of text: digits only, and 0 means "there was
+ *              no number in it" (a caller must not treat that as a real share).
+ * @param  const char *char__ptr_text e.g. "70" or "70%"
+ * @return uint8_t value, 0 when the text carries no digits
+ */
+static uint8_t func__EspLog_PercentFromText(const char *char__ptr_text)
+{
+    uint32_t uint32_t__value = 0u;
+    uint8_t uint8_t__digits = 0u;
+    if (char__ptr_text == NULL)
+    {
+        return 0u;
+    }
+    while ((*char__ptr_text != '\0') && (uint8_t__digits < 3u))
+    {
+        if ((*char__ptr_text < '0') || (*char__ptr_text > '9'))
+        {
+            break;
+        }
+        uint32_t__value = (uint32_t__value * 10u) + (uint32_t)(*char__ptr_text - '0');
+        uint8_t__digits++;
+        char__ptr_text++;
+    }
+    if ((uint8_t__digits == 0u) || (uint32_t__value > 255u))
+    {
+        return 0u;
+    }
+    if (uint32_t__value == 0u)
+    {
+        return 0u;
+    }
+    return (uint8_t)uint32_t__value;
+}
+/**
+ * @brief  [EN] Keep a share inside the range the panel offers.
+ * @param  uint8_t uint8_t__percent asked value
+ * @return uint8_t allowed value
+ */
+static uint8_t func__EspLog_PercentClamp(uint8_t uint8_t__percent)
+{
+    if (uint8_t__percent < ESP_LOG_BUDGET_PERCENT_MIN)
+    {
+        return (uint8_t)ESP_LOG_BUDGET_PERCENT_MIN;
+    }
+    if (uint8_t__percent > ESP_LOG_BUDGET_PERCENT_MAX)
+    {
+        return (uint8_t)ESP_LOG_BUDGET_PERCENT_MAX;
+    }
+    return uint8_t__percent;
+}
+/**
+ * @brief  [EN] Put the share on the flash: written aside, then renamed onto the
+ *              real name, so a power cut inside the save cannot leave half a file.
+ * @param  uint8_t uint8_t__percent value to keep
+ * @return bool true when the file now holds it
+ */
+static bool func__EspLog_PercentStore(uint8_t uint8_t__percent)
+{
+    File file__pct;
+    char char__line[8];
+    int int__len;
+    if (BOOL__G__FsOk == false)
+    {
+        return false;
+    }
+    int__len = snprintf(char__line, sizeof(char__line), "%u\n", (unsigned int)uint8_t__percent);
+    if (int__len <= 0)
+    {
+        return false;
+    }
+    file__pct = LittleFS.open(ESP_LOG_PCT_TMP_PATH, "w");
+    if (!file__pct)
+    {
+        return false;
+    }
+    const size_t size_t__got = (size_t)file__pct.print(char__line);
+    file__pct.close();
+    if (size_t__got != (size_t)int__len)
+    {
+        (void)LittleFS.remove(ESP_LOG_PCT_TMP_PATH);
+        return false;
+    }
+    if (LittleFS.rename(ESP_LOG_PCT_TMP_PATH, ESP_LOG_PCT_PATH) == false)
+    {
+        (void)LittleFS.remove(ESP_LOG_PCT_TMP_PATH);
+        return false;
+    }
+    return true;
+}
+/**
+ * @brief  [EN] Restore the share the owner chose last time (boot).
+ * @return None
+ */
+static void func__EspLog_PercentLoad(void)
+{
+    File file__pct;
+    char char__text[8];
+    size_t size_t__used = 0u;
+    UINT8_T__G__LogBudgetPercent = (uint8_t)ESP_LOG_BUDGET_PERCENT;
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_PCT_PATH) == false))
+    {
+        return;
+    }
+    file__pct = LittleFS.open(ESP_LOG_PCT_PATH, "r");
+    if (!file__pct)
+    {
+        return;
+    }
+    while (file__pct.available() && (size_t__used < (sizeof(char__text) - 1u)))
+    {
+        const int int__c = file__pct.read();
+        if (int__c < 0)
+        {
+            break;
+        }
+        char__text[size_t__used++] = (char)int__c;
+    }
+    file__pct.close();
+    char__text[size_t__used] = '\0';
+    {
+        const uint8_t uint8_t__stored = func__EspLog_PercentFromText(char__text);
+        if (uint8_t__stored != 0u)
+        {
+            UINT8_T__G__LogBudgetPercent = func__EspLog_PercentClamp(uint8_t__stored);
+        }
+    }
+}
+/**
  * @brief  [EN] How many bytes the calibration bench log already occupies. The
  *              budget below needs it, because the bench log outranks the
  *              history (owner order 2026-11-06) and its room is taken off the
@@ -1322,7 +1457,7 @@ static uint32_t func__EspLog_BudgetBytes(void)
         return ESP_LOG_TOTAL_BUDGET_BYTES;
     }
     uint32_t__budget = (uint32_t)(((uint32_t)fsInfo__stat.totalBytes *
-                                   (uint32_t)ESP_LOG_BUDGET_PERCENT) / 100u);
+                                   (uint32_t)UINT8_T__G__LogBudgetPercent) / 100u);
     if (uint32_t__budget < ESP_LOG_TOTAL_BUDGET_BYTES)
     {
         uint32_t__budget = ESP_LOG_TOTAL_BUDGET_BYTES;
@@ -1486,6 +1621,22 @@ static void func__EspLog_TrimDays(void)
         func__EspLog_DropOldest();
         BOOL__G__LogScanValid = false;
     }
+}
+/**
+ * @brief  [EN] Adopt a share the owner picked in the panel: clamp it, write it to
+ *              the flash, and trim the history right away - a setting that only
+ *              takes effect at the next day change would look broken.
+ * @param  uint8_t uint8_t__percent asked share
+ * @return uint8_t share actually in force
+ */
+static uint8_t func__EspLog_PercentSet(uint8_t uint8_t__percent)
+{
+    UINT8_T__G__LogBudgetPercent = func__EspLog_PercentClamp(uint8_t__percent);
+    (void)func__EspLog_PercentStore(UINT8_T__G__LogBudgetPercent);
+    (void)func__EspLog_ScanDays(true);
+    func__EspLog_TrimDays();
+    BOOL__G__LogScanValid = false;
+    return UINT8_T__G__LogBudgetPercent;
 }
 /**
  * @brief  [EN] Make sure one LittleFS block is free before a row is appended.
@@ -2782,6 +2933,11 @@ static void func__EspLog_Begin(void)
     }
     func__EspLog_ClockLoad();
     /*
+     * [EN] v1.134: the history share the owner chose last time. Read after the
+     *      file system is known to be up, before the first row is written.
+     */
+    func__EspLog_PercentLoad();
+    /*
  * [EN] Only a restored, matched board anchor needs the first live answer.
  * A fresh flash, a two-field legacy clock, or an already live board
  * starts writing immediately.
@@ -3243,6 +3399,11 @@ static bool func__EspLog_IsOwnFile(const char *char__ptr_path)
         return true;
     }
     if (strcmp(char__ptr_path, ESP_BENCHLOG_PATH) == 0)
+    {
+        return true;
+    }
+    /* [EN] v1.134: the owner's history share is ours too, never "a leftover file". */
+    if (strcmp(char__ptr_path, ESP_LOG_PCT_PATH) == 0)
     {
         return true;
     }

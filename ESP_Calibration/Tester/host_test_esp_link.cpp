@@ -919,6 +919,99 @@ int main(void)
         BOOL__G__LogMarkerDone = false;
     }
 
+    /* ---- 13c. v1.134: the owner chooses the history share himself --------
+       [EN] Owner order 2026-11-06: "put that percentage of memory as a menu in
+            the log menus so the user can change it too". The share is no longer
+            a compile-time constant: the panel offers 40..95 percent, the board
+            keeps the choice on its own flash (so it survives a power cut), and
+            the budget follows it at once.
+       [FA] دستور کاربر ۲۰۲۶-۱۱-۰۶: «اون درصدی از حافظه که میگی رو مثل یک منو
+            توی منوهای لاگ بزار تا کاربر هم بتونه تغییرش بده». سهم تاریخچه دیگر
+            عدد ثابت نیست: پنل بین ۴۰ تا ۹۵ درصد پیشنهاد می‌دهد، برد انتخاب را
+            روی فلش خودش نگه می‌دارد و بودجه فوراً دنبالش می‌آید.
+    */
+    {
+        const size_t savedCapacity = LittleFS.totalCapacityBytes;
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 1048576u;
+        BOOL__G__FsOk = true;
+        LittleFS.failWrites = false;
+        check(UINT8_T__G__LogBudgetPercent == ESP_LOG_BUDGET_PERCENT,
+              "the history share starts at the 85 percent the panel offers",
+              std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "60");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "POST /evt/pct accepts a new share", ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(UINT8_T__G__LogBudgetPercent == 60u,
+              "and the board remembers it", std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        check(func__EspLog_BudgetBytes() == (uint32_t)((1048576u * 60u) / 100u),
+              "the budget follows the chosen share, not the compiled one",
+              std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+        check(LittleFS.files.count(ESP_LOG_PCT_PATH) == 1,
+              "the choice is written to the flash, so a power cut cannot lose it");
+        UINT8_T__G__LogBudgetPercent = ESP_LOG_BUDGET_PERCENT;
+        func__EspLog_PercentLoad();
+        check(UINT8_T__G__LogBudgetPercent == 60u,
+              "and it is read back at boot", std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "99");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        check(UINT8_T__G__LogBudgetPercent == ESP_LOG_BUDGET_PERCENT_MAX,
+              "a share above the maximum is clamped, not obeyed",
+              std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "3");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        check(UINT8_T__G__LogBudgetPercent == ESP_LOG_BUDGET_PERCENT_MIN,
+              "and so is a share below the minimum",
+              std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"p\":40") != std::string::npos,
+              "GET /evt/pct reports the share the page must show",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"min\":40") != std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"max\":95") != std::string::npos,
+              "with the range the menu offers");
+        /*
+         * [EN] Lowering the share must trim at once, not at the next day change -
+         *      otherwise the owner sets 40 percent and nothing happens for hours.
+         */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        std::string dayText;
+        for (int k = 0; k < 150; k++)
+        {
+            dayText += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        LittleFS.files["/evt-20260901.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260902.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260903.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "40");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        (void)func__EspLog_ScanDays(true);
+        check((uint32_t)(LittleFS.files["/evt-20260901.csv"].size() +
+                         LittleFS.files["/evt-20260902.csv"].size() +
+                         LittleFS.files["/evt-20260903.csv"].size()) <=
+              func__EspLog_BudgetBytes(),
+              "a smaller share trims the history immediately",
+              std::to_string((unsigned long)func__EspLog_BudgetBytes()) + " bytes budget");
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = savedCapacity;
+        UINT8_T__G__LogBudgetPercent = ESP_LOG_BUDGET_PERCENT;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+
     /* ---- 14. loop() drains the UART the way the board does -------------- */
     {
         BOOL__G__TlmSeen = false;

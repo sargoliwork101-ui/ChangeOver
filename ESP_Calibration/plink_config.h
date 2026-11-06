@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          133u
+#define ESP_ESP_FW_VERSION          134u
 /*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
@@ -330,6 +330,17 @@
  * the save can never leave a half-written clock behind.
  */
 #define ESP_LOG_CLOCK_TMP_PATH      "/evt-clock.tmp"
+/*
+ * [EN] v1.134 (owner order 2026-11-06: "put that percentage of memory as a menu
+ *      in the log menus so the user can change it too"). The history share is a
+ *      setting now, not a compile-time number: 40..95 percent, 85 by default,
+ *      stored on the panel's own flash so a power cut cannot reset it. Same
+ *      write-then-rename trick as the clock file.
+ */
+#define ESP_LOG_PCT_PATH            "/logpct.txt"
+#define ESP_LOG_PCT_TMP_PATH        "/logpct.tmp"
+#define ESP_LOG_BUDGET_PERCENT_MIN  40u
+#define ESP_LOG_BUDGET_PERCENT_MAX  95u
 #define ESP_LOG_FILE_PREFIX         "/evt-"
 #define ESP_LOG_CUT_BAND_MV         21200u
 #define ESP_LOG_BAND_OFF_MV         21400u

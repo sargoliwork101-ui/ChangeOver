@@ -1208,6 +1208,46 @@ function main() {
                 await tickCheck;
                 await liveCheck;
                 await structCheck;
+                /* ---- v1.134: the history share is a menu in the log card ----
+                   [EN] Owner order 2026-11-06: "put that percentage of memory as a
+                        menu in the log menus so the user can change it too". A
+                        menu that only paints a number would pass every text
+                        check and still never reach the board, so this drives the
+                        real control and watches what leaves the page. */
+                {
+                    const sel = d.getElementById("evtpct");
+                    check(!!sel, "the log card carries the history-share menu the owner asked for");
+                    const opts = sel ? [...sel.querySelectorAll("option")].map(o => +o.value) : [];
+                    check(opts.length === 12 && opts[0] === 40 && opts[11] === 95,
+                          "it offers 40 to 95 percent, the same range the board enforces",
+                          opts.join(","));
+                    const savedHttp2 = w.evtHttp;
+                    const savedDays2 = w.evtDays;
+                    const calls = [];
+                    w.evtDays = async () => {};
+                    w.evtHttp = async (u, m) => {
+                        calls.push([u, m]);
+                        return {
+                            ok: true,
+                            json: async () => ({ ok: 1, p: u.indexOf("p=70") >= 0 ? 70 : 85, min: 40, max: 95 }),
+                            text: async () => ""
+                        };
+                    };
+                    w.evtPctFill(60);
+                    check(sel && sel.value === "60",
+                          "the menu shows the share the board reports, not a hard-coded one",
+                          sel ? sel.value : "no menu");
+                    if (sel) { sel.value = "70"; }
+                    await w.evtPctSet();
+                    check(calls.some(c => c[0] === "/evt/pct?p=70" && c[1] === "POST"),
+                          "picking a share posts it to the board, it is not just painted",
+                          JSON.stringify(calls));
+                    check(sel && sel.value === "70",
+                          "and the menu keeps the number the board answered with",
+                          sel ? sel.value : "no menu");
+                    w.evtHttp = savedHttp2;
+                    w.evtDays = savedDays2;
+                }
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

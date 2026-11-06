@@ -438,7 +438,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d2a4faf</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8f47727</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -468,6 +468,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="sx" title="هر روز یک فایل تا ۳۰ روز · فقط با تغییر یک خط نوشته می‌شود · هر پلهٔ ۲۰۰mV یک خط · یک ساعت بی‌اتفاق = یک خط ضربان · ساعت از دستگاه شما">هر ردیف یک اتفاق و هر ستون یک کمیت — کلیدها را بالای جدول ببینید.</div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
+<label>سهم حافظه<select id="evtpct" onchange="evtPctSet()" title="چند درصد از حافظهٔ ESP به تاریخچهٔ وضعیت برسد؛ بقیه برای جدول کالیبراسیون و فایل ساعت می‌ماند"><option value="85">۸۵٪</option></select></label>
 <button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
 <button class="sb" type="button" onclick="evtfs(1)">حافظهٔ ESP</button>
 <button class="sb" type="button" onclick="evtdl()">دانلود این روز</button>
@@ -4692,6 +4693,28 @@ async function evtfmt(){
   await evtDays();await evtfetch(1);
   const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
 }
+/* [EN] v1.134 (owner order: "put that percentage of memory as a menu in the log
+   menus so the user can change it too"): the history share, 40..95 percent.
+   The board keeps the choice on its own flash, so this menu only reports it. */
+function evtPctFill(p){
+  const sel=$('evtpct');if(!sel)return;
+  const steps=[40,45,50,55,60,65,70,75,80,85,90,95];
+  const want=+p||85;
+  sel.innerHTML=steps.map(v=>'<option value="'+v+'"'+(v===want?' selected':'')+'>'+evtFa(v)+'٪</option>').join('');
+}
+async function evtPctLoad(){
+  try{const r=await evtHttp('/evt/pct','GET',3000);const j=await r.json();evtPctFill(j.p);}catch(e){evtPctFill(85);}
+}
+async function evtPctSet(){
+  const sel=$('evtpct');if(!sel)return;
+  try{
+    const r=await evtHttp('/evt/pct?p='+encodeURIComponent(sel.value),'POST',4000);
+    const j=await r.json();evtPctFill(j.p);
+    if($('evtst'))$('evtst').textContent='سهم تاریخچه: '+evtFa(j.p)+'٪ از حافظهٔ ESP';
+  }catch(e){if($('evtst'))$('evtst').textContent='تغییر سهم تاریخچه انجام نشد';}
+  await evtDays();await evtfetch(1);
+  const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
+}
 async function evtDays(){
   try{
     const r=await evtHttp('/evt/days','GET',3500);
@@ -4772,7 +4795,7 @@ async function evtTick(){
   evtBusy=true;
   try{await evtDays();if(evtBrowsing())return;await evtfetch(0);}finally{evtBusy=false;}
 }
-evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
+evtClock().then(()=>evtDays()).then(()=>evtPctLoad()).then(()=>evtfetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
 addEventListener('online',()=>evtClock());
 setInterval(evtTick,10000);

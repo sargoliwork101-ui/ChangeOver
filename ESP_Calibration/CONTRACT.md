@@ -7,7 +7,7 @@
   "root": "ESP_Calibration",
   "connected_board": "STM32",
   "not_simultaneous_with": "ESP_USER",
-  "http_routes": ["GET /", "GET /benchlog", "GET /evt", "GET /evt/days", "GET /evt/dl", "GET /evt/fs", "GET /f.css", "GET /latch", "GET /lut", "GET /m", "GET /ping", "GET /t", "POST /benchlog/add", "POST /benchlog/clear", "POST /clock", "POST /evt/clean", "POST /evt/clr", "POST /evt/format", "POST /evt/snap", "POST /latch/reset", "POST /lut", "POST /lut/read", "POST /lut/reset", "POST /m", "POST /s"]
+  "http_routes": ["GET /", "GET /benchlog", "GET /evt", "GET /evt/days", "GET /evt/dl", "GET /evt/fs", "GET /evt/pct", "GET /f.css", "GET /latch", "GET /lut", "GET /m", "GET /ping", "GET /t", "POST /benchlog/add", "POST /benchlog/clear", "POST /clock", "POST /evt/clean", "POST /evt/clr", "POST /evt/format", "POST /evt/pct", "POST /evt/snap", "POST /latch/reset", "POST /lut", "POST /lut/read", "POST /lut/reset", "POST /m", "POST /s"]
 }
 ```
 
@@ -56,6 +56,6 @@
 | Browser → ESP_Calibration | `GET /t` | JSON live telemetry, parameter values and link/handshake status |
 | Browser → ESP_Calibration | `GET /ping` | Plain-text ESP/filesystem/log status |
 | Browser → ESP_Calibration | `GET /` / `GET /f.css` | Panel HTML / font CSS |
-| Browser ↔ ESP_Calibration | `/evt`, `/evt/days`, `/evt/dl`, `/evt/clr`, `/evt/snap`, `/evt/format`, `/evt/fs`, `/evt/clean` | Event-log text/CSV, day list, filesystem JSON and log-management results; `day` selects a date for `/evt` and `/evt/dl` |
+| Browser ↔ ESP_Calibration | `/evt`, `/evt/days`, `/evt/dl`, `/evt/clr`, `/evt/snap`, `/evt/format`, `/evt/fs`, `/evt/clean`, `/evt/pct` | Event-log text/CSV, day list, filesystem JSON and log-management results; `day` selects a date for `/evt` and `/evt/dl`; `p` sets the history share (40..95 percent) on `/evt/pct` |
 
 There is no application login/session check in this firmware: HTTP routes, including destructive operations such as `/evt/format`, `/evt/clr`, `/evt/clean`, `/benchlog/clear`, `/lut`, and `/lut/reset`, are reachable by any station that can join the AP. Current AP key is hard-coded as `123456789`. These are verified current behaviors, not recommendations; changing authentication or credentials requires owner approval and device-side changes.
