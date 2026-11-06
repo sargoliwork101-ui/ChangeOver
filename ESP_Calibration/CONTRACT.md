@@ -17,7 +17,7 @@
 |---|---|---|
 | UART, 921600 8N1 | STM32 protocol-v2 frames | Calibration commands and values in protocol-v2 frames |
 | Wi-Fi AP `ChangeOver-ESP` (`192.168.4.1`; current source default key `123456789`) | Browser HTTP requests | Calibration panel on port 80 |
-| LittleFS | `/benchlog.csv`, `/evt-clock.txt`, `/evt-YYYYMMDD.csv` | Bench CSV, time anchor and event-history files |
+| LittleFS | `/benchlog.csv`, `/evt-clock.txt`, `/evt-YYYYMMDD.csv`, `/logpct.txt` | Bench CSV, time anchor, event-history files and the history share chosen in the panel (v1.134) |
 
 ## Commands
 
