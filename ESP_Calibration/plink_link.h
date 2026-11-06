@@ -1321,38 +1321,9 @@ static void func__Esp_ApplyTxPower(bool bool__high, bool bool__force)
  *                  OFF / 1 minute ON) at low TX power until a user connects.
  * @param  uint32_t__nowMs [EN] Current millisecond timestamp /
  */
-/**
- * @brief  [EN] v1.136: is the telemetry in RAM still worth believing?
- *              BOOL__G__TlmSeen never went back to false, so after ONE frame the
- *              panel trusted the LAST frame for ever - including its "no input
- *              power" bit. A loose UART wire (or a board that rebooted and went
- *              quiet) therefore left a panel on mains believing it was on a 12 %
- *              battery: the AP was switched off after 30 minutes and off
- *              completely below the cutoff, and nothing could ever bring it back
- *              (owner report 2026-11-06: "I cannot join the Wi-Fi although mains
- *              is connected"). Stale telemetry now means "I do not know", and
- *              "I do not know" must never make the panel unreachable.
- * @param  uint32_t uint32_t__nowMs current millis
- * @return bool true when a frame arrived inside ESP_LOG_LINK_TIMEOUT_MS
- */
-static bool func__Esp_TlmIsFresh(uint32_t uint32_t__nowMs)
-{
-    if (BOOL__G__TlmSeen == false)
-    {
-        return false;
-    }
-    return ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LastTlmMs) <=
-            (uint32_t)ESP_LOG_LINK_TIMEOUT_MS);
-}
 static void func__Esp_WifiPowerSaveTick(uint32_t uint32_t__nowMs)
 {
-    /*
- * [EN] v1.136: "no fresh frame" is treated like "no frame at all" - mains
- *      assumed, AP stays reachable. The battery saving only applies to a board
- *      that is really talking right now.
- */
-    bool bool__tlmFresh = func__Esp_TlmIsFresh(uint32_t__nowMs);
-    bool bool__inputPresent = (!bool__tlmFresh) ||
+    bool bool__inputPresent = (!BOOL__G__TlmSeen) ||
         ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_INPUT_PRESENT) != 0u);
     bool bool__stationConnected = (WiFi.softAPgetStationNum() > 0);
     bool bool__clientConnected = func__Esp_IsWifiClientConnected(uint32_t__nowMs);

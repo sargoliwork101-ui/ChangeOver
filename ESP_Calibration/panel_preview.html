@@ -546,7 +546,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build adab7f3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build dff290d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -4753,13 +4753,6 @@ async function evtsnap(){
   const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
 }
 function evtKb(b){return evtFa(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
-/* [EN] v1.136: how long the panel has been running, in words, from millis(). */
-function evtDur(ms){
-  const s=Math.max(0,Math.floor((+ms||0)/1000)),d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);
-  if(d)return evtFa(d)+' روز و '+evtFa(h)+' ساعت';
-  if(h)return evtFa(h)+' ساعت و '+evtFa(m)+' دقیقه';
-  return evtFa(m)+' دقیقه';
-}
 async function evtfs(toggle){
   const box=$('evtfs');if(!box)return;
   if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
@@ -4777,15 +4770,6 @@ async function evtfs(toggle){
       h+='<div class="lb" style="color:#ffb4b4;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
     }else{
       h+='<div class="lb" style="margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFa(files.length+(+j.more||0))+'</b></div>';
-      /*
-       * [EN] v1.136 (owner report: the panel went unreachable and nothing on
-       *      screen said why). Uptime, free RAM and the last reset reason are the
-       *      three facts that separate "the code crashed" from "the board lost
-       *      power" from "the radio was switched off on purpose".
-       */
-      if(j.up!=null){
-        h+='<div class="lb" style="margin-top:2px" id="evtup">روشن از: <b>'+evtDur(j.up)+'</b> · رم آزاد: <b>'+evtKb((+j.heap||0))+'</b> · آخرین ریست: <b dir="ltr">'+esc(j.rst||'?')+'</b></div>';
-      }
       if(!files.length)h+='<div class="lb" style="margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
       else{
         h+='<div style="margin-top:6px;max-height:160px;overflow:auto;border-top:1px solid var(--ln);padding-top:4px">';

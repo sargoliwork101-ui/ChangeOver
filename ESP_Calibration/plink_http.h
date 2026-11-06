@@ -110,22 +110,11 @@ static void func__Esp_HttpRoot(void)
  */
 static void func__Esp_HttpPing(void)
 {
-    char char__text[160];
-    /*
-     * [EN] v1.136 (owner report 2026-11-06: the panel was unreachable and there
-     *      was no way to tell why): three numbers answer "did it reboot, how
-     *      long ago, and is it running out of RAM". rst is the reset reason the
-     *      ESP core reports, up is milliseconds since boot, heap is the free
-     *      heap. A panel that answers /ping at all is running - which is the
-     *      first thing this report could not establish.
-     */
-    (void)snprintf(char__text, sizeof(char__text), "pong fs=%u log=%u rows=%u up=%lu heap=%lu rst=%s",
+    char char__text[64];
+    (void)snprintf(char__text, sizeof(char__text), "pong fs=%u log=%u rows=%u",
                    (unsigned int)((BOOL__G__FsOk != false) ? 1u : 0u),
                    (unsigned int)UINT8_T__G__LogWriteFault,
-                   (unsigned int)UINT16_T__G__LogRowsToday,
-                   (unsigned long)(uint32_t)millis(),
-                   (unsigned long)ESP.getFreeHeap(),
-                   ESP.getResetReason().c_str());
+                   (unsigned int)UINT16_T__G__LogRowsToday);
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send(200, "text/plain", char__text);
 }

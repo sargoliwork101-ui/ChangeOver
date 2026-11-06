@@ -37,7 +37,6 @@ unsigned long G_StubMillis = 0;
 StubSerial Serial;
 StubWiFi WiFi;
 StubFS LittleFS;
-StubEsp ESP_T__G__StubEsp;
 
 /* --------------------------------------------------------------------------
    [EN] The REAL sketch, compiled exactly as the board compiles it: one
@@ -1210,101 +1209,8 @@ int main(void)
         check(Serial.rx.empty(), "and the ring is empty when the stream ends");
     }
 
-    /* ---- 16d. v1.136: a silent board must not keep the panel offline -----
-       [EN] Owner report 2026-11-06: "I raised the capacity, came back hours later
-            and could not join the Wi-Fi, although mains is connected". The cause
-            was here: BOOL__G__TlmSeen never went back to false, so once ONE frame
-            had arrived the panel believed its last "no mains" bit for ever. A
-            loose UART wire (or a board that rebooted and went quiet) left the
-            panel on "battery, 12 %", which switches the AP off after 30 minutes
-            and off completely below 20 % - a panel on mains that has made itself
-            unreachable.
-       [FA] گزارش کاربر ۲۰۲۶-۱۱-۰۶: «چند ساعت بعد نتوانستم به وای‌فای وصل شوم با
-            اینکه برق وصل است». علت همین‌جا بود: BOOL__G__TlmSeen هیچ‌وقت false
-            نمی‌شد، پس پنل بیت «برق نیست» آخرین فریم را برای همیشه باور می‌کرد و
-            خودش وای‌فای را خاموش می‌کرد. */
-    {
-        UINT32_T__G__LastTlmMs = 10000u;
-        BOOL__G__TlmSeen = true;
-        UINT8_T__G__TlmFlags = 0u;                 /* "no mains" in the last frame */
-        UINT32_T__G__TlmField[15] = 22000u;        /* 12 % battery */
-        BOOL__G__ParamKnown[74] = false;
-        BOOL__G__ParamKnown[75] = false;
-        BOOL__G__ParamKnown[ESP_PARAM_WIFI_BAT_CUTOFF_PCT] = false;
-        BOOL__G__WifiBatCutoffLatched = false;
-        BOOL__G__WifiApActive = true;
-        WiFi.apActive = true;
-        WiFi.stationNum = 0;
-        BOOL__G__BrowserSeen = false;
-        BOOL__G__WifiBatteryIdleTracking = false;
-        /* a live frame: the panel still believes it, and saves the battery */
-        func__Esp_WifiPowerSaveTick(10500u);
-        check(!WiFi.apActive,
-              "a LIVE frame that says \"no mains, 12 %\" still switches the AP off",
-              "the battery saving itself is not what was wrong");
-        /* the board goes quiet for longer than the link timeout */
-        BOOL__G__WifiApActive = false;
-        WiFi.apActive = false;
-        BOOL__G__WifiBatCutoffLatched = true;
-        func__Esp_WifiPowerSaveTick(10500u + ESP_LOG_LINK_TIMEOUT_MS + 1u);
-        check(WiFi.apActive,
-              "when the board goes silent, the panel stops believing its last \"no mains\" frame",
-              "this is the state the owner could not recover from");
-        check(WiFi.outputPowerDbm > 20.0f,
-              "and it comes back at full power, because it can no longer judge the battery");
-        check(!BOOL__G__WifiBatCutoffLatched,
-              "the battery cutoff is released instead of latching for ever");
-        /* a fresh frame arrives again: the old behaviour is back */
-        UINT32_T__G__LastTlmMs = 20000u;
-        func__Esp_WifiPowerSaveTick(20500u);
-        check(!WiFi.apActive,
-              "as soon as real telemetry returns, the panel obeys it again");
-        UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT;
-        func__Esp_WifiPowerSaveTick(21000u);
-        check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
-              "mains reported again -> AP on at full power");
-    }
-
-    /* ---- 16e. v1.136: the panel can say WHY it rebooted ------------------
-       [EN] This report turned into a guessing game ("is it the partition? the
-            power? the code?") because nothing in the panel carried the last
-            reset reason, the uptime or the free heap. They cost nothing to keep
-            and they answer exactly those questions.
-       [FA] این گزارش با حدس‌زدن گذشت، چون هیچ‌جای پنل دلیل آخرین ریست، آپتایم
-            و رم آزاد را نمی‌گفت. این سه، همان سه سؤال‌اند. */
-    {
-        ESP_T__G__StubEsp.resetReason = "Soft WDT reset";
-        ESP_T__G__StubEsp.freeHeap = 31200u;
-        ESP_WEB_SERVER_T__G__Server.clearArgs();
-        ESP_WEB_SERVER_T__G__Server.call("/ping", HTTP_GET);
-        const std::string pingBody = ESP_WEB_SERVER_T__G__Server.lastBody;
-        check(pingBody.find("up=") != std::string::npos,
-              "GET /ping carries the uptime", pingBody);
-        check(pingBody.find("heap=31200") != std::string::npos,
-              "and the free heap, which is the first sign of a slow leak", pingBody);
-        check(pingBody.find("rst=Soft WDT reset") != std::string::npos,
-              "and the last reset reason - the one answer a guess cannot give", pingBody);
-        ESP_WEB_SERVER_T__G__Server.clearArgs();
-        ESP_WEB_SERVER_T__G__Server.call("/evt/fs", HTTP_GET);
-        const std::string fsBody = ESP_WEB_SERVER_T__G__Server.lastBody;
-        check(fsBody.find("\"up\":") != std::string::npos &&
-              fsBody.find("\"heap\":31200") != std::string::npos &&
-              fsBody.find("\"rst\":\"Soft WDT reset\"") != std::string::npos,
-              "the flash card the panel already shows carries the same three numbers", fsBody);
-    }
-
     /* ---- 17. hybrid Wi-Fi TX power and battery duty-cycling ------------- */
     {
-        /*
- * [EN] v1.136: every scenario below is "the board is talking right now", so
- *      each tick also marks the telemetry fresh. Without this the panel would
- *      (correctly) treat a long-old frame as stale and stay on mains - which is
- *      exactly what the new 16d block proves on purpose.
- */
-        const auto tick = [&](uint32_t t) {
-            UINT32_T__G__LastTlmMs = t;
-            func__Esp_WifiPowerSaveTick(t);
-        };
         /* 1) Mains input present -> AP stays ON at maximum TX power (20.5 dBm) */
         BOOL__G__ParamKnown[74] = false;
         BOOL__G__ParamKnown[75] = false;
@@ -1325,37 +1231,37 @@ int main(void)
         BOOL__G__WifiLastReportedConnected = false;
         Serial.tx.clear();
 
-        tick(1000u);
+        func__Esp_WifiPowerSaveTick(1000u);
         check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
               "with mains input present, Wi-Fi stays ON at maximum TX power (20.5 dBm)");
 
         /* 2) On battery with no client -> first 30 min ON at low TX power (0 dBm) */
         UINT8_T__G__TlmFlags = 0u;
-        tick(2000u);
+        func__Esp_WifiPowerSaveTick(2000u);
         check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
               "on battery with no client, Wi-Fi stays ON at low TX power during first 30 min");
 
-        tick(2000u + 1799000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1799000u);
         check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
               "at 29m59s on battery with no client, Wi-Fi is still ON at low TX power");
 
         /* 3) After 30 minutes (1800000 ms) -> 2 min OFF / 1 min ON at low TX power */
-        tick(2000u + 1800000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u);
         check(!WiFi.apActive,
               "after 30 minutes idle on battery, Wi-Fi enters the 2-minute OFF phase");
 
-        tick(2000u + 1800000u + 120000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 120000u);
         check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
               "after 2 minutes OFF, Wi-Fi turns ON for 1 minute at low TX power");
 
-        tick(2000u + 1800000u + 180000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 180000u);
         check(!WiFi.apActive,
               "after the 1-minute ON window, Wi-Fi turns OFF for the next 2-minute phase");
 
         /* 4) Client connects -> immediate ON at max TX power + 0x33 frame sent */
         Serial.tx.clear();
         WiFi.stationNum = 1;
-        tick(2000u + 1800000u + 190000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 190000u);
         check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
               "when a client connects, Wi-Fi immediately stays ON at maximum TX power");
         check(Serial.tx.size() == 9u &&
@@ -1366,7 +1272,7 @@ int main(void)
         /* 5) Client disconnects -> 30-min timer restarts at low TX power */
         Serial.tx.clear();
         WiFi.stationNum = 0;
-        tick(2000u + 1800000u + 200000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 200000u);
         check(WiFi.apActive && WiFi.outputPowerDbm < 0.1f,
               "when client disconnects on battery, 30-minute low-power window starts fresh");
         check(Serial.tx.size() == 9u &&
@@ -1388,30 +1294,30 @@ int main(void)
             BOOL__G__BrowserSeen = false;
             UINT32_T__G__WifiStationSinceMs = 0u;
             WiFi.stationNum = 1;
-            tick(base);
+            func__Esp_WifiPowerSaveTick(base);
             check(WiFi.apActive && (WiFi.outputPowerDbm > 20.0f),
                   "handshake/power: a device that just joined gets maximum TX power");
 
             /* 11 minutes pass with no HTTP request -> AP on, low power */
-            tick(base + ESP_WIFI_VIEWER_HOLD_MS + 60000u);
+            func__Esp_WifiPowerSaveTick(base + ESP_WIFI_VIEWER_HOLD_MS + 60000u);
             check(WiFi.apActive && (WiFi.outputPowerDbm < 0.1f),
                   "handshake/power: an idle associated phone leaves the AP on at LOW power");
 
             /* somebody opens the panel -> immediately back to max */
             BOOL__G__BrowserSeen = true;
             UINT32_T__G__LastBrowserPollMs = base + ESP_WIFI_VIEWER_HOLD_MS + 60000u;
-            tick(base + ESP_WIFI_VIEWER_HOLD_MS + 61000u);
+            func__Esp_WifiPowerSaveTick(base + ESP_WIFI_VIEWER_HOLD_MS + 61000u);
             check(WiFi.outputPowerDbm > 20.0f,
                   "handshake/power: a fresh panel request raises the antenna at once");
 
             /* panel closed again for the whole window -> low again */
-            tick(base + (2u * ESP_WIFI_VIEWER_HOLD_MS) + 120000u);
+            func__Esp_WifiPowerSaveTick(base + (2u * ESP_WIFI_VIEWER_HOLD_MS) + 120000u);
             check(WiFi.outputPowerDbm < 0.1f,
                   "handshake/power: once nobody watches, the antenna drops back to low");
 
             /* mains present -> always max, no battery cost */
             UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT;
-            tick(base + (2u * ESP_WIFI_VIEWER_HOLD_MS) + 121000u);
+            func__Esp_WifiPowerSaveTick(base + (2u * ESP_WIFI_VIEWER_HOLD_MS) + 121000u);
             check(WiFi.outputPowerDbm > 20.0f,
                   "handshake/power: with mains present the antenna is always at maximum");
 
@@ -1424,13 +1330,13 @@ int main(void)
         /* 6) Battery < 20% on battery power -> AP turns completely OFF even if a client is present */
         WiFi.stationNum = 1;
         UINT32_T__G__TlmField[15] = 22000u; /* 12% (< 20% default cutoff) */
-        tick(2000u + 1800000u + 210000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 210000u);
         check(!WiFi.apActive,
               "when battery drops below 20% on battery power, Wi-Fi AP turns completely OFF");
 
         /* 7) Mains input returns -> AP turns back ON at max TX power even if battery < 20% */
         UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT;
-        tick(2000u + 1800000u + 220000u);
+        func__Esp_WifiPowerSaveTick(2000u + 1800000u + 220000u);
         check(WiFi.apActive && WiFi.outputPowerDbm > 20.0f,
               "when mains input returns, Wi-Fi AP turns back ON at max TX power");
     }
@@ -3745,14 +3651,11 @@ int main(void)
             UINT8_T__G__TlmFlags = 0u; /* battery */
             UINT32_T__G__TlmField[15] = 22000u; /* <20% -> cutoff WIFI_OFF */
             WiFi.stationNum = 0;
-            /* [EN] v1.136: a live board - the cutoff only applies to fresh telemetry. */
-            UINT32_T__G__LastTlmMs = G_StubMillis;
             func__Esp_WifiPowerSaveTick(G_StubMillis);
             check(!WiFi.apActive && !WiFi.sleepDisabled && !BOOL__G__DnsRunning,
                   "WIFI_OFF battery cutoff stops SoftAP, resets sleep flag, and closes DNS UDP");
 
             UINT8_T__G__TlmFlags = ESP_TLM_FLAG_INPUT_PRESENT; /* mains returns -> WIFI_AP */
-            UINT32_T__G__LastTlmMs = G_StubMillis + 1000u;
             func__Esp_WifiPowerSaveTick(G_StubMillis + 1000u);
             check(WiFi.apActive && WiFi.sleepDisabled && BOOL__G__DnsRunning,
                   "WIFI_OFF -> WIFI_AP wake re-applies WIFI_NONE_SLEEP and restarts port-53 responder");
