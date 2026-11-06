@@ -938,7 +938,7 @@ const evtStartSec = Math.floor(Date.now() / 1000);
  *      خودآزمای قبلاً پروسه را برای همیشه زنده نگه می‌داشت و دروازهٔ نحویِ هاست
  *      را پس از خطِ «قبول» قفل می‌کرد. */
 /* [EN] v1.134: the history share the menu shows (percent of the flash). */
-let simPct = 85;
+let simPct = 100;
 let simForeignFiles = [
     { name: "/old_sketch_cfg.bin", size: 24576 }
 ];
@@ -1180,12 +1180,12 @@ const server = http.createServer((req, res) => {
         if (asked !== null) {
             const n = parseInt(asked, 10);
             if (!Number.isNaN(n)) {
-                simPct = Math.min(95, Math.max(40, n));
+                simPct = Math.min(100, Math.max(40, n));
             }
         }
         res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
         res.end(JSON.stringify({
-            ok: 1, p: simPct, min: 40, max: 95,
+            ok: 1, p: simPct, min: 40, max: 100,
             budget: Math.floor((2097152 * simPct) / 100), total: 2097152
         }));
         return;

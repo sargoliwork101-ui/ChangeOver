@@ -1218,8 +1218,8 @@ function main() {
                     const sel = d.getElementById("evtpct");
                     check(!!sel, "the log card carries the history-share menu the owner asked for");
                     const opts = sel ? [...sel.querySelectorAll("option")].map(o => +o.value) : [];
-                    check(opts.length === 12 && opts[0] === 40 && opts[11] === 95,
-                          "it offers 40 to 95 percent, the same range the board enforces",
+                    check(opts.length === 13 && opts[0] === 40 && opts[12] === 100,
+                          "it offers 40 to 100 percent, the same range the board enforces",
                           opts.join(","));
                     const savedHttp2 = w.evtHttp;
                     const savedDays2 = w.evtDays;
@@ -1233,6 +1233,9 @@ function main() {
                             text: async () => ""
                         };
                     };
+                    w.evtPctFill(100);
+                    check(sel && [...sel.querySelectorAll("option")].some(o => o.value === "100" && o.textContent.indexOf("همه") >= 0),
+                          "100 is offered as \"everything that is left\", not as a bare number");
                     w.evtPctFill(60);
                     check(sel && sel.value === "60",
                           "the menu shows the share the board reports, not a hard-coded one",

@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          134u
+#define ESP_ESP_FW_VERSION          135u
 /*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
@@ -340,7 +340,7 @@
 #define ESP_LOG_PCT_PATH            "/logpct.txt"
 #define ESP_LOG_PCT_TMP_PATH        "/logpct.tmp"
 #define ESP_LOG_BUDGET_PERCENT_MIN  40u
-#define ESP_LOG_BUDGET_PERCENT_MAX  95u
+#define ESP_LOG_BUDGET_PERCENT_MAX 100u
 #define ESP_LOG_FILE_PREFIX         "/evt-"
 #define ESP_LOG_CUT_BAND_MV         21200u
 #define ESP_LOG_BAND_OFF_MV         21400u
@@ -381,14 +381,20 @@
 #define ESP_LOG_TOTAL_BUDGET_BYTES     40000u
 /*
  * [EN] v1.132 (owner order 2026-11-05): the budget is no longer this fixed
- *      number - it is 85 percent of whatever file system the ESP was flashed
- *      with, and this constant is only the FLOOR, so the 40 KiB device keeps
- *      exactly the behaviour it had. Flash the same sketch with a bigger
+ *      number - it is a share of whatever file system the ESP was flashed with,
+ *      and this constant is only the FLOOR. Flash the same sketch with a bigger
  *      LittleFS partition and the history grows by itself, with no code change
- *      and no data migration. The other 15 percent is left for the bench log
- *      and the clock file, which live in the same partition.
+ *      and no data migration.
+ * [EN] v1.135 (owner question 2026-11-06: "should the history cap not be the
+ *      memory that is left, not 95 percent? is the rest of the program not on
+ *      this memory - the code and so on?"). It is not: LittleFS.info() reports
+ *      ONLY the LittleFS region, and the sketch lives in the app region next to
+ *      it, outside anything this file system can see or touch. So the share can
+ *      be 100 percent - everything the file partition has - and the two things
+ *      that are still kept back are one free block (LittleFS needs a block to
+ *      write into) and the bytes /benchlog.csv already holds.
  */
-#define ESP_LOG_BUDGET_PERCENT         85u
+#define ESP_LOG_BUDGET_PERCENT        100u
 /*
  * [EN] v1.133 (owner order 2026-11-06: "calibration matters a lot to me - if it
  *      does not fit, let it delete the log so it can fit itself"). The 15 percent

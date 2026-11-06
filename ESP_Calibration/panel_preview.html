@@ -546,7 +546,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8f47727</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build dff290d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -576,7 +576,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="sx" title="هر روز یک فایل تا ۳۰ روز · فقط با تغییر یک خط نوشته می‌شود · هر پلهٔ ۲۰۰mV یک خط · یک ساعت بی‌اتفاق = یک خط ضربان · ساعت از دستگاه شما">هر ردیف یک اتفاق و هر ستون یک کمیت — کلیدها را بالای جدول ببینید.</div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
-<label>سهم حافظه<select id="evtpct" onchange="evtPctSet()" title="چند درصد از حافظهٔ ESP به تاریخچهٔ وضعیت برسد؛ بقیه برای جدول کالیبراسیون و فایل ساعت می‌ماند"><option value="85">۸۵٪</option></select></label>
+<label>سهم حافظه<select id="evtpct" onchange="evtPctSet()" title="چند درصد از حافظهٔ فایل‌ها به تاریخچهٔ وضعیت برسد؛ ۱۰۰٪ یعنی هر چه مانده. کد برنامه در این حافظه نیست، و یک بلوک همیشه برای نوشتن خالی می‌ماند"><option value="100">۱۰۰٪ (همه)</option></select></label>
 <button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
 <button class="sb" type="button" onclick="evtfs(1)">حافظهٔ ESP</button>
 <button class="sb" type="button" onclick="evtdl()">دانلود این روز</button>
@@ -4806,9 +4806,10 @@ async function evtfmt(){
    The board keeps the choice on its own flash, so this menu only reports it. */
 function evtPctFill(p){
   const sel=$('evtpct');if(!sel)return;
-  const steps=[40,45,50,55,60,65,70,75,80,85,90,95];
-  const want=+p||85;
-  sel.innerHTML=steps.map(v=>'<option value="'+v+'"'+(v===want?' selected':'')+'>'+evtFa(v)+'٪</option>').join('');
+  /* [EN] 100 = everything the file partition has: the sketch is not in it. */
+  const steps=[40,45,50,55,60,65,70,75,80,85,90,95,100];
+  const want=+p||100;
+  sel.innerHTML=steps.map(v=>'<option value="'+v+'"'+(v===want?' selected':'')+'>'+(v===100?'۱۰۰٪ (همه)':evtFa(v)+'٪')+'</option>').join('');
 }
 async function evtPctLoad(){
   try{const r=await evtHttp('/evt/pct','GET',3000);const j=await r.json();evtPctFill(j.p);}catch(e){evtPctFill(85);}

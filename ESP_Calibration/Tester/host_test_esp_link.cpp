@@ -956,7 +956,7 @@ int main(void)
         check(UINT8_T__G__LogBudgetPercent == 60u,
               "and it is read back at boot", std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
         ESP_WEB_SERVER_T__G__Server.clearArgs();
-        ESP_WEB_SERVER_T__G__Server.setArg("p", "99");
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "150");
         ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
         check(UINT8_T__G__LogBudgetPercent == ESP_LOG_BUDGET_PERCENT_MAX,
               "a share above the maximum is clamped, not obeyed",
@@ -973,8 +973,10 @@ int main(void)
               "GET /evt/pct reports the share the page must show",
               ESP_WEB_SERVER_T__G__Server.lastBody);
         check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"min\":40") != std::string::npos &&
-              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"max\":95") != std::string::npos,
-              "with the range the menu offers");
+              ESP_WEB_SERVER_T__G__Server.lastBody.find(
+                  "\"max\":" + std::to_string((unsigned)ESP_LOG_BUDGET_PERCENT_MAX)) != std::string::npos,
+              "with the range the menu offers",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
         /*
          * [EN] Lowering the share must trim at once, not at the next day change -
          *      otherwise the owner sets 40 percent and nothing happens for hours.
@@ -2791,7 +2793,14 @@ int main(void)
          */
         {
             const size_t savedCapacity = LittleFS.totalCapacityBytes;
+            const uint8_t savedPct = UINT8_T__G__LogBudgetPercent;
             FSInfo info;
+            /*
+             * [EN] v1.135: the default share is 100 percent now (the sketch does
+             *      not live in this partition), so the FLOOR is only reachable
+             *      with a smaller share. Pinned here and restored below.
+             */
+            UINT8_T__G__LogBudgetPercent = 85u;
             LittleFS.totalCapacityBytes = 40960u;
             (void)LittleFS.info(info);
             check(func__EspLog_BudgetBytes() == ESP_LOG_TOTAL_BUDGET_BYTES,
@@ -2829,6 +2838,27 @@ int main(void)
                   "on the 40 KiB flash the table's header is taken off the floor too",
                   std::to_string((unsigned long)func__EspLog_BudgetBytes()));
             LittleFS.files.erase("/benchlog.csv");
+            /*
+             * [EN] v1.135 (owner question: "should the history cap not be the
+             *      memory that is left, not 95 percent? is the code not on this
+             *      memory?"). The code is not: LittleFS.info() counts only the
+             *      LittleFS region. So at 100 percent the history may take the
+             *      whole partition, and only the calibration file's own bytes
+             *      and one free block stay out.
+             */
+            UINT8_T__G__LogBudgetPercent = 100u;
+            LittleFS.totalCapacityBytes = 1048576u;
+            (void)LittleFS.info(info);
+            check(func__EspLog_BudgetBytes() == (uint32_t)info.totalBytes,
+                  "at 100 percent the history may take the whole file partition",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()) + " vs " +
+                  std::to_string((unsigned long)info.totalBytes));
+            LittleFS.files["/benchlog.csv"] = std::string(20000u, 'b');
+            check(func__EspLog_BudgetBytes() == ((uint32_t)info.totalBytes - 20000u),
+                  "and only the calibration file's own bytes stay out of that budget",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            LittleFS.files.erase("/benchlog.csv");
+            UINT8_T__G__LogBudgetPercent = savedPct;
             LittleFS.totalCapacityBytes = savedCapacity;
         }
         check(ESP_LOG_MAX_ROWS_PER_DAY == 200u,
