@@ -3473,12 +3473,23 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
             uint32_t__usedBytes = (uint32_t)fsInfo__stat.usedBytes;
         }
     }
+    /*
+     * [EN] v1.136: up/heap/rst ride along with the flash numbers, because the
+     *      page already asks for this JSON - "why did it reboot and is it short
+     *      of RAM" is the question the owner could not answer while the panel
+     *      was unreachable. The reset reason is a fixed ASCII string from the
+     *      core, so it needs no escaping.
+     */
     int__written = snprintf(char__out, size_t__outSize,
-                            "{\"fs\":%u,\"mountFail\":%u,\"total\":%lu,\"used\":%lu,\"files\":[",
+                            "{\"fs\":%u,\"mountFail\":%u,\"total\":%lu,\"used\":%lu,"
+                            "\"up\":%lu,\"heap\":%lu,\"rst\":\"%s\",\"files\":[",
                             (BOOL__G__FsOk != false) ? 1u : 0u,
                             (BOOL__G__FsMountFailed != false) ? 1u : 0u,
                             (unsigned long)uint32_t__totalBytes,
-                            (unsigned long)uint32_t__usedBytes);
+                            (unsigned long)uint32_t__usedBytes,
+                            (unsigned long)(uint32_t)millis(),
+                            (unsigned long)ESP.getFreeHeap(),
+                            ESP.getResetReason().c_str());
     if ((int__written <= 0) || ((size_t)int__written >= size_t__outSize))
     {
         char__out[0] = '\0';

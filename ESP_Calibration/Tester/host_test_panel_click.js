@@ -1251,6 +1251,36 @@ function main() {
                     w.evtHttp = savedHttp2;
                     w.evtDays = savedDays2;
                 }
+                /* ---- v1.136: the flash card says WHY the panel rebooted ----
+                   [EN] The owner spent an evening guessing why the panel was
+                        unreachable. These three facts answer it, and a line that
+                        is computed but never painted would have left him guessing
+                        again. */
+                {
+                    const savedHttp3 = w.evtHttp;
+                    w.evtHttp = async (u) => {
+                        if (u === "/evt/fs") {
+                            return { ok: true, json: async () => ({
+                                fs: 1, mountFail: 0, total: 1048576, used: 4096, files: [],
+                                up: 7200000, heap: 31200, rst: "Soft WDT reset"
+                            }) };
+                        }
+                        return { ok: true, json: async () => ({ ok: 1, p: 100 }), text: async () => "" };
+                    };
+                    await w.evtfs(0);
+                    const box = d.getElementById("evtfs");
+                    const line = box ? box.querySelector("#evtup") : null;
+                    check(!!line, "the flash card carries the uptime / RAM / reset line");
+                    const txt = line ? line.textContent : "";
+                    check(txt.indexOf("۲ ساعت") >= 0,
+                          "it says how long the panel has been up, in plain words",
+                          txt.slice(0, 40));
+                    check(txt.indexOf("Soft WDT reset") >= 0,
+                          "and it names the last reset reason instead of leaving it to guesswork",
+                          txt.slice(0, 80));
+                    check(txt.indexOf("KB") >= 0, "and the free RAM next to them", txt.slice(0, 80));
+                    w.evtHttp = savedHttp3;
+                }
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

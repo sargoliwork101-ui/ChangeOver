@@ -1207,7 +1207,12 @@ const server = http.createServer((req, res) => {
         }
         const used = files.reduce((s, x) => s + x.size, 0);
         res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-        res.end(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used, files, fileBytes: used, more: 0 }));
+        /* [EN] v1.136: the same three diagnostic numbers the board sends. */
+        res.end(JSON.stringify({
+            fs: 1, mountFail: 0, total: 2097152, used, files, fileBytes: used, more: 0,
+            up: Math.round(process.uptime() * 1000),
+            heap: 44160, rst: "Power on"
+        }));
         return;
     }
     if (req.method === "POST" && url.pathname === "/evt/clean") {

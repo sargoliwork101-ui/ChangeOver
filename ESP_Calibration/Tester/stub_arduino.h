@@ -123,6 +123,19 @@ struct IPAddress {
         return ((idx >= 0) && (idx < 4)) ? octets[idx] : 0u;
     }
 };
+/*
+ * [EN] v1.136: the parts of the ESP object the firmware reads. The panel now
+ *      answers "why did it reboot / how long has it been up / how much RAM is
+ *      left" from these, because that report could not be diagnosed without them.
+ */
+struct StubEsp {
+    String resetReason = "Power on";
+    unsigned long freeHeap = 40000u;
+    String getResetReason(void) { return resetReason; }
+    unsigned long getFreeHeap(void) { return freeHeap; }
+};
+extern StubEsp ESP_T__G__StubEsp;
+#define ESP ESP_T__G__StubEsp
 struct StubWiFi {
     int modeValue = WIFI_AP;
     int stationNum = 1;
