@@ -1282,6 +1282,45 @@ static void func__EspLog_DropOldest(void)
     UINT8_T__G__LogIndexCount--;
 }
 /**
+ * @brief  [EN] The history budget in bytes: ESP_LOG_BUDGET_PERCENT of the real
+ *              file system, never below ESP_LOG_TOTAL_BUDGET_BYTES. Read from
+ *              LittleFS on every call so a bigger partition needs no rebuild.
+ * @return uint32_t budget in bytes
+ */
+static uint32_t func__EspLog_BudgetBytes(void)
+{
+    FSInfo fsInfo__stat;
+    uint32_t uint32_t__budget;
+    if ((BOOL__G__FsOk == false) || (LittleFS.info(fsInfo__stat) == false) ||
+        (fsInfo__stat.totalBytes == 0u))
+    {
+        return ESP_LOG_TOTAL_BUDGET_BYTES;
+    }
+    uint32_t__budget = (uint32_t)(((uint32_t)fsInfo__stat.totalBytes *
+                                   (uint32_t)ESP_LOG_BUDGET_PERCENT) / 100u);
+    if (uint32_t__budget < ESP_LOG_TOTAL_BUDGET_BYTES)
+    {
+        uint32_t__budget = ESP_LOG_TOTAL_BUDGET_BYTES;
+    }
+    return uint32_t__budget;
+}
+/**
+ * @brief  [EN] How much of the file system must stay free: one real block. A
+ *              write needs a free block, and every LittleFS layout states its
+ *              block size, so it is read instead of assumed.
+ * @return uint32_t bytes to keep free
+ */
+static uint32_t func__EspLog_ReserveBytes(void)
+{
+    FSInfo fsInfo__stat;
+    if ((BOOL__G__FsOk != false) && (LittleFS.info(fsInfo__stat) != false) &&
+        (fsInfo__stat.blockSize != 0u))
+    {
+        return (uint32_t)fsInfo__stat.blockSize;
+    }
+    return ESP_LOG_FREE_RESERVE_BYTES;
+}
+/**
  * @brief  [EN] Delete the oldest days when the retention count or the byte
  *              budget is passed. Nothing has to be written down afterwards:
  *              the list is the directory, so the next scan reads what is left.
@@ -1311,7 +1350,13 @@ static void func__EspLog_TrimDays(void)
  * [EN] v1.131: the budget includes the reserve, or the trim would stop one
  * block short of what a write actually needs.
  */
-        if (uint32_t__bytes <= (ESP_LOG_TOTAL_BUDGET_BYTES - ESP_LOG_FREE_RESERVE_BYTES))
+        uint32_t uint32_t__budget = func__EspLog_BudgetBytes();
+        uint32_t uint32_t__reserve = func__EspLog_ReserveBytes();
+        if (uint32_t__budget <= uint32_t__reserve)
+        {
+            break;
+        }
+        if (uint32_t__bytes <= (uint32_t__budget - uint32_t__reserve))
         {
             break;
         }
@@ -1354,7 +1399,7 @@ static void func__EspLog_EnsureSpace(void)
         {
             uint32_t__freeBytes = (uint32_t)fsInfo__stat.totalBytes - uint32_t__usedBytes;
         }
-        if (uint32_t__freeBytes >= ESP_LOG_FREE_RESERVE_BYTES)
+        if (uint32_t__freeBytes >= func__EspLog_ReserveBytes())
         {
             return;
         }

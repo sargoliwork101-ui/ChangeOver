@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          131u
+#define ESP_ESP_FW_VERSION          132u
 /*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
@@ -368,6 +368,16 @@
  *      LittleFS itself refused the write. This is the real budget now.
  */
 #define ESP_LOG_TOTAL_BUDGET_BYTES     40000u
+/*
+ * [EN] v1.132 (owner order 2026-11-05): the budget is no longer this fixed
+ *      number - it is 85 percent of whatever file system the ESP was flashed
+ *      with, and this constant is only the FLOOR, so the 40 KiB device keeps
+ *      exactly the behaviour it had. Flash the same sketch with a bigger
+ *      LittleFS partition and the history grows by itself, with no code change
+ *      and no data migration. The other 15 percent is left for the bench log
+ *      and the clock file, which live in the same partition.
+ */
+#define ESP_LOG_BUDGET_PERCENT         85u
 /*
  * [EN] One LittleFS block is always kept free. A write needs a free block to
  *      land in; with none left the append fails and the row goes to RAM, which

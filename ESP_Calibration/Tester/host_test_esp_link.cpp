@@ -1669,9 +1669,13 @@ int main(void)
         LittleFS.files.clear();
         UINT8_T__G__LogIndexCount = 0u;
         UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        /* v1.132: the budget follows the real flash, so this rule is checked on
+           the flash the device really has (40 KiB), not on the test's 2 MB */
+        const size_t savedCapacity = LittleFS.totalCapacityBytes;
+        LittleFS.totalCapacityBytes = 40960u;
 
         const uint32_t days[3] = { 20261001u, 20261002u, 20261003u };
-        std::string big(150000u, 'x');            /* > 2 x the day budget */
+        std::string big(150000u, 'x');            /* >> 2 x the day budget */
         for (size_t k = 0u; k < 3u; k++) {
             char dayPath[32];
             (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv", (unsigned long)days[k]);
@@ -1698,6 +1702,7 @@ int main(void)
               !LittleFS.exists("/evt-20261002.csv") &&
               LittleFS.exists("/evt-20261003.csv"),
               "the dropped days are gone from the flash and the newest is kept");
+        LittleFS.totalCapacityBytes = savedCapacity;
     }
 
     /* ---- 32. v1.97: storage never waits for the clock -------------------
@@ -2576,8 +2581,38 @@ int main(void)
             بایستد. */
     {
         check(ESP_LOG_TOTAL_BUDGET_BYTES == 40000u,
-              "the log budget is the 40 KiB the owner set aside",
+              "40 KiB stays the floor of the log budget",
               std::to_string((unsigned)ESP_LOG_TOTAL_BUDGET_BYTES));
+        /*
+         * [EN] v1.132 (owner order 2026-11-05: "run item 1" - read the budget
+         *      from the real flash instead of a fixed number). A bigger file
+         *      system must buy more history by itself, and the reserve must be
+         *      one real LittleFS block.
+         * [FA] نسخهٔ ۱٫۱۳۲ (دستور کاربر ۲۰۲۶-۱۱-۰۵: «مورد ۱ را اجرا کن» -
+         *      خواندن بودجه از حافظهٔ واقعی به‌جای عدد ثابت). حافظهٔ بزرگ‌تر باید
+         *      خودش تاریخچهٔ بیشتری بدهد، و ذخیره باید یک بلوک واقعی LittleFS
+         *      باشد.
+         */
+        {
+            const size_t savedCapacity = LittleFS.totalCapacityBytes;
+            FSInfo info;
+            LittleFS.totalCapacityBytes = 40960u;
+            (void)LittleFS.info(info);
+            check(func__EspLog_BudgetBytes() == ESP_LOG_TOTAL_BUDGET_BYTES,
+                  "on the 40 KiB flash the budget stays at its 40 KiB floor",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            check(func__EspLog_ReserveBytes() == (uint32_t)info.blockSize,
+                  "the reserve is one real file-system block, read not assumed",
+                  std::to_string((unsigned long)func__EspLog_ReserveBytes()));
+            LittleFS.totalCapacityBytes = 1048576u;
+            (void)LittleFS.info(info);
+            const uint32_t expected = (uint32_t)((info.totalBytes * 85u) / 100u);
+            check(func__EspLog_BudgetBytes() == expected,
+                  "a 1 MiB file system gives 85 percent of itself to the history",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()) +
+                  " vs " + std::to_string((unsigned long)expected));
+            LittleFS.totalCapacityBytes = savedCapacity;
+        }
         check(ESP_LOG_MAX_ROWS_PER_DAY == 200u,
               "the day cap is 200 rows, as the owner ordered",
               std::to_string((unsigned)ESP_LOG_MAX_ROWS_PER_DAY));
@@ -2652,7 +2687,7 @@ int main(void)
            trimmed to the 40 KiB the owner set, oldest first, before the month
            count ever matters. */
         LittleFS.files.clear();
-        LittleFS.totalCapacityBytes = 2097152u;
+        LittleFS.totalCapacityBytes = 40960u;
         std::string bigDay;
         for (int k = 0; k < 150; k++)
         {
