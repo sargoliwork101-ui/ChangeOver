@@ -816,6 +816,109 @@ int main(void)
               "GET /benchlog returns the row that was stored");
     }
 
+    /* ---- 13b. v1.133: the calibration table outranks the daily history ----
+       [EN] Owner order 2026-11-06: "calibration matters a lot to me ... if it
+            does not fit, let it delete the log so it can fit itself" - the bench
+            log first, the daily history second. Three things are checked: the
+            history gives way when the table needs the room, the day file it
+            deleted is re-opened (so today's history never restarts headerless),
+            and a row that even an empty flash cannot hold is refused instead of
+            half-written - the old handler only compared against the 100 KB cap
+            and never looked at the free space at all.
+       [FA] دستور کاربر ۲۰۲۶-۱۱-۰۶: «کالیبراسیون خیلی برام مهمه ... اگر جا نشد
+            لاگ رو پاک کنه تا خودش جا بشه» - اول جدول بنچ‌لاگ، بعد لاگ روزانه.
+    */
+    {
+        const size_t savedCapacity = LittleFS.totalCapacityBytes;
+        std::string dayText;
+        for (int k = 0; k < 160; k++)
+        {
+            dayText += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        std::string benchRow(1400u, '7');
+        benchRow += '\n';
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        BOOL__G__FsOk = true;
+        LittleFS.failWrites = false;
+        LittleFS.files["/evt-20260901.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260902.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260903.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0u;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("plain", benchRow.c_str());
+        ESP_WEB_SERVER_T__G__Server.call("/benchlog/add", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "a bench row is accepted even when the flash is nearly full",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(LittleFS.files.count("/benchlog.csv") == 1,
+              "and it really reached the file system");
+        check(LittleFS.files.count("/evt-20260901.csv") == 0,
+              "the calibration table made room by deleting the OLDEST day");
+        check(LittleFS.files.count("/evt-20260902.csv") == 1,
+              "and only as much history as it needed: the newer days are kept");
+        {
+            FSInfo info;
+            (void)LittleFS.info(info);
+            const uint32_t freeNow = (uint32_t)(info.totalBytes - info.usedBytes);
+            check(freeNow >= ESP_LOG_FREE_RESERVE_BYTES,
+                  "one free block is left behind for the next write",
+                  std::to_string((unsigned long)freeNow) + " bytes");
+        }
+        /*
+         * [EN] The day file that was dropped may be TODAY's. The log must notice
+         *      and re-open the day, because appending to the name of a deleted
+         *      file would create it again with no header and no day marker.
+         */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        LittleFS.files["/evt-20260904.csv"] = std::string(ESP_LOG_HEADER) + std::string(35000u, 'x');
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 20260904u;
+        UINT16_T__G__LogRowsToday = 40u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("plain", benchRow.c_str());
+        ESP_WEB_SERVER_T__G__Server.call("/benchlog/add", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "the table also deletes the day it is itself running in");
+        check(LittleFS.files.count("/evt-20260904.csv") == 0,
+              "that day file is gone, so the history gave way completely");
+        check(UINT32_T__G__LogDayCode == ESP_LOG_DAY_AUTO,
+              "and the log forgets the deleted day instead of appending to its name",
+              std::to_string((unsigned long)UINT32_T__G__LogDayCode));
+        /*
+         * [EN] The row cannot be stored at all: a foreign file owns the flash,
+         *      no day file is left to delete. A refused row must be reported,
+         *      not appended into a file system that has no block to give.
+         */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        LittleFS.files["/stray-from-an-older-sketch.bin"] = std::string(39000u, 'z');
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("plain", benchRow.c_str());
+        ESP_WEB_SERVER_T__G__Server.call("/benchlog/add", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 507,
+              "a row that nothing can hold answers 507 instead of a silent half-write",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(LittleFS.files.count("/benchlog.csv") == 0,
+              "and no CSV was opened, so no broken header was left behind");
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = savedCapacity;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+
     /* ---- 14. loop() drains the UART the way the board does -------------- */
     {
         BOOL__G__TlmSeen = false;
@@ -2611,6 +2714,28 @@ int main(void)
                   "a 1 MiB file system gives 85 percent of itself to the history",
                   std::to_string((unsigned long)func__EspLog_BudgetBytes()) +
                   " vs " + std::to_string((unsigned long)expected));
+            /*
+             * [EN] v1.133: the bench log's own bytes come off the history
+             *      budget. A percentage cannot promise a fixed 4.6 KB header
+             *      any room at all on a small flash, so the real size is used.
+             */
+            LittleFS.files["/benchlog.csv"] = std::string(10000u, 'b');
+            check(func__EspLog_BudgetBytes() == (expected - 10000u),
+                  "the bytes the calibration table holds come off the history budget",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()) + " vs " +
+                  std::to_string((unsigned long)(expected - 10000u)));
+            LittleFS.files["/benchlog.csv"] = std::string(3u * 1024u * 1024u, 'b');
+            check(func__EspLog_BudgetBytes() > func__EspLog_ReserveBytes(),
+                  "even a table bigger than the budget leaves the trimmer working",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            LittleFS.files.erase("/benchlog.csv");
+            LittleFS.files["/benchlog.csv"] = std::string(4629u, 'b');
+            LittleFS.totalCapacityBytes = 40960u;
+            check(func__EspLog_BudgetBytes() ==
+                  (ESP_LOG_TOTAL_BUDGET_BYTES - 4629u),
+                  "on the 40 KiB flash the table's header is taken off the floor too",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            LittleFS.files.erase("/benchlog.csv");
             LittleFS.totalCapacityBytes = savedCapacity;
         }
         check(ESP_LOG_MAX_ROWS_PER_DAY == 200u,

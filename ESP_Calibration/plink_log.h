@@ -1282,6 +1282,30 @@ static void func__EspLog_DropOldest(void)
     UINT8_T__G__LogIndexCount--;
 }
 /**
+ * @brief  [EN] How many bytes the calibration bench log already occupies. The
+ *              budget below needs it, because the bench log outranks the
+ *              history (owner order 2026-11-06) and its room is taken off the
+ *              history instead of being hoped for.
+ * @return uint32_t bytes (0 when the file is missing or the flash is down)
+ */
+static uint32_t func__EspLog_BenchLogBytes(void)
+{
+    File file__log;
+    uint32_t uint32_t__size = 0u;
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_BENCHLOG_PATH) == false))
+    {
+        return 0u;
+    }
+    file__log = LittleFS.open(ESP_BENCHLOG_PATH, "r");
+    if (!file__log)
+    {
+        return 0u;
+    }
+    uint32_t__size = (uint32_t)file__log.size();
+    file__log.close();
+    return uint32_t__size;
+}
+/**
  * @brief  [EN] The history budget in bytes: ESP_LOG_BUDGET_PERCENT of the real
  *              file system, never below ESP_LOG_TOTAL_BUDGET_BYTES. Read from
  *              LittleFS on every call so a bigger partition needs no rebuild.
@@ -1291,6 +1315,7 @@ static uint32_t func__EspLog_BudgetBytes(void)
 {
     FSInfo fsInfo__stat;
     uint32_t uint32_t__budget;
+    uint32_t uint32_t__bench;
     if ((BOOL__G__FsOk == false) || (LittleFS.info(fsInfo__stat) == false) ||
         (fsInfo__stat.totalBytes == 0u))
     {
@@ -1301,6 +1326,31 @@ static uint32_t func__EspLog_BudgetBytes(void)
     if (uint32_t__budget < ESP_LOG_TOTAL_BUDGET_BYTES)
     {
         uint32_t__budget = ESP_LOG_TOTAL_BUDGET_BYTES;
+    }
+    /*
+     * [EN] v1.133 (owner order 2026-11-06: the calibration table comes first).
+     *      The 15 percent that is not the history is NOT a promise to the bench
+     *      log - a percentage of the flash has nothing to do with a 4.6 KB
+     *      header. So the bytes the bench log really holds are taken off the
+     *      history budget, and the history trims itself to what is left.
+     */
+    uint32_t__bench = func__EspLog_BenchLogBytes();
+    if (uint32_t__budget > uint32_t__bench)
+    {
+        uint32_t__budget -= uint32_t__bench;
+    }
+    else
+    {
+        uint32_t__budget = 0u;
+    }
+    /*
+     * [EN] Never zero: the trimmer stops when the budget is not bigger than the
+     *      reserve, and a stopped trimmer is a history that grows until the
+     *      flash refuses again. One byte over one block keeps it trimming.
+     */
+    if (uint32_t__budget <= ESP_LOG_FREE_RESERVE_BYTES)
+    {
+        uint32_t__budget = ESP_LOG_FREE_RESERVE_BYTES + 1u;
     }
     return uint32_t__budget;
 }
@@ -1319,6 +1369,79 @@ static uint32_t func__EspLog_ReserveBytes(void)
         return (uint32_t)fsInfo__stat.blockSize;
     }
     return ESP_LOG_FREE_RESERVE_BYTES;
+}
+/**
+ * @brief  [EN] Is there a free block left after need bytes are written? The
+ *              same judgement the day writer makes, exposed so the bench log
+ *              can ask before it opens a file it cannot fill.
+ * @param  uint32_t uint32_t__need bytes about to be written
+ * @return bool true when the write has a block to land in
+ */
+static bool func__EspLog_HasRoomFor(uint32_t uint32_t__need)
+{
+    FSInfo fsInfo__stat;
+    uint32_t uint32_t__freeBytes;
+    if ((BOOL__G__FsOk == false) || (LittleFS.info(fsInfo__stat) == false) ||
+        (fsInfo__stat.totalBytes == 0u))
+    {
+        return true;   /* nothing to judge with: let the write itself answer */
+    }
+    uint32_t__freeBytes = (fsInfo__stat.usedBytes >= fsInfo__stat.totalBytes)
+                          ? 0u
+                          : (uint32_t)(fsInfo__stat.totalBytes - fsInfo__stat.usedBytes);
+    return (uint32_t__freeBytes >= (func__EspLog_ReserveBytes() + uint32_t__need));
+}
+/**
+ * @brief  [EN] Make room for the calibration bench log by deleting day files,
+ *              oldest first. Owner order 2026-11-06: the calibration table comes
+ *              first and the daily history gives way for it - so the oldest day
+ *              is deleted until the row fits, and when nothing is left to give
+ *              the day the log is currently writing is given up as well (the
+ *              caller re-opens the day, so it comes back with its own header).
+ * @param  uint32_t uint32_t__need bytes the bench log is about to add
+ * @return uint32_t number of day files deleted
+ */
+static uint32_t func__EspLog_FreeForBenchLog(uint32_t uint32_t__need)
+{
+    uint32_t uint32_t__days = 0u;
+    uint8_t uint8_t__guard;
+    if ((BOOL__G__FsOk == false) || (uint32_t__need == 0u))
+    {
+        return 0u;
+    }
+    /*
+     * [EN] The index is the memory of which files exist; the flash is the truth.
+     *      A user action may arrive after anything, so read the directory now
+     *      rather than trusting a cache that was filled at boot.
+     */
+    (void)func__EspLog_ScanDays(true);
+    for (uint8_t__guard = 0u; uint8_t__guard < (ESP_LOG_MAX_DAYS + 2u); uint8_t__guard++)
+    {
+        if (func__EspLog_HasRoomFor(uint32_t__need) != false)
+        {
+            break;
+        }
+        if (UINT8_T__G__LogIndexCount == 0u)
+        {
+            break;   /* nothing left to give away */
+        }
+        func__EspLog_DropOldest();
+        BOOL__G__LogScanValid = false;
+        uint32_t__days++;
+    }
+    if (uint32_t__days != 0u)
+    {
+        /*
+         * [EN] A deleted day file may be today's. Appending to its name would
+         *      create it again with no header and no day marker, so the day is
+         *      forgotten here and re-opened (with its header) on the next row.
+         */
+        UINT32_T__G__LogDayCode = ESP_LOG_DAY_AUTO;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+    return uint32_t__days;
 }
 /**
  * @brief  [EN] Delete the oldest days when the retention count or the byte

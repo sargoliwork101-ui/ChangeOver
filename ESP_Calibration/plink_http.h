@@ -912,6 +912,23 @@ static void func__Esp_HttpBenchLogAdd(void)
         ESP_WEB_SERVER_T__G__Server.send(507, "application/json", CHAR__G__JsonBuffer);
         return;
     }
+    /*
+     * [EN] v1.133 (owner order 2026-11-06: "calibration matters a lot to me -
+     *      if it does not fit, let it delete the log so it can fit itself").
+     *      The cap above says nothing about free space: with the history filling
+     *      the flash, the old code opened the file and the append quietly failed.
+     *      The table now goes first and the oldest days are deleted for it; only
+     *      when even an empty history leaves no block is the row refused.
+     */
+    const uint32_t uint32_t__need = uint32_t__extra + uint32_t__len;
+    const uint32_t uint32_t__freed = func__EspLog_FreeForBenchLog(uint32_t__need);
+    if (func__EspLog_HasRoomFor(uint32_t__need) == false)
+    {
+        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":0,\"full\":1,\"freed\":%lu,\"size\":%lu}",
+                       (unsigned long)uint32_t__freed, (unsigned long)uint32_t__size);
+        ESP_WEB_SERVER_T__G__Server.send(507, "application/json", CHAR__G__JsonBuffer);
+        return;
+    }
     File file__log = LittleFS.open(ESP_BENCHLOG_PATH, "a");
     if (!file__log)
     {
@@ -924,7 +941,8 @@ static void func__Esp_HttpBenchLogAdd(void)
     }
     (void)file__log.print(string__body);
     file__log.close();
-    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":1,\"size\":%lu}", (unsigned long)func__Esp_BenchLogSize());
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":1,\"freed\":%lu,\"size\":%lu}",
+                   (unsigned long)uint32_t__freed, (unsigned long)func__Esp_BenchLogSize());
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 /**

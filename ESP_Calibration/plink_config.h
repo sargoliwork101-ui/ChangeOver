@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          132u
+#define ESP_ESP_FW_VERSION          133u
 /*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
@@ -378,6 +378,15 @@
  *      and the clock file, which live in the same partition.
  */
 #define ESP_LOG_BUDGET_PERCENT         85u
+/*
+ * [EN] v1.133 (owner order 2026-11-06: "calibration matters a lot to me - if it
+ *      does not fit, let it delete the log so it can fit itself"). The 15 percent
+ *      above is not a promise: 15 percent of 40 KiB is 6 KiB, barely one bench
+ *      log header. So the bytes /benchlog.csv really holds are taken off the
+ *      history budget instead, and when the bench log still needs room the oldest
+ *      day files are deleted for it. The calibration table always wins; the
+ *      history is what gives way.
+ */
 /*
  * [EN] One LittleFS block is always kept free. A write needs a free block to
  *      land in; with none left the append fails and the row goes to RAM, which
