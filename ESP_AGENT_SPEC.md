@@ -1,6 +1,6 @@
 # ESP-Link Agent Spec — current contract
 
-Status date: 2026-11-06. This is the single handoff document for the ESP panel and the
+Status date: 2026-11-07. This is the single handoff document for the ESP panel and the
 STM32 firmware pair. Where the code and this text disagree, the code wins and this file
 must be corrected. Older version history was removed; it lives in `git log`.
 
@@ -138,6 +138,15 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
   columns were removed; no code wrote them).
 
 ### 4.1 Event history on the panel's own flash (current, ESP_Calibration)
+
+Current format v1.137: 18 fields, in this order:
+`epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille`.
+No pack/imbalance/percent or duplicate V12 column is stored. The two battery
+halves supply the pack sum for boot recovery; `uptime_s` is ESP uptime.
+Voltage-only recording now requires a 500 mV pack change. Input-presence bit 2
+is excluded from `fl` (already in `mains`); Input on and Flags off tags are
+removed. Legacy rows remain readable, including mixed old/new rows on the
+upgrade day; external CSV readers must distinguish row layouts by field count.
 
 - Files: `/evt-YYYYMMDD.csv` (one per day, CSV, header from `ESP_LOG_ROW_MAX`
   layout), `/evt-clock.txt` (wall clock + the board uptime it is anchored to,

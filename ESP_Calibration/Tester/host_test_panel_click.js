@@ -643,8 +643,8 @@ function main() {
                   rows()[2] ? rows()[2].className : "none");
             check(txt(1).indexOf("Fault") >= 0 && txt(1).indexOf("Batt V") >= 0,
                   "the red line names the fault in two English words, not just by colour", txt(1));
-            check(cells(1)[2] && cells(1)[2].textContent.trim() === "24.00",
-                  "and the measured pack voltage has its own cell",
+            check(cells(1)[2] && cells(1)[2].textContent.trim() === "23.96",
+                  "and the lower battery voltage has its own cell",
                   cells(1)[2] ? cells(1)[2].textContent : "none");
             check(txt(0).indexOf("Manual on") >= 0,
                   "the hand-mode step is tagged in English", txt(0));
@@ -680,27 +680,46 @@ function main() {
  *      compared column by column instead of guessed from a sentence. Same
  *      colours, same theme; the event sentence keeps its own cell.
  */
+            // v1.137: compact and legacy rows share the same nine-column view.
+            {
+                const compact="1792756800,12,1024,0,1,1,1,3,0,0,11900,12100,0,23000,1200,1100,450,300";
+                const legacy="1792756800,12,1024,0,1,3,1,3,0,0,24000,11900,12100,200,0,23000,11900,1200,1100,450,300,37";
+                const c=w.evtParse(compact),l=w.evtParse(legacy);
+                check(JSON.stringify(w.evtCols(c))===JSON.stringify(w.evtCols(l)),
+                      "compact and legacy rows show the same battery halves and currents");
+                w.evtRender(compact,"v137");
+                check(cells(0).length===9 && cells(0)[2].textContent.trim()==="11.90" && cells(0)[3].textContent.trim()==="12.10",
+                      "the new row shows lower and upper battery side by side");
+                w.evtRender(legacy+"\n"+compact,"mixed");
+                check(rows().length===2 && cells(0)[2].textContent===cells(1)[2].textContent && cells(0)[3].textContent===cells(1)[3].textContent,
+                      "an upgrade day can mix legacy and compact rows without shifting columns");
+                check(![...ths()].some(h=>/پک|نیم|باتری ٪/.test(h.textContent)),
+                      "removed pack, imbalance and percent columns are absent");
+                check(!w.evtRowText(w.evtParse("1792756800,12,256,0,1,2,0,0,0,0,11900,12100,0,23000,0,0,0,0")).txt.match(/Flags off|Input on/),
+                      "removed generic flags and input tags cannot reappear");
+                w.evtRender("1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
+            }
             check(tbl().length === 1,
                   "the history card draws one table, not a stack of lines",
                   String(tbl().length));
-            check(ths().length === 11,
+            check(ths().length === 9,
                   "the table has one header per column", String(ths().length));
             check(rows()[0] && rows()[0].tagName === "TR" &&
-                  cells(0).length === 11,
+                  cells(0).length === 9,
                   "every step is a row with one cell per column",
                   rows()[0] ? rows()[0].tagName + "/" + cells(0).length : "none");
-            check(cells(0)[2] && cells(0)[2].textContent.trim() === "24.00",
-                  "the pack voltage sits in its own column", cells(0)[2] ? cells(0)[2].textContent : "none");
+            check(cells(0)[2] && cells(0)[2].textContent.trim() === "23.96",
+                  "the lower battery voltage sits in its own column", cells(0)[2] ? cells(0)[2].textContent : "none");
             check(cells(0)[4] && cells(0)[4].textContent.trim() === "23.00",
                   "and the input rail in the next one", cells(0)[4] ? cells(0)[4].textContent : "none");
-            check(cells(0)[6] && cells(0)[6].textContent.trim() === "1.20" &&
-                  cells(0)[7] && cells(0)[7].textContent.trim() === "1.10",
+            check(cells(0)[5] && cells(0)[5].textContent.trim() === "1.20" &&
+                  cells(0)[6] && cells(0)[6].textContent.trim() === "1.10",
                   "both battery currents are comparable cells",
-                  (cells(0)[6] ? cells(0)[6].textContent : "?") + "/" + (cells(0)[7] ? cells(0)[7].textContent : "?"));
-            check(cells(0)[8] && cells(0)[8].textContent.trim() === "45" &&
-                  cells(0)[9] && cells(0)[9].textContent.trim() === "30",
+                  (cells(0)[5] ? cells(0)[5].textContent : "?") + "/" + (cells(0)[6] ? cells(0)[6].textContent : "?"));
+            check(cells(0)[7] && cells(0)[7].textContent.trim() === "45" &&
+                  cells(0)[8] && cells(0)[8].textContent.trim() === "30",
                   "and both commands as a percentage",
-                  (cells(0)[8] ? cells(0)[8].textContent : "?") + "/" + (cells(0)[9] ? cells(0)[9].textContent : "?"));
+                  (cells(0)[7] ? cells(0)[7].textContent : "?") + "/" + (cells(0)[8] ? cells(0)[8].textContent : "?"));
             /* v1.124 (user order): the tags stay one or two words, and the
                explanation lives in a tooltip on the tag itself. */
             {
@@ -712,7 +731,7 @@ function main() {
                       "and the tag itself stays one or two words",
                       spans.map(sp => sp.textContent.trim()).join(" | "));
                 const heads = [...ths()];
-                check(heads.length === 11 && heads.every(h2 => (h2.getAttribute("title") || "").length > 3),
+                check(heads.length === 9 && heads.every(h2 => (h2.getAttribute("title") || "").length > 3),
                       "every column header explains itself on hover too",
                       heads.map(h2 => h2.textContent + "=" + (h2.getAttribute("title") || "")).join(" | "));
                 const cardSx = d.querySelector('#evtlist') &&
@@ -730,7 +749,7 @@ function main() {
                   "a heartbeat line says the panel is alive, in grey", txt(0));
             /* an old 15-column file still reads, without the new columns */
             w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0", "");
-            check(cells(0)[2] && cells(0)[2].textContent.trim() === "24.00" &&
+            check(cells(0)[2] && cells(0)[2].textContent.trim() === "23.96" &&
                   cells(0)[4] && cells(0)[4].textContent.trim() === "\u2014",
                   "a day file written before v1.96 still opens, and its missing columns stay empty instead of inventing zeros",
                   (cells(0)[2] ? cells(0)[2].textContent : "?") + "/" + (cells(0)[4] ? cells(0)[4].textContent : "?"));
@@ -775,16 +794,16 @@ function main() {
                 check(cells(0)[4] && !cells(0)[4].classList.contains("chg"),
                       "a value that did NOT change keeps its normal colour",
                       cells(0)[4] ? cells(0)[4].className : "none");
-                check((cells(0)[2].getAttribute("title") || "").indexOf("23.80") >= 0,
+                check((cells(0)[2].getAttribute("title") || "").indexOf("23.76") >= 0,
                       "the highlighted cell says what the older step had",
                       cells(0)[2].getAttribute("title") || "none");
                 /* in this pair only the pack voltage and the battery percent
                    it drives are different: 24.00/23.80, and the same 80 mV
                    imbalance in both steps must NOT light up. */
                 check(chg(0) === 2 && cells(0)[2].classList.contains("chg") &&
-                      cells(0)[10].classList.contains("chg") &&
-                      !cells(0)[3].classList.contains("chg"),
-                      "exactly the two cells that changed light up, the equal imbalance does not",
+                      cells(0)[3].classList.contains("chg") &&
+                      !cells(0)[4].classList.contains("chg"),
+                      "exactly the two battery cells light up, the unchanged input does not",
                       String(chg(0)) + " @ " + cells(0).map(td => td.classList.contains("chg") ? "x" : ".").join(""));
                 /* the oldest row has nothing below it: it must not throw or paint */
                 rows()[1].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
@@ -819,7 +838,7 @@ function main() {
                           "releasing the row gives every bidi span back",
                           fresh + " -> " + numericLt());
                     check(cells(0)[2].innerHTML.indexOf('class="lt"') >= 0 &&
-                          cells(0)[2].textContent.trim() === "24.00",
+                          cells(0)[2].textContent.trim() === "23.96",
                           "and the released cell is the original markup and the original value again",
                           cells(0)[2].innerHTML + " / " + cells(0)[2].textContent.trim());
                 }
@@ -1047,7 +1066,7 @@ function main() {
                   it lands as ONE inserted row, not as a rebuilt table */
             body = pairOld + "\n" + pairNew;
             await w.evtTick();
-            check(pRows3().length === 2 && pRows3()[0].textContent.indexOf("24.00") >= 0,
+            check(pRows3().length === 2 && pRows3()[0].textContent.indexOf("23.96") >= 0,
                   "a new row still reaches the tail view on the next tick",
                   String(pRows3().length));
             check(d.querySelector("#evtlist table") === table0 && pRows3()[0].dataset.k === pairNew,
@@ -1098,7 +1117,7 @@ function main() {
             /* 1) a new row arrives while a row is picked */
             body = o + "\n" + n1 + "\n" + n2;
             await w.evtTick();
-            check(pRows4().length === 3 && pRows4()[0].textContent.indexOf("24.30") >= 0,
+            check(pRows4().length === 3 && pRows4()[0].textContent.indexOf("24.26") >= 0,
                   "a picked row does not stop the live tail: the new row still arrives",
                   pRows4().length + " rows / " + pRows4()[0].textContent.slice(0, 22));
             /* 2) and the picked row kept its selection and its phosphor cells */

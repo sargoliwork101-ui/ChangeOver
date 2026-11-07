@@ -1,3 +1,4 @@
+#include <algorithm>
 /**
  * @file   host_test_esp_link.cpp
  * @brief  [EN] First host tests for the ESP program.
@@ -151,6 +152,14 @@ static long row_field(const std::string &body, size_t rowIndex, size_t fieldInde
             if ((k > start) && (body[start] != '#') && (skip == false)) {
                 if (row == rowIndex) {
                     std::string line = body.substr(start, k - start);
+                    if (std::count(line.begin(),line.end(),',') == 17 && fieldIndex>=10u) {
+                        if (fieldIndex==10u) return row_field(body,rowIndex,11u)+row_field(body,rowIndex,12u);
+                        if (fieldIndex==13u || fieldIndex==21u) return -1;
+                        if (fieldIndex==16u) fieldIndex=10u;
+                        else if (fieldIndex<=12u) fieldIndex--;
+                        else if (fieldIndex<=15u) fieldIndex-=2u;
+                        else fieldIndex-=3u;
+                    }
                     size_t from = 0u;
                     for (field = 0u; field < fieldIndex; field++) {
                         size_t comma = line.find(',', from);
@@ -203,6 +212,12 @@ static std::vector<uint8_t> tlm_payload_v24(uint16_t seq, uint32_t v24)
     p[o + 1u] = (uint8_t)((v24 >> 8) & 0xFFu);
     p[o + 2u] = (uint8_t)((v24 >> 16) & 0xFFu);
     p[o + 3u] = (uint8_t)((v24 >> 24) & 0xFFu);
+    // v1.137: physically consistent battery halves for compact snapshot restoration.
+    for (uint8_t field : {17u,18u}) {
+        const uint32_t v = field == 17u ? v24 / 2u : v24 - v24 / 2u;
+        const size_t off = ESP_LINK_TLM_FIELD_OFFSET + field * 4u;
+        for (uint8_t b=0;b<4;b++) p[off+b]=(uint8_t)(v >> (8u*b));
+    }
     return p;
 }
 
@@ -1447,7 +1462,7 @@ int main(void)
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
-              ESP_WEB_SERVER_T__G__Server.lastBody.find("20608") != std::string::npos,
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("10304") != std::string::npos,
               "GET /evt returns the saved rows as text");
 
         ESP_WEB_SERVER_T__G__Server.call("/evt/days", HTTP_GET);
@@ -1516,10 +1531,10 @@ int main(void)
             const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
             const size_t deadOff = ESP_LINK_TLM_FIELD_OFFSET + (28u * 4u);
 
-            /* 199 mV: below the step, nothing may be written. The verdict
+            /* 499 mV: below the step, nothing may be written. The verdict
                field is pinned to the value the previous test left behind,
                otherwise its own change would write the row. */
-            std::vector<uint8_t> drift = tlm_payload_v24(212u, 20807u);
+            std::vector<uint8_t> drift = tlm_payload_v24(212u, 21107u);
             drift[deadOff] = 0x01u; drift[deadOff + 1u] = 0x00u;
             drift[deadOff + 2u] = 0x00u; drift[deadOff + 3u] = 0x00u;
             G_StubMillis += 5000u;
@@ -1527,30 +1542,30 @@ int main(void)
             check(UINT16_T__G__LogRowsToday == rowsBefore,
                   "a pack drift smaller than the step writes nothing");
 
-            /* 200 mV more: a row, marked as a voltage step. The row before
+            /* Exactly 500 mV from the last saved row: a row, marked as a voltage step. The row before
                this one (the band row) carried a step of its own, so the
                one-step-a-minute window must be waited out first - that is the
                v1.98 promise, and the test walks through it honestly. */
-            std::vector<uint8_t> step = tlm_payload_v24(213u, 21007u);
+            std::vector<uint8_t> step = tlm_payload_v24(213u, 21108u);
             step[deadOff] = 0x01u; step[deadOff + 1u] = 0x00u;
             step[deadOff + 2u] = 0x00u; step[deadOff + 3u] = 0x00u;
             G_StubMillis += ESP_LOG_VSTEP_MIN_MS;
             feed(build_frame(ESP_MSG_TLM_LIVE, step));
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
-                  "a 200 mV step of the pack writes one row");
+                  "a 500 mV step of the pack writes one row");
             std::string bodyStep = LittleFS.files[std::string(path)];
             const size_t stepRow = (size_t)(rowsBefore);
             check((row_field(bodyStep, stepRow, 2u) & 1024L) != 0L,
                   "that row carries the voltage-step change bit",
                   std::to_string(row_field(bodyStep, stepRow, 2u)));
-            check(row_field(bodyStep, stepRow, 10u) == 21007L,
-                  "the row keeps the new pack voltage",
+            check(row_field(bodyStep, stepRow, 10u) == 21108L,
+                  "the pack sum is reconstructed from stored halves",
                   std::to_string(row_field(bodyStep, stepRow, 10u)));
             check(row_field(bodyStep, stepRow, 15u) == 1014L,
                   "the input rail is saved as well",
                   std::to_string(row_field(bodyStep, stepRow, 15u)));
-            check(row_field(bodyStep, stepRow, 16u) == 1016L,
-                  "so is the 12 V node",
+            check(row_field(bodyStep, stepRow, 16u) == 10554L,
+                  "the lower battery replaces the duplicate V12 node",
                   std::to_string(row_field(bodyStep, stepRow, 16u)));
             check(row_field(bodyStep, stepRow, 17u) == 1003L &&
                   row_field(bodyStep, stepRow, 18u) == 1010L,
@@ -1579,7 +1594,7 @@ int main(void)
             const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
 
             /* the wobble: 21,150 → 21,180 → 21,140 - every move stays under
-               the 200 mV step from the last ROW (21,007), so no rise worth a
+               the 500 mV step from the last ROW (21,108), so no rise worth a
                record happens and the log stays quiet */
             const uint32_t wobble[3] = { 21150u, 21180u, 21140u };
             for (uint8_t k = 0u; k < 3u; k++) {
@@ -1609,7 +1624,7 @@ int main(void)
             /* v1.109: a RISE in discharge is written even inside the same
                minute - the user wants a record for every time it came up */
             const uint16_t afterUp = UINT16_T__G__LogRowsToday;
-            std::vector<uint8_t> fast = tlm_payload_v24(234u, 21800u);
+            std::vector<uint8_t> fast = tlm_payload_v24(234u, 22000u);
             fast[deadOff2] = 0x01u; fast[deadOff2 + 1u] = 0x00u;
             fast[deadOff2 + 2u] = 0x00u; fast[deadOff2 + 3u] = 0x00u;
             G_StubMillis += 10000u;             /* 10 s after the last row */
@@ -1628,7 +1643,7 @@ int main(void)
                   "a fall in discharge inside the same minute is not written");
 
             /* after the minute the next rise is written again */
-            std::vector<uint8_t> slow = tlm_payload_v24(236u, 22100u);
+            std::vector<uint8_t> slow = tlm_payload_v24(236u, 22500u);
             slow[deadOff2] = 0x01u; slow[deadOff2 + 1u] = 0x00u;
             slow[deadOff2 + 2u] = 0x00u; slow[deadOff2 + 3u] = 0x00u;
             G_StubMillis += ESP_LOG_VSTEP_MIN_MS;
@@ -1639,8 +1654,8 @@ int main(void)
             /* v1.109: the row carries the battery percent as its last column */
             std::string bodyPct = LittleFS.files[std::string(path)];
             /* the "fast" row (21,800 mV, factory map 21,000..29,000) = 10% */
-            check(row_field(bodyPct, (size_t)afterUp, 21u) == 10L,
-                  "the row's last column is the battery percent of its voltage",
+            check(row_field(bodyPct, (size_t)afterUp, 21u) == -1L,
+                  "the compact row does not store battery percent",
                   std::to_string(row_field(bodyPct, (size_t)afterUp, 21u)));
         }
 
@@ -1657,7 +1672,7 @@ int main(void)
             const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
             /* every earlier frame carried mains OFF - establish mains ON
                first, so the CUT below is a real mains change */
-            std::vector<uint8_t> on = tlm_payload_v24(236u, 22100u);
+            std::vector<uint8_t> on = tlm_payload_v24(236u, 22500u);
             on[2u] = 0x02u;
             G_StubMillis += 100u;
             feed(build_frame(ESP_MSG_TLM_LIVE, on));
@@ -3262,8 +3277,8 @@ int main(void)
                            (unsigned long)func__EspLog_TodayCode());
             (void)func__EspLog_Tail(lastRow, sizeof lastRow,
                                     func__EspLog_TodayCode(), 1u);
-            check(func__EspLog_RowFieldAt(lastRow, 2u) == ESP_LOG_CHG_VSTEP,
-                  "21.30 V after a restart is a voltage step, NOT a band exit "
+            check(func__EspLog_RowFieldAt(lastRow, 2u) == 0u,
+                  "21.30 V after a restart is below the 500 mV step, NOT a band exit "
                   "(the band is left above 21.40 V)",
                   std::to_string(func__EspLog_RowFieldAt(lastRow, 2u)));
         }
@@ -4586,6 +4601,27 @@ int main(void)
         BOOL__G__FsOk = true;
         func__EspLog_ResetCaches();
         LittleFS.files.clear();
+    }
+
+    // v1.137: assert the raw compact schema, independently of legacy test helpers.
+    {
+        char compact[ESP_LOG_ROW_MAX];
+        UINT8_T__G__TlmFlags=0x3Fu;
+        UINT32_T__G__TlmField[17]=11900u;
+        UINT32_T__G__TlmField[18]=12100u;
+        UINT32_T__G__TlmField[28]=3u;
+        check(func__EspLog_BuildRow(compact,sizeof compact,ESP_LOG_CHG_VSTEP,0u),"compact row builds");
+        std::string raw(compact);
+        check(std::count(raw.begin(),raw.end(),',')==17,"exactly 18 fields are stored");
+        check(raw.find(",11900,12100,3,")!=std::string::npos,"raw row stores both halves followed by verdict");
+        check(func__EspLog_RowFieldAt(compact,10u)==24000u,"boot reconstructs pack from the two halves");
+        check(func__EspLog_RowFieldAt(compact,11u)==11900u && func__EspLog_RowFieldAt(compact,12u)==12100u,"boot restores compact halves");
+        check(func__EspLog_RowFieldAt(compact,14u)==3u,"boot restores compact verdict");
+        check((func__EspLog_RowFieldAt(compact,5u)&2u)==0u,"Input on bit is not duplicated in stored flags");
+        const char *legacy="1792756800,1,0,0,1,3,1,2,0,0,24000,11900,12100,200,3,23000,11900,1,2,3,4,37";
+        check(func__EspLog_RowFieldAt(legacy,10u)==24000u && func__EspLog_RowFieldAt(legacy,14u)==3u,"old 22-field snapshots still restore");
+        check(ESP_LOG_VSTEP_MV==500u,"voltage step is 500 millivolts");
+        check(std::string(ESP_LOG_HEADER).find("v24_mv")==std::string::npos && std::string(ESP_LOG_HEADER).find("batt_pct")==std::string::npos && std::string(ESP_LOG_HEADER).find("imbal_mv")==std::string::npos,"removed storage fields are absent from new header");
     }
 
     std::cout << std::string(70, '=') << "\n";

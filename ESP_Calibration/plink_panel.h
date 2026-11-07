@@ -438,7 +438,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build dff290d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9f1ff2e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -4101,15 +4101,14 @@ const EVT_TIP={
   'Link back':'ارتباط با برد STM32 دوباره برقرار شد',
   'Mains on':'برق شهر وصل شد',
   'Mains off':'برق شهر قطع شد',
-  'V step':'ولتاژ پک یک پلهٔ ۲۰۰ میلی‌ولتی جابه‌جا شد',
+  'V step':'ولتاژ پک یک پلهٔ ۵۰۰ میلی‌ولتی جابه‌جا شد',
   'Clock set':'ساعت با ساعت دستگاه شما تنظیم شد',
   'Near cut':'ولتاژ باتری به مرز قطع نزدیک شد',
   'Above cut':'ولتاژ باتری از مرز قطع بالا آمد',
   'Heartbeat':'گزارش دوره‌ای — یک ساعت هیچ اتفاقی نیفتاد و پنل زنده است',
   'Manual':'ثبت دستی با کلید «به‌روزرسانی»',
   'Day full':'سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',
-  'Day start':'فایل این روز از این لحظه ساخته شد',
-  'Flags off':'کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است'
+  'Day start':'فایل این روز از این لحظه ساخته شد'
 };
 /* [EN] A tag is explained by its own title, plus the reason for a phase tag
         ("CH1 absorb" -> what absorb means for channel 1).
@@ -4138,7 +4137,7 @@ const EVT_ST=['off','bulk','absorb','float','bring-up','jit wait','input wait','
         guess: each text is the meaning the board gives that bit.
    [FA] بایت عمومی فریم، هر بیت یک معنی. هیچ‌کدام حدس نیست؛ هر متن همان
         معنایی است که برد به آن بیت می‌دهد. */
-const EVT_FL=[[1,'Data ok','Data lost'],[2,'Input on','Input off'],
+const EVT_FL=[[1,'Data ok','Data lost'],
               [4,'Meas ok','Meas bad'],[8,'CH1 ok','CH1 fail'],
               [16,'CH2 ok','CH2 fail'],[32,'Manual on','Manual off']];
 let evtBusy=false,evtClkBusy=false;
@@ -4208,19 +4207,6 @@ function evtTime(epoch){
   const p=n=>String(n).padStart(2,'0');
   return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
 }
-/* [EN] v1.122: the battery percentage of a row - taken from the row itself when
-        the file has it (v1.109 and later), otherwise recomputed from the same
-        discharge map the board uses (74/75), so old files read the same way.
-   [FA] نسخهٔ ۱٫۱۲۲: درصد باتریِ هر ردیف - اگر خود ردیف داشته باشد (نسخهٔ ۱٫۱۰۹
-        به بعد) همان، وگرنه از همان نگاشت دشارژ برد (۷۴/۷۵) دوباره حساب می‌شود
-        تا فایل قدیمی هم یک‌جور خوانده شود. */
-function evtBattPct(r){
-  if(r.pct!==null&&r.pct!==undefined)return r.pct;
-  const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
-        vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
-  if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
-  return Math.round((r.v24-vmin)*100/(vmax-vmin));
-}
 /* [EN] v1.122: the numeric columns of the table, in header order. A column the
         file does not have (files older than v1.96) shows an em dash instead of
         a zero, so a missing reading is never mistaken for a measured one.
@@ -4230,15 +4216,13 @@ function evtBattPct(r){
 function evtCols(r){
   const num=(v,f)=>(v===null||v===undefined)?'\u2014':f(v);
   return [
-    (r.v24/1000).toFixed(2),                 /* pack */
-    String(r.imbal|0),                       /* half-battery difference */
+    num(r.vlow,x=>(x/1000).toFixed(2)),
+    num(r.vhigh,x=>(x/1000).toFixed(2)),
     num(r.vin,x=>(x/1000).toFixed(2)),       /* input rail */
-    num(r.v12,x=>(x/1000).toFixed(2)),       /* 12 V node */
     num(r.i1,x=>(x/1000).toFixed(2)),        /* channel 1 current */
     num(r.i2,x=>(x/1000).toFixed(2)),        /* channel 2 current */
     num(r.d1,x=>(x/10).toFixed(0)),          /* channel 1 command */
     num(r.d2,x=>(x/10).toFixed(0)),          /* channel 2 command */
-    String(evtBattPct(r))                    /* battery percent */
   ];
 }
 /* [EN] One row -> a Persian line and a severity: 3 = fault, 2 = warning,
@@ -4295,9 +4279,8 @@ function evtRowText(r){
   if(chg&256){
     /* [EN] only the bits that are ON are named.
        [FA] فقط بیت‌های روشن نام برده می‌شوند. */
-    let any=0;
-    EVT_FL.forEach(b=>{if(fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
-    if(!any)add('Flags off',2);
+    EVT_FL.forEach(b=>{if(fl&b[0]){add(b[1],((b[0]&5)!==0)?1:2);}});
+    /* [EN] No generic Flags off tag: only specific active states are named. */
   }
   if(r.note===5){add('Heartbeat',0);}
   if(r.note===6){add('Manual',0);}
@@ -4313,7 +4296,10 @@ function evtRowText(r){
   return {txt:parts.join(' · '),lv:lv,time:evtTime(r.epoch)};
 }
 function evtParse(line){
-  const f=line.split(',');
+  let f=line.split(',');
+  /* [EN] Normalize compact v1.137 rows to legacy indexes; old files stay readable. */
+  if(f.length===18){const a=f;f=[...a.slice(0,10),String((+a[10])+(+a[11])),a[10],a[11],'0',a[12],a[13],a[10],a[14],a[15],a[16],a[17]];}
+
   /* [EN] v1.129: the raw line travels with the row. The API a page is served by
           a board that writes 22 fields and no id, so the only identity a row can
           honestly carry is the data it shows.
@@ -4326,7 +4312,6 @@ function evtParse(line){
           vin:(f.length>15)?+f[15]:null,v12:(f.length>16)?+f[16]:null,
           i1:(f.length>17)?+f[17]:null,i2:(f.length>18)?+f[18]:null,
           d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
-          pct:(f.length>21)?+f[21]:null,
           band:(+f[10]||0)<21200};
 }
 /* [EN] v1.99: every piece of a line sits in its own span and every number or
@@ -4361,15 +4346,14 @@ function evtParseAll(text){
    [FA] نسخهٔ ۱٫۱۲۴: سرصفحه کوتاه است و توضیحش با نگه‌داشتن موس می‌آید. */
 const EVT_COLS=[['ساعت','ساعت رویداد — از گوشی یا کامپیوتری که این صفحه را باز کرده'],
  ['اتفاق','هر تگ یک اتفاق است؛ توضیح کاملش با نگه‌داشتن موس روی همان تگ'],
- ['پک V','ولتاژ کل پک باتری (۲۴ ولت)'],
- ['Δ نیم mV','اختلاف دو نیم‌باتری به میلی‌ولت'],
+ ['پایینی V','ولتاژ باتری پایینی'],
+ ['بالایی V','ولتاژ باتری بالایی'],
  ['ورودی V','ولتاژ ورودی (برق شهر یا منبع)'],
- ['۱۲V V','ولتاژ نود ۱۲ ولت'],
  ['I۱ A','جریان باتری کانال ۱'],
  ['I۲ A','جریان باتری کانال ۲'],
  ['D۱ ٪','درصد فرمان PWM کانال ۱'],
  ['D۲ ٪','درصد فرمان PWM کانال ۲'],
- ['باتری ٪','درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵)']];
+];
 /* [EN] v1.129 (owner: "do what the industry does"). Keyed reconciliation, the
         way React and every list-diff library do it:
           1. a row is identified by the DATA it shows - the raw line - so two

@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          135u
+#define ESP_ESP_FW_VERSION          137u
 /*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
@@ -345,7 +345,7 @@
 #define ESP_LOG_CUT_BAND_MV         21200u
 #define ESP_LOG_BAND_OFF_MV         21400u
 #define ESP_LOG_VSTEP_MIN_MS        60000u
-#define ESP_LOG_VSTEP_MV             200u
+#define ESP_LOG_VSTEP_MV             500u
 /*
  * [EN] One "still alive" row this often when nothing at all has changed. It was
  * 6 h, which meant a pack lying quietly on battery produced ONE row a
@@ -446,8 +446,8 @@
 #define ESP_LOG_CLOCK_VALID_MAX     4102444800u
 #define ESP_LOG_HEADER \
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2," \
-    "v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma," \
-    "duty1_permille,duty2_permille,batt_pct\n" \
+    "vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma," \
+    "duty1_permille,duty2_permille\n" \
     "# bits 1 boot 2 mains 4 chg1 8 chg2 16 fault 32 flags 64 band 128 link 256 mode 512 dead 1024 vstep 2048 clock. note 4 dayfull 5 beat 6 manual 7 daystart\n"
 /*
  * [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of

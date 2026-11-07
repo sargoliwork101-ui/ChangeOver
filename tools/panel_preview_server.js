@@ -805,8 +805,8 @@ const EVT_CHG_BOOT = 1, EVT_CHG_MAINS = 2, EVT_CHG_CHG1 = 4, EVT_CHG_CHG2 = 8,
       EVT_CHG_FAULT = 16, EVT_CHG_FLAGS = 32, EVT_CHG_BAND = 64, EVT_CHG_LINK = 128,
       EVT_CHG_MODE = 256, EVT_CHG_DEAD = 512, EVT_CHG_VSTEP = 1024;
 const EVT_NOTE_NONE = 0, EVT_NOTE_LINK_LOST = 2, EVT_NOTE_LINK_BACK = 3, EVT_NOTE_HEARTBEAT = 5, EVT_NOTE_MANUAL = 6;
-const EVT_MIN_MS = 2000, EVT_VSTEP_MV = 200, EVT_VSTEP_MIN_MS = 60000, EVT_MAX_ROWS = 2000;
-const EVT_HEADER = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,v24,vlow,vhigh,imb,dm,vin,v12,i1,i2,d1,d2';
+const EVT_MIN_MS = 2000, EVT_VSTEP_MV = 500, EVT_VSTEP_MIN_MS = 60000, EVT_MAX_ROWS = 2000;
+const EVT_HEADER = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,vlow,vhigh,dm,vin,i1,i2,d1,d2';
 let evtRows = [];
 let evtPendingMask = 0, evtPendingNote = 0;
 let evtLastRowMs = 0, evtLastRowOk = false, evtLastStepMs = 0, evtLastStepOk = false;
@@ -824,11 +824,10 @@ function evtWrite(mask, note, flags, fl2, t) {
     if (evtRows.length >= EVT_MAX_ROWS) return;
     const nowSec = Math.floor(Date.now() / 1000);
     evtRows.push([nowSec, Math.floor(nowSec - (evtStartSec)), mask, note,
-                  (flags & 0x02) ? 1 : 0, flags,
+                  (flags & 0x02) ? 1 : 0, flags & 0x3d,
                   t[6], t[13], t[19], fl2,
-                  t[15], t[17], t[18], t[25], t[28],
-                  t[14], t[16], t[3], t[10], t[5], t[12],
-                  evtPct(t[15])].join(','));
+                  t[17], t[18], t[28],
+                  t[14], t[3], t[10], t[5], t[12]].join(','));
     evtLastRowMs = Date.now();
     evtLastRowOk = true;
     if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
@@ -855,9 +854,9 @@ function evtSeedDemo() {
         const sec = start + i * step;
         const mains = (i % 30) < 20 ? 1 : 0;
         const v24 = 24000 - (i % 12) * 60;
-        evtRows.push([sec, 3600 + i * step, (i % 7 === 0) ? 1024 : 0, 5, mains, 7,
-                      1, 1, 0, 1, v24, v24 - 40, v24 + 40, 80, 0, 24100,
-                      v24 - 12000, 900, 850, 450, 300, evtPct(v24)].join(','));
+        evtRows.push([sec, 3600 + i * step, (i % 7 === 0) ? 1024 : 0, 5, mains, 5,
+                      1, 1, 0, 1, v24 - 12000, 12000, 0, 24100,
+                      900, 850, 450, 300].join(','));
     }
 }
 function evtFlush() {

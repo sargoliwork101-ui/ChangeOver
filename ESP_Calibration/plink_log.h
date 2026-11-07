@@ -255,7 +255,8 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_NOTE_DAY_START 7u
 #define ESP_LOG_PATH_MAX       24u
 /*
- * [EN] One CSV row: 22 numbers, the widest possible being 22 x 10 digits plus
+ * [EN] New rows have 18 numbers; retain room for legacy 22-field rows.
+ * The conservative bound remains 22 x 10 digits plus
  * 21 commas = 241 bytes plus the terminator. The static_assert below turns
  * a future column that does not fit into a build error instead of a
  * silently cut row.
@@ -1973,42 +1974,6 @@ static void func__EspLog_DrainRam(void)
 }
 /* ==================== Row write ==================== */
 /**
- * @brief  [EN] Battery percent from the DISCHARGE map (param 74/75, factory
- *              21,000..29,000 mV), stored with every row so later analysis
- *              keeps the same scale even if the map is retuned. Unknown params
- *              fall back to the factory map.
-* @param uint32_t__batteryMv Pack voltage in mV /
-* @return uint8_t Percent 0..100 /
- */
-static uint8_t func__EspLog_Pct(uint32_t uint32_t__batteryMv)
-{
-    uint32_t uint32_t__vminMv = 21000u;
-    uint32_t uint32_t__vmaxMv = 29000u;
-    uint32_t uint32_t__rangeMv;
-    if (BOOL__G__ParamKnown[74] != false)
-    {
-        uint32_t__vminMv = UINT32_T__G__ParamApplied[74];
-    }
-    if (BOOL__G__ParamKnown[75] != false)
-    {
-        uint32_t__vmaxMv = UINT32_T__G__ParamApplied[75];
-    }
-    if (uint32_t__batteryMv <= uint32_t__vminMv)
-    {
-        return 0u;
-    }
-    if (uint32_t__batteryMv >= uint32_t__vmaxMv)
-    {
-        return 100u;
-    }
-    uint32_t__rangeMv = uint32_t__vmaxMv - uint32_t__vminMv;
-    if (uint32_t__rangeMv == 0u)
-    {
-        return 0u;
-    }
-    return (uint8_t)(((uint32_t__batteryMv - uint32_t__vminMv) * 100u) / uint32_t__rangeMv);
-}
-/**
  * @brief  [EN] Build one CSV row into a caller buffer. Returns false when the
  *              row did not fit - a cut row is reported instead of written.
 * @param char *char__row buffer /
@@ -2022,29 +1987,25 @@ static bool func__EspLog_BuildRow(char *char__row, size_t size_t__size,
 {
     int int__written;
     int__written = snprintf(char__row, size_t__size,
-                            "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
+                            "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
                             (unsigned long)func__EspLog_NowSec(),
                             (unsigned long)((uint32_t)millis() / 1000u),
                             (unsigned int)uint16_t__changeMask,
                             (unsigned int)uint8_t__note,
                             (unsigned int)(((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u),
-                            (unsigned int)UINT8_T__G__TlmFlags,
+                            (unsigned int)(UINT8_T__G__TlmFlags & 0x3Du),
                             (unsigned long)UINT32_T__G__TlmField[6],
                             (unsigned long)UINT32_T__G__TlmField[13],
                             (unsigned long)UINT32_T__G__TlmField[19],
                             (unsigned int)UINT8_T__G__TlmFlags2,
-                            (unsigned long)UINT32_T__G__TlmField[15],
                             (unsigned long)UINT32_T__G__TlmField[17],
                             (unsigned long)UINT32_T__G__TlmField[18],
-                            (unsigned long)UINT32_T__G__TlmField[25],
                             (unsigned long)UINT32_T__G__TlmField[28],
                             (unsigned long)UINT32_T__G__TlmField[14],
-                            (unsigned long)UINT32_T__G__TlmField[16],
                             (unsigned long)UINT32_T__G__TlmField[3],
                             (unsigned long)UINT32_T__G__TlmField[10],
                             (unsigned long)UINT32_T__G__TlmField[5],
-                            (unsigned long)UINT32_T__G__TlmField[12],
-                            (unsigned long)func__EspLog_Pct(UINT32_T__G__TlmField[15]));
+                            (unsigned long)UINT32_T__G__TlmField[12]);
     return (int__written > 0) && ((size_t)int__written < size_t__size);
 }
 /**
@@ -2214,6 +2175,25 @@ static uint32_t func__EspLog_RowFieldAt(const char *char__row, uint8_t uint8_t__
     if (char__row == NULL)
     {
         return 0u;
+    }
+    /* [EN] v1.137: 18-field rows omit pack, imbalance, duplicate V12 and percent.
+     * Keep legacy logical indexes for snapshot restoration and old day files. */
+    uint8_t uint8_t__fields = 1u;
+    for (const char *char__p = char__row; *char__p && *char__p != '\n' && *char__p != '\r'; ++char__p)
+    {
+        if (*char__p == ',') { uint8_t__fields++; }
+    }
+    if ((uint8_t__fields == 18u) && (uint8_t__index >= 10u))
+    {
+        if (uint8_t__index == 10u)
+        {
+            return func__EspLog_RowFieldAt(char__row, 11u) + func__EspLog_RowFieldAt(char__row, 12u);
+        }
+        if ((uint8_t__index == 13u) || (uint8_t__index == 21u)) { return 0u; }
+        if (uint8_t__index == 16u) { uint8_t__index = 10u; }
+        else if (uint8_t__index <= 12u) { uint8_t__index--; }
+        else if (uint8_t__index <= 15u) { uint8_t__index -= 2u; }
+        else { uint8_t__index -= 3u; }
     }
     while ((char__row[uint16_t__cursor] != '\0') &&
            (char__row[uint16_t__cursor] != '\n'))
