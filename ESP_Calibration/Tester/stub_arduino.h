@@ -262,6 +262,7 @@ struct StubWebServer {
         if (body && n) lastBody.append(body, n);
         sendCount++;
     }
+    void sendContent(const char *body) { if(body)lastBody.append(body); }
     bool hasArg(const char *n) { return args.count(n) != 0; }
     String arg(const char *n) {
         std::map<std::string, std::string>::iterator it = args.find(n);
@@ -300,6 +301,9 @@ struct StubFile {
  * stuck in ("the flash refused the row and nobody noticed").
  */
     const bool *fail = nullptr;
+    const size_t *writeLimit = nullptr;
+    const size_t *readLimit = nullptr;
+    const size_t *readFailAt = nullptr;
     size_t pos = 0;
     bool ok = false;
     operator bool() const { return ok; }
@@ -307,6 +311,7 @@ struct StubFile {
     bool refuse(void) const { return (fail != nullptr) && (*fail); }
     size_t write(const uint8_t *p, size_t n) {
         if (refuse()) return 0u;
+        if (writeLimit && n>*writeLimit) n=*writeLimit;
         if (buf) buf->append((const char *)p, n);
         return n;
     }
@@ -370,11 +375,17 @@ struct StubFile {
     }
     size_t readBytes(char *d, size_t n) {
         if (!buf) return 0;
+        if (readLimit && n>*readLimit) n=*readLimit;
+        if (readFailAt) {
+            if (pos>=*readFailAt) return 0;
+            if (n>*readFailAt-pos) n=*readFailAt-pos;
+        }
         size_t k = 0;
         while (k < n && pos < buf->size()) d[k++] = (*buf)[pos++];
         return k;
     }
     bool seek(size_t p) { pos = p; return buf && p <= buf->size(); }
+    bool truncate(size_t n) { if (!buf || refuse()) return false; buf->resize(n); if(pos>n)pos=n; return true; }
     void close(void) {}
 };
 typedef StubFile File;
@@ -419,6 +430,9 @@ struct StubFS {
  * [EN] true = every write is refused, exactly like a full flash.
  */
     bool failWrites = false;
+    size_t writeLimit = SIZE_MAX;
+    size_t readLimit = SIZE_MAX;
+    size_t readFailAt = SIZE_MAX;
     /*
  * [EN] Refuse the next N opens, then behave normally. A transient refusal is
  * what makes "could not open the day file, but the append itself worked"
@@ -489,6 +503,9 @@ struct StubFS {
         }
         f.buf = &files[key];
         f.fail = &failWrites;
+        f.writeLimit = &writeLimit;
+        f.readLimit = &readLimit;
+        f.readFailAt = &readFailAt;
         f.ok = true;
         return f;
     }

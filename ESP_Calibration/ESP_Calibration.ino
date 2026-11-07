@@ -148,6 +148,11 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Esp_HttpEventFormat);
     ESP_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Esp_HttpEventFsStatus);
     ESP_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Esp_HttpEventClean);
+    /*
+ * [EN] v1.134: the owner's history share. GET reads it for the menu, POST sets it.
+ */
+    ESP_WEB_SERVER_T__G__Server.on("/evt/pct", HTTP_GET, func__Esp_HttpEventPct);
+    ESP_WEB_SERVER_T__G__Server.on("/evt/pct", HTTP_POST, func__Esp_HttpEventPct);
     ESP_WEB_SERVER_T__G__Server.begin();
     /*
  * [EN] v1.93: restore the clock anchor and the day list for the history.
