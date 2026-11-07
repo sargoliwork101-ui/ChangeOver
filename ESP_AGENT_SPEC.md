@@ -139,7 +139,7 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 
 ### 4.1 Event history on the panel's own flash (current, ESP_Calibration)
 
-Current format v1.137: 18 fields, in this order:
+Current public CSV format v1.138: 18 lossless integer fields, in this order:
 `epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille`.
 No pack/imbalance/percent or duplicate V12 column is stored. The two battery
 halves supply the pack sum for boot recovery; `uptime_s` is ESP uptime.
@@ -148,8 +148,22 @@ is excluded from `fl` (already in `mains`); Input on and Flags off tags are
 removed. Legacy rows remain readable, including mixed old/new rows on the
 upgrade day; external CSV readers must distinguish row layouts by field count.
 
-- Files: `/evt-YYYYMMDD.csv` (one per day, CSV, header from `ESP_LOG_ROW_MAX`
-  layout), `/evt-clock.txt` (wall clock + the board uptime it is anchored to,
+- New day files use a versioned delta codec (`plink_log_codec.h`), despite the
+  retained internal `.csv` suffix. Header: `EVTD`, version 1, 18 fields,
+  checkpoint interval 16, reserved zero (8 bytes total). Each record contains
+  sync `A5 C3`, payload length, kind (0 full / 1 delta), payload, and little-endian
+  CRC16-CCITT (initial FFFF over length/kind/payload). Full records hold 18
+  unsigned base-128 varints; deltas hold a 3-byte changed-field bitmap followed
+  by ZigZag varints of exact signed differences. No precision is discarded.
+  A full checkpoint is forced after at most 15 deltas; rows commit immediately,
+  not in batches. Maximum frame is 99 bytes, writer cache is fixed-size.
+- Readers validate CRC, lengths, field bounds and checkpoints. After corruption,
+  dependent deltas are skipped until the next valid full record. An incomplete
+  suffix is truncated before retry; unknown headers are not overwritten.
+  Damaged downloads carry an explicit CSV warning comment. `/evt` and `/evt/dl`
+  always reconstruct complete CSV rows with bounded RAM; `/evt/dl` streams all
+  valid rows, not merely the table tail. Existing text days stay text on append.
+- Files: `/evt-YYYYMMDD.csv` (one per day; internal binary for new files), `/evt-clock.txt` (wall clock + the board uptime it is anchored to,
   written with temp file + atomic rename) and `/logpct.txt` (the share chosen in
   the panel menu). `/benchlog.csv` is the bench capture of §4.
 - Day cap `ESP_LOG_MAX_ROWS_PER_DAY` = **200** rows (v1.131; it was 400), retention

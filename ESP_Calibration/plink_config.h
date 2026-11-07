@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          137u
+#define ESP_ESP_FW_VERSION          138u
 /*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
@@ -285,7 +285,7 @@
 /* ==================== Live state history log ==================== */
 /*
  * [EN] v1.93 (user order 2026-10-23): every panel keeps a state history on its
- * own flash, one small CSV per calendar day of the phone that opened it.
+ * own flash, one compressed file per calendar day; public downloads are CSV.
  * A row is written only when something really changed (mains, charger
  * step, fault mask, latch flags, battery near the cut band, link lost /
  * back, board restarted) - a steady board writes nothing, so the flash is

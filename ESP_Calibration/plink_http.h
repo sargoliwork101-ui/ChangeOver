@@ -1163,7 +1163,25 @@ static void func__Esp_HttpEventDownload(void)
         ESP_WEB_SERVER_T__G__Server.send(503, "text/plain", "fs");
         return;
     }
-    (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__day, "text/csv");
+    EspLogCodec::State codec;
+    const int kind=EspLogCodec::begin(file__day,codec);
+    if (kind==1) {
+        char row[ESP_LOG_ROW_MAX];
+        ESP_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+        ESP_WEB_SERVER_T__G__Server.send(200,"text/csv","");
+        ESP_WEB_SERVER_T__G__Server.sendContent(ESP_LOG_HEADER);
+        while (EspLogCodec::next(file__day,codec)) {
+            if (EspLogCodec::text(codec,row,sizeof row)) ESP_WEB_SERVER_T__G__Server.sendContent(row);
+            yield();
+        }
+        if (codec.damaged) {
+            func__EspLog_FaultRaise();
+            ESP_WEB_SERVER_T__G__Server.sendContent("# WARNING: damaged/incomplete records skipped\n");
+        }
+        ESP_WEB_SERVER_T__G__Server.sendContent("");
+    } else if (kind==0) {
+        (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__day, "text/csv");
+    } else ESP_WEB_SERVER_T__G__Server.send(503,"text/plain","log format");
     file__day.close();
 }
 /**

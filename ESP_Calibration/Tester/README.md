@@ -137,3 +137,12 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 
 با خراب‌کردن عمدی پنل و تأیید شکست تست راستی‌آزمایی شد — همه گرفته شدند: جدول
 بالا در بخش انگلیسی فهرست کامل را دارد.
+
+## Lossless day codec (v1.138)
+
+`host_test_log_codec.h` is included by the real-sketch host suite. It exercises
+all 18 integer fields, full/delta checkpoints, u32 and signed-delta extremes,
+every truncation boundary, single-bit corruption, CRC-valid malformed packets,
+partial-write retries, file-header recovery, exact public tail/CSV/boot outputs
+and unchanged legacy text append. The stub has explicit short-write injection;
+it never disguises binary files as text. See [validation results](LOG_CODEC_VALIDATION.md).

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 /**
  * @file   host_test_esp_link.cpp
  * @brief  [EN] First host tests for the ESP program.
@@ -131,6 +132,23 @@ static void feed(const std::vector<uint8_t> &v)
         field of one saved row, instead of substring guessing.
    [FA] تست‌های تاریخچه به ولتاژ معلوم پک و خواندن یک خانه از یک ردیف ذخیره‌شده
         نیاز دارند، نه حدس با زیررشته. */
+/* [EN] Explicit public-view decode; the filesystem still contains real binary bytes. */
+static std::string decoded_day(const std::string &path)
+{
+    File file=LittleFS.open(path.c_str(),"r");
+    if (!file) return "";
+    EspLogCodec::State state;
+    const int kind=EspLogCodec::begin(file,state);
+    if (kind==0) return LittleFS.files[path];
+    if (kind!=1) return "";
+    std::string out=ESP_LOG_HEADER;
+    char row[ESP_LOG_ROW_MAX];
+    while (EspLogCodec::next(file,state)) {
+        if (EspLogCodec::text(state,row,sizeof row)) out+=row;
+    }
+    return out;
+}
+
 static long row_field(const std::string &body, size_t rowIndex, size_t fieldIndex)
 {
     size_t row = 0u, k = 0u, field = 0u, start = 0u;
@@ -370,6 +388,8 @@ static void feed_board_uptime(uint32_t uptimeSec)
     ack.resize(ESP_HELLO_ACK_LEN, 0u);
     feed(build_frame(ESP_MSG_HELLO_ACK, ack));
 }
+
+#include "host_test_log_codec.h"
 
 /* ======================================================================== */
 int main(void)
@@ -1426,9 +1446,9 @@ int main(void)
         check(dayCode != 0u && LittleFS.exists(path),
               "the row lands in a file named after the phone's own day");
 
-        std::string body = LittleFS.files[std::string(path)];
+        std::string body = decoded_day(std::string(path));
         check(body.find("# epoch,uptime_s") != std::string::npos,
-              "a new day file starts with its column header");
+              "the decoded new day starts with its CSV column header");
         check(row_field(body, 0u, 2u) == 2,
               "the first row carries the mains change bit");
 
@@ -1452,7 +1472,7 @@ int main(void)
            [FA] فایل دوم نداریم: خود ردیف حافظه است. آخرین ردیف فایل روز ولتاژ
                 پک را دارد، پس روشن‌شدن بعدی می‌تواند مقایسه کند. */
         {
-            std::string bodyLow = LittleFS.files[std::string(path)];
+            std::string bodyLow = decoded_day(std::string(path));
             check(row_field(bodyLow, 1u, 10u) == 20608,
                   "the last row itself holds the pack voltage, no extra file needed",
                   std::to_string(row_field(bodyLow, 2u, 10u)));
@@ -1481,7 +1501,7 @@ int main(void)
             feed(build_frame(ESP_MSG_TLM_LIVE, manual));
             check(UINT16_T__G__LogRowsToday == 3u,
                   "switching the board to hand mode writes a row");
-            std::string bodyMode = LittleFS.files[std::string(path)];
+            std::string bodyMode = decoded_day(std::string(path));
             check(row_field(bodyMode, 2u, 2u) == 256u,
                   "that row is marked as a mode change",
                   std::to_string(row_field(bodyMode, 3u, 2u)));
@@ -1509,7 +1529,7 @@ int main(void)
             feed(build_frame(ESP_MSG_TLM_LIVE, dead));
             check(UINT16_T__G__LogRowsToday == 4u,
                   "a condemned-battery verdict writes a row");
-            std::string bodyDead = LittleFS.files[std::string(path)];
+            std::string bodyDead = decoded_day(std::string(path));
             check(row_field(bodyDead, 3u, 2u) == 768u,
                   "that row is marked as a verdict change (and a mode change: the flags byte fell)",
                   std::to_string(row_field(bodyDead, 4u, 2u)));
@@ -1553,7 +1573,7 @@ int main(void)
             feed(build_frame(ESP_MSG_TLM_LIVE, step));
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
                   "a 500 mV step of the pack writes one row");
-            std::string bodyStep = LittleFS.files[std::string(path)];
+            std::string bodyStep = decoded_day(std::string(path));
             const size_t stepRow = (size_t)(rowsBefore);
             check((row_field(bodyStep, stepRow, 2u) & 1024L) != 0L,
                   "that row carries the voltage-step change bit",
@@ -1616,7 +1636,7 @@ int main(void)
             feed(build_frame(ESP_MSG_TLM_LIVE, up));
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
                   "leaving the band above 21,400 mV writes exactly one row");
-            std::string bodyUp = LittleFS.files[std::string(path)];
+            std::string bodyUp = decoded_day(std::string(path));
             check((row_field(bodyUp, (size_t)rowsBefore, 2u) & 64L) != 0L,
                   "and that row is marked as a band change",
                   std::to_string(row_field(bodyUp, (size_t)rowsBefore, 2u)));
@@ -1652,7 +1672,7 @@ int main(void)
                   "once the minute has passed the step is written again");
 
             /* v1.109: the row carries the battery percent as its last column */
-            std::string bodyPct = LittleFS.files[std::string(path)];
+            std::string bodyPct = decoded_day(std::string(path));
             /* the "fast" row (21,800 mV, factory map 21,000..29,000) = 10% */
             check(row_field(bodyPct, (size_t)afterUp, 21u) == -1L,
                   "the compact row does not store battery percent",
@@ -1691,7 +1711,7 @@ int main(void)
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 2u),
                   "a mains cut lands inside the short coalescing window, not the 2 s merge",
                   std::to_string(UINT16_T__G__LogRowsToday));
-            std::string bodyCut = LittleFS.files[std::string(path)];
+            std::string bodyCut = decoded_day(std::string(path));
             check((row_field(bodyCut, (size_t)(rowsBefore + 1u), 2u) & 2L) != 0L,
                   "and that row carries the mains change bit",
                   std::to_string(row_field(bodyCut, (size_t)(rowsBefore + 1u), 2u)));
@@ -1711,7 +1731,7 @@ int main(void)
             func__EspLog_Tick();
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
                   "after a whole quiet heartbeat window, Tick writes one row");
-            std::string bodyBeat = LittleFS.files[std::string(path)];
+            std::string bodyBeat = decoded_day(std::string(path));
             check(row_field(bodyBeat, (size_t)rowsBefore, 3u) == 5L,
                   "that row is marked as a heartbeat",
                   std::to_string(row_field(bodyBeat, (size_t)rowsBefore, 3u)));
@@ -1835,7 +1855,7 @@ int main(void)
               "danger stop: the switch-on speaks and adds exactly one row",
               std::to_string((unsigned)func__EspLog_CountRows(dangerPath)));
         {
-            const std::string dangerFile = LittleFS.files[std::string(dangerPath)];
+            const std::string dangerFile = decoded_day(std::string(dangerPath));
             check((row_field(dangerFile, 1u, 2u) & 1L) != 0L,
                   "danger stop: the row keeps the boot bit",
                   dangerFile);
@@ -1860,7 +1880,7 @@ int main(void)
         (void)snprintf(dangerPath, sizeof dangerPath, "/evt-%08lu.csv",
                        (unsigned long)func__EspLog_TodayCode());
         {
-            const std::string updateFile = LittleFS.files[std::string(dangerPath)];
+            const std::string updateFile = decoded_day(std::string(dangerPath));
             check(UINT16_T__G__LogRowsToday == 1u,
                   "update row: one row for the update, no extra switch-on row",
                   std::to_string((unsigned)UINT16_T__G__LogRowsToday));
@@ -1968,7 +1988,7 @@ int main(void)
 
         check(LittleFS.exists("/evt-00000000.csv"),
               "with no phone clock at all, the first row still lands in a day file");
-        std::string noClock = LittleFS.files[std::string("/evt-00000000.csv")];
+        std::string noClock = decoded_day(std::string("/evt-00000000.csv"));
         check(row_field(noClock, 0u, 0u) == 0L,
               "that row carries time 0, which the panel shows as \"no clock\"",
               std::to_string(row_field(noClock, 0u, 0u)));
@@ -3519,7 +3539,7 @@ int main(void)
             char dayPath[32];
             (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
                            (unsigned long)func__EspLog_TodayCode());
-            std::string dayText = LittleFS.files[std::string(dayPath)];
+            std::string dayText = decoded_day(std::string(dayPath));
             check(dayText.find(",4097,") != std::string::npos,
                   "the row carries both \"panel switched on\" and \"update\"",
                   dayText.substr(0u, 60u));
@@ -3799,7 +3819,7 @@ int main(void)
         (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
                        (unsigned long)func__EspLog_TodayCode());
         {
-            const std::string day = LittleFS.files[std::string(dayPath)];
+            const std::string day = decoded_day(std::string(dayPath));
             check(row_field(day, 0u, 0u) == (long)(baseSec + 3600u + offlineSec),
                   "ten-hour wake: the boot row carries the recovered real time",
                   day);
@@ -3881,7 +3901,7 @@ int main(void)
         func__EspLog_Tick();
         (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
                        (unsigned long)func__EspLog_TodayCode());
-        check(LittleFS.files[std::string(dayPath)].find(",4097,") != std::string::npos,
+        check(decoded_day(std::string(dayPath)).find(",4097,") != std::string::npos,
               "update after grace: the forced boot-plus-update row is still written");
 
         /* With no saved clock at all, day-zero storage stays immediate. */
@@ -3935,7 +3955,7 @@ int main(void)
               "note-only flush: the queue writes a row that carries only a note",
               std::to_string((unsigned)UINT16_T__G__LogRowsToday));
         {
-            const std::string dayFile = LittleFS.files[std::string("/evt-00000000.csv")];
+            const std::string dayFile = decoded_day(std::string("/evt-00000000.csv"));
             check(row_field(dayFile, 1u, 3u) == (long)ESP_LOG_NOTE_HEARTBEAT,
                   "note-only flush: the written row carries the heartbeat note",
                   dayFile);
@@ -4234,7 +4254,7 @@ int main(void)
               std::to_string((unsigned)func__EspLog_CountRows(dayStartPath)));
         {
             const std::string marker =
-                raw_data_line(LittleFS.files[std::string(dayStartPath)], 0u);
+                raw_data_line(decoded_day(std::string(dayStartPath)), 0u);
             long epoch = 0L, uptime = 0L, bits = 0L, note = 0L;
             (void)sscanf(marker.c_str(), "%ld,%ld,%ld,%ld",
                          &epoch, &uptime, &bits, &note);
@@ -4250,8 +4270,8 @@ int main(void)
         G_StubMillis += 3000u;
         feed_board_uptime(1003u);
         func__EspLog_Tick();
-        check(raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u).empty() &&
-              !raw_data_line(LittleFS.files[std::string(dayStartPath)], 0u).empty(),
+        check(raw_data_line(decoded_day(std::string(dayStartPath)), 1u).empty() &&
+              !raw_data_line(decoded_day(std::string(dayStartPath)), 0u).empty(),
               "day start: another wake in the same day adds nothing");
 
         /* and neither does a reboot in the middle of the day */
@@ -4260,9 +4280,9 @@ int main(void)
         G_StubMillis = 2000u;
         feed_board_uptime(1200u);
         func__EspLog_Tick();
-        check(raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u).empty(),
+        check(raw_data_line(decoded_day(std::string(dayStartPath)), 1u).empty(),
               "day start: a reboot does not write a second start row",
-              raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u));
+              raw_data_line(decoded_day(std::string(dayStartPath)), 1u));
 
         /* the marker must not count as "a row was written", or the hourly
            heartbeat would slide off the hour: exactly one hour after it, the
@@ -4623,6 +4643,8 @@ int main(void)
         check(ESP_LOG_VSTEP_MV==500u,"voltage step is 500 millivolts");
         check(std::string(ESP_LOG_HEADER).find("v24_mv")==std::string::npos && std::string(ESP_LOG_HEADER).find("batt_pct")==std::string::npos && std::string(ESP_LOG_HEADER).find("imbal_mv")==std::string::npos,"removed storage fields are absent from new header");
     }
+
+    test_log_codec();
 
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
