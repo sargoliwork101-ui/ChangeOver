@@ -1174,14 +1174,19 @@ static void func__Esp_HttpEventDownload(void)
             if (EspLogCodec::text(codec,row,sizeof row)) ESP_WEB_SERVER_T__G__Server.sendContent(row);
             yield();
         }
-        if (codec.damaged) {
+        if (codec.damaged || codec.ioError) {
             func__EspLog_FaultRaise();
-            ESP_WEB_SERVER_T__G__Server.sendContent("# WARNING: damaged/incomplete records skipped\n");
+            ESP_WEB_SERVER_T__G__Server.sendContent(codec.ioError?
+                "# WARNING: read error; export incomplete\n":
+                "# WARNING: damaged/incomplete records skipped\n");
         }
         ESP_WEB_SERVER_T__G__Server.sendContent("");
     } else if (kind==0) {
         (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__day, "text/csv");
-    } else ESP_WEB_SERVER_T__G__Server.send(503,"text/plain","log format");
+    } else {
+        func__EspLog_FaultRaise();
+        ESP_WEB_SERVER_T__G__Server.send(503,"text/plain",codec.ioError?"fs":"log format");
+    }
     file__day.close();
 }
 /**

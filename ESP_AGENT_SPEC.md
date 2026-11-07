@@ -139,7 +139,7 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 
 ### 4.1 Event history on the panel's own flash (current, ESP_Calibration)
 
-Current public CSV format v1.138: 18 lossless integer fields, in this order:
+Current public CSV format v1.139 (on-flash codec remains version 1): 18 lossless integer fields, in this order:
 `epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille`.
 No pack/imbalance/percent or duplicate V12 column is stored. The two battery
 halves supply the pack sum for boot recovery; `uptime_s` is ESP uptime.
@@ -166,6 +166,13 @@ upgrade day; external CSV readers must distinguish row layouts by field count.
 - Files: `/evt-YYYYMMDD.csv` (one per day; internal binary for new files), `/evt-clock.txt` (wall clock + the board uptime it is anchored to,
   written with temp file + atomic rename) and `/logpct.txt` (the share chosen in
   the panel menu). `/benchlog.csv` is the bench capture of §4.
+- v1.139 audit: distinguish a short physical read/seek failure from actual EOF
+  using the known file size. On I/O failure, append/repair abort without
+  truncating, exports warn, boot snapshots remain invalid, and failed day-open
+  recounts retry rather than caching partial counts. Pending RAM rows form a
+  strict FIFO: no new row bypasses a failed drain. Tail selection merges file
+  and pending rows under one shared newest-N/byte budget and filters RAM by the
+  row's calendar day, including midnight, missing-file and offline fallbacks.
 - Day cap `ESP_LOG_MAX_ROWS_PER_DAY` = **200** rows (v1.131; it was 400), retention
   `ESP_LOG_MAX_DAYS` = **30** days; the oldest day file is dropped first, never a
   row from the middle of a day.

@@ -302,6 +302,8 @@ struct StubFile {
  */
     const bool *fail = nullptr;
     const size_t *writeLimit = nullptr;
+    const size_t *readLimit = nullptr;
+    const size_t *readFailAt = nullptr;
     size_t pos = 0;
     bool ok = false;
     operator bool() const { return ok; }
@@ -373,6 +375,11 @@ struct StubFile {
     }
     size_t readBytes(char *d, size_t n) {
         if (!buf) return 0;
+        if (readLimit && n>*readLimit) n=*readLimit;
+        if (readFailAt) {
+            if (pos>=*readFailAt) return 0;
+            if (n>*readFailAt-pos) n=*readFailAt-pos;
+        }
         size_t k = 0;
         while (k < n && pos < buf->size()) d[k++] = (*buf)[pos++];
         return k;
@@ -424,6 +431,8 @@ struct StubFS {
  */
     bool failWrites = false;
     size_t writeLimit = SIZE_MAX;
+    size_t readLimit = SIZE_MAX;
+    size_t readFailAt = SIZE_MAX;
     /*
  * [EN] Refuse the next N opens, then behave normally. A transient refusal is
  * what makes "could not open the day file, but the append itself worked"
@@ -495,6 +504,8 @@ struct StubFS {
         f.buf = &files[key];
         f.fail = &failWrites;
         f.writeLimit = &writeLimit;
+        f.readLimit = &readLimit;
+        f.readFailAt = &readFailAt;
         f.ok = true;
         return f;
     }

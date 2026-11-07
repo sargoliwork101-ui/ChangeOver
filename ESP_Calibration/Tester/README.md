@@ -146,3 +146,12 @@ every truncation boundary, single-bit corruption, CRC-valid malformed packets,
 partial-write retries, file-header recovery, exact public tail/CSV/boot outputs
 and unchanged legacy text append. The stub has explicit short-write injection;
 it never disguises binary files as text. See [validation results](LOG_CODEC_VALIDATION.md).
+
+## Audit regressions (v1.139)
+
+`host_test_log_audit.h` adds read-failure injection at every header/body byte,
+non-destructive repair/retry, complete day recount and boot-state validation,
+FIFO ordering after a one-shot open failure, and shared file/RAM newest-row
+budgets with day filtering across midnight, missing-file and offline paths.
+Baseline: 552 host / 13 label / 270 DOM PASS. After: 570 / 13 / 270 PASS.
+See [audit results](../AUDIT_v139.md).

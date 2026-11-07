@@ -390,6 +390,7 @@ static void feed_board_uptime(uint32_t uptimeSec)
 }
 
 #include "host_test_log_codec.h"
+#include "host_test_log_audit.h"
 
 /* ======================================================================== */
 int main(void)
@@ -4645,6 +4646,7 @@ int main(void)
     }
 
     test_log_codec();
+    test_log_audit();
 
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {

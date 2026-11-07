@@ -16,6 +16,7 @@ struct EspLogCodec {
         uint32_t lastEnd = HeaderSize;
         uint32_t count = 0u;
         bool damaged = false;
+        bool ioError = false;
     };
     /* [EN] Header is fixed and versioned; it is not a stored CSV legend. */
     static const uint8_t *header() {
@@ -25,11 +26,14 @@ struct EspLogCodec {
     /* [EN] 1=binary, 0=legacy text, 2=empty/partial matching header, -1=unknown. */
     static int begin(File &file, State &state) {
         state = State();
-        if (!file.seek(0u)) return -1;
+        if (!file.seek(0u)) { state.ioError=true; return -1; }
         uint8_t bytes[HeaderSize] = {};
         const size_t size = file.readBytes((char *)bytes, HeaderSize);
+        const size_t expected=file.size()<(size_t)HeaderSize?file.size():(size_t)HeaderSize;
+        /* [EN] A short READ is not an incomplete file: never erase on I/O failure. */
+        if (size!=expected) { state.ioError=true; return -1; }
         if (size == HeaderSize && memcmp(bytes, header(), HeaderSize) == 0) return 1;
-        (void)file.seek(0u);
+        if (!file.seek(0u)) { state.ioError=true; return -1; }
         if (size < HeaderSize && memcmp(bytes, header(), size) == 0) return 2;
         if (size && (bytes[0] == '#' || (bytes[0] >= '0' && bytes[0] <= '9'))) return 0;
         return -1;
@@ -112,18 +116,25 @@ struct EspLogCodec {
     }
     /* [EN] Scan/resync on corruption. Never decode a delta without a valid base. */
     static bool next(File &file, State &state) {
+        if (state.ioError) return false;
         const uint32_t size = (uint32_t)file.size();
         while (state.offset<size) {
             yield();
             const uint32_t start = state.offset;
             uint8_t frame[MaxFrame] = {};
-            if (!file.seek(start)) { state.damaged=true; state.valid=false; return false; }
+            if (!file.seek(start)) { state.ioError=true; state.valid=false; return false; }
             const size_t got = file.readBytes((char *)frame,4u);
+            const size_t expected=size-start<4u?size-start:4u;
+            if (got!=expected) { state.ioError=true; state.valid=false; return false; }
             if (got<4u || frame[0]!=0xa5u || frame[1]!=0xc3u || frame[2]>93u || frame[3]>1u) {
                 state.damaged=true; state.valid=false; state.offset=start+1u; continue;
             }
             const size_t payload=frame[2];
-            if (file.readBytes((char *)frame+4u,payload+2u)!=payload+2u ||
+            const size_t remaining=size-start-4u;
+            const size_t expectedPayload=remaining<payload+2u?remaining:payload+2u;
+            const size_t gotPayload=file.readBytes((char *)frame+4u,payload+2u);
+            if (gotPayload!=expectedPayload) { state.ioError=true; state.valid=false; return false; }
+            if (gotPayload!=payload+2u ||
                 crc(frame+2u,payload+2u)!=(uint16_t)(frame[4u+payload]|((uint16_t)frame[5u+payload]<<8))) {
                 state.damaged=true; state.valid=false; state.offset=start+1u; continue;
             }

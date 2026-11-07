@@ -1721,6 +1721,7 @@ static bool func__EspLog_CodecAppend(const char *path, const char *row)
             kind=EspLogCodec::begin(input,state);
             if (kind==1) {
                 while (EspLogCodec::next(input,state)) {}
+                if (state.ioError) { input.close(); return false; }
                 if (state.damaged) { func__EspLog_FaultRaise(); state.valid=false; }
             }
         }
@@ -1761,8 +1762,9 @@ static bool func__EspLog_CodecAppend(const char *path, const char *row)
 * @param const char *char__path file /
 * @return uint16_t rows /
  */
-static uint16_t func__EspLog_CountRows(const char *char__path)
+static uint16_t func__EspLog_CountRows(const char *char__path, bool *readOk=NULL)
 {
+    if (readOk) *readOk=false;
     File file__day;
     uint16_t uint16_t__rows = 0u;
     file__day = LittleFS.open(char__path, "r");
@@ -1778,7 +1780,8 @@ static uint16_t func__EspLog_CountRows(const char *char__path)
                 if (codec.value[3]!=ESP_LOG_NOTE_DAY_START && uint16_t__rows<0xffffu) ++uint16_t__rows;
             }
         }
-        if (kind<0 || codec.damaged) func__EspLog_FaultRaise();
+        if (kind<0 || codec.damaged || codec.ioError) func__EspLog_FaultRaise();
+        if (readOk) *readOk=kind>=0 && !codec.ioError;
         file__day.close(); return uint16_t__rows;
     }
     while (file__day.available())
@@ -1810,6 +1813,7 @@ static uint16_t func__EspLog_CountRows(const char *char__path)
         }
     }
     file__day.close();
+    if (readOk) *readOk=true;
     return uint16_t__rows;
 }
 /**
@@ -1837,9 +1841,9 @@ static bool func__EspLog_RepairTail(const char *char__path)
         if (kind==1) while (EspLogCodec::next(file__day,codec)) {}
         file__day.close();
         BOOL__G__LogCodecCached=false;
-        if (kind<0) { func__EspLog_FaultRaise(); return false; }
+        if (kind<0 || codec.ioError) { func__EspLog_FaultRaise(); return false; }
         const uint32_t goodSize=kind==2?0u:codec.lastEnd;
-        if (codec.damaged) func__EspLog_FaultRaise();
+        if (codec.damaged || codec.ioError) func__EspLog_FaultRaise();
         if (oldSize>goodSize) {
             File repair=LittleFS.open(char__path,"a");
             if (!repair) return false;
@@ -1972,7 +1976,11 @@ static bool func__EspLog_OpenDay(void)
     {
         func__EspLog_FaultRaise();
     }
-    UINT16_T__G__LogRowsToday = func__EspLog_CountRows(char__path);
+    bool readOk=false;
+    UINT16_T__G__LogRowsToday = func__EspLog_CountRows(char__path,&readOk);
+    if (!readOk) { bool__ok=false; func__EspLog_FaultRaise(); }
+    /* [EN] Failed opens must recount after recovery, not cache a partial row count. */
+    if (!bool__ok) UINT32_T__G__LogDayCode=ESP_LOG_DAY_AUTO;
     /*
  * [EN] v1.117: a brand new day file opens with its own row, so the history
  * never starts with an unexplained gap - the day begins where the panel woke.
@@ -2160,7 +2168,11 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
         {
             func__EspLog_DrainRam();
         }
-        bool__stored = func__EspLog_AppendRow(UINT32_T__G__LogDayCode, char__row);
+        /* [EN] A transient drain error must never let a newer row bypass the FIFO. */
+        if (UINT8_T__G__LogRamCount == 0u)
+        {
+            bool__stored = func__EspLog_AppendRow(UINT32_T__G__LogDayCode, char__row);
+        }
     }
     if ((bool__stored == false) || (BOOL__G__FsOk == false))
     {
@@ -2353,8 +2365,9 @@ static void func__EspLog_LoadLastSnapshot(void)
         while (EspLogCodec::next(file__day,codec)) {
             size_t__got=EspLogCodec::text(codec,char__tail,sizeof char__tail);
         }
-        if (codec.damaged) func__EspLog_FaultRaise();
+        if (codec.damaged || codec.ioError) func__EspLog_FaultRaise();
         file__day.close();
+        if (codec.ioError) return;
     } else if (kind==0) {
         uint32_t__size = (uint32_t)file__day.size();
         if (uint32_t__size == 0u)
@@ -3149,42 +3162,54 @@ static uint32_t func__EspLog_TailStart(File &file__day,
     return uint32_t__offset;
 }
 /**
+ * @brief [EN] Keep a complete newest-row window under one shared byte/line budget.
+ * @param out Null-terminated tail buffer.
+ * @param capacity Output buffer bytes.
+ * @param used Current bytes, updated in place.
+ * @param lines Current complete lines, updated in place.
+ * @param maxLines Shared file-plus-RAM row limit.
+ * @param row Complete row including its newline.
+ * @param len Row bytes excluding NUL.
+ * @return None.
+ */
+static void func__EspLog_TailKeepRow(char *out,size_t capacity,size_t &used,
+                                    uint16_t &lines,uint16_t maxLines,const char *row,size_t len)
+{
+    if (!len || len+1u>=capacity || !maxLines) return;
+    while (used && (lines>=maxLines || used+len+1u>=capacity)) {
+        const char *end=(const char *)memchr(out,'\n',used);
+        const size_t drop=end?(size_t)(end-out)+1u:used;
+        memmove(out,out+drop,used-drop);
+        used-=drop; if (lines) --lines;
+    }
+    memcpy(out+used,row,len); used+=len; out[used]='\0'; ++lines;
+}
+/**
  * @brief  [EN] Copy the last N rows of the RAM ring into a buffer, oldest first.
 * @return size_t bytes written /
  */
 static size_t func__EspLog_TailRam(char *char__out, size_t size_t__outSize,
-                                   uint16_t uint16_t__maxLines)
+                                   uint16_t uint16_t__maxLines,
+                                   uint32_t day=ESP_LOG_DAY_AUTO,size_t used=0u)
 {
-    uint8_t uint8_t__start;
-    uint8_t uint8_t__count = UINT8_T__G__LogRamCount;
-    uint8_t uint8_t__item;
-    size_t size_t__used = 0u;
-    if (uint8_t__count == 0u)
-    {
-        return 0u;
+    uint16_t lines=0u;
+    for (size_t i=0u;i<used;++i) if (char__out[i]=='\n') ++lines;
+    const uint8_t oldest=(uint8_t)((UINT8_T__G__LogRamHead+ESP_LOG_RAM_ROWS-UINT8_T__G__LogRamCount)%ESP_LOG_RAM_ROWS);
+    for (uint8_t i=0u;i<UINT8_T__G__LogRamCount;++i) {
+        const char *pending=CHAR__G__LogRamRow[(oldest+i)%ESP_LOG_RAM_ROWS];
+        const uint32_t epoch=func__EspLog_RowEpoch(pending);
+        const uint32_t rowDay=epoch>=ESP_LOG_CLOCK_VALID_MIN?
+            func__EspLog_DateCode(func__EspLog_LocalDay(epoch)):0u;
+        if (day!=ESP_LOG_DAY_AUTO && rowDay!=day) continue;
+        char row[ESP_LOG_ROW_MAX];
+        size_t len=strlen(pending);
+        if (!len || len+2u>sizeof row) continue;
+        memcpy(row,pending,len);
+        if (row[len-1u]!='\n') row[len++]='\n';
+        func__EspLog_TailKeepRow(char__out,size_t__outSize,used,
+                                  lines,uint16_t__maxLines,row,len);
     }
-    uint8_t__start = (uint8_t)((UINT8_T__G__LogRamHead + ESP_LOG_RAM_ROWS - uint8_t__count) % ESP_LOG_RAM_ROWS);
-    if ((uint16_t)uint8_t__count > uint16_t__maxLines)
-    {
-        uint8_t uint8_t__drop = (uint8_t)((uint16_t)uint8_t__count - uint16_t__maxLines);
-        uint8_t__start = (uint8_t)((uint8_t__start + uint8_t__drop) % ESP_LOG_RAM_ROWS);
-        uint8_t__count = (uint8_t)uint16_t__maxLines;
-    }
-    for (uint8_t__item = 0u; uint8_t__item < uint8_t__count; uint8_t__item++)
-    {
-        uint8_t uint8_t__slot = (uint8_t)((uint8_t__start + uint8_t__item) % ESP_LOG_RAM_ROWS);
-        size_t size_t__len = strlen(CHAR__G__LogRamRow[uint8_t__slot]);
-        if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
-        {
-            break;
-        }
-        (void)memcpy(&char__out[size_t__used], CHAR__G__LogRamRow[uint8_t__slot], size_t__len);
-        size_t__used += size_t__len;
-        char__out[size_t__used] = '\n';
-        size_t__used++;
-        char__out[size_t__used] = '\0';
-    }
-    return size_t__used;
+    return used;
 }
 /**
  * @brief  [EN] The RAM ring is the only history left: the card shows those rows
@@ -3196,17 +3221,17 @@ static size_t func__EspLog_TailRam(char *char__out, size_t size_t__outSize,
 * @return size_t bytes written /
  */
 static size_t func__EspLog_TailRamOnly(char *char__out, size_t size_t__outSize,
-                                        uint16_t uint16_t__maxLines, bool bool__isToday)
+                                        uint16_t uint16_t__maxLines, uint32_t day)
 {
     /*
- * [EN] The RAM ring only ever holds today's rows. Without a write fault the
- * emptiness is real, and an older day must never borrow today's rows.
+ * [EN] Pending rows may span midnight. Filter by their own epoch, not the
+ * current day; without a write fault an empty file really is empty.
  */
-    if ((UINT8_T__G__LogWriteFault == 0u) || (bool__isToday == false))
+    if (UINT8_T__G__LogWriteFault == 0u)
     {
         return 0u;
     }
-    return func__EspLog_TailRam(char__out, size_t__outSize, uint16_t__maxLines);
+    return func__EspLog_TailRam(char__out, size_t__outSize, uint16_t__maxLines,day);
 }
 /**
  * @brief  [EN] Which file does an automatic read pick? Today's file when it
@@ -3259,7 +3284,7 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
     uint32_t uint32_t__chosen;
     uint32_t uint32_t__size;
     uint32_t uint32_t__start;
-    bool bool__isToday;
+    uint32_t requestedDay;
     if ((char__out == NULL) || (size_t__outSize < 2u))
     {
         return 0u;
@@ -3271,41 +3296,42 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
  * rows showed a handful. The file is read first and the rows that
  * never reached the flash follow it.
  */
-    bool__isToday = ((uint32_t__dayCode == ESP_LOG_DAY_AUTO) ||
-                     (uint32_t__dayCode == 0u) ||
-                     (uint32_t__dayCode == func__EspLog_TodayCode()));
+    requestedDay=uint32_t__dayCode==ESP_LOG_DAY_ZERO?0u:
+        ((uint32_t__dayCode==ESP_LOG_DAY_AUTO || uint32_t__dayCode==0u)?
+         func__EspLog_TodayCode():uint32_t__dayCode);
     /*
  * [EN] No file system at all: the RAM ring is the whole history, so today's
  * rows are served as they are.
  */
     if (BOOL__G__FsOk == false)
     {
-        return func__EspLog_TailRam(char__out, size_t__outSize, uint16_t__maxLines);
+        return func__EspLog_TailRam(char__out, size_t__outSize, uint16_t__maxLines,
+            (uint32_t__dayCode==ESP_LOG_DAY_AUTO || uint32_t__dayCode==0u)?ESP_LOG_DAY_AUTO:requestedDay);
     }
     uint32_t__chosen = func__EspLog_PickDay(uint32_t__dayCode);
     if (uint32_t__chosen == ESP_LOG_DAY_AUTO)
     {
         return func__EspLog_TailRamOnly(char__out, size_t__outSize,
-                                        uint16_t__maxLines, bool__isToday);
+                                        uint16_t__maxLines, requestedDay);
     }
     func__EspLog_PathOf(char__path, uint32_t__chosen);
     if (LittleFS.exists(char__path) == false)
     {
         return func__EspLog_TailRamOnly(char__out, size_t__outSize,
-                                        uint16_t__maxLines, bool__isToday);
+                                        uint16_t__maxLines, requestedDay);
     }
     file__day = LittleFS.open(char__path, "r");
     if (!file__day)
     {
         return func__EspLog_TailRamOnly(char__out, size_t__outSize,
-                                        uint16_t__maxLines, bool__isToday);
+                                        uint16_t__maxLines, requestedDay);
     }
     uint32_t__size = (uint32_t)file__day.size();
     if (uint32_t__size == 0u)
     {
         file__day.close();
         return func__EspLog_TailRamOnly(char__out, size_t__outSize,
-                                        uint16_t__maxLines, bool__isToday);
+                                        uint16_t__maxLines, requestedDay);
     }
     EspLogCodec::State codec;
     const int kind=EspLogCodec::begin(file__day,codec);
@@ -3314,17 +3340,10 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
         uint16_t lines=0u;
         while (EspLogCodec::next(file__day,codec)) {
             const size_t len=EspLogCodec::text(codec,row,sizeof row);
-            if (!len || len+1u>=size_t__outSize || !uint16_t__maxLines) continue;
-            while (size_t__used && (lines>=uint16_t__maxLines || size_t__used+len+1u>=size_t__outSize)) {
-                const char *end=(const char *)memchr(char__out,'\n',size_t__used);
-                const size_t drop=end?(size_t)(end-char__out)+1u:size_t__used;
-                memmove(char__out,char__out+drop,size_t__used-drop);
-                size_t__used-=drop; if (lines) --lines;
-            }
-            memcpy(char__out+size_t__used,row,len); size_t__used+=len;
-            char__out[size_t__used]='\0'; ++lines;
+            func__EspLog_TailKeepRow(char__out,size_t__outSize,size_t__used,
+                                      lines,uint16_t__maxLines,row,len);
         }
-        if (codec.damaged) func__EspLog_FaultRaise();
+        if (codec.damaged || codec.ioError) func__EspLog_FaultRaise();
         file__day.close();
     } else if (kind==0) {
         uint32_t__start = func__EspLog_TailStart(file__day, uint32_t__size,
@@ -3333,7 +3352,7 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
         {
             file__day.close();
             return func__EspLog_TailRamOnly(char__out, size_t__outSize,
-                                            uint16_t__maxLines, bool__isToday);
+                                            uint16_t__maxLines, requestedDay);
         }
         while (file__day.available())
         {
@@ -3361,12 +3380,10 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
  * [EN] the rows that failed to reach the flash are newer than everything in
  * the file, so they are appended, not substituted.
  */
-    if ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u) &&
-        ((size_t__used + 2u) < size_t__outSize))
+    if ((UINT8_T__G__LogWriteFault != 0u) && (UINT8_T__G__LogRamCount != 0u))
     {
-        size_t__used += func__EspLog_TailRam(&char__out[size_t__used],
-                                             size_t__outSize - size_t__used,
-                                             uint16_t__maxLines);
+        size_t__used=func__EspLog_TailRam(char__out,size_t__outSize,uint16_t__maxLines,
+                                         uint32_t__chosen,size_t__used);
     }
     return size_t__used;
 }
