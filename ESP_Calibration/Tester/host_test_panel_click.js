@@ -643,8 +643,8 @@ function main() {
                   rows()[2] ? rows()[2].className : "none");
             check(txt(1).indexOf("Fault") >= 0 && txt(1).indexOf("Batt V") >= 0,
                   "the red line names the fault in two English words, not just by colour", txt(1));
-            check(cells(1)[2] && cells(1)[2].textContent.trim() === "24.00",
-                  "and the measured pack voltage has its own cell",
+            check(cells(1)[2] && cells(1)[2].textContent.trim() === "23.96",
+                  "and the lower battery voltage has its own cell",
                   cells(1)[2] ? cells(1)[2].textContent : "none");
             check(txt(0).indexOf("Manual on") >= 0,
                   "the hand-mode step is tagged in English", txt(0));
@@ -680,27 +680,46 @@ function main() {
  *      compared column by column instead of guessed from a sentence. Same
  *      colours, same theme; the event sentence keeps its own cell.
  */
+            // v1.137: compact and legacy rows share the same nine-column view.
+            {
+                const compact="1792756800,12,1024,0,1,1,1,3,0,0,11900,12100,0,23000,1200,1100,450,300";
+                const legacy="1792756800,12,1024,0,1,3,1,3,0,0,24000,11900,12100,200,0,23000,11900,1200,1100,450,300,37";
+                const c=w.evtParse(compact),l=w.evtParse(legacy);
+                check(JSON.stringify(w.evtCols(c))===JSON.stringify(w.evtCols(l)),
+                      "compact and legacy rows show the same battery halves and currents");
+                w.evtRender(compact,"v137");
+                check(cells(0).length===9 && cells(0)[2].textContent.trim()==="11.90" && cells(0)[3].textContent.trim()==="12.10",
+                      "the new row shows lower and upper battery side by side");
+                w.evtRender(legacy+"\n"+compact,"mixed");
+                check(rows().length===2 && cells(0)[2].textContent===cells(1)[2].textContent && cells(0)[3].textContent===cells(1)[3].textContent,
+                      "an upgrade day can mix legacy and compact rows without shifting columns");
+                check(![...ths()].some(h=>/پک|نیم|باتری ٪/.test(h.textContent)),
+                      "removed pack, imbalance and percent columns are absent");
+                check(!w.evtRowText(w.evtParse("1792756800,12,256,0,1,2,0,0,0,0,11900,12100,0,23000,0,0,0,0")).txt.match(/Flags off|Input on/),
+                      "removed generic flags and input tags cannot reappear");
+                w.evtRender("1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300", "");
+            }
             check(tbl().length === 1,
                   "the history card draws one table, not a stack of lines",
                   String(tbl().length));
-            check(ths().length === 11,
+            check(ths().length === 9,
                   "the table has one header per column", String(ths().length));
             check(rows()[0] && rows()[0].tagName === "TR" &&
-                  cells(0).length === 11,
+                  cells(0).length === 9,
                   "every step is a row with one cell per column",
                   rows()[0] ? rows()[0].tagName + "/" + cells(0).length : "none");
-            check(cells(0)[2] && cells(0)[2].textContent.trim() === "24.00",
-                  "the pack voltage sits in its own column", cells(0)[2] ? cells(0)[2].textContent : "none");
+            check(cells(0)[2] && cells(0)[2].textContent.trim() === "23.96",
+                  "the lower battery voltage sits in its own column", cells(0)[2] ? cells(0)[2].textContent : "none");
             check(cells(0)[4] && cells(0)[4].textContent.trim() === "23.00",
                   "and the input rail in the next one", cells(0)[4] ? cells(0)[4].textContent : "none");
-            check(cells(0)[6] && cells(0)[6].textContent.trim() === "1.20" &&
-                  cells(0)[7] && cells(0)[7].textContent.trim() === "1.10",
+            check(cells(0)[5] && cells(0)[5].textContent.trim() === "1.20" &&
+                  cells(0)[6] && cells(0)[6].textContent.trim() === "1.10",
                   "both battery currents are comparable cells",
-                  (cells(0)[6] ? cells(0)[6].textContent : "?") + "/" + (cells(0)[7] ? cells(0)[7].textContent : "?"));
-            check(cells(0)[8] && cells(0)[8].textContent.trim() === "45" &&
-                  cells(0)[9] && cells(0)[9].textContent.trim() === "30",
+                  (cells(0)[5] ? cells(0)[5].textContent : "?") + "/" + (cells(0)[6] ? cells(0)[6].textContent : "?"));
+            check(cells(0)[7] && cells(0)[7].textContent.trim() === "45" &&
+                  cells(0)[8] && cells(0)[8].textContent.trim() === "30",
                   "and both commands as a percentage",
-                  (cells(0)[8] ? cells(0)[8].textContent : "?") + "/" + (cells(0)[9] ? cells(0)[9].textContent : "?"));
+                  (cells(0)[7] ? cells(0)[7].textContent : "?") + "/" + (cells(0)[8] ? cells(0)[8].textContent : "?"));
             /* v1.124 (user order): the tags stay one or two words, and the
                explanation lives in a tooltip on the tag itself. */
             {
@@ -712,7 +731,7 @@ function main() {
                       "and the tag itself stays one or two words",
                       spans.map(sp => sp.textContent.trim()).join(" | "));
                 const heads = [...ths()];
-                check(heads.length === 11 && heads.every(h2 => (h2.getAttribute("title") || "").length > 3),
+                check(heads.length === 9 && heads.every(h2 => (h2.getAttribute("title") || "").length > 3),
                       "every column header explains itself on hover too",
                       heads.map(h2 => h2.textContent + "=" + (h2.getAttribute("title") || "")).join(" | "));
                 const cardSx = d.querySelector('#evtlist') &&
@@ -730,7 +749,7 @@ function main() {
                   "a heartbeat line says the panel is alive, in grey", txt(0));
             /* an old 15-column file still reads, without the new columns */
             w.evtRender("1792756800,12,2,0,1,1,3,0,0,0,24000,23960,24040,20,0", "");
-            check(cells(0)[2] && cells(0)[2].textContent.trim() === "24.00" &&
+            check(cells(0)[2] && cells(0)[2].textContent.trim() === "23.96" &&
                   cells(0)[4] && cells(0)[4].textContent.trim() === "\u2014",
                   "a day file written before v1.96 still opens, and its missing columns stay empty instead of inventing zeros",
                   (cells(0)[2] ? cells(0)[2].textContent : "?") + "/" + (cells(0)[4] ? cells(0)[4].textContent : "?"));
@@ -775,16 +794,16 @@ function main() {
                 check(cells(0)[4] && !cells(0)[4].classList.contains("chg"),
                       "a value that did NOT change keeps its normal colour",
                       cells(0)[4] ? cells(0)[4].className : "none");
-                check((cells(0)[2].getAttribute("title") || "").indexOf("23.80") >= 0,
+                check((cells(0)[2].getAttribute("title") || "").indexOf("23.76") >= 0,
                       "the highlighted cell says what the older step had",
                       cells(0)[2].getAttribute("title") || "none");
                 /* in this pair only the pack voltage and the battery percent
                    it drives are different: 24.00/23.80, and the same 80 mV
                    imbalance in both steps must NOT light up. */
                 check(chg(0) === 2 && cells(0)[2].classList.contains("chg") &&
-                      cells(0)[10].classList.contains("chg") &&
-                      !cells(0)[3].classList.contains("chg"),
-                      "exactly the two cells that changed light up, the equal imbalance does not",
+                      cells(0)[3].classList.contains("chg") &&
+                      !cells(0)[4].classList.contains("chg"),
+                      "exactly the two battery cells light up, the unchanged input does not",
                       String(chg(0)) + " @ " + cells(0).map(td => td.classList.contains("chg") ? "x" : ".").join(""));
                 /* the oldest row has nothing below it: it must not throw or paint */
                 rows()[1].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
@@ -819,7 +838,7 @@ function main() {
                           "releasing the row gives every bidi span back",
                           fresh + " -> " + numericLt());
                     check(cells(0)[2].innerHTML.indexOf('class="lt"') >= 0 &&
-                          cells(0)[2].textContent.trim() === "24.00",
+                          cells(0)[2].textContent.trim() === "23.96",
                           "and the released cell is the original markup and the original value again",
                           cells(0)[2].innerHTML + " / " + cells(0)[2].textContent.trim());
                 }
@@ -876,6 +895,35 @@ function main() {
                   "show-all draws every row of the day", String(pRows().length));
             check(w.evtPageNewer() === true && pRows().length === 30,
                   "the next-page key returns to the last page", String(pRows().length));
+            /* [EN] v1.129 audit: a key that cannot move must leave the view exactly
+                    as it was. The old code cleared evtAll first and then returned
+                    false, so the card said "one page" while the screen still showed
+                    the whole day - the next press could then undo a page for no
+                    reason. Reached the way a reader reaches it: a day is read
+                    (last page), he presses show-all, then presses the next key.
+               [FA] ممیزی ۱٫۱۲۹: کلیدی که نمی‌تواند تکان بخورد باید نما را
+                    دست‌نخورده بگذارد. کد قدیم اول evtAll را پاک می‌کرد و بعد false
+                    برمی‌گرداند؛ یعنی کارت می‌گفت «یک صفحه» ولی صفحه هنوز کل روز را
+                    نشان می‌داد. همان‌طور که کاربر می‌رسد سنجیده می‌شود: روز خوانده
+                    می‌شود (صفحهٔ آخر)، «همهٔ ردیف‌ها» زده می‌شود، بعد کلید بعدی. */
+            w.evtDayLoad(dayRows.join("\n"), "");
+            w.evtShowAll();
+            const allRows = pRows().length, allLine = d.getElementById("evtst").textContent;
+            check(allRows === 75 && allLine.indexOf("۷۵") >= 0,
+                  "the whole-day view really holds all 75 rows", allRows + " / " + allLine);
+            check(w.evtPageNewer() === true && pRows().length === 30,
+                  "from the whole-day view the next key gives a page back, it does not do nothing",
+                  String(pRows().length));
+            check(d.getElementById("evtst").textContent.indexOf("ردیف") >= 0,
+                  "and the status line agrees: the card is a page again",
+                  d.getElementById("evtst").textContent);
+            check(w.evtPageNewer() === false && pRows().length === 30,
+                  "a second press, which cannot move, leaves the screen alone",
+                  String(pRows().length));
+            w.evtShowAll();
+            check(w.evtPageOlder() === true && pRows().length === 30,
+                  "the previous key also leaves the whole-day view for a page",
+                  String(pRows().length));
             w.evtRender(dayRows.slice(0, 3).join("\n"), "");
             check(pv.disabled === false && pRows().length === 3,
                   "a fresh tail view leaves the previous-page key usable",
@@ -930,6 +978,235 @@ function main() {
                   "rows the board could not store are still counted in the status line", line);
             w.evtHttp = savedHttp;
         })();
+        /*
+ * [EN] v1.127 (user report 2026-11-04: "I click a log row, or page back 30
+ *      rows, and every few seconds it jumps away as if it refreshed"). The
+ *      10 s tick refetched /evt - which is a 30-row TAIL, never the whole day -
+ *      and repainted the card, so the page the reader had turned to, the row he
+ *      had picked and the phosphor cells were all thrown away. These checks
+ *      pin the three things that must stay true afterwards: the reader's place
+ *      survives the tick, the day list still refreshes while it does, and the
+ *      plain tail view still takes a genuinely new row.
+ *      It runs AFTER the lost-row check, because both drive the same fetch
+ *      helper and must not fight over the stub.
+ * [FA] نسخهٔ ۱٫۱۲۷ (گزارش کاربر): تیک ۱۰ ثانیه‌ای دوباره /evt را می‌گرفت -
+ *      که فقط ۳۰ ردیف آخر است - و کارت را از نو می‌ساخت؛ صفحه‌ای که کاربر
+ *      ورق زده بود، ردیف انتخاب‌شده و خانه‌های فسفری از دست می‌رفت. این
+ *      بررسی‌ها سه چیز را قفل می‌کنند: جای کاربر در تیک می‌ماند، لیست روزها
+ *      همچنان تازه می‌شود، و نمای پیش‌فرض ردیف تازه را می‌گیرد. بعد از بررسی
+ *      ردیف‌های ازدست‌رفته اجرا می‌شود تا دو استاب با هم نجنگند.
+ */
+        const tickCheck = lostCheck.then(async () => {
+            const pRows3 = () => [...d.querySelectorAll("#evtlist .evtrow")];
+            const stTxt = () => d.getElementById("evtst").textContent;
+            const selN = () => d.querySelectorAll("#evtlist tr.sel").length;
+            const chgN = () => d.querySelectorAll("#evtlist td.chg").length;
+            const ep3 = 1792756800;
+            const many = [];
+            for (let i4 = 0; i4 < 75; i4++) {
+                many.push([ep3 + i4 * 600, 12 + i4, 0, 5, 1, 1, 3, 0, 0, 0,
+                           24000, 23960, 24040, 20, 0].join(","));
+            }
+            const pairOld = "1792756200,12,0,5,1,2,1,3,0,0,23800,23760,23840,20,0,23000,12100,1200,1100,450,300";
+            const pairNew = "1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300";
+            const savedHttp = w.evtHttp;
+            const savedDays = w.evtDays;
+            let daysCalls = 0;
+            let fetches = 0;
+            /* the board's usual answer: the last 30 rows, nothing more */
+            let body = "";
+            w.evtDays = async () => { daysCalls++; };
+            w.evtHttp = async () => {
+                fetches++;
+                return {
+                    ok: true,
+                    headers: { get: (h) => (h === "X-Log-Fs" ? "1" : (h === "X-Log-Lost" ? "0" : null)) },
+                    text: async () => body
+                };
+            };
+            /* 1) the reader turned back a page: the tick must not take it away */
+            body = many.slice(-30).join("\n");
+            w.evtDayLoad(many.join("\n"), "");
+            w.evtPageOlder();
+            const pText = pRows3()[0].textContent;
+            const pLine = stTxt();
+            const d0 = daysCalls, f0 = fetches;
+            await w.evtTick();
+            check(pRows3().length === 30 && pRows3()[0].textContent === pText &&
+                  stTxt() === pLine && pLine.indexOf("از ۷۵") >= 0,
+                  "the 10 s tick leaves the page the reader turned to exactly where it was",
+                  ((pRows3()[0] || { textContent: "no rows" }).textContent.slice(0, 24)) + " / " + stTxt());
+            check(daysCalls > d0 && fetches === f0,
+                  "and it keeps the day list fresh without refetching the tail at all",
+                  "days+" + (daysCalls - d0) + " fetches+" + (fetches - f0));
+            /* 2) a picked row keeps its selection and its phosphor cells */
+            w.evtRender(pairOld + "\n" + pairNew, "");
+            pRows3()[0].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+            const keptSel = selN(), keptChg = chgN();
+            /* the board has nothing new to say, so this tick must not redraw at
+               all; the repaint path is covered by the liveCheck block below */
+            body = pairOld + "\n" + pairNew;
+            await w.evtTick();
+            check(keptSel === 1 && selN() === 1 && keptChg > 0 && chgN() === keptChg,
+                  "a picked row keeps its selection and its phosphor cells when the tick brings nothing new",
+                  selN() + " sel / " + chgN() + " chg");
+            /* 3) the plain tail view still refreshes, but an identical answer is
+                  not repainted (that redraw is what looked like a page refresh) */
+            body = pairOld;
+            await w.evtfetch(0); /* the tail on screen, drawn from a clean status line */
+            const table0 = d.querySelector("#evtlist table");
+            const f1 = fetches;
+            await w.evtTick();
+            check(fetches === f1 + 1, "in the plain tail view the tick still asks the board",
+                  "fetches+" + (fetches - f1));
+            check(d.querySelector("#evtlist table") === table0,
+                  "and an answer identical to what is on screen is not redrawn",
+                  table0 === d.querySelector("#evtlist table") ? "same node" : "rebuilt");
+            /* 4) but a genuinely new row must still land - and, since v1.129,
+                  it lands as ONE inserted row, not as a rebuilt table */
+            body = pairOld + "\n" + pairNew;
+            await w.evtTick();
+            check(pRows3().length === 2 && pRows3()[0].textContent.indexOf("23.96") >= 0,
+                  "a new row still reaches the tail view on the next tick",
+                  String(pRows3().length));
+            check(d.querySelector("#evtlist table") === table0 && pRows3()[0].dataset.k === pairNew,
+                  "and it arrives by inserting that one row into the table that was already there",
+                  pRows3()[0].dataset.k === pairNew ? "row inserted" : "unexpected key");
+            w.evtHttp = savedHttp;
+            w.evtDays = savedDays;
+        });
+        /*
+ * [EN] v1.127 audit (the fix itself put under the same question the owner
+ *      asked): stopping the tick while a row is picked would cure the jump by
+ *      freezing the card forever, and nothing on screen can un-pick a row. The
+ *      reader's state therefore has to SURVIVE a repaint, not block it: a new
+ *      row must still arrive, the picked row must keep its selection and its
+ *      phosphor cells, and a second click must release it.
+ * [FA] ممیزی نسخهٔ ۱٫۱۲۷ (همان پرسشی که کاربر پرسید، این بار روی خودِ درمان):
+ *      متوقف‌کردن تیک وقتی ردیفی انتخاب شده، «پریدن» را با «قفل‌شدن همیشگی»
+ *      عوض می‌کند و هیچ‌جای صفحه هم ردیف را آزاد نمی‌کند. پس حالت کاربر باید
+ *      از بازکشیدن جان سالم ببرد، نه آن را ممنوع کند: ردیف تازه باید برسد،
+ *      ردیف انتخاب‌شده انتخاب و خانه‌های فسفری‌اش را نگه دارد، و کلیک دوم
+ *      آزادش کند.
+ */
+        const liveCheck = tickCheck.then(async () => {
+            const pRows4 = () => [...d.querySelectorAll("#evtlist .evtrow")];
+            const selN4 = () => d.querySelectorAll("#evtlist tr.sel").length;
+            const chgN4 = () => d.querySelectorAll("#evtlist td.chg").length;
+            const savedHttp = w.evtHttp;
+            const savedDays = w.evtDays;
+            let fetches = 0;
+            let body = "";
+            w.evtDays = async () => {};
+            w.evtHttp = async () => {
+                fetches++;
+                return {
+                    ok: true,
+                    headers: { get: (h) => (h === "X-Log-Fs" ? "1" : (h === "X-Log-Lost" ? "0" : null)) },
+                    text: async () => body
+                };
+            };
+            const o = "1792756200,12,0,5,1,2,1,3,0,0,23800,23760,23840,20,0,23000,12100,1200,1100,450,300";
+            const n1 = "1792756800,12,1024,0,1,2,1,3,0,0,24000,23960,24040,20,0,23000,12100,1200,1100,450,300";
+            const n2 = "1792757400,14,1024,0,1,2,1,3,0,0,24300,24260,24340,20,0,23000,12100,1200,1100,450,300";
+            body = o + "\n" + n1;
+            await w.evtfetch(0);
+            pRows4()[0].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+            const pickedSel = selN4(), pickedChg = chgN4();
+            const pickedKey = pRows4()[0].dataset.k || "";
+            /* 1) a new row arrives while a row is picked */
+            body = o + "\n" + n1 + "\n" + n2;
+            await w.evtTick();
+            check(pRows4().length === 3 && pRows4()[0].textContent.indexOf("24.26") >= 0,
+                  "a picked row does not stop the live tail: the new row still arrives",
+                  pRows4().length + " rows / " + pRows4()[0].textContent.slice(0, 22));
+            /* 2) and the picked row kept its selection and its phosphor cells */
+            const still = pRows4().find(r => r.dataset.k === pickedKey);
+            check(!!still && still.classList.contains("sel") && selN4() === pickedSel &&
+                  chgN4() === pickedChg,
+                  "the picked row survives the repaint with its selection and its phosphor cells",
+                  (still ? still.dataset.k : "row gone") + " / " + selN4() + " sel / " + chgN4() + " chg");
+            check(!!still && still.querySelectorAll("td.chg").length > 0 &&
+                  [...still.querySelectorAll("td.chg")].every(td => td.innerHTML.indexOf('class="lt"') >= 0),
+                  "and every highlighted cell still carries its own bidi span");
+            /* 3) a second click on the same row releases it */
+            if (still) { still.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); }
+            check(!!still && selN4() === 0 && chgN4() === 0,
+                  "a second click on the picked row releases it",
+                  selN4() + " sel / " + chgN4() + " chg");
+            /* 4) and a released row does not come back on the next repaint */
+            body = o + "\n" + n1 + "\n" + n2 + "\n" + "1792758000,14,1024,0,1,2,1,3,0,0,24300,24260,24340,20,0,23000,12100,1200,1100,450,300";
+            await w.evtTick();
+            check(selN4() === 0 && chgN4() === 0 && pRows4().length === 4,
+                  "the release sticks: the next tick repaints without a selection",
+                  selN4() + " sel / " + pRows4().length + " rows");
+            w.evtHttp = savedHttp;
+            w.evtDays = savedDays;
+        });
+        /*
+ * [EN] v1.129 (owner: "change your method - do what the industry does"). The
+ *      history card rebuilt the whole table on every tick and then hunted for
+ *      the picked row by a name made of "epoch:uptime". Two rows CAN share a
+ *      second - a day file opens with its own "day starts here" row
+ *      (plink_log.h:1529) and the boot row of that session is written by tick()
+ *      at the same instant (plink_log.h:2348) - so that name is not unique and
+ *      the highlight could land on the neighbour. The industry answer is the
+ *      one React and every keyed-diff library uses: identify a list item by the
+ *      DATA it shows, reuse its element while it is still there, and touch only
+ *      the rows that really changed.
+ * [FA] نسخهٔ ۱٫۱۲۹ (دستور کاربر: «روشت را عوض کن، کار روز دنیا را بکن»). کارت
+ *      تاریخچه هر بار کل جدول را از نو می‌ساخت و بعد ردیف انتخاب‌شده را با نامی
+ *      از «epoch:uptime» می‌جست. دو ردیف می‌توانند یک ثانیه داشته باشند - ردیف
+ *      «شروع روز» (plink_log.h:1529) و ردیف روشن‌شدن همان لحظه
+ *      (plink_log.h:2348) - پس آن نام یکتا نیست و هایلایت می‌توانست روی همسایه
+ *      بیفتد. پاسخ روز دنیا همان است که React و هر کتابخانهٔ keyed-diff
+ *      می‌دهند: هر آیتم را با دادهٔ خودش بشناس، عنصرش را دوباره به کار ببر و
+ *      فقط ردیف‌هایی را دست بزن که واقعاً عوض شده‌اند.
+ */
+        const structCheck = liveCheck.then(async () => {
+            const pRows5 = () => [...d.querySelectorAll("#evtlist .evtrow")];
+            const tagOf = (tr) => tr.querySelector("td.evtd").textContent.trim();
+            const savedHttp = w.evtHttp;
+            const savedDays = w.evtDays;
+            let body = "";
+            w.evtDays = async () => {};
+            w.evtHttp = async () => ({
+                ok: true,
+                headers: { get: (h) => (h === "X-Log-Fs" ? "1" : (h === "X-Log-Lost" ? "0" : null)) },
+                text: async () => body
+            });
+            const dayStart = "1792756800,12,0,7,1,1,3,0,0,0,24000,23960,24040,20,0";
+            const bootRow = "1792756800,12,1024,0,1,1,3,0,0,0,24000,23960,24040,20,0";
+            const later = "1792757400,13,1024,0,1,1,3,0,0,0,24000,23960,24040,20,0";
+            const latest = "1792758000,14,1024,0,1,1,3,0,0,0,24000,23960,24040,20,0";
+            body = dayStart + "\n" + bootRow;
+            await w.evtfetch(0);
+            const keys = pRows5().map(tr => tr.dataset.k);
+            check(new Set(keys).size === keys.length && keys.length === 2,
+                  "two rows written in the same second still carry different names",
+                  keys.join(" | "));
+            const start = pRows5().find(tr => tagOf(tr).indexOf("Day start") >= 0);
+            w.evtPick(start);
+            body = dayStart + "\n" + bootRow + "\n" + later;
+            await w.evtTick();
+            const keptStart = pRows5().find(tr => tr.dataset.k === start.dataset.k);
+            check(keptStart === start && start.classList.contains("sel"),
+                  "the picked row keeps the selection even though its neighbour shares its second",
+                  (keptStart ? tagOf(keptStart) : "row gone") + " / same element: " + (keptStart === start));
+            /* the industry assertion: a row still on screen is the SAME element,
+               not a fresh copy of itself */
+            const tb = d.querySelector("#evtlist tbody");
+            body = dayStart + "\n" + bootRow + "\n" + later + "\n" + latest;
+            await w.evtTick();
+            check(d.querySelector("#evtlist tbody") === tb,
+                  "the table body is patched in place, never rebuilt");
+            check(pRows5().length === 4, "the new row is added and the older ones stay",
+                  String(pRows5().length));
+            check(pRows5().indexOf(start) >= 0,
+                  "the row the reader picked is literally the same element after the update");
+            w.evtHttp = savedHttp;
+            w.evtDays = savedDays;
+        });
 
             const pm = d.getElementById("pmod");
             const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
@@ -947,6 +1224,52 @@ function main() {
             }).then(async (v) => {
                 check(v === false && !pm.classList.contains("on"), "Escape cancels the confirm dialog");
                 await lostCheck;
+                await tickCheck;
+                await liveCheck;
+                await structCheck;
+                /* ---- v1.134: the history share is a menu in the log card ----
+                   [EN] Owner order 2026-11-06: "put that percentage of memory as a
+                        menu in the log menus so the user can change it too". A
+                        menu that only paints a number would pass every text
+                        check and still never reach the board, so this drives the
+                        real control and watches what leaves the page. */
+                {
+                    const sel = d.getElementById("evtpct");
+                    check(!!sel, "the log card carries the history-share menu the owner asked for");
+                    const opts = sel ? [...sel.querySelectorAll("option")].map(o => +o.value) : [];
+                    check(opts.length === 13 && opts[0] === 40 && opts[12] === 100,
+                          "it offers 40 to 100 percent, the same range the board enforces",
+                          opts.join(","));
+                    const savedHttp2 = w.evtHttp;
+                    const savedDays2 = w.evtDays;
+                    const calls = [];
+                    w.evtDays = async () => {};
+                    w.evtHttp = async (u, m) => {
+                        calls.push([u, m]);
+                        return {
+                            ok: true,
+                            json: async () => ({ ok: 1, p: u.indexOf("p=70") >= 0 ? 70 : 85, min: 40, max: 95 }),
+                            text: async () => ""
+                        };
+                    };
+                    w.evtPctFill(100);
+                    check(sel && [...sel.querySelectorAll("option")].some(o => o.value === "100" && o.textContent.indexOf("همه") >= 0),
+                          "100 is offered as \"everything that is left\", not as a bare number");
+                    w.evtPctFill(60);
+                    check(sel && sel.value === "60",
+                          "the menu shows the share the board reports, not a hard-coded one",
+                          sel ? sel.value : "no menu");
+                    if (sel) { sel.value = "70"; }
+                    await w.evtPctSet();
+                    check(calls.some(c => c[0] === "/evt/pct?p=70" && c[1] === "POST"),
+                          "picking a share posts it to the board, it is not just painted",
+                          JSON.stringify(calls));
+                    check(sel && sel.value === "70",
+                          "and the menu keeps the number the board answered with",
+                          sel ? sel.value : "no menu");
+                    w.evtHttp = savedHttp2;
+                    w.evtDays = savedDays2;
+                }
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

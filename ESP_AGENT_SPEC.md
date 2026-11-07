@@ -1,6 +1,6 @@
 # ESP-Link Agent Spec — current contract
 
-Status date: 2026-10-31. This is the single handoff document for the ESP panel and the
+Status date: 2026-11-07. This is the single handoff document for the ESP panel and the
 STM32 firmware pair. Where the code and this text disagree, the code wins and this file
 must be corrected. Older version history was removed; it lives in `git log`.
 
@@ -23,8 +23,11 @@ Authoritative endpoint contract for the current firmware/panel pair:
   `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
 - NVM format is version `12`, with capacity `172` entries. Persisted settings are
   ids `0..14` (ids `9` and `10` are reserved and rejected), `20..170` except derived `70`, retired `72/73` and transient session mute `76`,
-  plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
-  and is not an NVM setting.
+  plus runtime slots `200..203` (module-written, never drawn by the panel;
+  `203` is the scenario-6 dead-battery latch replay). Slot `204` is a
+  **write-only action key**, not a stored setting: writing 0 drops the
+  scenario-8 reset latch. The scenario-7 fault latch itself is RAM-only and is
+  not an NVM setting.
 - Scenario 7 is the technical board/power-stage fault face, and ids `143..146` configure Wi-Fi battery power saving:
 
 | ID | Name | Type | Unit | Default | Range | Meaning |
@@ -133,6 +136,54 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
   10 mΩ shunt), `unf/filt/iest` (mA after the chain; `iest` equals the filtered current).
 - The `[dmm]` group holds `dmm_i_in_ma`, `dmm_i_bat1_ma`, `dmm_i_bat2_ma`, `note` (the DMM voltage
   columns were removed; no code wrote them).
+
+### 4.1 Event history on the panel's own flash (current, ESP_Calibration)
+
+Current public CSV format v1.138: 18 lossless integer fields, in this order:
+`epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille`.
+No pack/imbalance/percent or duplicate V12 column is stored. The two battery
+halves supply the pack sum for boot recovery; `uptime_s` is ESP uptime.
+Voltage-only recording now requires a 500 mV pack change. Input-presence bit 2
+is excluded from `fl` (already in `mains`); Input on and Flags off tags are
+removed. Legacy rows remain readable, including mixed old/new rows on the
+upgrade day; external CSV readers must distinguish row layouts by field count.
+
+- New day files use a versioned delta codec (`plink_log_codec.h`), despite the
+  retained internal `.csv` suffix. Header: `EVTD`, version 1, 18 fields,
+  checkpoint interval 16, reserved zero (8 bytes total). Each record contains
+  sync `A5 C3`, payload length, kind (0 full / 1 delta), payload, and little-endian
+  CRC16-CCITT (initial FFFF over length/kind/payload). Full records hold 18
+  unsigned base-128 varints; deltas hold a 3-byte changed-field bitmap followed
+  by ZigZag varints of exact signed differences. No precision is discarded.
+  A full checkpoint is forced after at most 15 deltas; rows commit immediately,
+  not in batches. Maximum frame is 99 bytes, writer cache is fixed-size.
+- Readers validate CRC, lengths, field bounds and checkpoints. After corruption,
+  dependent deltas are skipped until the next valid full record. An incomplete
+  suffix is truncated before retry; unknown headers are not overwritten.
+  Damaged downloads carry an explicit CSV warning comment. `/evt` and `/evt/dl`
+  always reconstruct complete CSV rows with bounded RAM; `/evt/dl` streams all
+  valid rows, not merely the table tail. Existing text days stay text on append.
+- Files: `/evt-YYYYMMDD.csv` (one per day; internal binary for new files), `/evt-clock.txt` (wall clock + the board uptime it is anchored to,
+  written with temp file + atomic rename) and `/logpct.txt` (the share chosen in
+  the panel menu). `/benchlog.csv` is the bench capture of §4.
+- Day cap `ESP_LOG_MAX_ROWS_PER_DAY` = **200** rows (v1.131; it was 400), retention
+  `ESP_LOG_MAX_DAYS` = **30** days; the oldest day file is dropped first, never a
+  row from the middle of a day.
+- The history budget is **not** a fixed number: it is `ESP_LOG_BUDGET_PERCENT`
+  (default **100**, settable 40..100 from the panel, stored in `/logpct.txt`) of
+  what LittleFS itself reports, with `ESP_LOG_TOTAL_BUDGET_BYTES` (40 000) only as
+  the floor. Two things are always held back: one free LittleFS block and the
+  bytes `/benchlog.csv` already occupies. `LittleFS.info()` covers the data
+  partition only - the sketch lives in the app partition and is not counted.
+- Calibration wins over history: when the calibration file needs room, the panel
+  deletes the oldest day files to make it (owner order 2026-11-06).
+- The clock is anchored to the **board's uptime**, not `millis()`: the panel may
+  lose power while the board keeps counting. A phone clock more than
+  `ESP_LOG_CLOCK_VALID_MAX` (year 2100) ahead or below the valid floor is
+  rejected.
+- HTTP surface is listed in `ESP_Calibration/CONTRACT.md` (`http_routes`, 27
+  registrations, 24 distinct paths); the panel is served in PROGMEM chunks under
+  `ESP_PANEL_HTML_MAX_BYTES` = 491 520 bytes.
 
 ## 5. Wiring / physical
 

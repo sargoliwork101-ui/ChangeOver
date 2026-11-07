@@ -1,5 +1,5 @@
 /*
- * plink_log.h - live state history on the panel's own flash, one CSV per day.
+ * plink_log.h - live state history on the panel's own flash, one compressed day file; CSV at the public boundary.
  * Included by ESP_Calibration.ino (single translation unit, order matters):
  * after plink_state.h and before plink_link.h (the frame parser calls the hook).
  * No include guard on purpose: including twice would redefine everything.
@@ -108,6 +108,13 @@ static uint32_t UINT32_T__G__LogBootMs = 0u;
  * panel that has never seen a phone. Storage must never wait for the clock.
  */
 static uint32_t UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+/*
+ * [EN] v1.134: how big a share of the flash the history may take, in percent.
+ *      The owner sets it from the panel (the log card's menu) and the board
+ *      keeps it on its own flash; ESP_LOG_BUDGET_PERCENT is only the default it
+ *      starts with on a board that has never been told otherwise.
+ */
+static uint8_t  UINT8_T__G__LogBudgetPercent = (uint8_t)ESP_LOG_BUDGET_PERCENT;
 static uint16_t UINT16_T__G__LogRowsToday = 0u;
 static bool     BOOL__G__LogDayFull = false;
 static bool     BOOL__G__LogBootRowPending = true;
@@ -248,7 +255,8 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_NOTE_DAY_START 7u
 #define ESP_LOG_PATH_MAX       24u
 /*
- * [EN] One CSV row: 22 numbers, the widest possible being 22 x 10 digits plus
+ * [EN] New rows have 18 numbers; retain room for legacy 22-field rows.
+ * The conservative bound remains 22 x 10 digits plus
  * 21 commas = 241 bytes plus the terminator. The static_assert below turns
  * a future column that does not fit into a build error instead of a
  * silently cut row.
@@ -257,6 +265,12 @@ static uint8_t  UINT8_T__G__LogRamCount = 0u;
 #define ESP_LOG_ROW_WORST_CASE 244u
 static_assert(ESP_LOG_ROW_MAX >= ESP_LOG_ROW_WORST_CASE,
               "ESP_LOG_ROW_MAX must hold the widest row: 22 x 10 digits + 21 commas");
+#include "plink_log_codec.h"
+/* [EN] One bounded write cache. Invalidated on boot, clear, format and errors. */
+static EspLogCodec::State ESP_LOG_CODEC_WRITE_STATE;
+static char CHAR__G__LogCodecPath[ESP_LOG_PATH_MAX] = {};
+static uint32_t UINT32_T__G__LogCodecSize = 0u;
+static bool BOOL__G__LogCodecCached = false;
 /*
  * [EN] The RAM ring keeps a copy of the row when the flash refuses it, so its
  * slot must hold the same widest row. This assert is what stops the two sizes
@@ -1282,6 +1296,296 @@ static void func__EspLog_DropOldest(void)
     UINT8_T__G__LogIndexCount--;
 }
 /**
+ * @brief  [EN] Read a percentage out of text: digits only, and 0 means "there was
+ *              no number in it" (a caller must not treat that as a real share).
+ * @param  const char *char__ptr_text e.g. "70" or "70%"
+ * @return uint8_t value, 0 when the text carries no digits
+ */
+static uint8_t func__EspLog_PercentFromText(const char *char__ptr_text)
+{
+    uint32_t uint32_t__value = 0u;
+    uint8_t uint8_t__digits = 0u;
+    if (char__ptr_text == NULL)
+    {
+        return 0u;
+    }
+    while ((*char__ptr_text != '\0') && (uint8_t__digits < 3u))
+    {
+        if ((*char__ptr_text < '0') || (*char__ptr_text > '9'))
+        {
+            break;
+        }
+        uint32_t__value = (uint32_t__value * 10u) + (uint32_t)(*char__ptr_text - '0');
+        uint8_t__digits++;
+        char__ptr_text++;
+    }
+    if ((uint8_t__digits == 0u) || (uint32_t__value > 255u))
+    {
+        return 0u;
+    }
+    if (uint32_t__value == 0u)
+    {
+        return 0u;
+    }
+    return (uint8_t)uint32_t__value;
+}
+/**
+ * @brief  [EN] Keep a share inside the range the panel offers.
+ * @param  uint8_t uint8_t__percent asked value
+ * @return uint8_t allowed value
+ */
+static uint8_t func__EspLog_PercentClamp(uint8_t uint8_t__percent)
+{
+    if (uint8_t__percent < ESP_LOG_BUDGET_PERCENT_MIN)
+    {
+        return (uint8_t)ESP_LOG_BUDGET_PERCENT_MIN;
+    }
+    if (uint8_t__percent > ESP_LOG_BUDGET_PERCENT_MAX)
+    {
+        return (uint8_t)ESP_LOG_BUDGET_PERCENT_MAX;
+    }
+    return uint8_t__percent;
+}
+/**
+ * @brief  [EN] Put the share on the flash: written aside, then renamed onto the
+ *              real name, so a power cut inside the save cannot leave half a file.
+ * @param  uint8_t uint8_t__percent value to keep
+ * @return bool true when the file now holds it
+ */
+static bool func__EspLog_PercentStore(uint8_t uint8_t__percent)
+{
+    File file__pct;
+    char char__line[8];
+    int int__len;
+    if (BOOL__G__FsOk == false)
+    {
+        return false;
+    }
+    int__len = snprintf(char__line, sizeof(char__line), "%u\n", (unsigned int)uint8_t__percent);
+    if (int__len <= 0)
+    {
+        return false;
+    }
+    file__pct = LittleFS.open(ESP_LOG_PCT_TMP_PATH, "w");
+    if (!file__pct)
+    {
+        return false;
+    }
+    const size_t size_t__got = (size_t)file__pct.print(char__line);
+    file__pct.close();
+    if (size_t__got != (size_t)int__len)
+    {
+        (void)LittleFS.remove(ESP_LOG_PCT_TMP_PATH);
+        return false;
+    }
+    if (LittleFS.rename(ESP_LOG_PCT_TMP_PATH, ESP_LOG_PCT_PATH) == false)
+    {
+        (void)LittleFS.remove(ESP_LOG_PCT_TMP_PATH);
+        return false;
+    }
+    return true;
+}
+/**
+ * @brief  [EN] Restore the share the owner chose last time (boot).
+ * @return None
+ */
+static void func__EspLog_PercentLoad(void)
+{
+    File file__pct;
+    char char__text[8];
+    size_t size_t__used = 0u;
+    UINT8_T__G__LogBudgetPercent = (uint8_t)ESP_LOG_BUDGET_PERCENT;
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_LOG_PCT_PATH) == false))
+    {
+        return;
+    }
+    file__pct = LittleFS.open(ESP_LOG_PCT_PATH, "r");
+    if (!file__pct)
+    {
+        return;
+    }
+    while (file__pct.available() && (size_t__used < (sizeof(char__text) - 1u)))
+    {
+        const int int__c = file__pct.read();
+        if (int__c < 0)
+        {
+            break;
+        }
+        char__text[size_t__used++] = (char)int__c;
+    }
+    file__pct.close();
+    char__text[size_t__used] = '\0';
+    {
+        const uint8_t uint8_t__stored = func__EspLog_PercentFromText(char__text);
+        if (uint8_t__stored != 0u)
+        {
+            UINT8_T__G__LogBudgetPercent = func__EspLog_PercentClamp(uint8_t__stored);
+        }
+    }
+}
+/**
+ * @brief  [EN] How many bytes the calibration bench log already occupies. The
+ *              budget below needs it, because the bench log outranks the
+ *              history (owner order 2026-11-06) and its room is taken off the
+ *              history instead of being hoped for.
+ * @return uint32_t bytes (0 when the file is missing or the flash is down)
+ */
+static uint32_t func__EspLog_BenchLogBytes(void)
+{
+    File file__log;
+    uint32_t uint32_t__size = 0u;
+    if ((BOOL__G__FsOk == false) || (LittleFS.exists(ESP_BENCHLOG_PATH) == false))
+    {
+        return 0u;
+    }
+    file__log = LittleFS.open(ESP_BENCHLOG_PATH, "r");
+    if (!file__log)
+    {
+        return 0u;
+    }
+    uint32_t__size = (uint32_t)file__log.size();
+    file__log.close();
+    return uint32_t__size;
+}
+/**
+ * @brief  [EN] The history budget in bytes: ESP_LOG_BUDGET_PERCENT of the real
+ *              file system, never below ESP_LOG_TOTAL_BUDGET_BYTES. Read from
+ *              LittleFS on every call so a bigger partition needs no rebuild.
+ * @return uint32_t budget in bytes
+ */
+static uint32_t func__EspLog_BudgetBytes(void)
+{
+    FSInfo fsInfo__stat;
+    uint32_t uint32_t__budget;
+    uint32_t uint32_t__bench;
+    if ((BOOL__G__FsOk == false) || (LittleFS.info(fsInfo__stat) == false) ||
+        (fsInfo__stat.totalBytes == 0u))
+    {
+        return ESP_LOG_TOTAL_BUDGET_BYTES;
+    }
+    uint32_t__budget = (uint32_t)(((uint32_t)fsInfo__stat.totalBytes *
+                                   (uint32_t)UINT8_T__G__LogBudgetPercent) / 100u);
+    if (uint32_t__budget < ESP_LOG_TOTAL_BUDGET_BYTES)
+    {
+        uint32_t__budget = ESP_LOG_TOTAL_BUDGET_BYTES;
+    }
+    /*
+     * [EN] v1.133 (owner order 2026-11-06: the calibration table comes first).
+     *      The 15 percent that is not the history is NOT a promise to the bench
+     *      log - a percentage of the flash has nothing to do with a 4.6 KB
+     *      header. So the bytes the bench log really holds are taken off the
+     *      history budget, and the history trims itself to what is left.
+     */
+    uint32_t__bench = func__EspLog_BenchLogBytes();
+    if (uint32_t__budget > uint32_t__bench)
+    {
+        uint32_t__budget -= uint32_t__bench;
+    }
+    else
+    {
+        uint32_t__budget = 0u;
+    }
+    /*
+     * [EN] Never zero: the trimmer stops when the budget is not bigger than the
+     *      reserve, and a stopped trimmer is a history that grows until the
+     *      flash refuses again. One byte over one block keeps it trimming.
+     */
+    if (uint32_t__budget <= ESP_LOG_FREE_RESERVE_BYTES)
+    {
+        uint32_t__budget = ESP_LOG_FREE_RESERVE_BYTES + 1u;
+    }
+    return uint32_t__budget;
+}
+/**
+ * @brief  [EN] How much of the file system must stay free: one real block. A
+ *              write needs a free block, and every LittleFS layout states its
+ *              block size, so it is read instead of assumed.
+ * @return uint32_t bytes to keep free
+ */
+static uint32_t func__EspLog_ReserveBytes(void)
+{
+    FSInfo fsInfo__stat;
+    if ((BOOL__G__FsOk != false) && (LittleFS.info(fsInfo__stat) != false) &&
+        (fsInfo__stat.blockSize != 0u))
+    {
+        return (uint32_t)fsInfo__stat.blockSize;
+    }
+    return ESP_LOG_FREE_RESERVE_BYTES;
+}
+/**
+ * @brief  [EN] Is there a free block left after need bytes are written? The
+ *              same judgement the day writer makes, exposed so the bench log
+ *              can ask before it opens a file it cannot fill.
+ * @param  uint32_t uint32_t__need bytes about to be written
+ * @return bool true when the write has a block to land in
+ */
+static bool func__EspLog_HasRoomFor(uint32_t uint32_t__need)
+{
+    FSInfo fsInfo__stat;
+    uint32_t uint32_t__freeBytes;
+    if ((BOOL__G__FsOk == false) || (LittleFS.info(fsInfo__stat) == false) ||
+        (fsInfo__stat.totalBytes == 0u))
+    {
+        return true;   /* nothing to judge with: let the write itself answer */
+    }
+    uint32_t__freeBytes = (fsInfo__stat.usedBytes >= fsInfo__stat.totalBytes)
+                          ? 0u
+                          : (uint32_t)(fsInfo__stat.totalBytes - fsInfo__stat.usedBytes);
+    return (uint32_t__freeBytes >= (func__EspLog_ReserveBytes() + uint32_t__need));
+}
+/**
+ * @brief  [EN] Make room for the calibration bench log by deleting day files,
+ *              oldest first. Owner order 2026-11-06: the calibration table comes
+ *              first and the daily history gives way for it - so the oldest day
+ *              is deleted until the row fits, and when nothing is left to give
+ *              the day the log is currently writing is given up as well (the
+ *              caller re-opens the day, so it comes back with its own header).
+ * @param  uint32_t uint32_t__need bytes the bench log is about to add
+ * @return uint32_t number of day files deleted
+ */
+static uint32_t func__EspLog_FreeForBenchLog(uint32_t uint32_t__need)
+{
+    uint32_t uint32_t__days = 0u;
+    uint8_t uint8_t__guard;
+    if ((BOOL__G__FsOk == false) || (uint32_t__need == 0u))
+    {
+        return 0u;
+    }
+    /*
+     * [EN] The index is the memory of which files exist; the flash is the truth.
+     *      A user action may arrive after anything, so read the directory now
+     *      rather than trusting a cache that was filled at boot.
+     */
+    (void)func__EspLog_ScanDays(true);
+    for (uint8_t__guard = 0u; uint8_t__guard < (ESP_LOG_MAX_DAYS + 2u); uint8_t__guard++)
+    {
+        if (func__EspLog_HasRoomFor(uint32_t__need) != false)
+        {
+            break;
+        }
+        if (UINT8_T__G__LogIndexCount == 0u)
+        {
+            break;   /* nothing left to give away */
+        }
+        func__EspLog_DropOldest();
+        BOOL__G__LogScanValid = false;
+        uint32_t__days++;
+    }
+    if (uint32_t__days != 0u)
+    {
+        /*
+         * [EN] A deleted day file may be today's. Appending to its name would
+         *      create it again with no header and no day marker, so the day is
+         *      forgotten here and re-opened (with its header) on the next row.
+         */
+        UINT32_T__G__LogDayCode = ESP_LOG_DAY_AUTO;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+    return uint32_t__days;
+}
+/**
  * @brief  [EN] Delete the oldest days when the retention count or the byte
  *              budget is passed. Nothing has to be written down afterwards:
  *              the list is the directory, so the next scan reads what is left.
@@ -1307,13 +1611,150 @@ static void func__EspLog_TrimDays(void)
         {
             uint32_t__bytes += UINT32_T__G__LogIndexBytes[uint8_t__slot];
         }
-        if (uint32_t__bytes <= ESP_LOG_TOTAL_BUDGET_BYTES)
+        /*
+ * [EN] v1.131: the budget includes the reserve, or the trim would stop one
+ * block short of what a write actually needs.
+ */
+        uint32_t uint32_t__budget = func__EspLog_BudgetBytes();
+        uint32_t uint32_t__reserve = func__EspLog_ReserveBytes();
+        if (uint32_t__budget <= uint32_t__reserve)
+        {
+            break;
+        }
+        if (uint32_t__bytes <= (uint32_t__budget - uint32_t__reserve))
         {
             break;
         }
         func__EspLog_DropOldest();
         BOOL__G__LogScanValid = false;
     }
+}
+/**
+ * @brief  [EN] Adopt a share the owner picked in the panel: clamp it, write it to
+ *              the flash, and trim the history right away - a setting that only
+ *              takes effect at the next day change would look broken.
+ * @param  uint8_t uint8_t__percent asked share
+ * @return uint8_t share actually in force
+ */
+static uint8_t func__EspLog_PercentSet(uint8_t uint8_t__percent)
+{
+    UINT8_T__G__LogBudgetPercent = func__EspLog_PercentClamp(uint8_t__percent);
+    (void)func__EspLog_PercentStore(UINT8_T__G__LogBudgetPercent);
+    (void)func__EspLog_ScanDays(true);
+    func__EspLog_TrimDays();
+    BOOL__G__LogScanValid = false;
+    return UINT8_T__G__LogBudgetPercent;
+}
+/**
+ * @brief  [EN] Make sure one LittleFS block is free before a row is appended.
+ *              When the flash is tighter than ESP_LOG_FREE_RESERVE_BYTES the
+ *              oldest day is dropped - never the day being written - so the log
+ *              keeps rolling instead of stopping at "flash full". Bounded by the
+ *              number of days the index can hold.
+ * @return None
+ */
+static void func__EspLog_EnsureSpace(void)
+{
+    uint8_t uint8_t__guard;
+    for (uint8_t__guard = 0u;
+         uint8_t__guard < (ESP_LOG_MAX_DAYS + 2u);
+         uint8_t__guard++)
+    {
+        FSInfo fsInfo__stat;
+        uint32_t uint32_t__freeBytes;
+        uint32_t uint32_t__usedBytes = 0u;
+        if ((BOOL__G__FsOk == false) || (LittleFS.info(fsInfo__stat) == false))
+        {
+            return;
+        }
+        if (fsInfo__stat.totalBytes == 0u)
+        {
+            return;
+        }
+        uint32_t__usedBytes = (uint32_t)fsInfo__stat.usedBytes;
+        if (uint32_t__usedBytes >= (uint32_t)fsInfo__stat.totalBytes)
+        {
+            uint32_t__freeBytes = 0u;
+        }
+        else
+        {
+            uint32_t__freeBytes = (uint32_t)fsInfo__stat.totalBytes - uint32_t__usedBytes;
+        }
+        if (uint32_t__freeBytes >= func__EspLog_ReserveBytes())
+        {
+            return;
+        }
+        if (UINT8_T__G__LogIndexCount <= 1u)
+        {
+            return;   /* nothing left to give away */
+        }
+        if (UINT32_T__G__LogIndexDay[0] == UINT32_T__G__LogDayCode)
+        {
+            return;   /* the oldest day IS this day: never delete it under its own row */
+        }
+        func__EspLog_DropOldest();
+        BOOL__G__LogScanValid = false;
+    }
+}
+/**
+ * @brief [EN] Append one immediately committed delta/full record; retry partial tails safely.
+ * @param path Day-file path.
+ * @param row Complete CSV row built by the existing state sampler.
+ * @return True only for a complete write.
+ */
+static bool func__EspLog_CodecAppend(const char *path, const char *row)
+{
+    uint32_t values[EspLogCodec::Fields];
+    if (!EspLogCodec::parse(row,values)) return false;
+    File input=LittleFS.open(path,"r");
+    EspLogCodec::State state;
+    int kind;
+    uint32_t size=0u;
+    if (!input) {
+        if (LittleFS.exists(path)) return false;
+        kind=2;
+    } else {
+        size=(uint32_t)input.size();
+        if (BOOL__G__LogCodecCached && strcmp(path,CHAR__G__LogCodecPath)==0 && size==UINT32_T__G__LogCodecSize) {
+            kind=1; state=ESP_LOG_CODEC_WRITE_STATE;
+        } else {
+            kind=EspLogCodec::begin(input,state);
+            if (kind==1) {
+                while (EspLogCodec::next(input,state)) {}
+                if (state.damaged) { func__EspLog_FaultRaise(); state.valid=false; }
+            }
+        }
+        input.close();
+    }
+    if (kind<0) return false;
+    File output=LittleFS.open(path,"a");
+    if (!output) return false;
+    bool ok=true;
+    if (kind==0) {
+        /* [EN] Existing text days remain text; new days use the versioned codec. */
+        ok=func__EspLog_FileText(output,row) && func__EspLog_FileText(output,"\n");
+        output.close(); return ok;
+    }
+    if (kind==2) {
+        if (size && !output.truncate(0u)) { output.close(); return false; }
+        ok=output.write(EspLogCodec::header(),EspLogCodec::HeaderSize)==EspLogCodec::HeaderSize;
+        state=EspLogCodec::State();
+    } else if (size>state.lastEnd) {
+        ok=output.truncate(state.lastEnd);
+    }
+    uint8_t frame[EspLogCodec::MaxFrame];
+    const size_t bytes=EspLogCodec::encode(state,values,frame);
+    if (ok) ok=output.write(frame,bytes)==bytes;
+    const uint32_t storedSize=(uint32_t)output.size();
+    output.close();
+    BOOL__G__LogCodecCached=ok;
+    if (ok) {
+        state.offset=storedSize; state.lastEnd=storedSize;
+        ESP_LOG_CODEC_WRITE_STATE=state;
+        (void)snprintf(CHAR__G__LogCodecPath,sizeof CHAR__G__LogCodecPath,"%s",path);
+        UINT32_T__G__LogCodecSize=storedSize;
+    }
+    return ok;
 }
 /**
  * @brief  [EN] Count the data rows already in a day file (after a restart).
@@ -1328,6 +1769,17 @@ static uint16_t func__EspLog_CountRows(const char *char__path)
     if (!file__day)
     {
         return 0u;
+    }
+    EspLogCodec::State codec;
+    const int kind=EspLogCodec::begin(file__day,codec);
+    if (kind!=0) {
+        if (kind==1) {
+            while (EspLogCodec::next(file__day,codec)) {
+                if (codec.value[3]!=ESP_LOG_NOTE_DAY_START && uint16_t__rows<0xffffu) ++uint16_t__rows;
+            }
+        }
+        if (kind<0 || codec.damaged) func__EspLog_FaultRaise();
+        file__day.close(); return uint16_t__rows;
     }
     while (file__day.available())
     {
@@ -1378,6 +1830,24 @@ static bool func__EspLog_RepairTail(const char *char__path)
     {
         return true;   /* nothing to repair, and the next append reports itself */
     }
+    EspLogCodec::State codec;
+    const int kind=EspLogCodec::begin(file__day,codec);
+    if (kind!=0) {
+        const uint32_t oldSize=(uint32_t)file__day.size();
+        if (kind==1) while (EspLogCodec::next(file__day,codec)) {}
+        file__day.close();
+        BOOL__G__LogCodecCached=false;
+        if (kind<0) { func__EspLog_FaultRaise(); return false; }
+        const uint32_t goodSize=kind==2?0u:codec.lastEnd;
+        if (codec.damaged) func__EspLog_FaultRaise();
+        if (oldSize>goodSize) {
+            File repair=LittleFS.open(char__path,"a");
+            if (!repair) return false;
+            const bool ok=repair.truncate(goodSize);
+            repair.close(); return ok;
+        }
+        return true;
+    }
     uint32_t__size = (uint32_t)file__day.size();
     if (uint32_t__size > 0u)
     {
@@ -1426,7 +1896,6 @@ static bool func__EspLog_DayCodeValid(uint32_t uint32_t__dayCode)
 static bool func__EspLog_AppendRow(uint32_t uint32_t__dayCode, const char *char__row)
 {
     char char__path[ESP_LOG_PATH_MAX];
-    File file__day;
     bool bool__ok;
     if ((BOOL__G__FsOk == false) || (char__row == NULL))
     {
@@ -1444,18 +1913,7 @@ static bool func__EspLog_AppendRow(uint32_t uint32_t__dayCode, const char *char_
         return false;
     }
     func__EspLog_PathOf(char__path, uint32_t__dayCode);
-    file__day = LittleFS.open(char__path, "a");
-    if (!file__day)
-    {
-        func__EspLog_FaultRaise();
-        return false;
-    }
-    bool__ok = func__EspLog_FileText(file__day, char__row);
-    if (bool__ok != false)
-    {
-        bool__ok = func__EspLog_FileText(file__day, "\n");
-    }
-    file__day.close();
+    bool__ok = func__EspLog_CodecAppend(char__path,char__row);
     if (bool__ok == false)
     {
         func__EspLog_FaultRaise();
@@ -1501,7 +1959,8 @@ static bool func__EspLog_OpenDay(void)
     }
     if (bool__isNew)
     {
-        bool__ok = func__EspLog_FileText(file__day, ESP_LOG_HEADER);
+        BOOL__G__LogCodecCached=false;
+        bool__ok = file__day.write(EspLogCodec::header(),EspLogCodec::HeaderSize)==EspLogCodec::HeaderSize;
     }
     file__day.close();
     UINT32_T__G__LogDayCode = uint32_t__dayCode;
@@ -1599,42 +2058,6 @@ static void func__EspLog_DrainRam(void)
 }
 /* ==================== Row write ==================== */
 /**
- * @brief  [EN] Battery percent from the DISCHARGE map (param 74/75, factory
- *              21,000..29,000 mV), stored with every row so later analysis
- *              keeps the same scale even if the map is retuned. Unknown params
- *              fall back to the factory map.
-* @param uint32_t__batteryMv Pack voltage in mV /
-* @return uint8_t Percent 0..100 /
- */
-static uint8_t func__EspLog_Pct(uint32_t uint32_t__batteryMv)
-{
-    uint32_t uint32_t__vminMv = 21000u;
-    uint32_t uint32_t__vmaxMv = 29000u;
-    uint32_t uint32_t__rangeMv;
-    if (BOOL__G__ParamKnown[74] != false)
-    {
-        uint32_t__vminMv = UINT32_T__G__ParamApplied[74];
-    }
-    if (BOOL__G__ParamKnown[75] != false)
-    {
-        uint32_t__vmaxMv = UINT32_T__G__ParamApplied[75];
-    }
-    if (uint32_t__batteryMv <= uint32_t__vminMv)
-    {
-        return 0u;
-    }
-    if (uint32_t__batteryMv >= uint32_t__vmaxMv)
-    {
-        return 100u;
-    }
-    uint32_t__rangeMv = uint32_t__vmaxMv - uint32_t__vminMv;
-    if (uint32_t__rangeMv == 0u)
-    {
-        return 0u;
-    }
-    return (uint8_t)(((uint32_t__batteryMv - uint32_t__vminMv) * 100u) / uint32_t__rangeMv);
-}
-/**
  * @brief  [EN] Build one CSV row into a caller buffer. Returns false when the
  *              row did not fit - a cut row is reported instead of written.
 * @param char *char__row buffer /
@@ -1648,29 +2071,25 @@ static bool func__EspLog_BuildRow(char *char__row, size_t size_t__size,
 {
     int int__written;
     int__written = snprintf(char__row, size_t__size,
-                            "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
+                            "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
                             (unsigned long)func__EspLog_NowSec(),
                             (unsigned long)((uint32_t)millis() / 1000u),
                             (unsigned int)uint16_t__changeMask,
                             (unsigned int)uint8_t__note,
                             (unsigned int)(((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u),
-                            (unsigned int)UINT8_T__G__TlmFlags,
+                            (unsigned int)(UINT8_T__G__TlmFlags & 0x3Du),
                             (unsigned long)UINT32_T__G__TlmField[6],
                             (unsigned long)UINT32_T__G__TlmField[13],
                             (unsigned long)UINT32_T__G__TlmField[19],
                             (unsigned int)UINT8_T__G__TlmFlags2,
-                            (unsigned long)UINT32_T__G__TlmField[15],
                             (unsigned long)UINT32_T__G__TlmField[17],
                             (unsigned long)UINT32_T__G__TlmField[18],
-                            (unsigned long)UINT32_T__G__TlmField[25],
                             (unsigned long)UINT32_T__G__TlmField[28],
                             (unsigned long)UINT32_T__G__TlmField[14],
-                            (unsigned long)UINT32_T__G__TlmField[16],
                             (unsigned long)UINT32_T__G__TlmField[3],
                             (unsigned long)UINT32_T__G__TlmField[10],
                             (unsigned long)UINT32_T__G__TlmField[5],
-                            (unsigned long)UINT32_T__G__TlmField[12],
-                            (unsigned long)func__EspLog_Pct(UINT32_T__G__TlmField[15]));
+                            (unsigned long)UINT32_T__G__TlmField[12]);
     return (int__written > 0) && ((size_t)int__written < size_t__size);
 }
 /**
@@ -1728,6 +2147,11 @@ static bool func__EspLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t
     if ((BOOL__G__FsOk != false) && (bool__dayOpen != false) &&
         ((BOOL__G__LogDayFull == false) || (BOOL__A__LogForceRow != false)))
     {
+        /*
+ * [EN] v1.131: room first, append second. Without this the append was the
+ * thing that discovered a full flash, and a full flash means the row was lost.
+ */
+        func__EspLog_EnsureSpace();
         /*
  * [EN] the flash is taking rows again: the ones waiting in RAM go
  * first, so the history keeps its order.
@@ -1836,6 +2260,25 @@ static uint32_t func__EspLog_RowFieldAt(const char *char__row, uint8_t uint8_t__
     {
         return 0u;
     }
+    /* [EN] v1.137: 18-field rows omit pack, imbalance, duplicate V12 and percent.
+     * Keep legacy logical indexes for snapshot restoration and old day files. */
+    uint8_t uint8_t__fields = 1u;
+    for (const char *char__p = char__row; *char__p && *char__p != '\n' && *char__p != '\r'; ++char__p)
+    {
+        if (*char__p == ',') { uint8_t__fields++; }
+    }
+    if ((uint8_t__fields == 18u) && (uint8_t__index >= 10u))
+    {
+        if (uint8_t__index == 10u)
+        {
+            return func__EspLog_RowFieldAt(char__row, 11u) + func__EspLog_RowFieldAt(char__row, 12u);
+        }
+        if ((uint8_t__index == 13u) || (uint8_t__index == 21u)) { return 0u; }
+        if (uint8_t__index == 16u) { uint8_t__index = 10u; }
+        else if (uint8_t__index <= 12u) { uint8_t__index--; }
+        else if (uint8_t__index <= 15u) { uint8_t__index -= 2u; }
+        else { uint8_t__index -= 3u; }
+    }
     while ((char__row[uint16_t__cursor] != '\0') &&
            (char__row[uint16_t__cursor] != '\n'))
     {
@@ -1904,26 +2347,36 @@ static void func__EspLog_LoadLastSnapshot(void)
     {
         return;
     }
-    uint32_t__size = (uint32_t)file__day.size();
-    if (uint32_t__size == 0u)
-    {
-        file__day.close();
-        return;
-    }
-    uint32_t__start = (uint32_t__size > (uint32_t)(sizeof(char__tail) - 1u)) ?
-                      (uint32_t__size - (uint32_t)(sizeof(char__tail) - 1u)) : 0u;
-    (void)file__day.seek(uint32_t__start);
-    while (size_t__got < (sizeof(char__tail) - 1u))
-    {
-        int int__byte = file__day.read();
-        if (int__byte < 0)
-        {
-            break;
+    EspLogCodec::State codec;
+    const int kind=EspLogCodec::begin(file__day,codec);
+    if (kind==1) {
+        while (EspLogCodec::next(file__day,codec)) {
+            size_t__got=EspLogCodec::text(codec,char__tail,sizeof char__tail);
         }
-        char__tail[size_t__got] = (char)int__byte;
-        size_t__got++;
-    }
-    file__day.close();
+        if (codec.damaged) func__EspLog_FaultRaise();
+        file__day.close();
+    } else if (kind==0) {
+        uint32_t__size = (uint32_t)file__day.size();
+        if (uint32_t__size == 0u)
+        {
+            file__day.close();
+            return;
+        }
+        uint32_t__start = (uint32_t__size > (uint32_t)(sizeof(char__tail) - 1u)) ?
+                          (uint32_t__size - (uint32_t)(sizeof(char__tail) - 1u)) : 0u;
+        (void)file__day.seek(uint32_t__start);
+        while (size_t__got < (sizeof(char__tail) - 1u))
+        {
+            int int__byte = file__day.read();
+            if (int__byte < 0)
+            {
+                break;
+            }
+            char__tail[size_t__got] = (char)int__byte;
+            size_t__got++;
+        }
+        file__day.close();
+    } else { file__day.close(); return; }
     char__tail[size_t__got] = '\0';
     int32_t__end = (int32_t)size_t__got - 1;
     /*
@@ -2534,6 +2987,7 @@ static void func__EspLog_Tick(void)
  */
 static void func__EspLog_Begin(void)
 {
+    BOOL__G__LogCodecCached=false;
     UINT32_T__G__LogLastClockSaveMs = (uint32_t)millis();
     UINT32_T__G__LogBootMs = (uint32_t)millis();
     BOOL__G__LogBootClockPending = false;
@@ -2553,6 +3007,11 @@ static void func__EspLog_Begin(void)
         (void)LittleFS.remove(ESP_LOG_LEGACY_INDEX_PATH);
     }
     func__EspLog_ClockLoad();
+    /*
+     * [EN] v1.134: the history share the owner chose last time. Read after the
+     *      file system is known to be up, before the first row is written.
+     */
+    func__EspLog_PercentLoad();
     /*
  * [EN] Only a restored, matched board anchor needs the first live answer.
  * A fresh flash, a two-field legacy clock, or an already live board
@@ -2848,35 +3307,56 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
         return func__EspLog_TailRamOnly(char__out, size_t__outSize,
                                         uint16_t__maxLines, bool__isToday);
     }
-    uint32_t__start = func__EspLog_TailStart(file__day, uint32_t__size,
-                                             uint16_t__maxLines, size_t__outSize - 2u);
-    if (file__day.seek(uint32_t__start) == false)
-    {
+    EspLogCodec::State codec;
+    const int kind=EspLogCodec::begin(file__day,codec);
+    if (kind==1) {
+        char row[ESP_LOG_ROW_MAX];
+        uint16_t lines=0u;
+        while (EspLogCodec::next(file__day,codec)) {
+            const size_t len=EspLogCodec::text(codec,row,sizeof row);
+            if (!len || len+1u>=size_t__outSize || !uint16_t__maxLines) continue;
+            while (size_t__used && (lines>=uint16_t__maxLines || size_t__used+len+1u>=size_t__outSize)) {
+                const char *end=(const char *)memchr(char__out,'\n',size_t__used);
+                const size_t drop=end?(size_t)(end-char__out)+1u:size_t__used;
+                memmove(char__out,char__out+drop,size_t__used-drop);
+                size_t__used-=drop; if (lines) --lines;
+            }
+            memcpy(char__out+size_t__used,row,len); size_t__used+=len;
+            char__out[size_t__used]='\0'; ++lines;
+        }
+        if (codec.damaged) func__EspLog_FaultRaise();
         file__day.close();
-        return func__EspLog_TailRamOnly(char__out, size_t__outSize,
-                                        uint16_t__maxLines, bool__isToday);
-    }
-    while (file__day.available())
-    {
-        String string__line = file__day.readStringUntil('\n');
-        size_t size_t__len;
-        string__line.trim();
-        if ((string__line.length() == 0u) || (string__line[0] == '#'))
+    } else if (kind==0) {
+        uint32_t__start = func__EspLog_TailStart(file__day, uint32_t__size,
+                                                 uint16_t__maxLines, size_t__outSize - 2u);
+        if (file__day.seek(uint32_t__start) == false)
         {
-            continue;
+            file__day.close();
+            return func__EspLog_TailRamOnly(char__out, size_t__outSize,
+                                            uint16_t__maxLines, bool__isToday);
         }
-        size_t__len = (size_t)string__line.length();
-        if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
+        while (file__day.available())
         {
-            break;
+            String string__line = file__day.readStringUntil('\n');
+            size_t size_t__len;
+            string__line.trim();
+            if ((string__line.length() == 0u) || (string__line[0] == '#'))
+            {
+                continue;
+            }
+            size_t__len = (size_t)string__line.length();
+            if ((size_t__used + size_t__len + 2u) >= size_t__outSize)
+            {
+                break;
+            }
+            (void)memcpy(&char__out[size_t__used], string__line.c_str(), size_t__len);
+            size_t__used += size_t__len;
+            char__out[size_t__used] = '\n';
+            size_t__used++;
+            char__out[size_t__used] = '\0';
         }
-        (void)memcpy(&char__out[size_t__used], string__line.c_str(), size_t__len);
-        size_t__used += size_t__len;
-        char__out[size_t__used] = '\n';
-        size_t__used++;
-        char__out[size_t__used] = '\0';
-    }
-    file__day.close();
+        file__day.close();
+    } else { file__day.close(); func__EspLog_FaultRaise(); }
     /*
  * [EN] the rows that failed to reach the flash are newer than everything in
  * the file, so they are appended, not substituted.
@@ -2899,6 +3379,7 @@ static size_t func__EspLog_Tail(char *char__out, size_t size_t__outSize,
  */
 static void func__EspLog_ResetCaches(void)
 {
+    BOOL__G__LogCodecCached=false;
     UINT8_T__G__LogIndexCount = 0u;
     BOOL__G__LogScanValid = false;
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
@@ -3015,6 +3496,11 @@ static bool func__EspLog_IsOwnFile(const char *char__ptr_path)
         return true;
     }
     if (strcmp(char__ptr_path, ESP_BENCHLOG_PATH) == 0)
+    {
+        return true;
+    }
+    /* [EN] v1.134: the owner's history share is ours too, never "a leftover file". */
+    if (strcmp(char__ptr_path, ESP_LOG_PCT_PATH) == 0)
     {
         return true;
     }

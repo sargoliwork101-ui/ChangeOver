@@ -50,7 +50,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 The normal way is `bash ESP_Calibration/Tester/run_esp_tests.sh`, which runs the
 host tests, then the label checks (always, they need no DOM) and then the click
 tests (skipped with exit code 0 when jsdom is absent). Current counts:
-**484** host checks, **13** label checks, **237** click checks.
+**533** host checks, **13** label checks, **270** click checks.
 
 `node_modules/` is git-ignored. The test reads `ESP_Calibration/panel_preview.html`,
 so run `python3 tools/make_panel_preview.py` first if you have edited
@@ -92,7 +92,7 @@ caught:
 
 | فایل | چه چیزی را اثبات می‌کند |
 |---|---|
-| `host_test_panel_labels.js` | جملهٔ فارسیِ هر ردیف تاریخچه (v1.118): تابع `evtRowText` از `plink_panel.h` بیرون کشیده و با سه ردیف صدا زده می‌شود — ردیف بروزرسانی، ردیف خطر و ردیف قدیمی. اگر کارت دوباره برای ردیفِ بروزرسانی یا بازگشت از قطع باتری بنویسد «پنل روشن شد»، تست رد می‌شود. jsdom نمی‌خواهد، پس همیشه اجرا می‌شود — ۸ بررسی |
+| `host_test_panel_labels.js` | جملهٔ فارسیِ هر ردیف تاریخچه (v1.118): تابع `evtRowText` از `plink_panel.h` بیرون کشیده و با سه ردیف صدا زده می‌شود — ردیف بروزرسانی، ردیف خطر و ردیف قدیمی. اگر کارت دوباره برای ردیفِ بروزرسانی یا بازگشت از قطع باتری بنویسد «پنل روشن شد»، تست رد می‌شود. jsdom نمی‌خواهد، پس همیشه اجرا می‌شود — ۱۳ بررسی |
 | `host_test_panel_click.js` | جدول عملکردِ کلیک-و-ویرایش: خانه ویرایشگر باز می‌کند، ویرایشگر مقدار خام را دارد، Enter ثبت می‌کند، Esc نمی‌کند، بازرسمِ تلمتری فیلدِ در حال تایپ را پاک نمی‌کند، مقدار گیره‌خورده دیده می‌شود، و خانهٔ فقط-خواندنیِ مشتق بی‌اثر است |
 
 ### چرا وجود دارد
@@ -126,7 +126,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 
 راه معمول `bash ESP_Calibration/Tester/run_esp_tests.sh` است: تست‌های هاست، بعد
 چک برچسب‌ها (همیشه، DOM نمی‌خواهد) و بعد تست کلیک (بدون jsdom با کد ۰ SKIP
-می‌شود). شمارش فعلی: **۴۸۴** بررسی هاست، **۱۳** چک برچسب، **۲۳۷** چک کلیک.
+می‌شود). شمارش فعلی: **۵۳۳** بررسی هاست، **۱۳** چک برچسب، **۲۷۰** چک کلیک.
 
 پوشهٔ `node_modules/` در gitignore است. تست فایل
 `ESP_Calibration/panel_preview.html` را می‌خواند، پس اگر `plink_panel.h` را ویرایش
@@ -137,3 +137,12 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 
 با خراب‌کردن عمدی پنل و تأیید شکست تست راستی‌آزمایی شد — همه گرفته شدند: جدول
 بالا در بخش انگلیسی فهرست کامل را دارد.
+
+## Lossless day codec (v1.138)
+
+`host_test_log_codec.h` is included by the real-sketch host suite. It exercises
+all 18 integer fields, full/delta checkpoints, u32 and signed-delta extremes,
+every truncation boundary, single-bit corruption, CRC-valid malformed packets,
+partial-write retries, file-header recovery, exact public tail/CSV/boot outputs
+and unchanged legacy text append. The stub has explicit short-write injection;
+it never disguises binary files as text. See [validation results](LOG_CODEC_VALIDATION.md).

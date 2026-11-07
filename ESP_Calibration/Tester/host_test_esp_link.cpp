@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <chrono>
 /**
  * @file   host_test_esp_link.cpp
  * @brief  [EN] First host tests for the ESP program.
@@ -130,6 +132,23 @@ static void feed(const std::vector<uint8_t> &v)
         field of one saved row, instead of substring guessing.
    [FA] تست‌های تاریخچه به ولتاژ معلوم پک و خواندن یک خانه از یک ردیف ذخیره‌شده
         نیاز دارند، نه حدس با زیررشته. */
+/* [EN] Explicit public-view decode; the filesystem still contains real binary bytes. */
+static std::string decoded_day(const std::string &path)
+{
+    File file=LittleFS.open(path.c_str(),"r");
+    if (!file) return "";
+    EspLogCodec::State state;
+    const int kind=EspLogCodec::begin(file,state);
+    if (kind==0) return LittleFS.files[path];
+    if (kind!=1) return "";
+    std::string out=ESP_LOG_HEADER;
+    char row[ESP_LOG_ROW_MAX];
+    while (EspLogCodec::next(file,state)) {
+        if (EspLogCodec::text(state,row,sizeof row)) out+=row;
+    }
+    return out;
+}
+
 static long row_field(const std::string &body, size_t rowIndex, size_t fieldIndex)
 {
     size_t row = 0u, k = 0u, field = 0u, start = 0u;
@@ -151,6 +170,14 @@ static long row_field(const std::string &body, size_t rowIndex, size_t fieldInde
             if ((k > start) && (body[start] != '#') && (skip == false)) {
                 if (row == rowIndex) {
                     std::string line = body.substr(start, k - start);
+                    if (std::count(line.begin(),line.end(),',') == 17 && fieldIndex>=10u) {
+                        if (fieldIndex==10u) return row_field(body,rowIndex,11u)+row_field(body,rowIndex,12u);
+                        if (fieldIndex==13u || fieldIndex==21u) return -1;
+                        if (fieldIndex==16u) fieldIndex=10u;
+                        else if (fieldIndex<=12u) fieldIndex--;
+                        else if (fieldIndex<=15u) fieldIndex-=2u;
+                        else fieldIndex-=3u;
+                    }
                     size_t from = 0u;
                     for (field = 0u; field < fieldIndex; field++) {
                         size_t comma = line.find(',', from);
@@ -203,6 +230,12 @@ static std::vector<uint8_t> tlm_payload_v24(uint16_t seq, uint32_t v24)
     p[o + 1u] = (uint8_t)((v24 >> 8) & 0xFFu);
     p[o + 2u] = (uint8_t)((v24 >> 16) & 0xFFu);
     p[o + 3u] = (uint8_t)((v24 >> 24) & 0xFFu);
+    // v1.137: physically consistent battery halves for compact snapshot restoration.
+    for (uint8_t field : {17u,18u}) {
+        const uint32_t v = field == 17u ? v24 / 2u : v24 - v24 / 2u;
+        const size_t off = ESP_LINK_TLM_FIELD_OFFSET + field * 4u;
+        for (uint8_t b=0;b<4;b++) p[off+b]=(uint8_t)(v >> (8u*b));
+    }
     return p;
 }
 
@@ -355,6 +388,8 @@ static void feed_board_uptime(uint32_t uptimeSec)
     ack.resize(ESP_HELLO_ACK_LEN, 0u);
     feed(build_frame(ESP_MSG_HELLO_ACK, ack));
 }
+
+#include "host_test_log_codec.h"
 
 /* ======================================================================== */
 int main(void)
@@ -816,6 +851,204 @@ int main(void)
               "GET /benchlog returns the row that was stored");
     }
 
+    /* ---- 13b. v1.133: the calibration table outranks the daily history ----
+       [EN] Owner order 2026-11-06: "calibration matters a lot to me ... if it
+            does not fit, let it delete the log so it can fit itself" - the bench
+            log first, the daily history second. Three things are checked: the
+            history gives way when the table needs the room, the day file it
+            deleted is re-opened (so today's history never restarts headerless),
+            and a row that even an empty flash cannot hold is refused instead of
+            half-written - the old handler only compared against the 100 KB cap
+            and never looked at the free space at all.
+       [FA] دستور کاربر ۲۰۲۶-۱۱-۰۶: «کالیبراسیون خیلی برام مهمه ... اگر جا نشد
+            لاگ رو پاک کنه تا خودش جا بشه» - اول جدول بنچ‌لاگ، بعد لاگ روزانه.
+    */
+    {
+        const size_t savedCapacity = LittleFS.totalCapacityBytes;
+        std::string dayText;
+        for (int k = 0; k < 160; k++)
+        {
+            dayText += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        std::string benchRow(1400u, '7');
+        benchRow += '\n';
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        BOOL__G__FsOk = true;
+        LittleFS.failWrites = false;
+        LittleFS.files["/evt-20260901.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260902.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260903.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0u;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("plain", benchRow.c_str());
+        ESP_WEB_SERVER_T__G__Server.call("/benchlog/add", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "a bench row is accepted even when the flash is nearly full",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(LittleFS.files.count("/benchlog.csv") == 1,
+              "and it really reached the file system");
+        check(LittleFS.files.count("/evt-20260901.csv") == 0,
+              "the calibration table made room by deleting the OLDEST day");
+        check(LittleFS.files.count("/evt-20260902.csv") == 1,
+              "and only as much history as it needed: the newer days are kept");
+        {
+            FSInfo info;
+            (void)LittleFS.info(info);
+            const uint32_t freeNow = (uint32_t)(info.totalBytes - info.usedBytes);
+            check(freeNow >= ESP_LOG_FREE_RESERVE_BYTES,
+                  "one free block is left behind for the next write",
+                  std::to_string((unsigned long)freeNow) + " bytes");
+        }
+        /*
+         * [EN] The day file that was dropped may be TODAY's. The log must notice
+         *      and re-open the day, because appending to the name of a deleted
+         *      file would create it again with no header and no day marker.
+         */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        LittleFS.files["/evt-20260904.csv"] = std::string(ESP_LOG_HEADER) + std::string(35000u, 'x');
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 20260904u;
+        UINT16_T__G__LogRowsToday = 40u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("plain", benchRow.c_str());
+        ESP_WEB_SERVER_T__G__Server.call("/benchlog/add", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "the table also deletes the day it is itself running in");
+        check(LittleFS.files.count("/evt-20260904.csv") == 0,
+              "that day file is gone, so the history gave way completely");
+        check(UINT32_T__G__LogDayCode == ESP_LOG_DAY_AUTO,
+              "and the log forgets the deleted day instead of appending to its name",
+              std::to_string((unsigned long)UINT32_T__G__LogDayCode));
+        /*
+         * [EN] The row cannot be stored at all: a foreign file owns the flash,
+         *      no day file is left to delete. A refused row must be reported,
+         *      not appended into a file system that has no block to give.
+         */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        LittleFS.files["/stray-from-an-older-sketch.bin"] = std::string(39000u, 'z');
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("plain", benchRow.c_str());
+        ESP_WEB_SERVER_T__G__Server.call("/benchlog/add", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 507,
+              "a row that nothing can hold answers 507 instead of a silent half-write",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(LittleFS.files.count("/benchlog.csv") == 0,
+              "and no CSV was opened, so no broken header was left behind");
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = savedCapacity;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+
+    /* ---- 13c. v1.134: the owner chooses the history share himself --------
+       [EN] Owner order 2026-11-06: "put that percentage of memory as a menu in
+            the log menus so the user can change it too". The share is no longer
+            a compile-time constant: the panel offers 40..95 percent, the board
+            keeps the choice on its own flash (so it survives a power cut), and
+            the budget follows it at once.
+       [FA] دستور کاربر ۲۰۲۶-۱۱-۰۶: «اون درصدی از حافظه که میگی رو مثل یک منو
+            توی منوهای لاگ بزار تا کاربر هم بتونه تغییرش بده». سهم تاریخچه دیگر
+            عدد ثابت نیست: پنل بین ۴۰ تا ۹۵ درصد پیشنهاد می‌دهد، برد انتخاب را
+            روی فلش خودش نگه می‌دارد و بودجه فوراً دنبالش می‌آید.
+    */
+    {
+        const size_t savedCapacity = LittleFS.totalCapacityBytes;
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 1048576u;
+        BOOL__G__FsOk = true;
+        LittleFS.failWrites = false;
+        check(UINT8_T__G__LogBudgetPercent == ESP_LOG_BUDGET_PERCENT,
+              "the history share starts at the 85 percent the panel offers",
+              std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "60");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "POST /evt/pct accepts a new share", ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(UINT8_T__G__LogBudgetPercent == 60u,
+              "and the board remembers it", std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        check(func__EspLog_BudgetBytes() == (uint32_t)((1048576u * 60u) / 100u),
+              "the budget follows the chosen share, not the compiled one",
+              std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+        check(LittleFS.files.count(ESP_LOG_PCT_PATH) == 1,
+              "the choice is written to the flash, so a power cut cannot lose it");
+        UINT8_T__G__LogBudgetPercent = ESP_LOG_BUDGET_PERCENT;
+        func__EspLog_PercentLoad();
+        check(UINT8_T__G__LogBudgetPercent == 60u,
+              "and it is read back at boot", std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "150");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        check(UINT8_T__G__LogBudgetPercent == ESP_LOG_BUDGET_PERCENT_MAX,
+              "a share above the maximum is clamped, not obeyed",
+              std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "3");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        check(UINT8_T__G__LogBudgetPercent == ESP_LOG_BUDGET_PERCENT_MIN,
+              "and so is a share below the minimum",
+              std::to_string((unsigned)UINT8_T__G__LogBudgetPercent));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"p\":40") != std::string::npos,
+              "GET /evt/pct reports the share the page must show",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"min\":40") != std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find(
+                  "\"max\":" + std::to_string((unsigned)ESP_LOG_BUDGET_PERCENT_MAX)) != std::string::npos,
+              "with the range the menu offers",
+              ESP_WEB_SERVER_T__G__Server.lastBody);
+        /*
+         * [EN] Lowering the share must trim at once, not at the next day change -
+         *      otherwise the owner sets 40 percent and nothing happens for hours.
+         */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        std::string dayText;
+        for (int k = 0; k < 150; k++)
+        {
+            dayText += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        LittleFS.files["/evt-20260901.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260902.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        LittleFS.files["/evt-20260903.csv"] = std::string(ESP_LOG_HEADER) + dayText;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.setArg("p", "40");
+        ESP_WEB_SERVER_T__G__Server.call("/evt/pct", HTTP_POST);
+        (void)func__EspLog_ScanDays(true);
+        check((uint32_t)(LittleFS.files["/evt-20260901.csv"].size() +
+                         LittleFS.files["/evt-20260902.csv"].size() +
+                         LittleFS.files["/evt-20260903.csv"].size()) <=
+              func__EspLog_BudgetBytes(),
+              "a smaller share trims the history immediately",
+              std::to_string((unsigned long)func__EspLog_BudgetBytes()) + " bytes budget");
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = savedCapacity;
+        UINT8_T__G__LogBudgetPercent = ESP_LOG_BUDGET_PERCENT;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+
     /* ---- 14. loop() drains the UART the way the board does -------------- */
     {
         BOOL__G__TlmSeen = false;
@@ -1213,9 +1446,9 @@ int main(void)
         check(dayCode != 0u && LittleFS.exists(path),
               "the row lands in a file named after the phone's own day");
 
-        std::string body = LittleFS.files[std::string(path)];
+        std::string body = decoded_day(std::string(path));
         check(body.find("# epoch,uptime_s") != std::string::npos,
-              "a new day file starts with its column header");
+              "the decoded new day starts with its CSV column header");
         check(row_field(body, 0u, 2u) == 2,
               "the first row carries the mains change bit");
 
@@ -1239,7 +1472,7 @@ int main(void)
            [FA] فایل دوم نداریم: خود ردیف حافظه است. آخرین ردیف فایل روز ولتاژ
                 پک را دارد، پس روشن‌شدن بعدی می‌تواند مقایسه کند. */
         {
-            std::string bodyLow = LittleFS.files[std::string(path)];
+            std::string bodyLow = decoded_day(std::string(path));
             check(row_field(bodyLow, 1u, 10u) == 20608,
                   "the last row itself holds the pack voltage, no extra file needed",
                   std::to_string(row_field(bodyLow, 2u, 10u)));
@@ -1249,7 +1482,7 @@ int main(void)
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/evt", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
-              ESP_WEB_SERVER_T__G__Server.lastBody.find("20608") != std::string::npos,
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("10304") != std::string::npos,
               "GET /evt returns the saved rows as text");
 
         ESP_WEB_SERVER_T__G__Server.call("/evt/days", HTTP_GET);
@@ -1268,7 +1501,7 @@ int main(void)
             feed(build_frame(ESP_MSG_TLM_LIVE, manual));
             check(UINT16_T__G__LogRowsToday == 3u,
                   "switching the board to hand mode writes a row");
-            std::string bodyMode = LittleFS.files[std::string(path)];
+            std::string bodyMode = decoded_day(std::string(path));
             check(row_field(bodyMode, 2u, 2u) == 256u,
                   "that row is marked as a mode change",
                   std::to_string(row_field(bodyMode, 3u, 2u)));
@@ -1296,7 +1529,7 @@ int main(void)
             feed(build_frame(ESP_MSG_TLM_LIVE, dead));
             check(UINT16_T__G__LogRowsToday == 4u,
                   "a condemned-battery verdict writes a row");
-            std::string bodyDead = LittleFS.files[std::string(path)];
+            std::string bodyDead = decoded_day(std::string(path));
             check(row_field(bodyDead, 3u, 2u) == 768u,
                   "that row is marked as a verdict change (and a mode change: the flags byte fell)",
                   std::to_string(row_field(bodyDead, 4u, 2u)));
@@ -1318,10 +1551,10 @@ int main(void)
             const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
             const size_t deadOff = ESP_LINK_TLM_FIELD_OFFSET + (28u * 4u);
 
-            /* 199 mV: below the step, nothing may be written. The verdict
+            /* 499 mV: below the step, nothing may be written. The verdict
                field is pinned to the value the previous test left behind,
                otherwise its own change would write the row. */
-            std::vector<uint8_t> drift = tlm_payload_v24(212u, 20807u);
+            std::vector<uint8_t> drift = tlm_payload_v24(212u, 21107u);
             drift[deadOff] = 0x01u; drift[deadOff + 1u] = 0x00u;
             drift[deadOff + 2u] = 0x00u; drift[deadOff + 3u] = 0x00u;
             G_StubMillis += 5000u;
@@ -1329,30 +1562,30 @@ int main(void)
             check(UINT16_T__G__LogRowsToday == rowsBefore,
                   "a pack drift smaller than the step writes nothing");
 
-            /* 200 mV more: a row, marked as a voltage step. The row before
+            /* Exactly 500 mV from the last saved row: a row, marked as a voltage step. The row before
                this one (the band row) carried a step of its own, so the
                one-step-a-minute window must be waited out first - that is the
                v1.98 promise, and the test walks through it honestly. */
-            std::vector<uint8_t> step = tlm_payload_v24(213u, 21007u);
+            std::vector<uint8_t> step = tlm_payload_v24(213u, 21108u);
             step[deadOff] = 0x01u; step[deadOff + 1u] = 0x00u;
             step[deadOff + 2u] = 0x00u; step[deadOff + 3u] = 0x00u;
             G_StubMillis += ESP_LOG_VSTEP_MIN_MS;
             feed(build_frame(ESP_MSG_TLM_LIVE, step));
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
-                  "a 200 mV step of the pack writes one row");
-            std::string bodyStep = LittleFS.files[std::string(path)];
+                  "a 500 mV step of the pack writes one row");
+            std::string bodyStep = decoded_day(std::string(path));
             const size_t stepRow = (size_t)(rowsBefore);
             check((row_field(bodyStep, stepRow, 2u) & 1024L) != 0L,
                   "that row carries the voltage-step change bit",
                   std::to_string(row_field(bodyStep, stepRow, 2u)));
-            check(row_field(bodyStep, stepRow, 10u) == 21007L,
-                  "the row keeps the new pack voltage",
+            check(row_field(bodyStep, stepRow, 10u) == 21108L,
+                  "the pack sum is reconstructed from stored halves",
                   std::to_string(row_field(bodyStep, stepRow, 10u)));
             check(row_field(bodyStep, stepRow, 15u) == 1014L,
                   "the input rail is saved as well",
                   std::to_string(row_field(bodyStep, stepRow, 15u)));
-            check(row_field(bodyStep, stepRow, 16u) == 1016L,
-                  "so is the 12 V node",
+            check(row_field(bodyStep, stepRow, 16u) == 10554L,
+                  "the lower battery replaces the duplicate V12 node",
                   std::to_string(row_field(bodyStep, stepRow, 16u)));
             check(row_field(bodyStep, stepRow, 17u) == 1003L &&
                   row_field(bodyStep, stepRow, 18u) == 1010L,
@@ -1381,7 +1614,7 @@ int main(void)
             const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
 
             /* the wobble: 21,150 → 21,180 → 21,140 - every move stays under
-               the 200 mV step from the last ROW (21,007), so no rise worth a
+               the 500 mV step from the last ROW (21,108), so no rise worth a
                record happens and the log stays quiet */
             const uint32_t wobble[3] = { 21150u, 21180u, 21140u };
             for (uint8_t k = 0u; k < 3u; k++) {
@@ -1403,7 +1636,7 @@ int main(void)
             feed(build_frame(ESP_MSG_TLM_LIVE, up));
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
                   "leaving the band above 21,400 mV writes exactly one row");
-            std::string bodyUp = LittleFS.files[std::string(path)];
+            std::string bodyUp = decoded_day(std::string(path));
             check((row_field(bodyUp, (size_t)rowsBefore, 2u) & 64L) != 0L,
                   "and that row is marked as a band change",
                   std::to_string(row_field(bodyUp, (size_t)rowsBefore, 2u)));
@@ -1411,7 +1644,7 @@ int main(void)
             /* v1.109: a RISE in discharge is written even inside the same
                minute - the user wants a record for every time it came up */
             const uint16_t afterUp = UINT16_T__G__LogRowsToday;
-            std::vector<uint8_t> fast = tlm_payload_v24(234u, 21800u);
+            std::vector<uint8_t> fast = tlm_payload_v24(234u, 22000u);
             fast[deadOff2] = 0x01u; fast[deadOff2 + 1u] = 0x00u;
             fast[deadOff2 + 2u] = 0x00u; fast[deadOff2 + 3u] = 0x00u;
             G_StubMillis += 10000u;             /* 10 s after the last row */
@@ -1430,7 +1663,7 @@ int main(void)
                   "a fall in discharge inside the same minute is not written");
 
             /* after the minute the next rise is written again */
-            std::vector<uint8_t> slow = tlm_payload_v24(236u, 22100u);
+            std::vector<uint8_t> slow = tlm_payload_v24(236u, 22500u);
             slow[deadOff2] = 0x01u; slow[deadOff2 + 1u] = 0x00u;
             slow[deadOff2 + 2u] = 0x00u; slow[deadOff2 + 3u] = 0x00u;
             G_StubMillis += ESP_LOG_VSTEP_MIN_MS;
@@ -1439,10 +1672,10 @@ int main(void)
                   "once the minute has passed the step is written again");
 
             /* v1.109: the row carries the battery percent as its last column */
-            std::string bodyPct = LittleFS.files[std::string(path)];
+            std::string bodyPct = decoded_day(std::string(path));
             /* the "fast" row (21,800 mV, factory map 21,000..29,000) = 10% */
-            check(row_field(bodyPct, (size_t)afterUp, 21u) == 10L,
-                  "the row's last column is the battery percent of its voltage",
+            check(row_field(bodyPct, (size_t)afterUp, 21u) == -1L,
+                  "the compact row does not store battery percent",
                   std::to_string(row_field(bodyPct, (size_t)afterUp, 21u)));
         }
 
@@ -1459,7 +1692,7 @@ int main(void)
             const uint16_t rowsBefore = UINT16_T__G__LogRowsToday;
             /* every earlier frame carried mains OFF - establish mains ON
                first, so the CUT below is a real mains change */
-            std::vector<uint8_t> on = tlm_payload_v24(236u, 22100u);
+            std::vector<uint8_t> on = tlm_payload_v24(236u, 22500u);
             on[2u] = 0x02u;
             G_StubMillis += 100u;
             feed(build_frame(ESP_MSG_TLM_LIVE, on));
@@ -1478,7 +1711,7 @@ int main(void)
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 2u),
                   "a mains cut lands inside the short coalescing window, not the 2 s merge",
                   std::to_string(UINT16_T__G__LogRowsToday));
-            std::string bodyCut = LittleFS.files[std::string(path)];
+            std::string bodyCut = decoded_day(std::string(path));
             check((row_field(bodyCut, (size_t)(rowsBefore + 1u), 2u) & 2L) != 0L,
                   "and that row carries the mains change bit",
                   std::to_string(row_field(bodyCut, (size_t)(rowsBefore + 1u), 2u)));
@@ -1498,7 +1731,7 @@ int main(void)
             func__EspLog_Tick();
             check(UINT16_T__G__LogRowsToday == (uint16_t)(rowsBefore + 1u),
                   "after a whole quiet heartbeat window, Tick writes one row");
-            std::string bodyBeat = LittleFS.files[std::string(path)];
+            std::string bodyBeat = decoded_day(std::string(path));
             check(row_field(bodyBeat, (size_t)rowsBefore, 3u) == 5L,
                   "that row is marked as a heartbeat",
                   std::to_string(row_field(bodyBeat, (size_t)rowsBefore, 3u)));
@@ -1622,7 +1855,7 @@ int main(void)
               "danger stop: the switch-on speaks and adds exactly one row",
               std::to_string((unsigned)func__EspLog_CountRows(dangerPath)));
         {
-            const std::string dangerFile = LittleFS.files[std::string(dangerPath)];
+            const std::string dangerFile = decoded_day(std::string(dangerPath));
             check((row_field(dangerFile, 1u, 2u) & 1L) != 0L,
                   "danger stop: the row keeps the boot bit",
                   dangerFile);
@@ -1647,7 +1880,7 @@ int main(void)
         (void)snprintf(dangerPath, sizeof dangerPath, "/evt-%08lu.csv",
                        (unsigned long)func__EspLog_TodayCode());
         {
-            const std::string updateFile = LittleFS.files[std::string(dangerPath)];
+            const std::string updateFile = decoded_day(std::string(dangerPath));
             check(UINT16_T__G__LogRowsToday == 1u,
                   "update row: one row for the update, no extra switch-on row",
                   std::to_string((unsigned)UINT16_T__G__LogRowsToday));
@@ -1669,9 +1902,13 @@ int main(void)
         LittleFS.files.clear();
         UINT8_T__G__LogIndexCount = 0u;
         UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        /* v1.132: the budget follows the real flash, so this rule is checked on
+           the flash the device really has (40 KiB), not on the test's 2 MB */
+        const size_t savedCapacity = LittleFS.totalCapacityBytes;
+        LittleFS.totalCapacityBytes = 40960u;
 
         const uint32_t days[3] = { 20261001u, 20261002u, 20261003u };
-        std::string big(150000u, 'x');            /* > 2 x the day budget */
+        std::string big(150000u, 'x');            /* >> 2 x the day budget */
         for (size_t k = 0u; k < 3u; k++) {
             char dayPath[32];
             (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv", (unsigned long)days[k]);
@@ -1698,6 +1935,7 @@ int main(void)
               !LittleFS.exists("/evt-20261002.csv") &&
               LittleFS.exists("/evt-20261003.csv"),
               "the dropped days are gone from the flash and the newest is kept");
+        LittleFS.totalCapacityBytes = savedCapacity;
     }
 
     /* ---- 32. v1.97: storage never waits for the clock -------------------
@@ -1750,7 +1988,7 @@ int main(void)
 
         check(LittleFS.exists("/evt-00000000.csv"),
               "with no phone clock at all, the first row still lands in a day file");
-        std::string noClock = LittleFS.files[std::string("/evt-00000000.csv")];
+        std::string noClock = decoded_day(std::string("/evt-00000000.csv"));
         check(row_field(noClock, 0u, 0u) == 0L,
               "that row carries time 0, which the panel shows as \"no clock\"",
               std::to_string(row_field(noClock, 0u, 0u)));
@@ -2559,6 +2797,215 @@ int main(void)
               "and nothing can be appended after the cap");
     }
 
+    /* ---- 36d. the 40 KiB log budget holds itself (v1.131) ----------------
+       [EN] Owner decision 2026-11-05: "40 KB in total is set aside for this, and
+            the day cap may be 200 rows". The old budget constant was 200 000
+            bytes - five times the flash - so it never trimmed anything, and the
+            panel only stopped when the file system itself refused the write
+            (the "حافظه پر شده" the owner saw). Now the budget is the real number,
+            one 4 KiB block is always kept free, and a day that would eat the last
+            block is dropped oldest-first instead of stopping the log.
+       [FA] تصمیم کاربر ۲۰۲۶-۱۱-۰۵: «کلا ۴۰ کیلوبایت برای این کار و سقف روز
+            ۲۰۰ ردیف». ثابت بودجهٔ قبلی ۲۰۰ ۰۰۰ بایت بود - پنج برابر فلش - پس
+            هیچ‌وقت چیزی را کوتاه نمی‌کرد و پنل فقط وقتی می‌ایستاد که خودِ
+            فایل‌سیستم نوشتن را رد می‌کرد (همان «حافظه پر شده»). حالا بودجه همان
+            عدد واقعی است، یک بلوک ۴ کیلوبایتی همیشه خالی می‌ماند، و روزی که
+            می‌خواهد آخرین بلوک را بخورد قدیمی‌ترین‌اول حذف می‌شود، نه اینکه لاگ
+            بایستد. */
+    {
+        check(ESP_LOG_TOTAL_BUDGET_BYTES == 40000u,
+              "40 KiB stays the floor of the log budget",
+              std::to_string((unsigned)ESP_LOG_TOTAL_BUDGET_BYTES));
+        /*
+         * [EN] v1.132 (owner order 2026-11-05: "run item 1" - read the budget
+         *      from the real flash instead of a fixed number). A bigger file
+         *      system must buy more history by itself, and the reserve must be
+         *      one real LittleFS block.
+         * [FA] نسخهٔ ۱٫۱۳۲ (دستور کاربر ۲۰۲۶-۱۱-۰۵: «مورد ۱ را اجرا کن» -
+         *      خواندن بودجه از حافظهٔ واقعی به‌جای عدد ثابت). حافظهٔ بزرگ‌تر باید
+         *      خودش تاریخچهٔ بیشتری بدهد، و ذخیره باید یک بلوک واقعی LittleFS
+         *      باشد.
+         */
+        {
+            const size_t savedCapacity = LittleFS.totalCapacityBytes;
+            const uint8_t savedPct = UINT8_T__G__LogBudgetPercent;
+            FSInfo info;
+            /*
+             * [EN] v1.135: the default share is 100 percent now (the sketch does
+             *      not live in this partition), so the FLOOR is only reachable
+             *      with a smaller share. Pinned here and restored below.
+             */
+            UINT8_T__G__LogBudgetPercent = 85u;
+            LittleFS.totalCapacityBytes = 40960u;
+            (void)LittleFS.info(info);
+            check(func__EspLog_BudgetBytes() == ESP_LOG_TOTAL_BUDGET_BYTES,
+                  "on the 40 KiB flash the budget stays at its 40 KiB floor",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            check(func__EspLog_ReserveBytes() == (uint32_t)info.blockSize,
+                  "the reserve is one real file-system block, read not assumed",
+                  std::to_string((unsigned long)func__EspLog_ReserveBytes()));
+            LittleFS.totalCapacityBytes = 1048576u;
+            (void)LittleFS.info(info);
+            const uint32_t expected = (uint32_t)((info.totalBytes * 85u) / 100u);
+            check(func__EspLog_BudgetBytes() == expected,
+                  "a 1 MiB file system gives 85 percent of itself to the history",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()) +
+                  " vs " + std::to_string((unsigned long)expected));
+            /*
+             * [EN] v1.133: the bench log's own bytes come off the history
+             *      budget. A percentage cannot promise a fixed 4.6 KB header
+             *      any room at all on a small flash, so the real size is used.
+             */
+            LittleFS.files["/benchlog.csv"] = std::string(10000u, 'b');
+            check(func__EspLog_BudgetBytes() == (expected - 10000u),
+                  "the bytes the calibration table holds come off the history budget",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()) + " vs " +
+                  std::to_string((unsigned long)(expected - 10000u)));
+            LittleFS.files["/benchlog.csv"] = std::string(3u * 1024u * 1024u, 'b');
+            check(func__EspLog_BudgetBytes() > func__EspLog_ReserveBytes(),
+                  "even a table bigger than the budget leaves the trimmer working",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            LittleFS.files.erase("/benchlog.csv");
+            LittleFS.files["/benchlog.csv"] = std::string(4629u, 'b');
+            LittleFS.totalCapacityBytes = 40960u;
+            check(func__EspLog_BudgetBytes() ==
+                  (ESP_LOG_TOTAL_BUDGET_BYTES - 4629u),
+                  "on the 40 KiB flash the table's header is taken off the floor too",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            LittleFS.files.erase("/benchlog.csv");
+            /*
+             * [EN] v1.135 (owner question: "should the history cap not be the
+             *      memory that is left, not 95 percent? is the code not on this
+             *      memory?"). The code is not: LittleFS.info() counts only the
+             *      LittleFS region. So at 100 percent the history may take the
+             *      whole partition, and only the calibration file's own bytes
+             *      and one free block stay out.
+             */
+            UINT8_T__G__LogBudgetPercent = 100u;
+            LittleFS.totalCapacityBytes = 1048576u;
+            (void)LittleFS.info(info);
+            check(func__EspLog_BudgetBytes() == (uint32_t)info.totalBytes,
+                  "at 100 percent the history may take the whole file partition",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()) + " vs " +
+                  std::to_string((unsigned long)info.totalBytes));
+            LittleFS.files["/benchlog.csv"] = std::string(20000u, 'b');
+            check(func__EspLog_BudgetBytes() == ((uint32_t)info.totalBytes - 20000u),
+                  "and only the calibration file's own bytes stay out of that budget",
+                  std::to_string((unsigned long)func__EspLog_BudgetBytes()));
+            LittleFS.files.erase("/benchlog.csv");
+            UINT8_T__G__LogBudgetPercent = savedPct;
+            LittleFS.totalCapacityBytes = savedCapacity;
+        }
+        check(ESP_LOG_MAX_ROWS_PER_DAY == 200u,
+              "the day cap is 200 rows, as the owner ordered",
+              std::to_string((unsigned)ESP_LOG_MAX_ROWS_PER_DAY));
+        check((sizeof(ESP_LOG_HEADER) - 1u) <= 400u,
+              "a day file opens with a short header, not a 735-byte legend",
+              std::to_string((unsigned)(sizeof(ESP_LOG_HEADER) - 1u)) + " bytes");
+    }
+    {
+        /* a 40 KiB LittleFS whose space is taken by FOREIGN files: our two day
+           files add up to well under the budget, so only a real free-block check
+           can save the next row (this is the /evt/fs list the panel shows, and
+           the "حافظه پر شده" the owner saw). */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        BOOL__G__FsOk = true;
+        LittleFS.failWrites = false;
+        std::string day;
+        for (int k = 0; k < 107; k++)
+        {
+            day += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        LittleFS.files["/evt-20261020.csv"] = std::string(ESP_LOG_HEADER) + day;
+        LittleFS.files["/evt-20261021.csv"] = std::string(ESP_LOG_HEADER) + day;
+        LittleFS.files["/stray-from-an-older-sketch.bin"] = std::string(23000u, 'z');
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogLastRowValid = true;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        BOOL__G__LogClockValid = true;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        INT32_T__G__LogTzSec = 0;
+        {
+            FSInfo info;
+            (void)LittleFS.info(info);
+            check((uint32_t)(info.totalBytes - info.usedBytes) < ESP_LOG_FREE_RESERVE_BYTES,
+                  "the test starts with less than one free block",
+                  std::to_string((unsigned long)(info.totalBytes - info.usedBytes)) + " bytes");
+        }
+        const bool stored = func__EspLog_WriteRow(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE);
+        check(stored != false,
+              "with no free block left the panel still stores today's row",
+              "files: " + std::to_string((unsigned)LittleFS.files.size()));
+        check(LittleFS.files.count("/evt-20261020.csv") == 0,
+              "and it made room by dropping the OLDEST day, not by giving up",
+              [&] { std::string left; for (auto &kv : LittleFS.files) { left += kv.first + " "; } return left; }());
+        check(LittleFS.files.count("/evt-20261021.csv") == 1,
+              "the newer day and the foreign file are left alone");
+        {
+            FSInfo info;
+            (void)LittleFS.info(info);
+            const uint32_t freeNow = (uint32_t)(info.totalBytes - info.usedBytes);
+            check(freeNow >= ESP_LOG_FREE_RESERVE_BYTES,
+                  "one block is free again for the next row",
+                  std::to_string((unsigned long)freeNow) + " bytes free");
+        }
+        LittleFS.totalCapacityBytes = 2097152u;
+        LittleFS.files.clear();
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+    {
+        /* and the declared budget itself: four big days on a roomy flash are
+           trimmed to the 40 KiB the owner set, oldest first, before the month
+           count ever matters. */
+        LittleFS.files.clear();
+        LittleFS.totalCapacityBytes = 40960u;
+        std::string bigDay;
+        for (int k = 0; k < 150; k++)
+        {
+            bigDay += "1792756000,1000,1024,0,1,0,0,0,0,0,24000,12000,12000,0,0,0,0,0,0,0,0,37\n";
+        }
+        LittleFS.files["/evt-20260901.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        LittleFS.files["/evt-20260902.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        LittleFS.files["/evt-20260903.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        LittleFS.files["/evt-20260904.csv"] = std::string(ESP_LOG_HEADER) + bigDay;
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        BOOL__G__LogClockValid = true;
+        UINT32_T__G__LogAnchorSec = 1792756800u;
+        UINT32_T__G__LogAnchorMs = (uint32_t)millis();
+        INT32_T__G__LogTzSec = 0;
+        BOOL__G__LogLastRowValid = true;
+        UINT32_T__G__LogLastRowMs = (uint32_t)millis();
+        (void)func__EspLog_WriteRow(ESP_LOG_CHG_MAINS, ESP_LOG_NOTE_NONE);
+        uint32_t total = 0u;
+        for (auto &kv : LittleFS.files) { if (kv.first.compare(0, 5, "/evt-") == 0) { total += (uint32_t)kv.second.size(); } }
+        check(total <= (ESP_LOG_TOTAL_BUDGET_BYTES - ESP_LOG_FREE_RESERVE_BYTES),
+              "the day files never exceed the 40 KiB budget minus its reserve",
+              std::to_string((unsigned long)total) + " bytes");
+        check(LittleFS.files.count("/evt-20260901.csv") == 0,
+              "and the oldest of them went first");
+        LittleFS.files.clear();
+        BOOL__G__LogScanValid = false;
+        UINT8_T__G__LogIndexCount = 0u;
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+
     /* ---- 37. the clock never runs backward ------------------------------ */
     {
         bool accepted;
@@ -2850,8 +3297,8 @@ int main(void)
                            (unsigned long)func__EspLog_TodayCode());
             (void)func__EspLog_Tail(lastRow, sizeof lastRow,
                                     func__EspLog_TodayCode(), 1u);
-            check(func__EspLog_RowFieldAt(lastRow, 2u) == ESP_LOG_CHG_VSTEP,
-                  "21.30 V after a restart is a voltage step, NOT a band exit "
+            check(func__EspLog_RowFieldAt(lastRow, 2u) == 0u,
+                  "21.30 V after a restart is below the 500 mV step, NOT a band exit "
                   "(the band is left above 21.40 V)",
                   std::to_string(func__EspLog_RowFieldAt(lastRow, 2u)));
         }
@@ -3092,7 +3539,7 @@ int main(void)
             char dayPath[32];
             (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
                            (unsigned long)func__EspLog_TodayCode());
-            std::string dayText = LittleFS.files[std::string(dayPath)];
+            std::string dayText = decoded_day(std::string(dayPath));
             check(dayText.find(",4097,") != std::string::npos,
                   "the row carries both \"panel switched on\" and \"update\"",
                   dayText.substr(0u, 60u));
@@ -3372,7 +3819,7 @@ int main(void)
         (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
                        (unsigned long)func__EspLog_TodayCode());
         {
-            const std::string day = LittleFS.files[std::string(dayPath)];
+            const std::string day = decoded_day(std::string(dayPath));
             check(row_field(day, 0u, 0u) == (long)(baseSec + 3600u + offlineSec),
                   "ten-hour wake: the boot row carries the recovered real time",
                   day);
@@ -3454,7 +3901,7 @@ int main(void)
         func__EspLog_Tick();
         (void)snprintf(dayPath, sizeof dayPath, "/evt-%08lu.csv",
                        (unsigned long)func__EspLog_TodayCode());
-        check(LittleFS.files[std::string(dayPath)].find(",4097,") != std::string::npos,
+        check(decoded_day(std::string(dayPath)).find(",4097,") != std::string::npos,
               "update after grace: the forced boot-plus-update row is still written");
 
         /* With no saved clock at all, day-zero storage stays immediate. */
@@ -3508,7 +3955,7 @@ int main(void)
               "note-only flush: the queue writes a row that carries only a note",
               std::to_string((unsigned)UINT16_T__G__LogRowsToday));
         {
-            const std::string dayFile = LittleFS.files[std::string("/evt-00000000.csv")];
+            const std::string dayFile = decoded_day(std::string("/evt-00000000.csv"));
             check(row_field(dayFile, 1u, 3u) == (long)ESP_LOG_NOTE_HEARTBEAT,
                   "note-only flush: the written row carries the heartbeat note",
                   dayFile);
@@ -3807,7 +4254,7 @@ int main(void)
               std::to_string((unsigned)func__EspLog_CountRows(dayStartPath)));
         {
             const std::string marker =
-                raw_data_line(LittleFS.files[std::string(dayStartPath)], 0u);
+                raw_data_line(decoded_day(std::string(dayStartPath)), 0u);
             long epoch = 0L, uptime = 0L, bits = 0L, note = 0L;
             (void)sscanf(marker.c_str(), "%ld,%ld,%ld,%ld",
                          &epoch, &uptime, &bits, &note);
@@ -3823,8 +4270,8 @@ int main(void)
         G_StubMillis += 3000u;
         feed_board_uptime(1003u);
         func__EspLog_Tick();
-        check(raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u).empty() &&
-              !raw_data_line(LittleFS.files[std::string(dayStartPath)], 0u).empty(),
+        check(raw_data_line(decoded_day(std::string(dayStartPath)), 1u).empty() &&
+              !raw_data_line(decoded_day(std::string(dayStartPath)), 0u).empty(),
               "day start: another wake in the same day adds nothing");
 
         /* and neither does a reboot in the middle of the day */
@@ -3833,9 +4280,9 @@ int main(void)
         G_StubMillis = 2000u;
         feed_board_uptime(1200u);
         func__EspLog_Tick();
-        check(raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u).empty(),
+        check(raw_data_line(decoded_day(std::string(dayStartPath)), 1u).empty(),
               "day start: a reboot does not write a second start row",
-              raw_data_line(LittleFS.files[std::string(dayStartPath)], 1u));
+              raw_data_line(decoded_day(std::string(dayStartPath)), 1u));
 
         /* the marker must not count as "a row was written", or the hourly
            heartbeat would slide off the hour: exactly one hour after it, the
@@ -4175,6 +4622,29 @@ int main(void)
         func__EspLog_ResetCaches();
         LittleFS.files.clear();
     }
+
+    // v1.137: assert the raw compact schema, independently of legacy test helpers.
+    {
+        char compact[ESP_LOG_ROW_MAX];
+        UINT8_T__G__TlmFlags=0x3Fu;
+        UINT32_T__G__TlmField[17]=11900u;
+        UINT32_T__G__TlmField[18]=12100u;
+        UINT32_T__G__TlmField[28]=3u;
+        check(func__EspLog_BuildRow(compact,sizeof compact,ESP_LOG_CHG_VSTEP,0u),"compact row builds");
+        std::string raw(compact);
+        check(std::count(raw.begin(),raw.end(),',')==17,"exactly 18 fields are stored");
+        check(raw.find(",11900,12100,3,")!=std::string::npos,"raw row stores both halves followed by verdict");
+        check(func__EspLog_RowFieldAt(compact,10u)==24000u,"boot reconstructs pack from the two halves");
+        check(func__EspLog_RowFieldAt(compact,11u)==11900u && func__EspLog_RowFieldAt(compact,12u)==12100u,"boot restores compact halves");
+        check(func__EspLog_RowFieldAt(compact,14u)==3u,"boot restores compact verdict");
+        check((func__EspLog_RowFieldAt(compact,5u)&2u)==0u,"Input on bit is not duplicated in stored flags");
+        const char *legacy="1792756800,1,0,0,1,3,1,2,0,0,24000,11900,12100,200,3,23000,11900,1,2,3,4,37";
+        check(func__EspLog_RowFieldAt(legacy,10u)==24000u && func__EspLog_RowFieldAt(legacy,14u)==3u,"old 22-field snapshots still restore");
+        check(ESP_LOG_VSTEP_MV==500u,"voltage step is 500 millivolts");
+        check(std::string(ESP_LOG_HEADER).find("v24_mv")==std::string::npos && std::string(ESP_LOG_HEADER).find("batt_pct")==std::string::npos && std::string(ESP_LOG_HEADER).find("imbal_mv")==std::string::npos,"removed storage fields are absent from new header");
+    }
+
+    test_log_codec();
 
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {

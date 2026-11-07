@@ -74,7 +74,7 @@
 #define ESP_HELLO_INTERVAL_MS       2000u
 #define ESP_HELLO_TIMEOUT_MS        6000u
 #define ESP_ESP_ROLE_CALIBRATION    2u
-#define ESP_ESP_FW_VERSION          126u
+#define ESP_ESP_FW_VERSION          138u
 /*
  * [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
  */
@@ -285,7 +285,7 @@
 /* ==================== Live state history log ==================== */
 /*
  * [EN] v1.93 (user order 2026-10-23): every panel keeps a state history on its
- * own flash, one small CSV per calendar day of the phone that opened it.
+ * own flash, one compressed file per calendar day; public downloads are CSV.
  * A row is written only when something really changed (mains, charger
  * step, fault mask, latch flags, battery near the cut band, link lost /
  * back, board restarted) - a steady board writes nothing, so the flash is
@@ -294,7 +294,12 @@
  * the last row is already on flash.
  */
 #define ESP_LOG_MAX_DAYS            30u
-#define ESP_LOG_MAX_ROWS_PER_DAY    400u
+/*
+ * [EN] v1.131 (owner order 2026-11-05: "the cap may be 200 rows"). A row is
+ *      about 101 bytes, so 200 rows plus the header is roughly half the 40 KiB
+ *      budget: one busy day can no longer swallow the whole log.
+ */
+#define ESP_LOG_MAX_ROWS_PER_DAY    200u
 #define ESP_LOG_TAIL_LINES          30u
 #define ESP_LOG_DAY_AUTO            0xFFFFFFFFu
 #define ESP_LOG_DAY_ZERO            0xFFFFFFFEu
@@ -325,11 +330,22 @@
  * the save can never leave a half-written clock behind.
  */
 #define ESP_LOG_CLOCK_TMP_PATH      "/evt-clock.tmp"
+/*
+ * [EN] v1.134 (owner order 2026-11-06: "put that percentage of memory as a menu
+ *      in the log menus so the user can change it too"). The history share is a
+ *      setting now, not a compile-time number: 40..95 percent, 85 by default,
+ *      stored on the panel's own flash so a power cut cannot reset it. Same
+ *      write-then-rename trick as the clock file.
+ */
+#define ESP_LOG_PCT_PATH            "/logpct.txt"
+#define ESP_LOG_PCT_TMP_PATH        "/logpct.tmp"
+#define ESP_LOG_BUDGET_PERCENT_MIN  40u
+#define ESP_LOG_BUDGET_PERCENT_MAX 100u
 #define ESP_LOG_FILE_PREFIX         "/evt-"
 #define ESP_LOG_CUT_BAND_MV         21200u
 #define ESP_LOG_BAND_OFF_MV         21400u
 #define ESP_LOG_VSTEP_MIN_MS        60000u
-#define ESP_LOG_VSTEP_MV             200u
+#define ESP_LOG_VSTEP_MV             500u
 /*
  * [EN] One "still alive" row this often when nothing at all has changed. It was
  * 6 h, which meant a pack lying quietly on battery produced ONE row a
@@ -356,7 +372,45 @@
 #define ESP_LOG_DRAIN_RETRY_MS       30000u
 #define ESP_HTTP_SEND_TIMEOUT_MS     1000u
 #define ESP_HTTP_ROOT_MAX_MS         15000u
-#define ESP_LOG_TOTAL_BUDGET_BYTES     200000u
+/*
+ * [EN] v1.131 (owner decision 2026-11-05: "40 KB in total is set aside for
+ *      this"). The old number was 200 000 bytes - five times the flash - so the
+ *      trim loop it feeds could never fire and the log only stopped when
+ *      LittleFS itself refused the write. This is the real budget now.
+ */
+#define ESP_LOG_TOTAL_BUDGET_BYTES     40000u
+/*
+ * [EN] v1.132 (owner order 2026-11-05): the budget is no longer this fixed
+ *      number - it is a share of whatever file system the ESP was flashed with,
+ *      and this constant is only the FLOOR. Flash the same sketch with a bigger
+ *      LittleFS partition and the history grows by itself, with no code change
+ *      and no data migration.
+ * [EN] v1.135 (owner question 2026-11-06: "should the history cap not be the
+ *      memory that is left, not 95 percent? is the rest of the program not on
+ *      this memory - the code and so on?"). It is not: LittleFS.info() reports
+ *      ONLY the LittleFS region, and the sketch lives in the app region next to
+ *      it, outside anything this file system can see or touch. So the share can
+ *      be 100 percent - everything the file partition has - and the two things
+ *      that are still kept back are one free block (LittleFS needs a block to
+ *      write into) and the bytes /benchlog.csv already holds.
+ */
+#define ESP_LOG_BUDGET_PERCENT        100u
+/*
+ * [EN] v1.133 (owner order 2026-11-06: "calibration matters a lot to me - if it
+ *      does not fit, let it delete the log so it can fit itself"). The 15 percent
+ *      above is not a promise: 15 percent of 40 KiB is 6 KiB, barely one bench
+ *      log header. So the bytes /benchlog.csv really holds are taken off the
+ *      history budget instead, and when the bench log still needs room the oldest
+ *      day files are deleted for it. The calibration table always wins; the
+ *      history is what gives way.
+ */
+/*
+ * [EN] One LittleFS block is always kept free. A write needs a free block to
+ *      land in; with none left the append fails and the row goes to RAM, which
+ *      is the "flash is full" state the panel reported. Trimming one day early
+ *      is the difference between a rolling log and a stopped one.
+ */
+#define ESP_LOG_FREE_RESERVE_BYTES     4096u
 #define ESP_LOG_MIN_INTERVAL_MS     2000u
 /*
  * [EN] A queued mains cut/return is written after this short coalescing
@@ -391,12 +445,10 @@
  */
 #define ESP_LOG_CLOCK_VALID_MAX     4102444800u
 #define ESP_LOG_HEADER \
-    "# state history / تاریخچهٔ وضعیت\n" \
-    "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
-    "# batt_pct: battery percent from the discharge map (param 74/75, factory 21,000..29,000 mV) / درصد باتری از نگاشت دشارژ\n" \
-    "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
-    "# note: 0=none 1=board came back from a low-battery stop 2=link lost 3=link back 4=day full 5=heartbeat 6=manual 7=day start\n" \
-    "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
+    "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2," \
+    "vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma," \
+    "duty1_permille,duty2_permille\n" \
+    "# bits 1 boot 2 mains 4 chg1 8 chg2 16 fault 32 flags 64 band 128 link 256 mode 512 dead 1024 vstep 2048 clock. note 4 dayfull 5 beat 6 manual 7 daystart\n"
 /*
  * [EN] v1.93 (user order 2026-10-23): the state-history card at the bottom of
  * the page took the markup to 464752 bytes, so this deliberate guard is

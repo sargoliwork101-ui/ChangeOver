@@ -35,8 +35,8 @@ stateDiagram-v2
 ## نسخهٔ ماژول‌به‌ماژول (از ۲۰۲۶-۱۰-۰۶)
 
 کتاب `Documentation/System_State_Machine.xlsx` نمای **سیستمی** است: همهٔ
-حالت‌های برنامه در یک جا، مناسب مرور کلی. برای کار روی میز تست، هر ماژول حالا
-کتاب کوچک خودش را دارد — فقط حالت‌های همان ماژول، با همان زبان رنگی و فونت
+حالت‌های برنامه در یک جا، مناسب مرور کلی. برای کار روی میز تست، هر ماژولی که
+کد دارد (۱۳ ماژول؛ `Rtos` کد ماژولی ندارد) کتاب کوچک خودش را دارد — فقط حالت‌های همان ماژول، با همان زبان رنگی و فونت
 وزیرمتن:
 
 | ماژول | فایل |
@@ -52,6 +52,8 @@ stateDiagram-v2
 | جیتر | `Firmware/Modules/Jitter/Jitter_State_Machine.xlsx` |
 | نگهبان اعتبار | `Firmware/Modules/Protection/Protection_State_Machine.xlsx` |
 | اندازه‌گیری | `Firmware/Modules/Measurement/Measurement_State_Machine.xlsx` |
+| رکورد خطاها | `Firmware/Modules/Diag/Diag_State_Machine.xlsx` |
+| قفل خواندن تراشه | `Firmware/Modules/FlashLock/FlashLock_State_Machine.xlsx` |
 
 هر کدام یک برگهٔ «راهنما» دارد که فایل مرجع هر برگه را نام می‌برد و دو لینک
 می‌دهد: به برگهٔ اعتبارسنجی همان ماژول و به همین کتاب سیستمی. در جهت عکس هم،
