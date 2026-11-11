@@ -328,6 +328,41 @@ public:
         (void)fseek(handle, long__here, SEEK_SET);
         return (long__end > 0) ? (size_t)long__end : 0u;
     }
+    size_t write(const uint8_t *uint8_t__ptr_bytes, size_t size_t__count)
+    {
+        if ((handle == NULL) || (uint8_t__ptr_bytes == NULL)) { return 0u; }
+        /* [EN] A full flash refuses the write, exactly like the text path. */
+        if (SIM_BOOL__G__RefuseWrites) { return 0u; }
+        return fwrite(uint8_t__ptr_bytes, 1u, size_t__count, handle);
+    }
+    size_t readBytes(char *char__ptr_buffer, size_t size_t__length)
+    {
+        if ((handle == NULL) || (char__ptr_buffer == NULL)) { return 0u; }
+        return fread(char__ptr_buffer, 1u, size_t__length, handle);
+    }
+    /*
+ * [EN] The log stores binary records now: a torn tail is cut with truncate()
+ * and the reader needs position(). Both exist on the real ESP8266 File, so the
+ * stub must show them or the host tests would miss that path.
+ */
+    bool truncate(uint32_t uint32_t__length)
+    {
+        if (handle == NULL) { return false; }
+        (void)fflush(handle);
+        if (ftruncate(fileno(handle), (off_t)uint32_t__length) != 0) { return false; }
+        long long__here = ftell(handle);
+        if ((long__here < 0) || (long__here > (long)uint32_t__length))
+        {
+            if (fseek(handle, 0, SEEK_END) != 0) { return false; }
+        }
+        return true;
+    }
+    uint32_t position(void)
+    {
+        if (handle == NULL) { return 0u; }
+        long long__here = ftell(handle);
+        return (long__here > 0) ? (uint32_t)long__here : 0u;
+    }
     String readStringUntil(char char__terminator)
     {
         String string__line;

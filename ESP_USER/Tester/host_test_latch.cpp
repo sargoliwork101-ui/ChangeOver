@@ -44,6 +44,34 @@ typedef ESP8266WebServer esp_web_server_t;
 #include <sys/stat.h>
 #include <unistd.h>
 
+/*
+ * [EN] The day file now holds CRC-protected records, so the tests that used to
+ * read raw CSV must decode first. This helper is the test's own reader: it
+ * turns a day file into the CSV text the panel and the download get.
+ */
+static std::string func__T_DayText(const char *char__ptr_path)
+{
+    std::string string__out;
+    File file__day = LittleFS.open(char__ptr_path, "r");
+    if (!file__day) { return string__out; }
+    SimpleLogCodec::State codec;
+    const int int__kind = SimpleLogCodec::begin(file__day, codec);
+    if (int__kind == 1) {
+        char char__row[SIMPLE_LOG_RAM_ROW_MAX];
+        while (SimpleLogCodec::next(file__day, codec)) {
+            const size_t size_t__len = SimpleLogCodec::text(codec, char__row, sizeof(char__row));
+            if (size_t__len > 0u) { string__out.append(char__row, size_t__len); }
+        }
+    } else if (int__kind == 0) {
+        (void)file__day.seek(0u);
+        while (file__day.available() > 0) {
+            string__out += file__day.readStringUntil('\n').c_str();
+            string__out += "\n";
+        }
+    }
+    file__day.close();
+    return string__out;
+}
 /* ==================== نمونه‌های سراسری استاب‌ها ==================== */
 SimSerialLink Serial;
 SimWiFi WiFi;
@@ -1038,17 +1066,22 @@ static void func__T_TestStateHistoryLog(void)
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 4u,
                   "روشن شدن مود دستی یک ردیف می‌نویسد");
-    std::string string__head;
     {
+        unsigned char unsigned_char__head[8] = {0};
+        bool bool__headerOk = false;
         File file__head = LittleFS.open(char__path, "r");
-        while (file__head.available() > 0) {
-            string__head += file__head.readStringUntil('\n').c_str();
-            string__head += "\n";
+        if (file__head) {
+            bool__headerOk = (file__head.readBytes((char *)unsigned_char__head, 8u) == 8u) &&
+                             (memcmp(unsigned_char__head, SimpleLogCodec::header(), 8u) == 0);
+            file__head.close();
         }
-        file__head.close();
+        func__T_Check(bool__headerOk,
+                      "روز تازه با سرصفحهٔ نسخه‌دار و شماره‌دارِ رکوردها ساخته می‌شود");
+        func__T_Check(std::string(SIMPLE_LOG_HEADER).find(",fl,") != std::string::npos,
+                      "ستون بایت عمومی وضعیت در سرصفحهٔ CSV (همان که دانلود می‌دهد) هست");
+        func__T_Check(func__T_DayText(char__path).find(",fl,") == std::string::npos,
+                      "بدنهٔ فایل دیگر متن CSV نیست (فشرده و CRC-دار است)");
     }
-    func__T_Check(string__head.find(",fl,") != std::string::npos,
-                  "ستون بایت عمومی وضعیت در سرصفحهٔ فایل هست");
 
     char char__ptr_out[1024];
     (void)func__SimpleLog_Tail(char__ptr_out, sizeof(char__ptr_out), 0u, 10u);
@@ -1161,15 +1194,7 @@ static void func__T_TestStateHistoryLog(void)
                       "پایین‌رفتن در دشارژ هنوز داخل یک دقیقه ردیف نمی‌سازد");
 
         /* ستون آخر هر ردیف، درصد باتریِ همان لحظه است */
-        std::string string__day;
-        {
-            File file__day = LittleFS.open(char__path, "r");
-            while (file__day.available() > 0) {
-                string__day += file__day.readStringUntil('\n').c_str();
-                string__day += "\n";
-            }
-            file__day.close();
-        }
+        std::string string__day = func__T_DayText(char__path);
         std::string string__last;
         {
             size_t size_t__cut = string__day.rfind('\n', string__day.size() - 2u);
@@ -1828,17 +1853,7 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
         std::string string__text;
 
         func__SimpleLog_PathOf(char__path, func__SimpleLog_TodayCode());
-        {
-            File file__day = LittleFS.open(char__path, "r");
-
-            if (file__day) {
-                while (file__day.available() > 0) {
-                    string__text += file__day.readStringUntil('\n').c_str();
-                    string__text += "\n";
-                }
-                file__day.close();
-            }
-        }
+        string__text = func__T_DayText(char__path);
         bool bool__found = false;
 
         {
@@ -2249,6 +2264,8 @@ static void func__T_TestLogMidnightRollover(void)
     WiFi.mode(WIFI_AP);
 }
 
+#include "host_test_log_codec.h"
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2268,6 +2285,7 @@ int main(void)
     func__T_TestHandshake();
     func__T_TestClearOrphansAndUpdateRow();
     func__T_TestLogMidnightRollover();
+    func__T_TestLogCodec();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

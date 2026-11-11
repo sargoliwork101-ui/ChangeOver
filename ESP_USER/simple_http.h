@@ -876,14 +876,43 @@ static void func__Simple_HttpEventDownload(void)
     }
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", "");
-    while (file__day.available())
     {
-        String string__line = file__day.readStringUntil('\n');
-        if (string__line.length() > 0u)
+        /*
+         * [EN] The day file holds CRC-protected records, so the download is
+         * rebuilt as CSV here, one row at a time, with the column legend in
+         * front. A legacy text file is still streamed exactly as it sits.
+         */
+        SimpleLogCodec::State codec;
+        const int int__kind = SimpleLogCodec::begin(file__day, codec);
+        if (int__kind == 1)
         {
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(string__line);
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(SIMPLE_LOG_HEADER);
+            while (SimpleLogCodec::next(file__day, codec))
+            {
+                char char__row[SIMPLE_LOG_RAM_ROW_MAX];
+                if (SimpleLogCodec::text(codec, char__row, sizeof(char__row)) == 0u)
+                {
+                    continue;
+                }
+                SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__row);
+            }
         }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("\n");
+        else
+        {
+            if (int__kind == 0)
+            {
+                (void)file__day.seek(0u);
+                while (file__day.available())
+                {
+                    String string__line = file__day.readStringUntil('\n');
+                    if (string__line.length() > 0u)
+                    {
+                        SIMPLE_WEB_SERVER_T__G__Server.sendContent(string__line);
+                    }
+                    SIMPLE_WEB_SERVER_T__G__Server.sendContent("\n");
+                }
+            }
+        }
     }
     file__day.close();
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
