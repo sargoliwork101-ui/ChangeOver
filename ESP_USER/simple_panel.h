@@ -1472,7 +1472,8 @@ function renderChargeHistoryList(events){
  let html='';
  for(let i=0;i<shown;i++){
   let e=sorted[i];
-  let dateStr=fmtJalaliFull(e.ts);
+  /* روز هفته حذف شد؛ تاریخ + ساعت می‌ماند */
+  let dateStr=fmtJalaliFull(e.ts).replace(/^\S+ /,'');
   let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
   let color=e.ch===1?'var(--ac)':'var(--ok)';
   html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div></div>';
@@ -2011,11 +2012,6 @@ function evtDlDay(day){
  const a=document.createElement('a');
  a.href='/evt/dl?day='+encodeURIComponent(day);
  a.download='تاریخچه-'+evtDaySh(day)+'.csv';a.click();
-}
-function evtDl(){
- const sel=document.getElementById('evtDay');
- const raw=(sel&&sel.value.trim())||'';
- evtDlDay(raw||evtToday());
 }
 async function evtDlAll(){
  const days=await evtDays();
