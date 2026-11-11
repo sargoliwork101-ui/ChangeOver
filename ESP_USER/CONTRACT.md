@@ -93,7 +93,7 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/evt/fs` | GET | — | JSON filesystem status |
 | `/evt/clean` | POST | Admin session | JSON cleanup result |
 
-LittleFS files: `/wifi.json`, `/charts.json`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
+LittleFS files: `/wifi.json`, `/charts.bin`, `/charts.json` (legacy, read once then removed), `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
 The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
 

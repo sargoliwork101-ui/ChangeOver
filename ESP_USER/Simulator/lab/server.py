@@ -214,6 +214,20 @@ class Board:
             since_full = since_full + 1 if use_delta else 0
             previous = values
         return total
+    def chart_file_bytes(self):
+        """Size of /charts.bin: header, four delta blocks and the CRC16."""
+        total = 8
+        now = int(time.time())
+        for count, step in ((24, 3600), (28, 6 * 3600), (30, 86400), (self.MAX_DAYS, 86400)):
+            total += 2
+            previous = [0, 0, 0, 0]
+            for point in self.chart_points(now, step, count):
+                for field, value in enumerate((point["time"], point["pct"],
+                                               point["vin"], point["vpack"])):
+                    diff = value - previous[field]
+                    total += self.varint_len(diff * 2 if diff >= 0 else -diff * 2 - 1)
+                    previous[field] = value
+        return total + 2
     def chart_points(self, now, step, count):
         out = []
         for i in range(count):
@@ -403,10 +417,10 @@ def findings_data():
         },
         {
             "id": 6, "sev": "medium", "proof": "measured",
-            "title": "ظرفیت تاریخچه: سه ماه جا می‌شود، ولی روزهای پرِ پیوسته بودجه را می‌خورند",
-            "summary": "تاریخچه با رکورد فشرده ذخیره می‌شود و نگهداری به ۹۰ روز رسیده. اندازه‌گیری ۹۰ روز واقعی: ۲۵٬۶۸۴ بایت از بودجهٔ ۱۲۰٬۰۰۰ بایتی (۲۱٪). فقط اگر همهٔ روزها به سقف ۴۰۰ ردیف برسند، بودجه حدود ۱۸ روز را نگه می‌دارد و تریم از قدیمی‌ترین روز شروع می‌کند.",
-            "example": "۹۰ روز شبیه‌سازی‌شده: ۱٬۲۶۱ ردیف، ۲۵٬۶۸۴ بایت (۲۸۵ بایت در روز، ۲۰٫۴ بایت در ردیف) در برابر ۱۰۵٬۷۹۵ بایت CSV. یک روز کاملاً پر: ۶٬۴۱۳ بایت در برابر ۳۳٬۸۲۶ بایت CSV.",
-            "fix": "اگر روزها واقعاً به سقف ۴۰۰ ردیف نزدیک شدند، بودجه به ۲۰۰ کیلوبایت برسد (پارتیشن LittleFS دو مگابایت است).",
+            "title": "روی فلش ۶۴ کیلوبایتی، سه ماه جا می‌شود؛ بودجه هم از خود فلش حساب می‌شود",
+            "summary": "بودجهٔ ثابت ۱۲۰ کیلوبایتی از کل فلش ۶۴ کیلوبایتی بزرگ‌تر بود، پس تریم هرگز کار نمی‌کرد. حالا بودجه = کل فلش منهای ۲۰ کیلوبایتِ فایل‌های دیگر (روی ۶۴ کیلوبایت یعنی ۴۴ کیلوبایت)، و نمودارها هم فقط تغییر هر نمونه را ذخیره می‌کنند.",
+            "example": "۹۰ روز شبیه‌سازی‌شده: تاریخچه ۲۵٬۶۸۴ بایت + نمودارها ۱٬۴۶۵ بایت (در برابر ۴٬۲۶۰ بایت JSON) + بقیهٔ فایل‌ها ۸٬۲۶۹ بایت = ۳۳٬۹۵۳ بایت از ۶۵٬۵۳۶ (۵۲٪).",
+            "fix": "برای روزهای عادی (۱۴ ردیف) کاری لازم نیست؛ فقط اگر روزها به سقف ۴۰۰ ردیف نزدیک شدند پارتیشن بزرگ‌تر لازم است.",
         },
         {
             "id": 7, "sev": "high", "proof": "measured",
@@ -794,12 +808,17 @@ class Handler(BaseHTTPRequestHandler):
             used = sum(size for _day, size in sizes)
             files = [{"name": "/evt-%s.csv" % d, "size": size, "own": 1}
                      for d, size in sizes]
-            files.append({"name": "/users.json", "size": 180, "own": 1})
-            files.append({"name": "/wifi.json", "size": 120, "own": 1})
-            files.append({"name": "/charts.json", "size": 2400, "own": 1})
-            return self.send(json_bytes({"fs": 1, "mountFail": 0, "total": 2093056,
-                                         "used": used + 2700, "files": files,
-                                         "fileBytes": used + 2700, "more": 0}))
+            extra = [("/users.json", 180), ("/wifi.json", 120),
+                     ("/time.json", 42), ("/params.json", 2040),
+                     ("/diag.json", 1180),
+                     ("/charts.bin", BOARD.chart_file_bytes()),
+                     ("/charge_hist.json", 2 + len(BOARD.charge_history) * 36)]
+            for name, size in extra:
+                files.append({"name": name, "size": size, "own": 1})
+                used += size
+            return self.send(json_bytes({"fs": 1, "mountFail": 0, "total": 65536,
+                                         "used": used, "files": files,
+                                         "fileBytes": used, "more": 0}))
         if path in ("/evt/clr", "/evt/format", "/evt/clean") and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))

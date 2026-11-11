@@ -130,7 +130,7 @@ bool SimLittleFS::info(FSInfo &fsInfo__out)
         }
         ::closedir(dir__handle);
     }
-    fsInfo__out.totalBytes = 2097152u;
+    fsInfo__out.totalBytes = SIM_SIZE_T__G__FsTotalBytes;
     fsInfo__out.usedBytes = size_t__used;
     return true;
 }
@@ -2307,6 +2307,165 @@ static void func__T_TestLogMidnightRollover(void)
 
 #include "host_test_log_codec.h"
 
+/* ==================== ۱۰) ذخیرهٔ نمودارها: فقط تغییرها ==================== */
+static void func__T_FillChartSamples(void)
+{
+    uint8_t uint8_t__i;
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_1D_SIZE; uint8_t__i++)
+    {
+        UINT32_T__G__Chart1D_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 3600u);
+        UINT32_T__G__Chart1D_Pct[uint8_t__i] = 55u + (uint32_t)(uint8_t__i % 10u);
+        UINT32_T__G__Chart1D_Vin[uint8_t__i] = 24100u;
+        UINT32_T__G__Chart1D_Vpack[uint8_t__i] = 24000u + ((uint32_t)uint8_t__i * 40u);
+    }
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_7D_SIZE; uint8_t__i++)
+    {
+        UINT32_T__G__Chart7D_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 21600u);
+        UINT32_T__G__Chart7D_Pct[uint8_t__i] = 70u - (uint32_t)(uint8_t__i % 20u);
+        UINT32_T__G__Chart7D_Vin[uint8_t__i] = (uint8_t__i % 2u == 0u) ? 0u : 24150u;
+        UINT32_T__G__Chart7D_Vpack[uint8_t__i] = 23000u + ((uint32_t)uint8_t__i * 30u);
+    }
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_1M_SIZE; uint8_t__i++)
+    {
+        UINT32_T__G__Chart1M_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 86400u);
+        UINT32_T__G__Chart1M_Pct[uint8_t__i] = 30u + (uint32_t)(uint8_t__i % 50u);
+        UINT32_T__G__Chart1M_Vin[uint8_t__i] = 24080u + (uint32_t)(uint8_t__i % 4u) * 10u;
+        UINT32_T__G__Chart1M_Vpack[uint8_t__i] = 22000u + ((uint32_t)uint8_t__i * 60u);
+    }
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_3M_SIZE; uint8_t__i++)
+    {
+        UINT32_T__G__Chart3M_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 86400u);
+        UINT32_T__G__Chart3M_Pct[uint8_t__i] = 40u + (uint32_t)(uint8_t__i % 60u);
+        UINT32_T__G__Chart3M_Vin[uint8_t__i] = (uint8_t__i % 3u == 0u) ? 0u : (24100u + (uint32_t)(uint8_t__i % 7u) * 15u);
+        UINT32_T__G__Chart3M_Vpack[uint8_t__i] = 21000u + (uint32_t)(uint8_t__i % 60u) * 80u;
+    }
+    UINT8_T__G__Chart1D_Count = (uint8_t)SIMPLE_CHART_1D_SIZE;
+    UINT8_T__G__Chart7D_Count = (uint8_t)SIMPLE_CHART_7D_SIZE;
+    UINT8_T__G__Chart1M_Count = (uint8_t)SIMPLE_CHART_1M_SIZE;
+    UINT8_T__G__Chart3M_Count = (uint8_t)SIMPLE_CHART_3M_SIZE;
+    UINT8_T__G__Chart1D_Index = 0u;
+    UINT8_T__G__Chart7D_Index = 0u;
+    UINT8_T__G__Chart1M_Index = 0u;
+    UINT8_T__G__Chart3M_Index = 0u;
+}
+static void func__T_TestChartStorage(void)
+{
+    uint32_t uint32_t__size = 0u;
+    size_t size_t__realTotal = SIM_SIZE_T__G__FsTotalBytes;
+    (void)printf("\n== نمودارها: ذخیرهٔ فشردهٔ تغییرها ==\n");
+    BOOL__G__FsOk = LittleFS.begin();
+    func__Simple_ChartsClear();
+    func__T_FillChartSamples();
+    BOOL__G__ChartsDirty = true;
+    func__Simple_ChartsSave();
+    if (LittleFS.exists(SIMPLE_CHARTS_FILE))
+    {
+        File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "r");
+        if (file__f)
+        {
+            uint32_t__size = (uint32_t)file__f.size();
+            file__f.close();
+        }
+    }
+    func__T_Check((uint32_t__size > (uint32_t)SIMPLE_CHART_FILE_HEADER) &&
+                  (uint32_t__size <= (uint32_t)SIMPLE_CHART_FILE_MAX_BYTES),
+                  "فایل نمودار ساخته می‌شود و داخل سقف خودش می‌ماند");
+    /* همان چهار بازه به‌صورت JSON متنی حدود ۴٬۳۰۰ بایت بود */
+    func__T_Check(uint32_t__size < 1600u,
+                  "چهار بازهٔ کامل (۱۷۲ نقطه) زیر ۱٬۶۰۰ بایت ذخیره می‌شود، نه ۴٬۳۰۰");
+    UINT8_T__G__Chart1D_Count = 0u;
+    UINT8_T__G__Chart7D_Count = 0u;
+    UINT8_T__G__Chart1M_Count = 0u;
+    UINT8_T__G__Chart3M_Count = 0u;
+    func__Simple_ChartsLoad();
+    func__T_Check((UINT8_T__G__Chart1D_Count == (uint8_t)SIMPLE_CHART_1D_SIZE) &&
+                  (UINT8_T__G__Chart7D_Count == (uint8_t)SIMPLE_CHART_7D_SIZE) &&
+                  (UINT8_T__G__Chart1M_Count == (uint8_t)SIMPLE_CHART_1M_SIZE) &&
+                  (UINT8_T__G__Chart3M_Count == (uint8_t)SIMPLE_CHART_3M_SIZE),
+                  "هر چهار بازه با همان تعداد نقطه برمی‌گردند");
+    func__T_Check((UINT32_T__G__Chart3M_Time[(uint8_t)SIMPLE_CHART_3M_SIZE - 1u] ==
+                   (1762300000u + (((uint32_t)SIMPLE_CHART_3M_SIZE - 1u) * 86400u))) &&
+                  (UINT32_T__G__Chart3M_Pct[5] == 45u) &&
+                  (UINT32_T__G__Chart3M_Vin[3] == 0u) &&
+                  (UINT32_T__G__Chart1D_Vpack[7] == 24280u),
+                  "مقدارهای بازیابی‌شده بیت‌به‌بیت همان مقدارهای ذخیره‌شده هستند");
+    {
+        std::string string__bytes;
+        File file__read = LittleFS.open(SIMPLE_CHARTS_FILE, "r");
+        if (file__read)
+        {
+            string__bytes = file__read.readString().c_str();
+            file__read.close();
+        }
+        if (string__bytes.size() > 12u)
+        {
+            string__bytes[12] = (char)(string__bytes[12] ^ 0x5A);
+        }
+        File file__write = LittleFS.open(SIMPLE_CHARTS_FILE, "w");
+        if (file__write)
+        {
+            file__write.print(string__bytes.c_str());
+            file__write.close();
+        }
+    }
+    UINT8_T__G__Chart1D_Count = 0u;
+    UINT8_T__G__Chart7D_Count = 0u;
+    UINT8_T__G__Chart1M_Count = 0u;
+    UINT8_T__G__Chart3M_Count = 0u;
+    func__Simple_ChartsLoad();
+    func__T_Check((UINT8_T__G__Chart1D_Count == 0u) && (UINT8_T__G__Chart3M_Count == 0u),
+                  "فایل نمودار خراب کلاً رد می‌شود و نمودار جعلی نمی‌کشد");
+    LittleFS.remove(SIMPLE_CHARTS_FILE);
+    {
+        File file__legacy = LittleFS.open(SIMPLE_CHARTS_LEGACY_FILE, "w");
+        if (file__legacy)
+        {
+            file__legacy.print("{\"1d\":{\"c\":2,\"pct\":[50,51],\"vin\":[24100,24110],"
+                               "\"vpack\":[25000,25100],\"time\":[1762300000,1762303600]}}");
+            file__legacy.close();
+        }
+    }
+    func__Simple_ChartsLoad();
+    func__T_Check(UINT8_T__G__Chart1D_Count == 2u,
+                  "فایل متنی قدیمی (charts.json) همچنان خوانده می‌شود");
+    BOOL__G__ChartsDirty = true;
+    func__Simple_ChartsSave();
+    func__T_Check(LittleFS.exists(SIMPLE_CHARTS_FILE) &&
+                  (!LittleFS.exists(SIMPLE_CHARTS_LEGACY_FILE)),
+                  "اولین ذخیرهٔ تازه، فایل متنی قدیمی را برمی‌دارد");
+    SIM_SIZE_T__G__FsTotalBytes = 64000u;
+    func__T_Check(func__SimpleLog_BudgetBytes() ==
+                  ((size_t)64000u - (size_t)SIMPLE_LOG_RESERVE_BYTES),
+                  "روی فلش ۶۴ کیلوبایتی بودجهٔ تاریخچه ۴۴ کیلوبایت می‌شود");
+    {
+        char char__ptr_day[SIMPLE_LOG_PATH_MAX];
+        std::string string__day(284u, 'z');
+        (void)func__SimpleLog_Clear();
+        UINT8_T__G__LogIndexCount = 0u;
+        for (uint16_t uint16_t__k = 0u; uint16_t__k < 90u; uint16_t__k++)
+        {
+            uint32_t uint32_t__code = 20260801u + uint16_t__k;
+            func__SimpleLog_PathOf(char__ptr_day, uint32_t__code);
+            File file__day = LittleFS.open(char__ptr_day, "w");
+            if (file__day) { file__day.print(string__day.c_str()); file__day.close(); }
+            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = uint32_t__code;
+            UINT8_T__G__LogIndexCount++;
+        }
+        func__SimpleLog_TrimDays();
+        func__T_Check(UINT8_T__G__LogIndexCount == 90u,
+                      "سه ماه تاریخچهٔ عادی روی همان فلش ۶۴ کیلوبایتی جا می‌شود");
+        for (uint16_t uint16_t__k = 0u; uint16_t__k < 90u; uint16_t__k++)
+        {
+            func__SimpleLog_PathOf(char__ptr_day, 20260801u + uint16_t__k);
+            (void)LittleFS.remove(char__ptr_day);
+        }
+    }
+    SIM_SIZE_T__G__FsTotalBytes = size_t__realTotal;
+    func__T_Check(func__SimpleLog_BudgetBytes() == (size_t)SIMPLE_LOG_TOTAL_BUDGET_BYTES,
+                  "روی فلش بزرگ همان سقف ۱۲۰ کیلوبایتی می‌ماند");
+    func__Simple_ChartsClear();
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2327,6 +2486,7 @@ int main(void)
     func__T_TestClearOrphansAndUpdateRow();
     func__T_TestLogMidnightRollover();
     func__T_TestLogCodec();
+    func__T_TestChartStorage();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

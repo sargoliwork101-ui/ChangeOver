@@ -421,6 +421,9 @@ public:
  * [EN] the real LittleFS calls this type "Dir"; the program uses that name.
  */
 typedef SimDir Dir;
+/* [EN] The size the stub reports for the file system.  The tests shrink it to
+ * a real 64 kB partition; the board reports its own numbers. */
+[[maybe_unused]] static size_t SIM_SIZE_T__G__FsTotalBytes = 2097152u;
 struct FSInfo
 {
     size_t totalBytes = 2097152u;

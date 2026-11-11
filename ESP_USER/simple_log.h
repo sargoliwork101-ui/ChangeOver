@@ -569,6 +569,39 @@ static uint32_t func__SimpleLog_DayBytes(uint32_t uint32_t__dayCode)
     file__day.close();
     return uint32_t__bytes;
 }
+/* [EN] How much the day files may use.  The constant is a ceiling; on a small
+ * file system the room left after the other files wins, so the flash never
+ * fills up and the trim really runs before a write fails. */
+static size_t func__SimpleLog_BudgetBytes(void)
+{
+    size_t size_t__budget = (size_t)SIMPLE_LOG_TOTAL_BUDGET_BYTES;
+    uint32_t uint32_t__total = 0u;
+    if (BOOL__G__FsOk != false)
+    {
+#if defined(ESP32)
+        uint32_t__total = (uint32_t)LittleFS.totalBytes();
+#else
+        FSInfo fsInfo__stat;
+        if (LittleFS.info(fsInfo__stat))
+        {
+            uint32_t__total = (uint32_t)fsInfo__stat.totalBytes;
+        }
+#endif
+    }
+    if (uint32_t__total > (uint32_t)SIMPLE_LOG_RESERVE_BYTES)
+    {
+        uint32_t uint32_t__room = uint32_t__total - (uint32_t)SIMPLE_LOG_RESERVE_BYTES;
+        if (uint32_t__room < (uint32_t)size_t__budget)
+        {
+            size_t__budget = (size_t)uint32_t__room;
+        }
+    }
+    if (size_t__budget < (size_t)SIMPLE_LOG_MIN_BUDGET_BYTES)
+    {
+        size_t__budget = (size_t)SIMPLE_LOG_MIN_BUDGET_BYTES;
+    }
+    return size_t__budget;
+}
 static void func__SimpleLog_TrimDays(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -591,7 +624,7 @@ static void func__SimpleLog_TrimDays(void)
         {
             uint32_t__bytes += func__SimpleLog_DayBytes(UINT32_T__G__LogIndexDay[uint8_t__slot]);
         }
-        if (uint32_t__bytes <= SIMPLE_LOG_TOTAL_BUDGET_BYTES)
+        if (uint32_t__bytes <= (uint32_t)func__SimpleLog_BudgetBytes())
         {
             break;
         }
@@ -2216,6 +2249,7 @@ static bool func__SimpleLog_IsOwnFile(const char *char__ptr_path)
     {
         SIMPLE_WIFI_FILE,
         SIMPLE_CHARTS_FILE,
+        SIMPLE_CHARTS_LEGACY_FILE,
         SIMPLE_USERS_FILE,
         SIMPLE_TIME_FILE,
         SIMPLE_LOG_LAST_PATH,

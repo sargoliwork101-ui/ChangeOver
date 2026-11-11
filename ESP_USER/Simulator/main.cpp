@@ -108,7 +108,7 @@ bool SimLittleFS::info(FSInfo &fsInfo__out)
         }
         closedir(dir__handle);
     }
-    fsInfo__out.totalBytes = 2097152u;
+    fsInfo__out.totalBytes = SIM_SIZE_T__G__FsTotalBytes;
     fsInfo__out.usedBytes = size_t__used;
     return true;
 }
