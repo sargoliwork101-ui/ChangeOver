@@ -71,7 +71,7 @@ def lab_badge():
         'font:12px/1.6 Tahoma,sans-serif;background:#111827;color:#e5e7eb;'
         'border:1px solid #374151;border-radius:10px;padding:6px 10px;'
         'box-shadow:0 6px 20px rgba(0,0,0,.45)">'
-        '\u00b7 30 \u0631\u0648\u0632 \u062f\u0627\u062f\u0647 '
+        '\u00b7 \u06f9\u06f0 \u0631\u0648\u0632 \u062f\u0627\u062f\u0647 '
         '\u0646\u0648\u0627\u0631 \u0634\u06cc\u0645\u06cc\u0648\u0644\u06cc\u062a\u0648\u0631 '
         '<a href="/lab" style="color:#7dd3fc;text-decoration:none">\u06cc\u0627\u0641\u062a\u0647\u200c\u0647\u0627</a>'
         ' \u00b7 <a href="/lab#harness" style="color:#7dd3fc;text-decoration:none">\u0627\u062c\u0631\u0627\u06cc \u0647\u0627\u0631\u0646\u0633</a>'
@@ -111,13 +111,14 @@ class Board:
         self.logs_seeded = False
         self.single_session = False
         self.seed()
-    # ==================== 30 days of history ====================
+    # ==================== 3 months of history ====================
     # The owner asked to see the panel with a long series of data. Everything
     # below is deterministic: the same day always shows the same numbers, so a
     # screenshot today matches a screenshot tomorrow.
+    MAX_DAYS = 90             # mirrors SIMPLE_LOG_MAX_DAYS in simple_config.h
     CYCLE_HOURS = 48          # 8 h charging, 40 h running on the battery
     CHARGE_HOURS = 8
-    SEED_DAYS = 30
+    SEED_DAYS = 90
 
     def state_at(self, stamp):
         """Pack percent, input voltage and pack voltage at one moment."""
@@ -134,11 +135,16 @@ class Board:
 
     def row_at(self, stamp, uptime_s, chg, note, fault, pct, vin, vpack):
         """One CSV row with the same 22 columns the firmware writes."""
+        # both packs hang on the same charger, so they always charge together:
+        # one stage for both channels and both currents non-zero at the same time
+        stage = 0 if vin == 0 else 1 + min(8, max(0, pct - 30) * 8 // 70)
+        i1 = 0 if stage == 0 else 1150 + (pct % 7) * 10
+        i2 = 0 if stage == 0 else 1120 + (pct % 5) * 10
         return ",".join(str(v) for v in [
             stamp, uptime_s, chg, note, 1 if vin else 0,
-            3 if vin else 2, self.stage1 if vin else 0, self.stage2 if vin else 0,
+            3 if vin else 2, stage, stage,
             fault, 0, vpack, 12600, 12900, self.imbalance, self.dead,
-            vin, 12000, 1200 if vin else 0, 900 if vin else 0, 500, 500, pct,
+            vin, 12000, i1, i2, 500, 500, pct,
         ])
 
     def make_day_rows(self, midnight, day_index):
@@ -153,14 +159,12 @@ class Board:
             fault = 0
             if hour == 0:
                 bits |= 0x0001                      # panel powered on
-            if phase == 0:
-                bits |= 0x0002                      # mains came back
-            if phase == self.CHARGE_HOURS:
-                bits |= 0x0002                      # mains gone
-            if phase in (1, 2, 3):
-                bits |= 0x0004                      # channel 1 charging
-            if phase in (4, 5, 6):
-                bits |= 0x0008                      # channel 2 charging
+            if phase < self.CHARGE_HOURS:
+                bits |= 0x000C                     # channel 1 and 2 charging together
+                if phase == 0:
+                    bits |= 0x0002                  # mains came back
+            elif phase == self.CHARGE_HOURS:
+                bits |= 0x0002                     # mains gone
             if hour % 6 == 0:
                 note = 5                            # heartbeat
             if day_index in (3, 11, 23) and hour == 14:
@@ -179,6 +183,37 @@ class Board:
                                         bits, note, fault, pct, vin, vpack))
         return rows
 
+    @staticmethod
+    def varint_len(value):
+        """Bytes SimpleLogCodec::put() would use for one field."""
+        size = 1
+        while value >= 128:
+            value >>= 7
+            size += 1
+        return size
+    def encoded_day_bytes(self, rows):
+        """Size of the compact day file the firmware writes for these rows."""
+        total = 8                            # EVTD header
+        previous = None
+        since_full = 0
+        for row in rows:
+            values = [int(field) for field in row.split(",")]
+            full = sum(self.varint_len(value) for value in values)
+            payload = full
+            if previous is not None:
+                delta = 3                    # change bitmap
+                for index, value in enumerate(values):
+                    if value != previous[index]:
+                        diff = value - previous[index]
+                        delta += self.varint_len(diff * 2 if diff >= 0 else -diff * 2 - 1)
+                use_delta = (since_full + 1) < 16 and delta < full
+                if use_delta:
+                    payload = delta
+            use_delta = payload != full
+            total += payload + 6             # sync + length + kind + CRC16
+            since_full = since_full + 1 if use_delta else 0
+            previous = values
+        return total
     def chart_points(self, now, step, count):
         out = []
         for i in range(count):
@@ -188,7 +223,7 @@ class Board:
         return out
 
     def make_charges(self, now):
-        """One charge event for every charging window in the seeded range."""
+        """One record per channel for every charging window in the seeded range."""
         events = []
         start = now - self.SEED_DAYS * 86400
         hour = int(start // 3600)
@@ -196,14 +231,15 @@ class Board:
         while hour <= end_hour:
             if hour % self.CYCLE_HOURS == 0:
                 stamp = hour * 3600
-                channel = 1 if (hour // self.CYCLE_HOURS) % 3 else 2
-                events.append({"ts": stamp, "ch": channel, "dur": self.CHARGE_HOURS * 3600,
-                               "from": 30, "to": 100})
+                for channel in (1, 2):
+                    events.append({"ts": stamp, "ch": channel,
+                                   "dur": self.CHARGE_HOURS * 3600,
+                                   "from": 30, "to": 100})
             hour += 1
         return events
 
     def seed(self):
-        """30 days of rows, charts, charge events and a few recorded errors."""
+        """Three months of rows, charts, charge events and a few recorded errors."""
         now = int(time.time())
         for day_index in range(self.SEED_DAYS - 1, -1, -1):
             day_start = now - day_index * 86400
@@ -213,7 +249,7 @@ class Board:
         self.chart["1d"] = self.chart_points(now, 3600, 24)
         self.chart["7d"] = self.chart_points(now, 6 * 3600, 28)
         self.chart["1m"] = self.chart_points(now, 86400, 30)
-        self.chart["3m"] = self.chart_points(now, 86400, 30)
+        self.chart["3m"] = self.chart_points(now, 86400, self.SEED_DAYS)
         self.charge_history = self.make_charges(now)
         self.charge_count = len(self.charge_history)
         per_channel = [sum(1 for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
@@ -221,16 +257,16 @@ class Board:
         self.charge_secs = [sum(e["dur"] for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
         self.total_charge_s = sum(e["dur"] for e in self.charge_history)
         self.errors = [
-            {"ts": now - 26 * 86400, "fault": 0x00000201, "vin": 24100, "vpack": 25400,
+            {"ts": now - 84 * 86400, "fault": 0x00000201, "vin": 24100, "vpack": 25400,
              "vlow": 12600, "vhigh": 12900, "s1": 7, "s2": 0},
-            {"ts": now - 12 * 86400, "fault": 0x00000040, "vin": 0, "vpack": 24800,
+            {"ts": now - 41 * 86400, "fault": 0x00000040, "vin": 0, "vpack": 24800,
              "vlow": 12400, "vhigh": 12800, "s1": 0, "s2": 3},
             {"ts": now - 2 * 86400, "fault": 0x00000201, "vin": 24000, "vpack": 25200,
              "vlow": 12500, "vhigh": 12850, "s1": 5, "s2": 0},
         ]
         self.power = [
-            {"off": now - 26 * 86400 + 2100, "on": now - 26 * 86400 + 2220, "dur": 120},
-            {"off": now - 9 * 86400 + 6400, "on": now - 9 * 86400 + 6550, "dur": 150},
+            {"off": now - 84 * 86400 + 2100, "on": now - 84 * 86400 + 2220, "dur": 120},
+            {"off": now - 33 * 86400 + 6400, "on": now - 33 * 86400 + 6550, "dur": 150},
             {"off": now - 3600, "on": now - 3000, "dur": 600},
         ]
         self.logs_seeded = True
@@ -366,11 +402,11 @@ def findings_data():
             "fix": "بررسی نشست برای مسیرهای خواندن حساس (دانلود و عیب‌ها)، تأخیر فزاینده روی ورود، حداقل رمز ۸، و ست‌کردن ساعت فقط با ورود یا با بازهٔ مجاز.",
         },
         {
-            "id": 6, "sev": "high", "proof": "measured",
-            "title": "ظرفیت تاریخچه با عددهای خودش نمی‌خواند",
-            "summary": "سقف ۴۰۰ ردیف در روز و ۳۰ روز تعریف شده، ولی بودجهٔ کل حافظه ۱۲۰ کیلوبایت است. با اندازهٔ واقعی ردیف، روزهای پر فقط حدود ۳ روز جا می‌شوند.",
-            "example": "ردیف واقعی ساخته‌شده با همان تابع پنل: ۸۹ بایت → ۴۰۰ ردیف = ۳۶٬۰۰۰ بایت در روز → ۱۲۰٬۰۰۰ بایت بودجه = ۳ روز کامل.",
-            "fix": "یا سقف ردیف/بودجه هم‌تراز شود (مثلاً ۱۵۰ ردیف در روز) یا در متن به کاربر گفته شود «۳۰ روز فقط با حداکثر ~۹۰ ردیف در روز».",
+            "id": 6, "sev": "medium", "proof": "measured",
+            "title": "ظرفیت تاریخچه: سه ماه جا می‌شود، ولی روزهای پرِ پیوسته بودجه را می‌خورند",
+            "summary": "تاریخچه با رکورد فشرده ذخیره می‌شود و نگهداری به ۹۰ روز رسیده. اندازه‌گیری ۹۰ روز واقعی: ۲۵٬۶۸۴ بایت از بودجهٔ ۱۲۰٬۰۰۰ بایتی (۲۱٪). فقط اگر همهٔ روزها به سقف ۴۰۰ ردیف برسند، بودجه حدود ۱۸ روز را نگه می‌دارد و تریم از قدیمی‌ترین روز شروع می‌کند.",
+            "example": "۹۰ روز شبیه‌سازی‌شده: ۱٬۲۶۱ ردیف، ۲۵٬۶۸۴ بایت (۲۸۵ بایت در روز، ۲۰٫۴ بایت در ردیف) در برابر ۱۰۵٬۷۹۵ بایت CSV. یک روز کاملاً پر: ۶٬۴۱۳ بایت در برابر ۳۳٬۸۲۶ بایت CSV.",
+            "fix": "اگر روزها واقعاً به سقف ۴۰۰ ردیف نزدیک شدند، بودجه به ۲۰۰ کیلوبایت برسد (پارتیشن LittleFS دو مگابایت است).",
         },
         {
             "id": 7, "sev": "high", "proof": "measured",
@@ -748,18 +784,20 @@ class Handler(BaseHTTPRequestHandler):
                                         mime="text/plain; charset=utf-8"))
         if path == "/evt/days":
             days = sorted(BOARD.rows.keys())
-            return self.send(text_bytes(" ".join(days[-30:])))
+            return self.send(text_bytes(" ".join(days[-BOARD.MAX_DAYS:])))
         if path == "/evt/dl":
             return self.send(text_bytes(self.event_text(args.get("day")),
                                         mime="text/csv; charset=utf-8"))
         if path == "/evt/fs":
-            used = sum(len(r) + 1 for rows in BOARD.rows.values() for r in rows)
-            files = [{"name": "/evt-%s.csv" % d, "size": sum(len(r) + 1 for r in rows), "own": 1}
+            sizes = [(d, BOARD.encoded_day_bytes(rows))
                      for d, rows in sorted(BOARD.rows.items())]
+            used = sum(size for _day, size in sizes)
+            files = [{"name": "/evt-%s.csv" % d, "size": size, "own": 1}
+                     for d, size in sizes]
             files.append({"name": "/users.json", "size": 180, "own": 1})
             files.append({"name": "/wifi.json", "size": 120, "own": 1})
             files.append({"name": "/charts.json", "size": 2400, "own": 1})
-            return self.send(json_bytes({"fs": 1, "mountFail": 0, "total": 1048576,
+            return self.send(json_bytes({"fs": 1, "mountFail": 0, "total": 2093056,
                                          "used": used + 2700, "files": files,
                                          "fileBytes": used + 2700, "more": 0}))
         if path in ("/evt/clr", "/evt/format", "/evt/clean") and method == "POST":

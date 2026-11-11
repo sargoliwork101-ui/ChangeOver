@@ -1391,6 +1391,47 @@ static void func__T_TestStateHistoryLog(void)
             (void)LittleFS.remove(char__ptr_day);
         }
 
+    /* سه ماه تاریخچه: ۹۰ روز عادی داخل بودجه جا می‌شود و روز بعدی قدیمی‌ترین را می‌برد */
+    {
+        const uint16_t uint16_t__days = 90u;
+        const uint32_t uint32_t__rowBytes = 300u;   /* اندازهٔ اندازه‌گیری‌شدهٔ یک روز عادی */
+        char char__ptr_day[SIMPLE_LOG_PATH_MAX];
+        std::string string__row(uint32_t__rowBytes - 1u, 'y');
+        (void)func__SimpleLog_Clear();
+        UINT8_T__G__LogIndexCount = 0u;
+        for (uint16_t uint16_t__k = 0u; uint16_t__k < uint16_t__days; uint16_t__k++)
+        {
+            uint32_t uint32_t__code = 20260801u + uint16_t__k;
+            func__SimpleLog_PathOf(char__ptr_day, uint32_t__code);
+            File file__day = LittleFS.open(char__ptr_day, "w");
+            if (file__day) { file__day.print(string__row.c_str()); file__day.close(); }
+            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = uint32_t__code;
+            UINT8_T__G__LogIndexCount++;
+        }
+        func__SimpleLog_TrimDays();
+        func__T_Check(UINT8_T__G__LogIndexCount == (uint8_t)uint16_t__days,
+                      "سه ماه تاریخچهٔ عادی داخل بودجهٔ ۱۲۰ کیلوبایتی جا می‌شود");
+        func__T_Check(UINT32_T__G__LogIndexDay[0] == 20260801u,
+                      "وقتی جا هست، قدیمی‌ترین روز هم می‌ماند");
+        {
+            uint32_t uint32_t__code = 20260801u + uint16_t__days;
+            func__SimpleLog_PathOf(char__ptr_day, uint32_t__code);
+            File file__extra = LittleFS.open(char__ptr_day, "w");
+            if (file__extra) { file__extra.print(string__row.c_str()); file__extra.close(); }
+            UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount] = uint32_t__code;
+            UINT8_T__G__LogIndexCount++;
+        }
+        func__SimpleLog_TrimDays();
+        func__T_Check((UINT8_T__G__LogIndexCount == (uint8_t)uint16_t__days) &&
+                      (UINT32_T__G__LogIndexDay[0] == 20260802u),
+                      "روز نودویکم فقط قدیمی‌ترین روز را حذف می‌کند");
+        for (uint16_t uint16_t__k = 0u; uint16_t__k <= uint16_t__days; uint16_t__k++)
+        {
+            func__SimpleLog_PathOf(char__ptr_day, 20260801u + uint16_t__k);
+            (void)LittleFS.remove(char__ptr_day);
+        }
+    }
+
     /* بدون ساعت هم ذخیره می‌شود: گوشی ممکن است ساعت‌ها بعد وصل شود */
     {
         (void)func__SimpleLog_Clear();

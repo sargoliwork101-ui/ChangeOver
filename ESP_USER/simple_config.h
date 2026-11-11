@@ -113,7 +113,9 @@
 #define SIMPLE_TIME_SYNC_DELAY_MS       3000u
 #define SIMPLE_TIME_RESEND_MS           600000u
 #define SIMPLE_TIME_ADOPT_DIFF_SEC      300u
-#define SIMPLE_LOG_MAX_DAYS             30u
+#define SIMPLE_LOG_MAX_DAYS             90u
+/* [EN] Three months kept.  A realistic day is ~14 rows = ~285 B with the
+ * compact codec, so 90 days stay near 26 kB - far inside the 120 kB budget. */
 #define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
 #define SIMPLE_LOG_TAIL_LINES           30u
 #define SIMPLE_LOG_DAY_AUTO             0xFFFFFFFFu
