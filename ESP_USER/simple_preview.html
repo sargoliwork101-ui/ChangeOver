@@ -1323,8 +1323,7 @@ canvas{height:auto;max-width:100%}
   <div class="ti">تاریخچهٔ وضعیت (لاگ)</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
    <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
-   <button class="btn" type="button" onclick="evtFs(1)">حافظهٔ ESP</button>
-   <button class="btn" type="button" onclick="evtDlAll()">دانلود همهٔ روزها</button>
+   <button class="btn" type="button" title="حافظهٔ ESP" onclick="evtFs(1)" style="padding:0;width:34px;min-height:34px">💾</button>
   </div>
   <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
   <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
@@ -1561,7 +1560,7 @@ function fmtJalaliFull(ts){
  let d=new Date(ts*1000); let j=jFromDate(d);
  return J_WEEKDAYS[d.getDay()]+' '+faDigits(j[2]+' '+J_MONTHS[j[1]-1]+' '+j[0])+' ساعت '+faDigits(p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds()));
 }
-/* محور تاریخچهٔ شارژ با تاریخ واقعی، نه روز هفته */
+/* محور: تاریخ واقعی، نه روز هفته */
 function fmtJalaliSpan(ts,spanSec){ if(!ts||ts<1000000000) return '';
  let d=new Date(ts*1000), j=jFromDate(d);
  if(spanSec<=2*86400) return faDigits(p2(d.getHours())+':'+p2(d.getMinutes()));
@@ -2283,7 +2282,7 @@ function renderChargeHistoryList(events){
  let html='';
  for(let i=0;i<shown;i++){
   let e=sorted[i];
-  /* روز هفته حذف شد؛ تاریخ + ساعت می‌ماند */
+  /* بی‌روزِ هفته: تاریخ + ساعت */
   let dateStr=fmtJalaliFull(e.ts).replace(/^\S+ /,'');
   let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
   let color=e.ch===1?'var(--ac)':'var(--ok)';
@@ -2779,6 +2778,7 @@ async function evtFs(toggle){
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
   h+='<button class="btn" type="button" onclick="evtFs(0)">بروزرسانی فهرست</button> ';
+  h+='<button class="btn" type="button" title="دانلود همهٔ روزها" onclick="evtDlAll()" style="padding:0;width:30px;min-height:30px;margin-inline-start:4px">⬇</button>';
   if(!j.fs){
    h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
   }else{
