@@ -12,7 +12,7 @@ static const char SIMPLE_PANEL_HTML[] PROGMEM = R"rawliteral(
 :root{--r:20px;--r-sm:12px;--r-full:999px}
 body[data-theme="0"]{
  --bg:#070a10;--bg2:#0d121e;--bg3:#111827;
- --cd:#121826;--cd2:#192339;--cd3:#1e2c45;
+ --cd:rgba(18,24,38,.60);--cd2:rgba(25,35,57,.72);--cd3:rgba(30,44,69,.80);
  --in:#0e1420;--in2:#151e2f;
  --ln:#1c2940;--ln2:#253652;--ln3:#2e4263;
  --tx:#eef2f8;--tx2:#b8c2d4;--mu:#6e7d98;--mu2:#4b5a73;
@@ -65,7 +65,7 @@ nav button.a{background:var(--cd3);color:var(--tx);border:1px solid var(--ln2);b
 nav button.a::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:2px;background:var(--ac);box-shadow:var(--acglow)}
 /* Main */
 main{display:grid;gap:16px}
-.cd{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 40%),var(--cd);border:1px solid var(--ln);border-radius:var(--r);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:.22s}
+.cd,button.btn,select,input,nav,.half-stat{backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%)}.cd{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 42%),var(--cd);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:.22s}
 .cd:hover{border-color:var(--ln2);box-shadow:0 16px 48px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.05) inset}
 .cd::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);pointer-events:none}
 .ti{font-size:10.5px;font-weight:800;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:14px}
@@ -188,6 +188,7 @@ canvas:hover{border-color:var(--ln2)}
 .log .row:last-child{border:0}
 input,select{width:100%;background:var(--in);color:var(--tx);border:1px solid var(--ln);border-radius:10px;padding:11px 13px;font:12.5px Vazirmatn;transition:.18s}
 input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 4px var(--acbg);outline:0;background:var(--cd)}
+.axl{font-size:10px;color:var(--mu);margin-top:8px;direction:ltr}.mb2{font-size:10px;color:var(--mu);margin-bottom:8px}.lh6{font-size:11px;color:var(--mu);line-height:1.6}.mu{font-size:11px;color:var(--mu)}.mu2{font-size:10px;color:var(--mu)}.bs{padding:5px 10px;font-size:11px;min-height:26px}.icog{display:inline-flex;gap:6px}.btn.ico{padding:0;width:36px;min-height:36px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn.ico .lbl{display:none;font-size:12px;font-weight:800}@media(min-width:900px){.btn.ico{width:auto;padding:0 13px}.btn.ico .lbl{display:inline}}.bxs{padding:4px 10px;font-size:10px;min-height:26px}
 button.btn{border:1px solid var(--ln);border-radius:10px;padding:11px 18px;font-weight:800;cursor:pointer;min-height:40px;font-size:12.5px;transition:.18s cubic-bezier(.2,.8,.2,1);background:var(--cd2);color:var(--tx);position:relative;overflow:hidden}
 button.btn::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.06),transparent);opacity:0;transition:.2s;pointer-events:none}
 button.btn:hover{border-color:var(--ln2);transform:translateY(-1px);box-shadow:var(--sh2)} button.btn:hover::before{opacity:1}
@@ -512,7 +513,11 @@ canvas{height:auto;max-width:100%}
   <div class="ti">تاریخچهٔ وضعیت (لاگ)</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
    <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
-   <button class="btn" type="button" title="حافظهٔ ESP" onclick="evtFs(1)" style="padding:0;width:34px;min-height:34px">💾</button>
+   <span class="icog">
+    <button class="btn ico" type="button" title="حافظهٔ ESP" onclick="evtFs(1)">💾<span class="lbl">حافظهٔ ESP</span></button>
+    <button class="btn ico" type="button" title="بروزرسانی فهرست" onclick="evtFs(0)">⟳<span class="lbl">بروزرسانی</span></button>
+    <button class="btn ico" type="button" title="دانلود همهٔ روزها" onclick="evtDlAll()">⬇<span class="lbl">دانلود همه</span></button>
+   </span>
   </div>
   <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
   <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
@@ -535,7 +540,7 @@ canvas{height:auto;max-width:100%}
   <div class="cd">
    <div class="ti">درصد شارژ پک - با زمان واقعی
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
-     <span style="font-size:10px;color:var(--mu)">بازه:</span>
+     <span class="mu2">بازه:</span>
      <div class="segmented sm" id="segPct" style="min-width:200px"><div class="seg-indicator" id="segPctIndicator" style="width:calc(25% - 3px);right:4px"></div>
       <button class="a" id="pct1d" onclick="setChartRange('pct','1d')">۱ روزه</button>
       <button id="pct7d" onclick="setChartRange('pct','7d')">۷ روزه</button>
@@ -544,21 +549,21 @@ canvas{height:auto;max-width:100%}
      </div>
     </div>
    </div>
-   <div id="pctAxisInfo" style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی: زمان واقعی</div>
+   <div id="pctAxisInfo" class="mb2">محور افقی: زمان واقعی</div>
    <div class="canvas-wrap"><canvas id="cPct" width="700" height="180"></canvas></div>
-   <div id="cPctLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="cPctLabels" class="axl"></div>
    <div id="pctInfo" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
     <span class="bdg ac" id="pctCurrent">-- ٪</span>
     <span class="bdg" id="pctRangeInfo">--</span>
     <span style="display:flex;gap:6px;margin-right:auto">
-     <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('pct')">خروجی CSV</button>
+     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="exportCsv('pct')">خروجی CSV</button>
     </span>
    </div>
   </div>
   <div class="cd">
    <div class="ti">تاریخچه شارژ - کی و چه ساعتی شارژ شده
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
-     <span style="font-size:10px;color:var(--mu)">بازه:</span>
+     <span class="mu2">بازه:</span>
      <div class="segmented sm" id="segCharge" style="min-width:200px"><div class="seg-indicator" id="segChargeIndicator" style="width:calc(25% - 3px);right:4px"></div>
       <button class="a" id="charge1d" onclick="setChartRange('charge','1d')">۱ روزه</button>
       <button id="charge7d" onclick="setChartRange('charge','7d')">۷ روزه</button>
@@ -569,19 +574,19 @@ canvas{height:auto;max-width:100%}
    </div>
    <div style="font-size:10.5px;color:var(--mu);margin-bottom:10px;line-height:1.6">نمودار نشان می‌دهد هر باتری در چه روز و ساعتی شارژ کامل شده</div>
    <div class="canvas-wrap"><canvas id="cCharge" width="700" height="200"></canvas></div>
-   <div id="cChargeLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="cChargeLabels" class="axl"></div>
    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
     <span id="chargeCap" style="font-size:11px;color:var(--mu)">شارژهای اخیر</span>
    </div>
    <div style="display:flex;gap:6px;margin-top:10px">
-    <button class="btn" title="دانلود خروجی CSV تاریخچه شارژ" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('charge')">خروجی CSV</button>
+    <button class="btn bxs" title="دانلود خروجی CSV تاریخچه شارژ"  onclick="exportCsv('charge')">خروجی CSV</button>
    </div>
    <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
   </div>
   <div class="cd">
    <div class="ti">ولتاژ ورودی و پک - دو نمودار روی یک محور با زمان واقعی
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-     <span style="font-size:10px;color:var(--mu)">بازه:</span>
+     <span class="mu2">بازه:</span>
      <div class="segmented sm" id="segVolt" style="min-width:200px"><div class="seg-indicator" id="segVoltIndicator" style="width:calc(25% - 3px);right:4px"></div>
       <button class="a" id="volt1d" onclick="setChartRange('volt','1d')">۱ روزه</button>
       <button id="volt7d" onclick="setChartRange('volt','7d')">۷ روزه</button>
@@ -590,14 +595,14 @@ canvas{height:auto;max-width:100%}
      </div>
      <span class="bdg" style="background:rgba(91,141,239,.15);color:#5b8def;border-color:rgba(91,141,239,.3)">Vin - ورودی</span>
      <span class="bdg" style="background:rgba(30,230,160,.15);color:#1ee6a0;border-color:rgba(30,230,160,.3)">Vpack - پک باتری</span>
-     <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('volt')">خروجی CSV</button>
+     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="exportCsv('volt')">خروجی CSV</button>
     </div>
    </div>
-   <div id="voltAxisInfo" style="font-size:10px;color:var(--mu);margin-bottom:8px">محور عمودی: خودکار از دادهٔ همین بازه - محور افقی: زمان واقعی</div>
+   <div id="voltAxisInfo" class="mb2">محور عمودی: خودکار از دادهٔ همین بازه - محور افقی: زمان واقعی</div>
    <div class="canvas-wrap" style="position:relative">
     <canvas id="cVolt" width="700" height="200"></canvas>
    </div>
-   <div id="cVoltLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="cVoltLabels" class="axl"></div>
    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap;gap:8px"><span id="voltRangeInfo">--</span><span id="voltMinMax">--</span><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
   </div>
     <div class="cd"><div class="ti">۲۰ قطع و وصل آخر برق شهر</div><div id="powerLog" class="log">--</div></div>
@@ -609,7 +614,7 @@ canvas{height:auto;max-width:100%}
     <div class="ti">وای‌فای</div>
     <div class="form">
      <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
-     <div style="font-size:11px;color:var(--mu);line-height:1.6">تغییر نام و رمز وای‌فای از این پنل انجام نمی‌شود.</div>
+     <div class="lh6">تغییر نام و رمز وای‌فای از این پنل انجام نمی‌شود.</div>
     </div>
    </div>
 
@@ -618,18 +623,18 @@ canvas{height:auto;max-width:100%}
     <div class="form">
      <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:Vazirmatn">--</b></div>
      <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:Vazirmatn">--</b></div>
-     <div style="font-size:11px;color:var(--mu);line-height:1.6">تنظیم ساعت از این پنل انجام نمی‌شود.</div>
+     <div class="lh6">تنظیم ساعت از این پنل انجام نمی‌شود.</div>
     </div>
    </div>
 
    <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
    <div class="cd" id="adminCard" hidden>
     <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="admLogout()">خروج</button></div>
-    <div class="arow"><span>ساعت برد</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admClock()">همگام با این گوشی</button></div>
-    <div class="arow"><span>قفل خطا</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:5},'قفل خطا ریست شد')">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد')">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد')">ریست ضعیف</button></div>
-    <div class="arow"><span>فایل لاگ</span><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/snap',{},'عکس لحظه ثبت شد')">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/clr',{},'همهٔ لاگ‌ها پاک شد')">پاک‌کردن همهٔ لاگ‌ها</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl" onclick="return admDl(this)">دانلود</a></div>
-    <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admWifi()">ذخیره</button></div>
-    <div class="arow"><span>رمز مدیر</span><input id="admOld" type="password" placeholder="رمز فعلی"><input id="admNew" type="password" placeholder="رمز تازه"><input id="admNew2" type="password" placeholder="تکرار رمز تازه"><button class="btn" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPass()">تغییر</button></div>
+    <div class="arow"><span>ساعت برد</span><button class="btn bs"  onclick="admClock()">همگام با این گوشی</button></div>
+    <div class="arow"><span>قفل خطا</span><button class="btn bs"  onclick="admPost('/latch/reset',{n:5},'قفل خطا ریست شد')">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد')">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد')">ریست ضعیف</button></div>
+    <div class="arow"><span>فایل لاگ</span><button class="btn bs"  onclick="admPost('/evt/snap',{},'عکس لحظه ثبت شد')">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/clr',{},'همهٔ لاگ‌ها پاک شد')">پاک‌کردن همهٔ لاگ‌ها</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl" onclick="return admDl(this)">دانلود</a></div>
+    <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn bs"  onclick="admWifi()">ذخیره</button></div>
+    <div class="arow"><span>رمز مدیر</span><input id="admOld" type="password" placeholder="رمز فعلی"><input id="admNew" type="password" placeholder="رمز تازه"><input id="admNew2" type="password" placeholder="تکرار رمز تازه"><button class="btn bs"  onclick="admPass()">تغییر</button></div>
     <div class="arow"><span>تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">عیب‌یابی</option></select><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admClear()">پاک‌کردن</button></div>
     <div class="gmsg" id="admCardMsg"></div>
    </div>
@@ -1475,7 +1480,7 @@ function renderChargeHistoryList(events){
   let dateStr=fmtJalaliFull(e.ts).replace(/^\S+ /,'');
   let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
   let color=e.ch===1?'var(--ac)':'var(--ok)';
-  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div></div>';
+  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span class="mu">'+dateStr+'</span></div></div>';
  }
  div.innerHTML=html;
 }
@@ -1758,7 +1763,7 @@ function renderDiag(j){
  let errDiv=document.getElementById('diagErrors');
  if(errDiv){
   if(!j.errors || j.errors.length==0) errDiv.textContent='خطایی ثبت نشده - سیستم سالم';
-  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span style="font-size:11px;color:var(--mu)">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span style="font-size:11px;color:var(--mu)">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
+  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span class="mu">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span class="mu">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
  }
  let pDiv=document.getElementById('powerLog');
  if(pDiv){
@@ -1966,8 +1971,7 @@ async function evtFs(toggle){
   const files=Array.isArray(j.files)?j.files:[];
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
-  h+='<button class="btn" type="button" onclick="evtFs(0)">بروزرسانی فهرست</button> ';
-  h+='<button class="btn" type="button" title="دانلود همهٔ روزها" onclick="evtDlAll()" style="padding:0;width:30px;min-height:30px;margin-inline-start:4px">⬇</button>';
+
   if(!j.fs){
    h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
   }else{
