@@ -303,8 +303,10 @@ static void func__Simple_HandleFrame(void)
             uint8_t uint8_t__i;
             for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
             {
-                uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
-                if (uint8_t__idx >= SIMPLE_DIAG_MAX_ERRORS) break;
+                uint16_t uint16_t__slot = (uint16_t)uint8_t__start + (uint16_t)uint8_t__i;
+                uint8_t uint8_t__idx;
+                if (uint16_t__slot >= (uint16_t)SIMPLE_DIAG_MAX_ERRORS) break;
+                uint8_t__idx = (uint8_t)uint16_t__slot;
                 if ((uint16_t__offset + 32u) > UINT16_T__G__RxLen) break;
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].timestamp = func__Simple_ReadU32(uint8_t__ptr_payload, uint16_t__offset);
                 SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].faultMask = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 4u));
@@ -325,8 +327,10 @@ static void func__Simple_HandleFrame(void)
             uint8_t uint8_t__i;
             for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
             {
-                uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
-                if (uint8_t__idx >= SIMPLE_DIAG_MAX_POWER_EVENTS) break;
+                uint16_t uint16_t__slot = (uint16_t)uint8_t__start + (uint16_t)uint8_t__i;
+                uint8_t uint8_t__idx;
+                if (uint16_t__slot >= (uint16_t)SIMPLE_DIAG_MAX_POWER_EVENTS) break;
+                uint8_t__idx = (uint8_t)uint16_t__slot;
                 if ((uint16_t__offset + 12u) > UINT16_T__G__RxLen) break;
                 SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].offTime = func__Simple_ReadU32(uint8_t__ptr_payload, uint16_t__offset);
                 SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].onTime = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 4u));

@@ -85,7 +85,7 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/clock` | POST | `sec`, optional `tz` | JSON result and current seconds |
 | `/evt` | GET | Optional `day` | Plain-text event-log tail |
 | `/evt/days` | GET | — | Plain-text available days |
-| `/evt/dl` | GET | Optional `day` | CSV download |
+| `/evt/dl` | GET | Optional `day` (8 digits), `all=1` for every day | CSV download |
 | `/evt/clr` | POST | Admin session | JSON clear result |
 | `/evt/snap` | POST | — | JSON log/filesystem snapshot |
 | `/evt/format` | POST | Admin session | Plain-text format result |

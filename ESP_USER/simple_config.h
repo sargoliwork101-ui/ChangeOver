@@ -106,6 +106,9 @@
 #define SIMPLE_USER_NAME_MAX            24u
 #define SIMPLE_USER_PASS_MAX            32u
 #define SIMPLE_USER_PASS_MIN            4u
+#define SIMPLE_LOGIN_FAIL_LIMIT         5u
+#define SIMPLE_LOGIN_BLOCK_MS           30000u
+#define SIMPLE_LOGIN_BLOCK_MAX_MS       300000u
 #define SIMPLE_USERS_FILE               "/users.json"
 #define SIMPLE_SESSION_TIMEOUT_MS       1800000u
 #define SIMPLE_SESSION_COOKIE           "co_sess"

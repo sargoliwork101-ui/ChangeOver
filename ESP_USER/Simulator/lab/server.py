@@ -801,6 +801,9 @@ class Handler(BaseHTTPRequestHandler):
             days = sorted(BOARD.rows.keys())
             return self.send(text_bytes(" ".join(days[-BOARD.MAX_DAYS:])))
         if path == "/evt/dl":
+            if args.get("all") not in (None, "", "0"):
+                return self.send(text_bytes(self.event_text_all(),
+                                            mime="text/csv; charset=utf-8"))
             return self.send(text_bytes(self.event_text(args.get("day")),
                                         mime="text/csv; charset=utf-8"))
         if path == "/evt/fs":
@@ -832,6 +835,14 @@ class Handler(BaseHTTPRequestHandler):
                 BOARD.row(int(time.time()), 0, 6))
             return self.send(json_bytes({"ok": 1}))
         return self.send(json_bytes({"ok": 0, "e": "unknown", "path": path}, 404))
+    def event_text_all(self):
+        """Every stored day behind one legend, oldest first (mirrors /evt/dl?all=1)."""
+        one = self.event_text(BOARD.today())
+        header = "".join(line + "\n" for line in one.splitlines() if line.startswith("#"))
+        rows = []
+        for day in sorted(BOARD.rows):
+            rows.extend(BOARD.rows[day])
+        return header + "\n".join(rows) + "\n"
     def event_text(self, day):
         header = (
             "# \u062a\u0627\u0631\u06cc\u062e\u0686\u0647\u0654 \u0648\u0636\u0639\u06cc\u062a / state history\n"

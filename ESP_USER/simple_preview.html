@@ -2704,7 +2704,7 @@ function evtParse(line){
 }
 /* v1.99: هر تکه از خط در span خودش می‌نشیند؛ عدد و واژهٔ انگلیسی جدا نگه داشته
    می‌شوند تا متن راست‌به‌چپ قاطی نشود. [EN] every piece in its own span, bidi-isolated. */
-const evtIso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
+const evtIso=s=>String(s==null?'':s).split(/([0-9A-Za-z][0-9A-Za-z.:%-]*)/).map((x,i)=>i%2?'<span class="lt">'+evtEsc(x)+'</span>':evtEsc(x)).join('');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
 let evtBusy=false,evtClkBusy=false;
 async function evtHttp(u,m,ms){
@@ -2827,17 +2827,10 @@ function evtDlDay(day){
  a.href='/evt/dl?day='+encodeURIComponent(day);
  a.download='تاریخچه-'+evtDaySh(day)+'.csv';a.click();
 }
-async function evtDlAll(){
- const days=await evtDays();
- if(!days.length){alert('تاریخچه‌ای برای دانلود نیست.');return;}
- let out='';
- for(const d of days){
-  const r=await evtHttp('/evt/dl?day='+d,'GET',5000);
-  out+='# '+evtDayFa(d)+'\n'+(await r.text());
- }
+function evtDlAll(){
+ /* یک درخواست برای همهٔ روزها؛ پنل قبلاً ۹۰ دانلود جدا می‌زد و مرورگر بقیه را می‌بست */
  const a=document.createElement('a');
- a.href=URL.createObjectURL(new Blob([out],{type:'text/csv;charset=utf-8'}));
- a.download='تاریخچه-کامل.csv';a.click();URL.revokeObjectURL(a.href);
+ a.href='/evt/dl?all=1';a.download='تاریخچه-کامل.csv';a.click();
 }
 async function evtTick(){
  if(document.hidden||evtBusy)return;

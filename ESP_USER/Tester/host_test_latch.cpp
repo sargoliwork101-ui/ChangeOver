@@ -2592,6 +2592,127 @@ static void func__T_TestSpaceReclaim(void)
     SIM_SIZE_T__G__FsTotalBytes = uint32_t__realTotal;
     BOOL__G__LogScanValid = false;
 }
+/* ==================== ۱۴) بازبینی کل کد: بستن در ورود، هش قدیمی، بستهٔ خارج از محدوده، JSON ==================== */
+static void func__T_TestReviewFixes(void)
+{
+    uint8_t uint8_t__k;
+    (void)printf("\n== بازبینی: ورود، هش قدیمی، آفست بسته، JSON سالم ==\n");
+    BOOL__G__FsOk = true;
+
+    /* ۱) پنج رمز اشتباه پشت‌سرهم در ورود را می‌بندد */
+    func__Simple_AuthLogout();
+    func__Simple_LoginClear();
+    for (uint8_t__k = 0u; uint8_t__k < (uint8_t)(SIMPLE_LOGIN_FAIL_LIMIT - 1u); uint8_t__k++)
+    {
+        (void)func__Simple_AuthLogin("admin", "wrong-pass");
+    }
+    func__T_Check(func__Simple_AuthLogin("admin", "wrong-pass") == -2,
+                  "پنجمین رمز اشتباه، ورود را موقتاً می‌بندد");
+    func__T_Check(func__Simple_AuthLogin("admin", "admin") == -2,
+                  "در مدت بستن، حتی رمز درست هم پذیرفته نمی‌شود");
+    func__Simple_LoginClear();
+    func__T_Check(func__Simple_AuthLogin("admin", "admin") == 1,
+                  "پس از پایان مهلت، ورود درست دوباره کار می‌کند");
+    func__Simple_AuthLogout();
+
+    /* ۲) هش قدیمی ۸ رقمی دیگر راه ورود نیست */
+    func__Simple_AuthDefaults();
+    (void)snprintf(SIMPLE_USER_T__G__Users[0].passHash,
+                   sizeof(SIMPLE_USER_T__G__Users[0].passHash), "%s", "ABCD1234");
+    func__T_Check(func__Simple_VerifyUserPass("admin", "admin") == false,
+                  "هش ۸ رقمی نسل قبل دیگر پذیرفته نمی‌شود");
+    func__Simple_AuthDefaults();
+    func__T_Check(func__Simple_VerifyUserPass("admin", "admin") != false,
+                  "رمز پیش‌فرض با هش کامل ۶۴ رقمی کار می‌کند");
+
+    /* ۳) بستهٔ دیاگ با شروع خارج از محدوده، هیچ خانه‌ای را خراب نمی‌کند */
+    for (uint8_t__k = 0u; uint8_t__k < SIMPLE_DIAG_MAX_ERRORS; uint8_t__k++)
+    {
+        SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__k].timestamp = 0xDEADBEEFu;
+        SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__k].faultMask = 0xDEADBEEFu;
+    }
+    UINT8_T__G__RxType = (uint8_t)SIMPLE_MSG_DIAG_DATA;
+    UINT8_T__G__RxPayload[0] = 1u;
+    UINT8_T__G__RxPayload[1] = 250u;   /* start beyond the table */
+    UINT8_T__G__RxPayload[2] = 10u;
+    UINT16_T__G__RxLen = (uint16_t)(3u + 10u * 32u);
+    BOOL__G__DiagClearPending = false;
+    func__Simple_HandleFrame();
+    {
+        bool bool__clean = true;
+        for (uint8_t__k = 0u; uint8_t__k < SIMPLE_DIAG_MAX_ERRORS; uint8_t__k++)
+        {
+            if (SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__k].timestamp != 0xDEADBEEFu)
+            {
+                bool__clean = false;
+            }
+        }
+        func__T_Check(bool__clean, "بستهٔ دیاگ با شمارهٔ خانهٔ خارج از جدول، هیچ رکوردی را بازنویسی نمی‌کند");
+    }
+
+    /* ۴) تله‌متری همیشه JSON سالم است */
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpTelemetry();
+    {
+        const std::string string__body = SIMPLE_WEB_SERVER_T__G__Server.simBody();
+        func__T_Check((string__body.size() > 2u) && (string__body.front() == '{') &&
+                      (string__body.back() == '}') &&
+                      (string__body.find("\"t\":[") != std::string::npos),
+                      "پاسخ /t با آکولاد باز و بسته و آرایهٔ t کامل می‌آید");
+    }
+
+    /* ۵) دانلود همهٔ روزها با یک درخواست */
+    {
+        char char__row[256];
+        uint8_t uint8_t__d;
+        (void)func__SimpleLog_Clear();
+        for (uint8_t__d = 0u; uint8_t__d < 2u; uint8_t__d++)
+        {
+            uint32_t uint32_t__day = 20261101u + (uint32_t)uint8_t__d;
+            (void)func__SimpleLog_PrepareDayFile(uint32_t__day);
+            func__Simple_TimeSet(1762000000u + ((uint32_t)uint8_t__d * 86400u), false);
+            func__SimpleLog_BuildRow(char__row, sizeof(char__row), 0x0001u, 0u);
+            (void)func__SimpleLog_AppendRow(uint32_t__day, char__row);
+        }
+        BOOL__G__LogScanValid = false;
+        (void)func__SimpleLog_ScanDays(true);
+        SIMPLE_WEB_SERVER_T__G__Server.simClear();
+        func__Simple_HttpDownloadAllDays();
+        {
+            const std::string string__all = SIMPLE_WEB_SERVER_T__G__Server.simBody();
+            size_t size_t__rows = 0u;
+            size_t size_t__pos = 0u;
+            while ((size_t__pos = string__all.find('\n', size_t__pos)) != std::string::npos)
+            {
+                size_t__pos++;
+                if ((size_t__pos < string__all.size()) && (string__all[size_t__pos] != '#'))
+                {
+                    size_t__rows++;
+                }
+            }
+            func__T_Check((size_t__rows >= 2u) &&
+                          (string__all.find(SIMPLE_LOG_HEADER) != std::string::npos),
+                          "دانلود همهٔ روزها، همهٔ ردیف‌ها را با یک سرستون می‌دهد");
+        }
+        (void)func__SimpleLog_Clear();
+    }
+
+    /* ۶) نمودارها با همان قالب چهار آرایه برمی‌گردند */
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpCharts();
+    {
+        const std::string string__chart = SIMPLE_WEB_SERVER_T__G__Server.simBody();
+        func__T_Check((string__chart.find("\"range\":\"1d\"") != std::string::npos) &&
+                      (string__chart.find("\"pct\":[") != std::string::npos) &&
+                      (string__chart.find("\"vin\":[") != std::string::npos) &&
+                      (string__chart.find("\"vpack\":[") != std::string::npos) &&
+                      (string__chart.find("\"time\":[") != std::string::npos),
+                      "نمودار همان قالب چهار آرایه را دارد");
+    }
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2616,6 +2737,7 @@ int main(void)
     func__T_TestBootClock();
     func__T_TestDiagChunkFullLength();
     func__T_TestSpaceReclaim();
+    func__T_TestReviewFixes();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

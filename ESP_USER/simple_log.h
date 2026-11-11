@@ -2204,6 +2204,12 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
         func__SimpleLog_PathOf(char__ptr_path, uint32_t__chosen);
         if (LittleFS.exists(char__ptr_path) == false)
         {
+            /* [EN] no file for today yet: read the newest day that exists, after
+               a real scan (a cache left over from the boot may be empty). */
+            if ((UINT8_T__G__LogIndexCount == 0u) || (BOOL__G__LogScanValid == false))
+            {
+                (void)func__SimpleLog_ScanDays(true);
+            }
             if (UINT8_T__G__LogIndexCount == 0u)
             {
                 return func__SimpleLog_TailRamOnly(char__ptr_out, size_t__outSize,
@@ -2432,12 +2438,12 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
             {
                 char char__rootPath[40];
                 char char__safeName[40];
-                uint32_t uint32_t__day = 0u;
+                uint32_t uint32_t__fileDay = 0u;
                 uint32_t uint32_t__fsize = (uint32_t)file__entry.size();
                 if ((func__SimpleLog_ToRootPath(file__entry.name(),
                                                char__rootPath,
                                                sizeof(char__rootPath)) != false) &&
-                    (func__SimpleLog_DayFromName(char__rootPath, &uint32_t__day) != false))
+                    (func__SimpleLog_DayFromName(char__rootPath, &uint32_t__fileDay) != false))
                 {
                     uint32_t__sumBytes += uint32_t__fsize;
                     func__SimpleLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));
@@ -2472,12 +2478,12 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
             char char__rootPath[40];
             char char__safeName[40];
             String string__raw = dir__root.fileName();
-            uint32_t uint32_t__day = 0u;
+            uint32_t uint32_t__fileDay = 0u;
             uint32_t uint32_t__fsize = (uint32_t)dir__root.fileSize();
             if ((func__SimpleLog_ToRootPath(string__raw.c_str(),
                                             char__rootPath,
                                             sizeof(char__rootPath)) != false) &&
-                (func__SimpleLog_DayFromName(char__rootPath, &uint32_t__day) != false))
+                (func__SimpleLog_DayFromName(char__rootPath, &uint32_t__fileDay) != false))
             {
                 uint32_t__sumBytes += uint32_t__fsize;
                 func__SimpleLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));

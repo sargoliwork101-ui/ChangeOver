@@ -78,29 +78,23 @@ static bool func__Simple_GetArg(const char *char__ptr_name, String &string__out)
     }
     return false;
 }
-static size_t func__Simple_ClampJsonUsed(size_t size_t__used,
-                                         int int__written,
-                                         size_t size_t__cap)
+/*
+ * [EN] Keep the JSON whole: a piece that does not fit is dropped instead of
+ * being cut in half, because half a number makes the panel show nothing.
+ */
+static bool func__Simple_JsonPut(char *char__ptr_buf, size_t size_t__cap,
+                                 size_t *size_t__ptrUsed, int int__written)
 {
-    size_t size_t__limit;
-    if (size_t__cap == 0u)
+    if ((char__ptr_buf == NULL) || (size_t__ptrUsed == NULL) || (int__written < 0))
     {
-        return 0u;
+        return false;
     }
-    size_t__limit = size_t__cap - 1u;
-    if (size_t__used >= size_t__limit)
+    if ((size_t)int__written >= (size_t__cap - *size_t__ptrUsed))
     {
-        return size_t__limit;
+        return false;
     }
-    if (int__written <= 0)
-    {
-        return size_t__used;
-    }
-    if ((size_t)int__written >= (size_t__cap - size_t__used))
-    {
-        return size_t__limit;
-    }
-    return size_t__used + (size_t)int__written;
+    *size_t__ptrUsed += (size_t)int__written;
+    return true;
 }
 static void func__Simple_HttpRoot(void)
 {
@@ -149,71 +143,86 @@ static void func__Simple_HttpTelemetry(void)
     uint8_t uint8_t__role = bool__authed ? UINT8_T__G__CurrentRole : 0u;
     uint8_t uint8_t__index;
     size_t size_t__used;
+    /* [EN] Three bytes stay free for the closing ]}  so the reply is always
+       parseable, even when every field carries its widest value. */
+    const size_t size_t__cap = (size_t)SIMPLE_JSON_BUFFER_SIZE - 3u;
     BOOL__G__BrowserSeen = true;
     UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
     func__Simple_ChartTick();
-    size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,"
-        "\"lko\":%u,\"bpv\":%u,\"bfw\":%u,\"bfl\":%u,\"brx\":%lu,\"bce\":%u,\"bvm\":%u,\"bpc\":%u,\"bpr\":%u,\"hac\":%lu,\"hls\":%lu,\"lac\":%lu,\"t\":[",
-        bool__online ? 1u : 0u,
-        (unsigned long)uint32_t__ageMs,
-        (unsigned int)UINT16_T__G__TlmSeq,
-        (unsigned int)UINT8_T__G__TlmFlags,
-        (unsigned int)UINT8_T__G__TlmFlags2,
-        (unsigned long)UINT32_T__G__TlmFrameCount,
-        (unsigned long)UINT32_T__G__RxCrcError,
-        (unsigned long)UINT32_T__G__RxVersionMismatch,
-        (UINT8_T__G__TlmFlags & 0x02u) ? 1u : 0u,
-        char__ptr_user,
-        (unsigned int)uint8_t__role,
-        (unsigned int)UINT8_T__G__Theme,
-        (unsigned long)uint32_t__panelTimeSec,
-        (unsigned long)uint32_t__panelTimeSec,
-        BOOL__G__TimeValid ? 1u : 0u,
-        BOOL__G__BoardParamSeen ? 1u : 0u,
-        BOOL__G__RecoveryHappened ? 1u : 0u,
-        BOOL__G__HelloSeen ? 1u : 0u,
-        (unsigned int)UINT8_T__G__BoardProtoVersion,
-        (unsigned int)UINT8_T__G__BoardFwVersion,
-        (unsigned int)UINT8_T__G__BoardFlags,
-        (unsigned long)UINT32_T__G__BoardRxFrames,
-        (unsigned int)UINT16_T__G__BoardCrcErrors,
-        (unsigned int)UINT16_T__G__BoardVerErrors,
-        (unsigned int)UINT16_T__G__BoardParamCount,
-        (unsigned int)UINT16_T__G__BoardPeriodMs,
-        (unsigned long)UINT32_T__G__HelloAckCount,
-        (unsigned long)UINT32_T__G__HelloLossCount,
-        (unsigned long)(BOOL__G__HelloSeen ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
-                                           : 0xFFFFFFFFu));
-    size_t__used = func__Simple_ClampJsonUsed(0u, (int)size_t__used, SIMPLE_JSON_BUFFER_SIZE);
+    {
+        int int__head = snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
+            "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,"
+            "\"lko\":%u,\"bpv\":%u,\"bfw\":%u,\"bfl\":%u,\"brx\":%lu,\"bce\":%u,\"bvm\":%u,\"bpc\":%u,\"bpr\":%u,\"hac\":%lu,\"hls\":%lu,\"lac\":%lu,\"t\":[",
+            bool__online ? 1u : 0u,
+            (unsigned long)uint32_t__ageMs,
+            (unsigned int)UINT16_T__G__TlmSeq,
+            (unsigned int)UINT8_T__G__TlmFlags,
+            (unsigned int)UINT8_T__G__TlmFlags2,
+            (unsigned long)UINT32_T__G__TlmFrameCount,
+            (unsigned long)UINT32_T__G__RxCrcError,
+            (unsigned long)UINT32_T__G__RxVersionMismatch,
+            (UINT8_T__G__TlmFlags & 0x02u) ? 1u : 0u,
+            char__ptr_user,
+            (unsigned int)uint8_t__role,
+            (unsigned int)UINT8_T__G__Theme,
+            (unsigned long)uint32_t__panelTimeSec,
+            (unsigned long)uint32_t__panelTimeSec,
+            BOOL__G__TimeValid ? 1u : 0u,
+            BOOL__G__BoardParamSeen ? 1u : 0u,
+            BOOL__G__RecoveryHappened ? 1u : 0u,
+            BOOL__G__HelloSeen ? 1u : 0u,
+            (unsigned int)UINT8_T__G__BoardProtoVersion,
+            (unsigned int)UINT8_T__G__BoardFwVersion,
+            (unsigned int)UINT8_T__G__BoardFlags,
+            (unsigned long)UINT32_T__G__BoardRxFrames,
+            (unsigned int)UINT16_T__G__BoardCrcErrors,
+            (unsigned int)UINT16_T__G__BoardVerErrors,
+            (unsigned int)UINT16_T__G__BoardParamCount,
+            (unsigned int)UINT16_T__G__BoardPeriodMs,
+            (unsigned long)UINT32_T__G__HelloAckCount,
+            (unsigned long)UINT32_T__G__HelloLossCount,
+            (unsigned long)(BOOL__G__HelloSeen ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
+                                               : 0xFFFFFFFFu));
+        if ((int__head <= 0) || ((size_t)int__head >= size_t__cap))
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"json\"}");
+            return;
+        }
+        size_t__used = (size_t)int__head;
+    }
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
         const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
         int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used,
+            size_t__cap - size_t__used,
             "%s%lu", char__ptr_sep, (unsigned long)UINT32_T__G__TlmField[uint8_t__index]);
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__written, SIMPLE_JSON_BUFFER_SIZE);
+        if (!func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used, int__written))
+        {
+            break;
+        }
     }
+    if (func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used,
+                             snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                      size_t__cap - size_t__used, "],\"pv\":[")))
     {
-        int int__mid = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used, "],\"pv\":[");
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__mid, SIMPLE_JSON_BUFFER_SIZE);
+        for (uint8_t__index = 0u; uint8_t__index < SIMPLE_PARAM_UI_COUNT; uint8_t__index++)
+        {
+            const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
+            int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                size_t__cap - size_t__used,
+                "%s%lu", char__ptr_sep,
+                (unsigned long)func__Simple_BoardParam(UINT8_T__G__ParamUiIds[uint8_t__index]));
+            if (!func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used, int__written))
+            {
+                break;
+            }
+        }
+        (void)func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used,
+                                   snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                            size_t__cap - size_t__used, "]"));
     }
-    for (uint8_t__index = 0u; uint8_t__index < SIMPLE_PARAM_UI_COUNT; uint8_t__index++)
-    {
-        const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
-        int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used,
-            "%s%lu", char__ptr_sep,
-            (unsigned long)func__Simple_BoardParam(UINT8_T__G__ParamUiIds[uint8_t__index]));
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__written, SIMPLE_JSON_BUFFER_SIZE);
-    }
-    {
-        int int__tail = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used, "]}");
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__tail, SIMPLE_JSON_BUFFER_SIZE);
-    }
-    (void)size_t__used;
+    (void)snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                   (size_t)SIMPLE_JSON_BUFFER_SIZE - size_t__used, "}");
 #if defined(ESP8266)
     SIMPLE_WEB_SERVER_T__G__Server.keepAlive(false);
 #endif
@@ -221,149 +230,101 @@ static void func__Simple_HttpTelemetry(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+/* [EN] One array, gathered into a small buffer: four numbers per TCP write
+ * instead of one, so a 3-month chart costs ~20 sends, not 360. */
+static void func__Simple_SendChartArray(const char *char__ptr_head,
+                                        const uint32_t *uint32_t__ptr_values,
+                                        uint8_t uint8_t__size, uint8_t uint8_t__count,
+                                        uint8_t uint8_t__index)
+{
+    char char__buf[96];
+    size_t size_t__used = 0u;
+    uint8_t uint8_t__i;
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__ptr_head);
+    for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+    {
+        int int__slot = (int)uint8_t__index + (int)uint8_t__size - (int)uint8_t__count + (int)uint8_t__i;
+        int int__written;
+        while (int__slot >= (int)uint8_t__size)
+        {
+            int__slot -= (int)uint8_t__size;
+        }
+        int__written = snprintf(&char__buf[size_t__used], sizeof(char__buf) - size_t__used,
+                                (uint8_t__i == 0u) ? "%lu" : ",%lu",
+                                (unsigned long)uint32_t__ptr_values[int__slot]);
+        if ((int__written < 0) || ((size_t)int__written >= (sizeof(char__buf) - size_t__used)))
+        {
+            break;
+        }
+        size_t__used += (size_t)int__written;
+        if ((sizeof(char__buf) - size_t__used) < 14u)
+        {
+            char__buf[size_t__used] = '\0';
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__buf);
+            size_t__used = 0u;
+        }
+    }
+    if (size_t__used > 0u)
+    {
+        char__buf[size_t__used] = '\0';
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__buf);
+    }
+}
 static void func__Simple_HttpCharts(void)
 {
     String string__range = SIMPLE_WEB_SERVER_T__G__Server.hasArg("range") ? SIMPLE_WEB_SERVER_T__G__Server.arg("range") : "1d";
+    const char *char__ptr_tag = "1d";
+    uint8_t uint8_t__size = (uint8_t)SIMPLE_CHART_1D_SIZE;
+    uint8_t uint8_t__count = UINT8_T__G__Chart1D_Count;
+    uint8_t uint8_t__index = UINT8_T__G__Chart1D_Index;
+    const uint32_t *uint32_t__ptrPct = UINT32_T__G__Chart1D_Pct;
+    const uint32_t *uint32_t__ptrVin = UINT32_T__G__Chart1D_Vin;
+    const uint32_t *uint32_t__ptrVpack = UINT32_T__G__Chart1D_Vpack;
+    const uint32_t *uint32_t__ptrTime = UINT32_T__G__Chart1D_Time;
+    char char__head[48];
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
-    uint8_t uint8_t__i, uint8_t__idx;
     if (string__range == "7d")
     {
-        String s; s.reserve(512);
-        s = "{\"range\":\"7d\",\"count\":"; s += String(UINT8_T__G__Chart7D_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
+        char__ptr_tag = "7d";
+        uint8_t__size = (uint8_t)SIMPLE_CHART_7D_SIZE;
+        uint8_t__count = UINT8_T__G__Chart7D_Count;
+        uint8_t__index = UINT8_T__G__Chart7D_Index;
+        uint32_t__ptrPct = UINT32_T__G__Chart7D_Pct;
+        uint32_t__ptrVin = UINT32_T__G__Chart7D_Vin;
+        uint32_t__ptrVpack = UINT32_T__G__Chart7D_Vpack;
+        uint32_t__ptrTime = UINT32_T__G__Chart7D_Time;
     }
     else if (string__range == "1m")
     {
-        String s; s.reserve(512);
-        s = "{\"range\":\"1m\",\"count\":"; s += String(UINT8_T__G__Chart1M_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
+        char__ptr_tag = "1m";
+        uint8_t__size = (uint8_t)SIMPLE_CHART_1M_SIZE;
+        uint8_t__count = UINT8_T__G__Chart1M_Count;
+        uint8_t__index = UINT8_T__G__Chart1M_Index;
+        uint32_t__ptrPct = UINT32_T__G__Chart1M_Pct;
+        uint32_t__ptrVin = UINT32_T__G__Chart1M_Vin;
+        uint32_t__ptrVpack = UINT32_T__G__Chart1M_Vpack;
+        uint32_t__ptrTime = UINT32_T__G__Chart1M_Time;
     }
     else if (string__range == "3m")
     {
-        String s; s.reserve(512);
-        s = "{\"range\":\"3m\",\"count\":"; s += String(UINT8_T__G__Chart3M_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
+        char__ptr_tag = "3m";
+        uint8_t__size = (uint8_t)SIMPLE_CHART_3M_SIZE;
+        uint8_t__count = UINT8_T__G__Chart3M_Count;
+        uint8_t__index = UINT8_T__G__Chart3M_Index;
+        uint32_t__ptrPct = UINT32_T__G__Chart3M_Pct;
+        uint32_t__ptrVin = UINT32_T__G__Chart3M_Vin;
+        uint32_t__ptrVpack = UINT32_T__G__Chart3M_Vpack;
+        uint32_t__ptrTime = UINT32_T__G__Chart3M_Time;
     }
-    else
-    {
-        String s; s.reserve(512);
-        s = "{\"range\":\"1d\",\"count\":"; s += String(UINT8_T__G__Chart1D_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
-    }
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
+    (void)snprintf(char__head, sizeof(char__head), "{\"range\":\"%s\",\"count\":%u,\"pct\":[",
+                   char__ptr_tag, (unsigned int)uint8_t__count);
+    func__Simple_SendChartArray(char__head, uint32_t__ptrPct, uint8_t__size, uint8_t__count, uint8_t__index);
+    func__Simple_SendChartArray("],\"vin\":[", uint32_t__ptrVin, uint8_t__size, uint8_t__count, uint8_t__index);
+    func__Simple_SendChartArray("],\"vpack\":[", uint32_t__ptrVpack, uint8_t__size, uint8_t__count, uint8_t__index);
+    func__Simple_SendChartArray("],\"time\":[", uint32_t__ptrTime, uint8_t__size, uint8_t__count, uint8_t__index);
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
 }
 static void func__Simple_HttpDiag(void)
 {
@@ -500,6 +461,13 @@ static void func__Simple_HttpLogin(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(409, "application/json",
             "{\"ok\":0,\"e\":\"busy\",\"msg\":\"یک ورود فعال هست؛ فقط دسترسی بالاتر می‌تواند جای آن را بگیرد\"}");
     }
+    else if (int32_t__login == -2)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Retry-After", "30");
+        SIMPLE_WEB_SERVER_T__G__Server.send(429, "application/json",
+            "{\"ok\":0,\"e\":\"wait\",\"msg\":\"چند بار پشت‌سرهم اشتباه بود؛ کمی صبر کنید\"}");
+    }
     else
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(401, "application/json", "{\"ok\":0,\"e\":\"wrong\"}");
@@ -525,7 +493,8 @@ static void func__Simple_HttpGetWifi(void)
  * the network name, and nothing in the page can change it any more.
  */
     (void)snprintf(char__buf, sizeof(char__buf),
-                   "{\"ssid\":\"%s\",\"passSet\":1}", CHAR__G__WifiSsid);
+                   "{\"ssid\":\"%s\",\"passSet\":%u}", CHAR__G__WifiSsid,
+                   (CHAR__G__WifiPass[0] != '\0') ? 1u : 0u);
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
 }
@@ -719,10 +688,25 @@ static void func__Simple_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t_
     if (func__Simple_GetArg("day", string__day))
     {
         string__day.trim();
-        if (string__day.length() > 0u)
+        /* [EN] only eight digits: anything else would just make a file name
+           that cannot exist, so the request is answered as "that day" = none. */
+        if ((string__day.length() > 0u) && (string__day.length() <= 8u))
         {
-            *bool__ptr_hasDay = true;
-            *uint32_t__ptr_day = (uint32_t)strtoul(string__day.c_str(), NULL, 10);
+            bool bool__digits = true;
+            size_t size_t__i;
+            for (size_t__i = 0u; size_t__i < string__day.length(); size_t__i++)
+            {
+                if ((string__day[size_t__i] < '0') || (string__day[size_t__i] > '9'))
+                {
+                    bool__digits = false;
+                    break;
+                }
+            }
+            if (bool__digits != false)
+            {
+                *bool__ptr_hasDay = true;
+                *uint32_t__ptr_day = (uint32_t)strtoul(string__day.c_str(), NULL, 10);
+            }
         }
     }
 }
@@ -812,6 +796,56 @@ static void func__Simple_HttpEventDays(void)
     (void)func__SimpleLog_Days(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
 }
+/*
+ * [EN] One request for the whole history: every day file decoded once, oldest
+ * first, behind a single CSV legend. 90 days used to mean 90 downloads, and the
+ * browser blocks those after the third one anyway.
+ */
+static void func__Simple_HttpDownloadAllDays(void)
+{
+    char char__ptr_path[SIMPLE_LOG_PATH_MAX];
+    char char__row[SIMPLE_LOG_RAM_ROW_MAX];
+    uint8_t uint8_t__slot;
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition",
+                                              "attachment; filename=evt-all.csv");
+    if (BOOL__G__FsOk == false)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
+        return;
+    }
+    if (BOOL__G__LogScanValid == false)
+    {
+        (void)func__SimpleLog_ScanDays(true);
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", "");
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent(SIMPLE_LOG_HEADER);
+    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    {
+        SimpleLogCodec::State codec;
+        int int__kind;
+        func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__slot]);
+        File file__day = LittleFS.open(char__ptr_path, "r");
+        if (!file__day)
+        {
+            continue;
+        }
+        int__kind = SimpleLogCodec::begin(file__day, codec);
+        if (int__kind == 1)
+        {
+            while (SimpleLogCodec::next(file__day, codec))
+            {
+                if (SimpleLogCodec::text(codec, char__row, sizeof(char__row)) != 0u)
+                {
+                    SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__row);
+                }
+            }
+        }
+        file__day.close();
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
+}
 static void func__Simple_HttpEventDownload(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -819,6 +853,12 @@ static void func__Simple_HttpEventDownload(void)
     bool bool__hasDay = false;
     uint32_t uint32_t__day = SIMPLE_LOG_DAY_AUTO;
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    if (SIMPLE_WEB_SERVER_T__G__Server.hasArg("all") &&
+        (SIMPLE_WEB_SERVER_T__G__Server.arg("all") != "0"))
+    {
+        func__Simple_HttpDownloadAllDays();
+        return;
+    }
     func__Simple_ParseDayArg(&bool__hasDay, &uint32_t__day);
     if (BOOL__G__FsOk == false)
     {
@@ -851,6 +891,12 @@ static void func__Simple_HttpEventDownload(void)
         func__SimpleLog_PathOf(char__ptr_path, uint32_t__day);
         if (LittleFS.exists(char__ptr_path) == false)
         {
+            /* [EN] today has no file yet: fall back to the newest day that
+               exists, after a real scan (the cache may be older than the boot). */
+            if ((UINT8_T__G__LogIndexCount == 0u) || (BOOL__G__LogScanValid == false))
+            {
+                (void)func__SimpleLog_ScanDays(true);
+            }
             if (UINT8_T__G__LogIndexCount == 0u)
             {
                 SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
