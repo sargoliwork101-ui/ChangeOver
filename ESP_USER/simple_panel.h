@@ -2151,6 +2151,7 @@ function admLogin(){
   let j=x.body||{};
   if(x.status===200 && j.ok===1){ admClose(); admUnlock(j.user||'admin'); showToast('دسترسی مدیر باز شد'); return; }
   if(x.status===409){ admSay('admMsg','یک نشست باز است؛ چند دقیقه بعد دوباره تلاش کن', false); return; }
+  if(x.status===429){ admSay('admMsg','چند بار پشت‌سرهم اشتباه بود؛ کمی صبر کن', false); return; }
   admSay('admMsg','رمز نادرست است', false);
  }).catch(function(){ admSay('admMsg','ارتباط با برد برقرار نشد', false); });
 }
