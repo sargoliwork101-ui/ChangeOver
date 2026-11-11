@@ -71,6 +71,7 @@ def lab_badge():
         'font:12px/1.6 Tahoma,sans-serif;background:#111827;color:#e5e7eb;'
         'border:1px solid #374151;border-radius:10px;padding:6px 10px;'
         'box-shadow:0 6px 20px rgba(0,0,0,.45)">'
+        '\u00b7 30 \u0631\u0648\u0632 \u062f\u0627\u062f\u0647 '
         '\u0646\u0648\u0627\u0631 \u0634\u06cc\u0645\u06cc\u0648\u0644\u06cc\u062a\u0648\u0631 '
         '<a href="/lab" style="color:#7dd3fc;text-decoration:none">\u06cc\u0627\u0641\u062a\u0647\u200c\u0647\u0627</a>'
         ' \u00b7 <a href="/lab#harness" style="color:#7dd3fc;text-decoration:none">\u0627\u062c\u0631\u0627\u06cc \u0647\u0627\u0631\u0646\u0633</a>'
@@ -110,34 +111,130 @@ class Board:
         self.logs_seeded = False
         self.single_session = False
         self.seed()
+    # ==================== 30 days of history ====================
+    # The owner asked to see the panel with a long series of data. Everything
+    # below is deterministic: the same day always shows the same numbers, so a
+    # screenshot today matches a screenshot tomorrow.
+    CYCLE_HOURS = 48          # 8 h charging, 40 h running on the battery
+    CHARGE_HOURS = 8
+    SEED_DAYS = 30
+
+    def state_at(self, stamp):
+        """Pack percent, input voltage and pack voltage at one moment."""
+        hours = int(stamp // 3600)
+        phase = hours % self.CYCLE_HOURS
+        if phase < self.CHARGE_HOURS:
+            pct = 30 + int((phase + 1) * 70 / self.CHARGE_HOURS)
+            vin = 24100 + (hours % 7) * 15
+        else:
+            pct = 100 - int((phase - self.CHARGE_HOURS) * 70 / (self.CYCLE_HOURS - self.CHARGE_HOURS))
+            vin = 0
+        pct = max(5, min(100, pct))
+        return pct, vin, 21000 + pct * 80
+
+    def row_at(self, stamp, uptime_s, chg, note, fault, pct, vin, vpack):
+        """One CSV row with the same 22 columns the firmware writes."""
+        return ",".join(str(v) for v in [
+            stamp, uptime_s, chg, note, 1 if vin else 0,
+            3 if vin else 2, self.stage1 if vin else 0, self.stage2 if vin else 0,
+            fault, 0, vpack, 12600, 12900, self.imbalance, self.dead,
+            vin, 12000, 1200 if vin else 0, 900 if vin else 0, 500, 500, pct,
+        ])
+
+    def make_day_rows(self, midnight, day_index):
+        """A believable day: boot, mains in/out, charge stages, a few notes."""
+        rows = []
+        for hour in range(24):
+            stamp = midnight + hour * 3600
+            pct, vin, vpack = self.state_at(stamp)
+            phase = int(stamp // 3600) % self.CYCLE_HOURS
+            bits = 0
+            note = 0
+            fault = 0
+            if hour == 0:
+                bits |= 0x0001                      # panel powered on
+            if phase == 0:
+                bits |= 0x0002                      # mains came back
+            if phase == self.CHARGE_HOURS:
+                bits |= 0x0002                      # mains gone
+            if phase in (1, 2, 3):
+                bits |= 0x0004                      # channel 1 charging
+            if phase in (4, 5, 6):
+                bits |= 0x0008                      # channel 2 charging
+            if hour % 6 == 0:
+                note = 5                            # heartbeat
+            if day_index in (3, 11, 23) and hour == 14:
+                bits |= 0x0010                      # fault bit with its mask
+                fault = 0x00000201
+            if day_index == 17 and hour == 9:
+                bits |= 0x0080
+                note = 2                            # link lost
+            if day_index == 17 and hour == 10:
+                bits |= 0x0080
+                note = 3                            # link back
+            # the firmware also writes a row whenever the pack voltage moves
+            # by 200 mV, which on this 48 h cycle is roughly every two hours
+            if (bits or note) or (hour % 2 == 0):
+                rows.append(self.row_at(stamp, (day_index + 1) * 3600 + hour * 60,
+                                        bits, note, fault, pct, vin, vpack))
+        return rows
+
+    def chart_points(self, now, step, count):
+        out = []
+        for i in range(count):
+            stamp = now - (count - 1 - i) * step
+            pct, vin, vpack = self.state_at(stamp)
+            out.append({"pct": pct, "vin": vin, "vpack": vpack, "time": stamp})
+        return out
+
+    def make_charges(self, now):
+        """One charge event for every charging window in the seeded range."""
+        events = []
+        start = now - self.SEED_DAYS * 86400
+        hour = int(start // 3600)
+        end_hour = int(now // 3600)
+        while hour <= end_hour:
+            if hour % self.CYCLE_HOURS == 0:
+                stamp = hour * 3600
+                channel = 1 if (hour // self.CYCLE_HOURS) % 3 else 2
+                events.append({"ts": stamp, "ch": channel, "dur": self.CHARGE_HOURS * 3600,
+                               "from": 30, "to": 100})
+            hour += 1
+        return events
+
     def seed(self):
-        """Fill the history so the charts and the event page are not empty."""
+        """30 days of rows, charts, charge events and a few recorded errors."""
         now = int(time.time())
-        day = time.strftime("%Y%m%d", time.localtime(now))
-        rows = self.rows.setdefault(day, [])
-        base = now - 3 * 3600
-        script = [
-            (0, 1, 0, "boot"), (1, 2, 1, "mains-on"), (2, 4, 0, "ch1-stage1"),
-            (3, 16, 0, "fault"), (4, 16, 0, "fault-clear"), (5, 32, 0, "flags"),
-            (6, 8, 0, "ch2-stage1"), (7, 2, 0, "mains-off"), (8, 128, 2, "link-lost"),
-        ]
-        for i, (step, chg, note, _tag) in enumerate(script):
-            stamp = base + step * 300
-            rows.append(self.row(stamp, chg, note, fault=(0x00000201 if _tag == "fault" else 0)))
-        for rng in ("1d", "7d", "1m", "3m"):
-            self.chart[rng] = self.make_chart(now, rng)
+        for day_index in range(self.SEED_DAYS - 1, -1, -1):
+            day_start = now - day_index * 86400
+            midnight = int(day_start // 86400) * 86400
+            key = time.strftime("%Y%m%d", time.localtime(midnight))
+            self.rows[key] = self.make_day_rows(midnight, day_index)
+        self.chart["1d"] = self.chart_points(now, 3600, 24)
+        self.chart["7d"] = self.chart_points(now, 6 * 3600, 28)
+        self.chart["1m"] = self.chart_points(now, 86400, 30)
+        self.chart["3m"] = self.chart_points(now, 86400, 30)
+        self.charge_history = self.make_charges(now)
+        self.charge_count = len(self.charge_history)
+        per_channel = [sum(1 for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
+        self.charge_counts = per_channel
+        self.charge_secs = [sum(e["dur"] for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
+        self.total_charge_s = sum(e["dur"] for e in self.charge_history)
         self.errors = [
-            {"ts": base + 900, "fault": 0x00000201, "vin": 24100, "vpack": 25400,
+            {"ts": now - 26 * 86400, "fault": 0x00000201, "vin": 24100, "vpack": 25400,
              "vlow": 12600, "vhigh": 12900, "s1": 7, "s2": 0},
-            {"ts": base + 2400, "fault": 0x00000040, "vin": 0, "vpack": 24800,
+            {"ts": now - 12 * 86400, "fault": 0x00000040, "vin": 0, "vpack": 24800,
              "vlow": 12400, "vhigh": 12800, "s1": 0, "s2": 3},
+            {"ts": now - 2 * 86400, "fault": 0x00000201, "vin": 24000, "vpack": 25200,
+             "vlow": 12500, "vhigh": 12850, "s1": 5, "s2": 0},
         ]
-        self.power = [{"off": base + 2100, "on": base + 2220, "dur": 120}]
-        self.charge_history = [
-            {"ts": base + 600, "ch": 1, "dur": 4200},
-            {"ts": base + 1200, "ch": 2, "dur": 3100},
+        self.power = [
+            {"off": now - 26 * 86400 + 2100, "on": now - 26 * 86400 + 2220, "dur": 120},
+            {"off": now - 9 * 86400 + 6400, "on": now - 9 * 86400 + 6550, "dur": 150},
+            {"off": now - 3600, "on": now - 3000, "dur": 600},
         ]
         self.logs_seeded = True
+
     def make_chart(self, now, rng):
         step = {"1d": 3600, "7d": 21600, "1m": 86400, "3m": 86400}[rng]
         count = {"1d": 24, "7d": 28, "1m": 30, "3m": 60}[rng]
@@ -567,8 +664,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/diag":
             return self.send(json_bytes({
                 "valid": 1, "totalChargeSec": BOARD.total_charge_s,
-                "chargeCount": BOARD.charge_count, "chargeCountCh1": 7,
-                "chargeCountCh2": 5, "chargeSecCh1": 9000, "chargeSecCh2": 7000,
+                "chargeCount": BOARD.charge_count,
+                "chargeCountCh1": BOARD.charge_counts[0], "chargeCountCh2": BOARD.charge_counts[1],
+                "chargeSecCh1": BOARD.charge_secs[0], "chargeSecCh2": BOARD.charge_secs[1],
                 "uptimeSec": BOARD.board_uptime, "resetCount": BOARD.reset_count,
                 "boardTime": BOARD.board_time + BOARD.tick, "panelTime": int(time.time()),
                 "timeOk": 1, "errCount": len(BOARD.errors),
