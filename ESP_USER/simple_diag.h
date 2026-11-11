@@ -611,90 +611,11 @@ static void func__Simple_ChartsSave(void)
         return;
     }
     file__f.close();
-    if (LittleFS.exists(SIMPLE_CHARTS_LEGACY_FILE))
-    {
-        (void)LittleFS.remove(SIMPLE_CHARTS_LEGACY_FILE);
-    }
     BOOL__G__ChartsDirty = false;
     if (func__Simple_NowSec() >= SIMPLE_TIME_VALID_MIN)
     {
         UINT32_T__G__LastChartSaveSec = func__Simple_NowSec();
     }
-}
-static bool func__Simple_ChartRangeLoad(const String &string__content, const char *char__ptr_tag,
-                                        uint32_t *uint32_t__ptr_pct,
-                                        uint32_t *uint32_t__ptr_vin,
-                                        uint32_t *uint32_t__ptr_vpack,
-                                        uint32_t *uint32_t__ptr_time,
-                                        uint8_t *uint8_t__ptr_count, uint8_t *uint8_t__ptr_index,
-                                        uint8_t uint8_t__size)
-{
-    String string__tagPrefix = String("\"") + char__ptr_tag + "\":";
-    int32_t int32_t__tagPos = string__content.indexOf(string__tagPrefix);
-    uint8_t uint8_t__nPct;
-    uint8_t uint8_t__nVin;
-    uint8_t uint8_t__nVpack;
-    uint8_t uint8_t__nTime;
-    uint8_t uint8_t__count;
-    if (int32_t__tagPos < 0) return false;
-    uint8_t__nPct = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"pct\":[", int32_t__tagPos), uint32_t__ptr_pct, uint8_t__size);
-    uint8_t__nVin = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"vin\":[", int32_t__tagPos), uint32_t__ptr_vin, uint8_t__size);
-    uint8_t__nVpack = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"vpack\":[", int32_t__tagPos), uint32_t__ptr_vpack, uint8_t__size);
-    uint8_t__nTime = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"time\":[", int32_t__tagPos), uint32_t__ptr_time, uint8_t__size);
-    uint8_t__count = uint8_t__nPct;
-    if (uint8_t__nVin < uint8_t__count) uint8_t__count = uint8_t__nVin;
-    if (uint8_t__nVpack < uint8_t__count) uint8_t__count = uint8_t__nVpack;
-    if (uint8_t__nTime < uint8_t__count) uint8_t__count = uint8_t__nTime;
-    if (uint8_t__count == 0u) return false;
-    {
-        uint8_t uint8_t__keep = 0u;
-        uint8_t uint8_t__i;
-        uint32_t uint32_t__lastStamp = 0u;
-        for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
-        {
-            if (uint32_t__ptr_time[uint8_t__i] < SIMPLE_TIME_VALID_MIN) continue;
-            if (uint32_t__ptr_time[uint8_t__i] <= uint32_t__lastStamp) continue;
-            uint32_t__lastStamp = uint32_t__ptr_time[uint8_t__i];
-            uint32_t__ptr_pct[uint8_t__keep] = uint32_t__ptr_pct[uint8_t__i];
-            uint32_t__ptr_vin[uint8_t__keep] = uint32_t__ptr_vin[uint8_t__i];
-            uint32_t__ptr_vpack[uint8_t__keep] = uint32_t__ptr_vpack[uint8_t__i];
-            uint32_t__ptr_time[uint8_t__keep] = uint32_t__ptr_time[uint8_t__i];
-            uint8_t__keep++;
-        }
-        uint8_t__count = uint8_t__keep;
-    }
-    if (uint8_t__count == 0u) return false;
-    *uint8_t__ptr_count = uint8_t__count;
-    *uint8_t__ptr_index = (uint8_t)(uint8_t__count % uint8_t__size);
-    return true;
-}
-/* [EN] The text file older firmware wrote; loaded once, then replaced. */
-static void func__Simple_ChartsLoadLegacy(void)
-{
-    String string__content;
-    if (!BOOL__G__FsOk) return;
-    if (!LittleFS.exists(SIMPLE_CHARTS_LEGACY_FILE)) return;
-    File file__f = LittleFS.open(SIMPLE_CHARTS_LEGACY_FILE, "r");
-    if (!file__f) return;
-    string__content = file__f.readString();
-    file__f.close();
-    (void)func__Simple_ChartRangeLoad(string__content, "1d",
-        UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin, UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
-        &UINT8_T__G__Chart1D_Count, &UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "7d",
-        UINT32_T__G__Chart7D_Pct, UINT32_T__G__Chart7D_Vin, UINT32_T__G__Chart7D_Vpack, UINT32_T__G__Chart7D_Time,
-        &UINT8_T__G__Chart7D_Count, &UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "1m",
-        UINT32_T__G__Chart1M_Pct, UINT32_T__G__Chart1M_Vin, UINT32_T__G__Chart1M_Vpack, UINT32_T__G__Chart1M_Time,
-        &UINT8_T__G__Chart1M_Count, &UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "3m",
-        UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin, UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
-        &UINT8_T__G__Chart3M_Count, &UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
-    BOOL__G__ChartsDirty = false;
 }
 /*
  * [EN] Undoes one range block. A block that is short, misnumbered or holds a
@@ -775,7 +696,6 @@ static void func__Simple_ChartsLoad(void)
     }
     if (!LittleFS.exists(SIMPLE_CHARTS_FILE))
     {
-        func__Simple_ChartsLoadLegacy();
         return;
     }
     File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "r");
@@ -1061,10 +981,6 @@ static void func__Simple_ChartsClear(void)
     if (BOOL__G__FsOk)
     {
         LittleFS.remove(SIMPLE_CHARTS_FILE);
-        if (LittleFS.exists(SIMPLE_CHARTS_LEGACY_FILE))
-        {
-            (void)LittleFS.remove(SIMPLE_CHARTS_LEGACY_FILE);
-        }
     }
 }
 static void func__Simple_DiagClear(void)

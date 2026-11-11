@@ -2776,24 +2776,23 @@ async function evtFs(toggle){
  try{
   const r=await evtHttp('/evt/fs','GET',4000);const j=await r.json();
   const files=Array.isArray(j.files)?j.files:[];
-  const oldCnt=files.filter(f=>!f.own).length;
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
   h+='<button class="btn" type="button" onclick="evtFs(0)">بروزرسانی فهرست</button> ';
   if(!j.fs){
-   h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
+   h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
   }else{
-   h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFaNum(files.length+(+j.more||0))+'</b></div>';
+   h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · روزهای ذخیره‌شده: <b>'+evtFaNum(files.length+(+j.more||0))+'</b></div>';
+   if(+j.reclaimed>0)h+='<div style="color:var(--ok);margin-top:4px">برای باز کردن جا، '+evtFaNum(j.reclaimed)+' روز قدیمی پاک شد (قدیمی‌ترین‌ها).</div>';
    if(!files.length)h+='<div style="color:var(--mu);margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
    else{
     h+='<div style="margin-top:6px;max-height:160px;overflow:auto;border-top:1px solid var(--ln);padding-top:4px">';
     files.forEach(f=>{
-     const tag=f.own?'<span style="color:#2f9e63">فایل همین برنامه</span>':'<b style="color:#c9a227">جامانده از برنامهٔ قبلی</b>';
      const m=/^\/evt-(\d{8})\.csv$/.exec(f.name);
      const nameHtml=m
        ? '<button class="btn" title="دانلود لاگ همین روز" style="padding:0 6px;font-size:11px;min-height:22px" onclick="evtDlDay(\''+m[1]+'\')">'+evtEsc(f.name)+'</button>'
        : '<span dir="ltr">'+evtEsc(f.name)+'</span>';
-     h+='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px dashed var(--ln);padding:2px 0"><span>'+nameHtml+'</span><span>'+evtKb(f.size)+' · '+tag+'</span></div>';
+     h+='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px dashed var(--ln);padding:2px 0"><span>'+nameHtml+'</span><span>'+evtKb(f.size)+'</span></div>';
     });
     if(+j.more>0)h+='<div style="color:var(--mu)">+ '+evtFaNum(j.more)+' فایل دیگر</div>';
     h+='</div>';

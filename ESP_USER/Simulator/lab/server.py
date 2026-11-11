@@ -108,6 +108,7 @@ class Board:
         self.users = [{"name": "admin", "role": 1, "pass": "admin"}]
         self.session = None
         self.session_start = 0.0
+        self.reclaimed = 0
         self.logs_seeded = False
         self.single_session = False
         self.seed()
@@ -806,20 +807,19 @@ class Handler(BaseHTTPRequestHandler):
             sizes = [(d, BOARD.encoded_day_bytes(rows))
                      for d, rows in sorted(BOARD.rows.items())]
             used = sum(size for _day, size in sizes)
-            files = [{"name": "/evt-%s.csv" % d, "size": size, "own": 1}
-                     for d, size in sizes]
+            files = [{"name": "/evt-%s.csv" % d, "size": size} for d, size in sizes]
             extra = [("/users.json", 180), ("/wifi.json", 120),
                      ("/time.json", 42), ("/params.json", 2040),
                      ("/diag.json", 1180),
                      ("/charts.bin", BOARD.chart_file_bytes()),
                      ("/charge_hist.json", 2 + len(BOARD.charge_history) * 36)]
             for name, size in extra:
-                files.append({"name": name, "size": size, "own": 1})
                 used += size
             return self.send(json_bytes({"fs": 1, "mountFail": 0, "total": 65536,
-                                         "used": used, "files": files,
-                                         "fileBytes": used, "more": 0}))
-        if path in ("/evt/clr", "/evt/format", "/evt/clean") and method == "POST":
+                                         "used": used, "reclaimed": BOARD.reclaimed,
+                                         "files": files, "fileBytes": used,
+                                         "more": 0, "free": max(0, 65536 - used)}))
+        if path in ("/evt/clr", "/evt/format") and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             if path == "/evt/clr":

@@ -98,7 +98,6 @@
 #define SIMPLE_CHART_1M_SIZE            30u
 #define SIMPLE_CHART_3M_SIZE            90u
 #define SIMPLE_CHARTS_FILE              "/charts.bin"
-#define SIMPLE_CHARTS_LEGACY_FILE       "/charts.json"
 #define SIMPLE_CHART_FILE_HEADER        8u
 #define SIMPLE_CHART_FILE_MAX_BYTES     2048u
 #define SIMPLE_DIAG_MAX_ERRORS          10u
@@ -148,6 +147,7 @@
  * diagnostics and the charge history live there too.  On a 64 kB file system
  * this leaves 44 kB for the history, i.e. three months of normal days. */
 #define SIMPLE_LOG_RESERVE_BYTES          20000u
+#define SIMPLE_LOG_RECLAIM_MAX_PER_CALL   4u
 #define SIMPLE_LOG_MIN_BUDGET_BYTES       16000u
 #define SIMPLE_LOG_MIN_INTERVAL_MS      2000u
 /*

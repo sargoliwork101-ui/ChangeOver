@@ -950,21 +950,3 @@ static void func__Simple_HttpEventFsStatus(void)
     (void)func__SimpleLog_FsStatusJson(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__LogTailBuffer);
 }
-static void func__Simple_HttpEventClean(void)
-{
-    uint32_t uint32_t__freed = 0u;
-    uint16_t uint16_t__removed;
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    uint16_t__removed = func__SimpleLog_CleanForeignFiles(&uint32_t__freed);
-    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    (void)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-                   "{\"ok\":%u,\"removed\":%u,\"freed\":%lu}",
-                   (BOOL__G__FsOk != false) ? 1u : 0u,
-                   (unsigned int)uint16_t__removed,
-                   (unsigned long)uint32_t__freed);
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
-}

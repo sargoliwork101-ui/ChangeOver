@@ -17,6 +17,7 @@
 static uint32_t UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
 static uint16_t UINT16_T__G__LogRowsToday = 0u;
 static bool     BOOL__G__LogDayFull = false;
+static uint16_t UINT16_T__G__LogReclaimed = 0u;
 static bool     BOOL__G__LogBootRowPending = true;
 /*
  * [EN] 0 = the last flash write was verified. Anything else = failed writes
@@ -639,6 +640,95 @@ static void func__SimpleLog_TrimDays(void)
     }
     BOOL__G__LogScanValid = false;   /* the folder changed: the next read re-scans */
 }
+/* [EN] Room left on the file system, in bytes. */
+static uint32_t func__SimpleLog_FreeBytes(void)
+{
+    uint32_t uint32_t__total = 0u;
+    uint32_t uint32_t__used = 0u;
+    if (BOOL__G__FsOk == false)
+    {
+        return 0u;
+    }
+#if defined(ESP32)
+    uint32_t__total = (uint32_t)LittleFS.totalBytes();
+    uint32_t__used = (uint32_t)LittleFS.usedBytes();
+#else
+    FSInfo fsInfo__stat;
+    if (!LittleFS.info(fsInfo__stat))
+    {
+        return 0u;
+    }
+    uint32_t__total = (uint32_t)fsInfo__stat.totalBytes;
+    uint32_t__used = (uint32_t)fsInfo__stat.usedBytes;
+#endif
+    return (uint32_t__used < uint32_t__total) ? (uint32_t__total - uint32_t__used) : 0u;
+}
+/*
+ * [EN] Make room by deleting the OLDEST day file.  The day being written and the
+ * last remaining day are never touched, so history shrinks from the far end
+ * instead of the whole logging stopping (owner order 2026-11-04).
+ */
+static bool func__SimpleLog_ReclaimOldest(uint32_t uint32_t__keepDay)
+{
+    char char__ptr_path[SIMPLE_LOG_PATH_MAX];
+    uint8_t uint8_t__slot;
+    uint8_t uint8_t__victim = 0xFFu;
+    if (BOOL__G__FsOk == false)
+    {
+        return false;
+    }
+    if ((UINT8_T__G__LogIndexCount == 0u) || (BOOL__G__LogScanValid == false))
+    {
+        (void)func__SimpleLog_ScanDays(true);
+    }
+    if (UINT8_T__G__LogIndexCount <= 1u)
+    {
+        return false;   /* the last day stays, even when the flash is full */
+    }
+    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    {
+        if (UINT32_T__G__LogIndexDay[uint8_t__slot] != uint32_t__keepDay)
+        {
+            uint8_t__victim = uint8_t__slot;   /* the cache is oldest first */
+            break;
+        }
+    }
+    if (uint8_t__victim == 0xFFu)
+    {
+        return false;
+    }
+    func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__victim]);
+    if (LittleFS.remove(char__ptr_path) == false)
+    {
+        return false;
+    }
+    for (uint8_t__slot = (uint8_t)(uint8_t__victim + 1u);
+         uint8_t__slot < UINT8_T__G__LogIndexCount;
+         uint8_t__slot++)
+    {
+        UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] = UINT32_T__G__LogIndexDay[uint8_t__slot];
+    }
+    UINT8_T__G__LogIndexCount--;
+    if (UINT16_T__G__LogReclaimed < 0xFFFFu)
+    {
+        UINT16_T__G__LogReclaimed++;
+    }
+    BOOL__G__LogScanValid = false;
+    return true;
+}
+/* [EN] Free days until the reserve is back.  Bounded, so one tick never turns
+ * into a long flash session. */
+static uint8_t func__SimpleLog_ReclaimForRoom(uint32_t uint32_t__keepDay)
+{
+    uint8_t uint8_t__freed = 0u;
+    while ((uint8_t__freed < (uint8_t)SIMPLE_LOG_RECLAIM_MAX_PER_CALL) &&
+           (func__SimpleLog_FreeBytes() < (uint32_t)SIMPLE_LOG_RESERVE_BYTES) &&
+           (func__SimpleLog_ReclaimOldest(uint32_t__keepDay) != false))
+    {
+        uint8_t__freed++;
+    }
+    return uint8_t__freed;
+}
 static uint16_t func__SimpleLog_CountRows(const char *char__ptr_path)
 {
     uint16_t uint16_t__rows = 0u;
@@ -1094,6 +1184,10 @@ static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *ch
         return false;
     }
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
+    if (func__SimpleLog_FreeBytes() < (uint32_t)SIMPLE_LOG_RESERVE_BYTES)
+    {
+        (void)func__SimpleLog_ReclaimForRoom(uint32_t__dayCode);
+    }
     return func__SimpleLog_CodecAppend(char__ptr_path, char__row);
 }
 /*
@@ -2256,43 +2350,6 @@ static size_t func__SimpleLog_Days(char *char__ptr_out, size_t size_t__outSize)
     }
     return size_t__used;
 }
-static bool func__SimpleLog_IsOwnFile(const char *char__ptr_path)
-{
-    static const char * const CHAR_PTR__OWN_FILES[] =
-    {
-        SIMPLE_WIFI_FILE,
-        SIMPLE_CHARTS_FILE,
-        SIMPLE_CHARTS_LEGACY_FILE,
-        SIMPLE_USERS_FILE,
-        SIMPLE_TIME_FILE,
-        SIMPLE_LOG_LAST_PATH,
-        SIMPLE_PARAMS_FILE,
-        SIMPLE_THEME_FILE,
-        SIMPLE_RECOVERY_FILE,
-        SIMPLE_CHARGE_HISTORY_FILE,
-        SIMPLE_DIAG_FILE
-    };
-    uint32_t uint32_t__day = 0u;
-    size_t size_t__idx;
-    if ((char__ptr_path == NULL) || (char__ptr_path[0] != '/'))
-    {
-        return false;
-    }
-    if (func__SimpleLog_DayFromName(char__ptr_path, &uint32_t__day) != false)
-    {
-        return true;
-    }
-    for (size_t__idx = 0u;
-         size_t__idx < (sizeof(CHAR_PTR__OWN_FILES) / sizeof(CHAR_PTR__OWN_FILES[0]));
-         size_t__idx++)
-    {
-        if (strcmp(char__ptr_path, CHAR_PTR__OWN_FILES[size_t__idx]) == 0)
-        {
-            return true;
-        }
-    }
-    return false;
-}
 static void func__SimpleLog_SanitizeFileName(const char *char__ptr_src,
                                              char *char__ptr_out,
                                              size_t size_t__outSize)
@@ -2348,12 +2405,16 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
         }
 #endif
     }
+    /* Only the log's own day files are listed: the card exists so a day can be
+     * downloaded, so nothing else on the flash is opened or read here. */
     int__written = snprintf(char__ptr_out, size_t__outSize,
-                            "{\"fs\":%u,\"mountFail\":%u,\"total\":%lu,\"used\":%lu,\"files\":[",
+                            "{\"fs\":%u,\"mountFail\":%u,\"total\":%lu,\"used\":%lu,"
+                            "\"reclaimed\":%u,\"files\":[",
                             (BOOL__G__FsOk != false) ? 1u : 0u,
                             (BOOL__G__FsMountFailed != false) ? 1u : 0u,
                             (unsigned long)uint32_t__totalBytes,
-                            (unsigned long)uint32_t__usedBytes);
+                            (unsigned long)uint32_t__usedBytes,
+                            (unsigned int)UINT16_T__G__LogReclaimed);
     if ((int__written <= 0) || ((size_t)int__written >= size_t__outSize))
     {
         char__ptr_out[0] = '\0';
@@ -2371,23 +2432,23 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
             {
                 char char__rootPath[40];
                 char char__safeName[40];
+                uint32_t uint32_t__day = 0u;
                 uint32_t uint32_t__fsize = (uint32_t)file__entry.size();
-                if (func__SimpleLog_ToRootPath(file__entry.name(),
+                if ((func__SimpleLog_ToRootPath(file__entry.name(),
                                                char__rootPath,
-                                               sizeof(char__rootPath)) != false)
+                                               sizeof(char__rootPath)) != false) &&
+                    (func__SimpleLog_DayFromName(char__rootPath, &uint32_t__day) != false))
                 {
-                    bool bool__own = func__SimpleLog_IsOwnFile(char__rootPath);
                     uint32_t__sumBytes += uint32_t__fsize;
                     func__SimpleLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));
-                    if ((uint16_t__shown < 36u) && ((size_t__used + 96u) < size_t__outSize))
+                    if ((uint16_t__shown < 120u) && ((size_t__used + 48u) < size_t__outSize))
                     {
                         int int__item = snprintf(&char__ptr_out[size_t__used],
                                                  size_t__outSize - size_t__used,
-                                                 "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
+                                                 "%s{\"name\":\"%s\",\"size\":%lu}",
                                                  (uint16_t__shown == 0u) ? "" : ",",
                                                  char__safeName,
-                                                 (unsigned long)uint32_t__fsize,
-                                                 (bool__own != false) ? 1u : 0u);
+                                                 (unsigned long)uint32_t__fsize);
                         if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
                         {
                             size_t__used += (size_t)int__item;
@@ -2411,23 +2472,23 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
             char char__rootPath[40];
             char char__safeName[40];
             String string__raw = dir__root.fileName();
+            uint32_t uint32_t__day = 0u;
             uint32_t uint32_t__fsize = (uint32_t)dir__root.fileSize();
-            if (func__SimpleLog_ToRootPath(string__raw.c_str(),
-                                           char__rootPath,
-                                           sizeof(char__rootPath)) != false)
+            if ((func__SimpleLog_ToRootPath(string__raw.c_str(),
+                                            char__rootPath,
+                                            sizeof(char__rootPath)) != false) &&
+                (func__SimpleLog_DayFromName(char__rootPath, &uint32_t__day) != false))
             {
-                bool bool__own = func__SimpleLog_IsOwnFile(char__rootPath);
                 uint32_t__sumBytes += uint32_t__fsize;
                 func__SimpleLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));
-                if ((uint16_t__shown < 36u) && ((size_t__used + 96u) < size_t__outSize))
+                if ((uint16_t__shown < 120u) && ((size_t__used + 48u) < size_t__outSize))
                 {
                     int int__item = snprintf(&char__ptr_out[size_t__used],
                                              size_t__outSize - size_t__used,
-                                             "%s{\"name\":\"%s\",\"size\":%lu,\"own\":%u}",
+                                             "%s{\"name\":\"%s\",\"size\":%lu}",
                                              (uint16_t__shown == 0u) ? "" : ",",
                                              char__safeName,
-                                             (unsigned long)uint32_t__fsize,
-                                             (bool__own != false) ? 1u : 0u);
+                                             (unsigned long)uint32_t__fsize);
                     if ((int__item > 0) && ((size_t__used + (size_t)int__item) < size_t__outSize))
                     {
                         size_t__used += (size_t)int__item;
@@ -2441,111 +2502,19 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
             }
         }
 #endif
-        if ((uint32_t__usedBytes == 0u) && (uint32_t__sumBytes > 0u))
-        {
-            uint32_t__usedBytes = uint32_t__sumBytes;
-        }
     }
     int__written = snprintf(&char__ptr_out[size_t__used],
                             size_t__outSize - size_t__used,
-                            "],\"fileBytes\":%lu,\"more\":%u}",
+                            "],\"fileBytes\":%lu,\"more\":%u,\"free\":%lu}",
                             (unsigned long)uint32_t__sumBytes,
-                            (unsigned int)uint16_t__more);
+                            (unsigned int)uint16_t__more,
+                            (unsigned long)((uint32_t__usedBytes < uint32_t__totalBytes)
+                                                ? (uint32_t__totalBytes - uint32_t__usedBytes) : 0u));
     if ((int__written > 0) && ((size_t__used + (size_t)int__written) < size_t__outSize))
     {
         size_t__used += (size_t)int__written;
     }
     return size_t__used;
-}
-static uint16_t func__SimpleLog_CleanForeignFiles(uint32_t *uint32_t__ptr_freedBytes)
-{
-    uint16_t uint16_t__removed = 0u;
-    uint32_t uint32_t__freed = 0u;
-    uint8_t uint8_t__pass;
-    if (uint32_t__ptr_freedBytes != NULL)
-    {
-        *uint32_t__ptr_freedBytes = 0u;
-    }
-    if (BOOL__G__FsOk == false)
-    {
-        return 0u;
-    }
-    for (uint8_t__pass = 0u; uint8_t__pass < 8u; uint8_t__pass++)
-    {
-        char char__batch[8][40];
-        uint32_t uint32_t__sizes[8];
-        uint8_t uint8_t__count = 0u;
-        uint8_t uint8_t__idx;
-#if defined(ESP32)
-        File file__root = LittleFS.open("/", "r");
-        if (file__root)
-        {
-            File file__entry = file__root.openNextFile();
-            while (file__entry && (uint8_t__count < 8u))
-            {
-                char char__rootPath[40];
-                if ((func__SimpleLog_ToRootPath(file__entry.name(),
-                                                char__rootPath,
-                                                sizeof(char__rootPath)) != false) &&
-                    (func__SimpleLog_IsOwnFile(char__rootPath) == false))
-                {
-                    (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "%s", char__rootPath);
-                    uint32_t__sizes[uint8_t__count] = (uint32_t)file__entry.size();
-                    uint8_t__count++;
-                }
-                file__entry.close();
-                file__entry = file__root.openNextFile();
-            }
-            if (file__entry)
-            {
-                file__entry.close();
-            }
-            file__root.close();
-        }
-#else
-        Dir dir__root = LittleFS.openDir("/");
-        while (dir__root.next() && (uint8_t__count < 8u))
-        {
-            char char__rootPath[40];
-            String string__nm = dir__root.fileName();
-            if ((func__SimpleLog_ToRootPath(string__nm.c_str(),
-                                            char__rootPath,
-                                            sizeof(char__rootPath)) != false) &&
-                (func__SimpleLog_IsOwnFile(char__rootPath) == false))
-            {
-                (void)snprintf(char__batch[uint8_t__count], sizeof(char__batch[0]), "%s", char__rootPath);
-                uint32_t__sizes[uint8_t__count] = (uint32_t)dir__root.fileSize();
-                uint8_t__count++;
-            }
-        }
-#endif
-        if (uint8_t__count == 0u)
-        {
-            break;
-        }
-        {
-            uint8_t uint8_t__passRemoved = 0u;
-            for (uint8_t__idx = 0u; uint8_t__idx < uint8_t__count; uint8_t__idx++)
-            {
-                if (LittleFS.remove(char__batch[uint8_t__idx]) != false)
-                {
-                    uint16_t__removed++;
-                    uint8_t__passRemoved++;
-                    uint32_t__freed += uint32_t__sizes[uint8_t__idx];
-                }
-            }
-            if (uint8_t__passRemoved == 0u)
-            {
-                break;
-            }
-        }
-    }
-    BOOL__G__LogScanValid = false;
-    if (uint32_t__ptr_freedBytes != NULL)
-    {
-        *uint32_t__ptr_freedBytes = uint32_t__freed;
-    }
-    return uint16_t__removed;
 }
 static void func__SimpleLog_ResetStateAfterFormat(void)
 {

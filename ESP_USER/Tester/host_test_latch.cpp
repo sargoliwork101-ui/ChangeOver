@@ -2031,14 +2031,13 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
         func__T_UseTokenCookie();
         SIMPLE_WEB_SERVER_T__G__Server.simClear();
         func__Simple_HttpEventFsStatus();
-        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"name\":\"/leftover_old_fw.dat\"") != std::string::npos &&
-                      SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"own\":0") != std::string::npos,
-                      "مسیر /evt/fs مسیرهای استاندارد با اسلش ابتدایی و own=0 را گزارش می‌دهد");
-
-        SIMPLE_WEB_SERVER_T__G__Server.simClear();
-        func__Simple_HttpEventClean();
-        func__T_Check(!LittleFS.exists("/leftover_old_fw.dat") && LittleFS.exists("/evt-20261028.csv"),
-                      "مسیر /evt/clean فقط فایل جاماندهٔ قدیمی را حذف می‌کند و لاگ برنامهٔ فعلی را نگه می‌دارد");
+        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"name\":\"/evt-20261028.csv\"") != std::string::npos &&
+                      SIMPLE_WEB_SERVER_T__G__Server.simBody().find("leftover_old_fw.dat") == std::string::npos &&
+                      SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"own\"") == std::string::npos,
+                      "مسیر /evt/fs فقط فایل‌های روزِ خودِ لاگ را فهرست می‌کند و فایل قدیمی را نمی‌خواند");
+        func__T_Check(LittleFS.exists("/leftover_old_fw.dat") &&
+                      (func__SimpleLog_ScanDays(true) == 1u),
+                      "برنامه فایل‌های قدیمی را نه می‌خواند و نه دست می‌زند");
 
         SIMPLE_WEB_SERVER_T__G__Server.simClear();
         func__Simple_HttpEventFormat();
@@ -2416,23 +2415,13 @@ static void func__T_TestChartStorage(void)
     func__T_Check((UINT8_T__G__Chart1D_Count == 0u) && (UINT8_T__G__Chart3M_Count == 0u),
                   "فایل نمودار خراب کلاً رد می‌شود و نمودار جعلی نمی‌کشد");
     LittleFS.remove(SIMPLE_CHARTS_FILE);
-    {
-        File file__legacy = LittleFS.open(SIMPLE_CHARTS_LEGACY_FILE, "w");
-        if (file__legacy)
-        {
-            file__legacy.print("{\"1d\":{\"c\":2,\"pct\":[50,51],\"vin\":[24100,24110],"
-                               "\"vpack\":[25000,25100],\"time\":[1762300000,1762303600]}}");
-            file__legacy.close();
-        }
-    }
     func__Simple_ChartsLoad();
-    func__T_Check(UINT8_T__G__Chart1D_Count == 2u,
-                  "فایل متنی قدیمی (charts.json) همچنان خوانده می‌شود");
+    func__T_Check(UINT8_T__G__Chart1D_Count == 0u,
+                  "بدون فایل نمودار چیزی خوانده نمی‌شود (فایل متنی قدیمی دیگر پشتیبانی نمی‌شود)");
     BOOL__G__ChartsDirty = true;
     func__Simple_ChartsSave();
-    func__T_Check(LittleFS.exists(SIMPLE_CHARTS_FILE) &&
-                  (!LittleFS.exists(SIMPLE_CHARTS_LEGACY_FILE)),
-                  "اولین ذخیرهٔ تازه، فایل متنی قدیمی را برمی‌دارد");
+    func__T_Check(LittleFS.exists(SIMPLE_CHARTS_FILE),
+                  "اولین ذخیره، فایل باینری نمودار را می‌سازد");
     SIM_SIZE_T__G__FsTotalBytes = 64000u;
     func__T_Check(func__SimpleLog_BudgetBytes() ==
                   ((size_t)64000u - (size_t)SIMPLE_LOG_RESERVE_BYTES),
@@ -2545,6 +2534,64 @@ static void func__T_TestDiagChunkFullLength(void)
                   "همهٔ ۱۰ رکورد دیاگ درست خوانده می‌شوند (آفست بالای ۲۵۵ بایت هم)");
 }
 
+/* ==================== ۱۳) جا کم آمد: قدیمی‌ترین روز پاک می‌شود، سیستم نمی‌خوابد ==================== */
+static void func__T_TestSpaceReclaim(void)
+{
+    char char__row[256];
+    uint32_t uint32_t__realTotal = SIM_SIZE_T__G__FsTotalBytes;
+    uint16_t uint16_t__before;
+    bool bool__ok;
+    (void)printf("\n== جا کم آمد: قدیمی‌ترین روز پاک می‌شود ==\n");
+    BOOL__G__FsOk = true;
+    BOOL__G__LogScanValid = false;
+    UINT16_T__G__LogReclaimed = 0u;
+    SIM_SIZE_T__G__FsTotalBytes = 65536u;
+    (void)LittleFS.remove("/evt-20261001.csv");
+    (void)LittleFS.remove("/evt-20261002.csv");
+    (void)LittleFS.remove("/evt-20261003.csv");
+    (void)func__SimpleLog_PrepareDayFile(20261001u);
+    (void)func__SimpleLog_PrepareDayFile(20261002u);
+    (void)func__SimpleLog_PrepareDayFile(20261003u);
+    func__T_Check(func__SimpleLog_ScanDays(true) >= 3u, "سه روز برای آزمون ساخته شد");
+    /* فلش عملاً پر: فضای آزاد کمتر از ذخیرهٔ لازم */
+    SIM_SIZE_T__G__FsTotalBytes = 1000u;
+    func__T_Check(func__SimpleLog_FreeBytes() == 0u, "روی فلش پر، فضای آزاد صفر گزارش می‌شود");
+    uint16_t__before = UINT16_T__G__LogReclaimed;
+    bool__ok = func__SimpleLog_ReclaimOldest(20261003u);
+    func__T_Check((bool__ok != false) && !LittleFS.exists("/evt-20261001.csv") &&
+                  LittleFS.exists("/evt-20261003.csv"),
+                  "برای جا باز کردن، قدیمی‌ترین روز پاک می‌شود و روز جاری دست‌نخورده می‌ماند");
+    bool__ok = func__SimpleLog_ReclaimOldest(20261003u);
+    func__T_Check((bool__ok != false) && !LittleFS.exists("/evt-20261002.csv") &&
+                  LittleFS.exists("/evt-20261003.csv"),
+                  "روز دوم هم وقتی جا لازم باشد پاک می‌شود");
+    func__T_Check((uint16_t)(UINT16_T__G__LogReclaimed - uint16_t__before) == 2u,
+                  "شمارندهٔ روزهای پاک‌شده دقیق است");
+    while (func__SimpleLog_ReclaimOldest(20261003u))
+    {
+        /* هر چه روز دیگر مانده بود هم پاک می‌شود، تا فقط روز جاری بماند */
+    }
+    bool__ok = func__SimpleLog_ReclaimOldest(20261003u);
+    func__T_Check((bool__ok == false) && (UINT8_T__G__LogIndexCount == 1u) &&
+                  LittleFS.exists("/evt-20261003.csv"),
+                  "وقتی فقط روز جاری می‌ماند، دیگر چیزی پاک نمی‌شود");
+    /* نوشتن ردیف روی فلش پر: جای روز پاک‌شده گرفته می‌شود و نوشتن ادامه پیدا می‌کند */
+    (void)func__SimpleLog_PrepareDayFile(20261001u);
+    BOOL__G__LogScanValid = false;
+    uint16_t__before = UINT16_T__G__LogReclaimed;
+    func__Simple_TimeSet(1762000000u, false);
+    func__SimpleLog_BuildRow(char__row, sizeof(char__row), 0x0001u, 0u);
+    bool__ok = func__SimpleLog_AppendRow(20261003u, char__row);
+    func__T_Check((bool__ok != false) && !LittleFS.exists("/evt-20261001.csv"),
+                  "روی فلش پر، ردیف تازه نوشته می‌شود و جای آن با پاک‌شدن روز قدیمی باز می‌شود");
+    func__T_Check((uint16_t)(UINT16_T__G__LogReclaimed - uint16_t__before) == 1u,
+                  "پاک‌سازی خودکار هنگام نوشتن هم شمرده می‌شود");
+    (void)LittleFS.remove("/evt-20261001.csv");
+    (void)LittleFS.remove("/evt-20261002.csv");
+    (void)LittleFS.remove("/evt-20261003.csv");
+    SIM_SIZE_T__G__FsTotalBytes = uint32_t__realTotal;
+    BOOL__G__LogScanValid = false;
+}
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2568,6 +2615,7 @@ int main(void)
     func__T_TestChartStorage();
     func__T_TestBootClock();
     func__T_TestDiagChunkFullLength();
+    func__T_TestSpaceReclaim();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)
