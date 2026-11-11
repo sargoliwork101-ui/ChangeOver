@@ -111,27 +111,10 @@ void loop(void)
         func__Simple_SendGetParams();
         bool__paramsReqDone = true;
     }
-    if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
+    if (func__Simple_TimeAdoptFromBoard(UINT32_T__G__BoardTimeSec) != false)
     {
-        bool bool__adopt = !BOOL__G__TimeValid;
-        if (BOOL__G__TimeValid)
-        {
-            uint32_t uint32_t__panelSec = func__Simple_NowSec();
-            if (UINT32_T__G__BoardTimeSec > uint32_t__panelSec)
-            {
-                bool__adopt = true;
-            }
-            else if ((uint32_t__panelSec - UINT32_T__G__BoardTimeSec) >= SIMPLE_TIME_ADOPT_DIFF_SEC)
-            {
-                bool__adopt = true;
-            }
-        }
-        if (bool__adopt)
-        {
-            func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
-            func__Simple_TimeSave();
-            BOOL__G__TimePushed = true;
-        }
+        func__Simple_TimeSave();
+        BOOL__G__TimePushed = true;
     }
     if (BOOL__G__TimeValid && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
     {

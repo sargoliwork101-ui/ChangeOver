@@ -1,10 +1,10 @@
 #include "simple_log.h"
-static uint32_t func__Simple_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t uint8_t__offset)
+static uint32_t func__Simple_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint16_t uint16_t__offset)
 {
-    uint32_t uint32_t__byte0 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset];
-    uint32_t uint32_t__byte1 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset + 1u] << 8;
-    uint32_t uint32_t__byte2 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset + 2u] << 16;
-    uint32_t uint32_t__byte3 = (uint32_t)uint8_t__ptr_buffer[uint8_t__offset + 3u] << 24;
+    uint32_t uint32_t__byte0 = (uint32_t)uint8_t__ptr_buffer[uint16_t__offset];
+    uint32_t uint32_t__byte1 = (uint32_t)uint8_t__ptr_buffer[uint16_t__offset + 1u] << 8;
+    uint32_t uint32_t__byte2 = (uint32_t)uint8_t__ptr_buffer[uint16_t__offset + 2u] << 16;
+    uint32_t uint32_t__byte3 = (uint32_t)uint8_t__ptr_buffer[uint16_t__offset + 3u] << 24;
     uint32_t uint32_t__lowHalf = uint32_t__byte0 | uint32_t__byte1;
     uint32_t uint32_t__highHalf = uint32_t__byte2 | uint32_t__byte3;
     return uint32_t__lowHalf | uint32_t__highHalf;
@@ -151,16 +151,9 @@ static void func__Simple_HandleFrame(void)
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
             UINT32_T__G__ResetCount = func__Simple_ReadU32(uint8_t__ptr_payload, 13u);
             UINT32_T__G__BoardTimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 17u);
-            if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
+            if (func__Simple_TimeAdoptFromBoard(UINT32_T__G__BoardTimeSec) != false)
             {
-                uint32_t uint32_t__panelNowSec = func__Simple_NowSec();
-                if ((!BOOL__G__TimeValid) ||
-                    (UINT32_T__G__BoardTimeSec > uint32_t__panelNowSec) ||
-                    ((uint32_t__panelNowSec - UINT32_T__G__BoardTimeSec) >= SIMPLE_TIME_ADOPT_DIFF_SEC))
-                {
-                    func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
-                    BOOL__G__TimePushed = true;
-                }
+                BOOL__G__TimePushed = true;
             }
             uint8_t uint8_t__newErr = uint8_t__ptr_payload[21];
             uint8_t uint8_t__newPwr = uint8_t__ptr_payload[22];
@@ -313,14 +306,14 @@ static void func__Simple_HandleFrame(void)
                 uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
                 if (uint8_t__idx >= SIMPLE_DIAG_MAX_ERRORS) break;
                 if ((uint16_t__offset + 32u) > UINT16_T__G__RxLen) break;
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].timestamp = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)uint16_t__offset);
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].faultMask = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vIn = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 8u));
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vPack = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 12u));
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vLow = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 16u));
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vHigh = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 20u));
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].state1 = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 24u));
-                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].state2 = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 28u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].timestamp = func__Simple_ReadU32(uint8_t__ptr_payload, uint16_t__offset);
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].faultMask = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 4u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vIn = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 8u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vPack = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 12u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vLow = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 16u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vHigh = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 20u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].state1 = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 24u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].state2 = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 28u));
                 uint16_t__offset += 32u;
             }
         }
@@ -335,9 +328,9 @@ static void func__Simple_HandleFrame(void)
                 uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
                 if (uint8_t__idx >= SIMPLE_DIAG_MAX_POWER_EVENTS) break;
                 if ((uint16_t__offset + 12u) > UINT16_T__G__RxLen) break;
-                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].offTime = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)uint16_t__offset);
-                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].onTime = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
-                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].durationSec = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 8u));
+                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].offTime = func__Simple_ReadU32(uint8_t__ptr_payload, uint16_t__offset);
+                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].onTime = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 4u));
+                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].durationSec = func__Simple_ReadU32(uint8_t__ptr_payload, (uint16_t)(uint16_t__offset + 8u));
                 uint16_t__offset += 12u;
             }
         }

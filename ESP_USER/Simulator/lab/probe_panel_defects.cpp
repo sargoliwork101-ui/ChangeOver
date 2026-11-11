@@ -139,11 +139,32 @@ int main(void)
         UINT32_T__G__TlmField[12] = 654321u;
         UINT8_T__G__TlmFlags = 3u;
         func__Simple_TimeSet(1762000000u, false);
-        func__SimpleLog_BuildRow(row, sizeof(row), 0x0007u, 0u);
-        (void)printf("[6] row = %u bytes -> 400 rows = %u bytes/day, budget %u -> %u full days\n",
-                     (unsigned)strlen(row), (unsigned)((strlen(row) + 1u) * 400u),
-                     (unsigned)SIMPLE_LOG_TOTAL_BUDGET_BYTES,
-                     (unsigned)(SIMPLE_LOG_TOTAL_BUDGET_BYTES / ((strlen(row) + 1u) * 400u)));
+        {
+            uint32_t png[SimpleLogCodec::Fields];
+            uint8_t buf[SimpleLogCodec::MaxFrame];
+            SimpleLogCodec::State st;
+            uint32_t total = SimpleLogCodec::HeaderSize;
+            uint32_t budget;
+            uint16_t i;
+            for (i = 0u; i < 400u; i++)
+            {
+                func__Simple_TimeSet(1762000000u + ((uint32_t)i * 3600u), false);
+                func__SimpleLog_BuildRow(row, sizeof(row), 0x0007u, 0u);
+                if (!SimpleLogCodec::parse(row, png))
+                {
+                    break;
+                }
+                total += (uint32_t)SimpleLogCodec::encode(st, png, buf);
+            }
+            SIM_SIZE_T__G__FsTotalBytes = 64000u;
+            budget = (uint32_t)func__SimpleLog_BudgetBytes();
+            SIM_SIZE_T__G__FsTotalBytes = 2097152u;
+            (void)printf("[6] compact log: %u bytes for %u full rows (text was %u bytes),"
+                         " budget on a 64 kB flash = %u bytes = %u full days\n",
+                         (unsigned)total, (unsigned)i, (unsigned)((strlen(row) + 1u) * i),
+                         (unsigned)budget,
+                         (unsigned)((total != 0u) ? (budget / total) : 0u));
+        }
     }
     /* 7) Panel size: the firmware literal, measured by the lab, against its cap. */
     (void)printf("[7] panel html literal = %u bytes, cap = %u bytes\n",

@@ -116,6 +116,10 @@
 #define SIMPLE_TIME_SYNC_DELAY_MS       3000u
 #define SIMPLE_TIME_RESEND_MS           600000u
 #define SIMPLE_TIME_ADOPT_DIFF_SEC      300u
+/* [EN] After a power cut the clock is restored from the flash, but the board
+ * is the one that kept counting.  Rows wait this long for the board's time so
+ * the first rows of the boot never land on a stale day. */
+#define SIMPLE_TIME_BOOT_GRACE_MS       8000u
 #define SIMPLE_LOG_MAX_DAYS             90u
 /* [EN] Three months kept.  A realistic day is ~14 rows = ~285 B with the
  * compact codec, so 90 days stay near 26 kB - far inside the 120 kB budget. */

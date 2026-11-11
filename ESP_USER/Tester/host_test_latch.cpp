@@ -2466,6 +2466,85 @@ static void func__T_TestChartStorage(void)
     func__Simple_ChartsClear();
 }
 
+/* ==================== ۱۱) ساعت پس از قطع برق ==================== */
+static void func__T_TestBootClock(void)
+{
+    uint32_t uint32_t__before;
+    (void)printf("\n== ساعت پس از قطع برق: انتظار برای میکرو و ممنوعیت بازگشت به عقب ==\n");
+    BOOL__G__FsOk = LittleFS.begin();
+    (void)func__SimpleLog_Clear();
+    func__Simple_TimeSet(1792756800u, false);
+    BOOL__G__TimeFromDisk = true;
+    BOOL__G__TimeBoardSeen = false;
+    UINT32_T__G__TimeBootMs = (uint32_t)millis();
+    func__T_Check(func__Simple_TimeBootReady() == false,
+                  "ساعتی که از فلش برگشته، تا جواب میکرو تأییدشده حساب نمی‌شود");
+    func__T_Check(func__SimpleLog_WriteRow(0u, (uint8_t)SIMPLE_LOG_NOTE_MANUAL) == false,
+                  "در پنجرهٔ انتظار هیچ ردیفی با ساعت کهنه نوشته نمی‌شود");
+    UINT32_T__G__TimeBootMs = (uint32_t)millis() - ((uint32_t)SIMPLE_TIME_BOOT_GRACE_MS + 100u);
+    func__T_Check(func__Simple_TimeBootReady() != false,
+                  "اگر میکرو جواب ندهد، بعد از پنجرهٔ انتظار نوشتن ادامه پیدا می‌کند");
+    func__T_Check(func__SimpleLog_WriteRow(0u, (uint8_t)SIMPLE_LOG_NOTE_MANUAL) != false,
+                  "بعد از پایان انتظار، همان ردیف نوشته می‌شود");
+    BOOL__G__TimeFromDisk = true;
+    BOOL__G__TimeBoardSeen = false;
+    UINT32_T__G__TimeBootMs = (uint32_t)millis();
+    func__T_Check(func__Simple_TimeAdoptFromBoard(1792756800u + 3600u) != false,
+                  "ساعت جلوترِ میکرو پذیرفته می‌شود");
+    func__T_Check(func__Simple_TimeBootReady() != false,
+                  "با رسیدن ساعت میکرو، انتظار همان لحظه تمام می‌شود");
+    uint32_t__before = func__Simple_NowSec();
+    func__T_Check(func__Simple_TimeAdoptFromBoard(uint32_t__before - 3600u) == false,
+                  "ساعت عقب‌ترِ میکرو (مثلاً بعد از ریست خودِ میکرو) پذیرفته نمی‌شود");
+    func__T_Check(func__Simple_NowSec() >= uint32_t__before,
+                  "ساعت پنل هرگز به عقب برنمی‌گردد");
+    BOOL__G__TimeFromDisk = false;
+    BOOL__G__TimeBoardSeen = false;
+    UINT32_T__G__TimeBootMs = 0u;
+}
+
+/* ==================== ۱۲) بستهٔ دیاگ با ۱۰ رکورد (آفست بیش از ۲۵۵ بایت) ==================== */
+static void func__T_TestDiagChunkFullLength(void)
+{
+    uint16_t uint16_t__idx;
+    bool bool__ok = true;
+    (void)printf("\n== بستهٔ دیاگ با ۱۰ رکورد: آفست ۱۶ بیتی ==\n");
+    UINT8_T__G__RxType = (uint8_t)SIMPLE_MSG_DIAG_DATA;
+    UINT8_T__G__RxPayload[0] = 1u;    /* chunk */
+    UINT8_T__G__RxPayload[1] = 0u;    /* first slot */
+    UINT8_T__G__RxPayload[2] = 10u;   /* how many records come */
+    for (uint16_t__idx = 0u; uint16_t__idx < 10u; uint16_t__idx++)
+    {
+        uint16_t uint16_t__base = (uint16_t)(3u + (uint16_t__idx * 32u));
+        uint32_t uint32_t__ts = 1700000000u + ((uint32_t)uint16_t__idx * 1000u);
+        uint8_t uint8_t__k;
+        for (uint8_t__k = 0u; uint8_t__k < 32u; uint8_t__k++)
+        {
+            UINT8_T__G__RxPayload[uint16_t__base + uint8_t__k] = 0u;
+        }
+        UINT8_T__G__RxPayload[uint16_t__base + 0u] = (uint8_t)(uint32_t__ts & 0xFFu);
+        UINT8_T__G__RxPayload[uint16_t__base + 1u] = (uint8_t)((uint32_t__ts >> 8) & 0xFFu);
+        UINT8_T__G__RxPayload[uint16_t__base + 2u] = (uint8_t)((uint32_t__ts >> 16) & 0xFFu);
+        UINT8_T__G__RxPayload[uint16_t__base + 3u] = (uint8_t)((uint32_t__ts >> 24) & 0xFFu);
+        UINT8_T__G__RxPayload[uint16_t__base + 4u] = (uint8_t)(0x40u + (uint8_t)uint16_t__idx);
+    }
+    UINT16_T__G__RxLen = (uint16_t)(3u + (10u * 32u));
+    BOOL__G__DiagClearPending = false;
+    func__Simple_HandleFrame();
+    for (uint16_t__idx = 0u; uint16_t__idx < 10u; uint16_t__idx++)
+    {
+        if ((SIMPLE_DIAG_ERROR_T__G__Errors[uint16_t__idx].timestamp !=
+             (1700000000u + ((uint32_t)uint16_t__idx * 1000u))) ||
+            (SIMPLE_DIAG_ERROR_T__G__Errors[uint16_t__idx].faultMask !=
+             (0x40u + (uint32_t)uint16_t__idx)))
+        {
+            bool__ok = false;
+        }
+    }
+    func__T_Check(bool__ok,
+                  "همهٔ ۱۰ رکورد دیاگ درست خوانده می‌شوند (آفست بالای ۲۵۵ بایت هم)");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2487,6 +2566,8 @@ int main(void)
     func__T_TestLogMidnightRollover();
     func__T_TestLogCodec();
     func__T_TestChartStorage();
+    func__T_TestBootClock();
+    func__T_TestDiagChunkFullLength();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

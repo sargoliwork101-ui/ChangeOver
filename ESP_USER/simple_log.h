@@ -1214,6 +1214,15 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     bool bool__stored = false;
     bool bool__force;
     /*
+ * [EN] After a power cut the clock comes back from the flash and may be hours
+ * behind. The board kept counting, so the first rows wait for its time (or for
+ * the grace window) instead of being stamped onto a stale day.
+ */
+    if (func__Simple_TimeBootReady() == false)
+    {
+        return false;
+    }
+    /*
  * [EN] DAY FIRST, CAP SECOND. This is the v1.118 fix: yesterday's full cap
  * must never be consulted before today's day has been resolved.
  */
@@ -1542,6 +1551,10 @@ static void func__SimpleLog_Queue(uint16_t uint16_t__mask, uint8_t uint8_t__note
     {
         BOOL__G__LogMainsQueuedValid = true;
         UINT32_T__G__LogMainsQueuedMs = uint32_t__nowMs;
+    }
+    if (func__Simple_TimeBootReady() == false)
+    {
+        return;
     }
     if ((BOOL__G__LogLastRowValid == false) ||
         ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >= SIMPLE_LOG_MIN_INTERVAL_MS) ||
