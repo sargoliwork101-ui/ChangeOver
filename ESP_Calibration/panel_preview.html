@@ -546,7 +546,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e82867b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9f1ff2e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -576,6 +576,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="sx" title="هر روز یک فایل تا ۳۰ روز · فقط با تغییر یک خط نوشته می‌شود · هر پلهٔ ۲۰۰mV یک خط · یک ساعت بی‌اتفاق = یک خط ضربان · ساعت از دستگاه شما">هر ردیف یک اتفاق و هر ستون یک کمیت — کلیدها را بالای جدول ببینید.</div>
 <div class="bqr">
 <label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
+<label>سهم حافظه<select id="evtpct" onchange="evtPctSet()" title="چند درصد از حافظهٔ فایل‌ها به تاریخچهٔ وضعیت برسد؛ ۱۰۰٪ یعنی هر چه مانده. کد برنامه در این حافظه نیست، و یک بلوک همیشه برای نوشتن خالی می‌ماند"><option value="100">۱۰۰٪ (همه)</option></select></label>
 <button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
 <button class="sb" type="button" onclick="evtfs(1)">حافظهٔ ESP</button>
 <button class="sb" type="button" onclick="evtdl()">دانلود این روز</button>
@@ -4208,15 +4209,14 @@ const EVT_TIP={
   'Link back':'ارتباط با برد STM32 دوباره برقرار شد',
   'Mains on':'برق شهر وصل شد',
   'Mains off':'برق شهر قطع شد',
-  'V step':'ولتاژ پک یک پلهٔ ۲۰۰ میلی‌ولتی جابه‌جا شد',
+  'V step':'ولتاژ پک یک پلهٔ ۵۰۰ میلی‌ولتی جابه‌جا شد',
   'Clock set':'ساعت با ساعت دستگاه شما تنظیم شد',
   'Near cut':'ولتاژ باتری به مرز قطع نزدیک شد',
   'Above cut':'ولتاژ باتری از مرز قطع بالا آمد',
   'Heartbeat':'گزارش دوره‌ای — یک ساعت هیچ اتفاقی نیفتاد و پنل زنده است',
   'Manual':'ثبت دستی با کلید «به‌روزرسانی»',
   'Day full':'سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',
-  'Day start':'فایل این روز از این لحظه ساخته شد',
-  'Flags off':'کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است'
+  'Day start':'فایل این روز از این لحظه ساخته شد'
 };
 /* [EN] A tag is explained by its own title, plus the reason for a phase tag
         ("CH1 absorb" -> what absorb means for channel 1).
@@ -4245,7 +4245,7 @@ const EVT_ST=['off','bulk','absorb','float','bring-up','jit wait','input wait','
         guess: each text is the meaning the board gives that bit.
    [FA] بایت عمومی فریم، هر بیت یک معنی. هیچ‌کدام حدس نیست؛ هر متن همان
         معنایی است که برد به آن بیت می‌دهد. */
-const EVT_FL=[[1,'Data ok','Data lost'],[2,'Input on','Input off'],
+const EVT_FL=[[1,'Data ok','Data lost'],
               [4,'Meas ok','Meas bad'],[8,'CH1 ok','CH1 fail'],
               [16,'CH2 ok','CH2 fail'],[32,'Manual on','Manual off']];
 let evtBusy=false,evtClkBusy=false;
@@ -4315,19 +4315,6 @@ function evtTime(epoch){
   const p=n=>String(n).padStart(2,'0');
   return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
 }
-/* [EN] v1.122: the battery percentage of a row - taken from the row itself when
-        the file has it (v1.109 and later), otherwise recomputed from the same
-        discharge map the board uses (74/75), so old files read the same way.
-   [FA] نسخهٔ ۱٫۱۲۲: درصد باتریِ هر ردیف - اگر خود ردیف داشته باشد (نسخهٔ ۱٫۱۰۹
-        به بعد) همان، وگرنه از همان نگاشت دشارژ برد (۷۴/۷۵) دوباره حساب می‌شود
-        تا فایل قدیمی هم یک‌جور خوانده شود. */
-function evtBattPct(r){
-  if(r.pct!==null&&r.pct!==undefined)return r.pct;
-  const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
-        vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
-  if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
-  return Math.round((r.v24-vmin)*100/(vmax-vmin));
-}
 /* [EN] v1.122: the numeric columns of the table, in header order. A column the
         file does not have (files older than v1.96) shows an em dash instead of
         a zero, so a missing reading is never mistaken for a measured one.
@@ -4337,15 +4324,13 @@ function evtBattPct(r){
 function evtCols(r){
   const num=(v,f)=>(v===null||v===undefined)?'\u2014':f(v);
   return [
-    (r.v24/1000).toFixed(2),                 /* pack */
-    String(r.imbal|0),                       /* half-battery difference */
+    num(r.vlow,x=>(x/1000).toFixed(2)),
+    num(r.vhigh,x=>(x/1000).toFixed(2)),
     num(r.vin,x=>(x/1000).toFixed(2)),       /* input rail */
-    num(r.v12,x=>(x/1000).toFixed(2)),       /* 12 V node */
     num(r.i1,x=>(x/1000).toFixed(2)),        /* channel 1 current */
     num(r.i2,x=>(x/1000).toFixed(2)),        /* channel 2 current */
     num(r.d1,x=>(x/10).toFixed(0)),          /* channel 1 command */
     num(r.d2,x=>(x/10).toFixed(0)),          /* channel 2 command */
-    String(evtBattPct(r))                    /* battery percent */
   ];
 }
 /* [EN] One row -> a Persian line and a severity: 3 = fault, 2 = warning,
@@ -4402,9 +4387,8 @@ function evtRowText(r){
   if(chg&256){
     /* [EN] only the bits that are ON are named.
        [FA] فقط بیت‌های روشن نام برده می‌شوند. */
-    let any=0;
-    EVT_FL.forEach(b=>{if(fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
-    if(!any)add('Flags off',2);
+    EVT_FL.forEach(b=>{if(fl&b[0]){add(b[1],((b[0]&5)!==0)?1:2);}});
+    /* [EN] No generic Flags off tag: only specific active states are named. */
   }
   if(r.note===5){add('Heartbeat',0);}
   if(r.note===6){add('Manual',0);}
@@ -4420,14 +4404,22 @@ function evtRowText(r){
   return {txt:parts.join(' · '),lv:lv,time:evtTime(r.epoch)};
 }
 function evtParse(line){
-  const f=line.split(',');
-  return {epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
+  let f=line.split(',');
+  /* [EN] Normalize compact v1.137 rows to legacy indexes; old files stay readable. */
+  if(f.length===18){const a=f;f=[...a.slice(0,10),String((+a[10])+(+a[11])),a[10],a[11],'0',a[12],a[13],a[10],a[14],a[15],a[16],a[17]];}
+
+  /* [EN] v1.129: the raw line travels with the row. The API a page is served by
+          a board that writes 22 fields and no id, so the only identity a row can
+          honestly carry is the data it shows.
+     [FA] نسخهٔ ۱٫۱۲۹: خط خام همراه ردیف می‌آید. برد ۲۲ فیلد می‌نویسد و شناسه
+          نمی‌دهد، پس تنها هویتی که ردیف می‌تواند صادقانه داشته باشد دادهٔ خودش
+          است. */
+  return {id:line,epoch:+f[0]||0,uptime:+f[1]||0,chg:+f[2]||0,note:+f[3]||0,mains:+f[4]||0,
           fl:+f[5]||0,c1:+f[6]||0,c2:+f[7]||0,fault:+f[8]||0,flags2:+f[9]||0,
           v24:+f[10]||0,vlow:+f[11]||0,vhigh:+f[12]||0,imbal:+f[13]||0,dm:+f[14]||0,
           vin:(f.length>15)?+f[15]:null,v12:(f.length>16)?+f[16]:null,
           i1:(f.length>17)?+f[17]:null,i2:(f.length>18)?+f[18]:null,
           d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
-          pct:(f.length>21)?+f[21]:null,
           band:(+f[10]||0)<21200};
 }
 /* [EN] v1.99: every piece of a line sits in its own span and every number or
@@ -4450,6 +4442,9 @@ const xspr=(s,c,tip)=>s.split(' · ').map(x=>'<span class="'+c+'" title="'+
  *      را یک‌جا. سمت برد هیچ‌چیز عوض نشد؛ بافرش همان ۳۶۰۰ بایت است.
  */
 let evtRows=[],evtFrom=0,evtWhole=false,evtAll=false,evtPicked=false;
+/* [EN] v1.127: the answer currently drawn (see evtRender).
+   [FA] نسخهٔ ۱٫۱۲۷: پاسخی که همین حالا روی صفحه است. */
+let evtKey='';
 let evtFsWarn='',evtGap='',evtWhere='',evtDayLab='';
 const EVT_PAGE=30;
 function evtParseAll(text){
@@ -4459,20 +4454,70 @@ function evtParseAll(text){
    [FA] نسخهٔ ۱٫۱۲۴: سرصفحه کوتاه است و توضیحش با نگه‌داشتن موس می‌آید. */
 const EVT_COLS=[['ساعت','ساعت رویداد — از گوشی یا کامپیوتری که این صفحه را باز کرده'],
  ['اتفاق','هر تگ یک اتفاق است؛ توضیح کاملش با نگه‌داشتن موس روی همان تگ'],
- ['پک V','ولتاژ کل پک باتری (۲۴ ولت)'],
- ['Δ نیم mV','اختلاف دو نیم‌باتری به میلی‌ولت'],
+ ['پایینی V','ولتاژ باتری پایینی'],
+ ['بالایی V','ولتاژ باتری بالایی'],
  ['ورودی V','ولتاژ ورودی (برق شهر یا منبع)'],
- ['۱۲V V','ولتاژ نود ۱۲ ولت'],
  ['I۱ A','جریان باتری کانال ۱'],
  ['I۲ A','جریان باتری کانال ۲'],
  ['D۱ ٪','درصد فرمان PWM کانال ۱'],
  ['D۲ ٪','درصد فرمان PWM کانال ۲'],
- ['باتری ٪','درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵)']];
-function evtLine(r){
+];
+/* [EN] v1.129 (owner: "do what the industry does"). Keyed reconciliation, the
+        way React and every list-diff library do it:
+          1. a row is identified by the DATA it shows - the raw line - so two
+             rows that share a second are still two different rows;
+          2. an element that is still on screen is REUSED, not rebuilt, so the
+             selection, the phosphor cells and the reader's scroll all survive an
+             update by construction, with no re-finding and no key hunting;
+          3. only the difference is touched: a new row is inserted, the row that
+             fell off the window is removed, everything else is left alone.
+     [FA] نسخهٔ ۱٫۱۲۹ (دستور کاربر: «کار روز دنیا را بکن»). تطبیق کلیددار، همان
+        کاری که React و هر کتابخانهٔ diff فهرست می‌کند:
+          ۱. ردیف با دادهٔ خودش شناخته می‌شود - خط خام - پس دو ردیف هم‌ثانیه
+             هنوز دو ردیف متفاوت‌اند؛
+          ۲. عنصری که روی صفحه مانده بازاستفاده می‌شود نه بازساخته، پس انتخاب،
+             خانه‌های فسفری و اسکرول کاربر به‌خودی خود می‌مانند: نه جست‌وجوی
+             دوباره، نه شکار کلید؛
+          ۳. فقط تفاوت دست می‌خورد: ردیف تازه درج می‌شود، ردیفی که از پنجره
+             افتاده حذف می‌شود، بقیه دست‌نخورده می‌مانند. */
+const evtRowKey=r=>r.id||'';
+function evtRowEl(r){
   const t=evtRowText(r);
-  return '<tr class="evtrow lv'+t.lv+'" onclick="evtPick(this)"><td class="evtt">'+xiso(t.time)+'</td>'+
-         '<td class="evtd">'+xspr(t.txt,'ep')+'</td>'+
-         evtCols(r).map(x=>'<td>'+xiso(x)+'</td>').join('')+'</tr>';
+  const tr=document.createElement('tr');
+  tr.className='evtrow lv'+t.lv;
+  tr.dataset.k=evtRowKey(r);
+  tr.setAttribute('onclick','evtPick(this)');
+  tr.innerHTML='<td class="evtt">'+xiso(t.time)+'</td>'+
+               '<td class="evtd">'+xspr(t.txt,'ep')+'</td>'+
+               evtCols(r).map(x=>'<td>'+xiso(x)+'</td>').join('');
+  return tr;
+}
+/* [EN] The table exists once; only its rows are reconciled afterwards. */
+function evtTableBody(box){
+  const body=box.querySelector('table.evttbl > tbody');
+  if(body)return body;
+  const head=EVT_COLS.map(c=>'<th title="'+esc(c[1])+'">'+xiso(c[0])+'</th>').join('');
+  box.innerHTML='<table class="evttbl"><thead><tr>'+head+'</tr></thead><tbody></tbody></table>';
+  return box.querySelector('table.evttbl > tbody');
+}
+/* [EN] rows: oldest..newest already ordered the way they are drawn. */
+function evtSync(body,rows){
+  const want=rows.map(evtRowKey);
+  const have=[...body.children];
+  if(have.length===want.length){
+    let same=true;
+    for(let i=0;i<want.length;i++){if(have[i].dataset.k!==want[i]){same=false;break;}}
+    if(same)return 0;               /* nothing changed: do not touch the DOM */
+  }
+  const pool=new Map();
+  have.forEach(tr=>{const k=tr.dataset.k;if(!pool.has(k))pool.set(k,[]);pool.get(k).push(tr);});
+  const frag=document.createDocumentFragment();
+  rows.forEach((r,i)=>{
+    const spare=pool.get(want[i]);
+    frag.appendChild((spare&&spare.length)?spare.shift():evtRowEl(r));
+  });
+  body.replaceChildren(frag);
+  return 1;
 }
 function evtPager(){
   const pv=$('evtpv'),nx=$('evtnx'),al=$('evtal');
@@ -4499,6 +4544,11 @@ function evtPager(){
 function evtPick(tr){
   if(!tr||!tr.parentNode)return 0;
   const body=tr.parentNode;
+  /* [EN] v1.128: tapping the picked row again lets it go. Without this the
+          reader had no way back to a live, updating card.
+     [FA] نسخهٔ ۱٫۱۲۸: کلیک دوباره روی همان ردیف آزادش می‌کند؛ وگرنه کاربر
+          هیچ راهی برای برگشتن به کارتِ زندهٔ در حال به‌روزرسانی نداشت. */
+  const again=tr.classList.contains('sel');
   [...body.querySelectorAll('tr.evtrow')].forEach(function(x){
     x.classList.remove('sel');
     [...x.querySelectorAll('td.chg')].forEach(function(td){
@@ -4513,6 +4563,7 @@ function evtPick(tr){
       td.removeAttribute('title');
     });
   });
+  if(again)return 0;
   tr.classList.add('sel');
   const below=tr.nextElementSibling;
   if(!below)return 0;
@@ -4552,13 +4603,19 @@ function evtPaint(){
   evtRows.forEach(r=>{const t=evtRowText(r);if(t.lv===3)nf++;else if(t.lv===2)nw++;else if(t.lv===1)ng++;});
   if(sum)sum.innerHTML=evtFsWarn+'<span class="r">خطا و قفل: '+evtFa(nf)+'</span><span class="y">هشدار: '+evtFa(nw)+'</span><span class="g">برگشت به سلامتی: '+evtFa(ng)+'</span><span>مجموع: '+evtFa(n)+' خط</span>';
   /* جدیدترین بالا: آخرین اتفاق، اولین خطی است که چشم می‌بیند. */
-  box.innerHTML='<table class="evttbl"><thead><tr>'+
-    EVT_COLS.map(c=>'<th title="'+esc(c[1])+'">'+xiso(c[0])+'</th>').join('')+
-    '</tr></thead><tbody>'+
-    evtRows.slice(from,end).reverse().map(evtLine).join('')+'</tbody></table>';
+  evtSync(evtTableBody(box),evtRows.slice(from,end).reverse());
 }
 /* The board's answer is a TAIL: 30 rows, never the whole day. */
 function evtRender(text,code,ram,src){
+  /* [EN] v1.127: the 10 s tick asks for the same tail - redrawing the table for
+          an answer identical to what is on screen is what looked like a reload.
+          No skip while a whole day file is open: that table is not this answer.
+     [FA] نسخهٔ ۱٫۱۲۷: تیک همان تیل را می‌پرسد؛ بازکشیدن جدول برای پاسخ
+          یکسان، همان «رفرش شدن» بود. وقتی فایل کل روز باز است این مقایسه
+          انجام نمی‌شود، چون آن جدول این پاسخ نیست. */
+  const key=text+'\u0001'+code+'\u0001'+ram+'\u0001'+src+'\u0001'+evtGap;
+  if(!evtWhole&&!evtAll&&key===evtKey)return;
+  evtKey=key;
   /* src 0 = no file system, 2 = the flash refused the write, 3 = it did not mount. */
   evtFsWarn=(src==='2')?'<span class="r">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
               :(src==='3')?'<span class="r">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
@@ -4573,6 +4630,7 @@ function evtRender(text,code,ram,src){
 }
 /* A full day file (the CSV /evt/dl saves) - every row, oldest first. */
 function evtDayLoad(text,day){
+  evtKey=''; /* the table on screen is a day file, not a tail (v1.127) */
   evtRows=evtParseAll(text);
   evtWhole=true;evtAll=false;
   evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
@@ -4581,9 +4639,26 @@ function evtDayLoad(text,day){
   evtPaint();
   return evtRows.length;
 }
+/*
+ * [EN] v1.129 audit: decide first, then commit. The old pair changed evtAll and
+ *      only afterwards asked whether the view could move at all, so a press that
+ *      did nothing still left the state saying "a page" while the screen showed
+ *      the whole day. From the whole-day view one press now lands on the last
+ *      page, which is the page the reader was on before show-all.
+ * [FA] ممیزی ۱٫۱۲۹: اول تصمیم، بعد تغییر. جفت قدیمی اول evtAll را عوض می‌کرد و
+ *      بعد می‌پرسید آیا نما می‌تواند تکان بخورد؛ پس فشاری که کاری نمی‌کرد، وضعیت
+ *      را «یک صفحه» می‌گذاشت در حالی که صفحه کل روز را نشان می‌داد. حالا از نمای
+ *      همهٔ ردیف‌ها، یک فشار به صفحهٔ آخر می‌رسد - همان صفحه‌ای که پیش از
+ *      «همهٔ ردیف‌ها» روی آن بود.
+ */
 function evtPageOlder(){
   if(!evtWhole)return false;
-  if(evtAll){evtAll=false;evtFrom=Math.max(0,evtRows.length-EVT_PAGE);}
+  if(evtAll){
+    evtAll=false;
+    evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
+    evtPaint();
+    return true;
+  }
   if(evtFrom<=0)return false;
   evtFrom=Math.max(0,evtFrom-EVT_PAGE);
   evtPaint();
@@ -4591,8 +4666,14 @@ function evtPageOlder(){
 }
 function evtPageNewer(){
   if(!evtWhole)return false;
+  if((evtFrom+EVT_PAGE)>=evtRows.length){
+    if(!evtAll)return false;
+    evtAll=false;
+    evtFrom=Math.max(0,evtRows.length-EVT_PAGE);
+    evtPaint();
+    return true;
+  }
   evtAll=false;
-  if((evtFrom+EVT_PAGE)>=evtRows.length)return false;
   evtFrom=evtFrom+EVT_PAGE;
   evtPaint();
   return true;
@@ -4647,7 +4728,7 @@ async function evtfetch(manual){
     /* evtRender paints the status line, so the day name, the row count and the
        lost-row warning keep coming from one place. */
     evtRender(t,day,ram,src);
-  }catch(e){ if($('evtst'))$('evtst').textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود'; }
+  }catch(e){ evtKey=''; if($('evtst'))$('evtst').textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود'; }
 }
 async function evtsnap(){
   if($('evtday'))$('evtday').value='';
@@ -4701,6 +4782,29 @@ async function evtfmt(){
     const r=await evtHttp('/evt/format','POST',8000);const t=(await r.text()).trim();
     if($('evtst'))$('evtst').textContent=(t==='ok')?'حافظهٔ فلش ESP کامل فرمت و آماده شد':'فرمت حافظه انجام نشد';
   }catch(e){if($('evtst'))$('evtst').textContent='فرمت حافظه ناموفق بود';}
+  await evtDays();await evtfetch(1);
+  const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
+}
+/* [EN] v1.134 (owner order: "put that percentage of memory as a menu in the log
+   menus so the user can change it too"): the history share, 40..95 percent.
+   The board keeps the choice on its own flash, so this menu only reports it. */
+function evtPctFill(p){
+  const sel=$('evtpct');if(!sel)return;
+  /* [EN] 100 = everything the file partition has: the sketch is not in it. */
+  const steps=[40,45,50,55,60,65,70,75,80,85,90,95,100];
+  const want=+p||100;
+  sel.innerHTML=steps.map(v=>'<option value="'+v+'"'+(v===want?' selected':'')+'>'+(v===100?'۱۰۰٪ (همه)':evtFa(v)+'٪')+'</option>').join('');
+}
+async function evtPctLoad(){
+  try{const r=await evtHttp('/evt/pct','GET',3000);const j=await r.json();evtPctFill(j.p);}catch(e){evtPctFill(85);}
+}
+async function evtPctSet(){
+  const sel=$('evtpct');if(!sel)return;
+  try{
+    const r=await evtHttp('/evt/pct?p='+encodeURIComponent(sel.value),'POST',4000);
+    const j=await r.json();evtPctFill(j.p);
+    if($('evtst'))$('evtst').textContent='سهم تاریخچه: '+evtFa(j.p)+'٪ از حافظهٔ ESP';
+  }catch(e){if($('evtst'))$('evtst').textContent='تغییر سهم تاریخچه انجام نشد';}
   await evtDays();await evtfetch(1);
   const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
 }
@@ -4765,12 +4869,26 @@ async function evtclr(){
     const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
   }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
 }
+/* [EN] v1.127 (user report: "I click a row or page back, and every few seconds
+        it jumps away"). The tick asked for /evt - a 30-row tail - and repainted
+        the card, so the turned page, the picked row and its phosphor cells were
+        lost every 10 s. v1.128 finishes the job: only a DAY FILE being browsed
+        makes the tick step back (the tail cannot describe that window at all),
+        and a picked row no longer freezes anything - evtPaint puts it back by
+        name, so the rows keep arriving AND the selection stays.
+   [FA] نسخهٔ ۱٫۱۲۷ (گزارش کاربر): تیک، /evt را می‌گرفت که ۳۰ ردیف آخر است و
+        کارت را از نو می‌ساخت؛ پس صفحهٔ ورق‌خورده، ردیف انتخاب‌شده و خانه‌های
+        فسفری هر ۱۰ ثانیه می‌رفت. نسخهٔ ۱٫۱۲۸ کار را تمام می‌کند: فقط وقتی
+        فایل یک روز ورق می‌خورد تیک کنار می‌کشد (تیل آن پنجره را نمی‌تواند
+        توصیف کند) و ردیف انتخاب‌شده دیگر چیزی را قفل نمی‌کند - evtPaint آن را با
+        نامش برمی‌گرداند؛ هم ردیف‌ها می‌رسند، هم انتخاب می‌ماند. */
+function evtBrowsing(){return evtWhole||evtAll;}
 async function evtTick(){
   if(document.hidden||evtBusy)return;
   evtBusy=true;
-  try{await evtDays();await evtfetch(0);}finally{evtBusy=false;}
+  try{await evtDays();if(evtBrowsing())return;await evtfetch(0);}finally{evtBusy=false;}
 }
-evtClock().then(()=>evtDays()).then(()=>evtfetch(0));setInterval(evtClock,60000);
+evtClock().then(()=>evtDays()).then(()=>evtPctLoad()).then(()=>evtfetch(0));setInterval(evtClock,60000);
 addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
 addEventListener('online',()=>evtClock());
 setInterval(evtTick,10000);

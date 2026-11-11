@@ -912,6 +912,23 @@ static void func__Esp_HttpBenchLogAdd(void)
         ESP_WEB_SERVER_T__G__Server.send(507, "application/json", CHAR__G__JsonBuffer);
         return;
     }
+    /*
+     * [EN] v1.133 (owner order 2026-11-06: "calibration matters a lot to me -
+     *      if it does not fit, let it delete the log so it can fit itself").
+     *      The cap above says nothing about free space: with the history filling
+     *      the flash, the old code opened the file and the append quietly failed.
+     *      The table now goes first and the oldest days are deleted for it; only
+     *      when even an empty history leaves no block is the row refused.
+     */
+    const uint32_t uint32_t__need = uint32_t__extra + uint32_t__len;
+    const uint32_t uint32_t__freed = func__EspLog_FreeForBenchLog(uint32_t__need);
+    if (func__EspLog_HasRoomFor(uint32_t__need) == false)
+    {
+        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":0,\"full\":1,\"freed\":%lu,\"size\":%lu}",
+                       (unsigned long)uint32_t__freed, (unsigned long)uint32_t__size);
+        ESP_WEB_SERVER_T__G__Server.send(507, "application/json", CHAR__G__JsonBuffer);
+        return;
+    }
     File file__log = LittleFS.open(ESP_BENCHLOG_PATH, "a");
     if (!file__log)
     {
@@ -924,7 +941,8 @@ static void func__Esp_HttpBenchLogAdd(void)
     }
     (void)file__log.print(string__body);
     file__log.close();
-    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":1,\"size\":%lu}", (unsigned long)func__Esp_BenchLogSize());
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":1,\"freed\":%lu,\"size\":%lu}",
+                   (unsigned long)uint32_t__freed, (unsigned long)func__Esp_BenchLogSize());
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 /**
@@ -1145,7 +1163,30 @@ static void func__Esp_HttpEventDownload(void)
         ESP_WEB_SERVER_T__G__Server.send(503, "text/plain", "fs");
         return;
     }
-    (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__day, "text/csv");
+    EspLogCodec::State codec;
+    const int kind=EspLogCodec::begin(file__day,codec);
+    if (kind==1) {
+        char row[ESP_LOG_ROW_MAX];
+        ESP_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+        ESP_WEB_SERVER_T__G__Server.send(200,"text/csv","");
+        ESP_WEB_SERVER_T__G__Server.sendContent(ESP_LOG_HEADER);
+        while (EspLogCodec::next(file__day,codec)) {
+            if (EspLogCodec::text(codec,row,sizeof row)) ESP_WEB_SERVER_T__G__Server.sendContent(row);
+            yield();
+        }
+        if (codec.damaged || codec.ioError) {
+            func__EspLog_FaultRaise();
+            ESP_WEB_SERVER_T__G__Server.sendContent(codec.ioError?
+                "# WARNING: read error; export incomplete\n":
+                "# WARNING: damaged/incomplete records skipped\n");
+        }
+        ESP_WEB_SERVER_T__G__Server.sendContent("");
+    } else if (kind==0) {
+        (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__day, "text/csv");
+    } else {
+        func__EspLog_FaultRaise();
+        ESP_WEB_SERVER_T__G__Server.send(503,"text/plain",codec.ioError?"fs":"log format");
+    }
     file__day.close();
 }
 /**
@@ -1172,6 +1213,41 @@ static void func__Esp_HttpEventSnap(void)
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
                    "{\"ok\":%u}", (bool__stored != false) ? 1u : 0u);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+/* ==================== v1.134 history share ==================== */
+/**
+ * @brief  [EN] GET /evt/pct : {ok, p, min, max, budget, total}; POST /evt/pct?p=N :
+ *              adopt that share (clamped to min..max) and trim at once.
+ *              The panel's log card shows a menu with this range, so the owner
+ *              decides how much of his flash the history may take.
+* @return None /
+ */
+static void func__Esp_HttpEventPct(void)
+{
+    const String string__arg = ESP_WEB_SERVER_T__G__Server.arg("p");
+    if (string__arg.length() != 0u)
+    {
+        const uint8_t uint8_t__asked = func__EspLog_PercentFromText(string__arg.c_str());
+        if (uint8_t__asked != 0u)
+        {
+            (void)func__EspLog_PercentSet(uint8_t__asked);
+        }
+    }
+    FSInfo fsInfo__stat;
+    uint32_t uint32_t__total = 0u;
+    if ((BOOL__G__FsOk != false) && (LittleFS.info(fsInfo__stat) != false))
+    {
+        uint32_t__total = (uint32_t)fsInfo__stat.totalBytes;
+    }
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":1,\"p\":%u,\"min\":%u,\"max\":%u,\"budget\":%lu,\"total\":%lu}",
+                   (unsigned int)UINT8_T__G__LogBudgetPercent,
+                   (unsigned int)ESP_LOG_BUDGET_PERCENT_MIN,
+                   (unsigned int)ESP_LOG_BUDGET_PERCENT_MAX,
+                   (unsigned long)func__EspLog_BudgetBytes(),
+                   (unsigned long)uint32_t__total);
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 /* ==================== Flash inspection & cleanup routes ==================== */
