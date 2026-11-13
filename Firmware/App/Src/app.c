@@ -25,7 +25,7 @@ void func__App_Init(void)
  * scheduler so the option-byte erase cannot stall a running task; on
  * success the MCU resets inside this call and the boot repeats with the
  * part already locked, which makes the second pass a no-op. Default
- * MODULE_FLASH_LOCK = 0, so normal builds never call this path.
+ * MODULE_FLASH_LOCK = 0, so this block is not compiled into normal builds.
  */
     (void)func__FlashLock_ApplyOnce();
 #endif

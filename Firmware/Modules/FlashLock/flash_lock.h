@@ -5,10 +5,10 @@
  *              and reset. Every later boot finds the part already locked and
  *              does nothing, so the lock is a one-time action and never a
  *              boot-time loop.
- * @note    [EN] Default state is MODULE_FLASH_LOCK = 0: App_Init never calls
- *              the option-byte programming path. Existing RDP is not removed.
+ * @note    [EN] Default state in the tree is MODULE_FLASH_LOCK = 0: the module
+ *              compiles, the host test runs, but nothing is ever programmed.
  *              Turning it on costs the developer SWD access on that part -
- *              removing protection for reflashing requires a full chip erase,
+ *              after locking, every SWD session begins with a full chip erase,
  *              which also wipes the parameter bank and the calibration table.
  *              That is why the switch lives in modules_enable.h next to the
  *              other compile-time decisions and not in a panel parameter.
