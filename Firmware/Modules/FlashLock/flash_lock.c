@@ -6,7 +6,7 @@
  *              between the steps leaves the part exactly as it was - the next
  *              boot simply repeats the same question.
  * @note    [EN] This module never runs unless App_Init calls it, and App_Init
- *              only calls it when MODULE_FLASH_LOCK = 1 (enabled for delivery).
+ *              only calls it when MODULE_FLASH_LOCK = 1 (default 0).
  */
 #include "flash_lock.h"
 #include "bsp_flash_lock.h"

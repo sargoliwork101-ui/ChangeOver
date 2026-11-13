@@ -5,8 +5,8 @@
  *              and reset. Every later boot finds the part already locked and
  *              does nothing, so the lock is a one-time action and never a
  *              boot-time loop.
- * @note    [EN] Delivery state is MODULE_FLASH_LOCK = 1: the first boot programs
- *              RDP level 1 and resets; later boots leave protection untouched.
+ * @note    [EN] Default state is MODULE_FLASH_LOCK = 0: App_Init never calls
+ *              the option-byte programming path. Existing RDP is not removed.
  *              Turning it on costs the developer SWD access on that part -
  *              removing protection for reflashing requires a full chip erase,
  *              which also wipes the parameter bank and the calibration table.

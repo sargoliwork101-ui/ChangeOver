@@ -26,5 +26,5 @@
  *      later flash session begins with a full chip erase (which also wipes the
  *      parameter bank at 0x0800E000 and the calibration table at 0x0800F000).
  */
-#define MODULE_FLASH_LOCK     1
+#define MODULE_FLASH_LOCK     0
 #endif /* MODULES_ENABLE_H */
