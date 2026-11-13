@@ -364,7 +364,7 @@ canvas{height:auto;max-width:100%}
    تا رمز درست نیاید هیچ نشانه‌ای از مدیریت دیده نمی‌شود. */
 .fwtap{cursor:default;-webkit-user-select:none;user-select:none;opacity:.75}
 .gate{position:fixed;inset:0;background:rgba(4,7,13,.72);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px}
-.gate[hidden],#adminCard[hidden]{display:none}
+.gate[hidden],#adminCard[hidden],[data-admin][hidden]{display:none!important}
 .gatebox{background:var(--cd);border:1px solid var(--ln2);border-radius:16px;padding:18px;width:min(340px,100%);display:grid;gap:10px;box-shadow:var(--sh)}
 .gatebox input,.arow input,.arow select{width:100%;background:var(--in);border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit;padding:8px 10px;min-height:34px}
 .gmsg{font-size:11px;color:var(--wa);min-height:14px;line-height:1.5}
@@ -380,7 +380,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 @supports not (backdrop-filter:blur(1px)){.cd,nav,header{background:#121826}}
 </style>
 </head>
-<body data-theme="0"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-memory" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M20 12a8 8 0 0 0-14-5M4 12a8 8 0 0 0 14 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/></symbol></defs></svg>
+<body data-theme="0"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-memory" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M20 12a8 8 0 0 0-14-5M4 12a8 8 0 0 0 14 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/></symbol></defs></svg>
 <header>
  <div class="brand"><div class="brand-mark">CO</div><div class="brand-text"><b>ChangeOver</b><span>SMART BATTERY • INDUSTRIAL</span></div></div>
  <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span></div>
@@ -522,6 +522,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     <button class="btn ico" type="button" title="حافظهٔ ESP" aria-label="حافظهٔ ESP" onclick="uiAction(this,()=>evtFs(1))"><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span class="lbl">حافظهٔ ESP</span></button>
     <button class="btn ico" type="button" title="بروزرسانی فهرست" aria-label="بروزرسانی فهرست" onclick="uiAction(this,()=>evtFs(0))"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg><span class="lbl">بروزرسانی</span></button>
     <button class="btn ico" type="button" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها" onclick="uiAction(this,()=>evtDlAll())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">دانلود همه</span></button>
+    <button id="evtFormat" data-admin hidden class="btn ico danger" type="button" title="فرمت کامل حافظه" aria-label="فرمت کامل حافظه" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span class="lbl">فرمت حافظه</span></button>
    </span>
   </div>
   <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
@@ -667,11 +668,7 @@ const CHG_VMIN=21000, CHG_VMAX=29000;
 const RUN_HYST=2, CHG_HYST=5, ZERO_EXIT=2, ONE_EXIT=3, FULL_ENTER=100, FULL_EXIT=95;
 const GREEN_PERIOD=1000, GREEN_MIN_OFF=10, YELLOW_PERIOD=1000, YELLOW_MIN_ON=150, YELLOW_MIN_REMAIN=2;
 
-/* پارامترهای خود برد - درصد فول/خالی باتری و زمان‌بندی چشمک‌ها از این‌ها می‌آید.
-   این عددها پارامترهای همان برد هستند (۷۴/۷۵ و ۸۰/۸۱/۸۲ و ۶۶/۶۷ و ...) که
-   چراغ سبز برد با آن‌ها چشمک می‌زند؛ با هر قاب /t از برد خوانده می‌شوند و
-   اگر کاربر روی برد عوضشان کند، نمایش هم همان را نشان می‌دهد. تا آمدن اولین
-   جواب، پیش‌فرض‌های بالای همین فایل می‌مانند. */
+
 let brd={gPer:GREEN_PERIOD, gOff:GREEN_MIN_OFF, yPer:YELLOW_PERIOD, yOn:YELLOW_MIN_ON,
          vmin:BAT_VMIN, vmax:BAT_VMAX, halfMin:HALF_VMIN, halfMax:HALF_VMAX,
          hEnt:FULL_ENTER, hExit:FULL_EXIT, cHyst:CHG_HYST, rHyst:RUN_HYST,
@@ -853,7 +850,7 @@ function exportCsv(kind){
 
 async function uiAction(el,run,admin){
  if(el.getAttribute('aria-busy')==='true')return;
- const controls=admin?Array.from(document.querySelectorAll('#adminCard button,#admLoginBtn')):el.closest('.icog')?Array.from(el.closest('.icog').querySelectorAll('button')):[el];
+ const controls=admin?Array.from(document.querySelectorAll('#adminCard button,#admLoginBtn,[data-admin]')):el.closest('.icog')?Array.from(el.closest('.icog').querySelectorAll('button')):[el];
  const states=controls.map(b=>[b,b.disabled]);
  controls.forEach(b=>{b.disabled=true;b.setAttribute('aria-busy','true');});
  try{await run();}catch(e){showToast('انجام نشد؛ ارتباط با برد را بررسی کن');}
@@ -1898,9 +1895,15 @@ function evtParse(line){
 
 const evtIso=s=>String(s==null?'':s).split(/([0-9A-Za-z][0-9A-Za-z.:%-]*)/).map((x,i)=>i%2?'<span class="lt">'+evtEsc(x)+'</span>':evtEsc(x)).join('');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
-let evtBusy=false,evtClkBusy=false;
+let evtBusy=false,evtClkBusy=false,admToken='';
+try{admToken=sessionStorage.getItem('co_admin')||'';}catch(e){}
+function admTokenSet(t){
+ admToken=/^[a-f0-9]{64}$/.test(t||'')?t:'';
+ try{if(admToken)sessionStorage.setItem('co_admin',admToken);else sessionStorage.removeItem('co_admin');}catch(e){}
+}
+function admHeaders(h){h=h||{};if(admToken)h['X-Admin-Token']=admToken;return h;}
 async function evtHttp(u,m,ms){
- const o={method:m||'GET',cache:'no-store'};
+ const o={method:m||'GET',cache:'no-store',credentials:'same-origin',headers:admHeaders()};
  let ac=null,tm=0;
  if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
  try{
@@ -1968,7 +1971,7 @@ async function evtFs(toggle){
   const r=await evtHttp('/evt/fs','GET',4000);if(!r.ok)throw Error();const j=await r.json();
   const files=Array.isArray(j.files)?j.files:[];
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
-  let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
+  let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b></div>';
 
   if(!j.fs){
    h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'حافظه در دسترس نیست؛ تاریخچه خودکار پاک نمی‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
@@ -1989,7 +1992,7 @@ async function evtFs(toggle){
     h+='</div>';
    }
   }
-  box.innerHTML=h;showToast('فهرست حافظه به‌روز شد');
+  box.innerHTML=h;showToast('فهرست حافظه به‌روز شد');return j;
  }catch(e){showToast('خواندن حافظه انجام نشد');box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
 }
 async function evtDays(){
@@ -2012,12 +2015,16 @@ async function evtfmt(){
  if(!admReady){admOpen();return;}
  if(!confirm('همهٔ فایل‌ها و تاریخچهٔ حافظهٔ ESP پاک می‌شوند. ادامه می‌دهی؟'))return;
  admSay('admCardMsg','در حال فرمت حافظه…',true);
- const r=await evtHttp('/evt/format','POST',20000);
- if(r.status===403){admLock();showToast('نشست مدیر تمام شد؛ دوباره وارد شو');return;}
- if(!r.ok||(await r.text()).trim()!=='ok'){admSay('admCardMsg','فرمت انجام نشد؛ حافظه را بررسی کن',false);return;}
- const sel=document.getElementById('evtDay');if(sel)sel.value='';
- await evtDays();await evtFetch(0);await evtFs(0);
- admSay('admCardMsg','حافظه فرمت شد؛ رمز مدیر و وای‌فای حفظ شدند',true);
+ try{
+  const r=await evtHttp('/evt/format','POST',60000),t=(await r.text()).trim();
+  if(r.status===403){admLock();showToast('نشست مدیر تمام شد؛ دوباره وارد شو');return;}
+  if(!r.ok||t!=='ok'){
+   admSay('admCardMsg',t==='mount'?'فرمت شد ولی حافظه باز نشد؛ چیدمان فلش را بررسی کن':t==='write'?'فرمت شد ولی ذخیره و خواندن تأیید نشد':'فرمت انجام نشد؛ اندازه و چیدمان فلش را بررسی کن',false);await evtFs(0);return;
+  }
+  const sel=document.getElementById('evtDay');if(sel)sel.value='';
+  await evtDays();await evtFetch(0);const fs=await evtFs(0),ok=!!(fs&&fs.fs&&+fs.total>0);
+  admSay('admCardMsg',ok?'حافظه فرمت شد؛ نوشتن و خواندن تأیید شد؛ رمزها حفظ شدند':fs?'پاسخ فرمت موفق بود ولی حافظه هنوز در دسترس نیست':'فرمت تأیید شد؛ وضعیت نهایی حافظه دریافت نشد',ok);
+ }catch(e){admSay('admCardMsg','پاسخ فرمت نرسید؛ نتیجه نامشخص است؛ وضعیت حافظه را بخوان',false);}
 }
 async function evtDownload(query,name){
  showToast('در حال آماده‌کردن فایل…');
@@ -2088,14 +2095,14 @@ function admClose(){
  admSay('admMsg','');
 }
 function admUnlock(who){
- admReady=true;
+ admReady=true;document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=false);
  let c=document.getElementById('adminCard'); if(c) c.hidden=false;
  let w=document.getElementById('admWho'); if(w) w.textContent=who||'ادمین';
  if(typeof showTab==='function') showTab(2);
  admSay('admCardMsg','');
 }
 function admLock(){
- admReady=false;
+ admReady=false;admTokenSet('');document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=true);
  let c=document.getElementById('adminCard'); if(c) c.hidden=true;
 }
 function admBody(obj){
@@ -2108,7 +2115,7 @@ function admBody(obj){
 async function admCall(path, obj){
  const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),10000);
  try{return await fetch(path,{method:'POST',credentials:'same-origin',signal:ac.signal,
-  headers:{'Content-Type':'application/x-www-form-urlencoded'},
+  headers:admHeaders({'Content-Type':'application/x-www-form-urlencoded'}),
   body:admBody(obj)}).then(function(r){
    return r.json().then(function(j){ return {status:r.status, body:j}; });
   });}finally{clearTimeout(timer);}
@@ -2151,7 +2158,7 @@ function admLogin(){
  admSay('admMsg','در حال بررسی...', true);
  return admCall('/login',{user:'admin', pass:pass}).then(function(x){
   let j=x.body||{};
-  if(x.status===200 && j.ok===1){ admClose(); admUnlock(j.user||'admin'); showToast('دسترسی مدیر باز شد'); return; }
+  if(x.status===200 && j.ok===1){ admTokenSet(j.token);admClose(); admUnlock(j.user||'admin'); showToast('دسترسی مدیر باز شد'); return; }
   if(x.status===409){ admSay('admMsg','یک نشست باز است؛ چند دقیقه بعد دوباره تلاش کن', false); return; }
   if(x.status===429){ admSay('admMsg','چند بار پشت‌سرهم اشتباه بود؛ کمی صبر کن', false); return; }
   admSay('admMsg','رمز نادرست است', false);
@@ -2226,6 +2233,6 @@ if(document.fonts && document.fonts.ready){
 function init(){ poll(); pollCharts(); pollDiag(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(tickDiagClocks,1000); }
 window.addEventListener('DOMContentLoaded', init);
 </script>
-</body>
+<div id="labBar" style="position:fixed;left:8px;bottom:8px;z-index:99999;font:12px/1.6 Tahoma,sans-serif;background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:10px;padding:6px 10px;box-shadow:0 6px 20px rgba(0,0,0,.45)">· ۹۰ روز داده نوار شیمیولیتور <a href="/lab" style="color:#7dd3fc;text-decoration:none">یافته‌ها</a> · <a href="/lab#harness" style="color:#7dd3fc;text-decoration:none">اجرای هارنس</a></div></body>
 </html>
 )rawliteral";

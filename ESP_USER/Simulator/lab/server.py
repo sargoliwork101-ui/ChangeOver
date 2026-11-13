@@ -655,11 +655,20 @@ class Handler(BaseHTTPRequestHandler):
         if BOARD.session is None:
             return False
         if time.time() - BOARD.session_start > SESSION_TIMEOUT_S:
+            BOARD.session = None
             return False
+        token = self.headers.get("X-Admin-Token")
+        if token:
+            valid = token == SESSION_TOKEN
+            if valid and self.command == "POST":
+                BOARD.session_start = time.time()
+            return valid
         cookie = self.headers.get("Cookie") or ""
         for part in cookie.split(";"):
             name, _, value = part.strip().partition("=")
             if name == SESSION_COOKIE and value == SESSION_TOKEN:
+                if self.command == "POST":
+                    BOARD.session_start = time.time()
                 return True
         return False
     def send(self, result):
@@ -731,18 +740,20 @@ class Handler(BaseHTTPRequestHandler):
             found = next((u for u in BOARD.users if u["name"] == user and u["pass"] == password), None)
             if found is None:
                 return self.send(json_bytes({"ok": 0, "e": "wrong"}, 401))
-            if BOARD.single_session and BOARD.session and found["role"] <= BOARD.session["role"]:
+            owner = self.session_ok()
+            if BOARD.single_session and BOARD.session and found["role"] <= BOARD.session["role"] and not owner:
                 return self.send(json_bytes({"ok": 0, "e": "busy",
                                              "msg": "\u06cc\u06a9 \u0648\u0631\u0648\u062f \u0641\u0639\u0627\u0644 \u0627\u0633\u062a"}, 409))
             BOARD.session = {"user": found["name"], "role": found["role"]}
             BOARD.session_start = time.time()
             self.extra_headers.append((
                 "Set-Cookie",
-                "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d"
-                % (SESSION_COOKIE, SESSION_TOKEN, SESSION_TIMEOUT_S)))
-            return self.send(json_bytes({"ok": 1, "user": found["name"], "role": found["role"]}))
+                "%s=%s; Path=/; HttpOnly; SameSite=Strict"
+                % (SESSION_COOKIE, SESSION_TOKEN)))
+            return self.send(json_bytes({"ok": 1, "user": found["name"], "role": found["role"], "token": SESSION_TOKEN}))
         if path == "/logout":
-            BOARD.session = None
+            if self.session_ok():
+                BOARD.session = None
             self.extra_headers.append((
                 "Set-Cookie", "%s=; Path=/; HttpOnly; Max-Age=0" % SESSION_COOKIE))
             return self.send(json_bytes({"ok": 1}))

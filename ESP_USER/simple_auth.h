@@ -661,6 +661,15 @@ static void func__Simple_SessionTokenMake(char *char__ptr_out)
 }
 static bool func__Simple_SessionCookieRead(char *char__ptr_out, size_t size_t__cap)
 {
+    /* [EN] Same-origin bearer fallback for browsers blocking preview cookies. */
+    String string__header = SIMPLE_WEB_SERVER_T__G__Server.header("X-Admin-Token");
+    if (string__header.length() != 0u)
+    {
+        if ((string__header.length() != SIMPLE_SESSION_TOKEN_LEN) || (size_t__cap <= SIMPLE_SESSION_TOKEN_LEN)) return false;
+        (void)strncpy(char__ptr_out, string__header.c_str(), SIMPLE_SESSION_TOKEN_LEN);
+        char__ptr_out[SIMPLE_SESSION_TOKEN_LEN] = '\0';
+        return true;
+    }
     String string__cookie = SIMPLE_WEB_SERVER_T__G__Server.header("Cookie");
     String string__key = String(SIMPLE_SESSION_COOKIE);
     string__key += "=";
@@ -710,6 +719,12 @@ static int32_t func__Simple_AuthLogin(const char *char__ptr_name, const char *ch
     uint8_t__newRole = SIMPLE_USER_T__G__Users[int32_t__index].role;
     if (func__Simple_SessionActive() && (uint8_t__newRole <= UINT8_T__G__CurrentRole))
     {
+        /* [EN] Re-authentication by the existing owner is not a second login. */
+        if (func__Simple_SessionValid() && (strcmp(char__ptr_name, CHAR__G__CurrentUser) == 0))
+        {
+            UINT32_T__G__SessionStartMs = (uint32_t)millis();
+            return 1;
+        }
         return -1;
     }
     (void)strncpy(CHAR__G__CurrentUser, char__ptr_name, SIMPLE_USER_NAME_MAX);
@@ -724,5 +739,8 @@ static int32_t func__Simple_AuthLogin(const char *char__ptr_name, const char *ch
 static bool func__Simple_IsAdmin(void)
 {
     if (!func__Simple_SessionValid()) return false;
-    return (UINT8_T__G__CurrentRole == 1u);
+    if (UINT8_T__G__CurrentRole != 1u) return false;
+    /* [EN] Admin activity renews the idle deadline, not public polling. */
+    UINT32_T__G__SessionStartMs = (uint32_t)millis();
+    return true;
 }

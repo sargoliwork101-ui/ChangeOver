@@ -78,6 +78,8 @@ SimWiFi WiFi;
 SimEsp ESP;
 SimLittleFS LittleFS;
 static bool BOOL__T__FormatFail = false;
+static bool BOOL__T__MountFail = false;
+static bool BOOL__T__SettingsWriteFail = false;
 
 /* فایل‌سیستم تست در /tmp نگه داشته می‌شود تا مسیر ذخیره و بازیابی هم بررسی شود. */
 static std::string func__T_FsPath(const char *char__ptr_path)
@@ -85,7 +87,7 @@ static std::string func__T_FsPath(const char *char__ptr_path)
     const char *char__ptr_name = (char__ptr_path[0] == '/') ? (char__ptr_path + 1) : char__ptr_path;
     return std::string("/tmp/changeover_simple_test_") + std::string(char__ptr_name);
 }
-bool SimLittleFS::begin(bool bool__formatOnFail) { (void)bool__formatOnFail; return true; }
+bool SimLittleFS::begin(bool bool__formatOnFail) { (void)bool__formatOnFail; return !BOOL__T__MountFail; }
 bool SimLittleFS::format(void)
 {
     if (BOOL__T__FormatFail) return false;
@@ -142,6 +144,8 @@ File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
     {
         return File(std::string(), "r");
     }
+    if (BOOL__T__SettingsWriteFail && strcmp(char__ptr_path, SIMPLE_USERS_FILE) == 0 &&
+        strcmp(char__ptr_mode, "w") == 0) return File();
     return File(func__T_FsPath(char__ptr_path), char__ptr_mode);
 }
 bool SimLittleFS::remove(const char *char__ptr_path)
@@ -2766,6 +2770,100 @@ static void func__T_TestLoginAndFormatRecovery(void)
     func__Simple_AuthSave();
 }
 
+/* [EN] Reproduce blocked browser cookies without dropping the live admin session. */
+static void func__T_TestHeaderSession(void)
+{
+    BOOL__G__FsOk = true;
+    func__Simple_AuthDefaults();
+    func__Simple_LoginClear();
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=admin&pass=admin");
+    const std::string string__token = CHAR__G__SessionToken;
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"token\":\"" + string__token + "\"") != std::string::npos,
+                  "ورود موفق شناسهٔ نشست را برای مرورگر بدون کوکی هم برمی‌گرداند");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simHeader("Set-Cookie").find("Max-Age") == std::string::npos,
+                  "کوکی نشست در میانهٔ کار با مهلت ثابت مرورگر حذف نمی‌شود");
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403 && func__Simple_SessionActive(),
+                  "درخواست بی‌شناسه مجاز نیست و نشست موجود را هم نمی‌بندد");
+    func__T_Check(func__Simple_AuthLogin("admin", "admin") == -1,
+                  "دستگاه دیگر بدون شناسهٔ نشست نمی‌تواند جای مدیر فعال را بگیرد");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", string__token.c_str());
+    func__T_Check(func__Simple_IsAdmin(), "شناسهٔ معتبر در هدر بدون کوکی دسترسی مدیر دارد");
+    const uint32_t uint32_t__now = (uint32_t)millis();
+    UINT32_T__G__SessionStartMs = uint32_t__now - SIMPLE_SESSION_TIMEOUT_MS + 100u;
+    func__T_Check(func__Simple_IsAdmin() && UINT32_T__G__SessionStartMs == (uint32_t)millis(),
+                  "عملیات مدیر مهلت بی‌کاری را تازه می‌کند");
+    func__T_Check(func__Simple_AuthLogin("admin", "wrong") == 0,
+                  "حتی صاحب نشست با رمز اشتباه دوباره وارد نمی‌شود");
+    func__T_Check(func__Simple_AuthLogin("admin", "admin") == 1 && string__token == CHAR__G__SessionToken,
+                  "ورود مجدد صاحب نشست رد نمی‌شود و شناسه‌اش هم عوض نمی‌شود");
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventClear();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_IsAdmin(),
+                  "پاک‌کردن لاگ با هدر معتبر مدیر را بیرون نمی‌اندازد");
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpClearHistory();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_IsAdmin(),
+                  "پاک‌کردن تاریخچه نشست مدیر را نگه می‌دارد");
+    BOOL__T__FormatFail = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && func__Simple_IsAdmin(),
+                  "خطای واقعی فرمت، مدیر را خارج نمی‌کند");
+    BOOL__T__FormatFail = false;
+    SIM_BOOL__G__RefuseWrites = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 &&
+                  SIMPLE_WEB_SERVER_T__G__Server.simBody() == "write" && func__Simple_IsAdmin(),
+                  "فرمت بدون امکان نوشتن موفقیت اعلام نمی‌کند و مدیر باقی می‌ماند");
+    SIM_BOOL__G__RefuseWrites = false;
+    BOOL__T__MountFail = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 &&
+                  SIMPLE_WEB_SERVER_T__G__Server.simBody() == "mount" &&
+                  !BOOL__G__FsOk && BOOL__G__FsMountFailed && func__Simple_IsAdmin(),
+                  "فرمت بدون بازشدن حافظه خطای مستقل دارد و نشست را نگه می‌دارد");
+    BOOL__T__MountFail = false;
+    BOOL__T__SettingsWriteFail = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 &&
+                  SIMPLE_WEB_SERVER_T__G__Server.simBody() == "write" && func__Simple_IsAdmin(),
+                  "حتی با سالم‌بودن فایل آزمایشی شکست ذخیره رمز موفقیت محسوب نمی‌شود");
+    BOOL__T__SettingsWriteFail = false;
+    const unsigned unsigned__endBefore = LittleFS.endCount;
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(LittleFS.endCount == unsigned__endBefore + 1u && !LittleFS.autoFormatCfg,
+                  "فرمت صریح حافظه را ابتدا می‌بندد و بازشدن دوباره خودکار پاک نمی‌کند");
+    func__T_Check(!LittleFS.exists("/fs-check"), "فایل بررسی پس از فرمت باقی نمی‌ماند");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_IsAdmin() && string__token == CHAR__G__SessionToken,
+                  "فرمت موفق بدون کوکی هم همان نشست مدیر را حفظ می‌کند");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "invalid");
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpLogout();
+    func__T_Check(func__Simple_SessionActive() && !func__Simple_IsAdmin(),
+                  "هدر جعلی نه دسترسی می‌دهد و نه مدیر اصلی را خارج می‌کند");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", string__token.c_str());
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpLogout();
+    func__T_Check(!func__Simple_SessionActive() && !func__Simple_IsAdmin(),
+                  "خروج واقعی، شناسهٔ ذخیره‌شدهٔ همان نشست را هم باطل می‌کند");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    func__T_ClearCookie();
+    const std::string string__sketch = func__T_ReadEspUserSource("ESP_USER.ino");
+    func__T_Check(string__sketch.find("{\"Cookie\", \"X-Admin-Token\"}") != std::string::npos &&
+                  string__sketch.find("collectHeaders(char__ptr_headerKeys, 2u)") != std::string::npos,
+                  "وب‌سرور واقعی هر دو راه دریافت شناسهٔ نشست را جمع‌آوری می‌کند");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2792,6 +2890,7 @@ int main(void)
     func__T_TestSpaceReclaim();
     func__T_TestReviewFixes();
     func__T_TestLoginAndFormatRecovery();
+    func__T_TestHeaderSession();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

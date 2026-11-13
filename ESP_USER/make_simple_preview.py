@@ -269,7 +269,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
-               userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
+               token: '', userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
                users: [{ name: 'admin', role: 1 }] };
   var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
   var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
@@ -633,15 +633,15 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       if (expected !== null && pass === expected) {
         var newRole = (user === 'admin') ? 1 : 0;
         /* نشست یکتا: هم‌سطح یا پایین‌تر رد؛ فقط دسترسی بالاتر جایگزین می‌شود */
-        if (mock.user && newRole <= mock.role) {
+        if (mock.user && newRole <= mock.role && (!mock.token || !options || !options.headers || options.headers['X-Admin-Token'] !== mock.token)) {
           return jsonResponse('{"ok":0,"e":"busy","msg":"یک ورود فعال هست؛ فقط دسترسی بالاتر می‌تواند جای آن را بگیرد"}', 409);
         }
-        mock.user = user; mock.role = newRole;
-        return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + '}');
+        mock.user = user; mock.role = newRole;mock.token=mock.token||'f'.repeat(64);
+        return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + ',"token":"'+mock.token+'"}');
       }
       return jsonResponse('{"ok":0,"e":"wrong"}', 401);
     }
-    if (path === 'logout') { mock.user = ''; mock.role = 0; return jsonResponse('{"ok":1}'); }
+    if (path === 'logout') { mock.user = ''; mock.role = 0; mock.token = ''; return jsonResponse('{"ok":1}'); }
     if (path === 'setpass') {
       var change = bodyJson(options);
       var target = (change.user || 'admin').trim();

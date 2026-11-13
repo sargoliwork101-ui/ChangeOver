@@ -69,8 +69,8 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/charts` | GET | `range`: `1d`, `7d`, `1m`, or `3m` (default `1d`) | JSON arrays `pct`, `vin`, `vpack`, `time`, with `range` and `count` |
 | `/diag` | GET | — | JSON diagnostic, power and charge history |
 | `/time` | POST | Admin session; `ts`, optional `tz` | JSON result |
-| `/login` | POST | `user`, `pass` | JSON result and session cookie |
-| `/logout` | POST | Session cookie | JSON result; expires session cookie |
+| `/login` | POST | `user`, `pass` | JSON result with session `token`, plus HttpOnly session cookie |
+| `/logout` | POST | Session cookie or `X-Admin-Token` | JSON result; invalidates session and expires cookie |
 | `/users` | GET | Admin session | JSON list of `{name, role}` |
 | `/users` | POST | Admin session; `action=del` + `user`, or `action=add` + `user`, `pass`, optional `role` | JSON action result |
 | `/adduser`, `/deluser` | POST | Admin session; add: `user`, `pass`, optional `role`; delete: `user` | JSON action result |
@@ -88,8 +88,15 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/evt/dl` | GET | Optional `day` (8 digits), `all=1` for every day | CSV download |
 | `/evt/clr` | POST | Admin session | JSON clear result |
 | `/evt/snap` | POST | — | JSON log/filesystem snapshot |
-| `/evt/format` | POST | Admin session | Plain-text format result |
+| `/evt/format` | POST | Admin session | 200 `ok` only after remount, write/read probe and saved credential verification; 500 `fail`, `mount`, or `write`; 403 `admin` |
 | `/evt/fs` | GET | — | JSON filesystem status |
+
+Admin requests accept either the session cookie or the same 64-character token in
+`X-Admin-Token`. The panel retains that token only in this tab's `sessionStorage`;
+it never stores the password. Authorized admin requests renew the 30-minute idle
+deadline. A valid owner can reauthenticate without rotating the active token;
+a second client without that token/cookie still receives 409. Public telemetry
+does not expose tokens or renew this deadline.
 
 LittleFS files: `/wifi.json`, `/charts.bin`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 

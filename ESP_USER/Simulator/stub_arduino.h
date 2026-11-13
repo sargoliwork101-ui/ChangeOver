@@ -443,6 +443,8 @@ class SimLittleFS
 public:
     bool autoFormatCfg = true;
     bool setConfig(const LittleFSConfig &cfg__value) { autoFormatCfg = cfg__value._autoFormat; return true; }
+    unsigned endCount = 0u;
+    void end(void) { endCount++; }
     bool begin(bool bool__formatOnFail = false);
     bool format(void);
     bool info(FSInfo &fsInfo__out);

@@ -444,15 +444,14 @@ static void func__Simple_HttpLogin(void)
     int32_t int32_t__login = func__Simple_AuthLogin(string__user.c_str(), string__pass.c_str());
     if (int32_t__login == 1)
     {
-        char char__buf[128];
+        char char__buf[192];
         char char__cookie[160];
         (void)snprintf(char__cookie, sizeof(char__cookie),
-                       "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%lu",
-                       SIMPLE_SESSION_COOKIE, CHAR__G__SessionToken,
-                       (unsigned long)(SIMPLE_SESSION_TIMEOUT_MS / 1000u));
+                       "%s=%s; Path=/; HttpOnly; SameSite=Strict",
+                       SIMPLE_SESSION_COOKIE, CHAR__G__SessionToken);
         SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Set-Cookie", char__cookie);
         SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-        (void)snprintf(char__buf, sizeof(char__buf), "{\"ok\":1,\"user\":\"%s\",\"role\":%u}", CHAR__G__CurrentUser, (unsigned int)UINT8_T__G__CurrentRole);
+        (void)snprintf(char__buf, sizeof(char__buf), "{\"ok\":1,\"user\":\"%s\",\"role\":%u,\"token\":\"%s\"}", CHAR__G__CurrentUser, (unsigned int)UINT8_T__G__CurrentRole, CHAR__G__SessionToken);
         SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
     }
     else if (int32_t__login == -1)
@@ -746,6 +745,25 @@ static void func__Simple_HttpClockSet(void)
                    (unsigned long)func__Simple_NowSec());
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+/* ==================== Format verification ==================== */
+/**
+ * @brief Verify saved encrypted settings without reloading RAM or exposing secrets.
+ * @param char__ptr_path Settings file path.
+ * @return bool True when the file can be read and its authentication tag is valid.
+ */
+static bool func__Simple_FormatSettingsValid(const char *char__ptr_path)
+{
+    File file__read = LittleFS.open(char__ptr_path, "r");
+    if (!file__read) return false;
+    String string__raw = file__read.readString();
+    file__read.close();
+    String string__plain;
+    return (func__Simple_CryptoDecrypt(string__raw, string__plain) == 2u);
+}
+/* ==================== Explicit admin format ==================== */
+/**
+ * @brief Format, remount and verify storage without changing the active session.
+ */
 static void func__Simple_HttpEventFormat(void)
 {
     if (!func__Simple_IsAdmin())
@@ -753,24 +771,60 @@ static void func__Simple_HttpEventFormat(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "text/plain", "admin");
         return;
     }
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    LittleFS.end();
+    BOOL__G__FsOk = false;
+    BOOL__G__FsMountFailed = true;
     if (!LittleFS.format())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(500, "text/plain", "fail");
         return;
     }
-    BOOL__G__FsOk = LittleFS.begin();
-    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
     func__SimpleLog_ResetStateAfterFormat();
-    if (BOOL__G__FsOk)
+#if defined(ESP8266)
+    (void)LittleFS.setConfig(LittleFSConfig(false));
+    BOOL__G__FsOk = LittleFS.begin();
+#else
+    BOOL__G__FsOk = LittleFS.begin(false);
+#endif
+    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
+    if (!BOOL__G__FsOk)
     {
-        func__Simple_AuthSave();
-        func__Simple_WifiSave();
-        UINT32_T__G__LastSavedTimeSec = 0u;
-        func__Simple_TimeSave();
-        func__SimpleLog_Begin();
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "text/plain", "mount");
+        return;
     }
-    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(BOOL__G__FsOk ? 200 : 500, "text/plain", BOOL__G__FsOk ? "ok" : "fail");
+    /* [EN] Probe the closed file, not just the return value of format(). */
+    bool bool__writable = false;
+    {
+        File file__probe = LittleFS.open("/fs-check", "w");
+        if (file__probe)
+        {
+            bool__writable = (file__probe.print("fs-ok") == 5u);
+            file__probe.close();
+        }
+    }
+    if (bool__writable)
+    {
+        File file__probe = LittleFS.open("/fs-check", "r");
+        bool__writable = file__probe && (file__probe.readString() == "fs-ok");
+        file__probe.close();
+    }
+    (void)LittleFS.remove("/fs-check");
+    func__Simple_AuthSave();
+    func__Simple_WifiSave();
+    UINT32_T__G__LastSavedTimeSec = 0u;
+    func__Simple_TimeSave();
+    if (!bool__writable || !func__Simple_FormatSettingsValid(SIMPLE_USERS_FILE) ||
+        !func__Simple_FormatSettingsValid(SIMPLE_WIFI_FILE))
+    {
+        UINT8_T__G__LogWriteFault = 1u;
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "text/plain", "write");
+        return;
+    }
+    func__SimpleLog_Begin();
+    /* [EN] Long flash operations must not consume the owner's idle deadline. */
+    UINT32_T__G__SessionStartMs = (uint32_t)millis();
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", "ok");
 }
 static void func__Simple_HttpEventLog(void)
 {
