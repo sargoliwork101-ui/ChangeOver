@@ -825,8 +825,9 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/evt/clr", "/evt/format") and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
-            if path == "/evt/clr":
-                BOARD.rows = {}
+            BOARD.rows = {}
+            if path == "/evt/format":
+                return self.send(text_bytes("ok"))
             return self.send(json_bytes({"ok": 1, "removed": 1, "freed": 1024}))
         if path == "/evt/snap" and method == "POST":
             if not self.session_ok():

@@ -12,7 +12,7 @@ static const char SIMPLE_PANEL_HTML[] PROGMEM = R"rawliteral(
 :root{--r:20px;--r-sm:12px;--r-full:999px}
 body[data-theme="0"]{
  --bg:#070a10;--bg2:#0d121e;--bg3:#111827;
- --cd:rgba(18,24,38,.60);--cd2:rgba(25,35,57,.72);--cd3:rgba(30,44,69,.80);
+ --cd:rgba(18,24,38,.82);--cd2:rgba(25,35,57,.92);--cd3:rgba(30,44,69,.96);
  --in:#0e1420;--in2:#151e2f;
  --ln:#1c2940;--ln2:#253652;--ln3:#2e4263;
  --tx:#eef2f8;--tx2:#b8c2d4;--mu:#6e7d98;--mu2:#4b5a73;
@@ -43,7 +43,7 @@ button,input,select{font-family:Vazirmatn,Inter,system-ui}
 header{
  position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;
  padding:14px 6px;margin:0 -16px 20px;padding-left:16px;padding-right:16px;
- background:rgba(7,10,16,.72);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+ background:rgba(7,10,16,.72);backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);
  border-bottom:1px solid var(--ln);transition:.3s;
 }
 header .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-.2px}
@@ -52,7 +52,7 @@ header .brand-mark::after{content:"";position:absolute;inset:0;background:linear
 header .brand-text{line-height:1.1}
 header .brand-text b{display:block;font-size:14px}
 header .brand-text span{display:block;font-size:10.5px;color:var(--mu);font-weight:600;letter-spacing:.6px;margin-top:1px}
-header .hdr{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mu);background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 14px 6px 8px;box-shadow:var(--sh2);backdrop-filter:blur(8px)}
+header .hdr{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mu);background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 14px 6px 8px;box-shadow:var(--sh2)}
 header .dot{width:8px;height:8px;border-radius:50%;background:var(--mu2);display:inline-block;position:relative;transition:.3s}
 header .dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid currentColor;opacity:.3;animation:pulse 2s infinite}
 header .dot.on{background:var(--ok);color:var(--ok);box-shadow:0 0 12px var(--ok)}
@@ -65,7 +65,7 @@ nav button.a{background:var(--cd3);color:var(--tx);border:1px solid var(--ln2);b
 nav button.a::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:2px;background:var(--ac);box-shadow:var(--acglow)}
 /* Main */
 main{display:grid;gap:16px}
-.cd,button.btn,select,input,nav,.half-stat{backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%)}.cd{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 42%),var(--cd);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:.22s}
+.cd,nav{backdrop-filter:blur(10px) saturate(120%);-webkit-backdrop-filter:blur(10px) saturate(120%)}.cd{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0) 42%),var(--cd);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:.22s}
 .cd:hover{border-color:var(--ln2);box-shadow:0 16px 48px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.05) inset}
 .cd::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);pointer-events:none}
 .ti{font-size:10.5px;font-weight:800;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:14px}
@@ -114,7 +114,7 @@ main{display:grid;gap:16px}
 .hero.err{border-color:var(--erbd);box-shadow:0 0 0 1px var(--erbd),var(--sh)}
 .hero.ok{border-color:var(--okbd)}
 .hero-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.bdg{display:inline-flex;align-items:center;gap:7px;background:var(--in);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 13px;font-size:11px;font-weight:700;color:var(--mu);backdrop-filter:blur(6px);transition:.2s}
+.bdg{display:inline-flex;align-items:center;gap:7px;background:var(--in);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 13px;font-size:11px;font-weight:700;color:var(--mu);transition:.2s}
 .bdg i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;box-shadow:0 0 8px currentColor}
 .bdg.ok{color:var(--ok);background:var(--okbg);border-color:var(--okbd)}
 .bdg.warn{color:var(--wa);background:var(--wabg);border-color:var(--wabd)}
@@ -241,7 +241,7 @@ button.btn.danger{background:var(--erbg);border-color:var(--erbd);color:var(--er
 .chart-tooltip b{font-family:Vazirmatn;font-weight:800;display:block}
 .chart-tooltip span{color:var(--mu);font-size:10.5px}
 /* پیام کوتاه پایین صفحه (مثل «خروجی گرفته شد») */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--cd2);border:1px solid var(--ln2);color:var(--tx);padding:9px 18px;border-radius:12px;font-size:12px;font-weight:800;box-shadow:var(--sh2);z-index:80;max-width:90vw;text-align:center}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--cd2);border:1px solid var(--ln2);color:var(--tx);padding:9px 18px;border-radius:12px;font-size:12px;font-weight:800;box-shadow:var(--sh2);z-index:120;max-width:90vw;text-align:center}
 
 /* Login animations */
 @keyframes fadeIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
@@ -278,7 +278,6 @@ code,pre,.mono{font-family:Vazirmatn !important}
  .hero-badges{justify-content:center !important;margin-top:8px !important;gap:6px !important}
  .hero-fault{margin-top:8px !important;font-size:11px !important;padding:8px 10px !important}
  .bdg{font-size:10px !important;padding:4px 10px !important}
-}
  .segmented{min-width:0 !important;width:100%}
  .segmented.sm{min-width:0 !important;width:100%}
  .cd{padding:14px}
@@ -321,7 +320,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
 
 /* Charging bolt - زرد + جرقه */
 .bat-bolt{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:26px;line-height:1;display:none;filter:drop-shadow(0 0 8px rgba(255,184,77,.9));animation:boltPulse 1s infinite;z-index:5;pointer-events:none}
-.bat-bolt.show{display:block}
+.bat-bolt.show{display:block;color:var(--wa)}
+.bat-bolt .glyph{width:26px;height:26px}
 @keyframes boltPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:1}50%{transform:translate(-50%,-50%) scale(1.15);opacity:.9}}
 .bat-wrap.charging .bat-fill{filter:drop-shadow(0 0 12px rgba(255,184,77,.45)) !important}
 .evtrow{display:flex;gap:8px;flex-wrap:wrap;padding:5px 8px;margin:3px 0;border-radius:8px;align-items:baseline}
@@ -373,9 +373,14 @@ canvas{height:auto;max-width:100%}
 .arow > span{color:var(--mu);font-size:11px;min-width:64px}
 .arow input,.arow select{flex:1 1 110px;min-width:0}
 .arow .btn{white-space:nowrap}
+
+.glyph{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;flex:none}
+button:disabled,a[aria-busy="true"]{opacity:.55;cursor:wait;pointer-events:none}button[aria-busy="true"]{box-shadow:inset 0 -2px var(--ac)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset:3px}
+@supports not (backdrop-filter:blur(1px)){.cd,nav,header{background:#121826}}
 </style>
 </head>
-<body data-theme="0">
+<body data-theme="0"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-memory" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M20 12a8 8 0 0 0-14-5M4 12a8 8 0 0 0 14 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/></symbol></defs></svg>
 <header>
  <div class="brand"><div class="brand-mark">CO</div><div class="brand-text"><b>ChangeOver</b><span>SMART BATTERY • INDUSTRIAL</span></div></div>
  <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span></div>
@@ -391,7 +396,7 @@ canvas{height:auto;max-width:100%}
    <div class="hero-grid">
     <div class="hero-visual">
      <div class="bat-wrap" id="batMainWrap" style="width:100%;height:100%;min-height:200px;margin:0;position:relative">
-      <div id="batMainBolt" class="bat-bolt">⚡</div>
+      <div id="batMainBolt" class="bat-bolt"><svg class="glyph" aria-hidden="true"><use href="#i-bolt"/></svg></div>
       <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
        <defs>
         <linearGradient id="gMain" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#1ee6a0"/><stop offset="100%" stop-color="#6ef0c2"/></linearGradient>
@@ -430,7 +435,7 @@ canvas{height:auto;max-width:100%}
     <div class="half">
      <div class="half-name">باتری بالا - کانال ۱</div>
      <div class="bat-wrap" id="batHighWrap" style="position:relative">
-      <div id="batHighBolt" class="bat-bolt">⚡</div>
+      <div id="batHighBolt" class="bat-bolt"><svg class="glyph" aria-hidden="true"><use href="#i-bolt"/></svg></div>
       <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
        <defs>
         <linearGradient id="gh" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#1ee6a0"/><stop offset="100%" stop-color="#6ef0c2"/></linearGradient>
@@ -463,7 +468,7 @@ canvas{height:auto;max-width:100%}
     <div class="half">
      <div class="half-name">باتری پایین - کانال ۲</div>
      <div class="bat-wrap" id="batLowWrap" style="position:relative">
-      <div id="batLowBolt" class="bat-bolt">⚡</div>
+      <div id="batLowBolt" class="bat-bolt"><svg class="glyph" aria-hidden="true"><use href="#i-bolt"/></svg></div>
       <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
        <defs><clipPath id="clipLow"><rect x="11" y="18" width="50" height="79" rx="9"/></clipPath></defs>
        <rect class="bat-cap" x="24" y="2" width="24" height="9" rx="3"/>
@@ -514,9 +519,9 @@ canvas{height:auto;max-width:100%}
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
    <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
    <span class="icog">
-    <button class="btn ico" type="button" title="حافظهٔ ESP" onclick="evtFs(1)">💾<span class="lbl">حافظهٔ ESP</span></button>
-    <button class="btn ico" type="button" title="بروزرسانی فهرست" onclick="evtFs(0)">⟳<span class="lbl">بروزرسانی</span></button>
-    <button class="btn ico" type="button" title="دانلود همهٔ روزها" onclick="evtDlAll()">⬇<span class="lbl">دانلود همه</span></button>
+    <button class="btn ico" type="button" title="حافظهٔ ESP" aria-label="حافظهٔ ESP" onclick="uiAction(this,()=>evtFs(1))"><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span class="lbl">حافظهٔ ESP</span></button>
+    <button class="btn ico" type="button" title="بروزرسانی فهرست" aria-label="بروزرسانی فهرست" onclick="uiAction(this,()=>evtFs(0))"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg><span class="lbl">بروزرسانی</span></button>
+    <button class="btn ico" type="button" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها" onclick="uiAction(this,()=>evtDlAll())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">دانلود همه</span></button>
    </span>
   </div>
   <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
@@ -556,7 +561,7 @@ canvas{height:auto;max-width:100%}
     <span class="bdg ac" id="pctCurrent">-- ٪</span>
     <span class="bdg" id="pctRangeInfo">--</span>
     <span style="display:flex;gap:6px;margin-right:auto">
-     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="exportCsv('pct')">خروجی CSV</button>
+     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="uiAction(this,()=>exportCsv('pct'))">خروجی CSV</button>
     </span>
    </div>
   </div>
@@ -579,7 +584,7 @@ canvas{height:auto;max-width:100%}
     <span id="chargeCap" style="font-size:11px;color:var(--mu)">شارژهای اخیر</span>
    </div>
    <div style="display:flex;gap:6px;margin-top:10px">
-    <button class="btn bxs" title="دانلود خروجی CSV تاریخچه شارژ"  onclick="exportCsv('charge')">خروجی CSV</button>
+    <button class="btn bxs" title="دانلود خروجی CSV تاریخچه شارژ"  onclick="uiAction(this,()=>exportCsv('charge'))">خروجی CSV</button>
    </div>
    <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
   </div>
@@ -595,7 +600,7 @@ canvas{height:auto;max-width:100%}
      </div>
      <span class="bdg" style="background:rgba(91,141,239,.15);color:#5b8def;border-color:rgba(91,141,239,.3)">Vin - ورودی</span>
      <span class="bdg" style="background:rgba(30,230,160,.15);color:#1ee6a0;border-color:rgba(30,230,160,.3)">Vpack - پک باتری</span>
-     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="exportCsv('volt')">خروجی CSV</button>
+     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="uiAction(this,()=>exportCsv('volt'))">خروجی CSV</button>
     </div>
    </div>
    <div id="voltAxisInfo" class="mb2">محور عمودی: خودکار از دادهٔ همین بازه - محور افقی: زمان واقعی</div>
@@ -629,13 +634,14 @@ canvas{height:auto;max-width:100%}
 
    <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
    <div class="cd" id="adminCard" hidden>
-    <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="admLogout()">خروج</button></div>
-    <div class="arow"><span>ساعت برد</span><button class="btn bs"  onclick="admClock()">همگام با این گوشی</button></div>
-    <div class="arow"><span>قفل خطا</span><button class="btn bs"  onclick="admPost('/latch/reset',{n:5},'قفل خطا ریست شد')">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد')">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد')">ریست ضعیف</button></div>
-    <div class="arow"><span>فایل لاگ</span><button class="btn bs"  onclick="admPost('/evt/snap',{},'عکس لحظه ثبت شد')">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admPost('/evt/clr',{},'همهٔ لاگ‌ها پاک شد')">پاک‌کردن همهٔ لاگ‌ها</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl" onclick="return admDl(this)">دانلود</a></div>
-    <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn bs"  onclick="admWifi()">ذخیره</button></div>
-    <div class="arow"><span>رمز مدیر</span><input id="admOld" type="password" placeholder="رمز فعلی"><input id="admNew" type="password" placeholder="رمز تازه"><input id="admNew2" type="password" placeholder="تکرار رمز تازه"><button class="btn bs"  onclick="admPass()">تغییر</button></div>
-    <div class="arow"><span>تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">عیب‌یابی</option></select><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="admClear()">پاک‌کردن</button></div>
+    <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="uiAction(this,()=>admLogout(),true)">خروج</button></div>
+    <div class="arow"><span>ساعت برد</span><button class="btn bs"  onclick="uiAction(this,()=>admClock(),true)">همگام با این گوشی</button></div>
+    <div class="arow"><span>قفل خطا</span><button class="btn bs"  onclick="uiAction(this,()=>admPost('/latch/reset',{n:5},'قفل خطا ریست شد'),true)">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد'),true)">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد'),true)">ریست ضعیف</button></div>
+    <div class="arow"><span>فایل لاگ</span><button class="btn bs"  onclick="uiAction(this,()=>admPost('/evt/snap',{},'عکس لحظه ثبت شد'),true)">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/evt/clr',{},'همهٔ لاگ‌ها پاک شد'),true)">پاک‌کردن همهٔ لاگ‌ها</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl" onclick="uiAction(this,()=>admDl());return false">دانلود</a></div>
+    <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn bs"  onclick="uiAction(this,()=>admWifi(),true)">ذخیره</button></div>
+    <div class="arow"><span>رمز مدیر</span><input id="admOld" type="password" placeholder="رمز فعلی"><input id="admNew" type="password" placeholder="رمز تازه"><input id="admNew2" type="password" placeholder="تکرار رمز تازه"><button class="btn bs"  onclick="uiAction(this,()=>admPass(),true)">تغییر</button></div>
+    <div class="arow"><span>تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">عیب‌یابی</option></select><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admClear(),true)">پاک‌کردن</button></div>
+    <div class="arow"><span>حافظهٔ ESP</span><button id="admFormat" class="btn danger bs" onclick="uiAction(this,()=>evtfmt(),true)">فرمت کامل حافظه</button></div>
     <div class="gmsg" id="admCardMsg"></div>
    </div>
 
@@ -643,12 +649,12 @@ canvas{height:auto;max-width:100%}
  </div>
 
 <div id="chartTooltip" class="chart-tooltip"></div>
-<div id="toastMsg" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
+<div id="toastMsg" role="status" aria-live="polite" aria-atomic="true" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
 <div id="admGate" class="gate" hidden><div class="gatebox">
  <div class="ti" style="margin:0">دسترسی مدیر</div>
- <input id="admPass" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter')admLogin()">
+ <input id="admPass" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('admLoginBtn').click();}">
  <div class="gmsg" id="admMsg"></div>
- <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="admLogin()">ورود</button><button class="btn gh" style="flex:1" onclick="admClose()">انصراف</button></div>
+ <div style="display:flex;gap:8px"><button class="btn" style="flex:1" id="admLoginBtn" onclick="uiAction(this,()=>admLogin(),true)">ورود</button><button class="btn gh" style="flex:1" onclick="admClose()">انصراف</button></div>
 </div></div>
 </main>
 <script>
@@ -840,10 +846,19 @@ function exportCsv(kind){
  if(!data.count){ showToast('داده‌ای برای خروجی نیست - هنوز نمونه‌ای ثبت نشده'); return; }
  try{
   downloadCsvText(data.name, csvText(data.rows));
-  showToast('خروجی گرفته شد: '+faDigits(data.count)+' نمونه');
+  showToast('فایل آمادهٔ دانلود شد: '+faDigits(data.count)+' نمونه');
  }catch(e){ showToast('خروجی گرفتن در این مرورگر ممکن نشد'); }
 }
-/* پیام کوتاه پایین صفحه */
+
+
+async function uiAction(el,run,admin){
+ if(el.getAttribute('aria-busy')==='true')return;
+ const controls=admin?Array.from(document.querySelectorAll('#adminCard button,#admLoginBtn')):el.closest('.icog')?Array.from(el.closest('.icog').querySelectorAll('button')):[el];
+ const states=controls.map(b=>[b,b.disabled]);
+ controls.forEach(b=>{b.disabled=true;b.setAttribute('aria-busy','true');});
+ try{await run();}catch(e){showToast('انجام نشد؛ ارتباط با برد را بررسی کن');}
+ finally{states.forEach(([b,disabled])=>{b.disabled=disabled;b.removeAttribute('aria-busy');});}
+}
 let g_toastTimer=0;
 function showToast(msg, ms){
  let el=document.getElementById('toastMsg'); if(!el) return;
@@ -1541,19 +1556,19 @@ function setBatFill(id, pct, status, gradOverride){
 }
 function render(data){
  lastData=data;
- g_tlmReceiveAt=Date.now(); /* تازگی داده برای ساعت شارژ؛ قطع fetch یعنی داده کهنه */
- updBoardParams(data.pv); /* پارامترهای خود برد پیش از هر محاسبه‌ای */
+ g_tlmReceiveAt=Date.now();
+ updBoardParams(data.pv);
  let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
- let vPack=vPackRaw; /* برد اصلی درصد را از V24 (v_bat24_mv) می‌گیرد - چشمک سبز - نه از جمع Vlow+Vhigh */
- let vPackPct=vPackRaw; /* برد پیش از نگاشت درصد، پک را با سقف نگاشت شارژ گیره می‌کند */
+ let vPack=vPackRaw;
+ let vPackPct=vPackRaw;
  if(vPackPct>brd.cvmax) vPackPct=brd.cvmax;
  let vPackSum=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw; /* فقط برای نمایش ولتاژ جمع اگر لازم شد */
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
  let deadMask=data.t[T_DEAD]||0;
  let fl=data.fl||0, fl2=data.fl2||0;
- let isImbLatched=((fl2 & 0x02)!==0); /* بیت دوم = قفل دائمی عدم‌توازن */
- let isImbEpisode=((fl2 & 0x01)!==0); /* بیت اول = اپیزود جاری عدم‌توازن */
- let isWeak=((fl2 & 0x10)!==0); /* بیت ۰x۱۰ = حکم باتری ضعیف سناریوی ۸ */
+ let isImbLatched=((fl2 & 0x02)!==0);
+ let isImbEpisode=((fl2 & 0x01)!==0);
+ let isWeak=((fl2 & 0x10)!==0);
  let isDead=(deadMask!==0);
  let deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
  let inpInfo=updInputState(vIn, data.inputPresent);
@@ -1625,8 +1640,8 @@ function render(data){
  if(!ch1Charging) setHtml('batHighPct', pctHigh+'<small>%</small>');
  setShow('batLowPct', !ch2Charging);
  if(!ch2Charging) setHtml('batLowPct', pctLow+'<small>%</small>');
- setTxt('batHighStatus', highSt.txt+(ch1Charging?' - در حال شارژ ⚡':'' ));
- setTxt('batLowStatus', lowSt.txt+(ch2Charging?' - در حال شارژ ⚡':'' ));
+ setTxt('batHighStatus', highSt.txt+(ch1Charging?' - در حال شارژ ↯':'' ));
+ setTxt('batLowStatus', lowSt.txt+(ch2Charging?' - در حال شارژ ↯':'' ));
  let ib=document.getElementById('imbBox'); if(ib){
   let charging=(s1==1||s1==2||s2==1||s2==2);
   let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
@@ -1690,7 +1705,7 @@ function render(data){
  }
  else if(s1==1||s1==2||s2==1||s2==2){
   let q=getChargingBounds(pctPack);
-  stTxt='در حال شارژ ⚡ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
+  stTxt='در حال شارژ ↯ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
   ssTxt='باتری '+pctPack+' درصد - انیمیشن زرد داخل همان قسمت';
  }
  else { stTxt='متصل - برق ورودی وصل'; ssTxt='باتری '+pctPack+' درصد - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); }
@@ -1705,20 +1720,16 @@ function render(data){
   else { if(heroFaultHtml) setHtml('heroFault', heroFaultTxt); else setTxt('heroFault', heroFaultTxt); setShow('heroFault', true); }
  }
  setTxt('linkState', 'لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V');
- setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ در بازهٔ ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':''));
+ setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ در بازهٔ ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ↯':''));
  setCls(document.getElementById('hdrDot'), 'dot '+(data.on?'on':''));
  setTxt('hdrText', data.on?'متصل':'قطع');
- /* دیدن پنل آزاد است؛ صفحهٔ رمز فقط وقتی باز می‌شود که کاربری تغییری بخواهد */
+
  document.body.style.overflow='';
  let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=fmtJalaliFull(Math.floor(Date.now()/1000));
- /* اگر در همین بوت رمزها به پیش‌فرض برگشته باشند، به کاربر گفته می‌شود */
+
 }
 
-/* ==================== ساعت‌های زندهٔ کارت آمار ====================
-   دیاگ هر ۵ ثانیه می‌آید. «کارکرد برد» بین دو دیاگ جلو می‌رود، ولی
-   «زمان کل شارژ» فقط وقتی جلو می‌رود که شارژ فعال و تله‌متری تازه باشد.
-   در بی‌کاری، قطع لینک یا کهنه‌شدن داده، عدد شارژ ثابت می‌ماند تا الکی
-   بالا نرود و بعد برنگردد. */
+
 let g_diagBase=null;
 let g_diagChargeAccumMs=0;
 let g_diagChargeTickAt=0;
@@ -1738,8 +1749,7 @@ function tickDiagClocks(){
 }
 function renderDiag(j){
  if(!j) return;
- /* تا وقتی برد دادهٔ دیاگ نفرستاده (valid=0) صفر نشان نمی‌دهیم تا با «واقعاً
-    صفر» اشتباه نشود؛ همان لحظهٔ رسیدن دیاگ اول، ساعت زنده راه می‌افتد */
+
  if(!j.valid){
   g_diagBase=null;
   g_diagChargeAccumMs=0;
@@ -1782,29 +1792,24 @@ async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=aw
 async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
 
 
-/* ==================== قفل تغییرات ====================
-   دیدن پنل بدون رمز آزاد است. هر تغییری اول رمز مدیر را می‌پرسد و
-   تا پایان مهلت نشست (۳۰ دقیقه) دیگر نمی‌پرسد. */
-/* ==================== خروج ==================== */
-/* ==================== نمایش/پنهان رمز ====================
-   همان دکمهٔ چشم: هر بار که زده شود نوع ورودی بین password و text عوض می‌شود */
+
+
+
 function togglePass(id, btn){
  let el=document.getElementById(id); if(!el) return;
  let show=(el.type==='password');
  el.type=show?'text':'password';
- if(btn){ btn.textContent=show?'🙈':'👁'; btn.classList.toggle('on', show); }
+ if(btn){ btn.innerHTML='<svg class="glyph" aria-hidden="true"><use href="#i-eye"/></svg>'; btn.setAttribute('aria-label',show?'پنهان‌کردن رمز':'نمایش رمز'); btn.classList.toggle('on', show); }
 }
 
-/* ==================== تغییر رمز عبور - /setpass ==================== */
 
 
-/* ==================== تاریخچهٔ وضعیت (لاگ روزانه) ====================
-   ESP برای هر تغییر واقعی یک ردیف می‌نویسد؛ اینجا آن ردیف‌ها به خط فارسی
-   تبدیل می‌شوند و ساعت گوشی به پنل می‌رسد. */
+
+
 const EVT_CHG_FA=['خاموش','شارژ اصلی','جذب','شناور','راه‌اندازی','انتظار تلاش دوباره','منتظر ورودی','خطای نهایی','باتری وصل نیست','دستی','استراحت حرارتی'];
 const EVT_FAULT_FA=['اندازه‌گیری (ADC)','اضافه‌جریان کانال ۱','اضافه‌جریان کانال ۲','ولتاژ باتری','تلاش دوبارهٔ ۱','تلاش دوبارهٔ ۲','قطع باتری','خطای فنی','قفل عدم‌توازن','باتری فرسوده'];
 const EVT_FLAG_FA=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌توازن'],[4,'خروجی مسدود شد'],[8,'قطع شارژ'],[16,'باتری ضعیف شناخته شد'],[32,'مسیر باتری قطع'],[64,'استراحت حرارتی']];
-/* بایت عمومی فریم: هر بیت یک وضعیت واقعی برد */
+
 const EVT_FL_FA=[[1,'دادهٔ لحظه‌ای رسید'],[2,'برق ورودی وصل شد'],[4,'اندازه‌گیری معتبر شد'],[8,'شارژر ۱ اجازه گرفت'],[16,'شارژر ۲ اجازه گرفت'],[32,'مود دستی روشن شد']];
 const EVT_LVC=['#4a5568','#2f9e63','#c9a227','#e5484d'];
 const EVT_LVB=['rgba(255,255,255,.02)','rgba(47,158,99,.10)','rgba(201,162,39,.10)','rgba(229,72,77,.10)'];
@@ -1812,8 +1817,7 @@ const EVT_LVN=['خاکستری: تغییر ساده','سبز: برگشت به س
 function evtPad(n){return String(n).padStart(2,'0');}
 function evtFaNum(x){return String(x).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
 function evtToday(){const d=new Date();return d.getFullYear()+evtPad(d.getMonth()+1)+evtPad(d.getDate());}
-/* v1.99: هر تاریخی که لاگ نشان می‌دهد - فهرست روزها، خط وضعیت، نام فایل دانلود -
-   تاریخ ایرانی (شمسی) است. [EN] every date the log shows is an Iranian (Jalali) date. */
+
 const evtDv=(a,b)=>~~(a/b),evtMd=(a,b)=>a-~~(a/b)*b;
 function evtG2d(gy,gm,gd){let d=evtDv((gy+evtDv(gm-8,6)+100100)*1461,4)+evtDv(153*evtMd(gm+9,12)+2,5)+gd-34840408;return d-evtDv(evtDv(gy+100100+evtDv(gm-8,6),100)*3,4)+752;}
 const EVT_JF=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
@@ -1844,7 +1848,7 @@ function evtTimeFa(epoch){
  const d=new Date(epoch*1000);
  return evtPad(d.getHours())+':'+evtPad(d.getMinutes())+':'+evtPad(d.getSeconds());
 }
-/* هر ردیف → یک خط فارسی + شدت: ۳ خطا، ۲ هشدار، ۱ برگشت به سلامتی، ۰ تغییر ساده */
+
 function evtTextFa(r){
  const parts=[];let lv=0;
  const add=(t,l)=>{parts.push(t);if(l>lv)lv=l;};
@@ -1869,12 +1873,12 @@ function evtTextFa(r){
   add('نتیجه: '+who+' فرسوده شناخته شد',3);
  }
  if(r.chg&256){
-  /* فقط بیت‌های روشن نام برده می‌شوند؛ اگر همه خاموش باشند خط همان را می‌گوید */
+
   let any=0;
   EVT_FL_FA.forEach(b=>{if(r.fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
   if(!any)add('کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است',2);
  }
- /* ردیف ضربان یعنی «هیچ اتفاقی نیفتاد و پنل زنده است» */
+
  if(r.note===5)add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);
  if(r.note===6)add('ثبت دستی (به‌روزرسانی) — کانال ۱ «'+(EVT_CHG_FA[r.c1]||r.c1)+'» · کانال ۲ «'+(EVT_CHG_FA[r.c2]||r.c2)+'»',0);
  if(r.note===4)add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);
@@ -1891,8 +1895,7 @@ function evtParse(line){
          d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
          pct:(f.length>21)?+f[21]:null};
 }
-/* v1.99: هر تکه از خط در span خودش می‌نشیند؛ عدد و واژهٔ انگلیسی جدا نگه داشته
-   می‌شوند تا متن راست‌به‌چپ قاطی نشود. [EN] every piece in its own span, bidi-isolated. */
+
 const evtIso=s=>String(s==null?'':s).split(/([0-9A-Za-z][0-9A-Za-z.:%-]*)/).map((x,i)=>i%2?'<span class="lt">'+evtEsc(x)+'</span>':evtEsc(x)).join('');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
 let evtBusy=false,evtClkBusy=false;
@@ -1902,7 +1905,8 @@ async function evtHttp(u,m,ms){
  if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
  try{
   let r=await fetch(u,o);
-  return r;
+  const data=await r.text();
+  return {ok:r.ok,status:r.status,headers:r.headers,text:async()=>data,json:async()=>JSON.parse(data)};
  }finally{if(tm)clearTimeout(tm);}
 }
 function evtEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -1919,7 +1923,7 @@ function evtRenderFa(text,day,ram,src){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
- const fsWarn=(src==='3')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
+ const fsWarn=(src==='3')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">حافظه سوار نشد — تاریخچه پاک نشده </span>'
   :(src==='2')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
   :(ram?'<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">حافظهٔ موقت رم — چیدمان فلش دارای FS انتخاب شود</span>':'');
  if(sum)sum.innerHTML=fsWarn;
@@ -1935,14 +1939,8 @@ function evtRenderFa(text,day,ram,src){
   '<span style="padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)">مجموع: '+rows.length+' خط</span>';
  box.innerHTML=rows.slice().reverse().map(r=>{
   const t=evtTextFa(r);
-  /* v1.109: هر ردیف وضعیت باتری را هم می‌گوید - درصد (از نسخهٔ ۱٫۱۰۹ روی
-     خود ردیف است و برای فایل قدیمی دوباره حساب می‌شود)، سمتی که هست
-     (دشارژ / کدام مرحلهٔ شارژ / برق وصل بدون شارژ) و توان باتری بر حسب وات.
-     [EN] v1.109: every row also speaks the battery state - percent (stored on
-     the row since v1.109, or recomputed for older files), the side it is on,
-     and the battery power in watts (V x A2). */
-  /* دستور کاربر: در فهرست لاگ فقط پیام کوتاه دیده می‌شود؛ ولتاژها، جریان‌ها و
-     بقیهٔ جزئیات در فایل همان روز ذخیره می‌شوند ولی اینجا نمایش داده نمی‌شوند. */
+
+
   return '<div class="evtrow" style="border-inline-start:3px solid '+EVT_LVC[t.lv]+';background:'+EVT_LVB[t.lv]+'">'+
    '<span class="evtt">'+evtIso(evtTimeFa(r.epoch))+'</span>'+
    '<span class="evtd">'+evtSpr(t.txt,'ep')+'</span></div>';
@@ -1967,13 +1965,13 @@ async function evtFs(toggle){
  if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
  box.style.display='block';box.innerHTML='<span style="color:var(--mu)">در حال خواندن حافظهٔ ESP…</span>';
  try{
-  const r=await evtHttp('/evt/fs','GET',4000);const j=await r.json();
+  const r=await evtHttp('/evt/fs','GET',4000);if(!r.ok)throw Error();const j=await r.json();
   const files=Array.isArray(j.files)?j.files:[];
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
 
   if(!j.fs){
-   h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
+   h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'حافظه در دسترس نیست؛ تاریخچه خودکار پاک نمی‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
   }else{
    h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · روزهای ذخیره‌شده: <b>'+evtFaNum(files.length+(+j.more||0))+'</b></div>';
    if(+j.reclaimed>0)h+='<div style="color:var(--ok);margin-top:4px">برای باز کردن جا، '+evtFaNum(j.reclaimed)+' روز قدیمی پاک شد (قدیمی‌ترین‌ها).</div>';
@@ -1983,7 +1981,7 @@ async function evtFs(toggle){
     files.forEach(f=>{
      const m=/^\/evt-(\d{8})\.csv$/.exec(f.name);
      const nameHtml=m
-       ? '<button class="btn" title="دانلود لاگ همین روز" style="padding:0 6px;font-size:11px;min-height:22px" onclick="evtDlDay(\''+m[1]+'\')">'+evtEsc(f.name)+'</button>'
+       ? '<button class="btn" title="دانلود لاگ همین روز" style="padding:0 6px;font-size:11px;min-height:22px" onclick="uiAction(this,()=>evtDlDay(\''+m[1]+'\'))">'+evtEsc(f.name)+'</button>'
        : '<span dir="ltr">'+evtEsc(f.name)+'</span>';
      h+='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px dashed var(--ln);padding:2px 0"><span>'+nameHtml+'</span><span>'+evtKb(f.size)+'</span></div>';
     });
@@ -1991,8 +1989,8 @@ async function evtFs(toggle){
     h+='</div>';
    }
   }
-  box.innerHTML=h;
- }catch(e){box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
+  box.innerHTML=h;showToast('فهرست حافظه به‌روز شد');
+ }catch(e){showToast('خواندن حافظه انجام نشد');box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
 }
 async function evtDays(){
  try{
@@ -2010,17 +2008,28 @@ async function evtDays(){
   return days;
  }catch(e){return [];}
 }
+async function evtfmt(){
+ if(!admReady){admOpen();return;}
+ if(!confirm('همهٔ فایل‌ها و تاریخچهٔ حافظهٔ ESP پاک می‌شوند. ادامه می‌دهی؟'))return;
+ admSay('admCardMsg','در حال فرمت حافظه…',true);
+ const r=await evtHttp('/evt/format','POST',20000);
+ if(r.status===403){admLock();showToast('نشست مدیر تمام شد؛ دوباره وارد شو');return;}
+ if(!r.ok||(await r.text()).trim()!=='ok'){admSay('admCardMsg','فرمت انجام نشد؛ حافظه را بررسی کن',false);return;}
+ const sel=document.getElementById('evtDay');if(sel)sel.value='';
+ await evtDays();await evtFetch(0);await evtFs(0);
+ admSay('admCardMsg','حافظه فرمت شد؛ رمز مدیر و وای‌فای حفظ شدند',true);
+}
+async function evtDownload(query,name){
+ showToast('در حال آماده‌کردن فایل…');
+ const r=await evtHttp('/evt/dl?'+query,'GET',15000);
+ if(!r.ok)throw Error();
+ downloadCsvText(name,await r.text());
+ showToast('فایل آماده شد؛ دانلود به مرورگر سپرده شد');
+}
 function evtDlDay(day){
- if(!day) return;
- const a=document.createElement('a');
- a.href='/evt/dl?day='+encodeURIComponent(day);
- a.download='تاریخچه-'+evtDaySh(day)+'.csv';a.click();
+ if(day)return evtDownload('day='+encodeURIComponent(day),'تاریخچه-'+evtDaySh(day)+'.csv');
 }
-function evtDlAll(){
- /* یک درخواست برای همهٔ روزها؛ پنل قبلاً ۹۰ دانلود جدا می‌زد و مرورگر بقیه را می‌بست */
- const a=document.createElement('a');
- a.href='/evt/dl?all=1';a.download='تاریخچه-کامل.csv';a.click();
-}
+function evtDlAll(){return evtDownload('all=1','تاریخچه-کامل.csv');}
 async function evtTick(){
  if(document.hidden||evtBusy)return;
  evtBusy=true;
@@ -2039,9 +2048,7 @@ async function loadWifi(){
   if(cur) cur.textContent=j.ssid||'--';
  }catch(e){}
 }
-/* ==================== جابه‌جایی بین سه صفحه ====================
-   لاگ فقط در صفحهٔ «وضعیت» دیده می‌شود؛ هر صفحه که باز شود داده‌های
-   خودش تازه می‌شود. */
+
 function showTab(n){
  for(let i=0;i<3;i++){
   let pg=document.getElementById('pg'+i), tb=document.getElementById('tab'+i);
@@ -2051,11 +2058,7 @@ function showTab(n){
  if(n===1) pollCharts();
  if(n===0) pollDiag();
 }
-/* ==================== دسترسی مدیر ====================
-   کاربر عادی هیچ چیز مدیریتی نمی‌بیند؛ مدیر با پنج ضربه روی «نسخهٔ» رمز
-   می‌زند، برد کوکی نشست می‌دهد و کارت مدیریت باز می‌شود. با پایان نشست
-   کارت خودش قفل می‌شود. پاسخ خطای برد (فیلد e) به پیام فارسی برگردانده
-   می‌شود تا مدیر بداند کدام ورودی ایراد دارد. */
+
 let admTapCount=0, admTapAt=0, admReady=false;
 function admTap(){
  let now=Date.now();
@@ -2070,6 +2073,7 @@ function admSay(id, txt, ok){
  if(!el) return;
  el.textContent=txt||'';
  el.className='gmsg'+(ok?' ok':'');
+ if(txt&&id==='admCardMsg')showToast(txt);
 }
 function admOpen(){
  let g=document.getElementById('admGate'); if(!g) return;
@@ -2087,7 +2091,7 @@ function admUnlock(who){
  admReady=true;
  let c=document.getElementById('adminCard'); if(c) c.hidden=false;
  let w=document.getElementById('admWho'); if(w) w.textContent=who||'ادمین';
- if(typeof showTab==='function') showTab(2);   /* کارت مدیریت در صفحهٔ تنظیمات است */
+ if(typeof showTab==='function') showTab(2);
  admSay('admCardMsg','');
 }
 function admLock(){
@@ -2101,15 +2105,15 @@ function admBody(obj){
  });
  return out.join('&');
 }
-function admCall(path, obj){
- return fetch(path,{method:'POST',credentials:'same-origin',
+async function admCall(path, obj){
+ const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),10000);
+ try{return await fetch(path,{method:'POST',credentials:'same-origin',signal:ac.signal,
   headers:{'Content-Type':'application/x-www-form-urlencoded'},
   body:admBody(obj)}).then(function(r){
-   return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, body:j}; });
-  });
+   return r.json().then(function(j){ return {status:r.status, body:j}; });
+  });}finally{clearTimeout(timer);}
 }
-/* برد دلیل رد شدن درخواست را در فیلد e می‌دهد (old، mismatch، 2، admin، ...).
-   پیش‌تر پنل فقط msg را می‌شناخت و همهٔ خطاها «انجام نشد» دیده می‌شد. */
+
 const ADM_ERR={old:'رمز فعلی درست نیست', mismatch:'رمز تازه و تکرارش یکی نیست',
  'pass 4-32':'رمز باید ۴ تا ۳۲ کاراکتر باشد', admin:'نشست مدیر لازم است',
  user:'ذخیره نشد', ts:'زمان نامعتبر است', 'ssid/pass':'نام و رمز وای‌فای لازم است',
@@ -2135,19 +2139,17 @@ function admPost(path, obj, okMsg){
   return j;
  }).catch(function(){ admSay('admCardMsg','ارتباط با برد برقرار نشد', false); return null; });
 }
-/* لینک دانلود همان روزی را می‌گیرد که در کارت لاگ انتخاب شده است */
-function admDl(a){
- let sel=document.getElementById('evtDay');
- let day=sel?sel.value.trim():'';
- a.href='/evt/dl'+(day?'?day='+encodeURIComponent(day):'');
- return true;
+
+function admDl(){
+ const sel=document.getElementById('evtDay');
+ return evtDlDay((sel&&sel.value)||evtToday());
 }
 function admLogin(){
  let pw=document.getElementById('admPass');
  let pass=pw?pw.value:'';
  if(!pass){ admSay('admMsg','رمز را بزن', false); return; }
  admSay('admMsg','در حال بررسی...', true);
- admCall('/login',{user:'admin', pass:pass}).then(function(x){
+ return admCall('/login',{user:'admin', pass:pass}).then(function(x){
   let j=x.body||{};
   if(x.status===200 && j.ok===1){ admClose(); admUnlock(j.user||'admin'); showToast('دسترسی مدیر باز شد'); return; }
   if(x.status===409){ admSay('admMsg','یک نشست باز است؛ چند دقیقه بعد دوباره تلاش کن', false); return; }
@@ -2156,10 +2158,12 @@ function admLogin(){
  }).catch(function(){ admSay('admMsg','ارتباط با برد برقرار نشد', false); });
 }
 function admLogout(){
- admCall('/logout',{}).then(function(){ admLock(); showToast('از حالت مدیر خارج شد'); })
- .catch(function(){ admLock(); });
+ return admCall('/logout',{}).then(function(x){
+  if(x.status!==200||x.body.ok!==1)throw Error();
+  admLock();showToast('از حالت مدیر خارج شد');
+ }).catch(function(){admSay('admCardMsg','خروج تأیید نشد؛ دوباره تلاش کن',false);});
 }
-/* پیش از پرسیدن رمز، نگاه می‌کنیم شاید نشست مدیر هنوز باز باشد */
+
 function admProbe(){
  admCall('/clock',{}).then(function(x){
   if(x.status===200){ admUnlock('ادمین'); return; }
@@ -2168,7 +2172,7 @@ function admProbe(){
 }
 function admClock(){
  let ts=Math.floor(Date.now()/1000), tz=-new Date().getTimezoneOffset()*60;
- admCall('/time',{ts:ts}).then(function(x){
+ return admCall('/time',{ts:ts}).then(function(x){
   if(x.status===403){ admLock(); admSay('admCardMsg','نشست مدیر تمام شد', false); return null; }
   return admCall('/clock',{tz:tz});
  }).then(function(x){
@@ -2182,7 +2186,7 @@ function admWifi(){
  let v1=ssid?ssid.value.trim():'', v2=pass?pass.value:'';
  if(!v1){ admSay('admCardMsg','نام وای‌فای را بنویس', false); return; }
  if(v2.length<8){ admSay('admCardMsg','رمز وای‌فای باید ۸ کاراکتر یا بیشتر باشد', false); return; }
- admPost('/wifi',{ssid:v1, pass:v2}, 'وای‌فای ذخیره شد').then(function(j){
+ return admPost('/wifi',{ssid:v1, pass:v2}, 'وای‌فای ذخیره شد').then(function(j){
   if(!j) return;
   if(pass) pass.value='';
   if(j.reboot) admSay('admCardMsg','ذخیره شد؛ برد ریاستارت می‌شود و چند ثانیه بعد برمی‌گردد', true);
@@ -2194,17 +2198,16 @@ function admPass(){
  let v0=o?o.value:'', v1=n1?n1.value:'', v2=n2?n2.value:'';
  if(v1.length<4){ admSay('admCardMsg','رمز تازه باید ۴ کاراکتر یا بیشتر باشد', false); return; }
  if(v1!==v2){ admSay('admCardMsg','رمز تازه و تکرارش یکی نیست', false); return; }
- admPost('/setpass',{old:v0, new:v1, new2:v2}, 'رمز مدیر عوض شد').then(function(j){
+ return admPost('/setpass',{old:v0, new:v1, new2:v2}, 'رمز مدیر عوض شد').then(function(j){
   if(j){ [o,n1,n2].forEach(function(el){ if(el) el.value=''; }); }
  });
 }
 function admClear(){
  let sel=document.getElementById('admClearType');
  let t=sel?sel.value:'all';
- admPost('/clear',{type:t}, 'تاریخچه پاک شد');
+ return admPost('/clear',{type:t}, 'تاریخچه پاک شد');
 }
-/* ==================== رسم دوباره پس از تغییر اندازه یا آمدن فونت ====================
-   اگر صفحه بچرخد یا فونت دیر برسد، عددهای محور باید دوباره و تیز نوشته شوند. */
+
 function redrawCharts(){
  ['cPct','cVolt','cCharge'].forEach(function(id){
   let c=document.getElementById(id);

@@ -753,7 +753,11 @@ static void func__Simple_HttpEventFormat(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "text/plain", "admin");
         return;
     }
-    (void)LittleFS.format();
+    if (!LittleFS.format())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "text/plain", "fail");
+        return;
+    }
     BOOL__G__FsOk = LittleFS.begin();
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
     func__SimpleLog_ResetStateAfterFormat();
@@ -766,7 +770,7 @@ static void func__Simple_HttpEventFormat(void)
         func__SimpleLog_Begin();
     }
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", BOOL__G__FsOk ? "ok" : "fail");
+    SIMPLE_WEB_SERVER_T__G__Server.send(BOOL__G__FsOk ? 200 : 500, "text/plain", BOOL__G__FsOk ? "ok" : "fail");
 }
 static void func__Simple_HttpEventLog(void)
 {

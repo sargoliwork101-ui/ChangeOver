@@ -546,7 +546,12 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
              text: function () { return Promise.resolve(text); } };
   }
   function bodyJson(options) {
-    try { return JSON.parse((options && options.body) || '{}'); } catch (e) { return {}; }
+    var body = (options && options.body) || '';
+    try { return JSON.parse(body || '{}'); } catch (e) {
+      var out = {};
+      new URLSearchParams(body).forEach(function (value, key) { out[key] = value; });
+      return out;
+    }
   }
   function query(url, name) {
     var found = new RegExp('[?&]' + name + '=([^&]*)').exec(url);
@@ -578,6 +583,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       return jsonResponse(evtCsvText(dlRows), 200);
     }
     if (path === 'evt/clr') {
+      if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       var rmDays = evtDaysList().length;
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
@@ -623,8 +629,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var credentials = bodyJson(options);
       var user = credentials.user !== undefined ? credentials.user : query(url, 'user');
       var pass = credentials.pass !== undefined ? credentials.pass : query(url, 'pass');
-      var defaultPass = (user === 'admin') ? 'admin' : ((user === 'viewer') ? 'viewer' : null);
-      var expected = (mock.userPass && user === mock.user) ? mock.userPass : defaultPass;
+      var expected = user === 'admin' ? (mock.userPass || 'admin') : null;
       if (expected !== null && pass === expected) {
         var newRole = (user === 'admin') ? 1 : 0;
         /* نشست یکتا: هم‌سطح یا پایین‌تر رد؛ فقط دسترسی بالاتر جایگزین می‌شود */
@@ -639,7 +644,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     if (path === 'logout') { mock.user = ''; mock.role = 0; return jsonResponse('{"ok":1}'); }
     if (path === 'setpass') {
       var change = bodyJson(options);
-      var target = (change.user || '').trim();
+      var target = (change.user || 'admin').trim();
       if (!mock.user) { return jsonResponse('{"ok":0,"e":"login"}', 403); }
       if (!target || !change.new) { return jsonResponse('{"ok":0,"e":"user/new"}', 400); }
       if ((change.new || '').length < 4) { return jsonResponse('{"ok":0,"e":"pass 4-32"}', 400); }

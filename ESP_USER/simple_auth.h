@@ -524,6 +524,8 @@ static void func__Simple_AuthLoad(void)
     UINT8_T__G__UserCount = 0u;
     if (!BOOL__G__FsOk)
     {
+        /* [EN] Keep initial admin usable in RAM when flash cannot mount. */
+        func__Simple_AuthDefaults();
         return;
     }
     if (!LittleFS.exists(SIMPLE_USERS_FILE))

@@ -77,6 +77,7 @@ SimSerialLink Serial;
 SimWiFi WiFi;
 SimEsp ESP;
 SimLittleFS LittleFS;
+static bool BOOL__T__FormatFail = false;
 
 /* فایل‌سیستم تست در /tmp نگه داشته می‌شود تا مسیر ذخیره و بازیابی هم بررسی شود. */
 static std::string func__T_FsPath(const char *char__ptr_path)
@@ -87,6 +88,7 @@ static std::string func__T_FsPath(const char *char__ptr_path)
 bool SimLittleFS::begin(bool bool__formatOnFail) { (void)bool__formatOnFail; return true; }
 bool SimLittleFS::format(void)
 {
+    if (BOOL__T__FormatFail) return false;
     static const std::string PREFIX = "changeover_simple_test_";
     DIR *dir__handle = ::opendir("/tmp");
     if (dir__handle != NULL)
@@ -402,7 +404,7 @@ static void func__T_TestResetOrderAndHandshake(void)
                       (string__panel.find("پاک‌کردن امروز") == std::string::npos),
                       "برچسب پاک‌کردن لاگ با کار واقعی برد (حذف همهٔ روزها) یکی است");
         func__T_Check((string__panel.find("function admDl(") != std::string::npos) &&
-                      (string__panel.find("'/evt/dl'+(day?") != std::string::npos),
+                      (string__panel.find("return evtDlDay((sel&&sel.value)||evtToday())") != std::string::npos),
                       "لینک دانلود همان روزِ انتخابی کارت لاگ را می‌گیرد");
         func__T_Check((string__panel.find("onclick=\"setPass(") == std::string::npos) &&
                       (string__panel.find("onclick=\"latchReset(") == std::string::npos) &&
@@ -2713,6 +2715,57 @@ static void func__T_TestReviewFixes(void)
     }
 }
 
+static void func__T_TestLoginAndFormatRecovery(void)
+{
+    func__Simple_AuthLogout();
+    func__Simple_LoginClear();
+    func__T_ClearCookie();
+    BOOL__G__FsOk = false;
+    BOOL__G__FsMountFailed = true;
+    func__Simple_AuthLoad();
+    func__T_Check(UINT8_T__G__UserCount == 1u && func__Simple_VerifyUserPass("admin", "admin"),
+                  "حافظهٔ بازنشده، پنل را بدون حساب اولیه رها نمی‌کند");
+    File file__sentinel = LittleFS.open("/format-sentinel", "w");
+    file__sentinel.print("keep until authenticated format");
+    file__sentinel.close();
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403 && LittleFS.exists("/format-sentinel"),
+                  "فرمت بدون نشست مدیر حتی در خرابی حافظه ممنوع می‌ماند");
+    func__T_Check(func__Simple_AuthLogin("admin", "wrong") == 0 &&
+                  func__Simple_AuthLogin("admin", "admin") == 1,
+                  "ورود اولیه در خرابی حافظه رمز می‌خواهد");
+    func__T_UseTokenCookie();
+    BOOL__T__FormatFail = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 &&
+                  SIMPLE_WEB_SERVER_T__G__Server.simBody() == "fail" && LittleFS.exists("/format-sentinel"),
+                  "شکست فرمت موفقیت جعلی نمی‌دهد و وضعیت را پاک نمی‌کند");
+    BOOL__T__FormatFail = false;
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 &&
+                  SIMPLE_WEB_SERVER_T__G__Server.simBody() == "ok" && BOOL__G__FsOk &&
+                  !BOOL__G__FsMountFailed && !LittleFS.exists("/format-sentinel") &&
+                  LittleFS.exists(SIMPLE_USERS_FILE) && LittleFS.exists(SIMPLE_WIFI_FILE),
+                  "فرمت با نشست مدیر حافظه را آماده و حساب و وای‌فای را ذخیره می‌کند");
+    (void)func__Simple_SetUserPass("admin", "custom-password");
+    func__Simple_AuthLoad();
+    func__T_Check(func__Simple_VerifyUserPass("admin", "custom-password") &&
+                  !func__Simple_VerifyUserPass("admin", "admin"),
+                  "رمز سفارشی در حافظهٔ سالم با رمز اولیه جایگزین نمی‌شود");
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();
+    func__Simple_HttpEventFormat();
+    func__Simple_AuthLoad();
+    func__T_Check(func__Simple_VerifyUserPass("admin", "custom-password"),
+                  "فرمت موفق رمز سفارشی مدیر را حفظ می‌کند");
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+    func__Simple_AuthDefaults();
+    func__Simple_AuthSave();
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2738,6 +2791,7 @@ int main(void)
     func__T_TestDiagChunkFullLength();
     func__T_TestSpaceReclaim();
     func__T_TestReviewFixes();
+    func__T_TestLoginAndFormatRecovery();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)
