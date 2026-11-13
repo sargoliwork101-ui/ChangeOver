@@ -24,8 +24,8 @@ void func__App_Init(void)
  * [EN] One-time read-out lock (user order 2026-10-20). Runs before the
  * scheduler so the option-byte erase cannot stall a running task; on
  * success the MCU resets inside this call and the boot repeats with the
- * part already locked, which makes the second pass a no-op. Default
- * MODULE_FLASH_LOCK = 0, so this block is not compiled into normal builds.
+ * part already locked, which makes the second pass a no-op. Delivery
+ * builds enable MODULE_FLASH_LOCK = 1; development builds may disable it.
  */
     (void)func__FlashLock_ApplyOnce();
 #endif
