@@ -269,7 +269,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
-               token: '', userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
+               token: '', deletedFiles: [], userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
                users: [{ name: 'admin', role: 1 }] };
   var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
   var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
@@ -591,11 +591,24 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     if (path === 'evt/fs') {
       var daysNow = evtDaysList();
-      var fsFiles = daysNow.map(function (d) { return { name: 'evt-' + d + '.csv', size: 1024, own: 1 }; });
-      fsFiles.push({ name: 'users.json', size: 164, own: 1 });
-      fsFiles.push({ name: 'wifi.json', size: 128, own: 1 });
+      var fsFiles = daysNow.map(function (d) { return { name: '/evt-' + d + '.csv', size: 1024 }; });
+      if(mock.deletedFiles.indexOf('/users.json')<0)fsFiles.push({ name: '/users.json', size: 164 });
+      if(mock.deletedFiles.indexOf('/wifi.json')<0)fsFiles.push({ name: '/wifi.json', size: 128 });
       var usedSum = fsFiles.reduce(function (s, x) { return s + x.size; }, 0);
-      return jsonResponse(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used: usedSum, files: fsFiles, fileBytes: usedSum, more: 0 }), 200);
+      if(mock.role!==1)fsFiles=fsFiles.filter(function(f){return /^\/evt-/.test(f.name);});
+      var offset=+(query(url,'offset')||0),count=fsFiles.length,page=fsFiles.slice(offset,offset+32),next=offset+page.length;
+      return jsonResponse(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used: usedSum, files: page, fileBytes: usedSum, more: Math.max(0,count-next),count:count,next:next<count?next:-1 }), 200);
+    }
+    if (path === 'evt/file') {
+      if(method!=='POST')return jsonResponse('{"ok":0}',405);
+      if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var name=bodyJson(options).name||'',match=/^\/evt-(\d{8})\.csv$/.exec(name);
+      if(!/^\/[^/\\\x00-\x1f]+$/.test(name)||name==='/.'||name==='/..')return jsonResponse('{"ok":0,"e":"path"}',400);
+      var exists=match?evtDaysList().indexOf(match[1])>=0:(['/users.json','/wifi.json'].indexOf(name)>=0&&mock.deletedFiles.indexOf(name)<0);
+      if(!exists)return jsonResponse('{"ok":0,"e":"missing"}',404);
+      if(match){evtRows=evtRows.filter(function(r){return String(evtDayCode(r[0]))!==match[1];});evtPersist();}
+      else mock.deletedFiles.push(name);
+      return jsonResponse('{"ok":1}',200);
     }
     if (path === 'evt/clean') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
@@ -603,6 +616,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     if (path === 'evt/format') {
       if (mock.role !== 1) { return jsonResponse('admin', 403); }
+      mock.deletedFiles=[];
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
       return jsonResponse('ok', 200);

@@ -98,6 +98,7 @@ class Board:
         self.board_uptime = 9 * 3600
         self.board_time = int(time.time())
         self.rows = {}
+        self.deleted_files = set()
         self.chart = {"1d": [], "7d": [], "1m": [], "3m": []}
         self.errors = []
         self.power = []
@@ -828,16 +829,43 @@ class Handler(BaseHTTPRequestHandler):
                      ("/charts.bin", BOARD.chart_file_bytes()),
                      ("/charge_hist.json", 2 + len(BOARD.charge_history) * 36)]
             for name, size in extra:
-                used += size
+                if name not in BOARD.deleted_files:
+                    used += size
+                    if self.session_ok() and BOARD.session.get("role") == 1:
+                        files.append({"name": name, "size": size})
+            offset_text = args.get("offset", "0")
+            if not re.fullmatch(r"[0-9]+", offset_text) or int(offset_text) > 65535:
+                return self.send(json_bytes({"ok": 0, "e": "offset"}, 400))
+            offset = int(offset_text)
+            count = len(files)
+            page = files[offset:offset + 32]
+            next_offset = offset + len(page)
             return self.send(json_bytes({"fs": 1, "mountFail": 0, "total": 65536,
                                          "used": used, "reclaimed": BOARD.reclaimed,
-                                         "files": files, "fileBytes": used,
-                                         "more": 0, "free": max(0, 65536 - used)}))
+                                         "files": page, "fileBytes": used, "count": count,
+                                         "next": next_offset if next_offset < count else -1,
+                                         "more": max(0, count - next_offset), "free": max(0, 65536 - used)}))
+        if path == "/evt/file" and method == "POST":
+            if not self.session_ok() or BOARD.session.get("role") != 1:
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
+            name = args.get("name", "")
+            if (len(name.encode()) > 255 or not re.fullmatch(r"/[^/\\\x00-\x1f]+", name)
+                    or name in ("/.", "/..")):
+                return self.send(json_bytes({"ok": 0, "e": "path"}, 400))
+            match = re.fullmatch(r"/evt-([0-9]{8})\.csv", name)
+            if match and match[1] in BOARD.rows:
+                del BOARD.rows[match[1]]
+            elif name in {"/users.json", "/wifi.json", "/time.json", "/params.json", "/diag.json", "/charts.bin", "/charge_hist.json"} and name not in BOARD.deleted_files:
+                BOARD.deleted_files.add(name)
+            else:
+                return self.send(json_bytes({"ok": 0, "e": "missing"}, 404))
+            return self.send(json_bytes({"ok": 1}))
         if path in ("/evt/clr", "/evt/format") and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             BOARD.rows = {}
             if path == "/evt/format":
+                BOARD.deleted_files.clear()
                 return self.send(text_bytes("ok"))
             return self.send(json_bytes({"ok": 1, "removed": 1, "freed": 1024}))
         if path == "/evt/snap" and method == "POST":

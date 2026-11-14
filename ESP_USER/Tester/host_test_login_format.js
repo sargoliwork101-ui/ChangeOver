@@ -26,6 +26,13 @@ async function login(password){
     check(d.getElementById('admGate').hidden && !d.getElementById('adminCard').hidden,'admin password accepted through actual click and form encoding');
     const originalFetch=w.fetch;let formatCalls=0;
     w.fetch=(u,o)=>{if(u==='/evt/format')formatCalls++;return originalFetch(u,o);};
+    w.confirm=()=>true;await w.evtFs(0);
+    const removeWifi=[...d.querySelectorAll('#evtFs [data-file]')].find(b=>b.dataset.file==='/wifi.json');
+    check(!!removeWifi,'offline admin sees an exact-path delete control for settings');
+    removeWifi.click();await flush();
+    const afterDelete=await (await w.fetch('/evt/fs')).json();
+    check(!afterDelete.files.some(f=>f.name==='/wifi.json') && !d.getElementById('adminCard').hidden,'native offline click deletes selected settings file without logging admin out');
+    await originalFetch('/evt/format',{method:'POST'});
     await w.fetch('/evt/snap',{method:'POST'});
     check((await (await w.fetch('/evt/days')).text()).trim().length>0,'history exists before format');
     w.confirm=()=>false;format.click();await flush();

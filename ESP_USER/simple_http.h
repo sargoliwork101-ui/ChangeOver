@@ -486,16 +486,12 @@ static void func__Simple_HttpLogout(void)
 /* ==================== - /wifi ==================== */
 static void func__Simple_HttpGetWifi(void)
 {
-    char char__buf[96];
-    /*
- * [EN] The saved Wi-Fi password never leaves the board: the panel only shows
- * the network name, and nothing in the page can change it any more.
- */
-    (void)snprintf(char__buf, sizeof(char__buf),
-                   "{\"ssid\":\"%s\",\"passSet\":%u}", CHAR__G__WifiSsid,
-                   (CHAR__G__WifiPass[0] != '\0') ? 1u : 0u);
+    String string__reply = "{\"ssid\":";
+    string__reply += func__Simple_JsonQuote(CHAR__G__WifiSsid);
+    string__reply += ",\"passSet\":";
+    string__reply += (CHAR__G__WifiPass[0] != '\0') ? "1}" : "0}";
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", string__reply);
 }
 /* ==================== - - - JSON ==================== */
 static void func__Simple_HttpSetWifi(void)
@@ -1048,9 +1044,92 @@ static void func__Simple_HttpEventSnap(void)
                    "{\"ok\":%u}", (bool__stored != false) ? 1u : 0u);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+/* ==================== Single file deletion ==================== */
+/**
+ * @brief Delete only an exact root file after admin authorization; keep RAM settings/session.
+ */
+static void func__Simple_HttpFileDelete(void)
+{
+    String string__name;
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
+    if (!func__Simple_GetArg("name", string__name) || string__name.length() < 2u ||
+        string__name.length() > 255u || string__name[0] != '/' ||
+        string__name.indexOf('/', 1u) >= 0 || string__name.indexOf('\\') >= 0 ||
+        strcmp(string__name.c_str(), "/.") == 0 || strcmp(string__name.c_str(), "/..") == 0 ||
+        strlen(string__name.c_str()) != string__name.length())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
+        return;
+    }
+    for (size_t size_t__i = 0u; size_t__i < string__name.length(); size_t__i++)
+    {
+        if ((unsigned char)string__name[size_t__i] < 0x20u)
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
+            return;
+        }
+    }
+    if (!BOOL__G__FsOk)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0,\"e\":\"fs\"}");
+        return;
+    }
+    if (!LittleFS.exists(string__name.c_str()))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(404, "application/json", "{\"ok\":0,\"e\":\"missing\"}");
+        return;
+    }
+#if defined(ESP32)
+    {
+        File file__target = LittleFS.open(string__name.c_str(), "r");
+        bool bool__directory = file__target && file__target.isDirectory();
+        file__target.close();
+        if (bool__directory)
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
+            return;
+        }
+    }
+#endif
+    if (!LittleFS.remove(string__name.c_str()) || LittleFS.exists(string__name.c_str()))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"remove\"}");
+        return;
+    }
+    uint32_t uint32_t__day = 0u;
+    BOOL__G__LogScanValid = false;
+    if (func__SimpleLog_DayFromName(string__name.c_str(), &uint32_t__day) &&
+        uint32_t__day == UINT32_T__G__LogDayCode)
+    {
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogDayFileReady = false;
+        BOOL__G__LogDrainWait = false;
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+}
 static void func__Simple_HttpEventFsStatus(void)
 {
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    (void)func__SimpleLog_FsStatusJson(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__LogTailBuffer);
+    String string__offset;
+    int32_t int32_t__offset = 0;
+    if (func__Simple_GetArg("offset", string__offset) &&
+        (!func__Simple_ParseInt(string__offset.c_str(), &int32_t__offset) ||
+         int32_t__offset < 0 || int32_t__offset > 65535))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"offset\"}");
+        return;
+    }
+    bool bool__admin = func__Simple_SessionValid() && UINT8_T__G__CurrentRole == 1u;
+    size_t size_t__written = func__SimpleLog_FsStatusJson(CHAR__G__LogTailBuffer,
+        sizeof(CHAR__G__LogTailBuffer), bool__admin, (uint16_t)int32_t__offset);
+    SIMPLE_WEB_SERVER_T__G__Server.send(size_t__written ? 200 : 500, "application/json",
+        size_t__written ? CHAR__G__LogTailBuffer : "{\"ok\":0}");
 }

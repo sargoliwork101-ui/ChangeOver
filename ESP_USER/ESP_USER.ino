@@ -76,6 +76,7 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Simple_HttpEventClear);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/snap", HTTP_POST, func__Simple_HttpEventSnap);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Simple_HttpEventFormat);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/file", HTTP_POST, func__Simple_HttpFileDelete);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Simple_HttpEventFsStatus);
     {
         static const char *char__ptr_headerKeys[] = {"Cookie", "X-Admin-Token"};

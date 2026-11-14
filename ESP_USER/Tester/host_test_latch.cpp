@@ -80,6 +80,7 @@ SimLittleFS LittleFS;
 static bool BOOL__T__FormatFail = false;
 static bool BOOL__T__MountFail = false;
 static bool BOOL__T__SettingsWriteFail = false;
+static bool BOOL__T__RemoveFail = false;
 
 /* فایل‌سیستم تست در /tmp نگه داشته می‌شود تا مسیر ذخیره و بازیابی هم بررسی شود. */
 static std::string func__T_FsPath(const char *char__ptr_path)
@@ -154,6 +155,7 @@ bool SimLittleFS::remove(const char *char__ptr_path)
     {
         return false;
     }
+    if (BOOL__T__RemoveFail) return false;
     return (::unlink(func__T_FsPath(char__ptr_path).c_str()) == 0);
 }
 bool SimLittleFS::exists(const char *char__ptr_path)
@@ -2038,9 +2040,9 @@ static void func__T_TestClearOrphansAndUpdateRow(void)
         SIMPLE_WEB_SERVER_T__G__Server.simClear();
         func__Simple_HttpEventFsStatus();
         func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"name\":\"/evt-20261028.csv\"") != std::string::npos &&
-                      SIMPLE_WEB_SERVER_T__G__Server.simBody().find("leftover_old_fw.dat") == std::string::npos &&
+                      SIMPLE_WEB_SERVER_T__G__Server.simBody().find("leftover_old_fw.dat") != std::string::npos &&
                       SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"own\"") == std::string::npos,
-                      "مسیر /evt/fs فقط فایل‌های روزِ خودِ لاگ را فهرست می‌کند و فایل قدیمی را نمی‌خواند");
+                      "مدیر فهرست همهٔ فایل‌ها از جمله فایل قدیمی را بدون محتوای آن‌ها می‌بیند");
         func__T_Check(LittleFS.exists("/leftover_old_fw.dat") &&
                       (func__SimpleLog_ScanDays(true) == 1u),
                       "برنامه فایل‌های قدیمی را نه می‌خواند و نه دست می‌زند");
@@ -2864,6 +2866,103 @@ static void func__T_TestHeaderSession(void)
                   "وب‌سرور واقعی هر دو راه دریافت شناسهٔ نشست را جمع‌آوری می‌کند");
 }
 
+static void func__T_TestFileDeletion(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/file", HTTP_POST, func__Simple_HttpFileDelete);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Simple_HttpEventFsStatus);
+    BOOL__G__FsOk = true;
+    func__Simple_AuthDefaults();
+    func__Simple_LoginClear();
+    func__Simple_AuthLogout();
+    func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    File file__target = LittleFS.open("/delete-test.bin", "w");
+    file__target.print("private payload");file__target.close();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, "name=%2Fdelete-test.bin");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403 && LittleFS.exists("/delete-test.bin"), "حذف فایل برای بازدیدکننده ممنوع است");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/fs", HTTP_GET);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("delete-test.bin") == std::string::npos, "بازدیدکننده نام فایل غیرلاگ را نمی‌بیند");
+    (void)func__Simple_AuthLogin("admin", "admin");
+    const std::string string__token = CHAR__G__SessionToken;
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", string__token.c_str());
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/fs", HTTP_GET);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("delete-test.bin") != std::string::npos && SIMPLE_WEB_SERVER_T__G__Server.simBody().find("private payload") == std::string::npos, "مدیر فقط نام و اندازهٔ همهٔ فایل‌ها را می‌بیند نه محتوا");
+    const char *char__invalid[] = {"", "name=", "name=%2F", "name=delete-test.bin", "name=%2F..", "name=%2F.", "name=%2F..%2Fusers.json", "name=%2F%2Fusers.json", "name=%2Fbad%5Cname", "name=%2Fbad%00name", "name=%2Fbad%0Aname"};
+    for (const char *char__query : char__invalid)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, char__query);
+        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 400 && LittleFS.exists("/delete-test.bin"), "نام خالی و مسیر فرار یا خراب هیچ فایلی را پاک نمی‌کند");
+    }
+    BOOL__G__FsOk = false;
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, "name=%2Fdelete-test.bin");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 503 && func__Simple_IsAdmin(), "خطای حافظه در حذف، نشست را نگه می‌دارد");
+    BOOL__G__FsOk = true;BOOL__T__RemoveFail = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, "name=%2Fdelete-test.bin");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && LittleFS.exists("/delete-test.bin"), "خطای واقعی حذف موفقیت اعلام نمی‌کند");
+    BOOL__T__RemoveFail = false;
+    uint8_t uint8_t__tx = 0u;while (Serial.takeEspByte(&uint8_t__tx)) {}
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, "name=%2Fdelete-test.bin");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && !LittleFS.exists("/delete-test.bin") && func__Simple_IsAdmin() && string__token == CHAR__G__SessionToken, "فقط فایل انتخابی حذف می‌شود و نشست معتبر باقی می‌ماند");
+    func__T_Check(!Serial.takeEspByte(&uint8_t__tx), "حذف فایل ESP هیچ فرمانی به STM32 نمی‌فرستد");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, "name=%2Fdelete-test.bin");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 404, "حذف فایل ناموجود موفقیت جعلی نمی‌دهد");
+    char char__today[SIMPLE_LOG_PATH_MAX];
+    const uint32_t uint32_t__today = func__SimpleLog_TodayCode();
+    func__SimpleLog_PathOf(char__today, uint32_t__today);
+    File file__day = LittleFS.open(char__today, "w");file__day.print("day");file__day.close();
+    UINT32_T__G__LogDayCode = uint32_t__today;BOOL__G__LogDayFileReady = true;BOOL__G__LogDayFull = true;
+    const std::string string__query = std::string("name=") + char__today;
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, string__query.c_str());
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && !BOOL__G__LogDayFileReady && !BOOL__G__LogDayFull && !BOOL__G__LogScanValid, "حذف روز جاری کش و سقف روز را باطل می‌کند تا ثبت بعدی سالم ادامه یابد");
+    func__T_Check(func__SimpleLog_ResolveDay(true), "روز جاری پس از حذف در نوشتن بعدی دوباره ساخته می‌شود");
+    func__Simple_AuthSave();func__Simple_WifiSave();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/file", HTTP_POST, "name=%2Fusers.json");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && !LittleFS.exists(SIMPLE_USERS_FILE) && LittleFS.exists(SIMPLE_WIFI_FILE) && func__Simple_IsAdmin(), "حذف فایل حساب مجاز است، وای‌فای و نشست رم را حذف نمی‌کند");
+    func__Simple_AuthSave();
+    char char__entry[512] = {0};size_t size_t__used = 0u;
+    func__T_Check(func__SimpleLog_FsEntry(char__entry, sizeof(char__entry), &size_t__used, "/a\"<b>&.bin", 7u, false) && std::string(char__entry).find("a\\\"") != std::string::npos, "نام دارای نقل‌قول بدون تغییر نام، JSON امن دارد");
+    for (unsigned uint__i = 0; uint__i < 40u; uint__i++)
+    {
+        char char__path[40];snprintf(char__path,sizeof(char__path),"/page-test-%02u.bin",uint__i);
+        File file__item = LittleFS.open(char__path,"w");file__item.print("x");file__item.close();
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/fs", HTTP_GET);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"next\":32") != std::string::npos, "فهرست بزرگ صفحه‌بندی می‌شود تا همهٔ فایل‌ها قابل دسترسی باشند");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/fs", HTTP_GET, "offset=32");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"next\":-1") != std::string::npos && SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"files\":[]") == std::string::npos, "صفحهٔ بعدی بقیهٔ فایل‌ها را برمی‌گرداند");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/fs", HTTP_GET, "offset=-1");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 400, "شمارهٔ صفحهٔ نامعتبر رد می‌شود");
+    for (unsigned uint__i = 0; uint__i < 40u; uint__i++)
+    {
+        char char__path[40];snprintf(char__path,sizeof(char__path),"/page-test-%02u.bin",uint__i);LittleFS.remove(char__path);
+    }
+    func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+}
+
+static void func__T_TestWifiJsonAudit(void)
+{
+    BOOL__G__FsOk = true;
+    const char *char__ssid = "audit\"net\\work";
+    const char *char__pass = "pass\"word\\123";
+    strcpy(CHAR__G__WifiSsid, char__ssid);strcpy(CHAR__G__WifiPass, char__pass);
+    func__Simple_WifiSave();func__Simple_WifiLoad();
+    func__T_Check(strcmp(CHAR__G__WifiSsid,char__ssid)==0 && strcmp(CHAR__G__WifiPass,char__pass)==0, "نام و رمز وای‌فای با نقل‌قول و بک‌اسلش پس از ذخیره دقیق برمی‌گردند");
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpGetWifi();
+    String string__name;
+    func__T_Check(func__Simple_JsonReadString(String(SIMPLE_WEB_SERVER_T__G__Server.simBody()), "ssid", string__name) && string__name == char__ssid, "پاسخ وای‌فای با نام خاص JSON درست دارد");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find(char__pass)==std::string::npos && SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"pass\"")==std::string::npos, "رمز وای‌فای در پاسخ حتی با کاراکتر خاص افشا نمی‌شود");
+    const char *char__values[] = {"plain", "a\nb\tc", "\"\\/", "نام شبکه", "😀"};
+    for (const char *char__value : char__values)
+    {
+        String string__json = "{\"v\":";string__json += func__Simple_JsonQuote(char__value);string__json += "}";
+        String string__out;
+        func__T_Check(func__Simple_JsonReadString(string__json,"v",string__out) && string__out == char__value, "رشتهٔ JSON شامل کنترل و فارسی و UTF8 بدون تغییر برمی‌گردد");
+    }
+    String string__bad;
+    func__T_Check(!func__Simple_JsonReadString("{\"v\":\"\\u0000\"}", "v", string__bad), "رشتهٔ دارای صفر تزریقی رد می‌شود");
+    strcpy(CHAR__G__WifiSsid,SIMPLE_WIFI_AP_SSID);strcpy(CHAR__G__WifiPass,SIMPLE_WIFI_AP_PASS);func__Simple_WifiSave();
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2891,6 +2990,8 @@ int main(void)
     func__T_TestReviewFixes();
     func__T_TestLoginAndFormatRecovery();
     func__T_TestHeaderSession();
+    func__T_TestFileDeletion();
+    func__T_TestWifiJsonAudit();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

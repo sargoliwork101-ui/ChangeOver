@@ -138,6 +138,47 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(d.getElementById('admCardMsg').textContent.includes('نوشتن و خواندن تأیید شد'),'success includes verified format and fresh mounted storage status');
     const header=d.querySelector('#evtFs > div');
     check(header && header.querySelector('b') && !header.querySelector('div'),'storage header markup closes before the detailed status');
+    const unusual='/evil"<img src=x onerror=alert(1)>.bin';
+    let disk=[{name:'/users.json',size:180},{name:'/wifi.json',size:120},{name:unusual,size:7}],deletes=[],deleteStatus=200;
+    let more=true;
+    w.fetch=async(u,o={})=>{
+        if(u.startsWith('/evt/fs'))return response(200,{fs:1,total:65536,used:307,files:disk,count:disk.length,more:more?2:0,next:more?32:-1});
+        if(u==='/evt/file'){
+            const name=new URLSearchParams(o.body).get('name');deletes.push([name,o]);
+            if(deleteStatus!==200)return response(deleteStatus,{ok:0,e:deleteStatus===404?'missing':'remove'});
+            disk=disk.filter(f=>f.name!==name);return response(200,{ok:1});
+        }
+        return server(u,o);
+    };
+    await w.evtFs(0);
+    let remove=[...d.querySelectorAll('#evtFs [data-file]')];
+    check(remove.length===3,'every listed file, including settings, has an admin delete button');
+    check(remove[2].dataset.file===unusual && !d.querySelector('#evtFs img'),'hostile filename stays exact in dataset and cannot inject HTML');
+    for(const b of d.querySelectorAll('#evtFs [onclick]'))w.Function(b.getAttribute('onclick'));
+    check(true,'dynamic delete and pagination handlers compile');
+    const next=[...d.querySelectorAll('#evtFs button')].find(b=>b.textContent==='فایل‌های بعدی');
+    check(!!next,'large storage listings offer access to remaining files');
+    w.confirm=()=>false;await w.uiAction(remove[0],()=>w.evtDelete('/users.json'),true);
+    check(!deletes.length && disk.length===3,'cancel never sends a delete request');
+    let warning='';w.confirm=t=>{warning=t;return true;};
+    await w.uiAction(remove[0],()=>w.evtDelete('/users.json'),true);
+    check(warning.includes('رمز مدیر پیش‌فرض'),'deleting account file warns about the reboot/default-password consequence');
+    check(deletes.length===1 && deletes[0][0]==='/users.json' && deletes[0][1].headers['X-Admin-Token']===token,'delete sends the exact selected path with the admin token');
+    check(!disk.some(f=>f.name==='/users.json') && disk.some(f=>f.name==='/wifi.json') && !d.getElementById('adminCard').hidden,'one-file deletion preserves unrelated files and the owner session');
+    deleteStatus=500;await w.evtDelete('/wifi.json');
+    check(d.getElementById('toastMsg').textContent.includes('انجام نشد') && disk.length===2,'flash remove error is visible and never claims success');
+    deleteStatus=404;await w.evtDelete('/wifi.json');
+    check(d.getElementById('toastMsg').textContent.includes('وجود ندارد'),'already removed file is reported separately');
+    const before=deletes.length;
+    w.fetch=()=>Promise.reject(Error('offline'));await w.evtDelete('/wifi.json');
+    check(deletes.length===before && w.sessionStorage.getItem('co_admin')===token && d.getElementById('toastMsg').textContent.includes('پاسخ حذف نرسید'),'lost delete response keeps session and asks for a fresh list');
+    let resolveList;
+    w.fetch=()=>new Promise(r=>resolveList=r);
+    const pending=w.evtFs(0);w.admLock();resolveList(response(200,{fs:1,total:65536,files:disk}));await pending;
+    check(!d.getElementById('evtFs').textContent && d.getElementById('evtFs').style.display==='none','late admin file-list response cannot expose settings after logout');
+    let unsignedCalls=0;w.fetch=()=>{unsignedCalls++;throw Error('must not send');};await w.evtDelete('/wifi.json');
+    check(!unsignedCalls && !d.getElementById('admGate').hidden,'unsigned delete opens the gate without sending any mutation');
+    w.admTokenSet(token);w.admUnlock('admin');
     w.fetch=server;await w.uiAction(d.querySelector('#adminCard button'),()=>w.admLogout(),true);
     check(!active && !w.sessionStorage.getItem('co_admin') && formatIcon.hidden,'explicit logout invalidates session and hides format icon');
     console.log(`ALL ${checks} PANEL ACTION CHECKS PASSED`);

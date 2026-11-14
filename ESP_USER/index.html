@@ -716,11 +716,7 @@ function fmtSecLive(s){
  if(h>0 || m>0) out+=m+' دقیقه ';
  return out+sec+' ثانیه';
 }
-/* ==================== تاریخ شمسی ====================
-   تبدیل میلادی به هجری شمسی به‌صورت خالص، بدون تکیه بر تقویم مرورگر، تا روی
-   هر گوشی و مرورگری یک جواب بدهد. ترتیب محاسبه:
-   ۱) تاریخ میلادی → شمارهٔ روز از مبدأ  ۲) روز → سال و ماه و روز شمسی
-   (۶ ماه اول ۳۱ روزه، ۵ ماه بعد ۳۰ روزه، ماه دوازدهم کبیسه). خروجی: [سال، ماه، روز]. */
+
 function jDiv(a,b){ return Math.floor(a/b); }
 function jMod(a,b){ return a - Math.floor(a/b)*b; }
 function jFromDate(d){
@@ -1142,10 +1138,7 @@ function prepCanvas(c){
  ctx.clearRect(0,0,w,h);
  return {ctx:ctx, w:w, h:h, dpr:dpr};
 }
-/* ==================== ابزارهای مشترک نمودارها ====================
-   هر نمودار یک ناحیهٔ ترسیم دارد: از چپ به‌اندازهٔ محور عمودی و از راست
-   کمی فاصله. همین اعداد برای برچسب‌های محور زمان هم استفاده می‌شوند تا
-   برچسب دقیقاً زیر نقطهٔ خودش بنشیند. */
+
 const CHART_PAD_L=34, CHART_PAD_R=8, CHART_PAD_T=8, CHART_PAD_B=8;
 function chartPlotWidth(w){ return w - CHART_PAD_L - CHART_PAD_R; }
 function chartX(i, n, w){
@@ -1507,10 +1500,7 @@ function getBatStatus(pct){
  if(pct>0) return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'کم',cls:'low'};
  return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'خالی',cls:'low'};
 }
-/* ==================== نوشتن فقط در صورت تغییر ====================
-   اگر مقدار جدید با مقدار فعلی یکی باشد، DOM دست نمی‌خورد. با این کار
-   ترنزیشن‌های CSS (نوار باتری و ...) هر ثانیه از نو شروع نمی‌شوند و صفحه
-   هیچ پرش/چشمکی نمی‌زند - کاربر فقط نتیجه را می‌بیند، نه به‌روزرسانی را. */
+
 function setTxt(id, txt){
  let el=document.getElementById(id); if(!el) return;
  let val=String(txt);
@@ -1962,12 +1952,12 @@ async function evtFetch(manual){
   if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFaNum(lost)+' ردیف از دست رفت'):'');}
  }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
 }
-async function evtFs(toggle){
+async function evtFs(toggle,offset){
  const box=document.getElementById('evtFs');if(!box)return;
  if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
  box.style.display='block';box.innerHTML='<span style="color:var(--mu)">در حال خواندن حافظهٔ ESP…</span>';
  try{
-  const r=await evtHttp('/evt/fs','GET',4000);if(!r.ok)throw Error();const j=await r.json();
+  const key=admToken,r=await evtHttp('/evt/fs'+(offset?'?offset='+offset:''),'GET',4000);if(key!==admToken)return;if(!r.ok)throw Error();const j=await r.json();
   const files=Array.isArray(j.files)?j.files:[];
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b></div>';
@@ -1975,7 +1965,7 @@ async function evtFs(toggle){
   if(!j.fs){
    h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'حافظه در دسترس نیست؛ تاریخچه خودکار پاک نمی‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
   }else{
-   h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · روزهای ذخیره‌شده: <b>'+evtFaNum(files.length+(+j.more||0))+'</b></div>';
+   h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · فایل‌ها: <b>'+evtFaNum(j.count===undefined?files.length+(+j.more||0):j.count)+'</b></div>';
    if(+j.reclaimed>0)h+='<div style="color:var(--ok);margin-top:4px">برای باز کردن جا، '+evtFaNum(j.reclaimed)+' روز قدیمی پاک شد (قدیمی‌ترین‌ها).</div>';
    if(!files.length)h+='<div style="color:var(--mu);margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
    else{
@@ -1985,9 +1975,10 @@ async function evtFs(toggle){
      const nameHtml=m
        ? '<button class="btn" title="دانلود لاگ همین روز" style="padding:0 6px;font-size:11px;min-height:22px" onclick="uiAction(this,()=>evtDlDay(\''+m[1]+'\'))">'+evtEsc(f.name)+'</button>'
        : '<span dir="ltr">'+evtEsc(f.name)+'</span>';
-     h+='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px dashed var(--ln);padding:2px 0"><span>'+nameHtml+'</span><span>'+evtKb(f.size)+'</span></div>';
+     h+='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px dashed var(--ln);padding:2px 0"><span>'+nameHtml+'</span><span>'+evtKb(f.size)+(admReady?' <button class="btn danger" data-admin data-file="'+evtEsc(f.name)+'" onclick="uiAction(this,()=>evtDelete(this.dataset.file),true)">حذف</button>':'')+'</span></div>';
     });
-    if(+j.more>0)h+='<div style="color:var(--mu)">+ '+evtFaNum(j.more)+' فایل دیگر</div>';
+    if(+j.next>0)h+='<button class="btn" onclick="uiAction(this,()=>evtFs(0,'+(+j.next)+'))">فایل‌های بعدی</button>';
+    if(offset)h+='<button class="btn" onclick="uiAction(this,()=>evtFs(0))">ابتدای فهرست</button>';
     h+='</div>';
    }
   }
@@ -2009,6 +2000,17 @@ async function evtDays(){
   }
   return days;
  }catch(e){return [];}
+}
+async function evtDelete(name){
+ if(!admReady){admOpen();return;}
+ const log=/^\/evt-\d{8}\.csv$/.test(name);
+ if(!confirm('فایل '+name+' حذف شود؟'+(log?' ثبت داده‌های تازه ادامه دارد.':name==='/users.json'?' پس از ریست، رمز مدیر پیش‌فرض می‌شود.':' تنظیمات ذخیره‌شده حذف می‌شود؛ دادهٔ رم می‌ماند و ممکن است فایل دوباره ساخته شود.')))return;
+ try{
+  const x=await admCall('/evt/file',{name});
+  if(x.status===403){admLock();showToast('نشست مدیر تمام شد');return;}
+  if(x.status!==200||x.body.ok!==1){showToast(({missing:'فایل دیگر وجود ندارد',fs:'حافظه در دسترس نیست',path:'نام فایل نامعتبر است',remove:'حذف فایل انجام نشد'})[x.body.e]||'حذف فایل انجام نشد');return;}
+  await evtFs(0);await evtDays();await evtFetch(0);showToast('فایل حذف شد');
+ }catch(e){showToast('پاسخ حذف نرسید؛ فهرست حافظه را تازه کن');}
 }
 async function evtfmt(){
  if(!admReady){admOpen();return;}
@@ -2102,6 +2104,7 @@ function admUnlock(who){
 }
 function admLock(){
  admReady=false;admTokenSet('');document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=true);
+ const fs=document.getElementById('evtFs');if(fs){fs.innerHTML='';fs.style.display='none';}
  let c=document.getElementById('adminCard'); if(c) c.hidden=true;
 }
 function admBody(obj){
