@@ -172,7 +172,9 @@ main{display:grid;gap:16px}
 .chip span{font-size:9.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;display:block}
 
 /* Charts */
-canvas{width:100%;height:170px;background:var(--in);border:1px solid var(--ln);border-radius:12px;display:block;transition:.2s}
+canvas{width:100%;height:170px;background-color:var(--in);background-image:none;border:1px solid var(--ln);border-radius:12px;display:block;transition:border-color .2s}
+.cd.chart-card{background:#121826;backdrop-filter:none;-webkit-backdrop-filter:none}
+.cd.chart-card::before{display:none}
 canvas:hover{border-color:var(--ln2)}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stat{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--in);border:1px solid var(--ln);border-radius:14px;padding:14px;text-align:center;position:relative;overflow:hidden;transition:.2s}
@@ -1373,7 +1375,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    </div>
   </div>
 
-  <div class="cd">
+  <div class="cd chart-card">
    <div class="ti">درصد شارژ پک - با زمان واقعی
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
      <span class="mu2">بازه:</span>
@@ -1396,7 +1398,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     </span>
    </div>
   </div>
-  <div class="cd">
+  <div class="cd chart-card">
    <div class="ti">تاریخچه شارژ - کی و چه ساعتی شارژ شده
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
      <span class="mu2">بازه:</span>
@@ -1419,7 +1421,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    </div>
    <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
   </div>
-  <div class="cd">
+  <div class="cd chart-card">
    <div class="ti">ولتاژ ورودی و پک - دو نمودار روی یک محور با زمان واقعی
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
      <span class="mu2">بازه:</span>
@@ -2117,19 +2119,15 @@ function drawChart(canvasId, data, color, min, max, timeData, range){
   return;
  }
 
- let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'38'); grad.addColorStop(1, color+'06');
  if(n>=2){
-  ctx.beginPath();
-  for(let i=0;i<n;i++){ let x=chartX(i,n,w); let v=data[i]; if(v==null) continue; let y=chartY(v,min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.lineTo(w-CHART_PAD_R,h-CHART_PAD_B); ctx.lineTo(CHART_PAD_L,h-CHART_PAD_B); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
   ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.lineCap='round';
   for(let i=0;i<n;i++){ let x=chartX(i,n,w); let v=data[i]; if(v==null) continue; let y=chartY(v,min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
   ctx.stroke();
   let last=data[n-1]; let y=chartY(last,min,max,h);
-  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(chartX(n-1,n,w),y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.fillStyle=color; ctx.arc(chartX(n-1,n,w),y,4,0,Math.PI*2); ctx.fill();
  } else {
   let y=chartY(data[0],min,max,h);
-  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(chartX(0,1,w),y,5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.fillStyle=color; ctx.arc(chartX(0,1,w),y,5,0,Math.PI*2); ctx.fill();
  }
  drawTimeLabels(canvasId+'Labels', timeData, range, w);
 }
@@ -2164,10 +2162,6 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
   if(data.length===1){
    let y=chartY(data[0],min,max,h); ctx.beginPath(); ctx.fillStyle=color; ctx.arc(chartX(0,1,w),y,4,0,Math.PI*2); ctx.fill(); return;
   }
-  let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'22'); grad.addColorStop(1, color+'04');
-  ctx.beginPath();
-  for(let i=0;i<data.length;i++){ let x=chartX(i,data.length,w); let y=chartY(data[i],min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.lineTo(w-CHART_PAD_R,h-CHART_PAD_B); ctx.lineTo(CHART_PAD_L,h-CHART_PAD_B); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
   ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.2; ctx.lineJoin='round';
   for(let i=0;i<data.length;i++){ let x=chartX(i,data.length,w); let y=chartY(data[i],min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
   ctx.stroke();
@@ -2274,8 +2268,8 @@ function drawChargeHistory(events, range){
   let color=ev.ch===1 ? '#5b8def' : '#1ee6a0';
   ctx.beginPath(); ctx.strokeStyle=color+'55'; ctx.lineWidth=1;
   ctx.moveTo(x, h); ctx.lineTo(x, y); ctx.stroke();
-  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=12;
-  ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.fillStyle=color;
+  ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle='#fff'; ctx.font='bold 9px Vazirmatn'; ctx.textAlign='center'; ctx.fillText('CH'+ev.ch, x, y+3);
  });
  let labelDiv=document.getElementById('cChargeLabels');

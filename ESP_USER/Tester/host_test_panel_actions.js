@@ -24,6 +24,18 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(!d.getElementById('labBar') && !html.includes('نوار شیمیولیتور'), 'user panel never includes the simulator bottom strip');
     check(d.styleSheets.length === 1 && d.styleSheets[0].cssRules.length > 100, 'complete stylesheet parses, including mobile media queries');
     check([...d.styleSheets[0].cssRules].some(r=>r.selectorText === '.glyph'), 'line icon styles survive stylesheet parsing');
+    check(['cPct','cCharge','cVolt'].every(id=>d.getElementById(id).closest('.chart-card')),'all three charts use dedicated flat-color cards');
+    const canvasRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='canvas');
+    const cardRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='.cd.chart-card');
+    check(canvasRule.style.getPropertyValue('background-image')==='none' && cardRule.style.getPropertyValue('background')==='rgb(18, 24, 38)' && cardRule.style.getPropertyValue('backdrop-filter')==='none','chart surfaces use solid CSS colors without an image or glass blur');
+    let strokes=0,fills=0;
+    const ctx=new Proxy({}, {get:(target,key)=>key in target?target[key]:key==='createLinearGradient'||key==='drawImage'?()=>{throw Error('chart attempted gradient/image');}:key==='stroke'?()=>strokes++:key==='fill'?()=>fills++:()=>{},set:(target,key,value)=>{target[key]=value;return true;}});
+    for(const id of ['cPct','cCharge','cVolt'])d.getElementById(id).getContext=()=>ctx;
+    const times=[1700000000,1700003600];
+    w.drawChart('cPct',[40,60],'#1ee6a0',0,100,times,'1d');
+    w.drawVoltChart('cVolt',[24000,25000],[23000,24000],times,'1d');
+    w.drawChargeHistory([{ts:Math.floor(Date.now()/1000),ch:1}],'1d');
+    check(strokes>3 && fills>0,'live chart axes, lines and events render without gradients or image drawing');
     check(d.getElementById('adminCard').hidden && d.getElementById('admGate').hidden, 'admin remains hidden');
     const icons = [...d.querySelectorAll('.icog button')];
     check(icons.length === 4 && icons[3].hidden && icons.every(b=>b.querySelector('svg use') && b.getAttribute('aria-label')), 'three public icons and a hidden named format icon');
