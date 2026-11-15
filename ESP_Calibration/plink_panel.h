@@ -47,13 +47,7 @@ section{margin-top:12px}
    [FA] نمودار ویرایشگر است، جدول فقط گزارش؛ یک ویرایشگرِ شناور به هر چیز
    کلیک‌شده لنگر می‌اندازد. */
 .evs{cursor:pointer;text-decoration:underline dotted}
-/* [EN] Chips under the chart. The times and gains were drawn ON the plane
-   until the user said the picture had got too crowded; they are neither a
-   voltage nor a current, so they never had an honest position on an I-V
-   plane anyway. Same data-i, same editor - moved, not demoted.
-   [FA] تراشه‌های زیر نمودار. زمان‌ها و گین‌ها تا پیش از این روی خود صفحه رسم
-   می‌شدند تا کاربر گفت تصویر شلوغ شده؛ این‌ها نه ولتاژند نه جریان، پس اصلاً
-   روی صفحهٔ ‎I-V‎ جای صادقانه‌ای نداشتند. همان ‎data-i‎، همان ویرایشگر. */
+/* [EN] Supplemental chart controls. */
 .evcg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
 .qglg{display:flex;flex-wrap:wrap;gap:3px 13px;margin:3px 2px 7px;font-size:.86em}
 .qglg .qgit{white-space:nowrap}
@@ -67,11 +61,11 @@ section{margin-top:12px}
 .evc .evs{color:var(--ac2);font-weight:700;text-decoration:underline dotted}
 .evc .evs:hover{color:#cfe2ff}
 .evs:hover{fill:var(--ac2)}
-.evpop{position:absolute;z-index:70;background:var(--cd);border:1px solid var(--ac);
+.evpop{position:fixed;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);overflow:auto;z-index:70;background:var(--cd);border:1px solid var(--ac);
        border-radius:9px;padding:9px 11px;box-shadow:0 10px 30px #0009;direction:rtl}
-.evpt{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px;white-space:nowrap}
+.evpt{overflow-wrap:anywhere;font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px;white-space:normal}
 .evpr{display:flex;align-items:center;gap:6px;direction:ltr;justify-content:flex-end}
-.evph{font-size:10.5px;color:var(--mu);margin-top:6px;white-space:nowrap}
+.evph{font-size:10.5px;color:var(--mu);margin-top:6px;white-space:normal}
 .fl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
 .tg{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--rs);color:var(--mu);border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
 .tg::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
@@ -438,6 +432,12 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evtt{color:var(--mu);font-family:Vazirmatn;white-space:nowrap;min-width:64px}
 .mok{color:#2f9e63;font-weight:700}.mbad{color:#e5484d;font-weight:700}
 .bi{width:20px;height:20px;vertical-align:middle;flex:none;pointer-events:none}
+/* [EN] Shrink grid children and reflow wide reports instead of clipping horizontal data. */
+main,.pgx,.sgx,.cd,.ch>*,.bg2>*{min-width:0;max-width:100%}.tw table{table-layout:fixed}.tw td,.tw th{white-space:normal;overflow-wrap:anywhere}.bqr{grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))}
+@media(max-width:800px){
+header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{flex-wrap:wrap;flex:1 1 auto}.calsummaryrow{grid-template-columns:minmax(0,1fr)}
+.tw,.srvw{overflow:visible;max-height:none}table,.srv,.c4tb{min-width:0;width:100%}table,tbody{display:block}colgroup{display:none}tr{display:flex;flex-direction:column;border-bottom:1px solid var(--ln);padding:6px 0}thead{display:none}tr:has(>th){display:none}td,.srv td{display:block;white-space:normal!important;overflow-wrap:anywhere;max-width:100%;text-overflow:clip}td[data-h]::before{content:attr(data-h);display:block;color:var(--mu);font-size:11px}.srv .fx{white-space:normal}.srv td{overflow:visible}.calsummarybody,.calmodalbody{min-width:0}.bctl label{max-width:100%;white-space:normal;flex-wrap:wrap}.bctl label input.dl{max-width:100%}
+}
 /* [EN] Compact bench-only controls; retain readable units, safety labels and visible focus. */
 #p1 .ibtn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:6px;font-size:21px;line-height:1;vertical-align:middle}
 #p1 .bctl>.sb,#p1 .bqr2>.sb,#p1 #wReviewEnd{min-height:44px}#p1 .ibtn:focus-visible,#p1 summary:focus-visible{outline:2px solid var(--ok);outline-offset:3px}
@@ -450,7 +450,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f7cdb8d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 26c1685</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -2408,16 +2408,17 @@ function evcl(id){const v=evval(id);return (EVWANT[id]!=null&&v!=null&&EVWANT[id
    [FA] تراشهٔ ویرایش‌پذیر (HTML) و صفت‌هایی که متن SVG را ویرایش‌پذیر می‌کنند. */
 function evat(id){return 'class="evs" data-i="'+id+'"';}
 
+/* [EN] Keep responsive cell labels in sync with dynamically rendered table headers. */
+function fitlabels(t){const h=[...t.querySelectorAll('tr:first-child>th')].map(e=>e.textContent);if(h.length)t.querySelectorAll('td').forEach(e=>{e.dataset.h=h[e.cellIndex]||'';});}
+new MutationObserver(ms=>{const ts=new Set;ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1){const t=n.closest('table');(t?[t]:n.querySelectorAll('table')).forEach(t=>ts.add(t));}}));ts.forEach(fitlabels);}).observe(document.body,{childList:true,subtree:true});
+document.querySelectorAll('table').forEach(fitlabels);
 function evclose(){const e=$('evpop');if(e)e.remove();EVOPEN=null;}
 
-/* [EN] Floating editor anchored to the clicked label. It lives on <body>, not
-   inside the SVG, so a chart redraw cannot delete the field mid-typing - but
-   the redraw is suppressed anyway while it is open, because watching the
-   numbers move under an open editor is its own kind of wrong.
-   [FA] ویرایشگر Float که به برچسب کلیک‌شده لنگر می‌اندازد. روی body است نه
-   داخل SVG، پس بازرسم نمودار نمی‌تواند وسط تایپ فیلد را پاک کند - با این حال
-   تا باز است بازرسم متوقف می‌شود، چون تکان‌خوردن اعداد زیر ویرایشگرِ باز خودش
-   یک جور غلط است. */
+/* [EN] Position before focus, flip above low anchors; never extend document flow. */
+function evplace(pop,el){
+ const r=el.getBoundingClientRect(),v=window.visualViewport,x=v?v.offsetLeft:0,y=v?v.offsetTop:0,w=v?v.width:innerWidth,h=v?v.height:innerHeight,pw=pop.offsetWidth,ph=pop.offsetHeight;
+ pop.style.left=Math.max(x+8,Math.min(x+w-pw-8,r.left))+'px';
+ pop.style.top=Math.max(y+8,Math.min(y+h-ph-8,r.bottom+ph+14>y+h?r.top-ph-6:r.bottom+6))+'px';}
 function evedit(el){
  const id=+el.dataset.i,b=EVB[id];if(!b)return;
  evclose();
@@ -2429,32 +2430,24 @@ function evedit(el){
   '<span class="evu">'+(EVU[b[3]]||'')+'</span></div>'+
   '<div class="evph">مجاز: '+b[0]+' تا '+b[1]+' · Enter ثبت · Esc لغو</div>';
  document.body.appendChild(pop);
- const r=el.getBoundingClientRect(),pw=pop.offsetWidth||200;
- const sx=window.pageXOffset||0,sy=window.pageYOffset||0;
- pop.style.left=Math.max(8,Math.min((window.innerWidth||900)-pw-8,r.left+sx))+'px';
- pop.style.top=(r.bottom+sy+6)+'px';
- const inp=pop.querySelector('input');inp.value=(v==null?'':v);inp.focus();inp.select();
+ evplace(pop,el);
+ const inp=pop.querySelector('input');inp.value=(v==null?'':v);inp.focus({preventScroll:true});inp.select();
  let done=false;
- const close=save=>{if(done)return;done=true;
+ const close=save=>{if(done)return;done=true;let changed=false;
   if(save){const n=parseInt(inp.value,10);
-   if(!isNaN(n)&&n!==v){EVWANT[id]=n;
+   if(!isNaN(n)&&n!==v){changed=true;EVWANT[id]=n;
     /* [EN] Two representations of one number move together, or qv() fakes a
        pending "preview" that does not exist.
        [FA] دو نمایش از یک عدد باید با هم حرکت کنند، وگرنه qv() تغییرِ معلقِ
        ناموجود می‌سازد. */
     const qe=$('q'+id);if(qe)qe.value=n;
     qput(id,n);}}
-  evclose();qgraph();};
+  evclose();if(changed)qgraph();};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
                    else if(e.key==='Escape'){e.preventDefault();close(false);}};
  inp.onblur=()=>close(true);}
 
-/* [EN] The channel duty ceiling is edited from the large operating label.
-   It uses the same local pending queue as every other panel edit; clicking
-   never writes to the board by itself.
-   [FA] سقف duty هر کانال از روی برچسب بزرگ همان کارت ویرایش می‌شود. این
-   ویرایش هم مثل بقیه در صف محلی می‌نشیند و با کلیک به‌تنهایی روی برد نوشته
-   نمی‌شود. */
+/* [EN] Duty edits stage locally; only explicit send writes to the board. */
 function dutyedit(n){
  const id=12+n,anchor=$('dutyedit'+n);if(!anchor||!D||!D.p)return;
  evclose();
@@ -2464,11 +2457,8 @@ function dutyedit(n){
   '<div class="evpr"><input type="number" class="evi" min="0" max="50" step="0.1"> <span class="evu">٪</span></div>'+
   '<div class="evph">مجاز: ۰ تا ۵۰٪ · Enter ثبت · Esc لغو</div>';
  document.body.appendChild(pop);
- const r=anchor.getBoundingClientRect(),pw=pop.offsetWidth||210;
- const sx=window.pageXOffset||0,sy=window.pageYOffset||0;
- pop.style.left=Math.max(8,Math.min((window.innerWidth||900)-pw-8,r.left+sx))+'px';
- pop.style.top=(r.bottom+sy+6)+'px';
- const inp=pop.querySelector('input');inp.value=(current/10).toFixed(1);inp.focus();inp.select();
+ evplace(pop,anchor);
+ const inp=pop.querySelector('input');inp.value=(current/10).toFixed(1);inp.focus({preventScroll:true});inp.select();
  let done=false;
  const close=save=>{if(done)return;done=true;
   if(save){const typed=Number(inp.value);

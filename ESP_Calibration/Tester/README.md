@@ -1,3 +1,12 @@
+## Current panel layout regression
+
+`node ESP_Calibration/Tester/host_test_panel_layout.cjs` runs real Chromium
+width/focus checks (also called by `run_esp_tests.sh`). Optional tooling:
+`npm install --no-save --package-lock=false playwright-core @sparticuz/chromium`;
+or install `playwright-core` and set `CHROMIUM_PATH` to a local Chromium binary.
+Missing tooling is explicitly SKIP, not PASS. Final dedicated run: 153 checks,
+zero failures. Details, baseline evidence and limits: [layout validation](PANEL_LAYOUT_VALIDATION.md).
+
 # Panel behaviour tests / تست‌های رفتاری پنل
 
 ## EN
@@ -138,7 +147,7 @@ node ESP_Calibration/Tester/host_test_panel_click.js
 با خراب‌کردن عمدی پنل و تأیید شکست تست راستی‌آزمایی شد — همه گرفته شدند: جدول
 بالا در بخش انگلیسی فهرست کامل را دارد.
 
-## Lossless day codec (v1.138)
+## Lossless day codec (v1.153)
 
 `host_test_log_codec.h` is included by the real-sketch host suite. It exercises
 all 18 integer fields, full/delta checkpoints, u32 and signed-delta extremes,
