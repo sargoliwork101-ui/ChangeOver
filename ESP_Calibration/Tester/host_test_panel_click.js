@@ -1289,6 +1289,19 @@ function main() {
                     const box=d.getElementById('evtfs');
                     const buttons=[...box.querySelectorAll('button[data-file]')];
                     check(buttons.length===2,'every file, including an owned bench file, has a delete button');
+                    check(buttons.every(b=>b.classList.contains('evttrash') && b.querySelector('svg') && !b.textContent.trim() && b.title==='حذف'),
+                          'file deletion is a red trash-icon-only button with a Persian tooltip');
+                    const trashColor=w.getComputedStyle(buttons[0]).backgroundColor;
+                    check(trashColor==='rgb(112, 35, 45)', 'delete buttons actually receive the red background',trashColor);
+                    const tools=d.querySelector('.evttools');
+                    const expectedTools=['به‌روزرسانی','حافظهٔ ESP','دانلود این روز','دانلود همهٔ روزها','پاک کردن تاریخچه'];
+                    const toolButtons=[...tools.querySelectorAll('button')];
+                    check(toolButtons.length===5 && toolButtons.every((b,i)=>b.title===expectedTools[i] && b.getAttribute('aria-label')===expectedTools[i] && b.querySelector('svg') && !b.textContent.trim()),
+                          'all five history controls use icons with their original text as tooltip and accessible label');
+                    check(w.getComputedStyle(tools).display==='flex' && toolButtons.every(b=>w.getComputedStyle(b).width==='40px'),
+                          'history icon controls remain compact instead of inheriting full-width grid cells',w.getComputedStyle(tools).display+'/'+toolButtons.map(b=>w.getComputedStyle(b).width).join(','));
+                    check(toolButtons[4].classList.contains('evttrash') && toolButtons[0].getAttribute('onclick')==='evtsnap()' && toolButtons[3].getAttribute('onclick')==='evtdlall()',
+                          'destructive history control is red and existing button actions are unchanged');
                     check(buttons.some(b=>decodeURIComponent(b.dataset.file)===odd) && !box.querySelector('img'),
                           'unusual filenames remain exact data and cannot inject HTML');
                     const realDelete=w.evtdelete; let clicked=null;
