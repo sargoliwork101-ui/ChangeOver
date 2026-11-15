@@ -69,7 +69,35 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  check(samples().length===4&&samples()[0]===first&&samples()[2]===third&&samples()[1]!==second,'review recapture replaces only its own sample and returns to review');
  d.getElementById('wReviewEnd').click();await run;
  check(!state().run&&JSON.stringify(active())===JSON.stringify(original),'final confirmation completes once and leaves original settings restored');
- check([...d.querySelectorAll('[data-wretry]')].every(b=>b.disabled),'closed sessions cannot accidentally command the hardware through old rows');
+ check([...d.querySelectorAll('[data-wretry]')].every(b=>!b.disabled),'finished-session rows remain available for explicit recapture');
+ const savedTable=state().K,finishedSamples=samples().slice(),finishedWrites=writes.length;
+ w.pmConfirm=async()=>false;await w.wrepeat(1);
+ check(!state().run&&writes.length===finishedWrites&&state().K===savedTable,'canceling post-finish recapture preserves rows and sends no hardware or file writes');
+ const alerts=[];w.pmAlert=async msg=>alerts.push(msg);w.D.on=0;await w.wrepeat(1);w.D.on=1;
+ check(alerts.length===1&&!state().run&&writes.length===finishedWrites,'post-finish recapture requires a live link before any write');
+ w.D.p[15]=1;w.pmConfirm=async()=>true;await w.wrepeat(1);w.D.p[15]=0;
+ check(alerts.length===2&&!state().run,'post-finish recapture refuses fixed-duty mode');
+ const info=w.winfo;w.winfo=async()=>({fs:0});await w.wrepeat(1);w.winfo=info;
+ check(alerts.length===3&&!state().run,'post-finish recapture refuses unavailable storage without altering samples');
+ w.pmConfirm=async()=>{w.D.on=0;return true;};await w.wrepeat(1);w.D.on=1;
+ check(alerts.length===4&&!state().run&&!state().opening&&writes.length===finishedWrites,'link loss during confirmation is rechecked before touching the hardware');
+ w.pmConfirm=async()=>{w.eval('CAL_BUSY=true');return true;};await w.wrepeat(1);w.eval('CAL_BUSY=false');
+ check(alerts.length===5&&!state().run&&!state().opening,'a calibration transaction starting during confirmation prevents recapture');
+
+ w.pmAlert=async text=>{throw Error('unexpected alert: '+text);};
+ let confirmCount=0,accept;w.pmConfirm=()=>{++confirmCount;return new Promise(r=>accept=r);};
+ const reopened=w.wrepeat(1);await wait(()=>accept,'repeat confirmation');w.wrepeat(2);
+ check(confirmCount===1&&state().opening&&!state().run,'double-clicks cannot open two post-finish capture sessions');
+ w.D.p[11]=1;w.D.p[16]=30;const nowOriginal=active();accept(true);w.pmConfirm=async()=>true;
+ const reopenWin=windows;await form(1,reopenWin);
+ check(state().K===savedTable&&state().retry===1&&state().next===4,'finished-session recapture reuses original steps and does not restart the sweep');
+ submit();await wait(()=>d.getElementById('wReviewEnd'),'review after reopening');
+ check(samples().length===finishedSamples.length&&samples()[1]!==finishedSamples[1]&&samples()[0]===finishedSamples[0]&&samples()[2]===finishedSamples[2],'post-finish capture replaces only the selected sample');
+ check(JSON.stringify(active())===JSON.stringify(nowOriginal),'post-finish capture restores settings as they were immediately before the new capture');
+ d.getElementById('wReviewEnd').click();await reopened;
+ check(!state().run&&!state().opening&&[...d.querySelectorAll('[data-wretry]')].every(b=>!b.disabled),'after another finish, rows are still repeatable and confirmation lock is released');
+ [11,12,16,18,19].forEach((id,i)=>w.D.p[id]=original[i]);w.D.fl=0;
+
 
  /* [EN] Failed repeated writes must preserve the previously committed measurement. */
  d.getElementById('wL').value='5';d.getElementById('wcBAT2').checked=false;

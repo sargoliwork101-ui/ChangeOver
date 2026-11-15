@@ -109,3 +109,17 @@ and DMM helpers, never embedded into ESP HTML. Existing browser samples are not
 overwritten automatically. The simulator honors manual channel/duty settings
 with stable demo measurements, accumulates real ticker-frame `/m` statistics and
 stores/downloads actual submitted CSV text in RAM, cleared on restart.
+
+## Reopening finished bench rows
+
+Row repeat remains available after final confirmation, early End or an error,
+while the same in-memory table remains open. An explicit per-recapture
+confirmation and new link/fixed-duty/filesystem checks precede any command.
+A preflight lock prevents overlapping confirmation/start actions. Link, parameter
+availability, fixed-duty mode and calibration-busy state are rechecked after
+confirmation, then current restore parameters are snapshotted. Original row
+definitions are retained; changing the sweep controls does not change the row
+being repeated. After the chosen row is committed the panel returns to review,
+not to the beginning of the sweep. Prior sample replacement, CSV repeat audit,
+fit invalidation and safe restore apply unchanged. Reload/session-file recovery
+is not implemented. Storage format and daily-history codec are unchanged.

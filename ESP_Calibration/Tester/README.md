@@ -205,3 +205,17 @@ assertions and preview scenario-5/6 self-tests PASS. No DOM suites skipped.
 Point edits also clear stale generated code, requiring regeneration before copy
 or download. The preview landing invariant now derives the calibration tab from
 its bench form instead of enforcing the formerly requested chargers landing.
+
+### Finished-session repeat and frozen storage baseline
+
+Finished rows now remain repeatable in the same open page. The repeat suite has
+40 assertions covering cancellation, live-link/storage/fixed-duty preflight,
+confirmation races, duplicate-start prevention, preservation of original rows,
+single-sample replacement and restoring the newly snapshotted board settings.
+Live simulator integration has 15 passing assertions including reopening a
+finished row through HTTP. `host_test_bench_storage.js` freezes the actual
+53-field CSV format, signed fractional readings, unrounded fit samples and all
+171 settings. Its 7 assertions pass against both the baseline and changed panel.
+It is included in the standard ESP runner (missing jsdom explicitly SKIPs).
+The storage investigation and proposed future compression safety gates are in
+`BENCH_STORAGE_REVIEW.md`; no storage format or codec change is made here.

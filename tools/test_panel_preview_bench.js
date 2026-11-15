@@ -35,9 +35,21 @@ function check(value,msg){assert.ok(value,msg);++count;console.log('  ok   '+msg
  for(const next of [2,3]){await pause(180);d.getElementById('demoMeter').click();d.getElementById('wGo').click();await wait(()=>next===3?d.getElementById('wReviewEnd'):w.eval('W.current===2&&!!W.choose')&&d.getElementById('wGo'),'advance '+next);}
  check(w.eval('W.run')&&w.D.p[19]===0,'last capture remains in review after restoring original manual mode');
  d.getElementById('wReviewEnd').click();await wait(()=>!w.eval('W.run'),'finish');
+ // [EN] Reopen an actually finished session through the same public row control.
+ const oldSamples=w.eval('W.K.map(k=>k.savedSample)'),savedRows=w.eval('W.K');
+ d.querySelector('[data-wretry="0"]').click();await wait(()=>w.eval('W.run&&W.current===0&&!!W.choose')&&d.getElementById('wGo'),'post-finish recapture');
+ await pause(180);d.getElementById('demoMeter').click();d.getElementById('wGo').click();await wait(()=>d.getElementById('wReviewEnd'),'post-finish review');
+ check(w.eval('W.K')===savedRows&&w.eval('W.K[0].savedSample')!==oldSamples[0]&&w.eval('W.K[1].savedSample')===oldSamples[1],'finished-session row capture works through real HTTP without rebuilding other rows');
+ d.getElementById('wReviewEnd').click();await wait(()=>!w.eval('W.run'),'finish again');
  const csv=await (await req('/benchlog')).text(),info=await (await req('/benchlog?i=1')).json();
- check(csv.includes('# repeat scenario=BOTH step=1')&&csv.split('\n').filter(x=>x.startsWith('BOTH,')).length===4,'downloaded simulator CSV contains all four actual submitted attempts and the repeat annotation');
+ check(csv.includes('# repeat scenario=BOTH step=1')&&csv.split('\n').filter(x=>x.startsWith('BOTH,')).length===5,'downloaded simulator CSV contains all five actual submitted attempts and the repeat annotation');
  check(info.size===Buffer.byteLength(csv),'simulator file size counts actual CSV bytes, not fictional row sizes');
+ const lines=csv.trimEnd().split('\n'),data=lines.filter(x=>x.startsWith('BOTH,')),settings=lines.filter(x=>x.startsWith('# settings:'));
+ const config=require('fs').readFileSync(path.join(__dirname,'../ESP_Calibration/plink_config.h'),'utf8');
+ const legend=config.split('#define ESP_BENCHLOG_HEADER')[1].split('/* ==================== Wi-Fi')[0];
+ const legendBytes=Buffer.byteLength([...legend.matchAll(/"(?:\\.|[^"\\])*"/g)].map(m=>JSON.parse(m[0])).join(''));
+ console.log('BENCH_STORAGE_MEASURE '+JSON.stringify({fixture:'3 steps BOTH; 2 repeat attempts',firmwareLegendBytes:legendBytes,measurementColumns:data[0].split(',').length,dataRows:data.length,dataRowBytes:data.map(x=>Buffer.byteLength(x+'\n')),settingsColumns:settings[0].slice(12).split(',').length,settingsBlocks:settings.length,settingsBytes:settings.map(x=>Buffer.byteLength(x+'\n')),csvWithoutFirmwareLegendBytes:info.size,latestSampleJsonBytes:Buffer.byteLength(JSON.stringify(w.eval('W.K.map(k=>k.savedSample)')))}));
+
  const invalid=await req('/benchlog/add','POST','not newline terminated');check(invalid.status===400,'simulator rejects malformed CSV appends');
  await req('/benchlog/clear','POST');check((await (await req('/benchlog?i=1')).json()).size===0,'clear really empties simulated CSV storage');
  console.log('ALL '+count+' PREVIEW BENCH INTEGRATION TESTS PASSED');

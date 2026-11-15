@@ -439,7 +439,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0b4c412</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f714ff8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -3232,8 +3232,8 @@ const WSTC=WH.length-2;   /* ستون وضعیت / status column */
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));
  $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${WSN[k.sc]||k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(WH.length-5)}<td class="lb">در صف</td><td><button class="sb" type="button" data-wretry="${x}" onclick="wrepeat(${x})" title="تکرار این مرحله" aria-label="تکرار مرحلهٔ ${k.i+1}" disabled>↻</button></td></tr>`).join('')}</table></div>`;}
 /* [EN] One measurement loop owns hardware. Row actions only request a safe switch. */
-function wbuttons(){document.querySelectorAll('[data-wretry]').forEach(b=>{const x=+b.dataset.wretry;b.disabled=!W.run||W.saving||!(W.K[x].done||W.current===x);});}
-function wrepeat(x){if(!W.run||W.saving||!W.K[x]||!(W.K[x].done||W.current===x))return;W.jump=x;if(W.choose)W.choose({a:'jump'});}
+function wbuttons(){document.querySelectorAll('[data-wretry]').forEach(b=>{const x=+b.dataset.wretry;b.disabled=W.saving||(!W.run&&W.opening)||(W.run&&!(W.K[x].done||W.current===x));});}
+function wrepeat(x){if(W.saving||CAL_BUSY||(!W.run&&W.opening)||!W.K[x])return;if(!W.run)return wStart(x);if(!(W.K[x].done||W.current===x))return;W.jump=x;if(W.choose)W.choose({a:'jump'});}
 function wpaint(x){const k=W.K[x];wcell(x,k.cells||Array(5).fill('·'),k.done?'ثبت شد':'در صف',k.done?'okc':'lb');}
 async function wprepare(sc){
  const act=WSC[sc];W.act=null;W.man=false;
@@ -3258,7 +3258,6 @@ function wsee(x){const tw=$('wT').firstChild,r=$('wr'+x);if(!tw||!r||!tw.getBoun
 async function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[x];
  wcell(x,wlive(act),'منتظر عدد شما','wr');
  const N=id=>`<input type="number" step="any" id="${id}" value="${esc((k.draft||{})[id]||'')}">`;
- const L=(id,t,pre)=>`<label class="lb">${t} <input type="number" step="any" id="${id}"${pre!=null?' value="'+pre+'"':''}></label>`;
  const F=n=>act.includes(n)?`<label class="lb">جریان باتری ${n} mA ${N('wB'+n)}</label>`:'';
  const box=$('wF0');
  box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b> <span class="lb">· Tab: خانهٔ بعدی · Enter: ثبت و رفتن به duty بعدی · Esc: بستن جدول و رفتن به ساخت جدول میکرو</span></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label><label class="lb">یادداشت <input type="text" id="wN" class="dl" value="${esc((k.draft||{}).wN||'')}" style="width:150px"></label><button class="sb pbg" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2 pby" id="wRe">تکرار همین مرحله</button><button class="sb stp2 pbr" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
@@ -3287,16 +3286,20 @@ async function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[
   W.esc=ev=>{if(ev.key=='Escape'){ev.preventDefault();$('wEn').click();}};
   document.addEventListener('keydown',W.esc);
   W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);if(W.esc){document.removeEventListener('keydown',W.esc);W.esc=null;}W.choose=null;box.innerHTML='';box.onkeydown=null;r.classList.remove('wa');});}
-async function wStart(){if(W.run)return;if(!D||D.on!=1)return await pmAlert('لینک STM32 برقرار نیست.');let L;
+async function wStart(retry){if(W.run||W.opening||CAL_BUSY)return;W.opening=true;wbuttons();try{return await wbegin(retry);}finally{W.opening=false;wbuttons();}}
+async function wbegin(retry){if(!D||D.on!=1)return await pmAlert('لینک STM32 برقرار نیست.');const K=Number.isInteger(retry)&&W.K&&W.K[retry]?W.K:null;let L,SC;
+ if(!K){
  try{try{localStorage.setItem('wsw',$('wSw').checked?'1':'0');}catch(e){}L=$('wSw').checked?wsweep():wlist();}catch(e){return await pmAlert(e);}
- const SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return await pmAlert('حداقل یک سناریو را انتخاب کنید.');
+ SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return await pmAlert('حداقل یک سناریو را انتخاب کنید.');}
  const o={};[11,12,16,18,19].forEach(i=>o[i]=D.p[i]);if(Object.values(o).some(v=>v==null))return await pmAlert('پارامترها هنوز از STM32 خوانده نشده‌اند.');
  if(D.p[15]===1||D.p[17]===1)return await pmAlert('مود duty فیکس (۱۵/۱۷) روشن است؛ اول خاموشش کنید.');
  const fi=await winfo();if(!fi||!fi.fs)return await pmAlert('فایل‌سیستم ESP در دسترس نیست؛ در Arduino IDE چیدمان فلش دارای FS را انتخاب و دوباره فلش کنید.');
- let wSkipC=false;if(fi.size>0){const wC=await wexist(fi.size);if(wC=='cancel')return;wSkipC=true;
+ let wSkipC=false;if(!K&&fi.size>0){const wC=await wexist(fi.size);if(wC=='cancel')return;wSkipC=true;
  if(wC=='clear'){const wJ=await req('/benchlog/clear','POST');if(wJ._s!=200)return await pmAlert('پاک کردن فایل انجام نشد.');try{localStorage.removeItem('wrun');}catch(e){}await winfo();}else{wdl();}}
- if(!wSkipC&&!await pmConfirm('داده‌برداری شروع شود؟ '+SC.join('، ')+'\nپنل duty هر مرحله را می‌گذارد و منتظر عدد مولتی‌متر شما می‌ماند. آخر هر سناریو تنظیمات قبلی برمی‌گردد.'))return;
- W={run:true,abort:false,act:null,man:false,next:0,retry:null,current:null};document.body.classList.add('br');wbuild(SC,L);$('wDone').classList.remove('v');let err=null,active=null;
+ if(!wSkipC&&!await pmConfirm(K?'این مرحله دوباره اندازه‌گیری شود؟ تنظیمات فعلی پس از ثبت برمی‌گردد.':'داده‌برداری شروع شود؟ '+SC.join('، ')+'\nپنل duty هر مرحله را می‌گذارد و منتظر عدد مولتی‌متر شما می‌ماند. آخر هر سناریو تنظیمات قبلی برمی‌گردد.'))return;
+ if(CAL_BUSY||!D||D.on!=1||D.p[15]===1||D.p[17]===1||[11,12,16,18,19].some(i=>D.p[i]==null))return await pmAlert('وضعیت برد تغییر کرده؛ دوباره بررسی کنید.');
+ [11,12,16,18,19].forEach(i=>o[i]=D.p[i]);
+ W={run:true,abort:false,act:null,man:false,next:K?K.length:0,retry:K?retry:null,current:null,K};document.body.classList.add('br');if(!K)wbuild(SC,L);$('wDone').classList.remove('v');let err=null,active=null;
  try{while(true){wchk();
    if(W.jump!=null){W.retry=W.jump===W.next?null:W.jump;W.jump=null;}
    const x=W.retry==null?W.next:W.retry;
@@ -4058,7 +4061,7 @@ async function lrst(){
 
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
-$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: عدد مولتی‌متر را وارد و ثبت کنید. ↻ هر ردیف برای تکرار تا پیش از پایان است. پس از «محاسبه از نمونه‌ها» می‌توانید نقطه‌های جدول پیشنهادی را حذف یا بازگردانی کنید؛ هیچ عددی بدون تأیید شما روی برد نوشته نمی‌شود.</div>
+$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: عدد مولتی‌متر را وارد و ثبت کنید. ↻ هر ردیف حتی پس از پایان برای تکرار است. پس از «محاسبه از نمونه‌ها» می‌توانید نقطه‌های جدول پیشنهادی را حذف یا بازگردانی کنید؛ هیچ عددی بدون تأیید شما روی برد نوشته نمی‌شود.</div>
 <div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> SWEEP خودکار</label><label class="lb wmode-manual" id="wManual"><span class="t">فهرست duty دستی (%)</span><input type="text" id="wL" data-s class="dl" value="0,2,4,6,8,10,12,14,16,18,20"></label><span class="wmode-sweep" id="wSweep"><label class="lb"><span class="t">از</span><input type="number" id="wA" data-s value="0" min="0" max="50"></label><label class="lb"><span class="t">تا</span><input type="number" id="wB" data-s value="50" min="0" max="50"></label><label class="lb"><span class="t">گام</span><input type="number" id="wStep" data-s value="1" min="1" max="50"></label></span>${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
 <div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
 <div class="bctl"><button class="sb brun pbg" onclick="wStart()">شروع</button><button class="sb stp2 pbr wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF"></b></span><a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div>

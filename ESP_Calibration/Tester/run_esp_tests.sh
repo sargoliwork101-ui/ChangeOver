@@ -45,6 +45,7 @@ if command -v node >/dev/null 2>&1; then
     node "${SCRIPT_DIRECTORY}/host_test_panel_click.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_bench_repeat.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_cal_point_edit.js" || exit 1
+    node "${SCRIPT_DIRECTORY}/host_test_bench_storage.js" || exit 1
 else
     echo "SKIP: node is not installed; the DOM tests did not run."
 fi

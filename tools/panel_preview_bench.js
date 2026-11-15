@@ -27,7 +27,7 @@
   if(!await pmConfirm('ثبت آزمایشی با ۳ مرحله برای هر دو باتری آغاز شود؟ نمونه‌ها و فایل قبلی خودکار پاک نمی‌شوند.'))return;
   document.getElementById('wSw').checked=false;document.getElementById('wL').value='0,10,20';wmode();
   ['BAT1','BAT2','BOTH'].forEach(sc=>document.getElementById('wc'+sc).checked=sc==='BOTH');
-  explain('در هر مرحله «پرکردن عدد مولتی‌متر نمایشی» و سپس «ثبت» را بزنید. با ↻ به مرحلهٔ قبل برگردید. پس از آخرین ردیف هم تا تأیید و پایان می‌توانید تکرار کنید.');
+  explain('در هر مرحله «پرکردن عدد مولتی‌متر نمایشی» و سپس «ثبت» را بزنید. با ↻ به مرحلهٔ قبل برگردید. حتی پس از تأیید و پایان هم ↻ ردیف‌ها فعال است؛ با تأیید جداگانه دوباره اندازه بگیرید.');
   wStart();
  };
  document.getElementById('demoMeter').onclick=()=>{
