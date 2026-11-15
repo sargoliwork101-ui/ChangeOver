@@ -281,3 +281,28 @@ replay branch; the assertion was updated as described above and the gate rerun
 successfully. No DOM suite was skipped. No native ESP8266 build, physical-board
 restore or power-cut test was run. Firmware and ESP_USER are unchanged; the
 bench storage proposal remains unimplemented and requires separate approval.
+
+
+### Compact bench envelope tests
+
+`host_test_bench_codec.h` is compiled into the actual-sketch ASan/UBSan suite.
+It uses real production `EspBenchCodec` and HTTP handlers with stubbed LittleFS,
+not a reference-only compressor. Coverage includes all fixture bit flips and
+byte truncations; missing/duplicate records; short reads at every offset;
+short writes at every frame byte and initial header/body boundary; failed
+rollback, clear and readback; interrupted known-length download; legacy files;
+171-token deltas/checkpoints/raw fallback; cap/free-space/physical accounting;
+and a frozen real-panel 3-step + 2-repeat input fixture. See
+`BENCH_CODEC_VALIDATION.md` for format, exact totals and caveats.
+
+The first seven `host_test_bench_storage.js` assertions remain the frozen public
+CSV/precision contract. Seven additional checks require retry-safe browser
+settings signatures, visible old-file/integrity errors and non-destructive
+legacy/damaged-file capture preflight. The simulator can
+regenerate the integration input with
+`BENCH_CODEC_FIXTURE=/tmp/bench-fixture.csv node tools/test_panel_preview_bench.js`;
+set the same environment variable when running the real-sketch host binary to
+check that freshly captured input through the production storage code. The
+simulator itself still keeps CSV in memory; its size is not a device codec result.
+A cancellation regression now counts only bench-download fetches, not unrelated
+background telemetry polls, avoiding a false failure on slower test machines.

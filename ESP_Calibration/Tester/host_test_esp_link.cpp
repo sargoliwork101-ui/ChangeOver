@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 /**
  * @file   host_test_esp_link.cpp
  * @brief  [EN] First host tests for the ESP program.
@@ -392,6 +393,7 @@ static void feed_board_uptime(uint32_t uptimeSec)
 #include "host_test_log_codec.h"
 #include "host_test_log_audit.h"
 #include "host_test_file_delete.h"
+#include "host_test_bench_codec.h"
 
 /* ======================================================================== */
 int main(void)
@@ -911,7 +913,7 @@ int main(void)
          */
         LittleFS.files.clear();
         LittleFS.totalCapacityBytes = 40960u;
-        LittleFS.files["/evt-20260904.csv"] = std::string(ESP_LOG_HEADER) + std::string(35000u, 'x');
+        LittleFS.files["/evt-20260904.csv"] = std::string(ESP_LOG_HEADER) + std::string(36000u, 'x');
         BOOL__G__LogScanValid = false;
         UINT8_T__G__LogIndexCount = 0u;
         UINT32_T__G__LogDayCode = 20260904u;
@@ -4649,6 +4651,7 @@ int main(void)
     test_log_codec();
     test_log_audit();
     test_file_delete();
+    test_bench_codec();
 
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {

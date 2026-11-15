@@ -152,16 +152,14 @@
  */
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
-/* ==================== Bench Data Log File (spec 4, CSV v3: 56 data columns per row + a one-off settings line (was 149 repeated every row)) ==================== */
-/*
- * [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
- * raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
- * (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
- * of spec 4; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
- * Arduino IDE: pick a flash layout WITH a file system. ESP8266-01S (1 MB): LittleFS next to the ~414 KB panel and the
- * sketch may not fit. NOT measured yet - check the sketch size in the IDE before relying on this log.
- * This panel is ESP8266 only (user order 2026-11-01); the ESP32 branches were removed.
- */
+/* ==================== Bench Data Log: compact internal envelope, CSV schema 3 on download ==================== */
+/* [EN] The panel still sends exact ASCII CSV POSTs, max 1536 bytes. Internal storage
+ * omits the legend and token-deltas only canonical 171-setting snapshots; all other
+ * POST bodies are retained byte-for-byte. Each append has length, sequence and CRC32.
+ * The unchanged legend below is generated on CSV download, not written into flash.
+ * /benchlog.csv is the historic internal filename, NOT a plain CSV for new files.
+ * Legacy text remains downloadable but must be explicitly cleared before new appends.
+ * ESP8266 only; use a flash layout with LittleFS. Physical storage cap stays 100 KiB. */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
 #define ESP_BENCHLOG_MAX_BYTES      102400u
 #define ESP_BENCHLOG_MAX_POST       1536u

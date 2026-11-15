@@ -44,6 +44,7 @@ function check(value,msg){assert.ok(value,msg);++count;console.log('  ok   '+msg
  const csv=await (await req('/benchlog')).text(),info=await (await req('/benchlog?i=1')).json();
  check(csv.includes('# repeat scenario=BOTH step=1')&&csv.split('\n').filter(x=>x.startsWith('BOTH,')).length===5,'downloaded simulator CSV contains all five actual submitted attempts and the repeat annotation');
  check(info.size===Buffer.byteLength(csv),'simulator file size counts actual CSV bytes, not fictional row sizes');
+ if(process.env.BENCH_CODEC_FIXTURE)require('fs').writeFileSync(process.env.BENCH_CODEC_FIXTURE,csv);
  const lines=csv.trimEnd().split('\n'),data=lines.filter(x=>x.startsWith('BOTH,')),settings=lines.filter(x=>x.startsWith('# settings:'));
  const config=require('fs').readFileSync(path.join(__dirname,'../ESP_Calibration/plink_config.h'),'utf8');
  const legend=config.split('#define ESP_BENCHLOG_HEADER')[1].split('/* ==================== Wi-Fi')[0];

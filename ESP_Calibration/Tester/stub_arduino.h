@@ -248,7 +248,8 @@ struct StubWebServer {
     void sendHeader(const char *k, const char *v) {
         lastHeaderKey = k; lastHeaderVal = v; headers[k] = v;
     }
-    void setContentLength(size_t) {}
+    size_t contentLength=0u;
+    void setContentLength(size_t n) { contentLength=n; }
     void send(int code, const char *type, const String &body) {
         lastCode = code; lastType = type ? type : ""; lastBody = body.s; sendCount++;
     }
@@ -304,6 +305,9 @@ struct StubFile {
     const size_t *writeLimit = nullptr;
     const size_t *readLimit = nullptr;
     const size_t *readFailAt = nullptr;
+    size_t *readBudget = nullptr;
+    size_t *writeBudget = nullptr;
+    const bool *failTruncates = nullptr;
     size_t pos = 0;
     bool ok = false;
     operator bool() const { return ok; }
@@ -312,6 +316,8 @@ struct StubFile {
     size_t write(const uint8_t *p, size_t n) {
         if (refuse()) return 0u;
         if (writeLimit && n>*writeLimit) n=*writeLimit;
+        if (writeBudget && n>*writeBudget)n=*writeBudget;
+        if (writeBudget)*writeBudget-=n;
         if (buf) buf->append((const char *)p, n);
         return n;
     }
@@ -376,16 +382,18 @@ struct StubFile {
     size_t readBytes(char *d, size_t n) {
         if (!buf) return 0;
         if (readLimit && n>*readLimit) n=*readLimit;
+        if (readBudget && n>*readBudget)n=*readBudget;
         if (readFailAt) {
             if (pos>=*readFailAt) return 0;
             if (n>*readFailAt-pos) n=*readFailAt-pos;
         }
         size_t k = 0;
         while (k < n && pos < buf->size()) d[k++] = (*buf)[pos++];
+        if(readBudget)*readBudget-=k;
         return k;
     }
     bool seek(size_t p) { pos = p; return buf && p <= buf->size(); }
-    bool truncate(size_t n) { if (!buf || refuse()) return false; buf->resize(n); if(pos>n)pos=n; return true; }
+    bool truncate(size_t n) { if (!buf || refuse() || (failTruncates && *failTruncates)) return false; buf->resize(n); if(pos>n)pos=n; return true; }
     void close(void) {}
 };
 typedef StubFile File;
@@ -434,6 +442,9 @@ struct StubFS {
     size_t writeLimit = SIZE_MAX;
     size_t readLimit = SIZE_MAX;
     size_t readFailAt = SIZE_MAX;
+    size_t readBudget = SIZE_MAX;
+    size_t writeBudget = SIZE_MAX;
+    bool failTruncates = false;
     /*
  * [EN] Refuse the next N opens, then behave normally. A transient refusal is
  * what makes "could not open the day file, but the append itself worked"
@@ -508,6 +519,9 @@ struct StubFS {
         f.writeLimit = &writeLimit;
         f.readLimit = &readLimit;
         f.readFailAt = &readFailAt;
+        f.readBudget = &readBudget;
+        f.writeBudget = &writeBudget;
+        f.failTruncates = &failTruncates;
         f.ok = true;
         return f;
     }

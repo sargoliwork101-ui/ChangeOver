@@ -1,5 +1,11 @@
 # Bench storage review and post-finish repeat validation
 
+**Current status:** the owner subsequently approved implementation. The compact
+bench envelope is now implemented and tested; see `BENCH_CODEC_VALIDATION.md`
+for the format, measured 8540 → 3042 byte fixture and remaining hardware gates.
+The original proposal/review below is retained as historical investigation, not
+a statement that implementation is still awaiting approval.
+
 Date: 2026-11-01. Baseline: a9fb590. Scope: ESP Calibration only.
 
 ## Decision and measured current behavior
