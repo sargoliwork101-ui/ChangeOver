@@ -37,8 +37,8 @@ const w=dom.window,d=w.document;
  check(table(1).X.length===2&&JSON.stringify(cut())===two,'deletions cannot leave fewer than two distinct points');
  w.caldrop(1,null);w.eval('LUT_PENDING={p:{},target:0};');d.getElementById('lutcmp').textContent='stale payload';w.caldrop(1,140);
  check(w.eval('LUT_PENDING===null')&&!d.getElementById('lutcmp').textContent,'editing a point cancels any previously prepared transmission payload');
- w.caluse(1,false);check(cut()[0].length===0&&!d.getElementById('calpoints').textContent,'source selection changes reset point exclusions and hide stale output until recalculation');
- w.caldrop(1,NaN);check(cut()[0].length===0,'invalid point identity cannot affect an unrelated point');
+ w.caluse(1,false);check(cut()[0].includes(140)&&d.querySelector('#calpoints table')&&!table(1).X.includes(100),'sample selection changes automatically recalculate while preserving explicit point exclusions');
+ w.caldrop(1,NaN);check(cut()[0].length===1&&cut()[0][0]===140,'invalid point identity cannot affect an unrelated point');
  console.log('ALL '+checks+' CALIBRATION POINT EDIT TESTS PASSED');
 }finally{dom.window.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

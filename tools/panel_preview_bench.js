@@ -3,7 +3,7 @@
  'use strict';
  const el=document.createElement('div');el.className='cd';el.id='previewBench';
  el.innerHTML='<div class="hd"><b>آزمایش کالیبراسیون — فقط شبیه‌ساز</b></div>'+
- '<div class="ds">این عددها ساختگی‌اند، نه اندازه‌گیری برد. با دکمه‌های زیر سناریو را عوض کنید؛ «محاسبه» جدول هر باتری و دکمهٔ حذف نقطه را نشان می‌دهد. حذف از یک باتری به دیگری دست نمی‌زند. تغییر نمونه‌ها یا تازه‌سازی صفحه، حذف‌های جدول را بازنشانی می‌کند.</div>'+
+ '<div class="ds">این عددها ساختگی‌اند، نه اندازه‌گیری برد. با دکمه‌های زیر سناریو را عوض کنید؛ «محاسبه» جدول هر باتری و دکمهٔ حذف نقطه را نشان می‌دهد. حذف از یک باتری به دیگری دست نمی‌زند. تغییر تیک نمونه‌ها نتیجه را خودکار به‌روز می‌کند. برای نگه‌داشتن حذف‌ها، «ذخیرهٔ نمونه‌ها» را بزنید؛ نام فایل تأیید می‌خواهد و بازخوانی آن همان جدول را می‌سازد.</div>'+
  '<div class="bqr2"><button class="sb pbg" id="demoClean">نمونهٔ سالم + یک تکراری</button><button class="sb pby" id="demoBad">یک اندازه‌گیری مشکوک</button><button class="sb pbb" id="demoDense">۲۸ نقطه؛ بیشتر از ظرفیت برد</button><button class="sb" id="demoCapture">آزمایش ثبت و تکرار مرحله‌ها</button><button class="sb" id="demoMeter">پرکردن عدد مولتی‌متر نمایشی</button></div><div id="demoExplain" class="ds"></div>';
  document.getElementById('p1').prepend(el);
  const explain=text=>document.getElementById('demoExplain').textContent=text;

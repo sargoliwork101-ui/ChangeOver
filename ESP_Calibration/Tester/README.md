@@ -219,3 +219,32 @@ finished row through HTTP. `host_test_bench_storage.js` freezes the actual
 It is included in the standard ESP runner (missing jsdom explicitly SKIPs).
 The storage investigation and proposed future compression safety gates are in
 `BENCH_STORAGE_REVIEW.md`; no storage format or codec change is made here.
+
+### Editable-export, filename and diagnostic regression coverage
+
+`host_test_cal_revision.js` is part of the standard ESP runner and exercises
+the real panel (explicit SKIP if jsdom is absent). It checks automatic sample
+selection recalculation; exact JSON-v2 edited-table round trips; legacy v1;
+malformed view rejection without mutation; full-precision signed source data;
+settings backup view restoration; regenerated code; editable Persian filenames
+for all export types; cancellation, invalid names, queued dialogs, Enter/Escape,
+remote filename precedence, failed reads and canceled automatic backup writes.
+It also checks suspect-pair/channel isolation, visible reasons, incomplete and
+duplicate samples, failed-step attention, reduced motion, and real readback
+mismatch attention versus a merely pending proposal. Bench repeat regressions
+verify that failed-write attention clears immediately on successful recapture.
+
+The new regression was first run against baseline 680b1ab and failed on the
+missing automatic recalculation, then passed on the updated implementation.
+The baseline full suite was 585 host / 13 labels / 287 existing DOM / 40 repeat /
+20 point-edit / 7 storage-contract assertions PASS, with no DOM suites skipped.
+Storage compression remains a separate unapproved proposal; the 53-field CSV,
+171 settings and raw fit-sample precision are unchanged.
+
+Final validation for this change: 585 host / 13 label / 287 existing DOM /
+42 bench-repeat / 20 point-edit / 7 frozen storage / 47 new calibration-revision
+assertions PASS. The 15-assertion live HTTP simulator suite and scenario-5/6
+simulator self-tests also PASS. All eight additional repository gates exit 0;
+`git diff --check` is clean. No DOM suite was skipped. Panel HTML is 484792 bytes
+including NUL, under the unchanged 491520-byte ceiling. Native ESP8266 build and
+physical-board tests were not performed by the agent.

@@ -102,10 +102,15 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  /* [EN] Failed repeated writes must preserve the previously committed measurement. */
  d.getElementById('wL').value='5';d.getElementById('wcBAT2').checked=false;
  const run2=w.wStart();await form(0);submit();await wait(()=>d.getElementById('wReviewEnd'),'second review');
- const prior=JSON.stringify(samples());const prev=windows;
+ let prior=JSON.stringify(samples());const prev=windows;
  d.querySelector('[data-wretry="0"]').click();await form(0,prev);failWrite=true;submit();await run2;failWrite=false;
  check(JSON.stringify(samples())===prior,'failed CSV write never replaces a previously successful sample');
  check(!state().run&&JSON.stringify(active())===JSON.stringify(original),'write failure exits safely and restores channel/duty/manual state');
+ check(d.getElementById('wr0').dataset.calissue==='error','a failed repeated write marks its exact bench row for attention');
+ const repairWin=windows,repair=w.wrepeat(0);await form(0,repairWin);submit();await wait(()=>d.getElementById('wReviewEnd'),'repaired failure review');
+ check(!state().K[0].issue&&d.getElementById('wr0').dataset.calissue!=='error','successful recapture immediately clears the obsolete failed-step marker');
+ d.getElementById('wReviewEnd').click();await repair;prior=JSON.stringify(samples());
+
 
  const run3=w.wStart();await form(0);w.D.on=0;await run3;w.D.on=1;
  check(!state().run&&!d.getElementById('wGo')&&JSON.stringify(active())===JSON.stringify(original),'link loss while entering DMM data stops capture and cleans up the form');

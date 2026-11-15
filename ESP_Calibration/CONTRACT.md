@@ -97,7 +97,7 @@ from that channel's fit and table only. Source sample objects, selection flags,
 CSV and the other battery are unchanged. Multiple exclusions accumulate across
 recalculation; Restore clears that channel's exclusions. Duty-zero groups and
 the minimum two distinct points are protected. Edits are blocked during capture
-or calibration writes. Source/selection changes and page reload reset exclusions.
+or calibration writes. Replacing source samples or reloading the page resets in-memory exclusions; sample-selection changes preserve exclusions and recalculate after the first calculation.
 Editing invalidates any pending transmission proposal, preventing stale payload
 application. Both generated code and newly prepared LUT payloads use the edits.
 No automatic outlier deletion or table thinning is introduced. Existing exact-
@@ -123,3 +123,37 @@ being repeated. After the chosen row is committed the panel returns to review,
 not to the beginning of the sweep. Prior sample replacement, CSV repeat audit,
 fit invalidation and safe restore apply unchanged. Reload/session-file recovery
 is not implemented. Storage format and daily-history codec are unchanged.
+
+## Edited sample files, download naming and diagnostics
+
+Sample JSON v2 adds `view: {cuts: [counts1, counts2], scenarios: [...]}` to the
+original full-precision samples and their use flags. Export does not round or
+remove source readings. Import validates scope, cut types/range/references and
+mandatory zero, restores the view and recalculates locally; v1 remains readable
+with no cuts. Invalid metadata is rejected without changing the current session.
+Settings backups include the same view as `benchView`; their import remains
+local staging only. Import and selection mutations are blocked during capture
+or calibration writes. Changed selections automatically update computed results
+and invalidate old code/pending payloads. Code downloads rebuild current code.
+
+All six file-export paths share a queued in-panel editable filename confirmation,
+including automatic pre-apply backup and both bench download buttons. Cancel
+performs no download; blank/path/control names are rejected, required extensions
+are retained. Remote files are fetched to browser blobs after confirmation so
+server Content-Disposition cannot override the chosen name. Failed reads do not
+produce an empty file. Canceling the pre-apply backup also prevents board writes.
+Internal browser persistence and automatic ESP logging are not user file exports
+and do not open filename dialogs. The bench CSV/schema/codec remain unchanged.
+
+Slow 2.4-second background pulses identify incomplete/out-of-range samples,
+failed bench rows, suspect monotonic pairs, high residual candidates, duplicate
+duty samples, preparation failures, invalid calculated parameters and actual
+post-commit readback mismatches. Both members of an inconsistent pair are only
+marked as suspects; before-commit differences are not mislabeled as failures.
+Visible reasons and static reduced-motion presentation accompany color. Masks
+and markers never change source values or automatically delete a measurement.
+
+To retain the existing HTML transfer ceiling, non-executable old bench/calibration
+source comments were compacted. No CSS/markup was removed for this size cleanup.
+Token comparisons of calfit/calbuild/lpack and the frozen storage tester confirm
+their numerical/storage cores are unchanged. Firmware and ESP_USER are untouched.
