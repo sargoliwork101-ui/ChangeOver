@@ -38,9 +38,6 @@ setTimeout(() => {
         check(text.indexOf('7200') === -1, 'مدت ذخیره‌شدهٔ قدیمی وارد فایل تازه نمی‌شود');
         win._lastChargeHistory = [];
         check(win.eval('chargeCsvData().count') === 0, 'تاریخچهٔ خالی، خروجی خالی می‌دهد');
-        const pct = win.eval("chartDataPct={pct:[57],time:[1700000100],range:'1d'}; pctCsvData()");
-        check(pct.rows[0][3] === 'درصد باتری' && pct.rows[1][3] === 57,
-              'خروجی درصد دست‌نخورده است');
         const volt = win.eval("chartDataVolt={vin:[24000],vpack:[25500],time:[1700000100],range:'1d'}; voltCsvData()");
         check(volt.rows[0].length === 5 && volt.rows[1][3] === 24000 && volt.rows[1][4] === 25500,
               'خروجی ولتاژ دست‌نخورده است');

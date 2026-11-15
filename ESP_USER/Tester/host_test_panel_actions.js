@@ -24,18 +24,31 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(!d.getElementById('labBar') && !html.includes('نوار شیمیولیتور'), 'user panel never includes the simulator bottom strip');
     check(d.styleSheets.length === 1 && d.styleSheets[0].cssRules.length > 100, 'complete stylesheet parses, including mobile media queries');
     check([...d.styleSheets[0].cssRules].some(r=>r.selectorText === '.glyph'), 'line icon styles survive stylesheet parsing');
-    check(['cPct','cCharge','cVolt'].every(id=>d.getElementById(id).closest('.chart-card')),'all three charts use dedicated flat-color cards');
+    check(['cCharge','cVolt'].every(id=>d.getElementById(id).closest('.chart-card')),'both remaining charts use dedicated flat-color cards');
     const canvasRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='canvas');
     const cardRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='.cd.chart-card');
     check(canvasRule.style.getPropertyValue('background-image')==='none' && cardRule.style.getPropertyValue('background')==='rgb(18, 24, 38)' && cardRule.style.getPropertyValue('backdrop-filter')==='none','chart surfaces use solid CSS colors without an image or glass blur');
     let strokes=0,fills=0;
     const ctx=new Proxy({}, {get:(target,key)=>key in target?target[key]:key==='createLinearGradient'||key==='drawImage'?()=>{throw Error('chart attempted gradient/image');}:key==='stroke'?()=>strokes++:key==='fill'?()=>fills++:()=>{},set:(target,key,value)=>{target[key]=value;return true;}});
-    for(const id of ['cPct','cCharge','cVolt'])d.getElementById(id).getContext=()=>ctx;
+    for(const id of ['cCharge','cVolt'])d.getElementById(id).getContext=()=>ctx;
     const times=[1700000000,1700003600];
-    w.drawChart('cPct',[40,60],'#1ee6a0',0,100,times,'1d');
     w.drawVoltChart('cVolt',[24000,25000],[23000,24000],times,'1d');
     w.drawChargeHistory([{ts:Math.floor(Date.now()/1000),ch:1}],'1d');
     check(strokes>3 && fills>0,'live chart axes, lines and events render without gradients or image drawing');
+    check(!d.getElementById('cPct') && !d.getElementById('powerLog') && !html.includes('۲۰ قطع و وصل آخر') && !html.includes('درصد شارژ پک - با زمان واقعی'),'percentage chart and recent power card are removed, not hidden');
+    check(!html.includes('chartDataPct') && !html.includes('pollChartsPct') && !html.includes('pctCsvData') && !html.includes('segPct'),'percentage chart data, polling, export and range controls are removed');
+    let chartCalls=[];
+    w.fetch=async url=>{chartCalls.push(url);return response(200,{range:'1d',vin:[24000,25000],vpack:[23000,24000],time:times});};
+    await w.pollCharts();
+    check(chartCalls.length===1 && chartCalls[0]==='/charts?range=1d','chart polling sends just one request for voltage');
+    for(const range of ['1d','7d','1m','3m']){
+        click(d.getElementById('volt'+range));
+        click(d.getElementById('charge'+range));
+        await tick();
+        check(d.getElementById('volt'+range).classList.contains('a') && d.getElementById('charge'+range).classList.contains('a') && chartCalls.at(-1)==='/charts?range='+range,'both remaining chart ranges work: '+range);
+    }
+    w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:2,power:[{off:1700000000,on:1700000100,dur:100}],chargeHistory:[{ts:Math.floor(Date.now()/1000),ch:2}]});
+    check(d.getElementById('stChargeCount').textContent==='2' && d.querySelector('#chargeHistoryList .row') && !d.getElementById('powerLog'),'diagnostics still render statistics and charge history with stored power events present');
     check(d.getElementById('adminCard').hidden && d.getElementById('admGate').hidden, 'admin remains hidden');
     const icons = [...d.querySelectorAll('.icog button')];
     check(icons.length === 4 && icons[3].hidden && icons.every(b=>b.querySelector('svg use') && b.getAttribute('aria-label')), 'three public icons and a hidden named format icon');

@@ -445,7 +445,7 @@ static void func__T_TestResetOrderAndHandshake(void)
                       (string__panel.find("هر نقطه یک ساعت یا یک روز") == std::string::npos) &&
                       (string__panel.find("لیست ۲۰ شارژ آخر") == std::string::npos) &&
                       (string__panel.find("id=\"voltAxisInfo\"") != std::string::npos) &&
-                      (string__panel.find("id=\"pctAxisInfo\"") != std::string::npos),
+                      (string__panel.find("id=\"pctAxisInfo\"") == std::string::npos),
                       "متن زیر نمودارها هم از داده نوشته می‌شود، نه دستی");
         func__T_Check((string__panel.find("repeat(auto-fit,minmax(min(100%") != std::string::npos) &&
                       (string__panel.find(".canvas-wrap canvas{width:100%!important;height:clamp(") != std::string::npos) &&

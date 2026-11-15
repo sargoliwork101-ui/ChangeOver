@@ -545,29 +545,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
   </div>
 
   <div class="cd chart-card">
-   <div class="ti">درصد شارژ پک - با زمان واقعی
-    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
-     <span class="mu2">بازه:</span>
-     <div class="segmented sm" id="segPct" style="min-width:200px"><div class="seg-indicator" id="segPctIndicator" style="width:calc(25% - 3px);right:4px"></div>
-      <button class="a" id="pct1d" onclick="setChartRange('pct','1d')">۱ روزه</button>
-      <button id="pct7d" onclick="setChartRange('pct','7d')">۷ روزه</button>
-      <button id="pct1m" onclick="setChartRange('pct','1m')">۱ ماهه</button>
-      <button id="pct3m" onclick="setChartRange('pct','3m')">۳ ماهه</button>
-     </div>
-    </div>
-   </div>
-   <div id="pctAxisInfo" class="mb2">محور افقی: زمان واقعی</div>
-   <div class="canvas-wrap"><canvas id="cPct" width="700" height="180"></canvas></div>
-   <div id="cPctLabels" class="axl"></div>
-   <div id="pctInfo" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
-    <span class="bdg ac" id="pctCurrent">-- ٪</span>
-    <span class="bdg" id="pctRangeInfo">--</span>
-    <span style="display:flex;gap:6px;margin-right:auto">
-     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="uiAction(this,()=>exportCsv('pct'))">خروجی CSV</button>
-    </span>
-   </div>
-  </div>
-  <div class="cd chart-card">
    <div class="ti">تاریخچه شارژ - کی و چه ساعتی شارژ شده
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
      <span class="mu2">بازه:</span>
@@ -612,7 +589,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    <div id="cVoltLabels" class="axl"></div>
    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap;gap:8px"><span id="voltRangeInfo">--</span><span id="voltMinMax">--</span><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
   </div>
-    <div class="cd"><div class="ti">۲۰ قطع و وصل آخر برق شهر</div><div id="powerLog" class="log">--</div></div>
  </div>
 
  <div id="pg2" class="pgx">
@@ -706,7 +682,6 @@ function vToPctPack(v){ return vToPctMap(v, brd.vmin, brd.vmax); }
 function vToPctHalf(v){ return vToPctMap(v, brd.halfMin, brd.halfMax); }
 function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
 
-function fmtSecShort(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+'h '+m+'m'; }
 /* زمان زنده با ثانیه - برای «زمان کل شارژ» و «کارکرد برد» که کاربر باید
    ببیند همین حالا دارد می‌شمارد (قبلاً فقط ساعت و دقیقه بود و ثابت به نظر می‌رسید) */
 function fmtSecLive(s){
@@ -813,12 +788,6 @@ function csvRowsFromColumns(timeData, columns){
  }
  return rows;
 }
-function pctCsvData(){
- let d=chartDataPct, list=d.pct||[], tm=d.time||[];
- let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
- return {name:'changeover-darsad-'+d.range+'-'+csvFileStamp(last)+'.csv',
-         rows:csvRowsFromColumns(tm,[{title:'درصد باتری',values:list}]), count:list.length};
-}
 function voltCsvData(){
  let d=chartDataVolt, vin=d.vin||[], vpack=d.vpack||[], tm=d.time||[];
  let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
@@ -836,7 +805,8 @@ function chargeCsvData(){
          rows:csvRowsFromColumns(tm,[{title:'کانال',values:ch}]), count:events.length};
 }
 function exportCsv(kind){
- let data=(kind==='pct')?pctCsvData():(kind==='volt')?voltCsvData():chargeCsvData();
+ let data=kind==='volt'?voltCsvData():kind==='charge'?chargeCsvData():null;
+ if(!data) return;
  if(!data.count){ showToast('داده‌ای برای خروجی نیست - هنوز نمونه‌ای ثبت نشده'); return; }
  try{
   downloadCsvText(data.name, csvText(data.rows));
@@ -1091,33 +1061,20 @@ function renderLeds(){
 
 }
 
-let chartRanges={pct:'1d',charge:'1d',volt:'1d'};
+let chartRanges={charge:'1d',volt:'1d'};
 function setChartRange(chart, r){
- if(chart==='volt'){
-  chartRanges.volt=r;
-  const order=['1d','7d','1m','3m'];
-  let seg=document.getElementById('segVolt'); let ind=document.getElementById('segVoltIndicator');
-  if(seg && ind){ let idx=order.indexOf(r); if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; } }
-  for(let id of order){ let b=document.getElementById('volt'+id); if(b) b.classList.toggle('a', id===r); }
-  pollChartsVolt();
-  return;
- }
- chartRanges[chart]=r;
+ if(chart!=='volt' && chart!=='charge') return;
  const order=['1d','7d','1m','3m'];
- let segId='seg'+chart.charAt(0).toUpperCase()+chart.slice(1);
- let indId=segId+'Indicator';
- let seg=document.getElementById(segId);
- if(!seg){
-  if(chart==='pct') { seg=document.getElementById('segPct'); indId='segPctIndicator'; }
-  else if(chart==='charge') { seg=document.getElementById('segCharge'); indId='segChargeIndicator'; }
- }
- let ind=document.getElementById(indId);
- if(seg && ind){ let idx=order.indexOf(r); if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; } }
+ if(!order.includes(r)) return;
+ chartRanges[chart]=r;
+ let segId=chart==='volt'?'segVolt':'segCharge';
+ let seg=document.getElementById(segId), ind=document.getElementById(segId+'Indicator');
+ if(seg && ind){ let idx=order.indexOf(r), btnW=(seg.clientWidth-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; }
  for(let id of order){ let b=document.getElementById(chart+id); if(b) b.classList.toggle('a', id===r); }
- if(chart==='pct') pollChartsPct();
- else if(chart==='charge'){ if(window._lastChargeHistory) { drawChargeHistory(window._lastChargeHistory, r); } }
+ if(chart==='volt') pollChartsVolt();
+ else if(window._lastChargeHistory) drawChargeHistory(window._lastChargeHistory,r);
 }
-function setRange(r){ setChartRange('pct', r); setChartRange('charge', r); setChartRange('volt', r); }
+function setRange(r){ setChartRange('charge',r); setChartRange('volt',r); }
 
 function fmtTimeLabel(ts, range){
  if(!ts || ts<1000000000) return '';
@@ -1249,58 +1206,6 @@ function sampleStep(timeData){
 }
 function chartSignature(parts){ return parts.join('|'); }
 
-function drawChart(canvasId, data, color, min, max, timeData, range){
- let c=document.getElementById(canvasId); if(!c) return;
- let n=(data&&data.length)?data.length:0;
- let sig=chartSignature(['p', range, n, n?data[n-1]:'-', n?Math.min.apply(null,data):0, n?Math.max.apply(null,data):0, n?(timeData&&timeData[n-1]||0):0, color]);
- if(c._sig===sig && c._drawn){ return; }   /* همان تصویر: دوباره رسم نکن (بدون چشمک) */
- c._sig=sig; c._drawn=true;
-
- let prep=prepCanvas(c); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
- let styles=getComputedStyle(document.body);
- let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
- ctx.clearRect(0,0,w,h);
- ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
-
- c._chartData=data; c._chartTime=timeData; c._chartRange=range; c._chartColor=color; c._chartMin=min; c._chartMax=max;
- if(!c._hasTooltip){
-  c.addEventListener('mousemove', function(e){
-   let list=c._chartData||[]; if(list.length===0) return;
-   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
-   let plotX=(mx*scaleX)-CHART_PAD_L;
-   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(w))*(list.length-1));
-   if(idx<0) idx=0; if(idx>=list.length) idx=list.length-1;
-   let val=list[idx]; let ts=c._chartTime?c._chartTime[idx]:null;
-   let tip=document.getElementById('chartTooltip');
-   if(tip && val!=null){ let dStr=ts?fmtTime(ts):''; tip.innerHTML='<b>'+faNum(val)+' ٪</b><span>'+(dStr||'')+'</span>'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; tip.classList.add('show'); }
-  });
-  c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
-  c._hasTooltip=true;
- }
-
- let sc=autoScale([data], h, min, max);
- min=sc.min; max=sc.max;
- drawAxisY(ctx, sc.ticks, min, max, w, h, styles, function(v){ return faNum(v)+'٪'; });
-
- if(n===0){
-  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
-  drawTimeLabels(canvasId+'Labels', [], range, w);
-  return;
- }
-
- if(n>=2){
-  ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.lineCap='round';
-  for(let i=0;i<n;i++){ let x=chartX(i,n,w); let v=data[i]; if(v==null) continue; let y=chartY(v,min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.stroke();
-  let last=data[n-1]; let y=chartY(last,min,max,h);
-  ctx.beginPath(); ctx.fillStyle=color; ctx.arc(chartX(n-1,n,w),y,4,0,Math.PI*2); ctx.fill();
- } else {
-  let y=chartY(data[0],min,max,h);
-  ctx.beginPath(); ctx.fillStyle=color; ctx.arc(chartX(0,1,w),y,5,0,Math.PI*2); ctx.fill();
- }
- drawTimeLabels(canvasId+'Labels', timeData, range, w);
-}
-
 /* نمودار ترکیبی ولتاژ - دو خط روی هم + محور عمودی */
 function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
@@ -1363,26 +1268,8 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  drawTimeLabels(canvasId+'Labels', timeData, range, w);
 }
 
-let chartDataPct={pct:[],time:[],range:'1d'};
 let chartDataVolt={vin:[],vpack:[],time:[],range:'1d'};
 function rangeTitle(range){ return range==='1d'?'۱ روزه':range==='7d'?'۷ روزه':range==='1m'?'۱ ماهه':range==='3m'?'۳ ماهه':range; }
-/* هر نمودار فقط از پاسخ خودش پر می‌شود. پیش‌تر پاسخ «ولتاژ» که همیشه
-   بازهٔ ۱ روزه بود روی نمودار درصد هم می‌نشست و بازهٔ انتخابی کاربر را
-   برمی‌گرداند؛ الان هر کدام جدا به‌روز می‌شوند. */
-function renderPctFromServer(j){
- if(!j || !j.pct) return;
- if(j.range) chartDataPct.range=j.range;
- chartDataPct.pct=j.pct;
- chartDataPct.time=j.time||[];
- drawChart('cPct', chartDataPct.pct, '#ffb84d', 0, 100, chartDataPct.time, chartDataPct.range);
- let n=chartDataPct.pct.length;
- if(n>0){ setTxt('pctCurrent', faNum(chartDataPct.pct[n-1])+' ٪'); }
- else { setTxt('pctCurrent', '-- ٪'); }
- setTxt('pctRangeInfo', 'بازه: '+rangeTitle(chartDataPct.range)+' - '+n+' نمونه'+(n<2?' - در حال جمع‌آوری':''));
- let st=sampleStep(chartDataPct.time);
- let ai=document.getElementById('pctAxisInfo');
- if(ai) ai.textContent='محور افقی: زمان واقعی'+(st?' - هر نقطه '+st:'')+' - محور عمودی: خودکار از دادهٔ همین بازه';
-}
 function renderVoltFromServer(j){
  if(!j || !j.vin || !j.vpack) return;
  if(j.range) chartDataVolt.range=j.range;
@@ -1395,13 +1282,10 @@ function renderVoltFromServer(j){
   setTxt('voltMinMax', 'Vin '+(v1min/1000).toFixed(1)+'-'+(v1max/1000).toFixed(1)+'V | Vpack '+(v2min/1000).toFixed(1)+'-'+(v2max/1000).toFixed(1)+'V');
  }
 }
-async function pollChartsPct(){
- try{ let r=await fetch('/charts?range='+chartRanges.pct,{cache:'no-store'}); let j=await r.json(); renderPctFromServer(j); }catch(e){}
-}
 async function pollChartsVolt(){
  try{ let r=await fetch('/charts?range='+chartRanges.volt,{cache:'no-store'}); let j=await r.json(); renderVoltFromServer(j); }catch(e){}
 }
-async function pollCharts(){ await pollChartsPct(); await pollChartsVolt(); }
+async function pollCharts(){ await pollChartsVolt(); }
 
 function drawChargeHistory(events, range){
  window._lastChargeHistory=events;
@@ -1754,11 +1638,6 @@ function renderDiag(j){
  if(errDiv){
   if(!j.errors || j.errors.length==0) errDiv.textContent='خطایی ثبت نشده - سیستم سالم';
   else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span class="mu">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span class="mu">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
- }
- let pDiv=document.getElementById('powerLog');
- if(pDiv){
-  if(!j.power || j.power.length==0) pDiv.textContent='قطعی ثبت نشده';
-  else { let html=''; for(let i=0;i<j.power.length;i++){ let p=j.power[i]; html+='<div class=row>قطع: '+fmtTime(p.off)+' وصل: '+fmtTime(p.on)+' مدت: '+fmtSecShort(p.dur)+'</div>'; } pDiv.innerHTML=html; }
  }
  let info=document.getElementById('boardInfo');
  if(info){ info.innerHTML='زمان کل شارژ: '+fmtSecLive(j.totalChargeSec)+'<br>تعداد شارژ: '+(j.chargeCount||0)+'<br>کارکرد: '+fmtSecLive(j.uptimeSec)+'<br>ریست: '+(j.resetCount||0)+'<br>ساعت برد: '+(j.boardTime?fmtTime(j.boardTime):'--'); }
@@ -2212,7 +2091,7 @@ function admClear(){
 }
 
 function redrawCharts(){
- ['cPct','cVolt','cCharge'].forEach(function(id){
+ ['cVolt','cCharge'].forEach(function(id){
   let c=document.getElementById(id);
   if(c){ c._sig=null; c._drawn=false; }
  });
