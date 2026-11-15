@@ -339,3 +339,30 @@ Firmware/ESP_USER are unchanged. Native ESP/hardware tests are not run.
 Final repository checks for this removal: all eight gates PASS, cross-file audit
 567 invariants / zero findings, project-contract unit tests 10 PASS and
 `git diff --check` clean. Live preview serves build `14e0767` on port 3000.
+
+
+### Compact bench icon presentation
+
+`host_test_bench_icons.js` runs with the standard ESP runner; absent jsdom is an
+explicit SKIP, not PASS. Its 24 checks cover nine compact routine actions,
+Persian accessible names/native titles, keyboard focus/Enter/Space import, 44px
+icon targets, a touch-accessible collapsible icon legend, closed static help,
+always-expanded warnings/results, readable destructive/board-action labels,
+original disabled locks and calculate/download/copy/repeat bindings. The new
+suite was run against frozen da6b730 HTML and failed on missing compact icons,
+then passed on the updated panel. Native details open/close and capture-form
+cleanup also pass. Existing filename confirmations and actual HTTP capture/
+repeat workflows still pass unchanged. Toolbar sizing is scoped so it does not
+inflate every measurement table row. Simulator-only demo captions are shortened
+with full Persian accessible names; its longer introduction is also collapsible.
+
+Final runs: 619 real-sketch host / 13 label / 287 existing DOM / 46 repeat /
+20 point-edit / 15 storage / 47 revision / 30 restore / 24 icon assertions PASS;
+17 live HTTP simulator assertions and scenario-5/6 self-tests PASS. All eight
+repository gates exit 0, with 567 cross-file invariants / zero findings and
+10 project-contract unit tests PASS. No DOM suite was skipped. `git diff --check`
+is clean. Existing calpush/calnorm/calfit/calbuild/lpack/wrow cores are unchanged;
+there are no storage, math, transport, Firmware or ESP_USER changes. Embedded
+HTML is 490178 bytes including NUL, within the 491520-byte transfer ceiling.
+Documentation and the generated user manual are updated. These are DOM/host/
+simulator checks, not pixel/screenshot validation or native ESP/hardware tests.

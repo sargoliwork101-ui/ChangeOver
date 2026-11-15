@@ -257,3 +257,18 @@ supply `ii`, but normal new captures never create it. The legacy CSV field
 `dmm_i_in_ma` therefore becomes `-` (missing), preserving all 53 positions and
 not substituting zero. Existing compact frames, archived data and daily history
 need no format/schema migration. Firmware and ESP_USER remain unchanged.
+
+
+## Compact bench presentation
+
+Routine actions use compact icon controls with Persian aria-labels/native titles,
+44px minimum icon targets and visible keyboard focus. A collapsed native-details
+icon legend provides touch discovery; long static instructions and keyboard help
+also use native details. Live readings, warnings, checklist, samples and results
+remain outside collapsed help. Board-write/reset/delete operations keep short
+visible labels; existing IDs, handlers, disabled/CAL_BUSY/run-lock classes and
+confirmation paths are retained. The sample-import label has keyboard button
+semantics (Tab, Enter/Space, with default scrolling prevented). Capture repeat
+and code/download actions remain separate. Table row height is not globally
+increased by the toolbar's touch sizing. No transport, math or storage change.
+The simulator-only action toolbar is shortened with the same named-icon pattern.
