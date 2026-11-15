@@ -438,7 +438,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9f1ff2e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 6854646</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -4629,12 +4629,12 @@ async function evtsnap(){
   const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
 }
 function evtKb(b){return evtFa(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
-async function evtfs(toggle){
+async function evtfs(toggle,offset=0){
   const box=$('evtfs');if(!box)return;
   if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
   box.style.display='block';box.innerHTML='<span class="lb">در حال خواندن حافظهٔ ESP…</span>';
   try{
-    const r=await evtHttp('/evt/fs','GET',4000);const j=await r.json();
+    const r=await evtHttp('/evt/fs?offset='+Math.max(0,Math.floor(offset||0)),'GET',4000);const j=await r.json();
     const files=Array.isArray(j.files)?j.files:[];
     const oldCnt=files.filter(f=>!f.own).length;
     const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
@@ -4645,20 +4645,32 @@ async function evtfs(toggle){
     if(!j.fs){
       h+='<div class="lb" style="color:#ffb4b4;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
     }else{
-      h+='<div class="lb" style="margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFa(files.length+(+j.more||0))+'</b></div>';
+      h+='<div class="lb" style="margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFa((+j.offset||0)+files.length+(+j.more||0))+'</b></div>';
       if(!files.length)h+='<div class="lb" style="margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
       else{
         h+='<div style="margin-top:6px;max-height:160px;overflow:auto;border-top:1px solid var(--ln);padding-top:4px">';
         files.forEach(f=>{
           const tag=f.own?'<span class="lb" style="color:#9ff0c0">فایل همین برنامه</span>':'<b style="color:#ffe08a">جامانده از برنامهٔ قبلی</b>';
-          h+='<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed rgba(255,255,255,.06);padding:2px 0"><span dir="ltr">'+esc(f.name)+'</span><span>'+evtKb(f.size)+' · '+tag+'</span></div>';
+          h+='<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed rgba(255,255,255,.06);padding:2px 0"><span dir="ltr">'+esc(f.name)+'</span><span>'+evtKb(f.size)+' · '+tag+' <button class="sb sb2" type="button" data-file="'+esc(encodeURIComponent(f.name))+'" onclick="evtdelete(this.dataset.file)">حذف</button></span></div>';
         });
-        if(+j.more>0)h+='<div class="lb">+ '+evtFa(j.more)+' فایل دیگر</div>';
+        const at=+j.offset||0;
+        if(at>0)h+='<button class="sb" type="button" onclick="evtfs(0,'+Math.max(0,at-24)+')">فایل‌های قبلی</button> ';
+        if(+j.more>0)h+='<button class="sb" type="button" onclick="evtfs(0,'+(at+files.length)+')">فایل‌های بعدی ('+evtFa(j.more)+')</button>';
         h+='</div>';
       }
     }
     box.innerHTML=h;
   }catch(e){box.innerHTML='<span class="lb" style="color:#ffb4b4">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
+}
+async function evtdelete(encoded){
+  const name=decodeURIComponent(encoded);
+  if(!await pmConfirm('فایل «'+name+'» برای همیشه پاک شود؟ اگر فایل فعال برنامه باشد ممکن است هنگام کار دوباره ساخته شود. حذف فایل سهم حافظه، سهم را به ۱۰۰٪ برمی‌گرداند.'))return;
+  try{
+    const r=await evtHttp('/evt/clean?name='+encodeURIComponent(name),'POST',5000);
+    const j=await r.json();
+    if($('evtst'))$('evtst').textContent=(r.ok&&j.ok)?('فایل حذف شد: '+name):('حذف فایل انجام نشد: '+name);
+  }catch(e){if($('evtst'))$('evtst').textContent='حذف فایل ناموفق بود';}
+  await evtfs(0);await evtDays();await evtfetch(1);await evtPctLoad();
 }
 async function evtclean(){
   if(!confirm('فقط فایل‌های جامانده از برنامه‌های قبلی پاک شوند؟ تاریخچه و فایل‌های برنامهٔ فعلی دست‌نخورده می‌مانند.'))return;

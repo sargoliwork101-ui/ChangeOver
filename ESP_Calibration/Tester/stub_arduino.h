@@ -430,6 +430,7 @@ struct StubFS {
  * [EN] true = every write is refused, exactly like a full flash.
  */
     bool failWrites = false;
+    bool failRemoves = false;
     size_t writeLimit = SIZE_MAX;
     size_t readLimit = SIZE_MAX;
     size_t readFailAt = SIZE_MAX;
@@ -459,6 +460,7 @@ struct StubFS {
         return files.count(p) != 0;
     }
     bool remove(const char *p) {
+        if (failRemoves) return false;
         if (p == NULL || p[0] != '/') return false;
         return files.erase(p) > 0;
     }

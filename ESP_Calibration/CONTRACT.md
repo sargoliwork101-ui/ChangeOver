@@ -58,4 +58,14 @@
 | Browser → ESP_Calibration | `GET /` / `GET /f.css` | Panel HTML / font CSS |
 | Browser ↔ ESP_Calibration | `/evt`, `/evt/days`, `/evt/dl`, `/evt/clr`, `/evt/snap`, `/evt/format`, `/evt/fs`, `/evt/clean`, `/evt/pct` | Event-log text/CSV, day list, filesystem JSON and log-management results; `day` selects a date for `/evt` and `/evt/dl`; `p` sets the history share (40..100 percent) on `/evt/pct` |
 
+`POST /evt/clean?name=/exact-file` deletes exactly one root file, including files
+owned by this firmware; no `name` retains the existing foreign-file bulk cleanup.
+An empty/invalid `name` never falls back to bulk deletion. Returns JSON `ok` and
+`removed`, with HTTP 200 / 400 / 404 / 503 for success / invalid path / absent file /
+unavailable or failed removal. `GET /evt/fs?offset=N` pages the bounded file list
+and returns `offset` plus `more`; names are escaped losslessly for exact selection.
+Active log/clock files can be recreated by later operation. Deleting `/logpct.txt`
+restores the default share (100%). Deleting a day removes its matching RAM rows
+only and invalidates its cached state; unrelated pending rows remain intact.
+
 There is no application login/session check in this firmware: HTTP routes, including destructive operations such as `/evt/format`, `/evt/clr`, `/evt/clean`, `/benchlog/clear`, `/lut`, and `/lut/reset`, are reachable by any station that can join the AP. Current AP key is hard-coded as `123456789`. These are verified current behaviors, not recommendations; changing authentication or credentials requires owner approval and device-side changes.

@@ -3524,6 +3524,53 @@ static bool func__EspLog_IsOwnFile(const char *char__ptr_path)
     return false;
 }
 /**
+ * @brief [EN] Delete exactly one root file, including owned files, by explicit user request.
+ * @param path Exact canonical root filename.
+ * @return HTTP status: 200 removed, 400 invalid, 404 absent, 503 unavailable/failure.
+ */
+static int func__EspLog_DeleteFile(const char *path)
+{
+    if (!path || path[0]!='/' || !path[1] || strlen(path)>=40u ||
+        strchr(path+1,'/') || strcmp(path,"/.")==0 || strcmp(path,"/..")==0) return 400;
+    if (!BOOL__G__FsOk) return 503;
+    if (!LittleFS.exists(path)) return 404;
+    if (!LittleFS.remove(path)) return 503;
+    BOOL__G__LogCodecCached=false;
+    BOOL__G__LogScanValid=false;
+    uint32_t day;
+    if (func__EspLog_DayFromName(path,&day)) {
+        BOOL__G__LogBootSnapValid=false;
+        /* [EN] Do not resurrect deliberately deleted rows from the pending FIFO. */
+        const uint8_t oldest=(uint8_t)((UINT8_T__G__LogRamHead+ESP_LOG_RAM_ROWS-UINT8_T__G__LogRamCount)%ESP_LOG_RAM_ROWS);
+        uint8_t kept=0u;
+        for (uint8_t i=0u;i<UINT8_T__G__LogRamCount;++i) {
+            const uint8_t src=(uint8_t)((oldest+i)%ESP_LOG_RAM_ROWS);
+            const uint32_t epoch=func__EspLog_RowEpoch(CHAR__G__LogRamRow[src]);
+            const uint32_t rowDay=epoch>=ESP_LOG_CLOCK_VALID_MIN?
+                func__EspLog_DateCode(func__EspLog_LocalDay(epoch)):0u;
+            if (rowDay==day) continue;
+            const uint8_t dst=(uint8_t)((oldest+kept)%ESP_LOG_RAM_ROWS);
+            if (dst!=src) memcpy(CHAR__G__LogRamRow[dst],CHAR__G__LogRamRow[src],ESP_LOG_RAM_ROW_MAX);
+            ++kept;
+        }
+        UINT8_T__G__LogRamCount=kept;
+        UINT8_T__G__LogRamHead=(uint8_t)((oldest+kept)%ESP_LOG_RAM_ROWS);
+        if (!kept) { BOOL__G__LogDrainWait=false; UINT8_T__G__LogWriteFault=0u; }
+        if (UINT32_T__G__LogDayCode==day) {
+            UINT32_T__G__LogDayCode=ESP_LOG_DAY_AUTO;
+            UINT16_T__G__LogRowsToday=0u;
+            BOOL__G__LogDayFull=false; BOOL__G__LogMarkerDone=false;
+        }
+    }
+    if (strcmp(path,ESP_LOG_PCT_PATH)==0) UINT8_T__G__LogBudgetPercent=ESP_LOG_BUDGET_PERCENT;
+    if (strcmp(path,ESP_LOG_CLOCK_PATH)==0) {
+        BOOL__G__LogClockSavedOnce=false;
+        BOOL__G__LogClockSaveWanted=false; BOOL__G__LogAnchorSaveWanted=false;
+        UINT32_T__G__LogLastClockSaveMs=(uint32_t)millis();
+    }
+    return 200;
+}
+/**
  * @brief  [EN] Copy a sanitized canonical "/..." path into out for JSON output.
 * @param const char *char__ptr_src canonical "/..." path /
 * @param char *char__out destination /
@@ -3534,29 +3581,21 @@ static void func__EspLog_SanitizeFileName(const char *char__ptr_src,
                                           char *char__out,
                                           size_t size_t__outSize)
 {
-    size_t size_t__idx = 0u;
-    if ((char__out == NULL) || (size_t__outSize == 0u))
-    {
-        return;
-    }
-    if (char__ptr_src == NULL)
-    {
-        char__out[0] = '\0';
-        return;
-    }
-    while ((char__ptr_src[size_t__idx] != '\0') &&
-           ((size_t__idx + 1u) < size_t__outSize))
-    {
-        char char__ch = char__ptr_src[size_t__idx];
-        if ((char__ch < 0x20) || (char__ch > 0x7E) ||
-            (char__ch == '"') || (char__ch == '\\'))
-        {
-            char__ch = '?';
+    if (!char__out || !size_t__outSize) return;
+    size_t used=0u;
+    if (char__ptr_src) for (size_t i=0u;char__ptr_src[i];++i) {
+        const uint8_t c=(uint8_t)char__ptr_src[i];
+        const size_t need=c<32u?6u:((c=='"' || c=='\\')?2u:1u);
+        if (used+need>=size_t__outSize) { char__out[0]='\0'; return; }
+        if (c<32u) {
+            (void)snprintf(char__out+used,size_t__outSize-used,"\\u%04x",(unsigned int)c);
+        } else {
+            if (need==2u) char__out[used++]='\\';
+            char__out[used]=(char)c;
         }
-        char__out[size_t__idx] = char__ch;
-        size_t__idx++;
+        used+=need==2u?1u:need;
     }
-    char__out[size_t__idx] = '\0';
+    char__out[used]='\0';
 }
 /**
  * @brief  [EN] Build a JSON summary of LittleFS capacity and root files so the
@@ -3565,11 +3604,12 @@ static void func__EspLog_SanitizeFileName(const char *char__ptr_src,
 * @param size_t size_t__outSize buffer size /
 * @return size_t bytes written /
  */
-static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
+static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize, uint16_t offset=0u)
 {
     uint32_t uint32_t__totalBytes = 0u;
     uint32_t uint32_t__usedBytes = 0u;
     uint32_t uint32_t__sumBytes = 0u;
+    uint16_t uint16_t__seen = 0u;
     uint16_t uint16_t__shown = 0u;
     uint16_t uint16_t__more = 0u;
     size_t size_t__used = 0u;
@@ -3605,7 +3645,7 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
         while (dir__root.next())
         {
             char char__rootPath[40];
-            char char__safeName[40];
+            char char__safeName[240];
             String string__raw = dir__root.fileName();
             uint32_t uint32_t__fsize = (uint32_t)dir__root.fileSize();
             if (func__EspLog_ToRootPath(string__raw.c_str(),
@@ -3614,8 +3654,10 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
             {
                 bool bool__own = func__EspLog_IsOwnFile(char__rootPath);
                 uint32_t__sumBytes += uint32_t__fsize;
+                if (uint16_t__seen++<offset) continue;
                 func__EspLog_SanitizeFileName(char__rootPath, char__safeName, sizeof(char__safeName));
-                if ((uint16_t__shown < 24u) && ((size_t__used + 96u) < size_t__outSize))
+                if (!uint16_t__more && (uint16_t__shown < 24u) &&
+                    ((size_t__used + strlen(char__safeName) + 160u) < size_t__outSize))
                 {
                     int int__item = snprintf(&char__out[size_t__used],
                                              size_t__outSize - size_t__used,
@@ -3643,9 +3685,9 @@ static size_t func__EspLog_FsStatusJson(char *char__out, size_t size_t__outSize)
     }
     int__written = snprintf(&char__out[size_t__used],
                             size_t__outSize - size_t__used,
-                            "],\"fileBytes\":%lu,\"more\":%u}",
+                            "],\"fileBytes\":%lu,\"more\":%u,\"offset\":%u}",
                             (unsigned long)uint32_t__sumBytes,
-                            (unsigned int)uint16_t__more);
+                            (unsigned int)uint16_t__more,(unsigned int)offset);
     if ((int__written > 0) && ((size_t__used + (size_t)int__written) < size_t__outSize))
     {
         size_t__used += (size_t)int__written;

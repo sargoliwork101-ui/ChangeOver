@@ -1259,7 +1259,10 @@ static void func__Esp_HttpEventPct(void)
 static void func__Esp_HttpEventFsStatus(void)
 {
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    (void)func__EspLog_FsStatusJson(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE);
+    const String arg=ESP_WEB_SERVER_T__G__Server.arg("offset");
+    const long asked=arg.toInt();
+    const uint16_t offset=(uint16_t)(asked<0?0:(asked>65535L?65535L:asked));
+    (void)func__EspLog_FsStatusJson(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,offset);
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 /**
@@ -1269,6 +1272,15 @@ static void func__Esp_HttpEventFsStatus(void)
  */
 static void func__Esp_HttpEventClean(void)
 {
+    if (ESP_WEB_SERVER_T__G__Server.hasArg("name")) {
+        const String name=ESP_WEB_SERVER_T__G__Server.arg("name");
+        const int status=strlen(name.c_str())==name.length()?
+            func__EspLog_DeleteFile(name.c_str()):400;
+        ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control","no-store");
+        ESP_WEB_SERVER_T__G__Server.send(status,"application/json",status==200?
+            "{\"ok\":1,\"removed\":1}":"{\"ok\":0,\"removed\":0}");
+        return;
+    }
     uint32_t uint32_t__freed = 0u;
     uint16_t uint16_t__removed;
     uint16_t__removed = func__EspLog_CleanForeignFiles(&uint32_t__freed);

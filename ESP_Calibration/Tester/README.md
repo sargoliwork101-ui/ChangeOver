@@ -155,3 +155,15 @@ FIFO ordering after a one-shot open failure, and shared file/RAM newest-row
 budgets with day filtering across midnight, missing-file and offline paths.
 Baseline: 552 host / 13 label / 270 DOM PASS. After: 570 / 13 / 270 PASS.
 See [audit results](../AUDIT_v139.md).
+
+## Per-file deletion (v1.140)
+
+`host_test_file_delete.h` tests exact owned/foreign removal, bad/empty/NUL paths,
+missing/unavailable/failed removal, wrapped RAM FIFO preservation by day,
+current-day cache invalidation and recreation, share/clock deletion, exact
+JSON filename escaping and access to all 60 fixture files through pagination.
+DOM tests cover each real delete button, escaped unusual names, cancellation,
+exact POST selection, confirmation warnings, truthful failures and file paging.
+Before: 570 host / 13 labels / 270 DOM PASS. After: 585 / 13 / 280 PASS.
+All nine repository runners exit 0; preview-server self-tests also pass.
+Native ESP8266 target build and physical flash tests were not run.

@@ -172,6 +172,7 @@ function tlm(){
 }
 
 const origFetch = window.fetch;
+let simFiles=[{name:'/benchlog.csv',size:512,own:1},{name:'/old_config.dat',size:128,own:0}];
 window.fetch = function(url, opt){
   const u = String(url);
   let body;
@@ -195,6 +196,17 @@ window.fetch = function(url, opt){
     body = {ok:1, n:n};
   } else if(u.indexOf('/latch') === 0){
     body = {q:0, id:latchId, val:latchVal, known:1, rep:latchRep, req:latchRep, nak:0, busy:0};
+  } else if(u.indexOf('/evt/fs') === 0){
+    const offset=Math.max(0,parseInt(new URL(u,'http://preview').searchParams.get('offset'),10)||0);
+    const used=simFiles.reduce((n,f)=>n+f.size,0);
+    body={fs:1,total:2097152,used,files:simFiles.slice(offset,offset+24),offset,more:Math.max(0,simFiles.length-offset-24)};
+  } else if(u.indexOf('/evt/clean') === 0){
+    const q=new URL(u,'http://preview').searchParams;
+    const before=simFiles.length;
+    simFiles=q.has('name')?simFiles.filter(f=>f.name!==q.get('name')):simFiles.filter(f=>f.own);
+    body={ok:1,removed:before-simFiles.length};
+  } else if(u.indexOf('/evt/pct') === 0){
+    body={ok:1,p:100,min:40,max:100};
   } else if(u.indexOf('/benchlog') === 0){
     body = {fs:1, size:0, max:102400, ok:1};
   } else {

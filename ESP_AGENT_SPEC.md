@@ -139,6 +139,12 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 
 ### 4.1 Event history on the panel's own flash (current, ESP_Calibration)
 
+Current file management v1.140: every listed root file has a confirmed delete
+button, including owned files. `/evt/clean?name=...` deletes exactly one file;
+omitting `name` retains foreign-only cleanup. File inspection is paginated with
+`offset`; active files may be recreated on later use. Day deletion preserves
+unrelated RAM rows, and deleting the share file resets the active share to 100%.
+
 Current public CSV format v1.139 (on-flash codec remains version 1): 18 lossless integer fields, in this order:
 `epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille`.
 No pack/imbalance/percent or duplicate V12 column is stored. The two battery

@@ -938,6 +938,7 @@ const evtStartSec = Math.floor(Date.now() / 1000);
  *      را پس از خطِ «قبول» قفل می‌کرد. */
 /* [EN] v1.134: the history share the menu shows (percent of the flash). */
 let simPct = 100;
+let simClockFile = true, simPctFile = true;
 let simForeignFiles = [
     { name: "/old_sketch_cfg.bin", size: 24576 }
 ];
@@ -1180,6 +1181,7 @@ const server = http.createServer((req, res) => {
             const n = parseInt(asked, 10);
             if (!Number.isNaN(n)) {
                 simPct = Math.min(100, Math.max(40, n));
+                simPctFile = true;
             }
         }
         res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -1196,8 +1198,8 @@ const server = http.createServer((req, res) => {
             const size = Buffer.byteLength([EVT_HEADER].concat(rows).join("\n"), "utf8");
             return { name: "/evt-" + d + ".csv", size, own: 1 };
         });
-        files.push({ name: "/evt-clock.txt", size: 28, own: 1 });
-        files.push({ name: "/logpct.txt", size: 3, own: 1 });
+        if (simClockFile) files.push({ name: "/evt-clock.txt", size: 28, own: 1 });
+        if (simPctFile) files.push({ name: "/logpct.txt", size: 3, own: 1 });
         if (benchSize > 0) {
             files.push({ name: "/benchlog.csv", size: benchSize, own: 1 });
         }
@@ -1206,10 +1208,31 @@ const server = http.createServer((req, res) => {
         }
         const used = files.reduce((s, x) => s + x.size, 0);
         res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-        res.end(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used, files, fileBytes: used, more: 0 }));
+        const offset = Math.max(0, Math.min(65535, parseInt(url.searchParams.get("offset"), 10) || 0));
+        const page = files.slice(offset, offset + 24);
+        res.end(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used, files:page, fileBytes: used, more: Math.max(0,files.length-offset-page.length), offset }));
         return;
     }
     if (req.method === "POST" && url.pathname === "/evt/clean") {
+        if (url.searchParams.has("name")) {
+            const name=url.searchParams.get("name");
+            if (!name || !name.startsWith("/") || name.length>=40 || name.slice(1).includes("/") || name.includes("\0") || name==="/." || name==="/..")
+                return send(400,"application/json",'{"ok":0,"removed":0}');
+            let removed=false;
+            if (name==="/benchlog.csv" && benchSize>0) { benchSize=0; removed=true; }
+            else if (name==="/evt-clock.txt" && simClockFile) { simClockFile=false; removed=true; }
+            else if (name==="/logpct.txt" && simPctFile) { simPctFile=false; simPct=100; removed=true; }
+            else if (/^\/evt-[0-9]{8}\.csv$/.test(name)) {
+                const day=name.slice(5,13), before=evtRows.length;
+                evtRows=evtRows.filter(line=>String(evtDayOf(Number(line.split(",")[0])))!==day);
+                removed=evtRows.length<before;
+            } else {
+                const before=simForeignFiles.length;
+                simForeignFiles=simForeignFiles.filter(f=>f.name!==name);
+                removed=simForeignFiles.length<before;
+            }
+            return send(removed?200:404,"application/json",JSON.stringify({ok:removed?1:0,removed:removed?1:0}));
+        }
         const removed = simForeignFiles.length;
         const freed = simForeignFiles.reduce((s, x) => s + x.size, 0);
         simForeignFiles = [];
