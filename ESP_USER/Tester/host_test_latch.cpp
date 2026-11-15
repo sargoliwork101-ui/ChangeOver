@@ -2963,6 +2963,55 @@ static void func__T_TestWifiJsonAudit(void)
     strcpy(CHAR__G__WifiSsid,SIMPLE_WIFI_AP_SSID);strcpy(CHAR__G__WifiPass,SIMPLE_WIFI_AP_PASS);func__Simple_WifiSave();
 }
 
+static void func__T_TestAutomaticBrowserClock(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.on("/clock", HTTP_POST, func__Simple_HttpClockSet);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/time", HTTP_POST, func__Simple_HttpTimeSync);
+    func__Simple_AuthDefaults();func__Simple_AuthLogout();func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    BOOL__G__FsOk = true;
+    const uint32_t uint32_t__sec = 1793793600u;
+    for (const char *char__query : {"sec=-1&tz=0", "sec=0", "sec=abc", "sec=2147483648", "sec=1793793600&tz=50401", "sec=1793793600&tz=bad"})
+    {
+        uint32_t uint32_t__before = func__Simple_NowSec();
+        int32_t int32_t__tzBefore = INT32_T__G__LogTzSec;
+        SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST, char__query);
+        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 400 &&
+                      func__Simple_NowSec() == uint32_t__before && INT32_T__G__LogTzSec == int32_t__tzBefore,
+                      "ساعت یا منطقهٔ نامعتبر بدون تغییر ساعت و منطقه رد می‌شود");
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403, "درخواست خالی ساعت هنوز مجوز مدیر را بررسی می‌کند");
+    uint8_t uint8_t__byte;while (Serial.takeEspByte(&uint8_t__byte)) {}
+    BOOL__G__TimeFromDisk = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST, "sec=1793793600&tz=-18000");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_NowSec() == uint32_t__sec &&
+                  INT32_T__G__LogTzSec == -18000 && !func__Simple_IsAdmin(), "ساعت مرورگر بدون ورود و بدون اعطای دسترسی مدیر پذیرفته می‌شود");
+    uint8_t uint8_t__frame[16];unsigned uint__len = 0;
+    while (Serial.takeEspByte(&uint8_t__byte) && uint__len < sizeof(uint8_t__frame)) uint8_t__frame[uint__len++] = uint8_t__byte;
+    func__T_Check(uint__len == 12u && uint8_t__frame[3] == SIMPLE_MSG_TIME_SYNC &&
+                  func__Simple_ReadU32(uint8_t__frame,6u) == uint32_t__sec, "همان لحظه قاب واقعی همگام‌سازی با ساعت مرورگر برای برد فرستاده می‌شود");
+    func__T_Check(BOOL__G__BrowserTimePending && !BOOL__G__TimePushed && func__Simple_TimeBootReady(), "ساعت گوشی منتظر تأیید برد است ولی منتظر ساعت کهنهٔ دیسک نمی‌ماند");
+    func__T_Check(!func__Simple_TimeAdoptFromBoard(uint32_t__sec+3600u) &&
+                  !func__Simple_TimeAdoptFromBoard(uint32_t__sec-60u) && func__Simple_NowSec() == uint32_t__sec,
+                  "دیاگ کهنهٔ جلوتر یا عقب‌تر ساعت تازهٔ مرورگر را عوض نمی‌کند");
+    func__T_Check(func__Simple_TimeAdoptFromBoard(uint32_t__sec) && !BOOL__G__BrowserTimePending,
+                  "ساعت منطبق برد همگام‌سازی را تأیید می‌کند");
+    func__Simple_TimeLoad();
+    func__T_Check(func__Simple_NowSec() == uint32_t__sec && INT32_T__G__LogTzSec == -18000, "ساعت و منطقهٔ گوشی در فایل ساعت ذخیره و بازیابی می‌شوند");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/time", HTTP_POST, "ts=1793793600");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403, "عمومی‌شدن همگام‌سازی مسیر قدیمی مدیریت را باز نمی‌کند");
+    (void)func__Simple_AuthLogin("admin", "admin");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", CHAR__G__SessionToken);
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST, "sec=1793793660&tz=12600");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_NowSec() == uint32_t__sec+60u,
+                  "همگام‌سازی خودکار در نشست مدیر نیز کار می‌کند");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_IsAdmin(), "بررسی نشست مدیر با همگام‌سازی عمومی اشتباه نمی‌شود");
+    BOOL__G__BrowserTimePending = false;
+    func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2992,6 +3041,7 @@ int main(void)
     func__T_TestHeaderSession();
     func__T_TestFileDeletion();
     func__T_TestWifiJsonAudit();
+    func__T_TestAutomaticBrowserClock();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

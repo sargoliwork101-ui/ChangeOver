@@ -715,7 +715,7 @@ class Handler(BaseHTTPRequestHandler):
                 "chargeCountCh1": BOARD.charge_counts[0], "chargeCountCh2": BOARD.charge_counts[1],
                 "chargeSecCh1": BOARD.charge_secs[0], "chargeSecCh2": BOARD.charge_secs[1],
                 "uptimeSec": BOARD.board_uptime, "resetCount": BOARD.reset_count,
-                "boardTime": BOARD.board_time + BOARD.tick, "panelTime": int(time.time()),
+                "boardTime": BOARD.board_time + BOARD.tick, "panelTime": BOARD.board_time + BOARD.tick,
                 "timeOk": 1, "errCount": len(BOARD.errors),
                 "powerCount": len(BOARD.power),
                 "errors": BOARD.errors, "power": BOARD.power,
@@ -781,9 +781,19 @@ class Handler(BaseHTTPRequestHandler):
                 BOARD.latch["known"] = 1
             return self.send(json_bytes({"ok": 1, "n": n}))
         if path == "/clock" and method == "POST":
-            if not self.session_ok():
+            has_sec = "sec" in args
+            if not has_sec and not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
-            return self.send(json_bytes({"ok": 1, "sec": int(time.time())}))
+            try:
+                sec = int(args["sec"]) if has_sec else 0
+                tz = int(args.get("tz", "0"))
+                if (has_sec and not 1600000000 <= sec <= 2147483647) or not -50400 <= tz <= 50400:
+                    raise ValueError("time")
+            except ValueError:
+                return self.send(json_bytes({"ok": 0, "e": "time"}, 400))
+            if has_sec:
+                BOARD.board_time = sec - BOARD.tick
+            return self.send(json_bytes({"ok": int(has_sec), "sec": BOARD.board_time + BOARD.tick}))
         if path == "/time" and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))

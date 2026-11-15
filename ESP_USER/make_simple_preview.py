@@ -710,6 +710,19 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       mock.ssid = wifi.ssid || mock.ssid; mock.pass = wifi.pass || mock.pass;
       return jsonResponse('{"ok":1,"reboot":1}');
     }
+    if (path === 'clock') {
+      var clock = bodyJson(options), secText = query(url,'sec');
+      if (secText === null || secText === '') secText = clock.sec;
+      var hasSec = secText !== undefined && secText !== null;
+      var tzText = query(url,'tz');
+      if (tzText === null || tzText === '') tzText = clock.tz;
+      if (!hasSec && mock.role !== 1) return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var sec = Number(secText), tz = tzText === undefined || tzText === null ? 0 : Number(tzText);
+      if ((hasSec && (!/^[0-9]+$/.test(String(secText)) || sec < 1600000000 || sec > 2147483647)) ||
+          !Number.isInteger(tz) || tz < -50400 || tz > 50400) return jsonResponse('{"ok":0,"e":"time"}',400);
+      if (hasSec) counters.boardTime = sec;
+      return jsonResponse(JSON.stringify({ok:hasSec?1:0,sec:counters.boardTime}));
+    }
     if (path === 'time') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       counters.boardTime = parseInt(query(url, 'ts') || '0', 10) || counters.boardTime;

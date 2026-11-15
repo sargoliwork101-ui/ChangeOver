@@ -17,6 +17,12 @@ async function login(password){
 }
 (async()=>{
     await flush();
+    const initialClock=await (await w.fetch('/diag')).json();
+    check(Math.abs(initialClock.boardTime-Date.now()/1000)<3,'offline startup automatically syncs the browser clock without login');
+    check((await w.fetch('/clock',{method:'POST'})).status===403,'public time sync does not unlock the admin session probe');
+    check((await w.fetch('/clock?sec=1793793600&tz=12600',{method:'POST'})).status===200,'offline automatic clock route accepts an unsigned browser');
+    check((await (await w.fetch('/diag')).json()).boardTime===1793793600,'offline clock sync updates diagnostics, not just its response');
+    check((await w.fetch('/clock?sec=-1&tz=0',{method:'POST'})).status===400,'offline clock rejects invalid time');
     const format=d.getElementById('admFormat');
     check(format && format.closest('#adminCard').hidden,'format lives only in hidden admin card');
     check((await w.fetch('/evt/format',{method:'POST'})).status===403,'offline format requires authentication');

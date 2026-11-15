@@ -705,39 +705,42 @@ static void func__Simple_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t_
         }
     }
 }
+/**
+ * @brief Accept automatic browser time; empty requests remain admin session probes.
+ */
 static void func__Simple_HttpClockSet(void)
 {
-    String string__sec;
-    String string__tz;
-    int32_t int32_t__sec = 0;
-    int32_t int32_t__tz = 0;
-    bool bool__ok = false;
-    if (!func__Simple_IsAdmin())
+    String string__sec, string__tz;
+    int32_t int32_t__sec = 0, int32_t__tz = INT32_T__G__LogTzSec;
+    bool bool__hasSec = func__Simple_GetArg("sec", string__sec);
+    if (!bool__hasSec && !func__Simple_IsAdmin())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-    if (func__Simple_GetArg("tz", string__tz))
+    if ((bool__hasSec && (!func__Simple_ParseInt(string__sec.c_str(), &int32_t__sec) ||
+         int32_t__sec < (int32_t)SIMPLE_TIME_VALID_MIN)) ||
+        (func__Simple_GetArg("tz", string__tz) &&
+         (!func__Simple_ParseInt(string__tz.c_str(), &int32_t__tz) ||
+          int32_t__tz < -50400 || int32_t__tz > 50400)))
     {
-        if (func__Simple_ParseInt(string__tz.c_str(), &int32_t__tz) &&
-            (int32_t__tz >= -50400) && (int32_t__tz <= 50400))
-        {
-            INT32_T__G__LogTzSec = int32_t__tz;
-        }
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"time\"}");
+        return;
     }
-    if (func__Simple_GetArg("sec", string__sec))
+    INT32_T__G__LogTzSec = int32_t__tz;
+    if (bool__hasSec)
     {
-        if (func__Simple_ParseInt(string__sec.c_str(), &int32_t__sec) &&
-            ((uint32_t)int32_t__sec >= SIMPLE_TIME_VALID_MIN))
-        {
-            func__Simple_TimeSet((uint32_t)int32_t__sec, false);
-            func__Simple_TimeSave();
-            bool__ok = true;
-        }
+        func__Simple_TimeSet((uint32_t)int32_t__sec, true);
+        BOOL__G__BrowserTimePending = true;
+        BOOL__G__TimeFromDisk = false;
+        UINT32_T__G__TimePushMs = (uint32_t)millis();
+        UINT32_T__G__TimePushArmedMs = UINT32_T__G__TimePushMs;
+        func__Simple_TimeSave();
+        func__Simple_SendTimeSync(func__Simple_NowSec());
     }
     (void)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
                    "{\"ok\":%u,\"sec\":%lu}",
-                   bool__ok ? 1u : 0u,
+                   bool__hasSec ? 1u : 0u,
                    (unsigned long)func__Simple_NowSec());
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }

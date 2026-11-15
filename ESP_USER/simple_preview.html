@@ -893,6 +893,19 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
       mock.ssid = wifi.ssid || mock.ssid; mock.pass = wifi.pass || mock.pass;
       return jsonResponse('{"ok":1,"reboot":1}');
     }
+    if (path === 'clock') {
+      var clock = bodyJson(options), secText = query(url,'sec');
+      if (secText === null || secText === '') secText = clock.sec;
+      var hasSec = secText !== undefined && secText !== null;
+      var tzText = query(url,'tz');
+      if (tzText === null || tzText === '') tzText = clock.tz;
+      if (!hasSec && mock.role !== 1) return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var sec = Number(secText), tz = tzText === undefined || tzText === null ? 0 : Number(tzText);
+      if ((hasSec && (!/^[0-9]+$/.test(String(secText)) || sec < 1600000000 || sec > 2147483647)) ||
+          !Number.isInteger(tz) || tz < -50400 || tz > 50400) return jsonResponse('{"ok":0,"e":"time"}',400);
+      if (hasSec) counters.boardTime = sec;
+      return jsonResponse(JSON.stringify({ok:hasSec?1:0,sec:counters.boardTime}));
+    }
     if (path === 'time') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       counters.boardTime = parseInt(query(url, 'ts') || '0', 10) || counters.boardTime;
@@ -1437,14 +1450,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     <div class="form">
      <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:Vazirmatn">--</b></div>
      <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:Vazirmatn">--</b></div>
-     <div class="lh6">تنظیم ساعت از این پنل انجام نمی‌شود.</div>
+     <div class="lh6">ساعت به‌صورت خودکار با گوشی یا کامپیوتر شما همگام می‌شود؛ نیازی به ورود یا زدن دکمه نیست.</div>
     </div>
    </div>
 
    <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
    <div class="cd" id="adminCard" hidden>
     <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="uiAction(this,()=>admLogout(),true)">خروج</button></div>
-    <div class="arow"><span>ساعت برد</span><button class="btn bs"  onclick="uiAction(this,()=>admClock(),true)">همگام با این گوشی</button></div>
     <div class="arow"><span>قفل خطا</span><button class="btn bs"  onclick="uiAction(this,()=>admPost('/latch/reset',{n:5},'قفل خطا ریست شد'),true)">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد'),true)">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد'),true)">ریست ضعیف</button></div>
     <div class="arow"><span>فایل لاگ</span><button class="btn bs"  onclick="uiAction(this,()=>admPost('/evt/snap',{},'عکس لحظه ثبت شد'),true)">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/evt/clr',{},'همهٔ لاگ‌ها پاک شد'),true)">پاک‌کردن همهٔ لاگ‌ها</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl" onclick="uiAction(this,()=>admDl());return false">دانلود</a></div>
     <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn bs"  onclick="uiAction(this,()=>admWifi(),true)">ذخیره</button></div>
@@ -2325,7 +2337,7 @@ function render(data){
  /* تا وقتی ساعت یک‌بار تنظیم نشده یادآوری می‌شود؛ بعد از آن ساعت ذخیره‌شده
     خودش برمی‌گردد و هیچ پیامی پرسیده نمی‌شود */
  if(boardTs && boardTs>1000000000){ setTxt('boardTime', 'ساعت پنل: '+fmtTime(boardTs)); }
- else { setTxt('boardTime', 'ساعت تنظیم نشده - یک‌بار از تنظیمات بفرستید'); }
+ else { setTxt('boardTime', 'در حال همگام‌سازی خودکار ساعت'); }
  let highSt=getBatStatus(pctHigh), lowSt=getBatStatus(pctLow);
  if(!g_ch1Charging){ setBatFill('batHighFill', pctHigh, highSt); }
  if(!g_ch2Charging){ setBatFill('batLowFill', pctLow, lowSt); }
@@ -2588,7 +2600,7 @@ function evtParse(line){
 
 const evtIso=s=>String(s==null?'':s).split(/([0-9A-Za-z][0-9A-Za-z.:%-]*)/).map((x,i)=>i%2?'<span class="lt">'+evtEsc(x)+'</span>':evtEsc(x)).join('');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
-let evtBusy=false,evtClkBusy=false,admToken='';
+let evtBusy=false,evtClkBusy=false,evtClkRetry=0,admToken='';
 try{admToken=sessionStorage.getItem('co_admin')||'';}catch(e){}
 function admTokenSet(t){
  admToken=/^[a-f0-9]{64}$/.test(t||'')?t:'';
@@ -2610,10 +2622,12 @@ function evtKb(b){return evtFaNum(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB
 async function evtClock(){
  if(evtClkBusy)return;
  evtClkBusy=true;
+ clearTimeout(evtClkRetry);evtClkRetry=0;
  try{
   const sec=Math.floor(Date.now()/1000),tz=-new Date().getTimezoneOffset()*60;
-  await evtHttp('/clock?sec='+sec+'&tz='+tz,'POST',3000);
- }catch(e){}finally{evtClkBusy=false;}
+  const r=await evtHttp('/clock?sec='+sec+'&tz='+tz,'POST',3000);
+  if(!r.ok || (await r.json()).ok!==1)throw Error('clock');
+ }catch(e){evtClkRetry=setTimeout(evtClock,5000);}finally{evtClkBusy=false;}
 }
 function evtRenderFa(text,day,ram,src){
  const box=document.getElementById('evtList');if(!box)return;
@@ -2748,7 +2762,8 @@ async function evtTick(){
  try{await evtDays();await evtFetch(0);}finally{evtBusy=false;}
 }
 evtClock().then(()=>evtDays()).then(()=>evtFetch(0));setInterval(evtClock,60000);
-addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
+addEventListener('focus',()=>evtClock());
 addEventListener('online',()=>evtClock());
 setInterval(evtTick,10000);
 
@@ -2882,17 +2897,6 @@ function admProbe(){
   if(x.status===200){ admUnlock('ادمین'); return; }
   admOpen();
  }).catch(function(){ admOpen(); });
-}
-function admClock(){
- let ts=Math.floor(Date.now()/1000), tz=-new Date().getTimezoneOffset()*60;
- return admCall('/time',{ts:ts}).then(function(x){
-  if(x.status===403){ admLock(); admSay('admCardMsg','نشست مدیر تمام شد', false); return null; }
-  return admCall('/clock',{tz:tz});
- }).then(function(x){
-  if(!x) return;
-  if(x.status===200) admSay('admCardMsg','ساعت برد با این گوشی هم‌گام شد', true);
-  else admSay('admCardMsg','تنظیم ساعت انجام نشد', false);
- }).catch(function(){ admSay('admCardMsg','ارتباط با برد برقرار نشد', false); });
 }
 function admWifi(){
  let ssid=document.getElementById('admSsid'), pass=document.getElementById('admWpass');

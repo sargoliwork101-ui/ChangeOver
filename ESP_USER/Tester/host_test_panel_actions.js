@@ -49,6 +49,40 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     }
     w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:2,power:[{off:1700000000,on:1700000100,dur:100}],chargeHistory:[{ts:Math.floor(Date.now()/1000),ch:2}]});
     check(d.getElementById('stChargeCount').textContent==='2' && d.querySelector('#chargeHistoryList .row') && !d.getElementById('powerLog'),'diagnostics still render statistics and charge history with stored power events present');
+    const clockDom=new JSDOM(html,{runScripts:'outside-only',url:'http://clock.test/'});
+    const cw=clockDom.window, hooks={},docHooks={},intervals=[],timeouts=new Map();let timerId=0,clockRequests=[],clockFailure=false,clockHold=null;
+    cw.addEventListener=(name,fn)=>{hooks[name]=fn;};
+    cw.document.addEventListener=(name,fn)=>{docHooks[name]=fn;};
+    Object.defineProperty(cw.document,'hidden',{get:()=>false});
+    cw.setInterval=(fn,ms)=>{intervals.push([fn,ms]);return 0;};
+    cw.setTimeout=(fn,ms)=>{const id=++timerId;timeouts.set(id,[fn,ms]);return id;};
+    cw.clearTimeout=id=>timeouts.delete(id);
+    cw.fetch=async(url,options)=>{
+        if(url.startsWith('/clock?')){
+            clockRequests.push([url,options]);
+            if(clockHold) await clockHold;
+            if(clockFailure)return response(503,{ok:0});
+            return response(200,{ok:1});
+        }
+        return response(200,'');
+    };
+    cw.eval(html.match(/<script>([\s\S]*?)<\/script>/)[1]);await tick();
+    check(clockRequests.length===1 && clockRequests[0][1].method==='POST' && !clockRequests[0][1].headers['X-Admin-Token'],'opening the page automatically syncs without login or a click');
+    const clockUrl=new URL(clockRequests[0][0],'http://clock.test');
+    check(Math.abs(+clockUrl.searchParams.get('sec')-Date.now()/1000)<3 && +clockUrl.searchParams.get('tz')===-new Date().getTimezoneOffset()*60,'automatic sync reads actual system seconds and timezone');
+    check(!cw.document.querySelector('[onclick*="admClock"]') && !html.includes('function admClock'),'manual synchronization button and handler are removed');
+    for(const callback of [hooks.focus,hooks.online,docHooks.visibilitychange,intervals.find(x=>x[1]===60000)[0]]){const before=clockRequests.length;callback();await tick();check(clockRequests.length===before+1,'clock resyncs automatically on resume, reconnect or periodic timer');}
+    cw.admTokenSet('a'.repeat(64));await cw.evtClock();
+    check(clockRequests.at(-1)[1].headers['X-Admin-Token']==='a'.repeat(64),'the same automatic sync works while admin is logged in');
+    clockFailure=true;await cw.evtClock();
+    let retry=[...timeouts.values()].find(x=>x[1]===5000);
+    check(!!retry,'failed automatic clock sync schedules a five-second retry');
+    clockFailure=false;const beforeRetry=clockRequests.length;await retry[0]();
+    check(clockRequests.length===beforeRetry+1 && ![...timeouts.values()].some(x=>x[1]===5000),'retry succeeds automatically and clears the retry timer');
+    let releaseClock;clockHold=new Promise(r=>releaseClock=r);
+    const heldClock=cw.evtClock(),beforeBusy=clockRequests.length;await cw.evtClock();
+    check(clockRequests.length===beforeBusy,'simultaneous reconnect and focus do not duplicate an in-flight sync');
+    releaseClock();await heldClock;clockDom.window.close();
     check(d.getElementById('adminCard').hidden && d.getElementById('admGate').hidden, 'admin remains hidden');
     const icons = [...d.querySelectorAll('.icog button')];
     check(icons.length === 4 && icons[3].hidden && icons.every(b=>b.querySelector('svg use') && b.getAttribute('aria-label')), 'three public icons and a hidden named format icon');
