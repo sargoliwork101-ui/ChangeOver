@@ -258,6 +258,28 @@ static void func__Simple_CryptoEncrypt(const String &string__plain, String &stri
     string__out += char__hex;
     string__out += "\"}";
 }
+/* ==================== Unsigned credential nonce ==================== */
+/**
+ * @brief Parse the full unsigned nonce range without Arduino's signed toInt limit.
+ * @param string__text Decimal nonce, uint32_t__ptr_out Parsed value on success.
+ * @return bool False for empty, signed, nonnumeric or overflowing input.
+ */
+static bool func__Simple_CryptoNonceRead(const String &string__text, uint32_t *uint32_t__ptr_out)
+{
+    uint32_t uint32_t__value = 0u;
+    if (string__text.length() == 0u || string__text.length() > 10u) return false;
+    for (size_t size_t__i = 0u; size_t__i < string__text.length(); size_t__i++)
+    {
+        char char__ch = string__text[size_t__i];
+        if (char__ch < '0' || char__ch > '9') return false;
+        uint32_t uint32_t__digit = (uint32_t)(char__ch - '0');
+        if (uint32_t__value > (UINT32_MAX - uint32_t__digit) / 10u) return false;
+        uint32_t__value *= 10u;
+        uint32_t__value += uint32_t__digit;
+    }
+    *uint32_t__ptr_out = uint32_t__value;
+    return true;
+}
 static uint8_t func__Simple_CryptoDecrypt(const String &string__content, String &string__out)
 {
     uint8_t uint8_t__encKey[32];
@@ -288,8 +310,9 @@ static uint8_t func__Simple_CryptoDecrypt(const String &string__content, String 
     int32_t__mPos += 5;
     int32_t__mEnd = string__content.indexOf("\"", int32_t__mPos);
     if (int32_t__cEnd <= int32_t__cPos || int32_t__mEnd <= int32_t__mPos) return 0u;
-    uint32_t__nonce = (uint32_t)string__content.substring(int32_t__nPos,
-        string__content.indexOf(",", int32_t__nPos)).toInt();
+    int32_t int32_t__nEnd = string__content.indexOf(",", int32_t__nPos);
+    if (int32_t__nEnd < 0 || !func__Simple_CryptoNonceRead(
+        string__content.substring(int32_t__nPos, int32_t__nEnd), &uint32_t__nonce)) return 0u;
     string__hex = string__content.substring(int32_t__cPos, int32_t__cEnd);
     func__Simple_CryptoSubKey("enc", uint8_t__encKey);
     func__Simple_CryptoSubKey("mac", uint8_t__macKey);
@@ -387,13 +410,39 @@ static bool func__Simple_AuthHasOldHash(const String &string__content)
     if (int32_t__e <= int32_t__p) return false;
     return (string__content.substring(int32_t__p, int32_t__e).length() == 8u);
 }
-static void func__Simple_AuthSave(void)
+/* ==================== Verified credential replacement ==================== */
+/**
+ * @brief Stage and read back credentials, then atomically replace the old file.
+ * @param char__ptr_path Destination path, string__data Complete encrypted content.
+ * @return bool True only after the verified temporary file replaces the destination.
+ */
+static bool func__Simple_CredentialWrite(const char *char__ptr_path, const String &string__data)
+{
+    if (!BOOL__G__FsOk || string__data.length() == 0u) return false;
+    String string__temp = String(char__ptr_path) + ".tmp";
+    File file__out = LittleFS.open(string__temp.c_str(), "w");
+    if (!file__out) return false;
+    bool bool__ok = (file__out.print(string__data) == string__data.length());
+    file__out.close();
+    if (bool__ok)
+    {
+        File file__check = LittleFS.open(string__temp.c_str(), "r");
+        bool__ok = file__check && (file__check.readString() == string__data);
+        file__check.close();
+    }
+    /* Never unlink the committed file: LittleFS rename replaces it atomically. */
+    if (bool__ok) bool__ok = LittleFS.rename(string__temp.c_str(), char__ptr_path);
+    if (!bool__ok) (void)LittleFS.remove(string__temp.c_str());
+    return bool__ok;
+}
+static bool func__Simple_AuthSave(void)
 {
     String string__plain;
     String string__enc;
     bool bool__first = true;
     uint8_t uint8_t__i;
-    if (!BOOL__G__FsOk) return;
+    if (!BOOL__G__FsOk) return false;
+    if (!BOOL__G__CryptoKeyReady) func__Simple_CryptoKeyInit();
     string__plain = "{\"users\":[";
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
     {
@@ -410,10 +459,7 @@ static void func__Simple_AuthSave(void)
     }
     string__plain += "]}";
     func__Simple_CryptoEncrypt(string__plain, string__enc);
-    File file__f = LittleFS.open(SIMPLE_USERS_FILE, "w");
-    if (!file__f) return;
-    file__f.print(string__enc);
-    file__f.close();
+    return func__Simple_CredentialWrite(SIMPLE_USERS_FILE, string__enc);
 }
 static int32_t func__Simple_FindUser(const char *char__ptr_name)
 {
@@ -440,15 +486,21 @@ static bool func__Simple_SetUserPass(const char *char__ptr_name, const char *cha
 {
     int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
     char char__hash[65];
-    if (int32_t__index < 0) return false;
+    if (int32_t__index < 0 || !BOOL__G__FsOk) return false;
     if (char__ptr_newPass == NULL) return false;
     if (strlen(char__ptr_newPass) < SIMPLE_USER_PASS_MIN) return false;
     if (strlen(char__ptr_newPass) > SIMPLE_USER_PASS_MAX) return false;
     if (func__Simple_VerifyUserPass(char__ptr_name, char__ptr_newPass)) return true;
+    char char__oldHash[65];
+    (void)memcpy(char__oldHash, SIMPLE_USER_T__G__Users[int32_t__index].passHash, sizeof(char__oldHash));
     func__Simple_HashPass(char__ptr_newPass, char__hash);
     (void)strncpy(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__hash, 64);
     SIMPLE_USER_T__G__Users[int32_t__index].passHash[64] = '\0';
-    func__Simple_AuthSave();
+    if (!func__Simple_AuthSave())
+    {
+        (void)memcpy(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__oldHash, sizeof(char__oldHash));
+        return false;
+    }
     return true;
 }
 static bool func__Simple_AuthIsDefault(void)

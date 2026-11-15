@@ -21,21 +21,19 @@ static void func__Simple_ThemeLoad(void)
         UINT8_T__G__Theme = (uint8_t)int32_t__theme;
     }
 }
-static void func__Simple_WifiSave(void)
+static bool func__Simple_WifiSave(void)
 {
     String string__plain;
     String string__enc;
-    if (!BOOL__G__FsOk) return;
+    if (!BOOL__G__FsOk) return false;
+    if (!BOOL__G__CryptoKeyReady) func__Simple_CryptoKeyInit();
     string__plain = "{\"ssid\":";
     string__plain += func__Simple_JsonQuote(CHAR__G__WifiSsid);
     string__plain += ",\"pass\":";
     string__plain += func__Simple_JsonQuote(CHAR__G__WifiPass);
     string__plain += "}";
     func__Simple_CryptoEncrypt(string__plain, string__enc);
-    File file__f = LittleFS.open(SIMPLE_WIFI_FILE, "w");
-    if (!file__f) return;
-    file__f.print(string__enc);
-    file__f.close();
+    return func__Simple_CredentialWrite(SIMPLE_WIFI_FILE, string__enc);
 }
 static void func__Simple_WifiLoad(void)
 {

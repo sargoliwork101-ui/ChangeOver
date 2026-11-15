@@ -81,6 +81,9 @@ static bool BOOL__T__FormatFail = false;
 static bool BOOL__T__MountFail = false;
 static bool BOOL__T__SettingsWriteFail = false;
 static bool BOOL__T__RemoveFail = false;
+static bool BOOL__T__CredentialRenameFail = false;
+static bool BOOL__T__CredentialReadFail = false;
+static bool BOOL__T__CredentialOpenFail = false;
 
 /* فایل‌سیستم تست در /tmp نگه داشته می‌شود تا مسیر ذخیره و بازیابی هم بررسی شود. */
 static std::string func__T_FsPath(const char *char__ptr_path)
@@ -145,9 +148,18 @@ File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
     {
         return File(std::string(), "r");
     }
-    if (BOOL__T__SettingsWriteFail && strcmp(char__ptr_path, SIMPLE_USERS_FILE) == 0 &&
+    if (strstr(char__ptr_path, ".tmp") != NULL &&
+        ((BOOL__T__CredentialReadFail && strcmp(char__ptr_mode, "r") == 0) ||
+         (BOOL__T__CredentialOpenFail && strcmp(char__ptr_mode, "w") == 0))) return File();
+    if (BOOL__T__SettingsWriteFail && (strcmp(char__ptr_path, SIMPLE_USERS_FILE) == 0 ||
+        strcmp(char__ptr_path, SIMPLE_USERS_FILE ".tmp") == 0) &&
         strcmp(char__ptr_mode, "w") == 0) return File();
     return File(func__T_FsPath(char__ptr_path), char__ptr_mode);
+}
+bool SimLittleFS::rename(const char *char__ptr_from, const char *char__ptr_to)
+{
+    if (BOOL__T__CredentialRenameFail) return false;
+    return ::rename(func__T_FsPath(char__ptr_from).c_str(), func__T_FsPath(char__ptr_to).c_str()) == 0;
 }
 bool SimLittleFS::remove(const char *char__ptr_path)
 {
@@ -3054,6 +3066,8 @@ static void func__T_TestFormatClearsAllHistory(void)
     func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
 }
 
+#include "host_test_credentials.h"
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -3085,6 +3099,9 @@ int main(void)
     func__T_TestWifiJsonAudit();
     func__T_TestAutomaticBrowserClock();
     func__T_TestFormatClearsAllHistory();
+    func__T_TestCredentialDurability();
+    func__T_TestUnsignedCredentialNonce();
+    func__T_TestCredentialCommitFailures();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

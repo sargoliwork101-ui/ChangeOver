@@ -509,19 +509,31 @@ static void func__Simple_HttpSetWifi(void)
     }
     if (string__ssid.length() < 1u || string__ssid.length() > SIMPLE_WIFI_SSID_MAX) { SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"ssid len\"}"); return; }
     if (string__pass.length() < 8u || string__pass.length() > SIMPLE_WIFI_PASS_MAX) { SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pass len 8-32\"}"); return; }
+    if (!BOOL__G__FsOk)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0,\"e\":\"storage\"}");
+        return;
+    }
     if ((strcmp(CHAR__G__WifiSsid, string__ssid.c_str()) == 0) &&
         (strcmp(CHAR__G__WifiPass, string__pass.c_str()) == 0))
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"reboot\":0}");
         return;
     }
+    char char__oldSsid[sizeof(CHAR__G__WifiSsid)];
+    char char__oldPass[sizeof(CHAR__G__WifiPass)];
+    (void)memcpy(char__oldSsid, CHAR__G__WifiSsid, sizeof(char__oldSsid));
+    (void)memcpy(char__oldPass, CHAR__G__WifiPass, sizeof(char__oldPass));
     (void)strncpy(CHAR__G__WifiSsid, string__ssid.c_str(), SIMPLE_WIFI_SSID_MAX);
     CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX] = '\0';
     (void)strncpy(CHAR__G__WifiPass, string__pass.c_str(), SIMPLE_WIFI_PASS_MAX);
     CHAR__G__WifiPass[SIMPLE_WIFI_PASS_MAX] = '\0';
-    if (BOOL__G__FsOk)
+    if (!func__Simple_WifiSave())
     {
-        func__Simple_WifiSave();
+        (void)memcpy(CHAR__G__WifiSsid, char__oldSsid, sizeof(char__oldSsid));
+        (void)memcpy(CHAR__G__WifiPass, char__oldPass, sizeof(char__oldPass));
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"storage\"}");
+        return;
     }
     BOOL__G__WifiRebootPending = true;
     UINT32_T__G__WifiRebootMs = (uint32_t)millis();
@@ -564,7 +576,7 @@ static void func__Simple_HttpSetPass(void)
     }
     if (!func__Simple_SetUserPass("admin", string__newPass.c_str()))
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user\"}");
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"storage\"}");
         return;
     }
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");

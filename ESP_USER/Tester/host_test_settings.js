@@ -65,5 +65,12 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve
  for(const b of danger){b.click();await tick();}
  check(sent.length===5&&sent.filter(([u])=>u==='/latch/reset').map(([,p])=>p.get('n')).join(',')==='5,6,8'&&sent.some(([u,p])=>u==='/clear'&&p.get('type')==='all')&&sent.some(([u])=>u==='/evt/clr'),'confirmed compact controls preserve exact routes and reset codes');
  check(![...d.querySelectorAll('#adminCard button')].some(b=>b.disabled||b.hasAttribute('aria-busy')),'all compact controls unlock after completion');
+ w.fetch=async()=>({status:500,json:async()=>({ok:0,e:'storage'})});
+ d.getElementById('admSsid').value='retained-network';d.getElementById('admWpass').value='retained-password';
+ await w.uiAction(d.getElementById('admWifiBtn'),()=>w.admWifi(),true);
+ check(d.getElementById('admWpass').value==='retained-password'&&d.getElementById('toastMsg').textContent.includes('تنظیمات قبلی حفظ شد')&&!d.getElementById('toastMsg').textContent.includes('retained-password'),'failed Wi-Fi storage gives clear feedback without discarding input or exposing password');
+ d.getElementById('admOld').value='old-password';d.getElementById('admNew').value='new-password';d.getElementById('admNew2').value='new-password';
+ await w.uiAction(d.getElementById('admPassBtn'),()=>w.admPass(),true);
+ check(d.getElementById('admNew').value==='new-password'&&!d.getElementById('admPassBtn').disabled&&!d.getElementById('adminCard').hidden&&d.getElementById('admCardMsg').textContent.includes('ذخیره در حافظه انجام نشد'),'failed password storage remains retryable and never claims success or ends the session');
  console.log(`${checks} SETTINGS CHECKS; ${failures} FAILURES`);
 })().catch(e=>{failures++;console.error(e);}).finally(()=>{dom.window.close();if(failures)process.exitCode=1;});

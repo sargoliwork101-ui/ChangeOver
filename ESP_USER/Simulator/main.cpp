@@ -118,6 +118,10 @@ File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
     return File(func__Sim_FsPath(char__ptr_path), char__ptr_mode);
 }
 
+bool SimLittleFS::rename(const char *char__ptr_from, const char *char__ptr_to)
+{
+    return ::rename(func__Sim_FsPath(char__ptr_from).c_str(), func__Sim_FsPath(char__ptr_to).c_str()) == 0;
+}
 bool SimLittleFS::remove(const char *char__ptr_path)
 {
     return ::remove(func__Sim_FsPath(char__ptr_path).c_str()) == 0;

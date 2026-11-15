@@ -103,6 +103,15 @@ the default admin account on the next reboot. This requires explicit UI confirma
 The application's storage is flat (root files); directories and traversal paths
 are not accepted. Listing never returns file contents or Wi-Fi passwords.
 
+Credential updates (`/setpass`, `/wifi`, `/setwifi`) stage encrypted data in
+`/users.json.tmp` or `/wifi.json.tmp`, verify the closed file by reading it, then
+replace the committed file with LittleFS rename. A failed update keeps previous
+RAM credentials and the committed file, responds with `ok:0, e:"storage"` (500;
+Wi-Fi uses 503 when storage is unmounted), and never schedules a Wi-Fi restart.
+Successful save does not invalidate the admin session. An incomplete temporary
+file is not a boot credential source. Crypto nonces use the full unsigned 32-bit
+range, not Arduino's signed `String::toInt` range.
+
 LittleFS files: `/wifi.json`, `/charts.bin`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
 The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
