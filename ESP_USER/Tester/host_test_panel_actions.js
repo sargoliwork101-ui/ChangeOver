@@ -187,6 +187,7 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     d.getElementById('admWpass').value='secret123';click(save);finish(response(403,{ok:0,e:'admin'}));await tick();
     check(d.getElementById('adminCard').hidden && !save.disabled, 'expired session hides admin and releases busy state');
     w.admUnlock('admin');
+    d.getElementById('admWpass').value='secret123';
     w.fetch=async()=>{throw Error('offline');};click(save);await tick();
     check(!save.disabled && d.getElementById('toastMsg').textContent.includes('ارتباط'), 'network failure has feedback and unlocks');
     // Accelerate only I/O deadlines, not toast timers.
@@ -277,7 +278,7 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(remove[2].dataset.file===unusual && !d.querySelector('#evtFs img'),'hostile filename stays exact in dataset and cannot inject HTML');
     for(const b of d.querySelectorAll('#evtFs [onclick]'))w.Function(b.getAttribute('onclick'));
     check(true,'dynamic delete and pagination handlers compile');
-    const next=[...d.querySelectorAll('#evtFs button')].find(b=>b.textContent==='فایل‌های بعدی');
+    const next=[...d.querySelectorAll('#evtFs button')].find(b=>b.getAttribute('onclick').includes('evtFs(0,32)'));
     check(!!next,'large storage listings offer access to remaining files');
     w.confirm=()=>false;await w.uiAction(remove[0],()=>w.evtDelete('/users.json'),true);
     check(!deletes.length && disk.length===3,'cancel never sends a delete request');

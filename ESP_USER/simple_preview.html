@@ -25,7 +25,7 @@ body[data-theme="0"]{
  --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg),var(--acglow);
 }
 *{box-sizing:border-box;margin:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;background:#070a10;color-scheme:dark}
 body{
  background:
   radial-gradient(900px 500px at 10% -10%,var(--acbg),transparent 60%),
@@ -44,7 +44,7 @@ header{
  position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;
  padding:14px 6px;margin:0 -16px 20px;padding-left:16px;padding-right:16px;
  background:rgba(7,10,16,.72);backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);
- border-bottom:1px solid var(--ln);transition:.3s;
+ border-bottom:1px solid var(--ln);transition:background .3s,border-color .3s;
 }
 header .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-.2px}
 header .brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:14px;box-shadow:var(--acglow),0 4px 12px var(--acbg);position:relative;overflow:hidden}
@@ -368,18 +368,44 @@ canvas{height:auto;max-width:100%}
 .gate{position:fixed;inset:0;background:rgba(4,7,13,.72);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px}
 .gate[hidden],#adminCard[hidden],[data-admin][hidden]{display:none!important}
 .gatebox{background:var(--cd);border:1px solid var(--ln2);border-radius:16px;padding:18px;width:min(340px,100%);display:grid;gap:10px;box-shadow:var(--sh)}
-.gatebox input,.arow input,.arow select{width:100%;background:var(--in);border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit;padding:8px 10px;min-height:34px}
+.gatebox input{width:100%;background:var(--in);border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit;padding:8px 10px;min-height:34px}
 .gmsg{font-size:11px;color:var(--wa);min-height:14px;line-height:1.5}
 .gmsg.ok{color:var(--ok)}
-.arow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 0;border-top:1px solid var(--ln)}
-.arow > span{color:var(--mu);font-size:11px;min-width:64px}
-.arow input,.arow select{flex:1 1 110px;min-width:0}
-.arow .btn{white-space:nowrap}
 
 .glyph{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;flex:none}
 button:disabled,a[aria-busy="true"]{opacity:.55;cursor:wait;pointer-events:none}button[aria-busy="true"]{box-shadow:inset 0 -2px var(--ac)}
 button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset:3px}
 @supports not (backdrop-filter:blur(1px)){.cd,nav,header{background:#121826}}
+/* Grouped settings and compact local SVG actions. */
+#settingsContent{display:grid;gap:12px}nav button{display:flex;align-items:center;justify-content:center;gap:6px}
+.setting-panel{padding:0;min-width:0}
+.setting-panel>summary{display:flex;align-items:center;gap:10px;padding:16px;cursor:pointer;list-style:none;font-size:13px;font-weight:800}
+.setting-panel>summary::-webkit-details-marker{display:none}
+.setting-panel>summary .summary-note{margin-right:auto;font-size:10px;color:var(--mu);font-weight:500}
+.setting-panel>summary::after{content:'›';color:var(--mu);font-size:20px;transition:transform .15s}
+.setting-panel[open]>summary::after{transform:rotate(-90deg)}
+.setting-panel>summary:focus-visible{outline:2px solid var(--ac2);outline-offset:-4px;border-radius:12px}
+.setting-body{padding:0 16px 16px;min-width:0}
+.settings-grid,.settings-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
+.setting-block{padding:12px;background:var(--in);border:1px solid var(--ln);border-radius:12px;min-width:0}
+.setting-block h3{display:flex;align-items:center;gap:8px;font-size:12px;margin:0 0 12px}
+.setting-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;font-size:11px;overflow-wrap:anywhere}
+.setting-row>span,.field>span{color:var(--mu)}
+.setting-note{font-size:10.5px;color:var(--mu);line-height:1.8;margin:8px 0 0}
+.field{display:grid;gap:6px;min-width:0;font-size:11px}
+.settings-form input,.settings-form select{width:100%;min-width:0;min-height:38px;background:var(--in);border:1px solid var(--ln);border-radius:9px;color:var(--tx);font:inherit;padding:8px 10px}
+.settings-form .form-actions{grid-column:1/-1}
+.action-row,.form-actions,.log-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn.action{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;min-height:38px;font-size:11px;line-height:1.4;white-space:nowrap;text-decoration:none}
+.btn.action .glyph{width:17px;height:17px}
+.log-tools{margin:0 0 12px}.log-tools select{flex:1;min-width:120px;max-width:220px}
+.icog{flex-wrap:wrap}.icog .btn.ico{min-height:40px;min-width:40px}
+.admin-section{margin-top:12px;border:1px solid var(--ln);border-radius:12px}
+.admin-section>summary{padding:12px;font-size:12px}.admin-section .setting-body{padding:0 12px 12px}
+.admin-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.admin-head h2{margin:0;font-size:13px}.admin-head #admWho{margin-left:auto;color:var(--mu);font-size:10px}
+.danger-zone{border-color:var(--erbd)}.danger-zone>summary{color:var(--er)}
+.file-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:11px}.file-row>span:first-child{min-width:0;overflow-wrap:anywhere}.file-meta{display:flex;align-items:center;gap:6px;flex:none}
+@media(max-width:480px){.setting-panel>summary .summary-note{display:none}.setting-body{padding:0 12px 12px}.btn.action{min-height:40px}.action-row{gap:6px}.icog .btn.ico{width:40px;padding:0}.icog .btn.ico .lbl{display:none}.icog .btn.ico.danger{width:auto;padding:0 9px}.icog .btn.ico.danger .lbl{display:inline}}
 </style>
 <!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فایل تولیدشده، دستی ویرایش نشود -->
 <style>
@@ -1226,15 +1252,15 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 })();
 </script>
 </head>
-<body data-theme="0"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-memory" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M20 12a8 8 0 0 0-14-5M4 12a8 8 0 0 0 14 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/></symbol></defs></svg>
+<body data-theme="0"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-memory" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M20 12a8 8 0 0 0-14-5M4 12a8 8 0 0 0 14 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></symbol><symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3M4 10h16v11H4ZM12 14v3"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM11 11v10m0-4h4m-4 3h3"/></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H4V3h5m5 4 5 5-5 5m-6-5h13"/></symbol><symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 8M3 4v6h6"/></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M14 4h-4L8 7H3v14h18V7h-5ZM16 14a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol><symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h5v18h-5M9 7l5 5-5 5M3 12h11"/></symbol><symbol id="i-next" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol><symbol id="i-first" viewBox="0 0 24 24"><path d="M17 6 11 12l6 6M6 6v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H4v20h16V8ZM14 2v6h6"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-5 4 3 5-7"/></symbol></defs></svg>
 <header>
  <div class="brand"><div class="brand-mark">CO</div><div class="brand-text"><b>ChangeOver</b><span>SMART BATTERY • INDUSTRIAL</span></div></div>
  <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span></div>
 </header>
 <nav>
- <button id="tab0" class="a" onclick="showTab(0)">وضعیت</button>
- <button id="tab1" onclick="showTab(1)">نمودارها</button>
- <button id="tab2" onclick="showTab(2)">تنظیمات</button>
+ <button id="tab0" class="a" aria-label="وضعیت" onclick="showTab(0)"><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg><span>وضعیت</span></button>
+ <button id="tab1" aria-label="نمودارها" onclick="showTab(1)"><svg class="glyph" aria-hidden="true"><use href="#i-chart"/></svg><span>نمودارها</span></button>
+ <button id="tab2" aria-label="تنظیمات" onclick="showTab(2)"><svg class="glyph" aria-hidden="true"><use href="#i-settings"/></svg><span>تنظیمات</span></button>
 </nav>
 <main>
  <div id="pg0" class="pgx a">
@@ -1417,70 +1443,59 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
   </div>
  </div>
 
- <div id="pg2" class="pgx">
-  <div id="settingsContent" style="display:grid;gap:16px">
- <div class="cd" id="evtCard">
-  <div class="ti">تاریخچهٔ وضعیت (لاگ)</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+ <div id="pg2" class="pgx"><div id="settingsContent">
+<details class="cd setting-panel" id="connectionSettings" open>
+<summary><svg class="glyph" aria-hidden="true"><use href="#i-wifi"/></svg><span>اتصال و ساعت</span><span class="summary-note">همگام‌سازی خودکار</span></summary>
+<div class="setting-body settings-grid">
+<section class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-wifi"/></svg>وای‌فای</h3><div class="setting-row"><span>نام شبکه</span><b id="wifiCurrentSsid" dir="auto">--</b></div><p class="setting-note">تغییر شبکه فقط با مدیر.</p></section>
+<section class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-clock"/></svg>ساعت</h3><div class="setting-row"><span>این دستگاه</span><b id="phoneTime">--</b></div><div class="setting-row"><span>پنل / برد</span><b id="boardTimeSet">--</b></div><p class="setting-note">همگام‌سازی خودکار؛ بدون ورود و دکمه.</p></section>
+</div></details>
+<details class="cd setting-panel" id="evtCard">
+ <summary><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span>حافظه و تاریخچه</span><span class="summary-note">فایل‌ها و رویدادها</span></summary><div class="setting-body">
+  <div class="log-tools">
    <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
    <span class="icog">
-    <button class="btn ico" type="button" title="حافظهٔ ESP" aria-label="حافظهٔ ESP" onclick="uiAction(this,()=>evtFs(1))"><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span class="lbl">حافظهٔ ESP</span></button>
-    <button class="btn ico" type="button" title="بروزرسانی فهرست" aria-label="بروزرسانی فهرست" onclick="uiAction(this,()=>evtFs(0))"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg><span class="lbl">بروزرسانی</span></button>
-    <button class="btn ico" type="button" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها" onclick="uiAction(this,()=>evtDlAll())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">دانلود همه</span></button>
-    <button id="evtFormat" data-admin hidden class="btn ico danger" type="button" title="فرمت کامل حافظه" aria-label="فرمت کامل حافظه" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span class="lbl">فرمت حافظه</span></button>
+    <button class="btn ico" type="button" title="حافظهٔ ESP" aria-label="حافظهٔ ESP" onclick="uiAction(this,()=>evtFs(1))"><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span class="lbl">حافظه</span></button>
+    <button class="btn ico" type="button" title="بروزرسانی فهرست" aria-label="بروزرسانی فهرست" onclick="uiAction(this,()=>evtFs(0))"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg><span class="lbl">تازه‌سازی</span></button>
+    <button class="btn ico" type="button" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها" onclick="uiAction(this,()=>evtDlAll())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">دانلود</span></button>
+    <button id="evtFormat" data-admin hidden class="btn ico danger" type="button" title="فرمت کامل حافظه" aria-label="فرمت کامل حافظه" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span class="lbl">فرمت</span></button>
    </span>
   </div>
   <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
   <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
   <div id="evtSt" style="font-size:11px;color:var(--mu);min-height:16px"></div>
   <div id="evtList" style="max-height:300px;overflow:auto;font-size:12px;line-height:1.9;border-top:1px solid var(--ln);margin-top:6px">در حال خواندن…</div>
-</div>
-   <div class="cd">
-    <div class="ti">وای‌فای</div>
-    <div class="form">
-     <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
-     <div class="lh6">تغییر نام و رمز وای‌فای از این پنل انجام نمی‌شود.</div>
-    </div>
-   </div>
-
-   <div class="cd">
-    <div class="ti">ساعت برد</div>
-    <div class="form">
-     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:Vazirmatn">--</b></div>
-     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:Vazirmatn">--</b></div>
-     <div class="lh6">ساعت به‌صورت خودکار با گوشی یا کامپیوتر شما همگام می‌شود؛ نیازی به ورود یا زدن دکمه نیست.</div>
-    </div>
-   </div>
-
-   <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
-   <div class="cd" id="technicalInfo">
-    <div class="ti">اطلاعات فنی</div>
-    <div lang="en" dir="ltr" style="text-align:left;font-size:12px;line-height:1.9;overflow-wrap:anywhere">
-     <div id="linkState">Link: --</div>
-     <div id="seqInfo">Frames: -- | Last update: -- ms ago</div>
-    </div>
-   </div>
-   <div class="cd" id="adminCard" hidden>
-    <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="uiAction(this,()=>admLogout(),true)">خروج</button></div>
-    <div class="arow"><span>قفل خطا</span><button class="btn bs"  onclick="uiAction(this,()=>admPost('/latch/reset',{n:5},'قفل خطا ریست شد'),true)">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد'),true)">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد'),true)">ریست ضعیف</button></div>
-    <div class="arow"><span>فایل لاگ</span><button class="btn bs"  onclick="uiAction(this,()=>admPost('/evt/snap',{},'عکس لحظه ثبت شد'),true)">عکس لحظه</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/evt/clr',{},'همهٔ لاگ‌ها پاک شد'),true)">پاک‌کردن همهٔ لاگ‌ها</button><a class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" href="/evt/dl" onclick="uiAction(this,()=>admDl());return false">دانلود</a></div>
-    <div class="arow"><span>وای‌فای</span><input id="admSsid" placeholder="نام وای‌فای"><input id="admWpass" type="password" placeholder="رمز (۸ کاراکتر یا بیشتر)"><button class="btn bs"  onclick="uiAction(this,()=>admWifi(),true)">ذخیره</button></div>
-    <div class="arow"><span>رمز مدیر</span><input id="admOld" type="password" placeholder="رمز فعلی"><input id="admNew" type="password" placeholder="رمز تازه"><input id="admNew2" type="password" placeholder="تکرار رمز تازه"><button class="btn bs"  onclick="uiAction(this,()=>admPass(),true)">تغییر</button></div>
-    <div class="arow"><span>تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">عیب‌یابی</option></select><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admClear(),true)">پاک‌کردن</button></div>
-    <div class="arow"><span>حافظهٔ ESP</span><button id="admFormat" class="btn danger bs" onclick="uiAction(this,()=>evtfmt(),true)">فرمت کامل حافظه</button></div>
-    <div class="gmsg" id="admCardMsg"></div>
-   </div>
-
-  </div>
- </div>
+</div></details>
+<details class="cd setting-panel" id="technicalInfo"><summary><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg><span>اطلاعات فنی</span><span class="summary-note">برد و ارتباط</span></summary><div class="setting-body settings-grid">
+<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-settings"/></svg>اطلاعات برد</h3><div id="boardInfo" class="log">--</div></div>
+<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg>ارتباط زنده</h3><div lang="en" dir="ltr" style="text-align:left;font-size:11px;line-height:1.9;overflow-wrap:anywhere"><div id="linkState">Link: --</div><div id="seqInfo">Frames: -- | Last update: -- ms ago</div></div></div>
+</div></details>
+<section class="cd" id="adminCard" hidden><div class="admin-head"><h2><svg class="glyph" aria-hidden="true"><use href="#i-lock"/></svg> مدیریت</h2><span id="admWho"></span><button class="btn action" type="button" title="خروج" aria-label="خروج"  onclick="uiAction(this,()=>admLogout(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-logout"/></svg><span>خروج</span></button></div><details class="setting-panel admin-section" open><summary><svg class="glyph" aria-hidden="true"><use href="#i-key"/></svg><span>امنیت و شبکه</span></summary>
+<div class="setting-body"><h3 class="ti">رمز مدیر</h3>
+<div class="settings-form"><label class="field" for="admOld"><span>رمز فعلی</span><input id="admOld" type="password" autocomplete="current-password" placeholder="رمز فعلی"></label>
+<label class="field" for="admNew"><span>رمز تازه</span><input id="admNew" type="password" autocomplete="new-password" placeholder="رمز تازه"></label>
+<label class="field" for="admNew2"><span>تکرار رمز</span><input id="admNew2" type="password" autocomplete="new-password" placeholder="تکرار رمز"></label>
+<div class="form-actions"><button class="btn action" type="button" title="تغییر رمز مدیر" aria-label="تغییر رمز مدیر" id="admPassBtn" onclick="uiAction(this,()=>admPass(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-key"/></svg><span>تغییر</span></button></div></div><h3 class="ti" style="margin-top:16px">وای‌فای</h3>
+<div class="settings-form"><label class="field" for="admSsid"><span>نام شبکه</span><input id="admSsid" placeholder="نام شبکه"></label>
+<label class="field" for="admWpass"><span>رمز شبکه</span><input id="admWpass" type="password" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر"></label>
+<div class="form-actions"><button class="btn action" type="button" title="ذخیره تنظیمات وای‌فای" aria-label="ذخیره تنظیمات وای‌فای" id="admWifiBtn" onclick="uiAction(this,()=>admWifi(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-save"/></svg><span>ذخیره</span></button></div></div></div></details>
+<details class="setting-panel admin-section"><summary><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>بازیابی خطا</span></summary>
+<div class="setting-body action-row"><button class="btn action" type="button" title="ریست قفل خطا" aria-label="ریست قفل خطا"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:5},'قفل خطا ریست شد','ریست قفل بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست قفل</span></button><button class="btn action" type="button" title="پاک‌کردن ماسک باتری مرده" aria-label="پاک‌کردن ماسک باتری مرده"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:6},'ماسک باتری مرده پاک شد','ماسک باتری مرده پاک شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست خرابی</span></button><button class="btn action" type="button" title="ریست قفل باتری ضعیف" aria-label="ریست قفل باتری ضعیف"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:8},'ریست ضعیف انجام شد','قفل باتری ضعیف بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست ضعف</span></button></div></details>
+<details class="setting-panel admin-section"><summary><svg class="glyph" aria-hidden="true"><use href="#i-file"/></svg><span>ثبت و دانلود</span></summary>
+<div class="setting-body action-row"><button class="btn action" type="button" title="ثبت لحظه" aria-label="ثبت لحظه"  onclick="uiAction(this,()=>admPost('/evt/snap',{},'عکس لحظه ثبت شد'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-camera"/></svg><span>ثبت لحظه</span></button><button class="btn action" type="button" title="دانلود روز" aria-label="دانلود روز"  onclick="uiAction(this,()=>admDl())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span>دانلود روز</span></button></div></details>
+<details class="setting-panel admin-section danger-zone"><summary><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌سازی</span></summary>
+<div class="setting-body"><div class="settings-form"><label class="field" for="admClearType"><span>نوع تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">دیاگ</option></select></label>
+<div class="form-actions"><button class="btn action danger" type="button" title="پاک‌کردن تاریخچهٔ انتخاب‌شده" aria-label="پاک‌کردن تاریخچهٔ انتخاب‌شده"  onclick="uiAction(this,()=>admClear(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌کردن</span></button><button class="btn action danger" type="button" title="حذف لاگ" aria-label="حذف لاگ"  onclick="uiAction(this,()=>admConfirm('/evt/clr',{},'همهٔ لاگ‌ها پاک شد','همهٔ روزهای لاگ حذف شوند؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>حذف لاگ</span></button><button class="btn action danger" type="button" title="فرمت حافظه و حذف همهٔ تاریخچه‌ها" aria-label="فرمت حافظه و حذف همهٔ تاریخچه‌ها" id="admFormat" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>فرمت</span></button></div></div><p class="setting-note">حذف تاریخچه برگشت‌پذیر نیست؛ فرمت همهٔ تاریخچه‌ها را پاک می‌کند. رمزها حفظ می‌شوند.</p></div></details>
+<div class="gmsg" id="admCardMsg"></div></section>
+</div></div>
 
 <div id="chartTooltip" class="chart-tooltip"></div>
 <div id="toastMsg" role="status" aria-live="polite" aria-atomic="true" class="toast" style="display:none"></div><div class="footer"><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
 <div id="admGate" class="gate" hidden><div class="gatebox">
  <div class="ti" style="margin:0">دسترسی مدیر</div>
- <input id="admPass" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('admLoginBtn').click();}">
+ <input id="admPass" aria-label="رمز مدیر" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('admLoginBtn').click();}">
  <div class="gmsg" id="admMsg"></div>
- <div style="display:flex;gap:8px"><button class="btn" style="flex:1" id="admLoginBtn" onclick="uiAction(this,()=>admLogin(),true)">ورود</button><button class="btn gh" style="flex:1" onclick="admClose()">انصراف</button></div>
+ <div style="display:flex;gap:8px"><button class="btn action" type="button" title="ورود" aria-label="ورود" id="admLoginBtn" onclick="uiAction(this,()=>admLogin(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-login"/></svg><span>ورود</span></button><button class="btn action" type="button" title="انصراف" aria-label="انصراف"  onclick="admClose()"><svg class="glyph" aria-hidden="true"><use href="#i-x"/></svg><span>انصراف</span></button></div>
 </div></div>
 </main>
 <script>
@@ -2571,7 +2586,7 @@ function evtParse(line){
 
 const evtIso=s=>String(s==null?'':s).split(/([0-9A-Za-z][0-9A-Za-z.:%-]*)/).map((x,i)=>i%2?'<span class="lt">'+evtEsc(x)+'</span>':evtEsc(x)).join('');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
-let evtBusy=false,evtClkBusy=false,evtClkRetry=0,admToken='';
+let evtBusy=false,evtClkBusy=false,evtClkRetry=0,evtLogId=0,evtFsId=0,admToken='';
 try{admToken=sessionStorage.getItem('co_admin')||'';}catch(e){}
 function admTokenSet(t){
  admToken=/^[a-f0-9]{64}$/.test(t||'')?t:'';
@@ -2589,6 +2604,7 @@ async function evtHttp(u,m,ms){
  }finally{if(tm)clearTimeout(tm);}
 }
 function evtEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function actionIcon(name){return '<svg class="glyph" aria-hidden="true"><use href="#i-'+name+'"/></svg>';}
 function evtKb(b){return evtFaNum(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
 async function evtClock(){
  if(evtClkBusy)return;
@@ -2628,6 +2644,7 @@ function evtRenderFa(text,day,ram,src){
  }).join('');
 }
 async function evtFetch(manual){
+ const id=++evtLogId,epoch=historyEpoch;
  const sel=document.getElementById('evtDay');
  const day=sel?sel.value.trim():'';
  try{
@@ -2636,17 +2653,19 @@ async function evtFetch(manual){
   const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
   const ram=(src==='0'||src==='2'||src==='3');
   const t=await r.text();
+  if(id!==evtLogId||epoch!==historyEpoch)return;
   evtRenderFa(t,day,ram,src);
   const st=document.getElementById('evtSt');
   if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFaNum(lost)+' ردیف از دست رفت'):'');}
- }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
+ }catch(e){if(id!==evtLogId||epoch!==historyEpoch)return;const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
 }
 async function evtFs(toggle,offset){
  const box=document.getElementById('evtFs');if(!box)return;
+ const id=++evtFsId,key=admToken;
  if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
  box.style.display='block';box.innerHTML='<span style="color:var(--mu)">در حال خواندن حافظهٔ ESP…</span>';
  try{
-  const key=admToken,r=await evtHttp('/evt/fs'+(offset?'?offset='+offset:''),'GET',4000);if(key!==admToken)return;if(!r.ok)throw Error();const j=await r.json();
+  const r=await evtHttp('/evt/fs'+(offset?'?offset='+offset:''),'GET',4000);if(!r.ok)throw Error();const j=await r.json();if(key!==admToken||id!==evtFsId)return;
   const files=Array.isArray(j.files)?j.files:[];
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b></div>';
@@ -2662,17 +2681,17 @@ async function evtFs(toggle,offset){
     files.forEach(f=>{
      const m=/^\/evt-(\d{8})\.csv$/.exec(f.name);
      const nameHtml=m
-       ? '<button class="btn" title="دانلود لاگ همین روز" style="padding:0 6px;font-size:11px;min-height:22px" onclick="uiAction(this,()=>evtDlDay(\''+m[1]+'\'))">'+evtEsc(f.name)+'</button>'
+       ? '<button class="btn action" title="دانلود لاگ همین روز" onclick="uiAction(this,()=>evtDlDay(\''+m[1]+'\'))">'+actionIcon('download')+'<span dir="ltr">'+evtEsc(f.name)+'</span></button>'
        : '<span dir="ltr">'+evtEsc(f.name)+'</span>';
-     h+='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px dashed var(--ln);padding:2px 0"><span>'+nameHtml+'</span><span>'+evtKb(f.size)+(admReady?' <button class="btn danger" data-admin data-file="'+evtEsc(f.name)+'" onclick="uiAction(this,()=>evtDelete(this.dataset.file),true)">حذف</button>':'')+'</span></div>';
+     h+='<div class="file-row"><span>'+nameHtml+'</span><span class="file-meta">'+evtKb(f.size)+(admReady?' <button class="btn action danger" aria-label="حذف فایل" title="حذف همین فایل" data-admin data-file="'+evtEsc(f.name)+'" onclick="uiAction(this,()=>evtDelete(this.dataset.file),true)">'+actionIcon('trash')+'<span>حذف</span></button>':'')+'</span></div>';
     });
-    if(+j.next>0)h+='<button class="btn" onclick="uiAction(this,()=>evtFs(0,'+(+j.next)+'))">فایل‌های بعدی</button>';
-    if(offset)h+='<button class="btn" onclick="uiAction(this,()=>evtFs(0))">ابتدای فهرست</button>';
+    if(+j.next>0)h+='<button class="btn action" onclick="uiAction(this,()=>evtFs(0,'+(+j.next)+'))">'+actionIcon('next')+'<span>بعدی</span></button>';
+    if(offset)h+='<button class="btn action" onclick="uiAction(this,()=>evtFs(0))">'+actionIcon('first')+'<span>ابتدا</span></button>';
     h+='</div>';
    }
   }
   box.innerHTML=h;showToast('فهرست حافظه به‌روز شد');return j;
- }catch(e){showToast('خواندن حافظه انجام نشد');box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
+ }catch(e){if(key!==admToken||id!==evtFsId)return;showToast('خواندن حافظه انجام نشد');box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
 }
 async function evtDays(){
  try{
@@ -2784,6 +2803,7 @@ function admOpen(){
  if(pw){ pw.value=''; try{pw.focus();}catch(e){} }
 }
 function admClose(){
+ document.getElementById('admPass').value='';
  let g=document.getElementById('admGate'); if(!g) return;
  g.hidden=true;
  admSay('admMsg','');
@@ -2796,6 +2816,8 @@ function admUnlock(who){
  admSay('admCardMsg','');
 }
 function admLock(){
+ evtFsId++;
+ ['admPass','admOld','admNew','admNew2','admWpass'].forEach(id=>{document.getElementById(id).value='';});
  admReady=false;admTokenSet('');document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=true);
  const fs=document.getElementById('evtFs');if(fs){fs.innerHTML='';fs.style.display='none';}
  let c=document.getElementById('adminCard'); if(c) c.hidden=true;
@@ -2893,10 +2915,14 @@ function admPass(){
   if(j){ [o,n1,n2].forEach(function(el){ if(el) el.value=''; }); }
  });
 }
+function admConfirm(path,obj,msg,question){
+ if(!admReady){admOpen();return Promise.resolve(null);}
+ return confirm(question)?admPost(path,obj,msg):Promise.resolve(null);
+}
 function admClear(){
  let sel=document.getElementById('admClearType');
  let t=sel?sel.value:'all';
- return admPost('/clear',{type:t}, 'تاریخچه پاک شد');
+ return admConfirm('/clear',{type:t},'تاریخچه پاک شد','تاریخچهٔ «'+sel.options[sel.selectedIndex].text+'» پاک شود؟');
 }
 
 function redrawCharts(){
