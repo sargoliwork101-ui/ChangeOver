@@ -1346,15 +1346,10 @@ def sec_preview():
            "ESP_Calibration/panel_preview.html is stale",
            "plink_panel.h changed without re-running tools/make_panel_preview.py, "
            "so the preview shows an older page than the firmware serves")
-        ok("OFFLINE SHIM" in after and after.index("OFFLINE SHIM") < after.index("function qgraph"),
-           "the preview's offline shim must be injected BEFORE the panel script",
-           "otherwise fetch is replaced too late and the page stays empty")
-    # [EN] Both simulators must speak the CURRENT frame. The Node server
-    #      hardcoded a 20-field telemetry array while the link had carried 25
-    #      since v1.25, so indices 20..24 - the raw ADC counts the whole
-    #      calibration effort now rests on - read back undefined in the
-    #      preview, and the version-mismatch banner could never be seen
-    #      because vm/ce were absent. Neither simulator may retype the width.
+        ok("OFFLINE SHIM" not in after and "window.fetch =" not in after
+           and "preview-bench.js" not in after,
+           "the generated panel must not embed a simulator or demo controls")
+    # [EN] Only the external Node test server simulates telemetry now.
     cfg = read("ESP_Calibration/plink_config.h")
     m = re.search(r"#define\s+ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u?", cfg)
     n_fields = int(m.group(1)) if m else -1
@@ -1364,22 +1359,18 @@ def sec_preview():
     #      the derivation out while leaving the comment behind would pass. The
     #      comments go first, then the question is asked.
     prev_js = live(PREV)
-    gen_py = live(read("tools/make_panel_preview.py"))
     ok("ESP_LINK_TLM_FIELD_COUNT" in prev_js,
        "the preview server must DERIVE the telemetry width from plink_config.h",
        "a retyped width silently truncates the frame when a field is added")
-    ok("ESP_LINK_TLM_FIELD_COUNT" in gen_py,
-       "the preview generator must DERIVE the telemetry width from plink_config.h",
-       "a retyped width silently truncates the frame when a field is added")
-    # no literal array of the old width may survive in either simulator
-    for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+    # [EN] The external simulator must not hardcode an obsolete telemetry width.
+    for name, src in (("preview server", prev_js),):
         lits = re.findall(r"new Array\((\d+)\)", src)
         ok(not lits,
            f"the {name} still builds a fixed-length telemetry array",
            f"literal length(s) {', '.join(lits)} - derive from "
            f"ESP_LINK_TLM_FIELD_COUNT ({n_fields}) instead")
-    # the link-health counters must exist on both, or the banner is untestable
-    for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+    # [EN] The external simulator must expose link-health counters.
+    for name, src in (("preview server", prev_js),):
         missing = [k for k in ("vm", "ce") if not re.search(r"\b" + k + r"\s*:", src)]
         ok(not missing,
            f"the {name} does not publish link health {missing}",
@@ -1390,7 +1381,7 @@ def sec_preview():
     comp_off = re.search(r"#define\s+CAL_BATTERY12_BENCH_COMP_ENABLE\s+0u",
                          read("Firmware/Modules/Measurement/calibration.h"))
     if comp_off:
-        for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+        for name, src in (("preview server", prev_js),):
             ok(not re.search(r"t\[16\]\s*=\s*[^;]*\b150\b", src),
                f"the {name} still applies the disabled 12 V bench compensation",
                "CAL_BATTERY12_BENCH_COMP_ENABLE is 0, so battery12 == batteryLow")

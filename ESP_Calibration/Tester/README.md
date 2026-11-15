@@ -366,3 +366,33 @@ there are no storage, math, transport, Firmware or ESP_USER changes. Embedded
 HTML is 490178 bytes including NUL, within the 491520-byte transfer ceiling.
 Documentation and the generated user manual are updated. These are DOM/host/
 simulator checks, not pixel/screenshot validation or native ESP/hardware tests.
+
+### Outline icons and simulation-free generated panel
+
+The real bench now uses shared local outline SVG paths (20px artwork, 44px
+routine touch targets); no icon font, CDN or framework is added. The icon suite
+now has 28 checks, including consistent stroke/viewBox, explicit SVG dimensions,
+decorative accessibility and line icons in the active capture form. Original
+write/delete labels, locks, confirmations and action bindings remain intact.
+
+`make_panel_preview.py` no longer contains or injects an offline simulator.
+The generated HTML is a layout copy with the real font; it does not manufacture
+telemetry or successful command replies. For live behavior use an ESP or the
+separate Node test server. Normal Node previews load no demo toolbar or automatic
+sample fixtures; `/preview-bench.js` returns 404 unless explicitly started with
+`PREVIEW_BENCH_DEMO=1`. This flag is only for test tooling, never ESP firmware.
+The HTTP regression opts in for its existing capture tests, and separately
+checks the default page, disabled endpoint, empty sample list and generated HTML.
+
+Validation: 619 host / 13 labels / 287 existing DOM / 46 repeat / 20 point-edit /
+15 storage / 47 revision / 30 restore / 28 icon checks PASS, with no DOM skips.
+22 HTTP integration checks and scenario-5/6 self-tests PASS. Rules, host syntax,
+fault-bit mapping, project and module contract checks PASS; project-contract
+unit tests 10 PASS; consistency audit 564 invariants / zero findings. Removed
+three generator-simulation invariants because that simulator no longer exists;
+external-server telemetry coverage remains. `git diff --check` is clean.
+Embedded HTML including NUL is 490503 bytes (limit 491520). The calculation and
+serialization cores calpush/calnorm/calfit/calbuild/lpack/wrow are unchanged.
+Firmware and ESP_USER are untouched. No native ESP build, hardware test or
+pixel/screenshot validation was performed. Removing preview-only simulation
+saves no ESP flash: it was never embedded in the board's HTML.

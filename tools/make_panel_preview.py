@@ -1,37 +1,7 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-make_panel_preview.py - build a STANDALONE html copy of the ESP panel.
-
-[EN] WHY
-     The panel lives inside the firmware as a PROGMEM raw string, so the only
-     ways to look at it were to flash an ESP or to run the Node preview server.
-     This writes one self-contained .html file that opens straight off disk
-     with no server, no board and no network - useful for reviewing layout,
-     showing someone the page, or checking a change on a machine that has
-     nothing installed.
-
-     It is GENERATED, never hand-edited: the markup is extracted verbatim from
-     plink_panel.h, so the preview cannot drift from the firmware the way a
-     hand-kept copy would. Every table this project has duplicated by hand has
-     eventually gone stale; this one is regenerated instead.
-
-     The only thing added is a fetch() shim, injected BEFORE the panel's own
-     script, which answers /t and /m from a small in-page simulation of a
-     charge cycle. The panel code itself is untouched.
-
-[FA] چرا
-     پنل داخل فرم‌ور به‌صورت رشتهٔ PROGMEM است، پس تنها راه دیدنش فلش‌کردن ESP یا
-     اجرای سرور Node بود. این اسکریپت یک فایل html خودکفا می‌سازد که مستقیم از
-     روی دیسک باز می‌شود - بدون سرور، بدون برد، بدون شبکه.
-     فایل «تولید» می‌شود و هرگز دستی ویرایش نمی‌شود: مارک‌آپ عیناً از
-     plink_panel.h بیرون کشیده می‌شود، پس پیش‌نمایش نمی‌تواند از فرم‌ور جدا بیفتد.
-     هر جدولی که در این پروژه دستی تکرار شده، بالاخره کهنه شده است.
-     تنها چیزی که اضافه می‌شود یک shim برای fetch است که پیش از اسکریپت خود پنل
-     تزریق می‌شود و /t و /m را از یک شبیه‌سازی کوچک چرخهٔ شارژ جواب می‌دهد.
-
-Run: python3 tools/make_panel_preview.py
-Out: ESP_Calibration/panel_preview.html
+"""Generate the real panel with its embedded font, without simulation or fetch overrides.
+The standalone file is a layout copy. It needs the preview HTTP server or an ESP
+for live data; it must never invent successful board replies or calibration data.
 """
 import json
 import re
@@ -40,221 +10,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "ESP_Calibration" / "plink_panel.h"
 FONT = ROOT / "ESP_Calibration" / "plink_font.h"
-PREV = ROOT / "tools" / "panel_preview_server.js"
-CFG = ROOT / "ESP_Calibration" / "plink_config.h"
-BSP = ROOT / "Firmware" / "Bsp" / "Src" / "bsp_measurement.c"
 OUT = ROOT / "ESP_Calibration" / "panel_preview.html"
-def c_define(path, name):
-    """[EN] One unsigned #define, read from the firmware. Dies loudly if the
-       name moved, because a silently-missing constant is how the shim drifted
-       away from the frame in the first place.
-       [FA] یک #define بدون علامت از فرم‌ور. اگر نام جابه‌جا شود با صدای بلند
-       می‌میرد، چون ثابتی که بی‌صدا غایب شود همان راهی است که شیم از ابتدا از
-       قاب فاصله گرفت."""
-    m = re.search(r"#define\s+" + name + r"\s+(\d+)u?(?![0-9A-Za-z_])",
-                  path.read_text(encoding="utf-8"))
-    if not m:
-        sys.exit("could not read %s from %s" % (name, path.name))
-    return int(m.group(1))
-def tlm_fields():
-    """[EN] Telemetry width, from the firmware header. / [FA] عرض تله‌متری."""
-    return c_define(CFG, "ESP_LINK_TLM_FIELD_COUNT")
-def divider_scales():
-    """[EN] mV per ADC count for the 24 V and 12 V nets, derived from the BSP
-       resistors exactly as bsp_measurement.c derives them, so the simulated
-       raw counts reconstruct the simulated volts.
-       [FA] میلی‌ولت بر هر شمارش ADC برای نت‌های ۲۴ و ۱۲ ولت، از مقاومت‌های BSP
-       دقیقاً به همان روش bsp_measurement.c مشتق می‌شود تا شمارش خام شبیه‌سازی
-       همان ولتاژ شبیه‌سازی را بازبسازد."""
-    vref = c_define(BSP, "BSP_MEASUREMENT_VREF_MV")
-    full = c_define(BSP, "BSP_MEASUREMENT_ADC_FULL_SCALE")
-    shunt = c_define(BSP, "BSP_MEASUREMENT_SENSE_SHUNT_OHMS")
-    top24 = c_define(BSP, "BSP_MEASUREMENT_SENSE_TOP_24V_OHMS")
-    top12 = c_define(BSP, "BSP_MEASUREMENT_DIV12_TOP_OHMS")
-    lsb = vref / full
-    return (lsb * (top24 + shunt) / shunt,
-            lsb * (top12 + shunt) / shunt,
-            round(1200 / vref * full),
-            vref)
 def panel_html():
-    """[EN] The raw string, verbatim. / [FA] رشتهٔ خام، عیناً."""
-    s = SRC.read_text(encoding="utf-8")
-    a = s.index('R"HTML(') + len('R"HTML(')
-    b = s.rindex(')HTML"')
-    return s[a:b]
+    """Extract the embedded HTML verbatim."""
+    source = SRC.read_text(encoding="utf-8")
+    start = source.index('R"HTML(') + len('R"HTML(')
+    return source[start:source.rindex(')HTML"')]
 def font_css():
-    """[EN] Extract the same embedded Vazirmatn CSS served by the ESP.
-       [FA] همان CSS فونت وزیرمتن جاسازی‌شده در ESP را بیرون می‌کشد."""
-    s = FONT.read_text(encoding="utf-8")
-    start = s.index("static const char ESP_PANEL_FONT_CSS")
-    eq = s.index("=", start) + 1
-    end = s.index(";\n", eq)
-    block = s[eq:end]
-    literals = re.findall(r'"(?:\\.|[^"\\])*"', block)
-    return "".join(json.loads(x) for x in literals)
-def factory_params():
-    """[EN] Boot defaults, taken from the preview server so there is ONE list,
-       not a third hand-written copy. tools/audit_consistency.py already pins
-       that list against the firmware.
-       [FA] پیش‌فرض‌ها از سرور پیش‌نمایش خوانده می‌شوند تا نسخهٔ دستی سومی ساخته
-       نشود؛ ممیز خودکار همان فهرست را در برابر فرم‌ور قفل کرده است."""
-    js = PREV.read_text(encoding="utf-8")
-    m = re.search(r"const P = \[(.*?)\];", js, re.S)
-    if not m:
-        sys.exit("could not read the default parameter list from the preview server")
-    body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
-    return [int(x) for x in body.replace("\n", " ").split(",") if x.strip()]
-SHIM = """<script>
-/* ============================================================================
-   [EN] OFFLINE SHIM - generated by tools/make_panel_preview.py, not part of the
-        firmware. It replaces fetch() so the panel below runs with no server,
-        answering /t and /m from a small simulation of one charge cycle:
-        BULK (constant current, voltage climbing) -> ABSORB (constant voltage,
-        current tapering) -> FLOAT (parked) -> reentry. That is exactly the
-        path the new current-voltage chart draws, so the live dots walk along
-        it. Writes (/s) are accepted and remembered, so the inputs behave.
-   [FA] شیم آفلاین - ساختهٔ اسکریپت تولید، جزو فرم‌ور نیست. fetch را جایگزین
-        می‌کند تا پنل بدون هیچ سروری کار کند و /t و /m را از شبیه‌سازی کوچکی از
-        یک چرخهٔ شارژ جواب دهد: Bulk، Absorb، Float، بازگشت - همان مسیری که
-        نمودار جریان-ولتاژ رسم می‌کند، پس نقطه‌های زنده روی آن راه می‌روند.
-   ========================================================================== */
-(function(){
-const P = __PARAMS__;
-let T0 = Date.now();
-let seq = 0;
-let latchRep = 1, latchId = 0, latchVal = 0;
-
-/* one full cycle in ~75 s so the chart visibly walks the CC/CV path */
-function sim(){
-  const t = ((Date.now()-T0)/1000) % 75;
-  let st, v, i;
-  if(t < 30){                      /* BULK: current held, voltage climbing   */
-    st = 1; i = P[25]; v = 12400 + (14300-12400)*(t/30);
-  } else if(t < 55){               /* ABSORB: voltage held, current tapering */
-    const k = (t-30)/25;
-    st = 2; v = 14400; i = Math.max(P[26]*0.8, P[25]*Math.exp(-3.2*k));
-  } else if(t < 68){               /* FLOAT: parked                          */
-    st = 3; v = 13500; i = 0;
-  } else {                         /* sagging back toward reentry            */
-    st = 3; v = 13500 - (13500-12700)*((t-68)/7); i = 0;
-  }
-  return {st:st, v:Math.round(v), i:Math.round(i)};
-}
-
-function tlm(){
-  const a = sim();
-  /* the upper battery runs a little behind the lower one, so the two dots are
-     distinguishable on the chart instead of sitting on top of each other */
-  const b = sim(); b.v = Math.round(a.v*0.965); b.i = Math.round(a.i*0.88);
-  const v12 = a.v, vhigh = b.v, v24 = v12 + vhigh;
-  const t = new Array(__TLMN__).fill(0);
-  t[3]  = b.i; t[4] = b.i; t[5] = 180; t[6]  = b.st;   /* channel 1 = Vhigh */
-  t[10] = a.i; t[11] = a.i; t[12] = 190; t[13] = a.st; /* channel 2 = Vlow  */
-  t[14] = 24160; t[15] = v24; t[16] = v12; t[17] = v12; t[18] = vhigh; t[19] = 0;
-  /* raw counts derived from the volts above, so count x scale == the mV shown
-     (t[20] used to be a hand-typed 2687, which claimed 23819 mV while t[14]
-     said 24160 - a 341 mV lie sitting on the calibration page) */
-  const cnt = (mv,sc) => Math.max(0, Math.min(__FULL__, Math.round(mv/sc)));
-  t[20] = cnt(t[14], __S24__); t[21] = cnt(v24, __S24__);
-  t[22] = cnt(v12, __S12__);   t[23] = __VRI__; t[24] = __VDDA__;
-  /* v1.43 imbalance scenario 5 demo (mirrors tools/panel_preview_server.js) */
-  const imb=Math.abs(t[18]-t[17]); t[25]=imb;
-  const imbCyc=(Date.now()-T0)%120000; let fl2=0;
-  if(imbCyc<30000){t[26]=Math.round(imbCyc/30000*10);t[27]=0;fl2=(imb>P[108])?1:0;}
-  else if(imbCyc<75000){t[26]=10;t[27]=Math.round((imbCyc-30000)/1500);fl2=2|(P[117]?4:0)|1;}
-  else if(imbCyc<90000){t[26]=10;t[27]=20;fl2=2|4|8;}
-  else{t[26]=0;t[27]=0;fl2=0;}
-  const chgSec = (a.st===1||a.st===2) ? Math.floor(((Date.now()-T0)/1000)%75) : 0;
-  t[28] = 0; t[29] = chgSec; t[30] = chgSec;
-  seq = (seq+1) & 0xFFFF;
-  return {on:1, age:40, seq:seq, fl:0, fl2:fl2, n:seq, q:0, q2:0, q3:0, q4:0,
-          ka:120, vm:0, ce:0, t:t, p:P};
-}
-
-const origFetch = window.fetch;
-let simFiles=[{name:'/benchlog.csv',size:512,own:1},{name:'/old_config.dat',size:128,own:0}];
-window.fetch = function(url, opt){
-  const u = String(url);
-  let body;
-  if(u.indexOf('/t') === 0){
-    body = tlm();
-  } else if(u.indexOf('/m') === 0){
-    const d = tlm();
-    body = {n:10, s:d.t.map(x=>x*10), lo:d.t, hi:d.t, la:d.t,
-            or:0, seq:d.seq, fl:0};
-  } else if(u.indexOf('/s') === 0){
-    const q = /[?&]id=(\\d+)&v=(-?\\d+)/.exec(u);
-    if(q){ const id=+q[1], val=+q[2]; if(id>=0 && id<P.length) P[id]=val; }
-    body = {ok:1};
-  } else if(u.indexOf('/latch/reset') === 0){
-    const q = /[?&]n=(\\d+)/.exec(u);
-    const n = q ? +q[1] : 6;
-    T0 = Date.now();
-    latchId = (n === 5) ? 202 : 203;
-    latchVal = 0;
-    latchRep += (n === 5) ? 3 : 1;
-    body = {ok:1, n:n};
-  } else if(u.indexOf('/latch') === 0){
-    body = {q:0, id:latchId, val:latchVal, known:1, rep:latchRep, req:latchRep, nak:0, busy:0};
-  } else if(u.indexOf('/evt/fs') === 0){
-    const offset=Math.max(0,parseInt(new URL(u,'http://preview').searchParams.get('offset'),10)||0);
-    const used=simFiles.reduce((n,f)=>n+f.size,0);
-    body={fs:1,total:2097152,used,files:simFiles.slice(offset,offset+24),offset,more:Math.max(0,simFiles.length-offset-24)};
-  } else if(u.indexOf('/evt/clean') === 0){
-    const q=new URL(u,'http://preview').searchParams;
-    const before=simFiles.length;
-    simFiles=q.has('name')?simFiles.filter(f=>f.name!==q.get('name')):simFiles.filter(f=>f.own);
-    body={ok:1,removed:before-simFiles.length};
-  } else if(u.indexOf('/evt/pct') === 0){
-    body={ok:1,p:100,min:40,max:100};
-  } else if(u.indexOf('/benchlog') === 0){
-    body = {fs:1, size:0, max:102400, ok:1};
-  } else {
-    body = {ok:1};
-  }
-  return Promise.resolve(new Response(JSON.stringify(body),
-    {status:200, headers:{'Content-Type':'application/json'}}));
-};
-
-window.addEventListener('DOMContentLoaded', function(){
-  const n = document.createElement('div');
-  n.style.cssText = 'margin:10px 0;padding:9px 12px;border-radius:12px;'+
-    'border:1px dashed var(--ln);background:var(--rs);color:var(--mu);font-size:12.5px';
-  n.innerHTML = '\\u26A0 <b>پیش\\u200cنمایش آفلاین</b> \\u2014 این فایل از '+
-    '<code>plink_panel.h</code> تولید شده و داده\\u200cهایش شبیه\\u200cسازی است، نه از برد. '+
-    'یک چرخهٔ کامل شارژ هر ۷۵ ثانیه تکرار می\\u200cشود تا نقطه\\u200cهای باتری روی نمودار '+
-    'جریان\\u200c\\u2013ولتاژ حرکت کنند.';
-  document.body.insertBefore(n, document.body.firstChild);
-});
-})();
-</script>"""
+    """Decode the exact font CSS served by the ESP."""
+    source = FONT.read_text(encoding="utf-8")
+    start = source.index("static const char ESP_PANEL_FONT_CSS")
+    eq = source.index("=", start) + 1
+    end = source.index(";\n", eq)
+    literals = re.findall(r'"(?:\\.|[^"\\])*"', source[eq:end])
+    return "".join(json.loads(literal) for literal in literals)
 def main():
     html = panel_html()
-    css_font = font_css()
     link = '<link rel="stylesheet" href="/f.css?v=2">'
     if link not in html:
         sys.exit("panel markup has no /f.css link")
-    # Keep the standalone preview truly standalone: it gets the exact font
-    # CSS that the ESP serves, not a machine-dependent fallback font.
-    html = html.replace(link, '<style>' + css_font + '</style>', 1)
-    s24, s12, vrefint, vdda = divider_scales()
-    shim = (SHIM.replace("__PARAMS__", repr(factory_params()))
-                .replace("__TLMN__", str(tlm_fields()))
-                .replace("__FULL__", str(c_define(BSP, "BSP_MEASUREMENT_ADC_FULL_SCALE")))
-                .replace("__S24__", "%.4f" % s24)
-                .replace("__S12__", "%.4f" % s12)
-                .replace("__VRI__", str(vrefint))
-                .replace("__VDDA__", str(vdda)))
-    if "__" in re.sub(r"[A-Za-z0-9_]*__[A-Za-z0-9_]*\(", "", shim.replace("__PARAMS__", "")):
-        leftover = sorted(set(re.findall(r"__[A-Z0-9]+__", shim)))
-        if leftover:
-            sys.exit("unsubstituted placeholder(s) in shim: " + ", ".join(leftover))
-    # the shim must run BEFORE the panel's own script, so inject at </head>
-    if "</head>" not in html:
-        sys.exit("panel markup has no </head> to inject into")
-    out = html.replace("</head>", shim + "\n</head>", 1)
-    OUT.write_text(out, encoding="utf-8")
+    html = html.replace(link, '<style>' + font_css() + '</style>', 1)
+    OUT.write_text(html, encoding="utf-8")
     print("wrote %s (%.0f KB)" % (OUT.relative_to(ROOT), OUT.stat().st_size / 1024))
-    print("open it directly in a browser - no server needed")
+    print("no simulated data embedded; use the preview server or a real ESP")
 if __name__ == "__main__":
     main()

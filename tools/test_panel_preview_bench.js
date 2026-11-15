@@ -1,11 +1,25 @@
 /* [EN] Integration: real HTTP simulator + real panel + preview controls in jsdom. */
 'use strict';
-const assert=require('assert'),{spawn}=require('child_process'),path=require('path');
+const fs=require('fs'),assert=require('assert'),{spawn}=require('child_process'),path=require('path');
 let JSDOM;try{({JSDOM}=require('jsdom'));}catch(e){console.log('SKIP: jsdom missing; simulator bench integration did not run.');process.exit(0);}
 const pause=ms=>new Promise(r=>setTimeout(r,ms));let count=0;
 function check(value,msg){assert.ok(value,msg);++count;console.log('  ok   '+msg);}
 (async()=>{
- const child=spawn(process.execPath,[path.join(__dirname,'panel_preview_server.js')],{env:{...process.env,PORT:'0'},stdio:['ignore','pipe','pipe']});let dom;
+ // Normal previews must not silently opt into test fixtures, even if the parent does.
+ const normal=spawn(process.execPath,[path.join(__dirname,'panel_preview_server.js')],{env:{...process.env,PORT:'0',PREVIEW_BENCH_DEMO:'0'},stdio:['ignore','pipe','pipe']});let normalDom;
+ try{
+ const base=await new Promise((resolve,reject)=>{let logs='';const timer=setTimeout(()=>reject(Error('normal preview startup timeout')),10000);normal.stdout.on('data',buf=>{logs+=buf;const m=logs.match(/http:\/\/0\.0\.0\.0:(\d+)/);if(m){clearTimeout(timer);resolve('http://127.0.0.1:'+m[1]);}});normal.once('error',reject);normal.once('exit',code=>reject(Error('normal preview exited '+code)));});
+ const html=await (await fetch(base)).text();
+ check(!html.includes('src="/preview-bench.js"')&&!html.includes('OFFLINE SHIM'),'normal HTTP preview excludes demo script and offline simulator');
+ check((await fetch(base+'/preview-bench.js')).status===404,'demo script endpoint is disabled without explicit opt-in');
+ normalDom=await JSDOM.fromURL(base,{runScripts:'dangerously',resources:'usable',pretendToBeVisual:true,beforeParse(w){w.scrollTo=()=>{};w.fetch=(u,o)=>fetch(new URL(u,base),o);}});
+ await pause(700);
+ check(!normalDom.window.document.getElementById('demoBad')&&normalDom.window.CALS.length===0,'normal preview creates no demo controls or automatic calibration samples');
+ check(normalDom.window.document.getElementById('p1').classList.contains('a'),'normal preview still opens the real calibration tab');
+ const offline=fs.readFileSync(path.join(__dirname,'../ESP_Calibration/panel_preview.html'),'utf8');
+ check(!offline.includes('OFFLINE SHIM')&&!offline.includes('preview-bench.js')&&!/window\.fetch\s*=/.test(offline),'generated HTML contains no simulator, fetch override or test toolbar');
+ }finally{if(normalDom)normalDom.window.close();normal.kill();}
+ const child=spawn(process.execPath,[path.join(__dirname,'panel_preview_server.js')],{env:{...process.env,PORT:'0',PREVIEW_BENCH_DEMO:'1'},stdio:['ignore','pipe','pipe']});let dom;
  try{
  const base=await new Promise((resolve,reject)=>{let logs='';const timer=setTimeout(()=>reject(Error('server startup timeout')),10000);child.stdout.on('data',buf=>{logs+=buf;const m=logs.match(/http:\/\/0\.0\.0\.0:(\d+)/);if(m){clearTimeout(timer);resolve('http://127.0.0.1:'+m[1]);}});child.once('error',reject);child.once('exit',code=>reject(Error('server exited '+code)));});
  dom=await JSDOM.fromURL(base,{runScripts:'dangerously',resources:'usable',pretendToBeVisual:true,beforeParse(w){w.scrollTo=()=>{};w.fetch=(u,o)=>fetch(new URL(u,base),o);}});

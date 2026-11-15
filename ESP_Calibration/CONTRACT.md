@@ -105,7 +105,10 @@ count MAX merging, monotonicity checks, robust fit warnings and 24-point board
 capacity remain distinct rules; a warning does not establish a measurement error.
 
 Preview-only `tools/panel_preview_bench.js` provides labeled synthetic fixtures
-and DMM helpers, never embedded into ESP HTML. Existing browser samples are not
+and DMM helpers only with explicit `PREVIEW_BENCH_DEMO=1`, never embedded into ESP HTML.
+The default preview has no demo controls or automatic sample loading. Generated
+`panel_preview.html` contains no fetch shim or simulated replies; offline use is
+layout-only. The separate Node test server remains a simulation, not a real ESP. Existing browser samples are not
 overwritten automatically. The simulator honors manual channel/duty settings
 with stable demo measurements, accumulates real ticker-frame `/m` statistics and
 stores/downloads actual submitted CSV text in RAM, cleared on restart.
@@ -261,7 +264,8 @@ need no format/schema migration. Firmware and ESP_USER remain unchanged.
 
 ## Compact bench presentation
 
-Routine actions use compact icon controls with Persian aria-labels/native titles,
+Routine actions use shared local outline SVG paths (20px, currentColor, no icon
+font or CDN), with Persian aria-labels/native titles,
 44px minimum icon targets and visible keyboard focus. A collapsed native-details
 icon legend provides touch discovery; long static instructions and keyboard help
 also use native details. Live readings, warnings, checklist, samples and results
@@ -271,4 +275,4 @@ confirmation paths are retained. The sample-import label has keyboard button
 semantics (Tab, Enter/Space, with default scrolling prevented). Capture repeat
 and code/download actions remain separate. Table row height is not globally
 increased by the toolbar's touch sizing. No transport, math or storage change.
-The simulator-only action toolbar is shortened with the same named-icon pattern.
+The optional test-only demo toolbar is not loaded in normal previews.

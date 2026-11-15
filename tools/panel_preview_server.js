@@ -126,17 +126,15 @@ const HARD_MAX = Number(
       path.join(__dirname, "..", "Firmware", "Modules", "Charger", "charger.h"),
       "utf8"))[1]);
 
-/* [EN] Preview-only banner and calibration landing page. Fixture controls live
- * in a separate script and are never embedded in the ESP image. */
+/* [EN] Normal preview has no demo controls or automatic calibration fixtures.
+ * Test-only demonstrations require an explicit server flag; none is embedded in ESP. */
+const BENCH_DEMO=process.env.PREVIEW_BENCH_DEMO==='1';
 const inject = `<script>(function(){
-var b=document.createElement('div');
-b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
-b.textContent='پیش‌نمایش آفلاین — شبیه‌ساز STM32 + چرخه نمایشی سناریوها (شارژ/اضافه‌ولتاژ/قطع‌باتری/دشارژ). روی هر عدد آبی‌رنگ روی نمودار کلیک کنید تا همان‌جا ویرایش شود.';
-document.body.appendChild(b);document.body.style.paddingTop='32px';
+var b=document.createElement('span');b.className='lb';b.textContent='پیش‌نمایش؛ بدون اتصال به برد واقعی';document.querySelector('header').appendChild(b);
 var t0=document.querySelector('nav button[data-t="1"]');if(t0)t0.click();
-})();</script><script src="/preview-bench.js"></script></body></html>`;
-let page = html.replace("</body></html>", inject);
-if (page === html) page = html + inject; /* fallback: append */
+})();</script>${BENCH_DEMO?'<script src="/preview-bench.js"></script>':''}</body></html>`;
+let page=html.replace("</body></html>",inject);
+if(page===html)page=html+inject;
 
 /* ---------- simulated STM32 ---------- */
 const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0,
@@ -992,7 +990,7 @@ const server = http.createServer((req, res) => {
     if (req.method === "GET" && url.pathname === "/") {
         return send(200, "text/html; charset=utf-8", page);
     }
-    if (req.method === "GET" && url.pathname === "/preview-bench.js") {
+    if (BENCH_DEMO && req.method === "GET" && url.pathname === "/preview-bench.js") {
         return send(200, "text/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname,"panel_preview_bench.js"),"utf8"));
     }
     if (req.method === "GET" && url.pathname === "/f.css") {
