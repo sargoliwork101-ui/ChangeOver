@@ -437,22 +437,13 @@ def sec_defaults(ids):
                cl.group(1).strip() if cl else "clamp not found")
         m = re.search(r"nav button\[data-t=\\?\"(\d)\\?\"\]'\);if\(t\d\)t\d\.click", srv)
         land = m.group(1) if m else None
-        # which page div is the single chart mount inside? scan backwards
-        # from the mount to the nearest id="pN" - derived, never assumed.
-        # [EN] This used to derive the landing page from the chart mount.
-        #      The chart has since been ordered off the chargers page, so
-        #      following it would open the preview on the settings tab and
-        #      hide the page the user actually asked to review. The anchor
-        #      moves to the operating table, which is what the chargers page
-        #      is for - still derived from the markup, never hardcoded.
-        #      v1.36: that table was removed wholesale (user order), so the
-        #      landing anchor moved to the chargers page section itself.
-        mi = P_PAN.find('id="ch"')
-        pm = list(re.finditer(r'id="p(\d)"', P_PAN[:mi])) if mi >= 0 else []
-        mount_page = pm[-1].group(1) if pm else "?"
+        # [EN] Calibration review now owns the preview landing page. Derive it
+        # from the real bench form's mount, not an assumed numeric tab index.
+        bench = re.search(r"\$\('p(\d)'\)\.innerHTML=`[^`]*id=\"wSw\"", P_PAN)
+        mount_page = bench.group(1) if bench else "?"
         ok(land == mount_page,
-           "the preview must land on the chargers page",
-           f"server lands on tab {land}, but the chargers section is on p{mount_page}")
+           "the preview must land on the bench calibration page",
+           f"server lands on tab {land}, but the bench form is on p{mount_page}")
         # [EN] v1.32 (user order: "I wanted to click ON the chart, not have you
         #      write it below it"): the chip strip is gone. Everything settable
         #      is now drawn inside the SVG - axis labels for the voltages and

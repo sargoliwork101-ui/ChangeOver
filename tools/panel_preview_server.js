@@ -126,27 +126,16 @@ const HARD_MAX = Number(
       path.join(__dirname, "..", "Firmware", "Modules", "Charger", "charger.h"),
       "utf8"))[1]);
 
-/* [EN] Banner + landing tab (injected into the served page ONLY).
-        This used to force-click nav tab 2 / sub-tab 1 on every load, because
-        that is where the stage chart lived. The chart has moved to the
-        chargers page, so that jump was landing the user on a page with
-        NEITHER the chart NOR the operating table - which is exactly why the
-        table looked missing. It now lands on tab 0, the chargers page, which
-        carries both. Land where the thing being previewed actually is.
-   [FA] بنر + تب فرود (فقط به صفحهٔ سروشده تزریق می‌شود). این کد قبلاً در هر
-        بار بارگذاری تب ۲ / زیرتب ۱ را به‌زور کلیک می‌کرد، چون نمودار آنجا
-        بود. نمودار به صفحهٔ شارژرها منتقل شد، پس آن پرش کاربر را روی صفحه‌ای
-        می‌نشاند که نه نمودار داشت نه جدول عملکرد - و دقیقاً به همین دلیل
-        جدول «غایب» به نظر می‌رسید. حالا روی تب ۰ (صفحهٔ شارژرها) فرود می‌آید
-        که هر دو را دارد. */
+/* [EN] Preview-only banner and calibration landing page. Fixture controls live
+ * in a separate script and are never embedded in the ESP image. */
 const inject = `<script>(function(){
 var b=document.createElement('div');
 b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
 b.textContent='پیش‌نمایش آفلاین — شبیه‌ساز STM32 + چرخه نمایشی سناریوها (شارژ/اضافه‌ولتاژ/قطع‌باتری/دشارژ). روی هر عدد آبی‌رنگ روی نمودار کلیک کنید تا همان‌جا ویرایش شود.';
 document.body.appendChild(b);document.body.style.paddingTop='32px';
-var t0=document.querySelector('nav button[data-t="0"]');if(t0)t0.click();
-})();</script></body></html>`;
-const page = html.replace("</body></html>", inject);
+var t0=document.querySelector('nav button[data-t="1"]');if(t0)t0.click();
+})();</script><script src="/preview-bench.js"></script></body></html>`;
+let page = html.replace("</body></html>", inject);
 if (page === html) page = html + inject; /* fallback: append */
 
 /* ---------- simulated STM32 ---------- */
@@ -468,7 +457,16 @@ const ch = [mkChannel(), mkChannel()];
  *      اختلاف‌فاز دارد تا دو عدد همیشه جدا و قابل مقایسه بمانند. */
 ch[0].v = 12800;
 let seq = 1, frames = 0;
-let benchSize = 3120; /* simulated /benchlog.csv bytes (nonzero so the resume/choice flow is exercisable) */
+/* [EN] Real append-only in-memory CSV; discarded when the preview restarts. */
+let benchCsv = '', benchSize = 0;
+let measureWindow;
+function resetMeasureWindow(){measureWindow={n:0,s:Array(TLM_FIELDS).fill(0),lo:Array(TLM_FIELDS).fill(0),hi:Array(TLM_FIELDS).fill(0),la:Array(TLM_FIELDS).fill(0),or:0,seq:0,fl:0};}
+function measureFrame(t,flags,sequence){
+ if(!measureWindow)resetMeasureWindow();const m=measureWindow;
+ t.forEach((v,k)=>{m.s[k]+=v;if(!m.n||v<m.lo[k])m.lo[k]=v;if(!m.n||v>m.hi[k])m.hi[k]=v;m.la[k]=v;});
+ m.n++;m.or|=t[19];m.seq=sequence;m.fl=flags;
+}
+resetMeasureWindow();
 const SIM_MS = 100;
 let ms = 0;
 
@@ -779,10 +777,25 @@ function telemetry() {
     /* [FA] ماسک حکم باتری خراب هم مثل خود برد در تلمتری می‌آید. */
     t[28] = latch.deadMask;
 
+    /* [EN] Manual bench mode is stable and controlled by the actual panel parameters,
+     * not by the automatic rotating alarm demonstration. This is demo physics only. */
+    if(P[19]){
+        for(let k=0;k<2;k++){
+            const b=k*7,on=!!P[11+k],duty=on?Math.min(P[16+2*k],P[13+k],500):0;
+            const raw=on?Math.round(80+duty*1.14):80;
+            const current=on?Math.round((raw-80)*1.3-20):0;
+            t[b]=raw;t[b+1]=Math.round(raw*8.7767);
+            t[b+2]=t[b+3]=t[b+4]=current;t[b+5]=duty;t[b+6]=on?1:0;
+        }
+        t[14]=24000;t[17]=12400;t[18]=12600;t[16]=t[17];t[15]=t[17]+t[18];t[19]=0;t[28]=0;
+        t[20]=counts(t[14],MV_PER_COUNT_24);t[21]=counts(t[15],MV_PER_COUNT_24);t[22]=counts(t[16],MV_PER_COUNT_12);
+    }
+    const flags=7|(P[19]?32:0);
     seq += 1; frames += 1; ms += SIM_MS;
-    evtFrame(7, imbFl2, t);
+    measureFrame(t,flags,seq);
+    evtFrame(flags, imbFl2, t);
     return {
-        on: 1, age: 40, seq, fl: 7, fl2: imbFl2, n: frames,
+        on: 1, age: 40, seq, fl: flags, fl2: imbFl2, n: frames,
         q: 0, q2: 0, q3: 0, q4: 0, ka: 800,
         /* [EN] Link health, same two counters the ESP publishes: vm = frames
          *      dropped for an unknown protocol version, ce = frames dropped on
@@ -979,6 +992,9 @@ const server = http.createServer((req, res) => {
     if (req.method === "GET" && url.pathname === "/") {
         return send(200, "text/html; charset=utf-8", page);
     }
+    if (req.method === "GET" && url.pathname === "/preview-bench.js") {
+        return send(200, "text/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname,"panel_preview_bench.js"),"utf8"));
+    }
     if (req.method === "GET" && url.pathname === "/f.css") {
         return send(200, "text/css; charset=utf-8", FONT_CSS);
     }
@@ -1006,14 +1022,10 @@ const server = http.createServer((req, res) => {
         return send(200, "application/json", '{"_s":200}');
     }
     if (req.method === "POST" && url.pathname === "/m") {
-        return send(200, "application/json", '{"_s":200}');
+        resetMeasureWindow();return send(200, "application/json", '{"_s":200}');
     }
     if (req.method === "GET" && url.pathname === "/m") {
-        const s = new Array(TLM_FIELDS).fill(0), lo = new Array(TLM_FIELDS).fill(0),
-              hi = new Array(TLM_FIELDS).fill(0), la = new Array(TLM_FIELDS).fill(0);
-        const d = telemetry();
-        for (let k = 0; k < TLM_FIELDS; k++) { s[k] = d.t[k]; lo[k] = d.t[k]; hi[k] = d.t[k]; la[k] = d.t[k]; }
-        return send(200, "application/json", JSON.stringify({ _s: 200, n: 1, s, lo, hi, la }));
+        return send(200, "application/json", JSON.stringify(measureWindow));
     }
     /*
  * [EN] v1.66 LUT routes; v1.68 the push handler mirrors the firmware
@@ -1128,15 +1140,20 @@ const server = http.createServer((req, res) => {
                 JSON.stringify({ fs: 1, size: benchSize, max: 102400 }));
         }
         return send(200, "text/csv; charset=utf-8",
-            "# [EN] offline preview: simulated bench log (" + benchSize + " bytes). / [FA] پیش‌نمایش آفلاین: فایل بنچ ندارد.\n");
+            benchCsv || "# offline preview: empty bench log\n");
     }
     if (req.method === "POST" && url.pathname === "/benchlog/add") {
-        benchSize += 400; /* one simulated row; the stub ignores the POST body */
-        if (benchSize >= 102400) { benchSize = 102400; return send(507, "application/json", '{"ok":0}'); }
-        return send(200, "application/json", JSON.stringify({ size: benchSize }));
+        let body="",length=0;
+        req.on("data",chunk=>{length+=chunk.length;if(length>1536)req.destroy();else body+=chunk;});
+        req.on("end",()=>{
+            const bytes=Buffer.byteLength(body);
+            if(!bytes||!body.endsWith("\n")||/[^\x20-\x7e\r\n\t]/.test(body))return send(400,"application/json",'{"ok":0}');
+            if(benchSize+bytes>102400)return send(507,"application/json",'{"ok":0}');
+            benchCsv+=body;benchSize+=bytes;send(200,"application/json",JSON.stringify({ok:1,size:benchSize}));
+        });return;
     }
     if (req.method === "POST" && url.pathname === "/benchlog/clear") {
-        benchSize = 0;
+        benchSize = 0;benchCsv='';
         return send(200, "application/json", '{"ok":1}');
     }
     /* v1.87: simulate battery disconnect/reconnect for scenario 6 */
@@ -1219,7 +1236,7 @@ const server = http.createServer((req, res) => {
             if (!name || !name.startsWith("/") || name.length>=40 || name.slice(1).includes("/") || name.includes("\0") || name==="/." || name==="/..")
                 return send(400,"application/json",'{"ok":0,"removed":0}');
             let removed=false;
-            if (name==="/benchlog.csv" && benchSize>0) { benchSize=0; removed=true; }
+            if (name==="/benchlog.csv" && benchSize>0) { benchSize=0;benchCsv=''; removed=true; }
             else if (name==="/evt-clock.txt" && simClockFile) { simClockFile=false; removed=true; }
             else if (name==="/logpct.txt" && simPctFile) { simPctFile=false; simPct=100; removed=true; }
             else if (/^\/evt-[0-9]{8}\.csv$/.test(name)) {
@@ -1245,7 +1262,7 @@ const server = http.createServer((req, res) => {
         evtHasPrev = false;
         evtLastRowOk = false;
         evtBooted = false;
-        benchSize = 0;
+        benchSize = 0;benchCsv='';
         simForeignFiles = [];
         res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
         res.end("ok");
@@ -1402,6 +1419,6 @@ if (process.argv.includes("--self-test")) {
     setInterval(() => { SNAP = telemetry(); }, SIM_MS);
     evtHeartbeatStart();
     server.listen(PORT, "0.0.0.0", () => {
-        console.log(`panel preview: http://0.0.0.0:${PORT}  (charge tab: BULK->ABSORB->FLOAT->reentry cycle, ~1 min loop)`);
+        console.log(`panel preview: http://0.0.0.0:${server.address().port}  (charge tab: BULK->ABSORB->FLOAT->reentry cycle, ~1 min loop)`);
     });
 }

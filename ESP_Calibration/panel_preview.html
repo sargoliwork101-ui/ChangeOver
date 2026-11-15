@@ -559,7 +559,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bfd8106</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0b4c412</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -3503,15 +3503,20 @@ function calfit(xs,ys){
  const my=I.reduce((s,i)=>s+ys[i],0)/I.length;let ss=0,sr=0,mx=0;
  I.forEach(i=>{const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);if(Math.abs(e)>mx)mx=Math.abs(e);});
  return {a,b,r2:ss>0?(1-sr/ss):1,n:I.length,mx,span:Math.max(...I.map(i=>xs[i]))-Math.min(...I.map(i=>xs[i]))};}
-var CALP=[],CALR=[],CAL_BUSY=false;
-function calinvalidate(){
+var CALP=[],CALR=[],CAL_BUSY=false,CALCUT=[[],[]];
+function calinvalidate(keep){
+ if(!keep)CALCUT=[[],[]];
  CALP=[];CALR=[];calmodalClose();
+ const pts=$('calpoints');if(pts)pts.innerHTML='';
+ const code=$('calcd');if(code){code.value='';code.style.display='none';}
+ if(LUT_PENDING){LUT_PENDING=null;LUTVIEW='';$('lutcmp').innerHTML='';}
  const e=$('calst');if(e)e.textContent='نمونه‌ها یا انتخاب آن‌ها تغییر کرده‌اند؛ نتیجهٔ قبلی دیگر معتبر نیست و باید دوباره محاسبه شود.';
 }
 function calpending(ids){return (ids||[]).filter(id=>Object.prototype.hasOwnProperty.call(PEND,id));}
 function calpendingText(ids){return calpending(ids).map(id=>'شناسهٔ '+id).join('، ');}
 function calrun(){
- calinvalidate();
+ if(CAL_BUSY)return;
+ calinvalidate(true);
  const cur=id=>(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
  if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
  if(calsel(null).length<3){stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
@@ -3543,7 +3548,7 @@ function calrun(){
  /* [EN] Show one batch summary.
     [FA] خلاصهٔ همهٔ تغییرها با یک تأیید نمایش داده می‌شود. */
  calchk();
- CALR=rows;
+ CALR=rows;calpoints();
  stxt('calst',calsummary(rows,null,'خلاصهٔ تغییرهای محاسبه‌شده')+
   '<div class="lb">برای نوشتن همهٔ مقدارهای معتبر روی برد، «اعمال همهٔ تغییرها روی برد» را بزنید.</div>');
 }
@@ -3597,7 +3602,7 @@ function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calinvalidate();calsave();
 /* [EN] Only ticked rows, and only rows whose scenario really drove that
    channel. [FA] فقط ردیف‌های تیک‌خورده، و فقط ردیف‌هایی که همان کانال در
    آن سناریو واقعاً کار می‌کرده. */
-function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0));}
+function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0)&&(!n||!CALCUT[n-1].includes(Math.round(z[n===1?'r1':'r2']))));}
 /* [FA] دامنهٔ ممیزی از سناریوهای انتخاب‌شده می‌آید؛ باتری خارج از دامنه
    نباید برای نتیجهٔ باتری انتخاب‌شده هشدار بسازد. */
 function caltargets(){
@@ -3692,6 +3697,17 @@ if(negN)note.push(negN+' نمونهٔ منفی (دشارژ) صفر حساب شد
  if(X.length<2)bad='کمتر از ۲ نقطهٔ متمایز ('+X.length+') — حداقل ۲ لازم است';
  else{for(let i=1;i<Y.length;i++){if(Y[i]<Y[i-1]){bad='جریان با افزایش شمارش پایین آمده (زنجیره '+X[i-1]+' ← '+Y[i-1]+' mA، بعد '+X[i]+' ← '+Y[i]+' mA). این نقطه را بررسی یا تکرار کنید؛ چیزی حذف نشده است';break;}}}
  return {X:X,Y:Y,note:note,bad:bad};}
+/* [EN] Counts identify merged points; exclusions affect only the selected channel. */
+function caldrop(n,c){
+ if(CAL_BUSY||W.run||![1,2].includes(n))return;
+ if(c==null)CALCUT[n-1]=[];
+ else{const t=calbuild(n);if(!t.X.includes(c)||t.X.length<=2||calsel(n).some(z=>z.d===0&&Math.round(z[n===1?'r1':'r2'])===c))return;CALCUT[n-1].push(c);}
+ calrun();
+}
+function calpoints(){
+ $('calpoints').innerHTML=caltargets().map(n=>{const t=calbuild(n),zero=calsel(n).filter(z=>z.d===0).map(z=>Math.round(z[n===1?'r1':'r2']));
+ return '<div class="hd">جدول تولیدشدهٔ باتری '+fa(n)+' · '+t.X.length+' نقطه · سقف ارسال '+LUTMAX+' · حذف‌شده: '+CALCUT[n-1].length+' <button class="sb" onclick="caldrop('+n+',null)">بازگردانی</button></div><div class="lb">حذف فقط از محاسبهٔ این باتری؛ نمونهٔ اصلی محفوظ است. با تغییر نمونه یا بستن صفحه بازنشانی می‌شود. نقطهٔ صفر الزامی است؛ حداقل دو نقطه باید بماند.</div>'+(t.bad?'<div class="erc">'+esc(t.bad)+'</div>':'')+'<div class="tw"><table class="bt2"><tr><th>شمارش خام</th><th>جریان mA</th><th>حذف</th></tr>'+t.X.map((x,i)=>'<tr><td>'+x+'</td><td>'+t.Y[i]+'</td><td><button class="sb pbr" aria-label="حذف نقطه" onclick="caldrop('+n+','+x+')"'+(t.X.length<=2||zero.includes(x)?' disabled':'')+'>×</button></td></tr>').join('')+'</table></div>';
+ }).join('');}
 function calcode(){
  const calScope=calscope(caltargets()),samples=calScope.length;
  if(samples<2){
@@ -4162,7 +4178,7 @@ async function lrst(){
 
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
-$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد، جدول همان ردیف را نشان می‌دهد و عدد مولتی‌متر را در فرم بالای جدول بنویس و <b>ثبت</b> کن — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
+$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: عدد مولتی‌متر را وارد و ثبت کنید. ↻ هر ردیف برای تکرار تا پیش از پایان است. پس از «محاسبه از نمونه‌ها» می‌توانید نقطه‌های جدول پیشنهادی را حذف یا بازگردانی کنید؛ هیچ عددی بدون تأیید شما روی برد نوشته نمی‌شود.</div>
 <div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> SWEEP خودکار</label><label class="lb wmode-manual" id="wManual"><span class="t">فهرست duty دستی (%)</span><input type="text" id="wL" data-s class="dl" value="0,2,4,6,8,10,12,14,16,18,20"></label><span class="wmode-sweep" id="wSweep"><label class="lb"><span class="t">از</span><input type="number" id="wA" data-s value="0" min="0" max="50"></label><label class="lb"><span class="t">تا</span><input type="number" id="wB" data-s value="50" min="0" max="50"></label><label class="lb"><span class="t">گام</span><input type="number" id="wStep" data-s value="1" min="1" max="50"></label></span>${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
 <div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
 <div class="bctl"><button class="sb brun pbg" onclick="wStart()">شروع</button><button class="sb stp2 pbr wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF"></b></span><a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div>
@@ -4170,7 +4186,7 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» جریان signed واقعی همان باتری را مستقیم فیت می‌کند؛ جریان منفی یعنی باتری بار برد را تغذیه می‌کند و برای ناحیهٔ بدون شارژ صفر می‌شود، نه اینکه از همهٔ نقاط کم شود. مقدار فعلی برد و کیفیت برازش هم نمایش داده می‌شود. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۰ تا ۲۰٪) بگیرید.</div>
 <div class="lgrp">نمونه‌ها و محاسبه</div><div class="bqr2"><button class="sb sb2 pbg" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb sb2 pbb" onclick="calexp()">📥 ذخیرهٔ نمونه‌ها</button><label class="sb sb2 pbb" style="cursor:pointer">📤 بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2 pbr" type="button" onclick="calclr()" aria-label="پاک کردن نمونه‌ها" title="پاک کردن نمونه‌ها">🗑️ پاک کردن نمونه‌ها</button><button class="sb brun pbg" onclick="calapply()">اعمال فقط پارامترهای کالیبراسیون</button></div>
-<div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ «به‌روزرسانی» ابتدا گین/آفست‌های لازم را با readback همان شناسه تأیید می‌کند و سپس LUT همان تراکنش را می‌فرستد؛ جدول و تنظیمات باتری دیگر از readback واقعی حفظ می‌شود. «به‌روزرسانی هر دو» هر دو زنجیره را در یک تراکنش انجام می‌دهد. برای این مسیر دکمهٔ عمومی «اعمال همهٔ تغییرات» لازم نیست؛ دکمهٔ مستقل بالا فقط برای اعمال پارامترهای کالیبراسیون بدون ارسال جدول است.</div><div class="bqr2"><button class="sb sb2 pbb" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2 pbv" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb sb2 pbv" onclick="calcopy()">کپی کد</button><button class="sb sb2 pbv" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
+<div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ «به‌روزرسانی» ابتدا گین/آفست‌های لازم را با readback همان شناسه تأیید می‌کند و سپس LUT همان تراکنش را می‌فرستد؛ جدول و تنظیمات باتری دیگر از readback واقعی حفظ می‌شود. «به‌روزرسانی هر دو» هر دو زنجیره را در یک تراکنش انجام می‌دهد. برای این مسیر دکمهٔ عمومی «اعمال همهٔ تغییرات» لازم نیست؛ دکمهٔ مستقل بالا فقط برای اعمال پارامترهای کالیبراسیون بدون ارسال جدول است.</div><div class="bqr2"><button class="sb sb2 pbb" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="calpoints"></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2 pbv" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb sb2 pbv" onclick="calcopy()">کپی کد</button><button class="sb sb2 pbv" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
 `;
 function wmode(){const s=$('wSw')&&$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB'),S=$('wStep'),manual=$('wManual'),sweep=$('wSweep');
  if(L)L.disabled=!!s;if(A)A.disabled=!s;if(B)B.disabled=!s;if(S)S.disabled=!s;

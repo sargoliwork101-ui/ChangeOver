@@ -182,3 +182,26 @@ repeat assertions PASS (jsdom installed, no skipped DOM suites). All eight
 additional repository gates exit 0 and `git diff --check` is clean. Panel HTML
 remains below its existing 491520-byte ceiling. Native ESP8266 compilation and
 physical-board capture/repeat were not run by the agent.
+
+### Generated-point editing and live simulator integration
+
+`host_test_cal_point_edit.js` covers generated merged-point removal, per-channel
+isolation, multiple removals, restoration, source preservation, recalculation,
+mandatory-zero/minimum guards, fit/code/payload consistency, transaction locks,
+suspect-point repair, invalid identities and stale-payload cancellation.
+It is part of `run_esp_tests.sh` (explicit SKIP when jsdom is missing).
+
+`node tools/test_panel_preview_bench.js` starts an isolated HTTP simulator on a
+free port and drives the real panel with jsdom. It checks the three synthetic
+fixtures, manual-mode capture, accumulating statistics, signed DMM helper,
+earlier-step repeat/resume, final review, real CSV contents/size, malformed
+append rejection and file clear. Server and browser are cleaned up on exit.
+`node tools/panel_preview_server.js --self-test` retains scenario-5/6 checks.
+These are software simulations, not a target build or physical-board validation.
+
+Validation for generated-point editing: 585 host, 13 labels, 287 existing DOM,
+29 repeat and 20 point-edit assertions PASS; 14 real-HTTP preview integration
+assertions and preview scenario-5/6 self-tests PASS. No DOM suites skipped.
+Point edits also clear stale generated code, requiring regeneration before copy
+or download. The preview landing invariant now derives the calibration tab from
+its bench form instead of enforcing the formerly requested chargers landing.

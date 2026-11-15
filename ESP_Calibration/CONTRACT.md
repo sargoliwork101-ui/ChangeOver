@@ -88,3 +88,24 @@ The live row updater now writes only its two board-current columns; its old
 five-value voltage/current layout no longer matched the table and could
 overwrite the DMM display cells while waiting for input. The capture submit
 button is not subject to the Start button's running-session pointer lock.
+
+## Generated-point editing
+
+Calculate renders each selected battery's generated counts/current table. Row
+removal excludes all selected source samples sharing that rounded raw count
+from that channel's fit and table only. Source sample objects, selection flags,
+CSV and the other battery are unchanged. Multiple exclusions accumulate across
+recalculation; Restore clears that channel's exclusions. Duty-zero groups and
+the minimum two distinct points are protected. Edits are blocked during capture
+or calibration writes. Source/selection changes and page reload reset exclusions.
+Editing invalidates any pending transmission proposal, preventing stale payload
+application. Both generated code and newly prepared LUT payloads use the edits.
+No automatic outlier deletion or table thinning is introduced. Existing exact-
+count MAX merging, monotonicity checks, robust fit warnings and 24-point board
+capacity remain distinct rules; a warning does not establish a measurement error.
+
+Preview-only `tools/panel_preview_bench.js` provides labeled synthetic fixtures
+and DMM helpers, never embedded into ESP HTML. Existing browser samples are not
+overwritten automatically. The simulator honors manual channel/duty settings
+with stable demo measurements, accumulates real ticker-frame `/m` statistics and
+stores/downloads actual submitted CSV text in RAM, cleared on restart.
