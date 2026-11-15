@@ -862,6 +862,10 @@ class Handler(BaseHTTPRequestHandler):
             BOARD.rows = {}
             if path == "/evt/format":
                 BOARD.deleted_files.clear()
+                BOARD.errors = []
+                BOARD.power = []
+                BOARD.charge_history = []
+                BOARD.chart = {key: [] for key in BOARD.chart}
                 return self.send(text_bytes("ok"))
             return self.send(json_bytes({"ok": 1, "removed": 1, "freed": 1024}))
         if path == "/evt/snap" and method == "POST":

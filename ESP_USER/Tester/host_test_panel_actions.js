@@ -6,7 +6,7 @@ const assert = require('assert/strict');
 const {JSDOM} = require('jsdom');
 const source = fs.readFileSync(path.join(__dirname, '..', 'simple_panel.h'), 'utf8');
 const html = source.split('R"rawliteral(')[1].split(')rawliteral"')[0];
-const dom = new JSDOM(html, {runScripts:'outside-only', url:'http://panel.test/'});
+const dom = new JSDOM(html, {runScripts:'outside-only', pretendToBeVisual:true, url:'http://panel.test/'});
 const w = dom.window, d = w.document;
 w.setInterval = () => 0;
 w.addEventListener = () => {};
@@ -90,7 +90,8 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(canvasRule.style.getPropertyValue('background-image')==='none' && cardRule.style.getPropertyValue('background')==='rgb(18, 24, 38)' && cardRule.style.getPropertyValue('backdrop-filter')==='none','chart surfaces use solid CSS colors without an image or glass blur');
     let strokes=0,fills=0;
     const ctx=new Proxy({}, {get:(target,key)=>key in target?target[key]:key==='createLinearGradient'||key==='drawImage'?()=>{throw Error('chart attempted gradient/image');}:key==='stroke'?()=>strokes++:key==='fill'?()=>fills++:()=>{},set:(target,key,value)=>{target[key]=value;return true;}});
-    for(const id of ['cCharge','cVolt'])d.getElementById(id).getContext=()=>ctx;
+    for(const id of ['cCharge','cVolt']){const c=d.getElementById(id);c.getContext=()=>ctx;Object.defineProperty(c,'clientWidth',{get:()=>700});Object.defineProperty(c,'clientHeight',{get:()=>180});}
+    w.showTab(1);await tick();
     const times=[1700000000,1700003600];
     w.drawVoltChart('cVolt',[24000,25000],[23000,24000],times,'1d');
     w.drawChargeHistory([{ts:Math.floor(Date.now()/1000),ch:1}],'1d');
@@ -98,7 +99,7 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(!d.getElementById('cPct') && !d.getElementById('powerLog') && !html.includes('۲۰ قطع و وصل آخر') && !html.includes('درصد شارژ پک - با زمان واقعی'),'percentage chart and recent power card are removed, not hidden');
     check(!html.includes('chartDataPct') && !html.includes('pollChartsPct') && !html.includes('pctCsvData') && !html.includes('segPct'),'percentage chart data, polling, export and range controls are removed');
     let chartCalls=[];
-    w.fetch=async url=>{chartCalls.push(url);return response(200,{range:'1d',vin:[24000,25000],vpack:[23000,24000],time:times});};
+    w.fetch=async url=>{chartCalls.push(url);return response(200,{range:new URL(url,'http://panel.test').searchParams.get('range'),vin:[24000,25000],vpack:[23000,24000],time:times});};
     await w.pollCharts();
     check(chartCalls.length===1 && chartCalls[0]==='/charts?range=1d','chart polling sends just one request for voltage');
     for(const range of ['1d','7d','1m','3m']){

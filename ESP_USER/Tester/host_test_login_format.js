@@ -47,6 +47,10 @@ async function login(password){
     check(formatCalls===1 && !format.disabled,'confirmed format sends once and unlocks');
     check((await (await w.fetch('/evt/days')).text()).trim()==='','format actually clears offline history');
     check(d.getElementById('admCardMsg').textContent.includes('فرمت شد'),'success shown only for plain ok response');
+    const clearedDiag=await (await w.fetch('/diag')).json(),clearedChart=await (await w.fetch('/charts?range=1d')).json();
+    check(!clearedDiag.errors.length && !clearedDiag.power.length && !clearedDiag.chargeHistory.length,'offline format clears diagnostic and charge-history records too');
+    check(!clearedChart.vin.length && clearedChart.count===0,'offline format clears chart samples');
+    check(d.getElementById('diagErrors').textContent.includes('خطایی ثبت نشده') && !d.querySelector('#chargeHistoryList .row'),'successful format refreshes visible diagnostics immediately');
     // A failed or denied format must not be called a success.
     w.fetch=async()=>({ok:false,status:500,text:async()=>'fail'});
     format.click();await flush();

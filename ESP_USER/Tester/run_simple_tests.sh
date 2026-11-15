@@ -70,6 +70,7 @@ fi
 echo "[6/7] تست بازخورد و قفل دکمه‌ها (DOM)"
 if command -v node >/dev/null 2>&1 && node -e "require('jsdom')" >/dev/null 2>&1; then
     node "${DIRECTORY}/host_test_panel_actions.js"
+    node "${DIRECTORY}/host_test_chart_refresh.js"
 else
     echo "  SKIP: node یا jsdom نصب نیست"
 fi

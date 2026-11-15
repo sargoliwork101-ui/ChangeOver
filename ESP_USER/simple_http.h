@@ -780,6 +780,10 @@ static void func__Simple_HttpEventFormat(void)
         return;
     }
     func__SimpleLog_ResetStateAfterFormat();
+    /* Clear RAM before remount too: the files are already gone after format. */
+    func__Simple_ChargeHistoryClear();
+    func__Simple_ChartsClear();
+    func__Simple_DiagClear();
 #if defined(ESP8266)
     (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();

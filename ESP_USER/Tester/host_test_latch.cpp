@@ -3012,6 +3012,48 @@ static void func__T_TestAutomaticBrowserClock(void)
     func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
 }
 
+static void func__T_TestFormatClearsAllHistory(void)
+{
+    func__Simple_AuthDefaults();func__Simple_AuthLogout();func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    BOOL__G__FsOk = true;
+    auto func__seed = []() {
+        UINT8_T__G__DiagErrorCount = 1u;UINT8_T__G__PowerEventCount = 1u;UINT8_T__G__ChargeHistoryCount = 1u;
+        UINT8_T__G__ChartCount = 1u;UINT8_T__G__Chart1D_Count = 1u;UINT8_T__G__Chart7D_Count = 1u;
+        UINT8_T__G__Chart1M_Count = 1u;UINT8_T__G__Chart3M_Count = 1u;
+        SIMPLE_DIAG_ERROR_T__G__Errors[0].timestamp = 1790000000u;
+        BOOL__G__DiagDirty = true;BOOL__G__ChartsDirty = true;BOOL__G__ChargeHistDirty = true;
+        File file__diag = LittleFS.open(SIMPLE_DIAG_FILE, "w");file__diag.print("old diagnostic");file__diag.close();
+    };
+    func__seed();SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403 && UINT8_T__G__DiagErrorCount == 1u && LittleFS.exists(SIMPLE_DIAG_FILE), "فرمت بی‌مجوز تاریخچهٔ رم و فلش را تغییر نمی‌دهد");
+    func__Simple_LoginClear();(void)func__Simple_AuthLogin("admin", "admin");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", CHAR__G__SessionToken);
+    std::string string__token(CHAR__G__SessionToken);
+    BOOL__T__FormatFail = true;SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();BOOL__T__FormatFail = false;
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && UINT8_T__G__DiagErrorCount == 1u && LittleFS.exists(SIMPLE_DIAG_FILE), "شکست واقعی فرمت داده‌های قبلی را به‌دروغ پاک‌شده اعلام نمی‌کند");
+    uint8_t uint8_t__byte;while (Serial.takeEspByte(&uint8_t__byte)) {}
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && SIMPLE_WEB_SERVER_T__G__Server.simBody() == "ok", "فرمت مدیر پس از بررسی فلش موفق است");
+    func__T_Check(UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__PowerEventCount == 0u && UINT8_T__G__ChargeHistoryCount == 0u, "فرمت تاریخچهٔ خطا و قطعی و شارژ را از رم هم پاک می‌کند");
+    func__T_Check(UINT8_T__G__ChartCount == 0u && UINT8_T__G__Chart1D_Count == 0u && UINT8_T__G__Chart7D_Count == 0u && UINT8_T__G__Chart1M_Count == 0u && UINT8_T__G__Chart3M_Count == 0u, "فرمت نمونه‌های تمام بازه‌های نمودار را از رم هم پاک می‌کند");
+    func__T_Check(!BOOL__G__DiagDirty && !BOOL__G__ChartsDirty && !BOOL__G__ChargeHistDirty && !LittleFS.exists(SIMPLE_DIAG_FILE) && !LittleFS.exists(SIMPLE_CHARTS_FILE), "پرچم ذخیرهٔ کهنه نمی‌تواند دادهٔ پاک‌شده را به فلش برگرداند");
+    uint8_t uint8_t__frame[32];unsigned uint__len = 0;while (Serial.takeEspByte(&uint8_t__byte) && uint__len < sizeof(uint8_t__frame)) uint8_t__frame[uint__len++] = uint8_t__byte;
+    func__T_Check(BOOL__G__DiagClearPending && uint__len >= 9u && uint8_t__frame[3] == SIMPLE_MSG_DIAG_REQ && uint8_t__frame[4] == 1u && uint8_t__frame[6] == 1u, "فرمت دستور واقعی پاک‌کردن دیاگ برد را می‌فرستد و منتظر تأیید می‌ماند");
+    uint8_t uint8_t__payload[40] = {};uint8_t uint8_t__rx[80];uint8_t__payload[21] = 1u;uint8_t__payload[22] = 1u;
+    uint16_t uint16_t__len = func__T_MakeFrame(uint8_t__rx,SIMPLE_MSG_DIAG_DATA,uint8_t__payload,23u);
+    for(uint16_t uint16_t__i=0u;uint16_t__i<uint16_t__len;uint16_t__i++)func__Simple_ParseByte(uint8_t__rx[uint16_t__i]);
+    func__T_Check(UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__PowerEventCount == 0u && BOOL__G__DiagClearPending, "دیاگ کهنهٔ در راه پس از فرمت تاریخچه را برنمی‌گرداند");
+    uint8_t__payload[21] = 0u;uint8_t__payload[22] = 0u;uint16_t__len = func__T_MakeFrame(uint8_t__rx,SIMPLE_MSG_DIAG_DATA,uint8_t__payload,23u);
+    for(uint16_t uint16_t__i=0u;uint16_t__i<uint16_t__len;uint16_t__i++)func__Simple_ParseByte(uint8_t__rx[uint16_t__i]);
+    func__T_Check(!BOOL__G__DiagClearPending, "تأیید تاریخچهٔ خالی برد انتظار پاک‌کردن را تمام می‌کند");
+    func__T_Check(string__token == CHAR__G__SessionToken && func__Simple_IsAdmin() && LittleFS.exists(SIMPLE_USERS_FILE) && LittleFS.exists(SIMPLE_WIFI_FILE), "پاک‌کردن تاریخچه رمزها و نشست همان مدیر را حفظ می‌کند");
+    func__seed();BOOL__T__MountFail = true;SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();BOOL__T__MountFail = false;
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__Chart1D_Count == 0u, "حتی اگر بازشدن فلش بعد از فرمت شکست بخورد رم قدیمی باقی نمی‌ماند");
+    BOOL__G__FsOk = LittleFS.begin();BOOL__G__DiagClearPending = false;
+    func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+}
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -3042,6 +3084,7 @@ int main(void)
     func__T_TestFileDeletion();
     func__T_TestWifiJsonAudit();
     func__T_TestAutomaticBrowserClock();
+    func__T_TestFormatClearsAllHistory();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

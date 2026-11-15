@@ -1020,7 +1020,7 @@ function setChartRange(chart, r){
  let seg=document.getElementById(segId), ind=document.getElementById(segId+'Indicator');
  if(seg && ind){ let idx=order.indexOf(r), btnW=(seg.clientWidth-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; }
  for(let id of order){ let b=document.getElementById(chart+id); if(b) b.classList.toggle('a', id===r); }
- if(chart==='volt') pollChartsVolt();
+ if(chart==='volt'){if(chartCache[r])renderVoltFromServer(chartCache[r]);pollChartsVolt();}
  else if(window._lastChargeHistory) drawChargeHistory(window._lastChargeHistory,r);
 }
 function setRange(r){ setChartRange('charge',r); setChartRange('volt',r); }
@@ -1034,17 +1034,18 @@ function fmtTimeLabel(ts, range){
 /* ==================== آماده‌سازی بوم نمودار ====================
    بوم به اندازهٔ واقعی خودش و با تراکم پیکسل دستگاه ساخته می‌شود تا عددهای
    محور تیز و خوانا باشند. */
-function prepCanvas(c){
- let dpr=Math.max(1, Math.min(3, window.devicePixelRatio||1));
- let w=Math.max(160, Math.round(c.clientWidth||c.width||300));
- let h=Math.max(110, Math.round(c.clientHeight||c.height||170));
- let bw=Math.round(w*dpr), bh=Math.round(h*dpr);
- if(c.width!==bw || c.height!==bh){ c.width=bw; c.height=bh; }
- let ctx=c.getContext('2d');
- if(!ctx) return null;
- ctx.setTransform(dpr,0,0,dpr,0,0);
- ctx.clearRect(0,0,w,h);
- return {ctx:ctx, w:w, h:h, dpr:dpr};
+function chartMetrics(c){
+ const page=c.closest('.pgx');
+ if(document.hidden || (page && !page.classList.contains('a')) || c.clientWidth<=0 || c.clientHeight<=0) return null;
+ return {w:Math.max(160,Math.round(c.clientWidth)),h:Math.max(110,Math.round(c.clientHeight)),dpr:Math.max(1,Math.min(3,window.devicePixelRatio||1))};
+}
+function prepCanvas(c, metrics){
+ const m=metrics||chartMetrics(c); if(!m) return null;
+ const ctx=c.getContext('2d'); if(!ctx) return null;
+ const bw=Math.round(m.w*m.dpr),bh=Math.round(m.h*m.dpr);
+ if(c.width!==bw || c.height!==bh){c.width=bw;c.height=bh;}
+ ctx.setTransform(m.dpr,0,0,m.dpr,0,0);
+ return {ctx:ctx,w:m.w,h:m.h,dpr:m.dpr};
 }
 
 const CHART_PAD_L=34, CHART_PAD_R=8, CHART_PAD_T=8, CHART_PAD_B=8;
@@ -1153,17 +1154,16 @@ function sampleStep(timeData){
  if(m<86400) return faNum(Math.round(m/3600))+' ساعت';
  return faNum(Math.round(m/86400))+' روز';
 }
-function chartSignature(parts){ return parts.join('|'); }
 
 /* نمودار ترکیبی ولتاژ - دو خط روی هم + محور عمودی */
 function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
  let n=(vinData&&vinData.length)?vinData.length:0;
- let sig=chartSignature(['v', range, n, n?vinData[n-1]:'-', n?vpackData[n-1]:'-', n?Math.min.apply(null,vinData.concat(vpackData)):0, n?Math.max.apply(null,vinData.concat(vpackData)):0, n?(timeData&&timeData[n-1]||0):0]);
- if(c._sig===sig && c._drawn){ return; }
- c._sig=sig; c._drawn=true;
-
- let prep=prepCanvas(c); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
+ c._chartData=vinData; c._chartData2=vpackData; c._chartTime=timeData; c._chartRange=range;
+ const metrics=chartMetrics(c); if(!metrics) return;
+ const sig=JSON.stringify([range,vinData,vpackData,timeData,metrics]);
+ if(c._sig===sig && c._drawn) return;
+ let prep=prepCanvas(c,metrics); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
  ctx.clearRect(0,0,w,h);
@@ -1176,8 +1176,9 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  if(axisInfo) axisInfo.textContent='محور عمودی: '+fmtVolt(min)+' تا '+fmtVolt(max)+' (خودکار از دادهٔ همین بازه) - محور افقی: زمان واقعی';
 
  if(n===0){
-  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
+  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای در این بازه ثبت نشده');
   drawTimeLabels(canvasId+'Labels', [], range, w);
+  c._sig=sig;c._drawn=true;
   return;
  }
  function drawLine(data, color){
@@ -1197,9 +1198,9 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  if(!c._hasTooltip){
   c.addEventListener('mousemove', function(e){
    let list=(c._chartData&&c._chartData.length)?c._chartData:null; if(!list) return;
-   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
+   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=c._plotWidth/rect.width;
    let plotX=(mx*scaleX)-CHART_PAD_L;
-   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(w))*(list.length-1));
+   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(c._plotWidth))*(list.length-1));
    if(idx<0) idx=0; if(idx>=list.length) idx=list.length-1;
    let v1=list[idx], v2=(c._chartData2||[])[idx];
    let ts=c._chartTime?c._chartTime[idx]:null;
@@ -1213,33 +1214,59 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
   c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
   c._hasTooltip=true;
  }
- c._chartData=vinData; c._chartData2=vpackData; c._chartTime=timeData; c._chartRange=range;
+ c._plotWidth=w;
  drawTimeLabels(canvasId+'Labels', timeData, range, w);
+ c._sig=sig;c._drawn=true;
 }
 
-let chartDataVolt={vin:[],vpack:[],time:[],range:'1d'};
+let chartDataVolt={vin:[],vpack:[],time:[],range:'1d'},chartCache={},chartRequest=null,chartAbort=null,chartRequestRange='',chartRequestId=0,historyEpoch=0;
 function rangeTitle(range){ return range==='1d'?'۱ روزه':range==='7d'?'۷ روزه':range==='1m'?'۱ ماهه':range==='3m'?'۳ ماهه':range; }
 function renderVoltFromServer(j){
- if(!j || !j.vin || !j.vpack) return;
+ if(!j || !Array.isArray(j.vin) || !Array.isArray(j.vpack) || !Array.isArray(j.time) || j.vin.length!==j.vpack.length || j.vin.length!==j.time.length) return;
  if(j.range) chartDataVolt.range=j.range;
- chartDataVolt.vin=j.vin; chartDataVolt.vpack=j.vpack; chartDataVolt.time=j.time||[];
+ chartDataVolt.vin=j.vin; chartDataVolt.vpack=j.vpack; chartDataVolt.time=j.time;
+ chartCache[chartDataVolt.range]={range:chartDataVolt.range,vin:j.vin,vpack:j.vpack,time:j.time};
  drawVoltChart('cVolt', chartDataVolt.vin, chartDataVolt.vpack, chartDataVolt.time, chartDataVolt.range);
  let n=j.vin.length;
+ setTxt('voltCountInfo',faDigits(n)+' نمونه');
  setTxt('voltRangeInfo', 'بازه: '+rangeTitle(chartDataVolt.range)+' - '+n+' نمونه'+(n<2?' - در حال جمع‌آوری':''));
  if(n>0){
   let v1min=Math.min(...j.vin), v1max=Math.max(...j.vin), v2min=Math.min(...j.vpack), v2max=Math.max(...j.vpack);
   setTxt('voltMinMax', 'Vin '+(v1min/1000).toFixed(1)+'-'+(v1max/1000).toFixed(1)+'V | Vpack '+(v2min/1000).toFixed(1)+'-'+(v2max/1000).toFixed(1)+'V');
- }
+ }else setTxt('voltMinMax','');
 }
-async function pollChartsVolt(){
- try{ let r=await fetch('/charts?range='+chartRanges.volt,{cache:'no-store'}); let j=await r.json(); renderVoltFromServer(j); }catch(e){}
+function pollChartsVolt(){
+ const range=chartRanges.volt;
+ if(chartRequest && chartRequestRange===range) return chartRequest;
+ if(chartAbort) chartAbort.abort();
+ const id=++chartRequestId,epoch=historyEpoch,ac=new AbortController();
+ chartAbort=ac;chartRequestRange=range;
+ const timer=setTimeout(()=>ac.abort(),8000);
+ const request=(async()=>{
+  try{
+   const r=await fetch('/charts?range='+range,{cache:'no-store',signal:ac.signal});
+   if(!r.ok) throw Error('charts');
+   const j=await r.json();
+   if(id!==chartRequestId || epoch!==historyEpoch || range!==chartRanges.volt) return;
+   if(j.range!==range || !Array.isArray(j.vin) || !Array.isArray(j.vpack) || !Array.isArray(j.time) || j.vin.length!==j.vpack.length || j.vin.length!==j.time.length) throw Error('chart data');
+   renderVoltFromServer(j);
+  }catch(e){if(id===chartRequestId && epoch===historyEpoch)setTxt('voltRangeInfo','دریافت نمودار انجام نشد؛ دادهٔ قبلی حفظ شد - تلاش دوباره خودکار');}
+  finally{clearTimeout(timer);if(id===chartRequestId){chartRequest=null;chartAbort=null;}}
+ })();
+ chartRequest=request;return request;
 }
-async function pollCharts(){ await pollChartsVolt(); }
+function pollCharts(){
+ if(document.hidden || !document.getElementById('pg1').classList.contains('a')) return Promise.resolve();
+ return pollChartsVolt();
+}
 
 function drawChargeHistory(events, range){
  window._lastChargeHistory=events;
  let c=document.getElementById('cCharge'); if(!c) return;
- let prep=prepCanvas(c); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
+ const metrics=chartMetrics(c);if(!metrics)return;
+ const sig=JSON.stringify([events,range,metrics,Math.floor(Date.now()/60000)]);
+ if(c._sig===sig && c._drawn)return;
+ let prep=prepCanvas(c,metrics); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  ctx.clearRect(0,0,w,h);
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
@@ -1250,6 +1277,7 @@ function drawChargeHistory(events, range){
  if(!events || events.length==0){
   ctx.fillStyle=styles.getPropertyValue('--mu'); ctx.font='12px Vazirmatn'; ctx.textAlign='center';
   ctx.fillText('تاریخچه شارژی ثبت نشده', w/2, h/2);
+  setHtml('cChargeLabels','');c._sig=sig;c._drawn=true;
   return;
  }
  let now=Math.floor(Date.now()/1000);
@@ -1294,6 +1322,7 @@ function drawChargeHistory(events, range){
   labelDiv.style.height='16px';
   if(labelDiv.innerHTML!==html) labelDiv.innerHTML=html;
  }
+ c._sig=sig;c._drawn=true;
 }
 const CHARGE_LIST_MAX=20;   /* سقف نمایش؛ عدد داخل متن دستی نوشته نمی‌شود */
 function renderChargeHistoryList(events){
@@ -1588,7 +1617,7 @@ function renderDiag(j){
  }
 }
 async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
-async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
+async function pollDiag(){const epoch=historyEpoch;try{let r=await fetch('/diag',{cache:'no-store'});if(!r.ok)return;let j=await r.json();if(epoch===historyEpoch)renderDiag(j);}catch(e){}}
 
 
 
@@ -1835,8 +1864,11 @@ async function evtfmt(){
   const r=await evtHttp('/evt/format','POST',60000),t=(await r.text()).trim();
   if(r.status===403){admLock();showToast('نشست مدیر تمام شد؛ دوباره وارد شو');return;}
   if(!r.ok||t!=='ok'){
+   if(t==='mount'||t==='write')resetHistoryView();
    admSay('admCardMsg',t==='mount'?'فرمت شد ولی حافظه باز نشد؛ چیدمان فلش را بررسی کن':t==='write'?'فرمت شد ولی ذخیره و خواندن تأیید نشد':'فرمت انجام نشد؛ اندازه و چیدمان فلش را بررسی کن',false);await evtFs(0);return;
   }
+  resetHistoryView();
+  await pollDiag();await pollCharts();
   const sel=document.getElementById('evtDay');if(sel)sel.value='';
   await evtDays();await evtFetch(0);const fs=await evtFs(0),ok=!!(fs&&fs.fs&&+fs.total>0);
   admSay('admCardMsg',ok?'حافظه فرمت شد؛ نوشتن و خواندن تأیید شد؛ رمزها حفظ شدند':fs?'پاسخ فرمت موفق بود ولی حافظه هنوز در دسترس نیست':'فرمت تأیید شد؛ وضعیت نهایی حافظه دریافت نشد',ok);
@@ -1879,7 +1911,7 @@ function showTab(n){
   if(pg) pg.classList.toggle('a', i===n);
   if(tb) tb.classList.toggle('a', i===n);
  }
- if(n===1) pollCharts();
+ if(n===1){redrawCharts();pollCharts();}
  if(n===0) pollDiag();
 }
 
@@ -2023,12 +2055,16 @@ function admClear(){
 }
 
 function redrawCharts(){
- ['cVolt','cCharge'].forEach(function(id){
-  let c=document.getElementById(id);
-  if(c){ c._sig=null; c._drawn=false; }
- });
- pollCharts();
- if(window._lastChargeHistory) drawChargeHistory(window._lastChargeHistory, chartRanges.charge);
+ for(const id of ['cVolt','cCharge']){const c=document.getElementById(id);c._sig=null;c._drawn=false;}
+ const data=chartCache[chartRanges.volt];if(data)renderVoltFromServer(data);
+ if(window._lastChargeHistory)drawChargeHistory(window._lastChargeHistory,chartRanges.charge);
+}
+function resetHistoryView(){
+ historyEpoch++;chartRequestId++;if(chartAbort)chartAbort.abort();chartRequest=null;chartAbort=null;
+ chartCache={};chartDataVolt={vin:[],vpack:[],time:[],range:chartRanges.volt};
+ window._lastChargeHistory=[];
+ renderVoltFromServer(chartDataVolt);drawChargeHistory([],chartRanges.charge);renderChargeHistoryList([]);
+ setTxt('diagErrors','خطایی ثبت نشده - سیستم سالم');
 }
 window.addEventListener('resize',function(){
  clearTimeout(window._rzT);
