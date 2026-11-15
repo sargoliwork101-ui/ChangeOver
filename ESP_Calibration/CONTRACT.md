@@ -157,3 +157,39 @@ To retain the existing HTML transfer ceiling, non-executable old bench/calibrati
 source comments were compacted. No CSS/markup was removed for this size cleanup.
 Token comparisons of calfit/calbuild/lpack and the frozen storage tester confirm
 their numerical/storage cores are unchanged. Firmware and ESP_USER are untouched.
+
+
+## Restore audit and deliberately removed dead paths
+
+The automatic browser pending-queue replay is removed, including its writer and
+obsolete localStorage key. It ran before the `const PN` initialization and caught
+its own temporal-dead-zone failure, so it never replayed a nonempty valid queue.
+Unsent edits now live only in the current page. Explicit JSON backup export/import
+still retains/stages them; raw calibration sample persistence is unchanged.
+
+Imported `lut` had only a dead `LUT_BACKUP` assignment and no viewer or apply
+consumer. That restore branch/validator/storage is removed. Exported LUT snapshots
+remain available as explicitly `lutRole: 'audit-only'` evidence; imports explain
+that they are not restored. LUT-only imports report no supported restore rather
+than success. Usable calibration tables are regenerated from full-precision samples.
+
+Settings import requires finite JSON numbers, validates container/sample structure
+before mutation, ignores malformed pending IDs and reconciles included board-equal
+values against existing pending edits. Unrelated edits stay intact. Sample/view
+restoration now calls the same local calculation path as sample-file import, not
+only checklist rendering. Replacing a dataset drops stale capture rows and their
+object references; append retains existing capture links. No file imports replay
+a historical capture session or write to the board.
+
+Sample import has three explicit choices: replace, append, cancel. Cancel/Escape
+are non-destructive (the old two-choice cancel-as-replace behavior is removed).
+File inputs reset on selection so retries of the same file work. Imports, sample
+mutations and log clear respect capture preflight as well as active transactions;
+clear operations recheck ownership after their asynchronous confirmation.
+
+Bench hardware restoration remains mandatory. Every command is attempted; failed
+acknowledgments are collected and reported, not silently treated as success.
+A failed inter-scenario restore aborts before starting the next scenario; final
+best-effort restoration still runs and already committed measurements remain.
+This does not add telemetry freshness logic or change board firmware/transport,
+fit/build mathematics, bench CSV or daily-history codec.

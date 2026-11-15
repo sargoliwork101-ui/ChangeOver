@@ -559,12 +559,12 @@ window.addEventListener('DOMContentLoaded', function(){
 </script>
 </head><body>
 <div id="pmod"><div class="pmb"><div id="pmt"></div><div id="pmbtn"><button class="sb" id="pmok">تأیید</button><button class="sb sb2" id="pmno">انصراف</button></div><div class="lb" style="margin-top:10px;font-size:11px;opacity:.8">Enter = تأیید · Esc = انصراف</div></div></div>
-<div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی</span>
+<div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی؛ با بستن صفحه کنار می‌رود</span>
 <button class="sb" onclick="sendall()" title="Ctrl+Enter">ارسال همهٔ تغییرات به برد (Ctrl+Enter)</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a75389b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c2fb621</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -1263,8 +1263,8 @@ function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id
    [FA] تغییرات محلی صف می‌شوند و یک دکمه همه را می‌فرستد؛ پنل مقدار برگشتی برد
    را مقایسه می‌کند و می‌گوید «نشست» یا «برد گیره زد». */
 var PEND={};
-const PEND_KEY='changeover-panel-pending-v1';
-function pendSave(){try{localStorage.setItem(PEND_KEY,JSON.stringify(PEND));}catch(e){}}
+/* [EN] Unsent edits belong to this page only; explicit backup import can stage them. */
+try{localStorage.removeItem('changeover-panel-pending-v1');}catch(e){}
 function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
  b.className=n?'on':'';$('sbn').textContent=n;
  document.body.style.paddingBottom=n?'52px':'';}
@@ -1273,21 +1273,8 @@ function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
    [‎FA] q117/q127‎ واقعاً checkbox هستند نه ‎q-input‎؛ اما آن‌ها هم عضو همین صف
    معلق‌اند و باید همان نشانهٔ زرد را بگیرند. */
 function pctrl(id){const e=$('q'+id);if(e)return e;return id===117?$('ib117'):id===127?$('db127'):id===147?$('cb147'):id===157?$('cb157'):null;}
-function pendRestore(){
- try{
-  const saved=JSON.parse(localStorage.getItem(PEND_KEY)||'{}');
-  if(!saved||typeof saved!=='object'||Array.isArray(saved))return;
-  for(const id of Object.keys(saved)){
-   if(!/^\d+$/.test(id)||!Number.isFinite(+saved[id]))continue;
-   const n=+id;if(n<0||n>(PN-1)||n===70)continue;PEND[n]=saved[id];
-   const e=pctrl(n);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!saved[id];else e.value=saved[id];}
-   const a=$('a'+n);if(a)a.textContent='در صف';
-  }
- }catch(e){}
- pbar();
-}
 function qput(id,v){PEND[id]=v;const e=pctrl(id);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!v;else e.value=v;}
- const a=$('a'+id);if(a)a.textContent='در صف';pendSave();pbar();}
+ const a=$('a'+id);if(a)a.textContent='در صف';pbar();}
 /* [EN] Clear one pending value only after a board read-back. When an applied
    value is supplied, put that value back into the visible control as well;
    this is the rollback path for a firmware clamp/rejection and prevents the
@@ -1298,12 +1285,12 @@ function qput(id,v){PEND[id]=v;const e=pctrl(id);if(e){e.classList.add('pq');if(
 function pclr(id,applied){delete PEND[id];const e=pctrl(id);if(e){e.classList.remove('pq');
  const n=Number(applied);if(Number.isFinite(n)){if(e.type==='checkbox')e.checked=!!n;else e.value=n;}}
  if(typeof EVWANT!=='undefined'&&EVWANT[id]!=null){if(Number(applied)===Number(EVWANT[id]))delete EVWANT[id];}
- pendSave();pbar();}
+ pbar();}
 function pundo(){for(const id of Object.keys(PEND)){const e=pctrl(+id);
   if(e){e.classList.remove('pq');const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';if(e.type==='checkbox')e.checked=!!v;else e.value=v;}}
- PEND={};pendSave();pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
+ PEND={};pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();if(typeof qgraph==='function'){qgraph();}}
-pendRestore();
+
 
 /* ==================== قوانین بین‌فیلدی / Cross-field rules ==================== */
 /* [EN] Cross-field advice only: the browser never repairs or vetoes; the
@@ -1344,12 +1331,14 @@ const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[
 /* [FA] پیام‌ها و تأییدها در کادر همین پنل نمایش داده می‌شوند، نه کادر پیش‌فرض مرورگر.
    Enter = تأیید، Esc = انصراف؛ پیام‌ها یکی‌یکی نشان داده می‌شوند. */
 let PMQ=Promise.resolve();
-function pmShow(msg,withCancel,filename){
+function pmShow(msg,withCancel,filename,importing){
  return new Promise(res=>{
   const m=$('pmod'),ok=$('pmok'),no=$('pmno');
   $('pmt').textContent=String(msg);
   const naming=filename!==undefined,previous=document.activeElement;
   let input,error;if(naming){input=document.createElement('input');input.id='pmfilename';input.className='dl';input.dir='auto';input.value=filename;input.maxLength=128;input.setAttribute('aria-label','نام فایل');error=document.createElement('div');error.className='erc';error.setAttribute('role','alert');$('pmt').append(input,error);}
+  let append;const oldOk=ok.textContent;
+  if(importing){ok.textContent='جایگزینی';append=document.createElement('button');append.id='pmappend';append.className='sb sb2';append.textContent='افزودن به نمونه‌های فعلی';no.before(append);append.onclick=()=>done('append');}
   no.style.display=withCancel?'':'none';
   m.classList.add('on');
   const done=v=>{if(naming&&v){let n=input.value.trim();const ext=filename.slice(filename.lastIndexOf('.'));
@@ -1357,6 +1346,7 @@ function pmShow(msg,withCancel,filename){
    if(!n.toLowerCase().endsWith(ext.toLowerCase()))n+=ext;
    if(n===ext||n.length>128){error.textContent='نام فایل خالی یا بیش از حد بلند است.';return;}v=n;
   }else if(naming)v=null;
+  if(importing){v=v===true?'replace':v==='append'?'append':null;append.remove();ok.textContent=oldOk;}
   m.classList.remove('on');if(naming){input.remove();error.remove();}ok.onclick=null;no.onclick=null;document.removeEventListener('keydown',kd,true);if(naming&&previous&&previous.isConnected)previous.focus();res(v);};
   const kd=e=>{if(e.isComposing)return;if(e.key==='Enter'){e.preventDefault();e.stopPropagation();done(true);}
    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();done(!withCancel);}};
@@ -1367,6 +1357,7 @@ function pmShow(msg,withCancel,filename){
 }
 function pmAlert(msg){const p=PMQ.then(()=>pmShow(msg,false));PMQ=p.catch(()=>{});return p;}
 function pmConfirm(msg){const p=PMQ.then(()=>pmShow(msg,true));PMQ=p.catch(()=>{});return p;}
+function pmSampleImport(){const p=PMQ.then(()=>pmShow('نمونه‌های فایل جایگزین شوند یا به نمونه‌های فعلی اضافه شوند؟ انصراف چیزی را تغییر نمی‌دهد.',true,undefined,true));PMQ=p.catch(()=>{});return p;}
 function pmName(name){const p=PMQ.then(()=>pmShow('نام فایل را بررسی و تأیید کنید؛ پسوند حفظ می‌شود.',true,name));PMQ=p.catch(()=>{});return p;}
 async function filesave(name,source,type){
  name=await pmName(name);if(!name)return false;
@@ -2980,18 +2971,18 @@ function xdiff(schema){
  if(oldOrder!==newOrder)out.push('ترتیب/جای پارامترها در فهرست پشتیبان تغییر کرده است');
  return out;
 }
-function xpending(){const out={};for(const id in PEND)if(Number.isFinite(+PEND[id]))out[id]=+PEND[id];return out;}
+function xnumber(v){return typeof v==='number'&&Number.isFinite(v);}
+function xpending(){const out={};for(const id in PEND)if(xnumber(PEND[id]))out[id]=PEND[id];return out;}
 function xsamples(raw){return Array.isArray(raw)?raw.map(calnorm).filter(Boolean):[];}
 function xlutpack(r){const src=r&&r.ready?r:null;if(!src||!Array.isArray(src.T)||src.T.length!==2)return null;const T=src.T.map(t=>({X:t.X.slice(),Y:t.Y.slice()}));if(T.some(t=>t.X.length!==t.Y.length))return null;return {ready:1,T:T};}
-var LUT_BACKUP=null;
 async function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
 let lut=xlutpack(typeof LUT_LAST_AFTER!=='undefined'&&LUT_LAST_AFTER)||xlutpack(typeof LAT!=='undefined'&&LAT)||xlutpack(typeof LBT!=='undefined'&&LBT);
  if(!lut&&D.on==1&&!CAL_BUSY&&!(typeof W!='undefined'&&W.run)&&typeof lread==='function'){if(x)x.textContent='… جدول LUT فعلی برای پشتیبان خوانده می‌شود';try{lut=xlutpack(await lread());}catch(e){lut=null;}}
- const o={app:'ChangeOver-settings',v:4,ids:XIDS.length,saved:new Date().toISOString(),schema:xschema(),params:{},pending:xpending(),benchSamples:xsamples(typeof CALS!=='undefined'?CALS:[]),benchView:calview(),lut:lut};
+ const o={app:'ChangeOver-settings',v:4,ids:XIDS.length,saved:new Date().toISOString(),schema:xschema(),params:{},pending:xpending(),benchSamples:xsamples(typeof CALS!=='undefined'?CALS:[]),benchView:calview(),lut:lut,lutRole:'audit-only'};
  if(!o.benchView){if(x)x.textContent='⚠ انتخاب نقطه‌ها معتبر نیست؛ فایل ساخته نشد.';return;}
  XIDS.forEach(id=>{o.params[id]=D.p[id];});
  if(!await filesave('changeover-settings-'+o.saved.slice(0,10)+'.json',JSON.stringify(o,null,1),'application/json'))return false;
- if(x)x.textContent='⬇ پشتیبان '+XIDS.filter(id=>o.params[id]!=null).length+'/'+Object.keys(o.pending).length+' pending/'+o.benchSamples.length+' نمونه · '+(lut?'LUT ذخیره شد':'LUT ندارد');return true;}
+ if(x)x.textContent='⬇ پشتیبان '+XIDS.filter(id=>o.params[id]!=null).length+'/'+Object.keys(o.pending).length+' pending/'+o.benchSamples.length+' نمونه · '+(lut?'جدول فقط سندِ بازبینی است؛ بازیابی مستقیم ندارد':'بدون سند جدول');return true;}
 /* [EN] Clamp one imported number to that parameter's own range.
    [FA] محدودکردن یک عدد واردشده به بازهٔ خود همان پارامتر. */
 function xclamp(id,n){const e=$('q'+id);
@@ -3002,16 +2993,15 @@ function xclamp(id,n){const e=$('q'+id);
  const pr=(typeof P!=='undefined')?P[id]:null;
  if(!pr||!Number.isFinite(+pr[2])||!Number.isFinite(+pr[3]))return n;
  return Math.min(+pr[3],Math.max(+pr[2],n));}
-function xlutimport(raw){if(!raw||raw.ready!==1||!Array.isArray(raw.T)||raw.T.length!==2)return null;const lim=typeof LUTMAX!=='undefined'?LUTMAX:24;if(raw.T.some(t=>!t||!Array.isArray(t.X)||!Array.isArray(t.Y)||t.X.length!==t.Y.length||t.X.length>lim||!t.X.concat(t.Y).every(v=>Number.isSafeInteger(+v)&&+v>=0&&+v<=4294967295)))return null;return xlutpack(raw);}
 async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}catch(e){if(x)x.textContent='⚠ فایل JSON معتبر نیست';return;}
  if(!o||o.app!=='ChangeOver-settings'){if(x)x.textContent='⚠ این فایل پشتیبان پنل ChangeOver نیست';return;}
- if(CAL_BUSY||(typeof W!=='undefined'&&W&&W.run)){if(x)x.textContent='⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.';return;}
- const ps=o.params?o.params:{};
+ if(CAL_BUSY||(typeof W!=='undefined'&&W&&(W.run||W.opening))){if(x)x.textContent='⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.';return;}
+ const ps=o.params===undefined?{}:o.params;
+ if(!ps||typeof ps!=='object'||Array.isArray(ps)||(o.pending!==undefined&&(!o.pending||typeof o.pending!=='object'||Array.isArray(o.pending)))){if(x)x.textContent='⚠ ساختار تنظیمات فایل معتبر نیست؛ چیزی تغییر نکرد.';return;}
  const fileSamples=xsamples(o.benchSamples),fileView=calview(o.benchView,fileSamples);
- if(!fileView){if(x)x.textContent='⚠ انتخاب نقطه‌های فایل نامعتبر است';return;}
- const importedLut=xlutimport(o.lut);
+ if(!fileView||(o.benchSamples!==undefined&&(!Array.isArray(o.benchSamples)||fileSamples.length!==o.benchSamples.length))){if(x)x.textContent='⚠ نمونه یا انتخاب نقطه‌های فایل نامعتبر است؛ چیزی تغییر نکرد.';return;}
  const rawPending=o.pending&&typeof o.pending==='object'?o.pending:{};
- const pendingKeys=Object.keys(rawPending),validPending=pendingKeys.filter(k=>XIDS.includes(+k)&&Number.isFinite(+rawPending[k]));
+ const pendingKeys=Object.keys(rawPending),validPending=pendingKeys.filter(k=>/^(0|[1-9][0-9]*)$/.test(k)&&XIDS.includes(+k)&&xnumber(rawPending[k]));
  /* --- شناسنامهٔ واقعی پارامترها: اختلاف دقیق را گزارش کن --- */
  const warn=[];
  const schemaWarnings=Array.isArray(o.schema)?xdiff(o.schema):[];
@@ -3025,11 +3015,12 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  if(outs.length)warn.push(outs.length+' پارامتر/شناسه در این پنل پشتیبانی نمی‌شود و نادیده گرفته می‌شود: '+outs.join('، '));
  const pout=pendingKeys.filter(k=>!XIDS.includes(+k));
  if(pout.length)warn.push(pout.length+' pending با شناسهٔ نامعتبر نادیده گرفته شد: '+pout.join('، '));
- if(o.lut!=null&&!importedLut)warn.push('LUT نامعتبر و نادیده گرفته شد');
- let jobs=XIDS.filter(id=>Number.isFinite(+ps[id])).map(id=>[id,xclamp(id,Math.round(+ps[id]))]);
+ if(o.lut!=null)warn.push('جدول آمادهٔ داخل فایل فقط سند است و بازیابی نمی‌شود؛ جدول را از نمونه‌ها بسازید.');
+ if(Object.keys(ps).some(k=>!xnumber(ps[k]))||pendingKeys.some(k=>!xnumber(rawPending[k])))warn.push('مقدار خالی یا غیرعددی به‌عنوان صفر بازیابی نمی‌شود.');
+ let jobs=XIDS.filter(id=>xnumber(ps[id])).map(id=>[id,xclamp(id,Math.round(+ps[id]))]);
  validPending.forEach(k=>{const id=+k,val=xclamp(id,Math.round(+rawPending[k])),found=jobs.find(j=>j[0]===id);if(found)found[1]=val;else jobs.push([id,val]);});
- if(!jobs.length&&!Array.isArray(o.benchSamples)&&!importedLut){if(x)x.textContent='⚠ فایل خالی است';return;}
- const outr=jobs.filter(j=>{const source=Number.isFinite(+rawPending[j[0]])?rawPending[j[0]]:ps[j[0]];return Math.round(+source)!==j[1];});
+ if(!jobs.length&&!Array.isArray(o.benchSamples)){if(x)x.textContent=o.lut!=null?'⚠ فایل فقط جدول آماده دارد؛ بازیابی مستقیم آن حذف شده است.':'⚠ مقدار یا نمونهٔ قابل بازیابی در فایل نیست';return;}
+ const outr=jobs.filter(j=>{const source=xnumber(rawPending[j[0]])?rawPending[j[0]]:ps[j[0]];return Math.round(+source)!==j[1];});
  /* --- همان قوانین مشترک کلید ارسال (v1.56) روی مقادیر فایل --- */
  const v=rsnap();jobs.forEach(j=>{if(j[0] in v)v[j[0]]=j[1];});
  const fixed=fixrules(v);
@@ -3037,37 +3028,34 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  const msg=jobs.length+' مقدار از فایل روی پنل مرحله‌بندی شود؟'+
   (validPending.length?'\n\n'+validPending.length+' pending بازیابی می‌شود.':'')+
   (fileSamples.length?'\n\n'+fileSamples.length+' نمونه در پنل ذخیره می‌شود.':'')+
-  (importedLut?'\n\nLUT معتبر؛ فقط بازبینی، بدون اعمال خودکار.':'')+
   (warn.length?'\n\n⚠ '+warn.join('\n⚠ '):'')+
   (outr.length?'\n\n'+outr.length+' عدد به بازهٔ مجاز خودش محدود شد.':'')+
   (fixed.length?'\n\n'+fixed.length+' عدد برای سازگاری با بقیه جور شد: '+fixed.map(z=>z[0]+': '+z[1]+'→'+z[2]).join(' · '):'');
  if(!await pmConfirm(msg.replace('روی برد نوشته شود؟','روی پنل آماده شود؟'))){if(x)x.textContent='بازخوانی لغو شد';return;}
  /* [EN] Stage locally; sendall is the only board-write path.
     [FA] فقط در صف محلی بگذار؛ تنها sendall روی برد می‌نویسد. */
- if(CAL_BUSY||W.run)return;const staged=jobs.filter(j=>!(D&&D.p&&D.p[j[0]]!=null&&+D.p[j[0]]===+j[1]));
- staged.forEach(j=>{
-  const id=j[0],value=j[1];
-  qput(id,value);
-  const e=$('q'+id);if(e)e.value=value;
-  if(typeof EVB!=='undefined'&&EVB[id])EVWANT[id]=value;
+ if(CAL_BUSY||W.run||W.opening)return;
+ const staged=jobs.filter(j=>!(D&&D.p&&D.p[j[0]]!=null&&+D.p[j[0]]===+j[1]));
+ jobs.forEach(j=>{
+  const id=j[0],value=j[1],same=D&&D.p&&D.p[id]!=null&&+D.p[id]===value;
+  if(same){if(typeof EVWANT!=='undefined')delete EVWANT[id];pclr(id,value);const a=$('a'+id);if(a)a.textContent=String(value);}
+  else{qput(id,value);if(typeof EVB!=='undefined'&&EVB[id])EVWANT[id]=value;}
  });
- if(Array.isArray(o.benchSamples)){CALS=fileSamples;calinvalidate();calrestore(fileView);calsave();caln();calsmp();calchk();}
- if(importedLut)LUT_BACKUP=importedLut;
+ if(Array.isArray(o.benchSamples)){calreplace(fileSamples);calinvalidate();calrestore(fileView);calsave();caln();calsmp();calrun();}
  qgraph();
  if(typeof afresh==='function')afresh();
  if(typeof pchk==='function')pchk();
  if(x){
   const same=jobs.length-staged.length;
   const extra=(validPending.length?' pendingها بازیابی شدند.':'')+
-   (Array.isArray(o.benchSamples)?' '+fileSamples.length+' نمونه بازیابی شد.':'')+
-   (importedLut?' LUT فقط برای بازبینی نگه داشته شد؛ روی برد اعمال نشد.':'');
+   (Array.isArray(o.benchSamples)?' '+fileSamples.length+' نمونه بازیابی شد.':'')+(o.lut!=null?' جدول آماده بازیابی نشد؛ فقط نمونه‌ها مبنای ساخت جدول‌اند.':'');
   x.textContent=staged.length?
    '✅ '+staged.length+' تغییر روی پنل آماده شد؛ زردها هنوز روی برد نیستند؛ «ارسال همه» را بزنید.'+
    (same?' '+same+' مقدار از قبل یکسان بود.':'')+extra:
    'ℹ مقدار جدیدی برای ارسال نیست.'+extra;
  }
  const xi=$('xim');if(xi)xi.value='';}
-$('xim').onchange=e=>{if(e.target.files[0])ximp(e.target.files[0]);};
+$('xim').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)ximp(f);};
 /* v1.27: سلامت لینک. تا پیش از این، اگر STM32 و ESP ناهماهنگ فلش می‌شدند پنل
    فقط خالی می‌ماند و هیچ توضیحی نبود — همان حالتی که عیناً شبیه کابل قطع است.
    حالا بایت نسخه در فریم هست و گیرنده ناهم‌نسخگی را می‌شمارد، پس می‌شود صریح گفت
@@ -3305,11 +3293,12 @@ async function latchrst(n){
   if(e)e.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک و کابل را ببین';
  }catch(err){if(e)e.textContent='⚠ '+(err&&err.message?err.message:err);}
  finally{setTimeout(()=>{const t2=$('rst'+n);if(t2&&was&&t2.textContent.indexOf('✅')!==0&&t2.textContent.indexOf('⚠')!==0)t2.textContent=was;},9000);}}
-async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){}}}
+async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const failed=[],L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){failed.push(i);}}return failed.length?'بازگردانی تنظیمات تأیید نشد؛ شناسه‌های '+[...new Set(failed)].join('، '):null;}
+
 async function wlog(txt){const j=await req('/benchlog/add','POST',txt);if(j._s==507)throw 'فایل پر است (حدود ۱۰۰KB). فایل را دانلود و پاک کنید.';if(j._s!=200)throw 'نوشتن در فایل انجام نشد (پاسخ '+j._s+')';wfs(j.size);return j;}
 function wfs(sz){$('wF').innerHTML=sz==null?'':`<span class="n">${(sz/1024).toFixed(1)} / 100 KB</span>`;}
 async function winfo(){try{const j=await req('/benchlog?i=1');if(j._s!=200)return null;wfs(j.size);if(!j.fs)$('wF').innerHTML='<b class="erc">فایل‌سیستم ESP در دسترس نیست</b>';return j;}catch(e){return null;}}
-async function wclear(){if(W.run)return;if(!await pmConfirm('فایل ثبت بنچ کامل پاک شود؟ (اول آن را دانلود کنید)'))return;const j=await req('/benchlog/clear','POST');if(j._s==200){try{localStorage.removeItem('wrun');}catch(e){}wst('فایل پاک شد.','cm g');}else wst('پاک کردن انجام نشد.','cm r');winfo();}
+async function wclear(){if(W.run||W.opening||CAL_BUSY)return;if(!await pmConfirm('فایل ثبت بنچ کامل پاک شود؟ (اول آن را دانلود کنید)')||W.run||W.opening||CAL_BUSY)return;const j=await req('/benchlog/clear','POST');if(j._s==200){try{localStorage.removeItem('wrun');}catch(e){}wst('فایل پاک شد.','cm g');}else wst('پاک کردن انجام نشد.','cm r');winfo();}
 const asc=s=>String(s||'').replace(/[^ -~]/g,'').replace(/,/g,';').trim().slice(0,80);
 function wsweep(){const a=+($('wA').value),b=+($('wB').value),step=+($('wStep').value);
  if(!(Number.isFinite(a)&&Number.isFinite(b)&&Number.isFinite(step)&&a>=0&&a<=50&&b>=0&&b<=50&&a<=b&&step>=1&&step<=50))throw 'بازه یا گام sweep نامعتبر است (از/تا 0..50، از<=تا و گام 1..50)';
@@ -3410,14 +3399,15 @@ async function wbegin(retry){if(!D||D.on!=1)return await pmAlert('لینک STM32
  if(!wSkipC&&!await pmConfirm(K?'این مرحله دوباره اندازه‌گیری شود؟ تنظیمات فعلی پس از ثبت برمی‌گردد.':'داده‌برداری شروع شود؟ '+SC.join('، ')+'\nپنل duty هر مرحله را می‌گذارد و منتظر عدد مولتی‌متر شما می‌ماند. آخر هر سناریو تنظیمات قبلی برمی‌گردد.'))return;
  if(CAL_BUSY||!D||D.on!=1||D.p[15]===1||D.p[17]===1||[11,12,16,18,19].some(i=>D.p[i]==null))return await pmAlert('وضعیت برد تغییر کرده؛ دوباره بررسی کنید.');
  [11,12,16,18,19].forEach(i=>o[i]=D.p[i]);
- W={run:true,abort:false,act:null,man:false,next:K?K.length:0,retry:K?retry:null,current:null,K};document.body.classList.add('br');if(!K)wbuild(SC,L);$('wDone').classList.remove('v');let err=null,active=null;
+ W={run:true,abort:false,act:null,man:false,next:K?K.length:0,retry:K?retry:null,current:null,K};document.body.classList.add('br');if(!K)wbuild(SC,L);$('wDone').classList.remove('v');let err=null,active=null,restoreError=null;
+ const restore=async()=>{const e=await wrestore(o);if(e){restoreError=e;throw e;}};
  try{while(true){wchk();
    if(W.jump!=null){W.retry=W.jump===W.next?null:W.jump;W.jump=null;}
    const x=W.retry==null?W.next:W.retry;
-   if(x>=W.K.length){if(active){await wrestore(o);active=null;}W.current=null;wbuttons();
+   if(x>=W.K.length){if(active){await restore();active=null;}W.current=null;wbuttons();
      const f=await wreview();if(f.a==='err')throw f.e;if(f.a==='done')break;continue;}
    const k=W.K[x],{sc,i,d}=k,act=WSC[sc];W.current=x;wbuttons();
-   if(active!==sc){if(active)await wrestore(o);active=sc;await wprepare(sc);}
+   if(active!==sc){if(active)await restore();active=sc;await wprepare(sc);}
    wchk();if(W.jump!=null)continue;
    wcell(x,[],'در حال اندازه‌گیری','wr');wsee(x);
    const pm=r0(d*10);for(const n of act){wchk();const c=D.p[12+n];await setv(14+2*n,Math.min(pm,c==null?500:c,500));}
@@ -3434,14 +3424,14 @@ async function wbegin(retry){if(!D||D.on!=1)return await pmAlert('لینک STM32
    }finally{W.saving=false;}
    if(W.retry==null)W.next++;else W.retry=null;W.current=null;wbuttons();
  }}catch(e){err=e;if(W.current!=null){W.K[W.current].issue=String(e);calmark();}}
- finally{if(active)await wrestore(o);W.run=false;W.saving=false;W.current=null;W.act=null;W.man=false;wbuttons();document.body.classList.remove('br');}
+ finally{if(active)restoreError=await wrestore(o)||restoreError;W.run=false;W.saving=false;W.current=null;W.act=null;W.man=false;wbuttons();document.body.classList.remove('br');}
  W.K.forEach((k,y)=>{wpaint(y);if(!k.done)wcell(y,[],'ثبت نشد');});
- if(err&&err!=='پایان توسط کاربر')wst('متوقف شد: '+err+' · تنظیمات قبلی برگشت. ردیف‌های ثبت‌شده در فایل مانده‌اند.','cm r');else wst(err?'با دکمهٔ پایان تمام شد؛ تنظیمات قبلی برگشت.':'داده‌برداری تأیید و تمام شد؛ تنظیمات قبلی برگشت.','cm g');
+ if(restoreError)wst('⛔ '+restoreError+'؛ وضعیت برد را بررسی کنید. نتیجه‌های ثبت‌شده حفظ شدند.','cm r');else if(err&&err!=='پایان توسط کاربر')wst('متوقف شد: '+err+' · تنظیمات قبلی برگشت. ردیف‌های ثبت‌شده در فایل مانده‌اند.','cm r');else wst(err?'با دکمهٔ پایان تمام شد؛ تنظیمات قبلی برگشت.':'داده‌برداری تأیید و تمام شد؛ تنظیمات قبلی برگشت.','cm g');
  $('wDone').classList.add('v');winfo();
 
  caln();calsmp();calchk();
 
- stxt('calst','جدول بسته شد. مرحلهٔ بعد پایین همین صفحه است: «محاسبه از نمونه‌ها» و بعد «ساخت کد برای میکرو».');}
+ stxt('calst',restoreError?'⛔ '+restoreError+'؛ پیش از ادامه وضعیت برد را بررسی کنید.':'جدول بسته شد. مرحلهٔ بعد پایین همین صفحه است: «محاسبه از نمونه‌ها» و بعد «ساخت کد برای میکرو».');}
 
 
 var CALS=[];try{CALS=(JSON.parse(localStorage.getItem('calsmp')||'[]')||[]).map(calnorm).filter(Boolean);}catch(e){CALS=[];}
@@ -3463,7 +3453,7 @@ function calpush(m,v,act,sc,duty,replace){
   ts:Date.now()};
  const i=Number.isInteger(replace)&&replace>=0&&replace<CALS.length?replace:CALS.length;
  CALS[i]=sample;calinvalidate();calsave();caln();calsmp();calchk();return i;}
-async function calclr(){if(CAL_BUSY||W.run)return;if(!(await pmConfirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟')))return;CALS=[];calinvalidate();calsave();caln();calsmp();
+async function calclr(){if(CAL_BUSY||W.run||W.opening)return;if(!(await pmConfirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))||CAL_BUSY||W.run||W.opening)return;CALS=[];calinvalidate();calsave();caln();calsmp();
  stxt('calst','نمونه‌ها پاک شدند.');}
 function caln(){stxt('caln',String(CALS.length));}
 
@@ -3507,6 +3497,8 @@ function calview(v,S=CALS){
  }
  return {cuts:cuts.map(a=>[...new Set(a)]),scenarios:sc&&sc.slice()};
 }
+/* [EN] A different dataset cannot keep old bench-row object links. No session replay is implied. */
+function calreplace(samples){CALS=samples;W.K=[];$('wT').innerHTML='';$('wF0').innerHTML='';$('wDone').classList.remove('v');}
 function calrestore(v){CALCUT=v.cuts.map(a=>a.slice());if(v.scenarios)Object.keys(WSC).forEach(k=>$('wc'+k).checked=v.scenarios.includes(k));}
 /* [EN] Diagnostics identify candidates, never assert which of two conflicting DMM readings is wrong. */
 function calmark(){
@@ -3603,8 +3595,8 @@ function calsmp(){const b=$('calsl');if(!b)return;
    '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td><td data-calhint></td></tr>').join('')+'</table></div>';calallSync();calmark();}
 function calallSync(){const e=$('calall');if(!e)return;const selected=CALS.filter(z=>z.use!==0).length;e.checked=selected===CALS.length;e.indeterminate=selected>0&&selected<CALS.length;const n=$('calallCount');if(n)n.textContent=selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده';}
 function calchanged(){calinvalidate(true);calsave();calsmp();if(CAL_AUTO)calrun();else calchk();}
-function caluse(i,on){if(CAL_BUSY||W.run){calsmp();return;}if(CALS[i]){CALS[i].use=on?1:0;calchanged();}}
-function calpick(on){if(CAL_BUSY||W.run){calsmp();return;}CALS.forEach(z=>z.use=on?1:0);calchanged();}
+function caluse(i,on){if(CAL_BUSY||W.run||W.opening){calsmp();return;}if(CALS[i]){CALS[i].use=on?1:0;calchanged();}}
+function calpick(on){if(CAL_BUSY||W.run||W.opening){calsmp();return;}CALS.forEach(z=>z.use=on?1:0);calchanged();}
 function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0)&&(!n||!CALCUT[n-1].includes(Math.round(z[n===1?'r1':'r2']))));}
 
 function caltargets(){
@@ -3695,7 +3687,7 @@ if(negN)note.push(negN+' نمونهٔ منفی (دشارژ) صفر حساب شد
  return {X:X,Y:Y,note:note,bad:bad};}
 
 function caldrop(n,c){
- if(CAL_BUSY||W.run||![1,2].includes(n))return;
+ if(CAL_BUSY||W.run||W.opening||![1,2].includes(n))return;
  if(c==null)CALCUT[n-1]=[];
  else{const t=calbuild(n);if(!t.X.includes(c)||t.X.length<=2||calsel(n).some(z=>z.d===0&&Math.round(z[n===1?'r1':'r2'])===c))return;CALCUT[n-1].push(c);}
  calrun();
@@ -3749,14 +3741,14 @@ async function calexp(){if(!CALS.length){stxt('calst','نمونه‌ای برا�
  if(!o.view)return pmAlert('انتخاب نقطه‌ها معتبر نیست؛ فایل ساخته نشد.');
  if(await filesave('changeover-bench-'+o.saved.slice(0,10)+'.json',JSON.stringify(o),'application/json'))stxt('calst','فایل نمونه‌ها و انتخاب‌های فعلی برای دانلود آماده شد.');}
 
-async function calimp(f){if(CAL_BUSY||W.run)return;let o;try{o=JSON.parse(await f.text());}catch(e){stxt('calst','⚠ فایل JSON معتبر نیست');return;}
+async function calimp(f){if(CAL_BUSY||W.run||W.opening)return;let o;try{o=JSON.parse(await f.text());}catch(e){stxt('calst','⚠ فایل JSON معتبر نیست');return;}
  if(!o||o.app!=='ChangeOver-bench-samples'||!Array.isArray(o.samples)||(o.v!==undefined&&![1,2].includes(o.v))||(o.v===2&&o.view===undefined)){stxt('calst','⚠ این فایل نمونه‌های بنچ نیست');return;}
  const add=o.samples.map(calnorm).filter(Boolean),bad=o.samples.length-add.length,view=calview(o.view,add);
  if(!view||(o.v===2&&bad)){stxt('calst','⚠ نمونه یا انتخاب نقطه‌های فایل نامعتبر است؛ چیزی تغییر نکرد.');return;}
  if(!add.length){stxt('calst','⚠ نمونهٔ معتبری در فایل نیست');return;}
- const keep=CALS.length&&await pmConfirm('نمونه‌های فعلی ('+CALS.length+' تا) هم نگه داشته شوند؟\nلغو = فقط نمونه‌های فایل بماند.');
- if(CAL_BUSY||W.run)return;const combined=keep?CALS.concat(add):add;if(!calview(o.view,combined)){stxt('calst','⚠ انتخاب‌ها با نمونه‌های فعلی سازگار نیستند.');return;}
- CALS=combined;calinvalidate();calrestore(view);calsave();caln();calsmp();
+ const mode=CALS.length?await pmSampleImport():'replace';if(!mode||CAL_BUSY||W.run||W.opening)return;
+ const keep=mode==='append',combined=keep?CALS.concat(add):add;if(!calview(o.view,combined)){stxt('calst','⚠ انتخاب‌ها با نمونه‌های فعلی سازگار نیستند.');return;}
+ if(keep)CALS=combined;else calreplace(combined);calinvalidate();calrestore(view);calsave();caln();calsmp();
  stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد'+(bad?' ('+bad+' نمونهٔ نامعتبر کنار گذاشته شد)':'')+' (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
  const e=$('calf');if(e)e.value='';calrun();}
 async function calapply(){
@@ -4161,7 +4153,7 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: عدد مو�
 <div class="cm lb" id="wS0"></div><div id="wF0"></div><div id="wT"></div>
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <button class="sb sb2 pbb" onclick="wdl()">دانلود benchlog.csv</button> <button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» جریان signed واقعی همان باتری را مستقیم فیت می‌کند؛ جریان منفی یعنی باتری بار برد را تغذیه می‌کند و برای ناحیهٔ بدون شارژ صفر می‌شود، نه اینکه از همهٔ نقاط کم شود. مقدار فعلی برد و کیفیت برازش هم نمایش داده می‌شود. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۰ تا ۲۰٪) بگیرید.</div>
-<div class="lgrp">نمونه‌ها و محاسبه</div><div class="bqr2"><button class="sb sb2 pbg" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb sb2 pbb" onclick="calexp()">📥 ذخیرهٔ نمونه‌ها</button><label class="sb sb2 pbb" style="cursor:pointer">📤 بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2 pbr" type="button" onclick="calclr()" aria-label="پاک کردن نمونه‌ها" title="پاک کردن نمونه‌ها">🗑️ پاک کردن نمونه‌ها</button><button class="sb brun pbg" onclick="calapply()">اعمال فقط پارامترهای کالیبراسیون</button></div>
+<div class="lgrp">نمونه‌ها و محاسبه</div><div class="bqr2"><button class="sb sb2 pbg" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb sb2 pbb" onclick="calexp()">📥 ذخیرهٔ نمونه‌ها</button><label class="sb sb2 pbb" style="cursor:pointer">📤 بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="const f=this.files[0];this.value='';if(f)calimp(f)"></label><button class="sb stp2 pbr" type="button" onclick="calclr()" aria-label="پاک کردن نمونه‌ها" title="پاک کردن نمونه‌ها">🗑️ پاک کردن نمونه‌ها</button><button class="sb brun pbg" onclick="calapply()">اعمال فقط پارامترهای کالیبراسیون</button></div>
 <div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ «به‌روزرسانی» ابتدا گین/آفست‌های لازم را با readback همان شناسه تأیید می‌کند و سپس LUT همان تراکنش را می‌فرستد؛ جدول و تنظیمات باتری دیگر از readback واقعی حفظ می‌شود. «به‌روزرسانی هر دو» هر دو زنجیره را در یک تراکنش انجام می‌دهد. برای این مسیر دکمهٔ عمومی «اعمال همهٔ تغییرات» لازم نیست؛ دکمهٔ مستقل بالا فقط برای اعمال پارامترهای کالیبراسیون بدون ارسال جدول است.</div><div class="bqr2"><button class="sb sb2 pbb" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="calpoints"></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2 pbv" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb sb2 pbv" onclick="calcopy()">کپی کد</button><button class="sb sb2 pbv" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
 `;
 function wmode(){const s=$('wSw')&&$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB'),S=$('wStep'),manual=$('wManual'),sweep=$('wSweep');

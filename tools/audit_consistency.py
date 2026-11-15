@@ -1868,8 +1868,12 @@ def sec_ov_single_source():
        "calibration panel is missing the one-click jump to the q34 field")
     ok("id!==70&&id!==72&&id!==73&&id!==76" in pan,
        "panel backup set still includes the derived id 70")
-    ok("n===70)continue" in pan,
-       "panel pending-restore still accepts the derived id 70")
+    # [EN] Automatic pending replay was removed after its startup TDZ failure;
+    #      explicit file import is still limited to the non-derived XIDS above.
+    ok(not re.search(r"function\s+(?:pendRestore|pendSave)\s*\(", pan)
+       and "pendRestore();" not in pan
+       and "localStorage.removeItem('changeover-panel-pending-v1')" in pan,
+       "obsolete automatic pending-restore/write path or its stored data remains")
     user = read("ESP_USER/simple_panel.h")
     ok("const ovThr=brd.imax" in user and "ovClr=brd.imax-brd.ovHyst" in user,
        "ESP_USER OV threshold/clear are not derived from the board limits")

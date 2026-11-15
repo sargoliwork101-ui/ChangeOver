@@ -248,3 +248,36 @@ simulator self-tests also PASS. All eight additional repository gates exit 0;
 `git diff --check` is clean. No DOM suite was skipped. Panel HTML is 484792 bytes
 including NUL, under the unchanged 491520-byte ceiling. Native ESP8266 build and
 physical-board tests were not performed by the agent.
+
+
+### Restore audit regression coverage
+
+`host_test_restore_audit.js` is included in `run_esp_tests.sh` (missing jsdom is
+an explicit SKIP). Its 30 assertions cover strict numeric imports, real zero,
+malformed containers/samples/IDs and derived id 70, queue/UI reconciliation,
+settings cancellation, removal of automatic pending replay and dead LUT restore,
+explicit audit-only LUT exports, real three-choice sample dialogs and Escape,
+replace/append object identity, stale capture-row cleanup, preflight locks,
+post-confirm clear locks, same-file reselection, restore failure collection and
+a complete two-scenario capture that must stop after a failed inter-scenario
+restore while preserving the first committed sample.
+
+The new test was run against frozen 1159cd5 preview HTML and failed on the first
+numeric-import assertion; it passes on the repaired panel. The existing 47-check
+revision suite now explicitly requires settings-backup import to regenerate the
+visible edited tables, not only restore the hidden cut array. Its legacy-import
+fixture chooses replacement explicitly instead of relying on destructive Cancel.
+The cross-file consistency gate now enforces removal of automatic queue replay
+and its obsolete stored data rather than requiring a branch inside deleted code;
+explicit imports remain restricted to the existing non-derived `XIDS` set.
+
+Validation actually run after this audit: 585 host / 13 labels / 287 existing DOM /
+42 repeat / 20 point-edit / 7 frozen storage / 47 revision / 30 restore-audit
+assertions PASS; 15 live HTTP simulator integration assertions and scenario-5/6
+self-tests PASS. All eight repository gates exit 0 (consistency 567 invariants,
+zero findings; project-contract unit tests 10 PASS). `git diff --check` is clean.
+The first syntax gate caught an obsolete audit assertion requiring the deleted
+replay branch; the assertion was updated as described above and the gate rerun
+successfully. No DOM suite was skipped. No native ESP8266 build, physical-board
+restore or power-cut test was run. Firmware and ESP_USER are unchanged; the
+bench storage proposal remains unimplemented and requires separate approval.

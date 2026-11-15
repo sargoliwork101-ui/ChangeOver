@@ -9,6 +9,30 @@ The owner asked for a proposal before risking calibration correctness. A separat
 approval and migration/test plan are required before implementing compression.
 Post-finish recapture is implemented independently of that decision.
 
+## Plain-language scope and example
+
+Two different stores must not be confused:
+
+| Store | Purpose | Proposed change |
+|---|---|---|
+| ESP bench log | Detailed audit of measurements, settings and every attempt | Replace repeated full settings images with exact setting deltas between complete checkpoints; keep all measurements. Replace the on-device text legend with a schema ID. |
+| Downloadable editable sample JSON | Reopen full-precision samples, use flags, per-channel exclusions and scenario scope to rebuild the same table | Keep this working round trip; do not replace it with a smaller CSV that rounds raw means. |
+| Daily history | Separate operational event log | No new change in this proposal. |
+
+Example: when only channel-1 duty changes from 10% to 20%, save the changed
+setting ID and exact new value rather than repeating all 171 settings. Still
+save the complete new measurement row and any repeat-attempt identity. Start
+with a full settings image and periodically write another checkpoint; include
+framing/integrity checks. On CSV download expand the internal representation
+back into a readable file and supply the column legend then.
+
+The fixture below is approximately 8.5 KB total today, including approximately
+4.3 KB of repeated-file explanatory header. This is not a promised compressed
+size or a hardware result. Benefit depends on real sessions, noise and settings
+changes; the cost is a more complicated reader/writer and mandatory corruption,
+power-cut and memory tests. No source values may be discarded or rounded.
+Approval is still required before implementing any such format change.
+
 Measurements are reproducible with `node tools/test_panel_preview_bench.js`.
 They are simulator fixture bytes, not a physical-board flash measurement. Fixture:
 three BOTH-channel steps (0/10/20 percent), one earlier-step repeat before finish,
