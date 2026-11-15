@@ -167,3 +167,18 @@ exact POST selection, confirmation warnings, truthful failures and file paging.
 Before: 570 host / 13 labels / 270 DOM PASS. After: 585 / 13 / 280 PASS.
 All nine repository runners exit 0; preview-server self-tests also pass.
 Native ESP8266 target build and physical flash tests were not run.
+
+### Per-step bench repeat regressions
+
+`host_test_bench_repeat.js` runs the real generated panel workflow with jsdom,
+mocking only hardware and flash boundaries. It covers current/earlier/cross-
+scenario repeats, interrupted drafts, sample identity/replacement, final review,
+commit locks, fit invalidation, append-only CSV annotations, early End, link
+loss, preparation/write failures, and two-column live current display. It is
+part of `run_esp_tests.sh`; missing jsdom is explicitly SKIP, never PASS.
+
+Validation for this change: 585 host + 13 labels + 287 existing DOM + 29 bench
+repeat assertions PASS (jsdom installed, no skipped DOM suites). All eight
+additional repository gates exit 0 and `git diff --check` is clean. Panel HTML
+remains below its existing 491520-byte ceiling. Native ESP8266 compilation and
+physical-board capture/repeat were not run by the agent.

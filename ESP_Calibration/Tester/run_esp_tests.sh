@@ -43,6 +43,7 @@ if command -v node >/dev/null 2>&1; then
     #      its own runner. This one needs no DOM and no jsdom, so it always runs.
     node "${SCRIPT_DIRECTORY}/host_test_panel_labels.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_panel_click.js" || exit 1
+    node "${SCRIPT_DIRECTORY}/host_test_bench_repeat.js" || exit 1
 else
     echo "SKIP: node is not installed; the DOM tests did not run."
 fi

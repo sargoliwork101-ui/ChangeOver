@@ -69,3 +69,22 @@ restores the default share (100%). Deleting a day removes its matching RAM rows
 only and invalidates its cached state; unrelated pending rows remain intact.
 
 There is no application login/session check in this firmware: HTTP routes, including destructive operations such as `/evt/format`, `/evt/clr`, `/evt/clean`, `/benchlog/clear`, `/lut`, and `/lut/reset`, are reachable by any station that can join the AP. Current AP key is hard-coded as `123456789`. These are verified current behaviors, not recommendations; changing authentication or credentials requires owner approval and device-side changes.
+
+## Bench per-step repeat (current panel)
+
+Each measured/current row has a repeat action while a capture session is open.
+A single capture loop serializes channel/duty changes and measurement commits;
+row actions request a switch rather than starting a second hardware task.
+Cross-scenario switching and final review use the existing zero-duty/restore
+path. Interrupted DMM drafts and unrelated committed samples are retained.
+Final review keeps repeat available until explicit completion; early End still
+stops the session. A successful recapture replaces its session-owned sample by
+object identity and invalidates computed fits. Failed CSV writes do not replace
+that sample. The 89-column CSV schema is unchanged: append-only repeat attempts
+are marked with a `# repeat` comment; prior CSV rows are never rewritten. The
+daily 18-field schema, Firmware and ESP_USER are unchanged.
+
+The live row updater now writes only its two board-current columns; its old
+five-value voltage/current layout no longer matched the table and could
+overwrite the DMM display cells while waiting for input. The capture submit
+button is not subject to the Start button's running-session pointer lock.
