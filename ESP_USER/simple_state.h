@@ -227,6 +227,9 @@ static uint32_t func__Simple_NowSec(void)
     uint32_t__elapsedSec = ((uint32_t)millis() - UINT32_T__G__TimeAnchorMs) / 1000u;
     return UINT32_T__G__TimeAnchorSec + uint32_t__elapsedSec;
 }
+static bool BOOL__G__TimeFromDisk = false;
+static bool BOOL__G__TimeBoardSeen = false;
+static uint32_t UINT32_T__G__TimeBootMs = 0u;
 static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToBoard)
 {
     if (uint32_t__epochSec < SIMPLE_TIME_VALID_MIN)
@@ -240,6 +243,39 @@ static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToB
     {
         BOOL__G__TimePushed = false;
     }
+}
+static bool func__Simple_TimeBootReady(void)
+{
+    if (BOOL__G__TimeFromDisk == false)
+    {
+        return true;
+    }
+    if (BOOL__G__TimeBoardSeen != false)
+    {
+        return true;
+    }
+    return ((uint32_t)((uint32_t)millis() - UINT32_T__G__TimeBootMs) >=
+            (uint32_t)SIMPLE_TIME_BOOT_GRACE_MS);
+}
+static bool func__Simple_TimeAdoptFromBoard(uint32_t uint32_t__epochSec)
+{
+    if (uint32_t__epochSec < SIMPLE_TIME_VALID_MIN)
+    {
+        return false;
+    }
+    BOOL__G__TimeBoardSeen = true;
+    if (BOOL__G__TimeValid != false)
+    {
+        uint32_t uint32_t__panelSec = func__Simple_NowSec();
+        if ((uint32_t__panelSec > uint32_t__epochSec) &&
+            ((uint32_t__panelSec - uint32_t__epochSec) >= (uint32_t)SIMPLE_TIME_ADOPT_DIFF_SEC))
+        {
+            /* [EN] the board is behind us: our clock stays and is pushed back to it */
+            return false;
+        }
+    }
+    func__Simple_TimeSet(uint32_t__epochSec, false);
+    return true;
 }
 static uint32_t UINT32_T__G__LastSavedTimeSec = 0u;
 static int32_t  INT32_T__G__LogTzSec = 0;
@@ -319,6 +355,12 @@ static void func__Simple_TimeLoad(void)
     }
     uint32_t__savedSec = (uint32_t)string__value.toInt();
     UINT32_T__G__LastSavedTimeSec = uint32_t__savedSec;
+    if (uint32_t__savedSec >= SIMPLE_TIME_VALID_MIN)
+    {
+        BOOL__G__TimeFromDisk = true;
+        BOOL__G__TimeBoardSeen = false;
+        UINT32_T__G__TimeBootMs = (uint32_t)millis();
+    }
     func__Simple_TimeSet(uint32_t__savedSec, false);
 }
 static bool BOOL__G__ChartsDirty = false;

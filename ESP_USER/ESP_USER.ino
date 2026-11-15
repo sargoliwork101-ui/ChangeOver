@@ -62,13 +62,7 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/time", HTTP_POST, func__Simple_HttpTimeSync);
     SIMPLE_WEB_SERVER_T__G__Server.on("/login", HTTP_POST, func__Simple_HttpLogin);
     SIMPLE_WEB_SERVER_T__G__Server.on("/logout", HTTP_POST, func__Simple_HttpLogout);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_GET, func__Simple_HttpUsers);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_POST, func__Simple_HttpUsersPost);
     SIMPLE_WEB_SERVER_T__G__Server.on("/setpass", HTTP_POST, func__Simple_HttpSetPass);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/adduser", HTTP_POST, func__Simple_HttpAddUser);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/deluser", HTTP_POST, func__Simple_HttpDelUser);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/theme", HTTP_GET, func__Simple_HttpGetTheme);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/settheme", HTTP_POST, func__Simple_HttpSetTheme);
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_GET, func__Simple_HttpGetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_POST, func__Simple_HttpSetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/setwifi", HTTP_POST, func__Simple_HttpSetWifi);
@@ -82,11 +76,11 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Simple_HttpEventClear);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/snap", HTTP_POST, func__Simple_HttpEventSnap);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Simple_HttpEventFormat);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/file", HTTP_POST, func__Simple_HttpFileDelete);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Simple_HttpEventFsStatus);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Simple_HttpEventClean);
     {
-        static const char *char__ptr_headerKeys[] = {"Cookie"};
-        SIMPLE_WEB_SERVER_T__G__Server.collectHeaders(char__ptr_headerKeys, 1u);
+        static const char *char__ptr_headerKeys[] = {"Cookie", "X-Admin-Token"};
+        SIMPLE_WEB_SERVER_T__G__Server.collectHeaders(char__ptr_headerKeys, 2u);
     }
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
@@ -117,27 +111,10 @@ void loop(void)
         func__Simple_SendGetParams();
         bool__paramsReqDone = true;
     }
-    if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
+    if (func__Simple_TimeAdoptFromBoard(UINT32_T__G__BoardTimeSec) != false)
     {
-        bool bool__adopt = !BOOL__G__TimeValid;
-        if (BOOL__G__TimeValid)
-        {
-            uint32_t uint32_t__panelSec = func__Simple_NowSec();
-            if (UINT32_T__G__BoardTimeSec > uint32_t__panelSec)
-            {
-                bool__adopt = true;
-            }
-            else if ((uint32_t__panelSec - UINT32_T__G__BoardTimeSec) >= SIMPLE_TIME_ADOPT_DIFF_SEC)
-            {
-                bool__adopt = true;
-            }
-        }
-        if (bool__adopt)
-        {
-            func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
-            func__Simple_TimeSave();
-            BOOL__G__TimePushed = true;
-        }
+        func__Simple_TimeSave();
+        BOOL__G__TimePushed = true;
     }
     if (BOOL__G__TimeValid && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
     {

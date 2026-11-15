@@ -17,25 +17,19 @@
     "GET /evt/fs",
     "GET /latch",
     "GET /t",
-    "GET /theme",
-    "GET /users",
     "GET /wifi",
-    "POST /adduser",
     "POST /clear",
     "POST /clock",
-    "POST /deluser",
-    "POST /evt/clean",
     "POST /evt/clr",
     "POST /evt/format",
+    "POST /evt/file",
     "POST /evt/snap",
     "POST /latch/reset",
     "POST /login",
     "POST /logout",
     "POST /setpass",
-    "POST /settheme",
     "POST /setwifi",
     "POST /time",
-    "POST /users",
     "POST /wifi"
   ]
 }
@@ -76,30 +70,42 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/charts` | GET | `range`: `1d`, `7d`, `1m`, or `3m` (default `1d`) | JSON arrays `pct`, `vin`, `vpack`, `time`, with `range` and `count` |
 | `/diag` | GET | — | JSON diagnostic, power and charge history |
 | `/time` | POST | Admin session; `ts`, optional `tz` | JSON result |
-| `/login` | POST | `user`, `pass` | JSON result and session cookie |
-| `/logout` | POST | Session cookie | JSON result; expires session cookie |
-| `/users` | GET | Admin session | JSON list of `{name, role}` |
-| `/users` | POST | Admin session; `action=del` + `user`, or `action=add` + `user`, `pass`, optional `role` | JSON action result |
-| `/adduser`, `/deluser` | POST | Admin session; add: `user`, `pass`, optional `role`; delete: `user` | JSON action result |
-| `/setpass` | POST | `user`, `new`; optional `old`, `new2` | JSON action result |
-| `/theme` | GET | — | JSON theme |
-| `/settheme` | POST | Admin session; `theme` | JSON action result |
-| `/wifi` | GET / POST | Admin session; POST: `ssid`, `pass` | JSON settings or action result |
+| `/login` | POST | `user`, `pass` | JSON result with session `token`, plus HttpOnly session cookie |
+| `/logout` | POST | Session cookie or `X-Admin-Token` | JSON result; invalidates session and expires cookie |
+| `/setpass` | POST | Admin session; `old`, `new`, optional `new2` | JSON action result for admin password |
+| `/wifi` | GET / POST | GET public; POST admin session with `ssid`, `pass` | GET only escaped `ssid` and `passSet`, never password; POST action result |
 | `/setwifi` | POST | Admin session; `ssid`, `pass` | JSON action result |
 | `/clear` | POST | Admin session; optional `type`: `charge`, `charts`, `diag`, or all | JSON action result |
-| `/latch` | GET | Admin session | JSON reset-slot state |
+| `/latch` | GET | Public read-only | JSON reset-slot state |
 | `/latch/reset` | POST | Admin session; `n`: 5, 6, or 8 | JSON queued/result status |
-| `/clock` | POST | `sec`, optional `tz` | JSON result and current seconds |
+| `/clock` | POST | Admin session; optional `sec`, `tz` | JSON result and current seconds |
 | `/evt` | GET | Optional `day` | Plain-text event-log tail |
 | `/evt/days` | GET | — | Plain-text available days |
-| `/evt/dl` | GET | Optional `day` | CSV download |
+| `/evt/dl` | GET | Optional `day` (8 digits), `all=1` for every day | CSV download |
 | `/evt/clr` | POST | Admin session | JSON clear result |
-| `/evt/snap` | POST | — | JSON log/filesystem snapshot |
-| `/evt/format` | POST | Admin session | Plain-text format result |
-| `/evt/fs` | GET | — | JSON filesystem status |
-| `/evt/clean` | POST | Admin session | JSON cleanup result |
+| `/evt/snap` | POST | Admin session | JSON log/filesystem snapshot |
+| `/evt/format` | POST | Admin session | 200 `ok` only after remount, write/read probe and saved credential verification; 500 `fail`, `mount`, or `write`; 403 `admin` |
+| `/evt/fs` | GET | Optional `offset` (0–65535) | JSON status; public log filenames only, admin all root files; `count`, `more`, `next` (-1 at end) |
+| `/evt/file` | POST | Admin session; exact absolute root `name` | JSON `ok`; 400 invalid path, 403 unauthorized, 404 missing, 500 remove failed, 503 unmounted |
 
-LittleFS files: `/wifi.json`, `/charts.json`, `/users.json`, `/time.json`, `/evt-last.txt`, `/params.json`, `/theme.json`, `/boot_no_login.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
+Admin requests accept either the session cookie or the same 64-character token in
+`X-Admin-Token`. The panel retains that token only in this tab's `sessionStorage`;
+it never stores the password. Authorized admin requests renew the 30-minute idle
+deadline. A valid owner can reauthenticate without rotating the active token;
+a second client without that token/cookie still receives 409. Public telemetry
+does not expose tokens or renew this deadline.
+
+Single-file deletion never reloads settings, logs out, restarts the ESP or sends
+STM32 commands. It only unlinks the named root file; deleting a current day also
+invalidates its log cache. Active RAM settings remain until restart/change and
+ongoing recording may recreate deleted files. Deleting `/users.json` restores
+the default admin account on the next reboot. This requires explicit UI confirmation.
+The application's storage is flat (root files); directories and traversal paths
+are not accepted. Listing never returns file contents or Wi-Fi passwords.
+
+LittleFS files: `/wifi.json`, `/charts.bin`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
+
+The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
 
 ## Run checks
 

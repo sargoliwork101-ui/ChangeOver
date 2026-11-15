@@ -78,29 +78,23 @@ static bool func__Simple_GetArg(const char *char__ptr_name, String &string__out)
     }
     return false;
 }
-static size_t func__Simple_ClampJsonUsed(size_t size_t__used,
-                                         int int__written,
-                                         size_t size_t__cap)
+/*
+ * [EN] Keep the JSON whole: a piece that does not fit is dropped instead of
+ * being cut in half, because half a number makes the panel show nothing.
+ */
+static bool func__Simple_JsonPut(char *char__ptr_buf, size_t size_t__cap,
+                                 size_t *size_t__ptrUsed, int int__written)
 {
-    size_t size_t__limit;
-    if (size_t__cap == 0u)
+    if ((char__ptr_buf == NULL) || (size_t__ptrUsed == NULL) || (int__written < 0))
     {
-        return 0u;
+        return false;
     }
-    size_t__limit = size_t__cap - 1u;
-    if (size_t__used >= size_t__limit)
+    if ((size_t)int__written >= (size_t__cap - *size_t__ptrUsed))
     {
-        return size_t__limit;
+        return false;
     }
-    if (int__written <= 0)
-    {
-        return size_t__used;
-    }
-    if ((size_t)int__written >= (size_t__cap - size_t__used))
-    {
-        return size_t__limit;
-    }
-    return size_t__used + (size_t)int__written;
+    *size_t__ptrUsed += (size_t)int__written;
+    return true;
 }
 static void func__Simple_HttpRoot(void)
 {
@@ -149,71 +143,86 @@ static void func__Simple_HttpTelemetry(void)
     uint8_t uint8_t__role = bool__authed ? UINT8_T__G__CurrentRole : 0u;
     uint8_t uint8_t__index;
     size_t size_t__used;
+    /* [EN] Three bytes stay free for the closing ]}  so the reply is always
+       parseable, even when every field carries its widest value. */
+    const size_t size_t__cap = (size_t)SIMPLE_JSON_BUFFER_SIZE - 3u;
     BOOL__G__BrowserSeen = true;
     UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
     func__Simple_ChartTick();
-    size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,"
-        "\"lko\":%u,\"bpv\":%u,\"bfw\":%u,\"bfl\":%u,\"brx\":%lu,\"bce\":%u,\"bvm\":%u,\"bpc\":%u,\"bpr\":%u,\"hac\":%lu,\"hls\":%lu,\"lac\":%lu,\"t\":[",
-        bool__online ? 1u : 0u,
-        (unsigned long)uint32_t__ageMs,
-        (unsigned int)UINT16_T__G__TlmSeq,
-        (unsigned int)UINT8_T__G__TlmFlags,
-        (unsigned int)UINT8_T__G__TlmFlags2,
-        (unsigned long)UINT32_T__G__TlmFrameCount,
-        (unsigned long)UINT32_T__G__RxCrcError,
-        (unsigned long)UINT32_T__G__RxVersionMismatch,
-        (UINT8_T__G__TlmFlags & 0x02u) ? 1u : 0u,
-        char__ptr_user,
-        (unsigned int)uint8_t__role,
-        (unsigned int)UINT8_T__G__Theme,
-        (unsigned long)uint32_t__panelTimeSec,
-        (unsigned long)uint32_t__panelTimeSec,
-        BOOL__G__TimeValid ? 1u : 0u,
-        BOOL__G__BoardParamSeen ? 1u : 0u,
-        BOOL__G__RecoveryHappened ? 1u : 0u,
-        BOOL__G__HelloSeen ? 1u : 0u,
-        (unsigned int)UINT8_T__G__BoardProtoVersion,
-        (unsigned int)UINT8_T__G__BoardFwVersion,
-        (unsigned int)UINT8_T__G__BoardFlags,
-        (unsigned long)UINT32_T__G__BoardRxFrames,
-        (unsigned int)UINT16_T__G__BoardCrcErrors,
-        (unsigned int)UINT16_T__G__BoardVerErrors,
-        (unsigned int)UINT16_T__G__BoardParamCount,
-        (unsigned int)UINT16_T__G__BoardPeriodMs,
-        (unsigned long)UINT32_T__G__HelloAckCount,
-        (unsigned long)UINT32_T__G__HelloLossCount,
-        (unsigned long)(BOOL__G__HelloSeen ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
-                                           : 0xFFFFFFFFu));
-    size_t__used = func__Simple_ClampJsonUsed(0u, (int)size_t__used, SIMPLE_JSON_BUFFER_SIZE);
+    {
+        int int__head = snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
+            "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,"
+            "\"lko\":%u,\"bpv\":%u,\"bfw\":%u,\"bfl\":%u,\"brx\":%lu,\"bce\":%u,\"bvm\":%u,\"bpc\":%u,\"bpr\":%u,\"hac\":%lu,\"hls\":%lu,\"lac\":%lu,\"t\":[",
+            bool__online ? 1u : 0u,
+            (unsigned long)uint32_t__ageMs,
+            (unsigned int)UINT16_T__G__TlmSeq,
+            (unsigned int)UINT8_T__G__TlmFlags,
+            (unsigned int)UINT8_T__G__TlmFlags2,
+            (unsigned long)UINT32_T__G__TlmFrameCount,
+            (unsigned long)UINT32_T__G__RxCrcError,
+            (unsigned long)UINT32_T__G__RxVersionMismatch,
+            (UINT8_T__G__TlmFlags & 0x02u) ? 1u : 0u,
+            char__ptr_user,
+            (unsigned int)uint8_t__role,
+            (unsigned int)UINT8_T__G__Theme,
+            (unsigned long)uint32_t__panelTimeSec,
+            (unsigned long)uint32_t__panelTimeSec,
+            BOOL__G__TimeValid ? 1u : 0u,
+            BOOL__G__BoardParamSeen ? 1u : 0u,
+            BOOL__G__RecoveryHappened ? 1u : 0u,
+            BOOL__G__HelloSeen ? 1u : 0u,
+            (unsigned int)UINT8_T__G__BoardProtoVersion,
+            (unsigned int)UINT8_T__G__BoardFwVersion,
+            (unsigned int)UINT8_T__G__BoardFlags,
+            (unsigned long)UINT32_T__G__BoardRxFrames,
+            (unsigned int)UINT16_T__G__BoardCrcErrors,
+            (unsigned int)UINT16_T__G__BoardVerErrors,
+            (unsigned int)UINT16_T__G__BoardParamCount,
+            (unsigned int)UINT16_T__G__BoardPeriodMs,
+            (unsigned long)UINT32_T__G__HelloAckCount,
+            (unsigned long)UINT32_T__G__HelloLossCount,
+            (unsigned long)(BOOL__G__HelloSeen ? (uint32_t__nowMs - UINT32_T__G__LastHelloAckMs)
+                                               : 0xFFFFFFFFu));
+        if ((int__head <= 0) || ((size_t)int__head >= size_t__cap))
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"json\"}");
+            return;
+        }
+        size_t__used = (size_t)int__head;
+    }
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
         const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
         int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used,
+            size_t__cap - size_t__used,
             "%s%lu", char__ptr_sep, (unsigned long)UINT32_T__G__TlmField[uint8_t__index]);
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__written, SIMPLE_JSON_BUFFER_SIZE);
+        if (!func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used, int__written))
+        {
+            break;
+        }
     }
+    if (func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used,
+                             snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                      size_t__cap - size_t__used, "],\"pv\":[")))
     {
-        int int__mid = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used, "],\"pv\":[");
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__mid, SIMPLE_JSON_BUFFER_SIZE);
+        for (uint8_t__index = 0u; uint8_t__index < SIMPLE_PARAM_UI_COUNT; uint8_t__index++)
+        {
+            const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
+            int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                size_t__cap - size_t__used,
+                "%s%lu", char__ptr_sep,
+                (unsigned long)func__Simple_BoardParam(UINT8_T__G__ParamUiIds[uint8_t__index]));
+            if (!func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used, int__written))
+            {
+                break;
+            }
+        }
+        (void)func__Simple_JsonPut(CHAR__G__JsonBuffer, size_t__cap, &size_t__used,
+                                   snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                                            size_t__cap - size_t__used, "]"));
     }
-    for (uint8_t__index = 0u; uint8_t__index < SIMPLE_PARAM_UI_COUNT; uint8_t__index++)
-    {
-        const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
-        int int__written = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used,
-            "%s%lu", char__ptr_sep,
-            (unsigned long)func__Simple_BoardParam(UINT8_T__G__ParamUiIds[uint8_t__index]));
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__written, SIMPLE_JSON_BUFFER_SIZE);
-    }
-    {
-        int int__tail = snprintf(&CHAR__G__JsonBuffer[size_t__used],
-            SIMPLE_JSON_BUFFER_SIZE - size_t__used, "]}");
-        size_t__used = func__Simple_ClampJsonUsed(size_t__used, int__tail, SIMPLE_JSON_BUFFER_SIZE);
-    }
-    (void)size_t__used;
+    (void)snprintf(&CHAR__G__JsonBuffer[size_t__used],
+                   (size_t)SIMPLE_JSON_BUFFER_SIZE - size_t__used, "}");
 #if defined(ESP8266)
     SIMPLE_WEB_SERVER_T__G__Server.keepAlive(false);
 #endif
@@ -221,149 +230,101 @@ static void func__Simple_HttpTelemetry(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+/* [EN] One array, gathered into a small buffer: four numbers per TCP write
+ * instead of one, so a 3-month chart costs ~20 sends, not 360. */
+static void func__Simple_SendChartArray(const char *char__ptr_head,
+                                        const uint32_t *uint32_t__ptr_values,
+                                        uint8_t uint8_t__size, uint8_t uint8_t__count,
+                                        uint8_t uint8_t__index)
+{
+    char char__buf[96];
+    size_t size_t__used = 0u;
+    uint8_t uint8_t__i;
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__ptr_head);
+    for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+    {
+        int int__slot = (int)uint8_t__index + (int)uint8_t__size - (int)uint8_t__count + (int)uint8_t__i;
+        int int__written;
+        while (int__slot >= (int)uint8_t__size)
+        {
+            int__slot -= (int)uint8_t__size;
+        }
+        int__written = snprintf(&char__buf[size_t__used], sizeof(char__buf) - size_t__used,
+                                (uint8_t__i == 0u) ? "%lu" : ",%lu",
+                                (unsigned long)uint32_t__ptr_values[int__slot]);
+        if ((int__written < 0) || ((size_t)int__written >= (sizeof(char__buf) - size_t__used)))
+        {
+            break;
+        }
+        size_t__used += (size_t)int__written;
+        if ((sizeof(char__buf) - size_t__used) < 14u)
+        {
+            char__buf[size_t__used] = '\0';
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__buf);
+            size_t__used = 0u;
+        }
+    }
+    if (size_t__used > 0u)
+    {
+        char__buf[size_t__used] = '\0';
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__buf);
+    }
+}
 static void func__Simple_HttpCharts(void)
 {
     String string__range = SIMPLE_WEB_SERVER_T__G__Server.hasArg("range") ? SIMPLE_WEB_SERVER_T__G__Server.arg("range") : "1d";
+    const char *char__ptr_tag = "1d";
+    uint8_t uint8_t__size = (uint8_t)SIMPLE_CHART_1D_SIZE;
+    uint8_t uint8_t__count = UINT8_T__G__Chart1D_Count;
+    uint8_t uint8_t__index = UINT8_T__G__Chart1D_Index;
+    const uint32_t *uint32_t__ptrPct = UINT32_T__G__Chart1D_Pct;
+    const uint32_t *uint32_t__ptrVin = UINT32_T__G__Chart1D_Vin;
+    const uint32_t *uint32_t__ptrVpack = UINT32_T__G__Chart1D_Vpack;
+    const uint32_t *uint32_t__ptrTime = UINT32_T__G__Chart1D_Time;
+    char char__head[48];
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
-    uint8_t uint8_t__i, uint8_t__idx;
     if (string__range == "7d")
     {
-        String s; s.reserve(512);
-        s = "{\"range\":\"7d\",\"count\":"; s += String(UINT8_T__G__Chart7D_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
+        char__ptr_tag = "7d";
+        uint8_t__size = (uint8_t)SIMPLE_CHART_7D_SIZE;
+        uint8_t__count = UINT8_T__G__Chart7D_Count;
+        uint8_t__index = UINT8_T__G__Chart7D_Index;
+        uint32_t__ptrPct = UINT32_T__G__Chart7D_Pct;
+        uint32_t__ptrVin = UINT32_T__G__Chart7D_Vin;
+        uint32_t__ptrVpack = UINT32_T__G__Chart7D_Vpack;
+        uint32_t__ptrTime = UINT32_T__G__Chart7D_Time;
     }
     else if (string__range == "1m")
     {
-        String s; s.reserve(512);
-        s = "{\"range\":\"1m\",\"count\":"; s += String(UINT8_T__G__Chart1M_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
+        char__ptr_tag = "1m";
+        uint8_t__size = (uint8_t)SIMPLE_CHART_1M_SIZE;
+        uint8_t__count = UINT8_T__G__Chart1M_Count;
+        uint8_t__index = UINT8_T__G__Chart1M_Index;
+        uint32_t__ptrPct = UINT32_T__G__Chart1M_Pct;
+        uint32_t__ptrVin = UINT32_T__G__Chart1M_Vin;
+        uint32_t__ptrVpack = UINT32_T__G__Chart1M_Vpack;
+        uint32_t__ptrTime = UINT32_T__G__Chart1M_Time;
     }
     else if (string__range == "3m")
     {
-        String s; s.reserve(512);
-        s = "{\"range\":\"3m\",\"count\":"; s += String(UINT8_T__G__Chart3M_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
+        char__ptr_tag = "3m";
+        uint8_t__size = (uint8_t)SIMPLE_CHART_3M_SIZE;
+        uint8_t__count = UINT8_T__G__Chart3M_Count;
+        uint8_t__index = UINT8_T__G__Chart3M_Index;
+        uint32_t__ptrPct = UINT32_T__G__Chart3M_Pct;
+        uint32_t__ptrVin = UINT32_T__G__Chart3M_Vin;
+        uint32_t__ptrVpack = UINT32_T__G__Chart3M_Vpack;
+        uint32_t__ptrTime = UINT32_T__G__Chart3M_Time;
     }
-    else
-    {
-        String s; s.reserve(512);
-        s = "{\"range\":\"1d\",\"count\":"; s += String(UINT8_T__G__Chart1D_Count); s += ",\"pct\":[";
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent(s);
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Pct[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Vin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Vpack[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
-    }
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
+    (void)snprintf(char__head, sizeof(char__head), "{\"range\":\"%s\",\"count\":%u,\"pct\":[",
+                   char__ptr_tag, (unsigned int)uint8_t__count);
+    func__Simple_SendChartArray(char__head, uint32_t__ptrPct, uint8_t__size, uint8_t__count, uint8_t__index);
+    func__Simple_SendChartArray("],\"vin\":[", uint32_t__ptrVin, uint8_t__size, uint8_t__count, uint8_t__index);
+    func__Simple_SendChartArray("],\"vpack\":[", uint32_t__ptrVpack, uint8_t__size, uint8_t__count, uint8_t__index);
+    func__Simple_SendChartArray("],\"time\":[", uint32_t__ptrTime, uint8_t__size, uint8_t__count, uint8_t__index);
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
 }
 static void func__Simple_HttpDiag(void)
 {
@@ -483,15 +444,14 @@ static void func__Simple_HttpLogin(void)
     int32_t int32_t__login = func__Simple_AuthLogin(string__user.c_str(), string__pass.c_str());
     if (int32_t__login == 1)
     {
-        char char__buf[128];
+        char char__buf[192];
         char char__cookie[160];
         (void)snprintf(char__cookie, sizeof(char__cookie),
-                       "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%lu",
-                       SIMPLE_SESSION_COOKIE, CHAR__G__SessionToken,
-                       (unsigned long)(SIMPLE_SESSION_TIMEOUT_MS / 1000u));
+                       "%s=%s; Path=/; HttpOnly; SameSite=Strict",
+                       SIMPLE_SESSION_COOKIE, CHAR__G__SessionToken);
         SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Set-Cookie", char__cookie);
         SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-        (void)snprintf(char__buf, sizeof(char__buf), "{\"ok\":1,\"user\":\"%s\",\"role\":%u}", CHAR__G__CurrentUser, (unsigned int)UINT8_T__G__CurrentRole);
+        (void)snprintf(char__buf, sizeof(char__buf), "{\"ok\":1,\"user\":\"%s\",\"role\":%u,\"token\":\"%s\"}", CHAR__G__CurrentUser, (unsigned int)UINT8_T__G__CurrentRole, CHAR__G__SessionToken);
         SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
     }
     else if (int32_t__login == -1)
@@ -499,6 +459,13 @@ static void func__Simple_HttpLogin(void)
         SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
         SIMPLE_WEB_SERVER_T__G__Server.send(409, "application/json",
             "{\"ok\":0,\"e\":\"busy\",\"msg\":\"یک ورود فعال هست؛ فقط دسترسی بالاتر می‌تواند جای آن را بگیرد\"}");
+    }
+    else if (int32_t__login == -2)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+        SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Retry-After", "30");
+        SIMPLE_WEB_SERVER_T__G__Server.send(429, "application/json",
+            "{\"ok\":0,\"e\":\"wait\",\"msg\":\"چند بار پشت‌سرهم اشتباه بود؛ کمی صبر کنید\"}");
     }
     else
     {
@@ -516,171 +483,15 @@ static void func__Simple_HttpLogout(void)
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
-static void func__Simple_HttpUsers(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    size_t size_t__used = 0u;
-    size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE, "{\"users\":[");
-    bool bool__first = true;
-    uint8_t uint8_t__i;
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
-    {
-        if (!SIMPLE_USER_T__G__Users[uint8_t__i].active) continue;
-        if (!bool__first) size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], SIMPLE_JSON_BUFFER_SIZE - size_t__used, ",");
-        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], SIMPLE_JSON_BUFFER_SIZE - size_t__used,
-            "{\"name\":\"%s\",\"role\":%u}", SIMPLE_USER_T__G__Users[uint8_t__i].name, (unsigned int)SIMPLE_USER_T__G__Users[uint8_t__i].role);
-        bool__first = false;
-    }
-    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], SIMPLE_JSON_BUFFER_SIZE - size_t__used, "]}");
-    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
-}
-/* ==================== - JSON ==================== */
-static void func__Simple_HttpAddUser(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__user, string__pass, string__roleStr;
-    if (!func__Simple_GetArg("user", string__user) || !func__Simple_GetArg("pass", string__pass))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        return;
-    }
-    int32_t int32_t__role = 0;
-    if (func__Simple_GetArg("role", string__roleStr))
-    {
-        func__Simple_ParseInt(string__roleStr.c_str(), &int32_t__role);
-    }
-    if (func__Simple_AddUser(string__user.c_str(), string__pass.c_str(), (uint8_t)int32_t__role))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-    }
-    else
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"full\"}");
-    }
-}
-/* ==================== - JSON ==================== */
-static void func__Simple_HttpDelUser(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__user;
-    if (!func__Simple_GetArg("user", string__user))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        return;
-    }
-    if (func__Simple_DeleteUser(string__user.c_str()))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-    }
-    else
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-    }
-}
-/* ==================== : POST /users action ==================== */
-static void func__Simple_HttpUsersPost(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__action, string__user, string__pass, string__roleStr;
-    func__Simple_GetArg("action", string__action);
-    if (string__action == "del")
-    {
-        if (!func__Simple_GetArg("user", string__user))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user\"}");
-            return;
-        }
-        if (func__Simple_DeleteUser(string__user.c_str()))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-        }
-        else
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        }
-        return;
-    }
-    else /* add */
-    {
-        if (!func__Simple_GetArg("user", string__user) || !func__Simple_GetArg("pass", string__pass))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user/pass\"}");
-            return;
-        }
-        int32_t int32_t__role = 0;
-        if (func__Simple_GetArg("role", string__roleStr))
-        {
-            func__Simple_ParseInt(string__roleStr.c_str(), &int32_t__role);
-        }
-        if (func__Simple_AddUser(string__user.c_str(), string__pass.c_str(), (uint8_t)int32_t__role))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-        }
-        else
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"full\"}");
-        }
-    }
-}
-static void func__Simple_HttpGetTheme(void)
-{
-    char char__buf[64];
-    (void)snprintf(char__buf, sizeof(char__buf), "{\"theme\":%u}", (unsigned int)UINT8_T__G__Theme);
-    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
-}
-static void func__Simple_HttpSetTheme(void)
-{
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    String string__themeStr;
-    int32_t int32_t__theme = 0;
-    if (!func__Simple_GetArg("theme", string__themeStr))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        return;
-    }
-    func__Simple_ParseInt(string__themeStr.c_str(), &int32_t__theme);
-    if (func__Simple_SetTheme((uint8_t)int32_t__theme))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-    }
-    else
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-    }
-}
+/* ==================== - /wifi ==================== */
 static void func__Simple_HttpGetWifi(void)
 {
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    char char__buf[128];
-    (void)snprintf(char__buf, sizeof(char__buf), "{\"ssid\":\"%s\",\"pass\":\"%s\"}", CHAR__G__WifiSsid, CHAR__G__WifiPass);
+    String string__reply = "{\"ssid\":";
+    string__reply += func__Simple_JsonQuote(CHAR__G__WifiSsid);
+    string__reply += ",\"passSet\":";
+    string__reply += (CHAR__G__WifiPass[0] != '\0') ? "1}" : "0}";
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__buf);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", string__reply);
 }
 /* ==================== - - - JSON ==================== */
 static void func__Simple_HttpSetWifi(void)
@@ -721,20 +532,17 @@ static void func__Simple_HttpSetWifi(void)
  */
 static void func__Simple_HttpSetPass(void)
 {
-    String string__user;
     String string__oldPass;
     String string__newPass;
     String string__newPass2;
-    bool bool__isAdmin;
-    bool bool__isSelf;
-    if (!func__Simple_SessionValid())
+    if (!func__Simple_IsAdmin())
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"login\"}");
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-    if (!func__Simple_GetArg("user", string__user) || !func__Simple_GetArg("new", string__newPass))
+    if (!func__Simple_GetArg("new", string__newPass))
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user/new\"}");
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"new\"}");
         return;
     }
     (void)func__Simple_GetArg("old", string__oldPass);
@@ -749,22 +557,12 @@ static void func__Simple_HttpSetPass(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mismatch\"}");
         return;
     }
-    bool__isAdmin = (UINT8_T__G__CurrentRole == 1u);
-    bool__isSelf = (strcmp(CHAR__G__CurrentUser, string__user.c_str()) == 0);
-    if (!bool__isAdmin && !bool__isSelf)
+    if (!func__Simple_VerifyUserPass("admin", string__oldPass.c_str()))
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"self\"}");
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"old\"}");
         return;
     }
-    if (bool__isSelf)
-    {
-        if (!func__Simple_VerifyUserPass(string__user.c_str(), string__oldPass.c_str()))
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"old\"}");
-            return;
-        }
-    }
-    if (!func__Simple_SetUserPass(string__user.c_str(), string__newPass.c_str()))
+    if (!func__Simple_SetUserPass("admin", string__newPass.c_str()))
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user\"}");
         return;
@@ -856,11 +654,6 @@ static void func__Simple_HttpLatchState(void)
     uint8_t uint8_t__i;
     uint8_t uint8_t__pending = 0u;
     char char__A__Out[160];
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
     {
         if (BOOL__G__SlotQueuePending[uint8_t__i])
@@ -890,10 +683,25 @@ static void func__Simple_ParseDayArg(bool *bool__ptr_hasDay, uint32_t *uint32_t_
     if (func__Simple_GetArg("day", string__day))
     {
         string__day.trim();
-        if (string__day.length() > 0u)
+        /* [EN] only eight digits: anything else would just make a file name
+           that cannot exist, so the request is answered as "that day" = none. */
+        if ((string__day.length() > 0u) && (string__day.length() <= 8u))
         {
-            *bool__ptr_hasDay = true;
-            *uint32_t__ptr_day = (uint32_t)strtoul(string__day.c_str(), NULL, 10);
+            bool bool__digits = true;
+            size_t size_t__i;
+            for (size_t__i = 0u; size_t__i < string__day.length(); size_t__i++)
+            {
+                if ((string__day[size_t__i] < '0') || (string__day[size_t__i] > '9'))
+                {
+                    bool__digits = false;
+                    break;
+                }
+            }
+            if (bool__digits != false)
+            {
+                *bool__ptr_hasDay = true;
+                *uint32_t__ptr_day = (uint32_t)strtoul(string__day.c_str(), NULL, 10);
+            }
         }
     }
 }
@@ -904,6 +712,11 @@ static void func__Simple_HttpClockSet(void)
     int32_t int32_t__sec = 0;
     int32_t int32_t__tz = 0;
     bool bool__ok = false;
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
     if (func__Simple_GetArg("tz", string__tz))
     {
         if (func__Simple_ParseInt(string__tz.c_str(), &int32_t__tz) &&
@@ -928,6 +741,25 @@ static void func__Simple_HttpClockSet(void)
                    (unsigned long)func__Simple_NowSec());
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+/* ==================== Format verification ==================== */
+/**
+ * @brief Verify saved encrypted settings without reloading RAM or exposing secrets.
+ * @param char__ptr_path Settings file path.
+ * @return bool True when the file can be read and its authentication tag is valid.
+ */
+static bool func__Simple_FormatSettingsValid(const char *char__ptr_path)
+{
+    File file__read = LittleFS.open(char__ptr_path, "r");
+    if (!file__read) return false;
+    String string__raw = file__read.readString();
+    file__read.close();
+    String string__plain;
+    return (func__Simple_CryptoDecrypt(string__raw, string__plain) == 2u);
+}
+/* ==================== Explicit admin format ==================== */
+/**
+ * @brief Format, remount and verify storage without changing the active session.
+ */
 static void func__Simple_HttpEventFormat(void)
 {
     if (!func__Simple_IsAdmin())
@@ -935,21 +767,60 @@ static void func__Simple_HttpEventFormat(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "text/plain", "admin");
         return;
     }
-    (void)LittleFS.format();
-    BOOL__G__FsOk = LittleFS.begin();
-    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
-    func__SimpleLog_ResetStateAfterFormat();
-    if (BOOL__G__FsOk)
-    {
-        func__Simple_AuthSave();
-        func__Simple_WifiSave();
-        func__Simple_ThemeSave();
-        UINT32_T__G__LastSavedTimeSec = 0u;
-        func__Simple_TimeSave();
-        func__SimpleLog_Begin();
-    }
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", BOOL__G__FsOk ? "ok" : "fail");
+    LittleFS.end();
+    BOOL__G__FsOk = false;
+    BOOL__G__FsMountFailed = true;
+    if (!LittleFS.format())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "text/plain", "fail");
+        return;
+    }
+    func__SimpleLog_ResetStateAfterFormat();
+#if defined(ESP8266)
+    (void)LittleFS.setConfig(LittleFSConfig(false));
+    BOOL__G__FsOk = LittleFS.begin();
+#else
+    BOOL__G__FsOk = LittleFS.begin(false);
+#endif
+    BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
+    if (!BOOL__G__FsOk)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "text/plain", "mount");
+        return;
+    }
+    /* [EN] Probe the closed file, not just the return value of format(). */
+    bool bool__writable = false;
+    {
+        File file__probe = LittleFS.open("/fs-check", "w");
+        if (file__probe)
+        {
+            bool__writable = (file__probe.print("fs-ok") == 5u);
+            file__probe.close();
+        }
+    }
+    if (bool__writable)
+    {
+        File file__probe = LittleFS.open("/fs-check", "r");
+        bool__writable = file__probe && (file__probe.readString() == "fs-ok");
+        file__probe.close();
+    }
+    (void)LittleFS.remove("/fs-check");
+    func__Simple_AuthSave();
+    func__Simple_WifiSave();
+    UINT32_T__G__LastSavedTimeSec = 0u;
+    func__Simple_TimeSave();
+    if (!bool__writable || !func__Simple_FormatSettingsValid(SIMPLE_USERS_FILE) ||
+        !func__Simple_FormatSettingsValid(SIMPLE_WIFI_FILE))
+    {
+        UINT8_T__G__LogWriteFault = 1u;
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "text/plain", "write");
+        return;
+    }
+    func__SimpleLog_Begin();
+    /* [EN] Long flash operations must not consume the owner's idle deadline. */
+    UINT32_T__G__SessionStartMs = (uint32_t)millis();
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", "ok");
 }
 static void func__Simple_HttpEventLog(void)
 {
@@ -979,6 +850,56 @@ static void func__Simple_HttpEventDays(void)
     (void)func__SimpleLog_Days(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
 }
+/*
+ * [EN] One request for the whole history: every day file decoded once, oldest
+ * first, behind a single CSV legend. 90 days used to mean 90 downloads, and the
+ * browser blocks those after the third one anyway.
+ */
+static void func__Simple_HttpDownloadAllDays(void)
+{
+    char char__ptr_path[SIMPLE_LOG_PATH_MAX];
+    char char__row[SIMPLE_LOG_RAM_ROW_MAX];
+    uint8_t uint8_t__slot;
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition",
+                                              "attachment; filename=evt-all.csv");
+    if (BOOL__G__FsOk == false)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
+        return;
+    }
+    if (BOOL__G__LogScanValid == false)
+    {
+        (void)func__SimpleLog_ScanDays(true);
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", "");
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent(SIMPLE_LOG_HEADER);
+    for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+    {
+        SimpleLogCodec::State codec;
+        int int__kind;
+        func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__slot]);
+        File file__day = LittleFS.open(char__ptr_path, "r");
+        if (!file__day)
+        {
+            continue;
+        }
+        int__kind = SimpleLogCodec::begin(file__day, codec);
+        if (int__kind == 1)
+        {
+            while (SimpleLogCodec::next(file__day, codec))
+            {
+                if (SimpleLogCodec::text(codec, char__row, sizeof(char__row)) != 0u)
+                {
+                    SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__row);
+                }
+            }
+        }
+        file__day.close();
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
+}
 static void func__Simple_HttpEventDownload(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -986,6 +907,12 @@ static void func__Simple_HttpEventDownload(void)
     bool bool__hasDay = false;
     uint32_t uint32_t__day = SIMPLE_LOG_DAY_AUTO;
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    if (SIMPLE_WEB_SERVER_T__G__Server.hasArg("all") &&
+        (SIMPLE_WEB_SERVER_T__G__Server.arg("all") != "0"))
+    {
+        func__Simple_HttpDownloadAllDays();
+        return;
+    }
     func__Simple_ParseDayArg(&bool__hasDay, &uint32_t__day);
     if (BOOL__G__FsOk == false)
     {
@@ -1018,6 +945,12 @@ static void func__Simple_HttpEventDownload(void)
         func__SimpleLog_PathOf(char__ptr_path, uint32_t__day);
         if (LittleFS.exists(char__ptr_path) == false)
         {
+            /* [EN] today has no file yet: fall back to the newest day that
+               exists, after a real scan (the cache may be older than the boot). */
+            if ((UINT8_T__G__LogIndexCount == 0u) || (BOOL__G__LogScanValid == false))
+            {
+                (void)func__SimpleLog_ScanDays(true);
+            }
             if (UINT8_T__G__LogIndexCount == 0u)
             {
                 SIMPLE_WEB_SERVER_T__G__Server.send(404, "text/plain", "empty");
@@ -1043,14 +976,43 @@ static void func__Simple_HttpEventDownload(void)
     }
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/csv", "");
-    while (file__day.available())
     {
-        String string__line = file__day.readStringUntil('\n');
-        if (string__line.length() > 0u)
+        /*
+         * [EN] The day file holds CRC-protected records, so the download is
+         * rebuilt as CSV here, one row at a time, with the column legend in
+         * front. A legacy text file is still streamed exactly as it sits.
+         */
+        SimpleLogCodec::State codec;
+        const int int__kind = SimpleLogCodec::begin(file__day, codec);
+        if (int__kind == 1)
         {
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(string__line);
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(SIMPLE_LOG_HEADER);
+            while (SimpleLogCodec::next(file__day, codec))
+            {
+                char char__row[SIMPLE_LOG_RAM_ROW_MAX];
+                if (SimpleLogCodec::text(codec, char__row, sizeof(char__row)) == 0u)
+                {
+                    continue;
+                }
+                SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__row);
+            }
         }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("\n");
+        else
+        {
+            if (int__kind == 0)
+            {
+                (void)file__day.seek(0u);
+                while (file__day.available())
+                {
+                    String string__line = file__day.readStringUntil('\n');
+                    if (string__line.length() > 0u)
+                    {
+                        SIMPLE_WEB_SERVER_T__G__Server.sendContent(string__line);
+                    }
+                    SIMPLE_WEB_SERVER_T__G__Server.sendContent("\n");
+                }
+            }
+        }
     }
     file__day.close();
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
@@ -1070,6 +1032,11 @@ static void func__Simple_HttpEventClear(void)
 }
 static void func__Simple_HttpEventSnap(void)
 {
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
     bool bool__stored;
     bool__stored = func__SimpleLog_SnapshotNow();
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
@@ -1077,27 +1044,92 @@ static void func__Simple_HttpEventSnap(void)
                    "{\"ok\":%u}", (bool__stored != false) ? 1u : 0u);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
-static void func__Simple_HttpEventFsStatus(void)
+/* ==================== Single file deletion ==================== */
+/**
+ * @brief Delete only an exact root file after admin authorization; keep RAM settings/session.
+ */
+static void func__Simple_HttpFileDelete(void)
 {
+    String string__name;
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    (void)func__SimpleLog_FsStatusJson(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer));
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__LogTailBuffer);
-}
-static void func__Simple_HttpEventClean(void)
-{
-    uint32_t uint32_t__freed = 0u;
-    uint16_t uint16_t__removed;
     if (!func__Simple_IsAdmin())
     {
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
-    uint16_t__removed = func__SimpleLog_CleanForeignFiles(&uint32_t__freed);
+    if (!func__Simple_GetArg("name", string__name) || string__name.length() < 2u ||
+        string__name.length() > 255u || string__name[0] != '/' ||
+        string__name.indexOf('/', 1u) >= 0 || string__name.indexOf('\\') >= 0 ||
+        strcmp(string__name.c_str(), "/.") == 0 || strcmp(string__name.c_str(), "/..") == 0 ||
+        strlen(string__name.c_str()) != string__name.length())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
+        return;
+    }
+    for (size_t size_t__i = 0u; size_t__i < string__name.length(); size_t__i++)
+    {
+        if ((unsigned char)string__name[size_t__i] < 0x20u)
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
+            return;
+        }
+    }
+    if (!BOOL__G__FsOk)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0,\"e\":\"fs\"}");
+        return;
+    }
+    if (!LittleFS.exists(string__name.c_str()))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(404, "application/json", "{\"ok\":0,\"e\":\"missing\"}");
+        return;
+    }
+#if defined(ESP32)
+    {
+        File file__target = LittleFS.open(string__name.c_str(), "r");
+        bool bool__directory = file__target && file__target.isDirectory();
+        file__target.close();
+        if (bool__directory)
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
+            return;
+        }
+    }
+#endif
+    if (!LittleFS.remove(string__name.c_str()) || LittleFS.exists(string__name.c_str()))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"remove\"}");
+        return;
+    }
+    uint32_t uint32_t__day = 0u;
+    BOOL__G__LogScanValid = false;
+    if (func__SimpleLog_DayFromName(string__name.c_str(), &uint32_t__day) &&
+        uint32_t__day == UINT32_T__G__LogDayCode)
+    {
+        UINT32_T__G__LogDayCode = 0xFFFFFFFFu;
+        UINT16_T__G__LogRowsToday = 0u;
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+        BOOL__G__LogDayFileReady = false;
+        BOOL__G__LogDrainWait = false;
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+}
+static void func__Simple_HttpEventFsStatus(void)
+{
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    (void)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-                   "{\"ok\":%u,\"removed\":%u,\"freed\":%lu}",
-                   (BOOL__G__FsOk != false) ? 1u : 0u,
-                   (unsigned int)uint16_t__removed,
-                   (unsigned long)uint32_t__freed);
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+    String string__offset;
+    int32_t int32_t__offset = 0;
+    if (func__Simple_GetArg("offset", string__offset) &&
+        (!func__Simple_ParseInt(string__offset.c_str(), &int32_t__offset) ||
+         int32_t__offset < 0 || int32_t__offset > 65535))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"offset\"}");
+        return;
+    }
+    bool bool__admin = func__Simple_SessionValid() && UINT8_T__G__CurrentRole == 1u;
+    size_t size_t__written = func__SimpleLog_FsStatusJson(CHAR__G__LogTailBuffer,
+        sizeof(CHAR__G__LogTailBuffer), bool__admin, (uint16_t)int32_t__offset);
+    SIMPLE_WEB_SERVER_T__G__Server.send(size_t__written ? 200 : 500, "application/json",
+        size_t__written ? CHAR__G__LogTailBuffer : "{\"ok\":0}");
 }

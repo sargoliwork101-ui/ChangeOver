@@ -55,10 +55,6 @@ static void func__Simple_HashPass(const char *char__ptr_pass, char *char__ptr_ou
     }
     char__ptr_out[64] = '\0';
 }
-static bool func__Simple_IsOldHash(const char *char__ptr_hash)
-{
-    return (strlen(char__ptr_hash) == 8u);
-}
 static uint32_t func__Simple_ChipId(void)
 {
 #if defined(ESP8266)
@@ -435,19 +431,8 @@ static bool func__Simple_VerifyUserPass(const char *char__ptr_name, const char *
     char char__hash[65];
     if (int32_t__index < 0) return false;
     if (char__ptr_pass == NULL) return false;
-    if (func__Simple_IsOldHash(SIMPLE_USER_T__G__Users[int32_t__index].passHash))
-    {
-        uint32_t uint32_t__oldHash = 5381u;
-        uint8_t uint8_t__j = 0u;
-        char char__oldHashStr[16];
-        while (char__ptr_pass[uint8_t__j] != '\0')
-        {
-            uint32_t__oldHash = ((uint32_t__oldHash << 5) + uint32_t__oldHash) + (uint32_t)char__ptr_pass[uint8_t__j];
-            uint8_t__j++;
-        }
-        (void)snprintf(char__oldHashStr, sizeof(char__oldHashStr), "%08lX", (unsigned long)uint32_t__oldHash);
-        return (strcmp(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__oldHashStr) == 0);
-    }
+    /* The old 32-bit hash is gone: a file from the old firmware never matches,
+       the owner resets the password through the recovery flow instead. */
     func__Simple_HashPass(char__ptr_pass, char__hash);
     return (strcmp(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__hash) == 0);
 }
@@ -539,6 +524,8 @@ static void func__Simple_AuthLoad(void)
     UINT8_T__G__UserCount = 0u;
     if (!BOOL__G__FsOk)
     {
+        /* [EN] Keep initial admin usable in RAM when flash cannot mount. */
+        func__Simple_AuthDefaults();
         return;
     }
     if (!LittleFS.exists(SIMPLE_USERS_FILE))
@@ -599,6 +586,50 @@ static bool func__Simple_SessionActive(void)
     }
     return true;
 }
+/*
+ * [EN] Five wrong passwords in a row close the door for 30 s, and the wait
+ * doubles up to five minutes. A success clears it.
+ */
+static uint8_t  UINT8_T__G__LoginFailCount = 0u;
+static uint32_t UINT32_T__G__LoginBlockUntilMs = 0u;
+static uint32_t UINT32_T__G__LoginBlockMs = (uint32_t)SIMPLE_LOGIN_BLOCK_MS;
+static bool func__Simple_LoginBlocked(void)
+{
+    if (UINT32_T__G__LoginBlockUntilMs == 0u)
+    {
+        return false;
+    }
+    return ((int32_t)((uint32_t)millis() - UINT32_T__G__LoginBlockUntilMs) < 0);
+}
+/* [EN] Count one bad attempt; returns true when this attempt closed the door. */
+static bool func__Simple_LoginFail(void)
+{
+    if (UINT8_T__G__LoginFailCount < 0xFFu)
+    {
+        UINT8_T__G__LoginFailCount++;
+    }
+    if (UINT8_T__G__LoginFailCount < (uint8_t)SIMPLE_LOGIN_FAIL_LIMIT)
+    {
+        return false;
+    }
+    UINT8_T__G__LoginFailCount = 0u;
+    UINT32_T__G__LoginBlockUntilMs = (uint32_t)millis() + UINT32_T__G__LoginBlockMs;
+    if (UINT32_T__G__LoginBlockMs < (uint32_t)SIMPLE_LOGIN_BLOCK_MAX_MS)
+    {
+        UINT32_T__G__LoginBlockMs *= 2u;
+        if (UINT32_T__G__LoginBlockMs > (uint32_t)SIMPLE_LOGIN_BLOCK_MAX_MS)
+        {
+            UINT32_T__G__LoginBlockMs = (uint32_t)SIMPLE_LOGIN_BLOCK_MAX_MS;
+        }
+    }
+    return true;
+}
+static void func__Simple_LoginClear(void)
+{
+    UINT8_T__G__LoginFailCount = 0u;
+    UINT32_T__G__LoginBlockUntilMs = 0u;
+    UINT32_T__G__LoginBlockMs = (uint32_t)SIMPLE_LOGIN_BLOCK_MS;
+}
 static void func__Simple_SessionTokenMake(char *char__ptr_out)
 {
     uint8_t uint8_t__msg[16];
@@ -630,6 +661,15 @@ static void func__Simple_SessionTokenMake(char *char__ptr_out)
 }
 static bool func__Simple_SessionCookieRead(char *char__ptr_out, size_t size_t__cap)
 {
+    /* [EN] Same-origin bearer fallback for browsers blocking preview cookies. */
+    String string__header = SIMPLE_WEB_SERVER_T__G__Server.header("X-Admin-Token");
+    if (string__header.length() != 0u)
+    {
+        if ((string__header.length() != SIMPLE_SESSION_TOKEN_LEN) || (size_t__cap <= SIMPLE_SESSION_TOKEN_LEN)) return false;
+        (void)strncpy(char__ptr_out, string__header.c_str(), SIMPLE_SESSION_TOKEN_LEN);
+        char__ptr_out[SIMPLE_SESSION_TOKEN_LEN] = '\0';
+        return true;
+    }
     String string__cookie = SIMPLE_WEB_SERVER_T__G__Server.header("Cookie");
     String string__key = String(SIMPLE_SESSION_COOKIE);
     string__key += "=";
@@ -662,13 +702,29 @@ static bool func__Simple_SessionValid(void)
 }
 static int32_t func__Simple_AuthLogin(const char *char__ptr_name, const char *char__ptr_pass)
 {
-    int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
+    int32_t int32_t__index;
     uint8_t uint8_t__newRole;
-    if (int32_t__index < 0) return 0;
-    if (!func__Simple_VerifyUserPass(char__ptr_name, char__ptr_pass)) return 0;
+    if (func__Simple_LoginBlocked()) return -2;
+    int32_t__index = func__Simple_FindUser(char__ptr_name);
+    if (int32_t__index < 0)
+    {
+        (void)func__Simple_LoginFail();
+        return 0;
+    }
+    if (!func__Simple_VerifyUserPass(char__ptr_name, char__ptr_pass))
+    {
+        return func__Simple_LoginFail() ? -2 : 0;
+    }
+    func__Simple_LoginClear();
     uint8_t__newRole = SIMPLE_USER_T__G__Users[int32_t__index].role;
     if (func__Simple_SessionActive() && (uint8_t__newRole <= UINT8_T__G__CurrentRole))
     {
+        /* [EN] Re-authentication by the existing owner is not a second login. */
+        if (func__Simple_SessionValid() && (strcmp(char__ptr_name, CHAR__G__CurrentUser) == 0))
+        {
+            UINT32_T__G__SessionStartMs = (uint32_t)millis();
+            return 1;
+        }
         return -1;
     }
     (void)strncpy(CHAR__G__CurrentUser, char__ptr_name, SIMPLE_USER_NAME_MAX);
@@ -683,68 +739,8 @@ static int32_t func__Simple_AuthLogin(const char *char__ptr_name, const char *ch
 static bool func__Simple_IsAdmin(void)
 {
     if (!func__Simple_SessionValid()) return false;
-    return (UINT8_T__G__CurrentRole == 1u);
-}
-static bool func__Simple_AddUser(const char *char__ptr_name, const char *char__ptr_pass, uint8_t uint8_t__role)
-{
-    if (!func__Simple_IsAdmin()) return false;
-    if (strlen(char__ptr_name) == 0u || strlen(char__ptr_name) > SIMPLE_USER_NAME_MAX) return false;
-    if (strlen(char__ptr_pass) == 0u || strlen(char__ptr_pass) > SIMPLE_USER_PASS_MAX) return false;
-    if (strcmp(char__ptr_name, "admin") == 0)
-    {
-        uint8_t__role = 1u;
-    }
-    uint8_t uint8_t__i;
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
-    {
-        if (SIMPLE_USER_T__G__Users[uint8_t__i].active &&
-            strcmp(SIMPLE_USER_T__G__Users[uint8_t__i].name, char__ptr_name) == 0)
-        {
-            func__Simple_HashPass(char__ptr_pass, SIMPLE_USER_T__G__Users[uint8_t__i].passHash);
-            SIMPLE_USER_T__G__Users[uint8_t__i].role = uint8_t__role;
-            func__Simple_AuthSave();
-            return true;
-        }
-    }
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
-    {
-        if (!SIMPLE_USER_T__G__Users[uint8_t__i].active)
-        {
-            (void)strncpy(SIMPLE_USER_T__G__Users[uint8_t__i].name, char__ptr_name, SIMPLE_USER_NAME_MAX);
-            SIMPLE_USER_T__G__Users[uint8_t__i].name[SIMPLE_USER_NAME_MAX] = '\0';
-            func__Simple_HashPass(char__ptr_pass, SIMPLE_USER_T__G__Users[uint8_t__i].passHash);
-            SIMPLE_USER_T__G__Users[uint8_t__i].role = uint8_t__role;
-            SIMPLE_USER_T__G__Users[uint8_t__i].active = true;
-            UINT8_T__G__UserCount = 0u;
-            for (uint8_t uint8_t__k = 0u; uint8_t__k < SIMPLE_USERS_MAX; uint8_t__k++)
-            {
-                if (SIMPLE_USER_T__G__Users[uint8_t__k].active) UINT8_T__G__UserCount++;
-            }
-            func__Simple_AuthSave();
-            return true;
-        }
-    }
-    return false;
-}
-static bool func__Simple_DeleteUser(const char *char__ptr_name)
-{
-    if (!func__Simple_IsAdmin()) return false;
-    if (strcmp(char__ptr_name, "admin") == 0) return false;
-    uint8_t uint8_t__i;
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
-    {
-        if (SIMPLE_USER_T__G__Users[uint8_t__i].active &&
-            strcmp(SIMPLE_USER_T__G__Users[uint8_t__i].name, char__ptr_name) == 0)
-        {
-            SIMPLE_USER_T__G__Users[uint8_t__i].active = false;
-            UINT8_T__G__UserCount = 0u;
-            for (uint8_t uint8_t__k = 0u; uint8_t__k < SIMPLE_USERS_MAX; uint8_t__k++)
-            {
-                if (SIMPLE_USER_T__G__Users[uint8_t__k].active) UINT8_T__G__UserCount++;
-            }
-            func__Simple_AuthSave();
-            return true;
-        }
-    }
-    return false;
+    if (UINT8_T__G__CurrentRole != 1u) return false;
+    /* [EN] Admin activity renews the idle deadline, not public polling. */
+    UINT32_T__G__SessionStartMs = (uint32_t)millis();
+    return true;
 }

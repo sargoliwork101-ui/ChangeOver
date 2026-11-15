@@ -269,7 +269,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
-               userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
+               token: '', deletedFiles: [], userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
                users: [{ name: 'admin', role: 1 }] };
   var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
   var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
@@ -546,7 +546,12 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
              text: function () { return Promise.resolve(text); } };
   }
   function bodyJson(options) {
-    try { return JSON.parse((options && options.body) || '{}'); } catch (e) { return {}; }
+    var body = (options && options.body) || '';
+    try { return JSON.parse(body || '{}'); } catch (e) {
+      var out = {};
+      new URLSearchParams(body).forEach(function (value, key) { out[key] = value; });
+      return out;
+    }
   }
   function query(url, name) {
     var found = new RegExp('[?&]' + name + '=([^&]*)').exec(url);
@@ -578,6 +583,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       return jsonResponse(evtCsvText(dlRows), 200);
     }
     if (path === 'evt/clr') {
+      if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       var rmDays = evtDaysList().length;
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
@@ -585,11 +591,24 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     if (path === 'evt/fs') {
       var daysNow = evtDaysList();
-      var fsFiles = daysNow.map(function (d) { return { name: 'evt-' + d + '.csv', size: 1024, own: 1 }; });
-      fsFiles.push({ name: 'users.json', size: 164, own: 1 });
-      fsFiles.push({ name: 'wifi.json', size: 128, own: 1 });
+      var fsFiles = daysNow.map(function (d) { return { name: '/evt-' + d + '.csv', size: 1024 }; });
+      if(mock.deletedFiles.indexOf('/users.json')<0)fsFiles.push({ name: '/users.json', size: 164 });
+      if(mock.deletedFiles.indexOf('/wifi.json')<0)fsFiles.push({ name: '/wifi.json', size: 128 });
       var usedSum = fsFiles.reduce(function (s, x) { return s + x.size; }, 0);
-      return jsonResponse(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used: usedSum, files: fsFiles, fileBytes: usedSum, more: 0 }), 200);
+      if(mock.role!==1)fsFiles=fsFiles.filter(function(f){return /^\/evt-/.test(f.name);});
+      var offset=+(query(url,'offset')||0),count=fsFiles.length,page=fsFiles.slice(offset,offset+32),next=offset+page.length;
+      return jsonResponse(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used: usedSum, files: page, fileBytes: usedSum, more: Math.max(0,count-next),count:count,next:next<count?next:-1 }), 200);
+    }
+    if (path === 'evt/file') {
+      if(method!=='POST')return jsonResponse('{"ok":0}',405);
+      if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var name=bodyJson(options).name||'',match=/^\/evt-(\d{8})\.csv$/.exec(name);
+      if(!/^\/[^/\\\x00-\x1f]+$/.test(name)||name==='/.'||name==='/..')return jsonResponse('{"ok":0,"e":"path"}',400);
+      var exists=match?evtDaysList().indexOf(match[1])>=0:(['/users.json','/wifi.json'].indexOf(name)>=0&&mock.deletedFiles.indexOf(name)<0);
+      if(!exists)return jsonResponse('{"ok":0,"e":"missing"}',404);
+      if(match){evtRows=evtRows.filter(function(r){return String(evtDayCode(r[0]))!==match[1];});evtPersist();}
+      else mock.deletedFiles.push(name);
+      return jsonResponse('{"ok":1}',200);
     }
     if (path === 'evt/clean') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
@@ -597,6 +616,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     if (path === 'evt/format') {
       if (mock.role !== 1) { return jsonResponse('admin', 403); }
+      mock.deletedFiles=[];
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
       return jsonResponse('ok', 200);
@@ -623,23 +643,22 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var credentials = bodyJson(options);
       var user = credentials.user !== undefined ? credentials.user : query(url, 'user');
       var pass = credentials.pass !== undefined ? credentials.pass : query(url, 'pass');
-      var defaultPass = (user === 'admin') ? 'admin' : ((user === 'viewer') ? 'viewer' : null);
-      var expected = (mock.userPass && user === mock.user) ? mock.userPass : defaultPass;
+      var expected = user === 'admin' ? (mock.userPass || 'admin') : null;
       if (expected !== null && pass === expected) {
         var newRole = (user === 'admin') ? 1 : 0;
         /* نشست یکتا: هم‌سطح یا پایین‌تر رد؛ فقط دسترسی بالاتر جایگزین می‌شود */
-        if (mock.user && newRole <= mock.role) {
+        if (mock.user && newRole <= mock.role && (!mock.token || !options || !options.headers || options.headers['X-Admin-Token'] !== mock.token)) {
           return jsonResponse('{"ok":0,"e":"busy","msg":"یک ورود فعال هست؛ فقط دسترسی بالاتر می‌تواند جای آن را بگیرد"}', 409);
         }
-        mock.user = user; mock.role = newRole;
-        return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + '}');
+        mock.user = user; mock.role = newRole;mock.token=mock.token||'f'.repeat(64);
+        return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + ',"token":"'+mock.token+'"}');
       }
       return jsonResponse('{"ok":0,"e":"wrong"}', 401);
     }
-    if (path === 'logout') { mock.user = ''; mock.role = 0; return jsonResponse('{"ok":1}'); }
+    if (path === 'logout') { mock.user = ''; mock.role = 0; mock.token = ''; return jsonResponse('{"ok":1}'); }
     if (path === 'setpass') {
       var change = bodyJson(options);
-      var target = (change.user || '').trim();
+      var target = (change.user || 'admin').trim();
       if (!mock.user) { return jsonResponse('{"ok":0,"e":"login"}', 403); }
       if (!target || !change.new) { return jsonResponse('{"ok":0,"e":"user/new"}', 400); }
       if ((change.new || '').length < 4) { return jsonResponse('{"ok":0,"e":"pass 4-32"}', 400); }

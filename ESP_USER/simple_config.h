@@ -97,13 +97,18 @@
 #define SIMPLE_CHART_7D_SIZE            28u
 #define SIMPLE_CHART_1M_SIZE            30u
 #define SIMPLE_CHART_3M_SIZE            90u
-#define SIMPLE_CHARTS_FILE              "/charts.json"
+#define SIMPLE_CHARTS_FILE              "/charts.bin"
+#define SIMPLE_CHART_FILE_HEADER        8u
+#define SIMPLE_CHART_FILE_MAX_BYTES     2048u
 #define SIMPLE_DIAG_MAX_ERRORS          10u
 #define SIMPLE_DIAG_MAX_POWER_EVENTS    20u
-#define SIMPLE_USERS_MAX                8u
+#define SIMPLE_USERS_MAX                1u
 #define SIMPLE_USER_NAME_MAX            24u
 #define SIMPLE_USER_PASS_MAX            32u
 #define SIMPLE_USER_PASS_MIN            4u
+#define SIMPLE_LOGIN_FAIL_LIMIT         5u
+#define SIMPLE_LOGIN_BLOCK_MS           30000u
+#define SIMPLE_LOGIN_BLOCK_MAX_MS       300000u
 #define SIMPLE_USERS_FILE               "/users.json"
 #define SIMPLE_SESSION_TIMEOUT_MS       1800000u
 #define SIMPLE_SESSION_COOKIE           "co_sess"
@@ -113,7 +118,13 @@
 #define SIMPLE_TIME_SYNC_DELAY_MS       3000u
 #define SIMPLE_TIME_RESEND_MS           600000u
 #define SIMPLE_TIME_ADOPT_DIFF_SEC      300u
-#define SIMPLE_LOG_MAX_DAYS             30u
+/* [EN] After a power cut the clock is restored from the flash, but the board
+ * is the one that kept counting.  Rows wait this long for the board's time so
+ * the first rows of the boot never land on a stale day. */
+#define SIMPLE_TIME_BOOT_GRACE_MS       8000u
+#define SIMPLE_LOG_MAX_DAYS             90u
+/* [EN] Three months kept.  A realistic day is ~14 rows = ~285 B with the
+ * compact codec, so 90 days stay near 26 kB - far inside the 120 kB budget. */
 #define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
 #define SIMPLE_LOG_TAIL_LINES           30u
 #define SIMPLE_LOG_DAY_AUTO             0xFFFFFFFFu
@@ -135,6 +146,12 @@
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
 #define SIMPLE_DIAG_FILE                "/diag.json"
 #define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u
+/* [EN] The log may never eat the whole flash: the settings, the charts, the
+ * diagnostics and the charge history live there too.  On a 64 kB file system
+ * this leaves 44 kB for the history, i.e. three months of normal days. */
+#define SIMPLE_LOG_RESERVE_BYTES          20000u
+#define SIMPLE_LOG_RECLAIM_MAX_PER_CALL   4u
+#define SIMPLE_LOG_MIN_BUDGET_BYTES       16000u
 #define SIMPLE_LOG_MIN_INTERVAL_MS      2000u
 /*
  * [EN] A queued mains cut/return is written after this short coalescing
@@ -154,7 +171,7 @@
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 #define SIMPLE_PARAMS_FILE              "/params.json"
 #define SIMPLE_THEME_FILE               "/theme.json"
-#define SIMPLE_THEME_MAX                1u
+#define SIMPLE_THEME_MAX                0u
 #define SIMPLE_CRYPTO_TAG_LEN           16u
 #define SIMPLE_CRYPTO_KEY_LEN           32u
 #define SIMPLE_CRYPTO_SALT              "ChangeOver_FS_2026_v1"
