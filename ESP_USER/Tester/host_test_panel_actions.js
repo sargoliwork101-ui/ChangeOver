@@ -11,7 +11,7 @@ const w = dom.window, d = w.document;
 w.setInterval = () => 0;
 w.addEventListener = () => {};
 w.fetch = async () => {throw Error('offline');};
-w.eval(html.match(/<script>([\s\S]*?)<\/script>/)[1]);
+w.eval(html.match(/<script>([\s\S]*?)<\/script>/)[1]+'\nwindow.resetStatusState=()=>{g_inputState=null;g_inputOV=false;g_fullActive=false;[runPackState,runLowState,runHighState,chgPackState,chgLowState,chgHighState].forEach(s=>s.init=false);};');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const response = (status, body) => ({status, ok:status === 200, headers:{get:()=>null},
     json:async()=>body, text:async()=>typeof body === 'string' ? body : JSON.stringify(body)});
@@ -24,6 +24,48 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(!d.getElementById('labBar') && !html.includes('نوار شیمیولیتور'), 'user panel never includes the simulator bottom strip');
     check(d.styleSheets.length === 1 && d.styleSheets[0].cssRules.length > 100, 'complete stylesheet parses, including mobile media queries');
     check([...d.styleSheets[0].cssRules].some(r=>r.selectorText === '.glyph'), 'line icon styles survive stylesheet parsing');
+    check(d.querySelectorAll('#evtCard').length===1 && d.getElementById('evtCard').closest('#settingsContent') && !d.querySelector('#pg0 #evtCard,#pg1 #evtCard'),'one log card lives in settings, not status or charts');
+    for(const n of [0,1,2,0]){
+        w.showTab(n);
+        check(d.getElementById('evtCard').closest('.pgx').classList.contains('a')===(n===2),'log follows only the settings tab: '+n);
+    }
+    function statusFrame({input=true,pack=25000,state=0,fault=0,flags=0,dead=0,imb=0,on=true,vin}={}){
+        w.resetStatusState();
+        const t=Array(31).fill(0);t[14]=vin===undefined?(input?24000:0):vin;t[15]=pack;t[17]=pack/2;t[18]=pack/2;t[6]=state;t[13]=state;t[19]=fault;t[25]=imb;t[28]=dead;
+        w.render({t,on,fl:input?2:0,fl2:flags,inputPresent:input,lko:1,bpv:2,brx:10,boardTime:1793793600});
+    }
+    const mainTexts=()=>['statusTitle','statusSub','bdgInput','heroFault'].map(id=>{const e=d.getElementById(id);return e.style.display==='none'?'':e.textContent;}).join(' | ');
+    for(const pack of [21000,21300,22000,25000,29000]){
+        statusFrame({input:false,pack});
+        check((mainTexts().match(/برق ورودی: قطع/g)||[]).length===1 && !/برق.*قطع/.test(d.getElementById('statusTitle').textContent+d.getElementById('heroFault').textContent),'power outage appears once at pack voltage '+pack);
+        check((d.getElementById('heroFault').style.display!=='none')===(pack<=22600),'only real low-charge warnings remain at pack voltage '+pack);
+    }
+    statusFrame({input:false,pack:21000});statusFrame({input:false,pack:25000});
+    check(d.getElementById('heroFault').style.display==='none' && !d.getElementById('heroFault').textContent && d.getElementById('statusSub').style.display==='none','recovery clears and hides the previous warning and empty subtitle');
+    statusFrame({state:3});
+    check(d.getElementById('statusTitle').textContent==='شارژ کامل' && (mainTexts().match(/شارژ کامل/g)||[]).length===1 && d.getElementById('heroFault').style.display==='none','charge complete is shown once without a second success banner');
+    statusFrame();
+    check(d.getElementById('statusTitle').textContent==='آماده به کار' && d.getElementById('heroFault').style.display==='none' && !d.getElementById('statusSub').textContent,'normal idle mode adds no redundant power, clock or percentage message');
+    statusFrame({state:1});
+    check(d.getElementById('statusTitle').textContent==='در حال شارژ' && d.getElementById('statusSub').textContent.includes('قسمت') && d.getElementById('heroFault').style.display==='none','charging keeps one mode and the distinct charge-stage detail');
+    statusFrame({state:10});
+    check(d.getElementById('statusTitle').textContent.includes('استراحت حرارتی') && d.getElementById('statusSub').textContent.includes('۱۰ دقیقه'),'thermal rest still shows its duration');
+    statusFrame({vin:30000});
+    check(d.getElementById('bdgInput').textContent.includes('اضافه ولتاژ') && d.getElementById('statusSub').textContent.includes('حد 28.0 ولت') && d.getElementById('heroFault').style.display==='none','overvoltage keeps actual input and live threshold without a duplicate alert');
+    statusFrame({on:false});
+    check(d.getElementById('statusTitle').textContent.includes('ارتباط با برد قطع') && d.getElementById('statusSub').textContent.includes('UART') && d.getElementById('heroFault').style.display==='none','link-loss warning and action survive without a repeated banner');
+    for(const scenario of [{dead:1},{flags:2},{flags:16},{flags:1,imb:450}]){
+        statusFrame(scenario);
+        check(!!d.getElementById('statusSub').textContent && !d.getElementById('imbBox').classList.contains('show') && d.getElementById('heroFault').style.display==='none','primary battery lock or imbalance action is not duplicated in another box');
+    }
+    statusFrame({input:false,imb:450});
+    check(d.getElementById('imbBox').classList.contains('show') && d.getElementById('imbBox').textContent.includes('450') && d.getElementById('heroFault').style.display==='none','separate imbalance warning remains visible during power loss');
+    for(const fault of [1,64,128]){
+        statusFrame({fault});
+        check(!!d.getElementById('statusSub').textContent && d.getElementById('heroFault').style.display==='none','a single primary fault has one action without a second banner: '+fault);
+    }
+    statusFrame({fault:64|2});
+    check(d.getElementById('statusTitle').textContent==='باتری قطع شده' && !d.getElementById('heroFault').textContent.includes('باتری قطع شده') && d.getElementById('heroFault').textContent.includes('جریان بیش از حد'),'simultaneous distinct faults are preserved, excluding the repeated primary fault');
     check(['cCharge','cVolt'].every(id=>d.getElementById(id).closest('.chart-card')),'both remaining charts use dedicated flat-color cards');
     const canvasRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='canvas');
     const cardRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='.cd.chart-card');

@@ -422,12 +422,12 @@ static void func__T_TestResetOrderAndHandshake(void)
                   (string__panel.find("span class=\"evtd\"") != std::string::npos),
                   "فهرست لاگ فقط پیام کوتاه را نشان می‌دهد و جزئیات را نمایش نمی‌دهد");
     {
-        const std::size_t size_t__pg0 = string__panel.find("id=\"pg0\"");
-        const std::size_t size_t__pg1 = string__panel.find("id=\"pg1\"");
+        const std::size_t size_t__pg2 = string__panel.find("id=\"pg2\"");
+        const std::size_t size_t__admin = string__panel.find("id=\"adminCard\"");
         const std::size_t size_t__evt = string__panel.find("id=\"evtCard\"");
-        func__T_Check((size_t__pg0 != std::string::npos) && (size_t__evt > size_t__pg0) &&
-                      (size_t__evt < size_t__pg1),
-                      "کارت لاگ فقط داخل صفحهٔ وضعیت می‌نشیند، نه هر سه صفحه");
+        func__T_Check((size_t__pg2 != std::string::npos) && (size_t__evt > size_t__pg2) &&
+                      (size_t__evt < size_t__admin),
+                      "کارت لاگ فقط داخل تنظیمات و بیرون بخش مدیر می‌نشیند");
     }
     {
         /* نمودارها دیگر بازهٔ ثابت ندارند: کمینه/بیشینه و تعداد خط محور از

@@ -515,22 +515,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    <div id="diagErrors" class="log">--</div>
   </div>
 
- <div class="cd" id="evtCard">
-  <div class="ti">تاریخچهٔ وضعیت (لاگ)</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
-   <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
-   <span class="icog">
-    <button class="btn ico" type="button" title="حافظهٔ ESP" aria-label="حافظهٔ ESP" onclick="uiAction(this,()=>evtFs(1))"><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span class="lbl">حافظهٔ ESP</span></button>
-    <button class="btn ico" type="button" title="بروزرسانی فهرست" aria-label="بروزرسانی فهرست" onclick="uiAction(this,()=>evtFs(0))"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg><span class="lbl">بروزرسانی</span></button>
-    <button class="btn ico" type="button" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها" onclick="uiAction(this,()=>evtDlAll())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">دانلود همه</span></button>
-    <button id="evtFormat" data-admin hidden class="btn ico danger" type="button" title="فرمت کامل حافظه" aria-label="فرمت کامل حافظه" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span class="lbl">فرمت حافظه</span></button>
-   </span>
-  </div>
-  <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
-  <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
-  <div id="evtSt" style="font-size:11px;color:var(--mu);min-height:16px"></div>
-  <div id="evtList" style="max-height:300px;overflow:auto;font-size:12px;line-height:1.9;border-top:1px solid var(--ln);margin-top:6px">در حال خواندن…</div>
-</div>
+
  </div>
 
  <div id="pg1" class="pgx">
@@ -593,6 +578,22 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 
  <div id="pg2" class="pgx">
   <div id="settingsContent" style="display:grid;gap:16px">
+ <div class="cd" id="evtCard">
+  <div class="ti">تاریخچهٔ وضعیت (لاگ)</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+   <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
+   <span class="icog">
+    <button class="btn ico" type="button" title="حافظهٔ ESP" aria-label="حافظهٔ ESP" onclick="uiAction(this,()=>evtFs(1))"><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span class="lbl">حافظهٔ ESP</span></button>
+    <button class="btn ico" type="button" title="بروزرسانی فهرست" aria-label="بروزرسانی فهرست" onclick="uiAction(this,()=>evtFs(0))"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg><span class="lbl">بروزرسانی</span></button>
+    <button class="btn ico" type="button" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها" onclick="uiAction(this,()=>evtDlAll())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">دانلود همه</span></button>
+    <button id="evtFormat" data-admin hidden class="btn ico danger" type="button" title="فرمت کامل حافظه" aria-label="فرمت کامل حافظه" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span class="lbl">فرمت حافظه</span></button>
+   </span>
+  </div>
+  <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
+  <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
+  <div id="evtSt" style="font-size:11px;color:var(--mu);min-height:16px"></div>
+  <div id="evtList" style="max-height:300px;overflow:auto;font-size:12px;line-height:1.9;border-top:1px solid var(--ln);margin-top:6px">در حال خواندن…</div>
+</div>
    <div class="cd">
     <div class="ti">وای‌فای</div>
     <div class="form">
@@ -1452,7 +1453,6 @@ function render(data){
   chgStablePack=chgPackState.stable;
  }
  let pctPack=stablePack, pctLow=stableLow, pctHigh=stableHigh;
- let greenTiming=calcGreenTiming(inputPresent ? 100 : stablePack);
  /* درصد نمایش = درصد پایدار همان نردبان ولتاژ V24 که برد چشمک سبز را از آن
     می‌سازد؛ هرگز از روی زمانِ چشمک حساب نمی‌شود (کف خاموشی ۱۰ms باعث می‌شد پک
     کامل ۹۹٪ نشان داده شود) */
@@ -1505,21 +1505,10 @@ function render(data){
  if(!ch2Charging) setHtml('batLowPct', pctLow+'<small>%</small>');
  setTxt('batHighStatus', highSt.txt+(ch1Charging?' - در حال شارژ ↯':'' ));
  setTxt('batLowStatus', lowSt.txt+(ch2Charging?' - در حال شارژ ↯':'' ));
- let ib=document.getElementById('imbBox'); if(ib){
-  let charging=(s1==1||s1==2||s2==1||s2==2);
-  let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
-  let sameState=(ch1==ch2);
-  if(isDead){ setTxt('imbBox','قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'); setCls(ib,'imb show err'); }
-  else if(isImbLatched){ setTxt('imbBox','قفل دائمی - باتری را تعویض کنید'); setCls(ib,'imb show err'); }
-  else if(isWeak){ setTxt('imbBox','حکم باتری ضعیف - مسیر باتری بسته مانده تا باتری سالم شود'); setCls(ib,'imb show err'); }
-  else if(isImbEpisode){ setTxt('imbBox','عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت'); setCls(ib,'imb show'); }
-  else if(!charging && sameState && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
-  else { setCls(ib,'imb'); setTxt('imbBox',''); }
- }
  let bIn=document.getElementById('bdgInput');
  if(bIn){
   if(inputOV){ setHtml('bdgInput','<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg err'); }
-  else if(!inputPresent){ setHtml('bdgInput','<i></i>برق ورودی قطع - حالت باتری'); setCls(bIn,'bdg warn'); }
+  else if(!inputPresent){ setHtml('bdgInput','<i></i>برق ورودی: قطع'); setCls(bIn,'bdg warn'); }
   else { setHtml('bdgInput','<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg ok'); }
  }
  /* ارتباط دوطرفه (v1.111): تله‌متری آمدن با «برد جواب ما را می‌دهد» یکی نیست.
@@ -1535,45 +1524,48 @@ function render(data){
   else if(bce>0 || bvm>0){ setHtml('bdgLink','<i></i>ارتباط دوطرفه: پرخطا - CRC '+bce+' / نسخه '+bvm); setCls(bLk,'bdg warn'); }
   else { setHtml('bdgLink','<i></i>ارتباط دوطرفه سالم - برد '+brx+' فریم از ما گرفت'); setCls(bLk,'bdg ok'); }
  }
- let st=document.getElementById('statusTitle'), ss=document.getElementById('statusSub');
  let heroCard=document.getElementById('heroCard');
  let heroFault=document.getElementById('heroFault');
- /* پیام بالای صفحه: همیشه از یک مسیر نوشته می‌شود تا نمایش قبلی پاک شود */
- let heroCls='hero', heroFaultCls='hero-fault show', heroFaultTxt='', heroFaultHtml=false, stTxt='', ssTxt='';
- if(!data.on){ stTxt='ارتباط با برد قطع است'; ssTxt='کابل یا تغذیه برد را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='ارتباط قطع - کابل UART یا تغذیه برد را بررسی کنید'; }
- else if(fault & FAULT_BAT_LOST){ stTxt='باتری قطع شده'; ssTxt='سیم باتری را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='برد نیاز به بررسی دارد'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(fault & FAULT_ADC){ stTxt='در حال بررسی'; ssTxt='سنسورها در حال کالیبره'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد '+(brd.imax/1000).toFixed(1)+' ولت'; }
- else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; }
- else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری را تعویض کنید'; }
- else if(isWeak){ stTxt='باتری ضعیف'; ssTxt='حکم قفل است - باتری بار را تحمل نمی‌کند'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='حکم باتری ضعیف: مسیر باتری بسته مانده؛ با شارژ و استراحت سالم خودش پاک می‌شود'; }
+ // Each surface owns one message: operating mode, action, input state, extra warning.
+ let heroCls='hero', heroFaultCls='hero-fault show', heroFaultTxt='', heroFaultHtml=false, stTxt='', ssTxt='', imbalanceInHero=false;
+ if(!data.on){ stTxt='ارتباط با برد قطع است'; ssTxt='کابل UART یا تغذیه برد را بررسی کنید'; heroCls='hero err'; }
+ else if(fault & FAULT_BAT_LOST){ stTxt='باتری قطع شده'; ssTxt='سیم باتری را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=(fault & ~FAULT_BAT_LOST)?faultText(fault & ~FAULT_BAT_LOST):''; heroFaultHtml=true; }
+ else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='طبقهٔ قدرت برد را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=(fault & ~FAULT_TECH)?faultText(fault & ~FAULT_TECH):''; heroFaultHtml=true; }
+ else if(fault & FAULT_ADC){ stTxt='خطای اندازه‌گیری ولتاژ'; ssTxt='سنسور یا سیم‌کشی را بررسی کنید'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=(fault & ~FAULT_ADC)?faultText(fault & ~FAULT_ADC):''; heroFaultHtml=true; }
+ else if(inputOV){ stTxt='ورودی نامناسب'; ssTxt='حد '+(brd.imax/1000).toFixed(1)+' ولت - منبع تغذیه را بررسی کنید'; heroCls='hero err'; }
+ else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - '+deadWho+' را تعویض کنید'; heroCls='hero err'; imbalanceInHero=true; }
+ else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; imbalanceInHero=true; }
+ else if(isWeak){ stTxt='باتری ضعیف'; ssTxt='مسیر باتری بسته است؛ پس از شارژ و استراحت باتری سالم، قفل خودکار پاک می‌شود'; heroCls='hero err'; imbalanceInHero=true; }
  else if(!inputPresent){
-  let charging=(s1==1||s1==2||s2==1||s2==2);
-  let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
-  let sameState=(ch1==ch2);
-  stTxt='برق ورودی قطع - حالت باتری'; ssTxt='شارژ '+pctPack+' درصد - Vin '+(vIn/1000).toFixed(1)+'V';
-  if(pctPack<=1){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ بحرانی - کمتر از ۱٪ - برق ورودی قطع'; }
-  else if(pctPack<=5){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ خیلی کم - '+pctPack+'٪ - برق ورودی قطع'; }
-  else if(pctPack<=20){ heroFaultCls='hero-fault warn show'; heroFaultTxt='شارژ کم - '+pctPack+'٪ - برق ورودی قطع'; }
-  else if(!charging && sameState && imb>300){ heroFaultCls='hero-fault warn show'; heroFaultTxt='اختلاف دو باتری زیاد است ('+imb+'mV) - برق ورودی قطع'; }
-  else if(pctPack>=100){ heroFaultCls='hero-fault ok show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری - پک کامل ('+pctPack+'٪) - سبز ثابت بدون چشمک'; }
-  else { heroFaultCls='hero-fault warn show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+brd.gPer+'ms'; }
+  stTxt='تغذیه از باتری';
+  if(pctPack<=1){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ بحرانی - کمتر از ۱٪'; }
+  else if(pctPack<=5){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ خیلی کم'; }
+  else if(pctPack<=20){ heroFaultCls='hero-fault warn show'; heroFaultTxt='شارژ کم'; }
  }
- else if(isImbEpisode && !isCharging){ stTxt='عدم‌توازن در جریان'; ssTxt='اختلاف دو نیم‌پک '+imb+' میلی‌ولت'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt='عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت - زیر نظر'; }
- else if(fullActive){ stTxt='شارژ کامل'; ssTxt='باتری پر - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='شارژ کامل - باتری پر ('+pctPack+'٪)'; }
+ else if(isImbEpisode && !isCharging){ stTxt='عدم‌توازن در جریان'; ssTxt='اختلاف دو نیم‌پک '+imb+' میلی‌ولت - نیاز به بررسی'; heroCls='hero warn'; imbalanceInHero=true; }
+ else if(fullActive){ stTxt='شارژ کامل'; heroCls='hero ok'; }
  else if(isThermalRest){
   stTxt='استراحت حرارتی شارژر';
-  ssTxt='استراحت ۱۰ دقیقه‌ای پس از ۱ ساعت شارژ - باتری '+pctPack+' درصد';
+  ssTxt='۱۰ دقیقه استراحت پس از ۱ ساعت شارژ';
  }
- else if(s1==1||s1==2||s2==1||s2==2){
+ else if(isCharging){
   let q=getChargingBounds(pctPack);
-  stTxt='در حال شارژ ↯ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
-  ssTxt='باتری '+pctPack+' درصد - انیمیشن زرد داخل همان قسمت';
+  stTxt='در حال شارژ';
+  ssTxt='قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
  }
- else { stTxt='متصل - برق ورودی وصل'; ssTxt='باتری '+pctPack+' درصد - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); }
+ else { stTxt='آماده به کار'; heroCls='hero ok'; }
+ let ib=document.getElementById('imbBox'); if(ib){
+  if(imbalanceInHero){ setCls(ib,'imb'); setTxt('imbBox',''); }
+  else if(isDead){ setTxt('imbBox','قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'); setCls(ib,'imb show err'); }
+  else if(isImbLatched){ setTxt('imbBox','قفل دائمی - باتری را تعویض کنید'); setCls(ib,'imb show err'); }
+  else if(isWeak){ setTxt('imbBox','حکم باتری ضعیف - مسیر باتری بسته مانده تا باتری سالم شود'); setCls(ib,'imb show err'); }
+  else if(isImbEpisode){ setTxt('imbBox','عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت'); setCls(ib,'imb show'); }
+  else if(!isCharging && (ch1Charging===ch2Charging) && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
+  else { setCls(ib,'imb'); setTxt('imbBox',''); }
+ }
  setTxt('statusTitle', stTxt);
  setTxt('statusSub', ssTxt);
+ setShow('statusSub', ssTxt!=='');
  setCls(heroCard, heroCls);
  if(heroFault){
   /* اگر پیام برای این حالت خالی است، کامل پنهان می‌شود (متن و کلاس هم پاک
