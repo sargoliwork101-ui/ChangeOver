@@ -450,7 +450,7 @@ header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 26c1685</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d727169</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -1268,6 +1268,7 @@ function pmeta(id){
  if(e&&e.type==='checkbox'){lo=0;hi=1;unit='';}
  else if(e&&e.min!==''&&e.max!==''){lo=+e.min;hi=+e.max;}
  else if(schema&&Number.isFinite(+schema[2])&&Number.isFinite(+schema[3])){lo=+schema[2];hi=+schema[3];}
+ else if(EVB[n]){lo=EVB[n][0];hi=EVB[n][1];unit=EVU[EVB[n][3]];}
  if(!Number.isFinite(lo)||!Number.isFinite(hi))return null;
  let name='پارامتر '+n;
  if(typeof PX!=='undefined'&&PX[n])name=PX[n][0];
@@ -1318,12 +1319,12 @@ async function sendall(){
  const v=rsnap(),fixed=fixrules(v).filter(f=>rknown(f[0])),fixtxt=[];
  fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
   fixtxt.push(id+': '+f[1]+'→'+f[2]);});
- const ids=Object.keys(PEND);
+ const batch={...PEND},ids=Object.keys(batch);
  const sent={},sentReport=[];let ok=0;
  const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
  CAL_BUSY=true;lupd();try{
  stxt('sbst','… در حال ارسال');
- for(const id of ids){const v=PEND[id];
+ for(const id of ids){const v=batch[id];
   try{const r=await fetch('/s?id='+id+'&v='+v,{method:'POST'});if(r.ok){ok++;sent[id]=v;}}catch(e){}
   await sl(60);}
  if(ok===0){stxt('sbst','⛔ هیچ‌کدام ارسال نشد — ارتباط با برد برقرار نیست.');
@@ -1358,8 +1359,8 @@ async function sendall(){
   const clamped=+back!==+sent[id];
   if(clamped)bad.push(report);
   sentReport.push(report+(clamped?' — گیره زد':' — پذیرفت'));
-  /* Always reconcile the visible editor with the applied board value. */
-  pclr(id,+back);}
+  /* [EN] An old acknowledgement cannot consume a newer unsent edit. */
+  if(!(id in PEND)||PEND[id]===sent[id])pclr(id,+back);}
  pbar();
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();if(typeof qgraph==='function'){qgraph();}
  if(ok<ids.length){const left=Object.keys(PEND);
@@ -1375,7 +1376,7 @@ async function sendall(){
   +(sentReport.length?' · '+sentReport.join(' · '):'')+pre);
   sdlg('ok','✅ همه نشست — '+ok+' تنظیم',
    'برد هر '+ok+' مقدار را عیناً پس‌فرستاد و در حافظهٔ ماندگار ذخیره کرد؛ '
-   +'نیازی به ارسال دوباره نیست.'
+   +'نیازی به ارسال دوبارهٔ این دسته نیست؛ تغییرهای تازه در صف می‌مانند.'
    +(sentReport.length?'<br>گزارش همهٔ مقدارها: '+sdlgl(sentReport):'')
    +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),0);
   return;}

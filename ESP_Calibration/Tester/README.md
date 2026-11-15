@@ -1,3 +1,12 @@
+## Current send-batch integrity audit
+
+The transaction suite now has **53 checks**: a110168 baseline has 12 failures;
+current HTML has none. It covers immutable validated batch values, edits while
+POST/readback is pending, retention/re-send of new values, and both bounds for
+all EVB chart/chip parameters. Recurring polling is stopped in the test harness;
+controlled POST replies advance synthetic telemetry. Production polling is
+unchanged. See [send audit](../AUDIT_PANEL_SEND.md) for limits and owner decisions.
+
 ## Current panel layout regression
 
 `node ESP_Calibration/Tester/host_test_panel_layout.cjs` runs real Chromium

@@ -1,4 +1,4 @@
-/* [EN] Real-panel regression: one owner for capture, parameter writes and board resets. */
+/* [EN] Real-panel regression: transaction ownership, validated send snapshots and safe reconciliation. */
 'use strict';
 const fs=require('fs'),path=require('path'),assert=require('assert');
 let JSDOM;try{({JSDOM}=require('jsdom'));}catch(e){console.log('SKIP: jsdom missing; transaction audit did not run.');process.exit(0);}
@@ -11,13 +11,13 @@ const table={ready:true,T:[{X:[80,100],Y:[0,30]},{X:[],Y:[]}]};
 const proposal={...table,target:1,body:'test',crc:123,msg:[],cal:{ids:[0,2],offset:[0,0],gain:[1000,1000],voltage:[0,0,0],selected:{0:true,2:true}}};
 async function scenario(test){
  const timers=[];
- const dom=new JSDOM(page,{runScripts:'dangerously',pretendToBeVisual:true,url:'http://localhost/',beforeParse(w){w.scrollTo=()=>{};const set=w.setInterval.bind(w);w.setInterval=(f,t)=>{const id=set(f,t);timers.push(id);return id;};}});
+ const dom=new JSDOM(page,{runScripts:'dangerously',pretendToBeVisual:true,url:'http://localhost/',beforeParse(w){w.scrollTo=()=>{};const timeout=w.setTimeout.bind(w);w.setTimeout=(fn,ms,...args)=>fn&&fn.name==='poll'?0:timeout(fn,ms,...args);const set=w.setInterval.bind(w);w.setInterval=(f,t)=>{const id=set(f,t);timers.push(id);return id;};}});
  const w=dom.window,d=w.document;
  try{
   await pause(50);timers.forEach(id=>w.clearInterval(id));
   w.D={on:1,seq:10,fl:0,p:Array(171).fill(0),t:Array(31).fill(0)};w.D.p[2]=w.D.p[3]=1000;
   w.eval('PEND={};W={run:false,opening:false};CAL_BUSY=false;');
-  w.sl=async()=>{++w.D.seq;};w.lview=()=>{};w.pmConfirm=async()=>false;
+  w.lview=()=>{};w.pmConfirm=async()=>false;
   w.lread=async()=>JSON.parse(JSON.stringify(table));w.lcalread=async()=>true;
   await test(w,d);
  }finally{dom.window.close();}
@@ -108,6 +108,42 @@ async function scenario(test){
   w.req=async(u,m)=>{if(u==='/lut/reset'){++resets;return {ok:1,_s:200};}return m==='POST'?{ok:1,_s:200}:{st:3,s:0,crc:123,_s:200};};
   await w.lapplypending();
   check(resets===1&&w.eval('LSNT===1&&!CAL_BUSY&&!LREAD_IN_PROGRESS'),'successful commit retains its authorized automatic reset and final exact readback');
+ });
+ /* [EN] A send owns a validated batch, not the mutable editors used for the next batch. */
+ await scenario(async(w,d)=>{
+  const posts=[];let release;
+  w.fetch=async u=>{const url=new URL(u,'http://localhost'),id=+url.searchParams.get('id'),v=+url.searchParams.get('v');
+   posts.push([id,v]);if(posts.length===1)await new Promise(r=>{release=r;});w.D.p[id]=v;++w.D.seq;return {ok:true};};
+  w.qput(20,14400);w.qput(21,14300);const op=w.sendall();
+  check(posts.length===1&&posts[0][0]===20,'validated batch begins with the first approved value');
+  w.qput(21,17000);w.qput(25,700);release();await op;
+  check(JSON.stringify(posts)===JSON.stringify([[20,14400],[21,14300]]),'later edits cannot replace validated values or add unapproved writes to the in-flight batch');
+  check(w.D.p[21]===14300,'an out-of-range edit made during POST is not sent past the completed range check');
+  check(w.eval('PEND[21]===17000&&PEND[25]===700'),'readback preserves newer edits and newly queued ids for a separate send');
+  check(w.eval('evp(21).v===17000&&evp(21).p'),'the chart retains its newer unsent value and preview affordance');
+  check(w.eval('!(20 in PEND)&&!CAL_BUSY'),'acknowledged unchanged pending entry is reconciled and ownership is released');
+  const count=posts.length;await w.sendall();
+  check(posts.length===count,'the next batch validates the newer out-of-range value and sends nothing');
+ });
+ await scenario(async(w,d)=>{
+  const posts=[];let release;
+  w.fetch=async u=>{const url=new URL(u,'http://localhost'),id=+url.searchParams.get('id'),v=+url.searchParams.get('v');
+   posts.push([id,v]);if(posts.length===1)await new Promise(r=>{release=r;});w.D.p[id]=v;++w.D.seq;return {ok:true};};
+  w.qput(27,14400);const op=w.sendall();w.qput(27,14500);release();await op;
+  check(w.eval('PEND[27]===14500'),'editing an already-posted id while awaiting its acknowledgement does not lose the new edit');
+  check(d.getElementById('q27').value==='14500','old readback cannot overwrite a newer visible value');
+  check(w.D.p[27]===14400&&posts.length===1,'newly typed value is not silently written by the old batch');
+  await w.sendall();
+  check(JSON.stringify(posts)===JSON.stringify([[27,14400],[27,14500]]),'a subsequent explicit send submits the retained new value');
+  check(w.eval('!(27 in PEND)&&!CAL_BUSY')&&d.getElementById('q27').value==='14500','second acknowledgement reconciles its own batch normally');
+ });
+ await scenario(async(w)=>{
+  let posts=0;w.fetch=async()=>{++posts;return {ok:true};};
+  const ids=w.eval('Object.keys(EVB).map(Number)');
+  check(ids.every(id=>{const m=w.pmeta(id),b=w.eval('EVB['+id+']');return m&&m.lo===b[0]&&m.hi===b[1];}),'every chart and chip parameter has pre-send metadata matching its editor limits');
+  check(ids.every(id=>{w.eval('PEND={}');w.qput(id,w.eval('EVB['+id+'][1]')+1);const high=w.pvalidate([id]).length===1;w.qput(id,w.eval('EVB['+id+'][0]')-1);return high&&w.pvalidate([id]).length===1;}),'all chart and chip parameters reject below-limit and above-limit pending values');
+  w.eval('PEND={}');w.qput(20,17000);await w.sendall();
+  check(posts===0&&w.eval('PEND[20]===17000'),'out-of-range graph-only edit is blocked before the first POST and retained for correction');
  });
  console.log(checks+' TRANSACTION AUDIT CHECKS; '+failures+' FAILURE(S)');
  clearTimeout(watchdog);if(failures)process.exitCode=1;
