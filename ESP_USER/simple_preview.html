@@ -1391,9 +1391,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
     <span id="chargeCap" style="font-size:11px;color:var(--mu)">شارژهای اخیر</span>
    </div>
-   <div style="display:flex;gap:6px;margin-top:10px">
-    <button class="btn bxs" title="دانلود خروجی CSV تاریخچه شارژ"  onclick="uiAction(this,()=>exportCsv('charge'))">خروجی CSV</button>
-   </div>
    <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
   </div>
   <div class="cd chart-card">
@@ -1408,7 +1405,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
      </div>
      <span class="bdg" style="background:rgba(91,141,239,.15);color:#5b8def;border-color:rgba(91,141,239,.3)">Vin - ورودی</span>
      <span class="bdg" style="background:rgba(30,230,160,.15);color:#1ee6a0;border-color:rgba(30,230,160,.3)">Vpack - پک باتری</span>
-     <button class="btn bxs" title="دانلود خروجی CSV همین بازه"  onclick="uiAction(this,()=>exportCsv('volt'))">خروجی CSV</button>
     </div>
    </div>
    <div id="voltAxisInfo" class="mb2">محور عمودی: خودکار از دادهٔ همین بازه - محور افقی: زمان واقعی</div>
@@ -1456,6 +1452,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    </div>
 
    <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
+   <div class="cd" id="technicalInfo">
+    <div class="ti">اطلاعات فنی</div>
+    <div lang="en" dir="ltr" style="text-align:left;font-size:12px;line-height:1.9;overflow-wrap:anywhere">
+     <div id="linkState">Link: --</div>
+     <div id="seqInfo">Frames: -- | Last update: -- ms ago</div>
+    </div>
+   </div>
    <div class="cd" id="adminCard" hidden>
     <div class="ti">مدیریت برد<span id="admWho" style="margin-right:auto;font-size:10px;color:var(--mu)"></span><button class="btn gh" style="padding:4px 10px;font-size:10px;min-height:24px" onclick="uiAction(this,()=>admLogout(),true)">خروج</button></div>
     <div class="arow"><span>قفل خطا</span><button class="btn bs"  onclick="uiAction(this,()=>admPost('/latch/reset',{n:5},'قفل خطا ریست شد'),true)">ریست کامل</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:6},'ماسک باتری مرده پاک شد'),true)">پاک‌کردن ماسک مرده</button><button class="btn gh" style="padding:5px 10px;font-size:11px;min-height:26px" onclick="uiAction(this,()=>admPost('/latch/reset',{n:8},'ریست ضعیف انجام شد'),true)">ریست ضعیف</button></div>
@@ -1471,7 +1474,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
  </div>
 
 <div id="chartTooltip" class="chart-tooltip"></div>
-<div id="toastMsg" role="status" aria-live="polite" aria-atomic="true" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
+<div id="toastMsg" role="status" aria-live="polite" aria-atomic="true" class="toast" style="display:none"></div><div class="footer"><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
 <div id="admGate" class="gate" hidden><div class="gatebox">
  <div class="ti" style="margin:0">دسترسی مدیر</div>
  <input id="admPass" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('admLoginBtn').click();}">
@@ -1558,7 +1561,6 @@ function jOf(ts){ return jFromDate(new Date(ts*1000)); }
 function p2(n){ return (n<10?'0':'')+n; }
 function faDigits(str){ return String(str).replace(/[0-9]/g,function(c){ return '۰۱۲۳۴۵۶۷۸۹'[+c]; }); }
 /* لاتین برای فایل خروجی (اکسل می‌فهمد)، فارسی برای نمایش روی صفحه */
-function jLatinDate(ts){ let j=jOf(ts); return j[0]+'/'+p2(j[1])+'/'+p2(j[2]); }
 const J_MONTHS=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const J_WEEKDAYS=['یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه','شنبه'];
 /* نمونه: «۲۲ مهر ۱۴۰۵ - ۱۴:۳۵» */
@@ -1597,19 +1599,7 @@ function fmtJalaliAxis(ts, range){
  return faDigits(j[2]+' '+J_MONTHS[j[1]-1]);
 }
 
-/* ==================== خروجی CSV نمودارها ====================
-   فایل سمت مرورگر ساخته می‌شود (هیچ فشاری روی برد نیست). عددهای فایل لاتین
-   هستند تا اکسل درست بخواند و برای فارسی، BOM به ابتدای فایل اضافه می‌شود. */
-function csvCell(v){
- let t=(v===null||v===undefined)?'':String(v);
- return /[",\r\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
-}
-function csvText(rows){
- let out=[];
- for(let i=0;i<rows.length;i++) out.push(rows[i].map(csvCell).join(','));
- return out.join('\r\n');
-}
-function csvFileStamp(ts){ let d=new Date(ts*1000); return jLatinDate(ts).replace(/\//g,'-')+'-'+p2(d.getHours())+p2(d.getMinutes()); }
+/* ==================== Stored log downloads ==================== */
 function downloadCsvText(fileName, text){
  let blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'});
  let url=URL.createObjectURL(blob);
@@ -1618,47 +1608,6 @@ function downloadCsvText(fileName, text){
  document.body.appendChild(a); a.click();
  setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} },1500);
 }
-/* ردیف‌های خروجی هر نمودار: زمان یونیکس، تاریخ شمسی، ساعت، بعد داده‌ها */
-function csvRowsFromColumns(timeData, columns){
- let rows=[];
- let head=['زمان یونیکس','تاریخ شمسی','ساعت'];
- for(let c=0;c<columns.length;c++) head.push(columns[c].title);
- rows.push(head);
- for(let i=0;i<timeData.length;i++){
-  let ts=timeData[i]||0, d=new Date(ts*1000);
-  let row=[ts, ts?jLatinDate(ts):'', ts?p2(d.getHours())+':'+p2(d.getMinutes()):''];
-  for(let c=0;c<columns.length;c++) row.push(columns[c].values[i]);
-  rows.push(row);
- }
- return rows;
-}
-function voltCsvData(){
- let d=chartDataVolt, vin=d.vin||[], vpack=d.vpack||[], tm=d.time||[];
- let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
- return {name:'changeover-voltaj-'+d.range+'-'+csvFileStamp(last)+'.csv',
-         rows:csvRowsFromColumns(tm,[{title:'ولتاژ ورودی (میلی‌ولت)',values:vin},{title:'ولتاژ پک (میلی‌ولت)',values:vpack}]), count:vin.length};
-}
-function chargeCsvData(){
- /* فقط زمان و کانالِ شارژ کامل خروجی گرفته می‌شود؛ مدت هر شارژ اندازه‌گیری
-    نمی‌شود و ستون آن به درخواست کاربر حذف شده است. تاریخچه دست‌نخورده می‌ماند. */
- let events=(window._lastChargeHistory||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
- let tm=[], ch=[];
- for(let i=0;i<events.length;i++){ tm.push(events[i].ts); ch.push(events[i].ch); }
- let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
- return {name:'changeover-sharzh-'+csvFileStamp(last)+'.csv',
-         rows:csvRowsFromColumns(tm,[{title:'کانال',values:ch}]), count:events.length};
-}
-function exportCsv(kind){
- let data=kind==='volt'?voltCsvData():kind==='charge'?chargeCsvData():null;
- if(!data) return;
- if(!data.count){ showToast('داده‌ای برای خروجی نیست - هنوز نمونه‌ای ثبت نشده'); return; }
- try{
-  downloadCsvText(data.name, csvText(data.rows));
-  showToast('فایل آمادهٔ دانلود شد: '+faDigits(data.count)+' نمونه');
- }catch(e){ showToast('خروجی گرفتن در این مرورگر ممکن نشد'); }
-}
-
-
 async function uiAction(el,run,admin){
  if(el.getAttribute('aria-busy')==='true')return;
  const controls=admin?Array.from(document.querySelectorAll('#adminCard button,#admLoginBtn,[data-admin]')):el.closest('.icog')?Array.from(el.closest('.icog').querySelectorAll('button')):[el];
@@ -2418,8 +2367,8 @@ function render(data){
   if(heroFaultTxt===''){ if(heroFault.innerHTML!=='') heroFault.innerHTML=''; setShow('heroFault', false); }
   else { if(heroFaultHtml) setHtml('heroFault', heroFaultTxt); else setTxt('heroFault', heroFaultTxt); setShow('heroFault', true); }
  }
- setTxt('linkState', 'لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V');
- setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ در بازهٔ ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ↯':''));
+ setTxt('linkState', 'Link: '+(data.on?'Connected':'Disconnected')+' | CRC errors: '+data.ce+' | Vin: '+(vIn/1000).toFixed(2)+' V');
+ setTxt('seqInfo', 'Frames: '+data.n+' | Last update: '+data.age+' ms ago | Battery: '+pctPack+'% | Raw: '+rawPackDis+'%'+(isCharging?' | Charging range: '+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%':''));
  setCls(document.getElementById('hdrDot'), 'dot '+(data.on?'on':''));
  setTxt('hdrText', data.on?'متصل':'قطع');
 

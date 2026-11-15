@@ -29,11 +29,29 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
         w.showTab(n);
         check(d.getElementById('evtCard').closest('.pgx').classList.contains('a')===(n===2),'log follows only the settings tab: '+n);
     }
-    function statusFrame({input=true,pack=25000,state=0,fault=0,flags=0,dead=0,imb=0,on=true,vin}={}){
+    function statusFrame({input=true,pack=25000,state=0,fault=0,flags=0,dead=0,imb=0,on=true,vin,age=100,n=12,ce=2}={}){
         w.resetStatusState();
         const t=Array(31).fill(0);t[14]=vin===undefined?(input?24000:0):vin;t[15]=pack;t[17]=pack/2;t[18]=pack/2;t[6]=state;t[13]=state;t[19]=fault;t[25]=imb;t[28]=dead;
-        w.render({t,on,fl:input?2:0,fl2:flags,inputPresent:input,lko:1,bpv:2,brx:10,boardTime:1793793600});
+        w.render({t,on,n,age,ce,fl:input?2:0,fl2:flags,inputPresent:input,lko:1,bpv:2,brx:10,boardTime:1793793600});
     }
+    check(!d.querySelector('#pg1 [onclick*="exportCsv"]') && !d.getElementById('pg1').textContent.includes('CSV'),'charts have no CSV export controls');
+    check(['exportCsv','chargeCsvData','voltCsvData','csvRowsFromColumns','csvText','csvCell','csvFileStamp','jLatinDate'].every(name=>!html.includes('function '+name+'(')),'chart-only CSV builders and unused date helper are removed');
+    check(typeof w.downloadCsvText==='function' && d.querySelector('#pg2 #evtCard [onclick*="evtDlAll"]'),'stored history downloads remain available in settings');
+    const tech=d.getElementById('technicalInfo');
+    check(tech.closest('#settingsContent') && !tech.closest('#adminCard') && d.querySelectorAll('#linkState,#seqInfo').length===2,'technical status exists once, in public settings only');
+    check(d.getElementById('linkState').closest('[lang="en"][dir="ltr"]')===d.getElementById('seqInfo').closest('[lang="en"][dir="ltr"]'),'English technical values have an explicit left-to-right layout');
+    check(!d.querySelector('.footer #linkState,.footer #seqInfo') && d.querySelector('.footer').children.length===1 && d.querySelector('.footer #fwTap[onclick="admTap()"]'),'footer retains only version and its hidden admin entry');
+    for(const tab of [0,1,2,0]){
+        w.showTab(tab);
+        check(tech.closest('.pgx').classList.contains('a')===(tab===2),'technical information follows settings visibility: '+tab);
+    }
+    statusFrame();
+    check(d.getElementById('linkState').textContent==='Link: Connected | CRC errors: 2 | Vin: 24.00 V','technical link, CRC errors and input voltage use live English labels');
+    check(d.getElementById('seqInfo').textContent.includes('Frames: 12 | Last update: 100 ms ago') && !/[\u0600-\u06ff]/.test(d.getElementById('seqInfo').textContent),'last update means time since the latest frame, with clear English units');
+    statusFrame({on:false,age:700,n:13,ce:3});
+    check(d.getElementById('linkState').textContent.startsWith('Link: Disconnected | CRC errors: 3') && d.getElementById('seqInfo').textContent.includes('Frames: 13 | Last update: 700 ms ago'),'technical values continue updating after link loss');
+    statusFrame({state:1});
+    check(d.getElementById('seqInfo').textContent.includes('Charging range:') && !/[\u0600-\u06ff]/.test(tech.querySelector('[lang="en"]').textContent),'charging-stage diagnostics are also English');
     const mainTexts=()=>['statusTitle','statusSub','bdgInput','heroFault'].map(id=>{const e=d.getElementById(id);return e.style.display==='none'?'':e.textContent;}).join(' | ');
     for(const pack of [21000,21300,22000,25000,29000]){
         statusFrame({input:false,pack});
