@@ -1296,6 +1296,11 @@ function main() {
                     const tools=d.querySelector('.evttools');
                     const expectedTools=['به‌روزرسانی','حافظهٔ ESP','دانلود این روز','دانلود همهٔ روزها','پاک کردن تاریخچه'];
                     const toolButtons=[...tools.querySelectorAll('button')];
+                    const actions=tools.querySelector('.evtactions');
+                    check(actions && actions.querySelectorAll(':scope > button').length===5 && actions.previousElementSibling.querySelector('#evtpct'),
+                          'all history actions form one group immediately after the memory-share selector');
+                    check(w.getComputedStyle(actions).display==='flex' && w.getComputedStyle(actions).flexWrap==='nowrap' && w.getComputedStyle(actions).flexShrink==='0' && w.getComputedStyle(tools).flexWrap==='wrap',
+                          'the icon group never splits or shrinks: outer toolbar wraps all five together');
                     check(toolButtons.length===5 && toolButtons.every((b,i)=>b.title===expectedTools[i] && b.getAttribute('aria-label')===expectedTools[i] && b.querySelector('svg') && !b.textContent.trim()),
                           'all five history controls use icons with their original text as tooltip and accessible label');
                     check(w.getComputedStyle(tools).display==='flex' && toolButtons.every(b=>w.getComputedStyle(b).width==='40px'),
