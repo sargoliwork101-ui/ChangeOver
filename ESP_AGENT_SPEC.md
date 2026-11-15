@@ -135,7 +135,10 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 - Current-channel columns: `raw1/raw2` (counts), `shunt1_uv/shunt2_uv` (mA ≈ µV ÷ 10 with the
   10 mΩ shunt), `unf/filt/iest` (mA after the chain; `iest` equals the filtered current).
 - The `[dmm]` group holds `dmm_i_in_ma`, `dmm_i_bat1_ma`, `dmm_i_bat2_ma`, `note` (the DMM voltage
-  columns were removed; no code wrote them).
+  columns were removed; no code wrote them). In NEW capture rows `dmm_i_in_ma`
+  is the retained legacy slot and is `-` (not measured), not a fabricated zero.
+  Only active-battery DMM currents are collected/required; input current never
+  participates in fit samples, calibration calculations or LUT generation.
 
 ### 4.1 Event history on the panel's own flash (current, ESP_Calibration)
 

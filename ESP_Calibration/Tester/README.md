@@ -306,3 +306,36 @@ check that freshly captured input through the production storage code. The
 simulator itself still keeps CSV in memory; its size is not a device codec result.
 A cancellation regression now counts only bench-download fetches, not unrelated
 background telemetry polls, avoiding a false failure on slower test machines.
+
+
+### Battery-only meter entry (input-current collection removed)
+
+The trace audit found `wIi`/`ii` only in the capture form's validation, visible
+bench row, CSV serialization and preview/test helpers, not calibration samples,
+fit math, table generation or LUT packing. Source comparisons against 660ff3e
+confirm calpush/calnorm/calfit/calbuild/lpack are unchanged. The form, required
+input-current validation, visible input-current column and preview-only input
+meter calculation are removed. CSV retains its legacy field as missing (`-`)
+in new captures; old values are not rewritten or converted to zero. The compact
+codec/schema and frozen old-file fixture are unchanged.
+
+Before: 619 host / 13 labels / 287 DOM / 42 repeat / 20 point-edit / 14 storage /
+47 revision / 30 restore assertions PASS. A new real-form assertion failed on
+the old page before the source change. After: 619 host / 13 labels / 287 DOM /
+46 repeat / 20 point-edit / 15 storage / 47 revision / 30 restore assertions
+PASS. New checks cover missing field/table column; active-battery readings still
+mandatory; battery-only save with the 53 CSV columns aligned and missing input
+slot; nine visible table cells with status/repeat in the correct position; and
+input-current independence of full-precision normalized calibration samples.
+Draft restoration now explicitly tests the remaining battery current and note.
+Existing repeat/restore workflows submit battery readings only, across both
+single-channel scenarios. The actual HTTP simulator exercises both channels,
+repeat and post-finish recapture with no input-current entry; 17 assertions PASS,
+including every new attempt's empty legacy CSV slot. Its helper no longer writes
+to a deleted DOM input. Early test edits had duplicate local names; those syntax
+errors were fixed before the final successful runs. No DOM suite was skipped.
+Firmware/ESP_USER are unchanged. Native ESP/hardware tests are not run.
+
+Final repository checks for this removal: all eight gates PASS, cross-file audit
+567 invariants / zero findings, project-contract unit tests 10 PASS and
+`git diff --check` clean. Live preview serves build `14e0767` on port 3000.

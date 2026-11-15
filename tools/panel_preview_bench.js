@@ -32,8 +32,7 @@
  };
  document.getElementById('demoMeter').onclick=()=>{
   if(!W.run||!document.getElementById('wGo')||W.saving)return explain('این دکمه فقط هنگام بازبودن فرم اندازه‌گیری کار می‌کند.');
-  let sum=0;W.act.forEach(n=>{const e=document.getElementById('wB'+n),current=Math.round((D.t[(n-1)*7]-80)*1.3-20);if(e)e.value=current;sum+=Math.max(0,current);});
-  document.getElementById('wIi').value=Math.round(50+sum*0.55);
+  W.act.forEach(n=>{const e=document.getElementById('wB'+n),current=Math.round((D.t[(n-1)*7]-80)*1.3-20);if(e)e.value=current;});
  };
  // [EN] Never overwrite a saved sample set automatically or write calibration to the sim board.
  let tries=0;const ready=setInterval(()=>{

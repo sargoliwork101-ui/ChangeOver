@@ -27,6 +27,7 @@ function check(value,msg){assert.ok(value,msg);++count;console.log('  ok   '+msg
  check((w.D.fl&32)!==0&&w.D.t[17]===12400&&w.D.t[18]===12600,'real manual-mode requests produce stable safe simulated bench telemetry');
  const json=await (await req('/m')).json();await pause(250);const later=await (await req('/m')).json();
  check(later.n>json.n&&later.seq>json.seq&&later.fl&32,'statistics window accumulates actual ticker frames, sequence and manual flags');
+ check(!d.getElementById('wIi'),'HTTP capture has no input-current field');
  d.getElementById('demoMeter').click();check(d.getElementById('wB1').value==='-20','preview meter helper supplies a valid signed zero-duty reading');
  d.getElementById('wGo').click();await wait(()=>w.eval('W.current===1&&!!W.choose')&&d.getElementById('wGo'),'next step');
  d.querySelector('[data-wretry="0"]').click();await wait(()=>w.eval('W.current===0&&!!W.choose')&&d.getElementById('wGo'),'repeat earlier step');
@@ -43,6 +44,7 @@ function check(value,msg){assert.ok(value,msg);++count;console.log('  ok   '+msg
  d.getElementById('wReviewEnd').click();await wait(()=>!w.eval('W.run'),'finish again');
  const csv=await (await req('/benchlog')).text(),info=await (await req('/benchlog?i=1')).json();
  check(csv.includes('# repeat scenario=BOTH step=1')&&csv.split('\n').filter(x=>x.startsWith('BOTH,')).length===5,'downloaded simulator CSV contains all five actual submitted attempts and the repeat annotation');
+ check(csv.split('\n').filter(x=>x.startsWith('BOTH,')).every(x=>x.split(',')[49]==='-'),'all actual capture/repeat rows leave the legacy input-current CSV slot missing');
  check(info.size===Buffer.byteLength(csv),'simulator file size counts actual CSV bytes, not fictional row sizes');
  if(process.env.BENCH_CODEC_FIXTURE)require('fs').writeFileSync(process.env.BENCH_CODEC_FIXTURE,csv);
  const lines=csv.trimEnd().split('\n'),data=lines.filter(x=>x.startsWith('BOTH,')),settings=lines.filter(x=>x.startsWith('# settings:'));

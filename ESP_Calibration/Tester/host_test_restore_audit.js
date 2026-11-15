@@ -74,7 +74,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  w.wopen=async()=>{++windows;w.eval('W.winMs=Date.now()');};w.wlog=async()=>{};
  w.wlatch=async()=>({a:()=>100,lo:Array(31).fill(1),hi:Array(31).fill(1),la:Array(31).fill(1),seq:1,fl:39,or:0});
  d.getElementById('wSw').checked=false;d.getElementById('wL').value='5';['BAT1','BAT2','BOTH'].forEach(sc=>d.getElementById('wc'+sc).checked=sc!=='BOTH');
- const capture=w.wStart();await wait(()=>d.getElementById('wGo')&&w.eval('W.choose'),'capture form');d.getElementById('wB1').value='100';d.getElementById('wIi').value='200';d.getElementById('wGo').click();await capture;
+ const capture=w.wStart();await wait(()=>d.getElementById('wGo')&&w.eval('W.choose'),'capture form');d.getElementById('wB1').value='100';d.getElementById('wGo').click();await capture;
  check(windows===1&&!hw.some(([id,v])=>id===12&&v===1),'a failed inter-scenario restore stops before starting or measuring the next channel');
  check(!w.eval('W.run')&&d.getElementById('wS0').textContent.includes('تأیید نشد')&&!d.getElementById('wS0').textContent.includes('تنظیمات قبلی برگشت'),'completion no longer falsely claims successful hardware restoration');
  check(w.eval('W.K[0].done&&!W.K[1].done'),'already committed measurements survive a restore failure without inventing the next step');

@@ -239,3 +239,21 @@ flash-cycle/power-cut reliability and device timing still require board tests.
 The browser settings signature advances only after a successful append, so a
 failed settings write is retried rather than silently skipped. Full format and
 actual tests/measurements: `Tester/BENCH_CODEC_VALIDATION.md`.
+
+
+## Battery-only DMM capture
+
+Capture now collects only each active battery's signed DMM current; notes stay
+optional. The unused input-current field, required validation and visible table
+column are removed, including the preview meter helper. Each row has two board
+current cells and two battery-DMM cells before status/repeat; draft restoration,
+zero/negative readings, arbitrary repeat and both-channel capture remain intact.
+
+Trace audit found the former `ii` input was only read by form validation, the
+visible bench row and the CSV serializer. `calpush`/`calnorm` retain only battery
+readings and raw source values; fit, table building, guards and LUT packing never
+consume it. The serializer still supports historical callers that explicitly
+supply `ii`, but normal new captures never create it. The legacy CSV field
+`dmm_i_in_ma` therefore becomes `-` (missing), preserving all 53 positions and
+not substituting zero. Existing compact frames, archived data and daily history
+need no format/schema migration. Firmware and ESP_USER remain unchanged.

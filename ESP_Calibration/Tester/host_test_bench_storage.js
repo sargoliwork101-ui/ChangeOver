@@ -25,6 +25,9 @@ const source=process.env.PANEL_BENCH_BASELINE||path.join(__dirname,'../panel_pre
  const sample=w.CALS[id],parsed=JSON.parse(JSON.stringify(sample));
  check(sample.r1===100.125&&sample.r2===107.125&&sample.b1===-0.5&&sample.b2===100.125,'fit samples retain unrounded raw means and signed fractional DMM readings');
  check(JSON.stringify(w.calnorm(parsed))===JSON.stringify(w.calnorm(sample)),'export/import normalization preserves all sample information');
+ const reference=JSON.stringify({...w.calnorm(sample),ts:0});
+ const withInput=w.calpush(m,{ii:999999,b1:-0.5,b2:100.125},[1,2],'BOTH',25);
+ check(JSON.stringify({...w.calnorm(w.CALS[withInput]),ts:0})===reference&&!('ii' in w.CALS[withInput]),'input-current entry has no role in normalized calibration samples or their full-precision source values');
  const realLog=w.wlog;let writes=[];w.wlog=async text=>writes.push(text);await w.wsync();await w.wsync();
  check(writes.length===1,'unchanged settings are not repeatedly written within one scenario');
  w.D.p[16]=250;await w.wsync();
