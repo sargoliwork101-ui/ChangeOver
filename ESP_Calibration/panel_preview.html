@@ -446,7 +446,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4b707dd</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f7cdb8d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -1292,7 +1292,7 @@ function pgreenguard(ids){
 /* کلید ‎Ctrl+Enter (‎روی ‎Mac: Cmd+Enter)‎ همان دکمهٔ ارسال همهٔ تغییرات را اجرا می‌کند؛ کنترل‌های sendall همچنان اعمال می‌شوند. */
 document.addEventListener('keydown',ev=>{if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'&&!ev.altKey){ev.preventDefault();sendall();}});
 async function sendall(){
- if(CAL_BUSY){stxt('sbst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است؛ ارسال عمومی فعلاً متوقف شد.');return;}
+ if(W.run||W.opening||CAL_BUSY){stxt('sbst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است؛ ارسال عمومی فعلاً متوقف شد.');return;}
  if(!Object.keys(PEND).length)return;
  const queued=Object.keys(PEND);
  const rangeErrors=pvalidate(queued);
@@ -1317,6 +1317,7 @@ async function sendall(){
  const ids=Object.keys(PEND);
  const sent={},sentReport=[];let ok=0;
  const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
+ CAL_BUSY=true;lupd();try{
  stxt('sbst','… در حال ارسال');
  for(const id of ids){const v=PEND[id];
   try{const r=await fetch('/s?id='+id+'&v='+v,{method:'POST'});if(r.ok){ok++;sent[id]=v;}}catch(e){}
@@ -1382,7 +1383,8 @@ async function sendall(){
   +'بقیه نشست. گزارش همهٔ مقدارهای ارسال‌شده:'
   +sdlgl(sentReport)
   +(bad.length?'<br>جزئیات مقدارهای گیره‌خورده یا بی‌پاسخ: '+sdlgl(bad):'')
-  +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);}
+  +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);
+ }finally{CAL_BUSY=false;lupd();}}
 /* ---------- ساخت صفحه: ولتاژها و وضعیت ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
 /* [EN] The top summary keeps only the three shared rail readings. Battery
@@ -1428,13 +1430,13 @@ async function vcal(k){
  const R=V[k],input=$('vm'+k),m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];
  if(!(m>0))return await pmAlert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');
  if(!Number.isFinite(Number(shown))||!Number.isFinite(Number(off))){stxt('calst','⛔ telemetry معتبر برای '+R[0]+' در دسترس نیست؛ مقدار را حدس نمی‌زنیم.');return;}
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(W&&(W.run||W.opening)){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  if(Object.prototype.hasOwnProperty.call(PEND,R[2])){stxt('calst','⛔ شناسهٔ '+R[2]+' هنوز در صف تغییرات پنل است؛ ابتدا آن را ارسال یا لغو کنید.');return;}
  const no=Math.min(5000,Math.max(-5000,Number(off)+m-Number(shown)));
- if(!await pmConfirm(R[0]+': آفست '+off+' ← '+no+' میلی‌ولت\n(نمایش '+v2(shown)+' ولت، مولتی‌متر '+v2(m)+' ولت)'))return;
- CAL_BUSY=true;
- try{await setv(R[2],no);if(input)input.value='';stxt('calst','✅ '+R[0]+' روی برد نشست و با readback همان شناسه تأیید شد.');}
+ CAL_BUSY=true;lupd();
+ try{if(!await pmConfirm(R[0]+': آفست '+off+' ← '+no+' میلی‌ولت\n(نمایش '+v2(shown)+' ولت، مولتی‌متر '+v2(m)+' ولت)'))return;
+ await setv(R[2],no);if(input)input.value='';stxt('calst','✅ '+R[0]+' روی برد نشست و با readback همان شناسه تأیید شد.');}
  catch(e){stxt('calst','⛔ '+R[0]+' readback نشد؛ مقدار روی برد موفق فرض نمی‌شود: '+e);}
  finally{CAL_BUSY=false;lupd();}
 }
@@ -3641,12 +3643,12 @@ async function calimp(f){if(CAL_BUSY||W.run||W.opening)return;let o;try{o=JSON.p
  const e=$('calf');if(e)e.value='';calrun();}
 async function calapply(){
 
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
+ if(W&&(W.run||W.opening)){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  calmodalOpen();
 }
 async function calmodalApply(){
- if(W&&W.run){calmodalClose();stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
+ if(W&&(W.run||W.opening)){calmodalClose();stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
  if(CAL_BUSY){calmodalClose();stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  const jobs=caljobs();
  if(!jobs.length){calmodalClose();stxt('calst',calsummary(CALR,null,'خلاصهٔ تغییرهای محاسبه‌شده')+'<div class="lb">هیچ مقدار معتبر و قابل اعمالی وجود ندارد.</div>');return;}
@@ -3881,7 +3883,7 @@ async function lread(){
 }
 function lmatch(a,p,target){if(!a||!a.ready)return false;const targetId=target===1||target===2?target:(p&&p.target===1||p&&p.target===2?p.target:0),rows=targetId===0?[0,1]:[targetId-1];for(const n of rows){const x=a.T[n],y=p.T[n];if(x.X.length!==y.X.length)return false;for(let i=0;i<x.X.length;i++){if(x.X[i]!==y.X[i]||x.Y[i]!==y.Y[i])return false;}}return true;}
 async function lreadnow(){
- if(LREAD_IN_PROGRESS||CAL_BUSY)return;
+ if(W.run||W.opening||LREAD_IN_PROGRESS||CAL_BUSY)return;
  CAL_BUSY=true;
  try{
   LSNT=0;LUT_LAST_PROPOSAL=null;LREAD_IN_PROGRESS=true;lupd();
@@ -3910,13 +3912,13 @@ function lupd(){
  const b1=$('lbtnS1'),b2=$('lbtnS2'),ba=$('lbtnSA'),rr=$('lbtnR'),rd=$('lbtnRead');
  if(!b1&&!b2&&!ba)return;
  let why='';
- if(W&&W.run)why='داده‌برداری بنچ در جریان است';
+ if(W&&(W.run||W.opening))why='داده‌برداری بنچ در جریان است';
  else if(CAL_BUSY)why='یک تراکنش کالیبراسیون یا جدول در جریان است';
  else if(LUT_PENDING)why='یک جدول تغییر در انتظار انتخاب شماست؛ ابتدا اعمال یا لغو کنید';
  else if(!D||D.on!=1)why='لینک STM32 برقرار نیست';
  const disabled=!!why||LREAD_IN_PROGRESS;
  [b1,b2,ba,rd].forEach(b=>{if(b){b.disabled=disabled;b.title=why||'ابتدا جدول واقعی هر دو باتری خوانده می‌شود';}});
- if(rr){const off=!LSNT||LREAD_IN_PROGRESS;rr.disabled=off;rr.title=off?'بعد از commit و readback دقیق فعال می‌شود':'ریست و بررسی ماندگاری جدول';}}
+ if(rr){const off=!!why||!LSNT||LREAD_IN_PROGRESS;rr.disabled=off;rr.title=off?'بعد از commit و readback دقیق فعال می‌شود':'ریست و بررسی ماندگاری جدول';}}
 async function lapplycal(target,p){
  const ids=Array.isArray(p&&p.cal&&p.cal.ids)?p.cal.ids:lcalids(target);
  for(const id of ids){
@@ -3987,11 +3989,11 @@ async function lcommit(targetId,before,p){
  if(!lmatch(after,p,targetId)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/جریان بازخوانی‌شده از باتری انتخاب‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
  LUT_LAST_PROPOSAL=p;LSNT=1;lupd();
   stxt('calst','✅ '+targetText+'، پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
-  if(await pmConfirm('پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();
+  if(await pmConfirm('پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lreset();
 }
 async function lapplypending(){
  const tx=LUT_PENDING;
- if(!tx||CAL_BUSY)return;
+ if(!tx||W.run||W.opening||CAL_BUSY)return;
  LUT_PENDING=null;tx.p.cal.editable=false;LUTVIEW='';lview(tx.p,tx.before,null);
  CAL_BUSY=true;
  try{await lcommit(tx.target,tx.before,tx.p);}
@@ -3999,7 +4001,7 @@ async function lapplypending(){
 }
 async function lsend(target){
  const targetId=(target===1||target===2)?target:0;
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(W&&(W.run||W.opening)){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  if(LUT_PENDING){stxt('calst','⛔ ابتدا تغییرهای جدول پایین را اعمال یا لغو کنید.');return;}
  if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست.');return;}
@@ -4020,6 +4022,11 @@ async function lsend(target){
  }finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}
 }
 async function lrst(){
+ if(W.run||W.opening||CAL_BUSY||LREAD_IN_PROGRESS)return;
+ CAL_BUSY=true;LREAD_IN_PROGRESS=true;lupd();
+ try{await lreset();}finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}}
+/* [EN] Caller owns CAL_BUSY, including the automatic post-commit reset path. */
+async function lreset(){
  const p=LUT_LAST_PROPOSAL;
  if(!LSNT||!p){stxt('calst','⛔ اول یک ارسال و بازخوانی موفق لازم است.');return;}
  let r;try{r=await req('/lut/reset','POST');}catch(e){stxt('calst','⚠ درخواست ریست به ESP نرسید');return;}

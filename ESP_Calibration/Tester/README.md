@@ -396,3 +396,28 @@ serialization cores calpush/calnorm/calfit/calbuild/lpack/wrow are unchanged.
 Firmware and ESP_USER are untouched. No native ESP build, hardware test or
 pixel/screenshot validation was performed. Removing preview-only simulation
 saves no ESP flash: it was never embedded in the board's HTML.
+
+### Hardware transaction ownership audit
+
+`host_test_transaction_audit.js` loads the real generated panel and controls
+only the async hardware/network boundaries. It is included in the ESP runner;
+missing jsdom is explicit SKIP. The 38 assertions cover capture preflight/run,
+global sends, voltage confirmation gaps, proposed LUT application, reset button
+and handler ownership, duplicate reset POSTs, rejection without consuming pending
+state, failure/cancel cleanup, emergency channel-off/manual exit and the existing
+authorized automatic post-commit reset. Frozen da0fba4 HTML yields 25 failures;
+updated HTML yields zero. `PANEL_TX_BASELINE` selects frozen HTML for reproduction.
+
+Final runs: 619 host / 13 labels / 287 existing DOM / 46 repeat / 20 point-edit /
+15 storage / 47 revision / 30 restore / 28 icons / 38 transaction checks PASS;
+no final DOM SKIPs (jsdom 26 installed). Initial baseline run before installation
+explicitly skipped DOM tests; that is not counted as a pass. 22 HTTP bench tests
+and scenario-5/6 self-tests PASS. Rules and host syntax gates PASS; diagnostics
+fault-bit and project-contract checks PASS; project-contract unit tests 10 PASS.
+Module strict checker exits 0 but currently enforces zero declared modules.
+Consistency audit: 564 invariants, zero findings. `git diff --check` clean.
+Unchanged cores: calpush/calnorm/calfit/calbuild/lpack/wrow/wrestore/wchk.
+HTML including NUL: 490987 / 491520 bytes, stamp f7cdb8d. Firmware/ESP_USER have
+no edits. No native ESP8266 build, physical-board or power-cut test was performed.
+This is a per-page guard, not server-wide exclusion of multiple clients.
+Details and remaining owner decisions: `../AUDIT_TRANSACTIONS.md`.

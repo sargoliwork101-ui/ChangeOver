@@ -276,3 +276,19 @@ semantics (Tab, Enter/Space, with default scrolling prevented). Capture repeat
 and code/download actions remain separate. Table row height is not globally
 increased by the toolbar's touch sizing. No transport, math or storage change.
 The optional test-only demo toolbar is not loaded in normal previews.
+
+
+## Transaction ownership audit
+
+The capture preflight (`W.opening`) and active loop (`W.run`) exclude public
+parameter batches, voltage calibration, table proposal/apply/read and reset.
+Global parameter sends and voltage confirmations acquire `CAL_BUSY` before their
+first asynchronous boundary and release it on all completion/cancel/error paths.
+Public reset acquires that same lock before POST; its finally block also clears
+`LREAD_IN_PROGRESS`. Automatic post-commit reset runs under the already-owned
+commit transaction via the internal `lreset` helper. Existing commit eligibility,
+CRC and exact readback checks remain. UI disabled state matches handler guards;
+rejected proposals/pending parameter edits are not consumed. Emergency channel-off
+and manual-mode exit commands remain usable. These are per-page ownership rules,
+not cross-client HTTP authentication or a server-wide transaction mutex.
+Evidence and owner decisions: `AUDIT_TRANSACTIONS.md`.
