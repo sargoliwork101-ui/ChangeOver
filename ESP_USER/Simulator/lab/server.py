@@ -64,19 +64,6 @@ def load_panel_html():
     start = text.index('R"rawliteral(') + len('R"rawliteral(')
     end = text.rindex(')rawliteral"')
     return text[start:end]
-def lab_badge():
-    """Small strip added by the lab only, never by the firmware."""
-    return (
-        '<div id="labBar" style="position:fixed;left:8px;bottom:8px;z-index:99999;'
-        'font:12px/1.6 Tahoma,sans-serif;background:#111827;color:#e5e7eb;'
-        'border:1px solid #374151;border-radius:10px;padding:6px 10px;'
-        'box-shadow:0 6px 20px rgba(0,0,0,.45)">'
-        '\u00b7 \u06f9\u06f0 \u0631\u0648\u0632 \u062f\u0627\u062f\u0647 '
-        '\u0646\u0648\u0627\u0631 \u0634\u06cc\u0645\u06cc\u0648\u0644\u06cc\u062a\u0648\u0631 '
-        '<a href="/lab" style="color:#7dd3fc;text-decoration:none">\u06cc\u0627\u0641\u062a\u0647\u200c\u0647\u0627</a>'
-        ' \u00b7 <a href="/lab#harness" style="color:#7dd3fc;text-decoration:none">\u0627\u062c\u0631\u0627\u06cc \u0647\u0627\u0631\u0646\u0633</a>'
-        '</div>'
-    )
 # ==================== board model ====================
 class Board:
     """Just enough of the board to feed every field the panel reads."""
@@ -694,7 +681,6 @@ class Handler(BaseHTTPRequestHandler):
         BOARD.advance()
         if path == "/":
             html = load_panel_html()
-            html = html.replace("</body>", lab_badge() + "</body>", 1)
             return self.send(text_bytes(html, mime="text/html; charset=utf-8"))
         if path == "/lab":
             return self.send(text_bytes(render_lab_page(), mime="text/html; charset=utf-8"))

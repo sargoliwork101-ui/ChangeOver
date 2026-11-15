@@ -21,6 +21,7 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
 (async()=>{
     await tick();
     check(Buffer.byteLength(html) <= 175000, 'panel stays within literal budget');
+    check(!d.getElementById('labBar') && !html.includes('نوار شیمیولیتور'), 'lab footer is absent from the actual firmware panel');
     check(d.styleSheets.length === 1 && d.styleSheets[0].cssRules.length > 100, 'complete stylesheet parses, including mobile media queries');
     check([...d.styleSheets[0].cssRules].some(r=>r.selectorText === '.glyph'), 'line icon styles survive stylesheet parsing');
     check(d.getElementById('adminCard').hidden && d.getElementById('admGate').hidden, 'admin remains hidden');
