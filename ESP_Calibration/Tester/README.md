@@ -1,3 +1,11 @@
+## Named send feedback
+
+`node ESP_Calibration/Tester/host_test_send_feedback.js` checks real-panel named
+progress and per-variable confirmed/failed/missing/different-readback outcomes,
+new pending edits and escaped labels: 30 checks, zero failures. Also registered
+in the full runner. Layout coverage now includes the populated result dialog
+at all five widths (158 browser checks). [Evidence and limits](SEND_FEEDBACK_VALIDATION.md).
+
 ## Current send-batch integrity audit
 
 The transaction suite now has **53 checks**: a110168 baseline has 12 failures;

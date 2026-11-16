@@ -25,7 +25,7 @@ function check(ok,msg,detail){++checks;if(ok)console.log('  ok   '+msg);else{++f
  const clickLabel=async(locator)=>{await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));const p=await hit(locator);if(!p)throw Error('No visible hit point '+JSON.stringify(await locator.evaluate(e=>{const r=e.getBoundingClientRect();return {id:e.dataset.i,connected:e.isConnected,html:e.outerHTML,r:r.toJSON(),hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML.slice(0,500)};}))); await page.mouse.click(p.x,p.y);};
  const fit=async(label)=>{
   await page.waitForTimeout(120);
-  const d=await page.evaluate(()=>({w:innerWidth,sw:document.documentElement.scrollWidth,ports:[...document.querySelectorAll('.srvw,.tw,.qgm,.evtlist,.calmodalbody')].filter(e=>e.clientWidth&&e.scrollWidth>e.clientWidth+1).map(e=>({cl:e.className,cw:e.clientWidth,sw:e.scrollWidth}))}));
+  const d=await page.evaluate(()=>({w:innerWidth,sw:document.documentElement.scrollWidth,ports:[...document.querySelectorAll('.srvw,.tw,.qgm,.evtlist,.calmodalbody,#sres .rb,#sbst')].filter(e=>e.clientWidth&&e.scrollWidth>e.clientWidth+1).map(e=>({cl:e.className,cw:e.clientWidth,sw:e.scrollWidth}))}));
   check(d.sw<=d.w+1&&!d.ports.length,label+' fits width without a horizontal scrollport',d);
  };
  for(const width of [320,375,760,1024,1440]){
@@ -79,6 +79,10 @@ function check(ok,msg,detail){++checks;if(ok)console.log('  ok   '+msg);else{++f
   await fit(width+' active two-battery capture form');
   // Resolve the form to clean up its keyboard/timer state before navigating.
   await page.evaluate(()=>{W.choose&&W.choose({a:'end'});});await pause(10);
+  await page.evaluate(()=>{PEND={20:14500,25:700};D.p[20]=14400;sendresult({20:14400,21:14300},{20:14400,21:14300},true);});
+  await fit(width+' named per-variable feedback');
+  await page.evaluate(()=>{sdlgx();PEND={};pbar();});
+
  }
  console.log(checks+' BROWSER LAYOUT CHECKS; '+failures+' FAILURE(S)');if(failures)process.exitCode=1;
  }finally{if(browser)await browser.close();server.kill();}

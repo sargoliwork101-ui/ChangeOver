@@ -64,7 +64,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  w.ximp=async()=>inputValue=d.getElementById('xim').value;Object.defineProperty(d.getElementById('xim'),'files',{configurable:true,value:[file(settings({}))]});Object.defineProperty(d.getElementById('xim'),'value',{configurable:true,writable:true,value:'old.json'});d.getElementById('xim').dispatchEvent(new w.Event('change'));
  check(inputValue==='','settings file input also supports reselecting the same file after cancel or error');w.ximp=realSettings;
  const writes=[];w.setv=async(id,v)=>{writes.push([id,v]);if(id===18)throw 'no echo';};w.eval('W={run:false}');const restoreResult=await w.wrestore({11:0,12:0,16:20,18:30,19:0});
- check(typeof restoreResult==='string'&&restoreResult.includes('18')&&writes.length===7,'hardware restore failure is returned while best-effort restoration of remaining settings continues');
+ check(typeof restoreResult==='string'&&restoreResult.includes('مقدار duty ثابت ۲')&&!restoreResult.includes('شناسه‌های')&&writes.length===7,'hardware restore failure is returned while best-effort restoration of remaining settings continues');
  w.setv=async()=>{};check(await w.wrestore({11:0,12:0,16:0,18:0,19:0})===null,'successful restore has an explicit success result');
  // [EN] Full workflow: a failed restore between scenarios must not energize the next channel.
  w.D.p[11]=w.D.p[12]=w.D.p[16]=w.D.p[18]=w.D.p[19]=0;w.D.p[15]=w.D.p[17]=0;

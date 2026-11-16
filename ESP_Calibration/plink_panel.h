@@ -362,7 +362,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6px 18px rgba(0,0,0,.45);font-size:13px}
 #sbar.on{display:flex}
 #sbar b{color:#ffb020}
-#sbst{color:#9fb0cc;direction:rtl;text-align:right}
+#sbst{color:#9fb0cc;direction:rtl;text-align:right;max-width:100%;max-height:25vh;overflow:auto;overflow-wrap:anywhere}
 /* v1.70: کارت نتیجهٔ ارسال — #sbar با خالی‌شدن صف پنهان می‌شد و پیام موفقیت
    همان لحظه گم می‌شد؛ این کارت تا بسته نشود می‌ماند. */
 #sres{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(5,8,14,.62)}
@@ -371,7 +371,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #sres.ok .rb{border-color:#1f7a5a}#sres.warn .rb{border-color:#8a6a12}#sres.bad .rb{border-color:#8a2a2d}
 #srst{display:block;font-size:15px;margin-bottom:8px}
 #sres.ok #srst{color:var(--ok)}#sres.warn #srst{color:#ffb020}#sres.bad #srst{color:#e5484d}
-#srsm{font-size:13px;color:#c7d3e6;line-height:1.9}#srsm ul{margin:6px 0;padding-inline-start:18px}#srsm code{direction:ltr;display:inline-block}
+#srsm{font-size:13px;color:#c7d3e6;line-height:1.9}#srsm ul{margin:6px 0;padding-inline-start:18px}#srsm code{direction:rtl;display:inline;white-space:normal;overflow-wrap:anywhere}
 #srsa{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 #pmod{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(5,8,14,.62)}
 #pmod.on{display:flex}
@@ -450,7 +450,7 @@ header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d727169</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 6d540fb</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -1140,7 +1140,7 @@ const P={
 const V=[['ورودی',14,4,K24],['پک ۲۴ ولت',15,5,K24B],['نود ۱۲ ولت',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
 var D=null;/* var (نه let) تا در تست هاست هم قابل‌نوشتن باشد */
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
-function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
+function send(id,v){const a=$('a'+id);if(a)a.textContent='… ارسال '+pname(id);fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا در ارسال '+pname(id);});}
 
 /* ==================== صف ارسال سراسری / Global send queue ==================== */
 /* [EN] v1.52 (user order 2026-10-05): edits are staged locally and ONE
@@ -1259,6 +1259,23 @@ function sdlg(kind,head,body,retry){const w=$('sres');if(!w)return;
  $('srsa').innerHTML=(retry?'<button class="sb brun" onclick="sdlgx();sendall()">دوباره بفرست</button>':'')
   +'<button class="sb sb2" onclick="sdlgx()">باشه، بستن</button>';}
 const sdlgl=a=>'<ul>'+a.map(x=>'<li><code>'+esc(x)+'</code></li>').join('')+'</ul>';
+/* [EN] Names are display-only; protocol ids and values remain unchanged. */
+function pname(id){return (PX[id]&&PX[id][0])||xlabel(id)||'پارامتر ناشناخته';}
+const pnames=ids=>ids.map(pname).join('، ');
+function sendresult(batch,sent,echo,fix=[],sentReport=[],bad=[]){
+ let confirmed=0,review=bad.length>0;
+ const ids=Object.keys(batch),rows=ids.map(id=>{
+  const posted=Object.prototype.hasOwnProperty.call(sent,id),r=sentReport.find(r=>r.id===id),back=r?r.back:echo&&posted&&D&&D.p?D.p[id]:null;
+  let status=!posted?'ارسال تأیید نشد':back==null?'ارسال شد؛ تأیید برد نرسید':+back===+batch[id]?'به‌روزرسانی تأیید شد':'بازخورد متفاوت؛ مقدار درخواستی تأیید نشد';
+  if(posted&&back!=null&&+back===+batch[id])confirmed++;else review=true;
+  if(id in PEND)status+=PEND[id]!==batch[id]?'؛ ویرایش تازه در صف: '+PEND[id]:'؛ هنوز در صف';
+  return pname(id)+' — '+status+'؛ درخواست: '+batch[id]+(back!=null?'؛ مقدار برد: '+back:'');
+ });
+ Object.keys(PEND).filter(id=>!(id in batch)).forEach(id=>rows.push(pname(id)+' — هنوز ارسال نشده؛ در صف: '+PEND[id]));
+ const pending=Object.keys(PEND).length,prefix=confirmed===ids.length?'✅ همه نشست':!Object.keys(sent).length?'⛔ هیچ‌کدام ارسال نشد':Object.keys(sent).length<ids.length?'⚠ ارسال ناقص':'⚠ نیازمند بررسی',head=prefix+' · تأییدشده: '+confirmed+' از '+ids.length+' متغیر'+(pending?' · در صف: '+pending+' متغیر':'');
+ stxt('sbst',head+' · '+rows.join(' · '));
+ sdlg(review||pending?'warn':'ok',head,sdlgl(rows)+(fix.length?'<br>اصلاح پیش از ارسال:'+sdlgl(fix):''),pending?1:0);
+}
 /* [EN] Shared min/max contract for manual/import pending values; metadata
    only, never a board write. [FA] قرارداد مشترک ‎min/max‎ برای تغییر دستی و
    import صف‌شده؛ فقط شناسنامه، بدون نوشتن روی برد. */
@@ -1270,10 +1287,7 @@ function pmeta(id){
  else if(schema&&Number.isFinite(+schema[2])&&Number.isFinite(+schema[3])){lo=+schema[2];hi=+schema[3];}
  else if(EVB[n]){lo=EVB[n][0];hi=EVB[n][1];unit=EVU[EVB[n][3]];}
  if(!Number.isFinite(lo)||!Number.isFinite(hi))return null;
- let name='پارامتر '+n;
- if(typeof PX!=='undefined'&&PX[n])name=PX[n][0];
- else if(n===111)name='تأخیر شروع بررسی حین شارژ';
- else if(e&&e.closest){const l=e.closest('label');if(l)name=l.textContent.replace(/\s+/g,' ').trim().replace(/در صف$|…$|خطا$/,'').trim();}
+ const name=pname(n);
  if(!unit&&e&&e.closest){const l=e.closest('label'),m=l&&l.textContent.match(/\((ms|mV|mA|٪|‰)/);if(m)unit=m[1];}
  return {id:n,name,unit,lo,hi};}
 function prange(v){return (Number.isFinite(v.lo)?v.lo:'؟')+' تا '+(Number.isFinite(v.hi)?v.hi:'؟')+(v.unit?' '+v.unit:'');}
@@ -1283,7 +1297,7 @@ function pvalidate(ids){return ids.map(id=>{
  const m=pmeta(id),raw=PEND[id],n=Number(raw);
  if(!m)return null;
  if(!Number.isFinite(n)||n<m.lo||n>m.hi)
-  return 'شناسهٔ '+id+' — '+m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
+  return m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
  return null;}).filter(Boolean);}
 /* نگهبان سخت چشمک سبز: خاموشیِ شناسهٔ ۶۷ نباید از دورهٔ شناسهٔ ۶۶ بزرگ‌تر
    شود، وگرنه سبز روی برد ثابت می‌ماند؛ پنل چنین ترکیبی را نمی‌فرستد. فقط
@@ -1292,7 +1306,7 @@ function pgreenguard(ids){
  if(!ids.some(id=>+id===66||+id===67))return null;
  const a=ap();
  if(a.u67>a.u66)
-  return 'شناسهٔ ۶۷ — حداقل خاموشی سبز '+a.u67+' میلی‌ثانیه از دورهٔ چشمک (شناسهٔ ۶۶: '+a.u66+' میلی‌ثانیه) بزرگ‌تر است؛ یا خاموشی را کم کنید یا دوره را زیاد کنید.';
+  return 'حداقل خاموشی سبز '+a.u67+' میلی‌ثانیه از دورهٔ چشمک سبز ('+a.u66+' میلی‌ثانیه) بزرگ‌تر است؛ یا خاموشی را کم کنید یا دوره را زیاد کنید.';
  return null;}
 /* کلید ‎Ctrl+Enter (‎روی ‎Mac: Cmd+Enter)‎ همان دکمهٔ ارسال همهٔ تغییرات را اجرا می‌کند؛ کنترل‌های sendall همچنان اعمال می‌شوند. */
 document.addEventListener('keydown',ev=>{if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'&&!ev.altKey){ev.preventDefault();sendall();}});
@@ -1304,7 +1318,7 @@ async function sendall(){
  if(rangeErrors.length){
   const head='⛔ ارسال متوقف شد — مقدار خارج از بازهٔ مجاز است';
   const body='هیچ POST /s برای این دسته ارسال نشد. مقدارهای زیر را اصلاح کنید؛ سپس همین دکمهٔ ارسال سراسری را بزنید.'+
-   sdlgl(rangeErrors)+'<br>تا اصلاح همهٔ موارد، کل صف دست‌نخورده می‌ماند و چیزی خودکار روی برد نوشته نمی‌شود.';
+   sdlgl(rangeErrors)+'<br>در صف: '+esc(pnames(queued))+'<br>تا اصلاح همهٔ موارد، کل صف دست‌نخورده می‌ماند و چیزی خودکار روی برد نوشته نمی‌شود.';
   stxt('sbst',head+' · '+rangeErrors.length+' مورد نیاز به اصلاح دارد');
   sdlg('bad',head,body,0);return;
  }
@@ -1312,83 +1326,42 @@ async function sendall(){
  if(greenError){
   const head='⛔ ارسال متوقف شد — ترکیب چشمک سبز نامعتبر است';
   stxt('sbst',head);
-  sdlg('bad',head,'هیچ درخواستی به برد ارسال نشد؛ مورد زیر را اصلاح و دوباره ارسال کنید.'+sdlgl([greenError])+'<br>کل صف دست‌نخورده ماند.',0);return;
+  sdlg('bad',head,'هیچ درخواستی به برد ارسال نشد؛ مورد زیر را اصلاح و دوباره ارسال کنید.'+sdlgl([greenError])+'<br>در صف: '+esc(pnames(queued))+'<br>کل صف دست‌نخورده ماند.',0);return;
  }
  /* v1.56: رابطه‌های مشترک فقط توصیه‌اند؛ هیچ repair پیش از POST انجام نمی‌شود.
     مقدار ارسال‌شده همان PEND است و ‎setter/readback‎ برد مرجع نهایی است. */
  const v=rsnap(),fixed=fixrules(v).filter(f=>rknown(f[0])),fixtxt=[];
  fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
-  fixtxt.push(id+': '+f[1]+'→'+f[2]);});
+  fixtxt.push(pname(id)+': '+f[1]+'→'+f[2]);});
  const batch={...PEND},ids=Object.keys(batch);
- const sent={},sentReport=[];let ok=0;
+ const sent={};let ok=0;
  const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
  CAL_BUSY=true;lupd();try{
- stxt('sbst','… در حال ارسال');
- for(const id of ids){const v=batch[id];
+ for(const [i,id] of ids.entries()){const v=batch[id];
+  stxt('sbst','… در حال ارسال: '+pname(id)+(i?' · منتظر بازخورد: '+pnames(Object.keys(sent)):'')+(i+1<ids.length?' · نوبت بعد: '+pnames(ids.slice(i+1)):''));
   try{const r=await fetch('/s?id='+id+'&v='+v,{method:'POST'});if(r.ok){ok++;sent[id]=v;}}catch(e){}
   await sl(60);}
- if(ok===0){stxt('sbst','⛔ هیچ‌کدام ارسال نشد — ارتباط با برد برقرار نیست.');
-  sdlg('bad','⛔ هیچ‌کدام ارسال نشد',
-   'ارتباط با ESP/برد برقرار نیست، پس هیچ عددی روی برد ننشست.<br>'
-   +'هر '+ids.length+' تغییر دست‌نخورده در صف مانده و کادرها نارنجی‌اند — '
-   +'اتصال را چک کنید و دوباره بفرستید.',1);return;}
+ if(ok===0){sendresult(batch,sent,false,fixtxt);return;}
  /* [EN] Do not inspect the old telemetry frame: wait for a newer seq so a
     multi-parameter batch is judged against one real board echo.
     [FA] فریم قدیمی را بررسی نکن؛ تا seq تازه صبر کن تا کل دسته با یک echo
     واقعی برد سنجیده شود. */
- stxt('sbst','… ارسال شد، منتظر تأیید برد');
+ stxt('sbst','… منتظر تأیید برد: '+pnames(Object.keys(sent))+(ok<ids.length?' · ارسال تأییدنشده: '+pnames(ids.filter(id=>!(id in sent))):''));
  let fresh=false;
  for(let k=0;k<25;k++){await sl(200);if(D&&D.p&&(seqBefore==null||+D.seq!==seqBefore)){fresh=true;break;}}
- if(!fresh&&seqBefore!==null){
-  const noEcho=Object.keys(sent).map(id=>id+': بی‌پاسخ');
-  stxt('sbst','⚠ ارسال شد اما فریم تازهٔ تأیید از برد نرسید؛ همهٔ تغییرها در صف ماندند.');
-  sdlg('warn','⚠ تأیید برد نرسید',
-   'هیچ فریم تازه‌ای بعد از ارسال نرسید؛ هیچ تغییری از صف پاک نشد و باید دوباره ارسال کنید.'
-   +'<br>گزارش همهٔ مقدارهای فرستاده‌شده: '+sdlgl(noEcho),1);
-  return;
- }
+ if(!fresh&&seqBefore!==null){sendresult(batch,sent,false,fixtxt);return;}
  await sl(600);
- /* [EN] Keep one report row for EVERY sent id, not just the first clamp.
-    [FA] برای تک‌تک شناسه‌های فرستاده‌شده یک ردیف گزارش نگه می‌داریم، نه فقط اولی. */
- const bad=[];
+ const bad=[],sentReport=[];
  for(const id of Object.keys(sent)){
-  const back=(D&&D.p)?D.p[id]:null;
-  /* v1.70: بی‌پاسخ = مدرکی نداریم؛ در صف می‌ماند تا دوباره فرستاده شود. */
-  const report=id+': '+sent[id]+'→'+(back==null?'بی‌پاسخ':back);
+  const back=(D&&D.p)?D.p[id]:null,report={id,back};
   if(back==null){bad.push(report);sentReport.push(report);continue;}
-  const clamped=+back!==+sent[id];
-  if(clamped)bad.push(report);
-  sentReport.push(report+(clamped?' — گیره زد':' — پذیرفت'));
+  if(+back!==+sent[id])bad.push(report);
+  sentReport.push(report);
   /* [EN] An old acknowledgement cannot consume a newer unsent edit. */
-  if(!(id in PEND)||PEND[id]===sent[id])pclr(id,+back);}
+  if(back!=null&&(!(id in PEND)||PEND[id]===sent[id]))pclr(id,+back);}
  pbar();
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();if(typeof qgraph==='function'){qgraph();}
- if(ok<ids.length){const left=Object.keys(PEND);
-  stxt('sbst','⚠ '+ok+' از '+ids.length+' ارسال شد؛ بقیه در صف ماندند — دوباره بزنید.');
-  sdlg('warn','⚠ ارسال ناقص — '+ok+' از '+ids.length+' نشست',
-   'بقیه نرسیدند و هنوز در صف‌اند (کادرهای نارنجی). چیزی از دست نرفته؛ '
-   +'فقط باید دوباره فرستاده شوند.'
-   +(sentReport.length?'<br>گزارش همهٔ مقدارهای ارسال‌شده: '+sdlgl(sentReport):'')
-   +(left.length?'<br>در صف مانده: '+sdlgl(left):'')
-   +(bad.length?'<br>برد این‌ها را گیره زد: '+sdlgl(bad):''),1);return;}
- const pre=fixtxt.length?(' · پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+fixtxt.join(' · ')):'';
- if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.'
-  +(sentReport.length?' · '+sentReport.join(' · '):'')+pre);
-  sdlg('ok','✅ همه نشست — '+ok+' تنظیم',
-   'برد هر '+ok+' مقدار را عیناً پس‌فرستاد و در حافظهٔ ماندگار ذخیره کرد؛ '
-   +'نیازی به ارسال دوبارهٔ این دسته نیست؛ تغییرهای تازه در صف می‌مانند.'
-   +(sentReport.length?'<br>گزارش همهٔ مقدارها: '+sdlgl(sentReport):'')
-   +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),0);
-  return;}
- stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '
-  +(sentReport.length?sentReport.join(' · '):bad.join(' · '))+pre);
- const mute=bad.filter(x=>x.indexOf('بی‌پاسخ')>=0).length;
- sdlg(mute?'warn':'ok',(mute?'⚠ ':'✅ ')+ok+' تنظیم ارسال شد',
-  (mute?'برای '+mute+' شناسه هیچ تأییدی از برد نیامد — آن‌ها در صف نگه داشته شدند تا دوباره بفرستید.<br>':'')
-  +'بقیه نشست. گزارش همهٔ مقدارهای ارسال‌شده:'
-  +sdlgl(sentReport)
-  +(bad.length?'<br>جزئیات مقدارهای گیره‌خورده یا بی‌پاسخ: '+sdlgl(bad):'')
-  +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);
+ sendresult(batch,sent,true,fixtxt,sentReport,bad);
  }finally{CAL_BUSY=false;lupd();}}
 /* ---------- ساخت صفحه: ولتاژها و وضعیت ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
@@ -1437,11 +1410,11 @@ async function vcal(k){
  if(!Number.isFinite(Number(shown))||!Number.isFinite(Number(off))){stxt('calst','⛔ telemetry معتبر برای '+R[0]+' در دسترس نیست؛ مقدار را حدس نمی‌زنیم.');return;}
  if(W&&(W.run||W.opening)){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
- if(Object.prototype.hasOwnProperty.call(PEND,R[2])){stxt('calst','⛔ شناسهٔ '+R[2]+' هنوز در صف تغییرات پنل است؛ ابتدا آن را ارسال یا لغو کنید.');return;}
+ if(Object.prototype.hasOwnProperty.call(PEND,R[2])){stxt('calst','⛔ '+pname(R[2])+' هنوز در صف تغییرات پنل است؛ ابتدا آن را ارسال یا لغو کنید.');return;}
  const no=Math.min(5000,Math.max(-5000,Number(off)+m-Number(shown)));
  CAL_BUSY=true;lupd();
  try{if(!await pmConfirm(R[0]+': آفست '+off+' ← '+no+' میلی‌ولت\n(نمایش '+v2(shown)+' ولت، مولتی‌متر '+v2(m)+' ولت)'))return;
- await setv(R[2],no);if(input)input.value='';stxt('calst','✅ '+R[0]+' روی برد نشست و با readback همان شناسه تأیید شد.');}
+ await setv(R[2],no);if(input)input.value='';stxt('calst','✅ '+R[0]+' روی برد نشست و با بازخورد تأیید شد.');}
  catch(e){stxt('calst','⛔ '+R[0]+' readback نشد؛ مقدار روی برد موفق فرض نمی‌شود: '+e);}
  finally{CAL_BUSY=false;lupd();}
 }
@@ -2949,7 +2922,7 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
  let key='',kind='',body='';
  if(vm>0){key='version:'+vm;kind='bad';body='⛔ <b>نسخهٔ فرم‌ور و پنل یکی نیست</b> — '+vm+
   ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';}
- else if(nk>0){key='nak:'+nk;kind='warn';body='⚠ برد تنظیم شناسهٔ <b>'+nid+'</b> را <b>نپذیرفت</b> (کد '+nr+'). مقدار روی برد تغییری نکرد؛ دوباره ثبت کنید.';}
+ else if(nk>0){key='nak:'+nk;kind='warn';body='⚠ برد تنظیم <b>'+esc(pname(nid))+'</b> را <b>نپذیرفت</b> (کد '+nr+'). مقدار روی برد تغییری نکرد؛ دوباره ثبت کنید.';}
  else if(ce>0){key='crc:'+ce;kind='warn';body='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';}
  else{LINK_WARN_KEY='';LINK_WARN_DISMISS='';e.className='wbx';e.innerHTML='';return;}
  LINK_WARN_KEY=key;
@@ -3131,19 +3104,19 @@ async function setv(id,v){
  const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
  for(let k=0;k<3;k++){
   const j=await req('/s?id='+id+'&v='+v,'POST');
-  if(j._s!=200)throw 'پاسخ ESP: '+j._s;
+  if(j._s!=200)throw pname(id)+' — پاسخ ESP: '+j._s;
   const e=Date.now()+2500;
   while(Date.now()<e){
    await sl(150);
    const fresh=seqBefore==null||!D||!Number.isFinite(+D.seq)||+D.seq!==seqBefore;
    if(fresh&&D&&D.p&&Number(D.p[id])===Number(v)){
     pclr(id,Number(D.p[id]));
-    const a=$('a'+id);if(a)a.textContent=D.p[id];
+    const a=$('a'+id);if(a)a.textContent=pname(id)+' — بازخورد تأیید شد: '+D.p[id];
     return;
    }
   }
  }
- throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
+ throw 'برد مقدار '+pname(id)+' = '+v+' را گزارش نکرد';}
 
 async function latchrst(n){
  const e=$('rst'+n),was=e?e.textContent:'';
@@ -3175,7 +3148,7 @@ async function latchrst(n){
   if(e)e.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک و کابل را ببین';
  }catch(err){if(e)e.textContent='⚠ '+(err&&err.message?err.message:err);}
  finally{setTimeout(()=>{const t2=$('rst'+n);if(t2&&was&&t2.textContent.indexOf('✅')!==0&&t2.textContent.indexOf('⚠')!==0)t2.textContent=was;},9000);}}
-async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const failed=[],L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){failed.push(i);}}return failed.length?'بازگردانی تنظیمات تأیید نشد؛ شناسه‌های '+[...new Set(failed)].join('، '):null;}
+async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const failed=[],L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){failed.push(i);}}return failed.length?'بازگردانی تنظیمات تأیید نشد: '+pnames([...new Set(failed)]):null;}
 
 async function wlog(txt){const j=await req('/benchlog/add','POST',txt);if(j._s==507)throw 'فایل پر است (حدود ۱۰۰KB). فایل را دانلود و پاک کنید.';if(j._s!=200)throw (j.e==='legacy'?'فایل قدیمی است؛ اول دانلود و سپس پاکش کنید.':j.e==='damaged'||j.e==='read'||j.e==='verify'?'فایل یا خواندن حافظه تأیید نشد؛ ثبت متوقف شد.':'نوشتن در فایل انجام نشد (پاسخ '+j._s+')');wfs(j.size);return j;}
 function wfs(sz){$('wF').innerHTML=sz==null?'':`<span class="n">${(sz/1024).toFixed(1)} / 100 KB</span>`;}
@@ -3405,7 +3378,7 @@ function calmark(){
  document.querySelectorAll('#calck .ckr').forEach(el=>{if(el.classList.contains('no'))el.dataset.calissue='error';else if(el.classList.contains('wa'))el.dataset.calissue='warn';else delete el.dataset.calissue;});
 }
 function calpending(ids){return (ids||[]).filter(id=>Object.prototype.hasOwnProperty.call(PEND,id));}
-function calpendingText(ids){return calpending(ids).map(id=>'شناسهٔ '+id).join('، ');}
+function calpendingText(ids){return pnames(calpending(ids));}
 function calrun(){
  if(CAL_BUSY)return;CAL_AUTO=true;
  calinvalidate(true);
