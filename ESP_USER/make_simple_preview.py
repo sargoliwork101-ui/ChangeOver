@@ -269,7 +269,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
-               token: '', deletedFiles: [], userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
+               token: '', deletedFiles: [], historyClearedAt: 0, userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
                users: [{ name: 'admin', role: 1 }] };
   var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
   var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
@@ -502,6 +502,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var now = counters.boardTime;
     var pct = [], vin = [], vpack = [], time = [];
     for (var i = 0; i < conf.len; i++) {
+      if (mock.historyClearedAt && now - (conf.len - 1 - i) * conf.stepSec < mock.historyClearedAt) continue;
       var phase = (i / conf.len) * Math.PI * 2;
       var wobble = Math.round(Math.sin(phase) * 4);
       pct.push(Math.max(0, Math.min(100,
@@ -510,7 +511,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       vpack.push(sim.vpack - (i % 4) * 90);
       time.push(now - (conf.len - 1 - i) * conf.stepSec);
     }
-    return JSON.stringify({ range: range, count: conf.len, pct: pct, vin: vin, vpack: vpack, time: time });
+    return JSON.stringify({ range: range, count: time.length, pct: pct, vin: vin, vpack: vpack, time: time });
   }
 
   function diagJson() {
@@ -521,14 +522,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       chargeCount: counters.chargeCount, chargeCountCh1: counters.chargeCountCh1,
       chargeCountCh2: counters.chargeCountCh2, chargeSecCh1: counters.chargeSecCh1,
       chargeSecCh2: counters.chargeSecCh2, uptimeSec: uptimeSec(),
-      resetCount: counters.resetCount, boardTime: now, errCount: 2, powerCount: 2,
-      errors: [
+      resetCount: counters.resetCount, boardTime: now, errCount: mock.historyClearedAt?0:2, powerCount: mock.historyClearedAt?0:2,
+      errors: mock.historyClearedAt?[]:[
         { ts: now - 7200, fault: 128, vin: 0, vpack: 25900, vlow: 12900, vhigh: 13000, s1: 1, s2: 0 },
         { ts: now - 86400, fault: 64, vin: 24100, vpack: 25200, vlow: 12400, vhigh: 12100, s1: 8, s2: 8 }
       ],
-      power: [{ off: now - 3600, on: now - 3000, dur: 600 },
+      power: mock.historyClearedAt?[]:[{ off: now - 3600, on: now - 3000, dur: 600 },
               { off: now - 172800, on: now - 171000, dur: 1800 }],
-      chargeHistory: [{ ts: now - 5400, ch: 1, dur: 3120 }, { ts: now - 12600, ch: 2, dur: 2880 }]
+      chargeHistory: mock.historyClearedAt?[]:[{ ts: now - 5400, ch: 1, dur: 3120 }, { ts: now - 12600, ch: 2, dur: 2880 }]
     });
   }
 
@@ -616,7 +617,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     if (path === 'evt/format') {
       if (mock.role !== 1) { return jsonResponse('admin', 403); }
-      mock.deletedFiles=[];
+      mock.deletedFiles=[];mock.historyClearedAt=counters.boardTime+1;
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
       return jsonResponse('ok', 200);
@@ -709,6 +710,19 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var wifi = bodyJson(options);
       mock.ssid = wifi.ssid || mock.ssid; mock.pass = wifi.pass || mock.pass;
       return jsonResponse('{"ok":1,"reboot":1}');
+    }
+    if (path === 'clock') {
+      var clock = bodyJson(options), secText = query(url,'sec');
+      if (secText === null || secText === '') secText = clock.sec;
+      var hasSec = secText !== undefined && secText !== null;
+      var tzText = query(url,'tz');
+      if (tzText === null || tzText === '') tzText = clock.tz;
+      if (!hasSec && mock.role !== 1) return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var sec = Number(secText), tz = tzText === undefined || tzText === null ? 0 : Number(tzText);
+      if ((hasSec && (!/^[0-9]+$/.test(String(secText)) || sec < 1600000000 || sec > 2147483647)) ||
+          !Number.isInteger(tz) || tz < -50400 || tz > 50400) return jsonResponse('{"ok":0,"e":"time"}',400);
+      if (hasSec) counters.boardTime = sec;
+      return jsonResponse(JSON.stringify({ok:hasSec?1:0,sec:counters.boardTime}));
     }
     if (path === 'time') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }

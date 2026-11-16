@@ -78,7 +78,7 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/clear` | POST | Admin session; optional `type`: `charge`, `charts`, `diag`, or all | JSON action result |
 | `/latch` | GET | Public read-only | JSON reset-slot state |
 | `/latch/reset` | POST | Admin session; `n`: 5, 6, or 8 | JSON queued/result status |
-| `/clock` | POST | Admin session; optional `sec`, `tz` | JSON result and current seconds |
+| `/clock` | POST | Public automatic sync with valid `sec`, optional `tz` (−50400..50400); requests without `sec` require admin (session probe) | JSON result and current seconds |
 | `/evt` | GET | Optional `day` | Plain-text event-log tail |
 | `/evt/days` | GET | — | Plain-text available days |
 | `/evt/dl` | GET | Optional `day` (8 digits), `all=1` for every day | CSV download |
@@ -103,6 +103,15 @@ the default admin account on the next reboot. This requires explicit UI confirma
 The application's storage is flat (root files); directories and traversal paths
 are not accepted. Listing never returns file contents or Wi-Fi passwords.
 
+Credential updates (`/setpass`, `/wifi`, `/setwifi`) stage encrypted data in
+`/users.json.tmp` or `/wifi.json.tmp`, verify the closed file by reading it, then
+replace the committed file with LittleFS rename. A failed update keeps previous
+RAM credentials and the committed file, responds with `ok:0, e:"storage"` (500;
+Wi-Fi uses 503 when storage is unmounted), and never schedules a Wi-Fi restart.
+Successful save does not invalidate the admin session. An incomplete temporary
+file is not a boot credential source. Crypto nonces use the full unsigned 32-bit
+range, not Arduino's signed `String::toInt` range.
+
 LittleFS files: `/wifi.json`, `/charts.bin`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
 The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
@@ -112,3 +121,5 @@ The day files keep their `.csv` name so old files and the day list stay readable
 ```sh
 bash ESP_USER/Tester/run_simple_tests.sh
 ```
+
+Browser time synchronization is automatic on page load, resume/focus, reconnect and every minute; failed requests retry after five seconds. Only time sync is public; other mutations remain admin-only. Browser time is sent to the board and stale diagnostics cannot replace it while awaiting a matching board clock.

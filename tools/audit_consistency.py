@@ -1932,32 +1932,28 @@ def sec_diag_clock():
     ok("host_test_diag_clock.js" in runner,
        "ESP_USER test runner does not run the diag-clock DOM test")
 def sec_charge_csv():
-    """[EN] Charge-history CSV is time+channel only; the duration column was
-       removed by user order and must not come back through a preview mirror.
-       [FA] CSV تاریخچهٔ شارژ فقط زمان و کانال دارد؛ ستون مدت به دستور کاربر
-       حذف شده و نباید از آینهٔ پیش‌نمایش برگردد."""
-    panel = read("ESP_USER/simple_panel.h")
-    m = re.search(r"function chargeCsvData\(\)\{(.*?)\n\}", panel, re.S)
-    ok(m is not None, "ESP_USER chargeCsvData is missing")
-    if m:
-        body = m.group(1)
-        ok("title:'مدت" not in body and "مدت (ثانیه)" not in body,
-           "charge CSV still has a duration column header")
-        ok("events[i].dur" not in body and ".dur" not in body,
-           "charge CSV still reads the legacy duration field")
-        ok("csvRowsFromColumns(tm,[{title:'کانال',values:ch}])" in body,
-           "charge CSV is not exactly time columns + channel")
-    for rel in ("ESP_USER/simple_preview.html", "ESP_USER/index.html",
-                "ESP_USER/simple_panel_clean.html"):
+    """Chart CSV export is removed; stored event-log downloads must remain."""
+    removed = ("function exportCsv(", "function chargeCsvData(",
+               "function voltCsvData(", "function csvRowsFromColumns(",
+               "function csvText(", "function csvCell(", "function csvFileStamp(")
+    for rel in ("ESP_USER/simple_panel.h", "ESP_USER/simple_preview.html",
+                "ESP_USER/index.html", "ESP_USER/simple_panel_clean.html"):
         body = read(rel)
-        mm = re.search(r"function chargeCsvData\(\)\{(.*?)\n\}", body, re.S)
-        ok(mm is not None and "title:'مدت" not in mm.group(1)
-           and "مدت (ثانیه)" not in mm.group(1) and ".dur" not in mm.group(1),
-           f"{rel} charge CSV mirror still has the duration column")
-    test = read("ESP_USER/Tester/host_test_csv.js")
-    ok("ALL ESP_USER CSV TESTS PASSED" in test, "ESP_USER CSV DOM test is missing")
+        ok(all(marker not in body for marker in removed),
+           f"{rel} still contains removed chart CSV export code")
+        ok("exportCsv(" not in body,
+           f"{rel} still contains a chart CSV export control")
+        ok("function downloadCsvText(" in body and
+           "downloadCsvText(name,await r.text())" in body and
+           "function evtDlDay(" in body and "function evtDlAll(" in body,
+           f"{rel} lost stored event-log downloads")
+    test = read("ESP_USER/Tester/host_test_panel_actions.js")
+    ok("charts have no CSV export controls" in test and
+       "stored history downloads remain available in settings" in test,
+       "ESP_USER DOM tests do not cover chart export removal and stored downloads")
     runner = read("ESP_USER/Tester/run_simple_tests.sh")
-    ok("host_test_csv.js" in runner, "ESP_USER runner does not run the CSV test")
+    ok("host_test_panel_actions.js" in runner and "host_test_csv.js" not in runner,
+       "ESP_USER runner must use panel actions, not the obsolete chart CSV test")
     cfg = read("ESP_USER/simple_config.h")
     ok(define(cfg, "SIMPLE_ESP_FW_VERSION") == 118,
        "ESP_USER firmware version is not 118 after the log rollover rewrite")

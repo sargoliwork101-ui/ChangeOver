@@ -215,6 +215,7 @@ static uint32_t UINT32_T__G__TimeAnchorSec = 0u;
 static uint32_t UINT32_T__G__TimeAnchorMs = 0u;
 static bool BOOL__G__TimeValid = false;
 static bool BOOL__G__TimePushed = false;
+static bool BOOL__G__BrowserTimePending = false;
 static uint32_t UINT32_T__G__TimePushMs = 0u;
 static uint32_t UINT32_T__G__TimePushArmedMs = 0u;
 static uint32_t func__Simple_NowSec(void)
@@ -267,6 +268,13 @@ static bool func__Simple_TimeAdoptFromBoard(uint32_t uint32_t__epochSec)
     if (BOOL__G__TimeValid != false)
     {
         uint32_t uint32_t__panelSec = func__Simple_NowSec();
+        if (BOOL__G__BrowserTimePending)
+        {
+            uint32_t uint32_t__diff = (uint32_t__panelSec >= uint32_t__epochSec)
+                ? uint32_t__panelSec - uint32_t__epochSec : uint32_t__epochSec - uint32_t__panelSec;
+            if (uint32_t__diff > 2u) return false;
+            BOOL__G__BrowserTimePending = false;
+        }
         if ((uint32_t__panelSec > uint32_t__epochSec) &&
             ((uint32_t__panelSec - uint32_t__epochSec) >= (uint32_t)SIMPLE_TIME_ADOPT_DIFF_SEC))
         {

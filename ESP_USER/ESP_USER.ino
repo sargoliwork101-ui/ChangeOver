@@ -148,7 +148,7 @@ void loop(void)
             uint32_t uint32_t__diff = (UINT32_T__G__BoardTimeSec > func__Simple_NowSec())
                 ? (UINT32_T__G__BoardTimeSec - func__Simple_NowSec())
                 : (func__Simple_NowSec() - UINT32_T__G__BoardTimeSec);
-            if (uint32_t__diff <= 120u) BOOL__G__TimePushed = true;
+            if (uint32_t__diff <= (BOOL__G__BrowserTimePending ? 2u : 120u)) BOOL__G__TimePushed = true;
         }
     }
     if (!BOOL__G__SessionHadLogin && ((uint32_t)millis() > SIMPLE_RECOVERY_ARM_MS))

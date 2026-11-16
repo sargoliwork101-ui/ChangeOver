@@ -147,7 +147,12 @@ public:
     }
     unsigned int length(void) const { return (unsigned int)text.size(); }
     const char *c_str(void) const { return text.c_str(); }
-    long toInt(void) const { return atol(text.c_str()); }
+    long toInt(void) const
+    {
+        const long long value = strtoll(text.c_str(), NULL, 10);
+        // ESP long is signed 32-bit; host long can be 64-bit.
+        return value > INT32_MAX ? INT32_MAX : value < INT32_MIN ? INT32_MIN : (long)value;
+    }
     void reserve(unsigned int unsigned_int__size) { text.reserve(unsigned_int__size); }
     char operator[](unsigned int unsigned_int__index) const
     {
@@ -235,6 +240,7 @@ private:
 extern SimSerialLink Serial;
 /* ==================== File LittleFS: ==================== */
 static bool SIM_BOOL__G__RefuseWrites = false;
+static bool SIM_BOOL__G__ShortPrint = false;
 class File
 {
 public:
@@ -251,7 +257,8 @@ public:
     {
         if ((handle == NULL) || (char__ptr_text == NULL)) { return 0u; }
         if (SIM_BOOL__G__RefuseWrites) { return 0u; }
-        return fwrite(char__ptr_text, 1u, strlen(char__ptr_text), handle);
+        const size_t count = strlen(char__ptr_text);
+        return fwrite(char__ptr_text, 1u, SIM_BOOL__G__ShortPrint ? count / 2u : count, handle);
     }
     size_t print(const String &string__text) { return print(string__text.c_str()); }
     size_t print(int int__value) { return func__Stub_FilePrintNumber("%d", (long)int__value); }
@@ -449,6 +456,7 @@ public:
     bool format(void);
     bool info(FSInfo &fsInfo__out);
     File open(const char *char__ptr_path, const char *char__ptr_mode);
+    bool rename(const char *char__ptr_from, const char *char__ptr_to);
     bool remove(const char *char__ptr_path);
     bool exists(const char *char__ptr_path);
     SimDir openDir(const char *char__ptr_path);
@@ -507,8 +515,8 @@ public:
         ssidText = (char__ptr_ssid != NULL) ? char__ptr_ssid : "";
         passwordText = (char__ptr_password != NULL) ? char__ptr_password : "";
         apActive = true;
-        printf("[sim] اکسس‌پوینت شبیه‌سازی‌شده: %s / %s (هیچ رادیویی روشن نمی‌شود)\n",
-               ssidText.c_str(), passwordText.c_str());
+        printf("[sim] اکسس‌پوینت شبیه‌سازی‌شده: %s (هیچ رادیویی روشن نمی‌شود)\n",
+               ssidText.c_str());
         return true;
     }
     bool softAPdisconnect(bool bool__wifioff = false)

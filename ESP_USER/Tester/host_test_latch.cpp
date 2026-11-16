@@ -81,6 +81,9 @@ static bool BOOL__T__FormatFail = false;
 static bool BOOL__T__MountFail = false;
 static bool BOOL__T__SettingsWriteFail = false;
 static bool BOOL__T__RemoveFail = false;
+static bool BOOL__T__CredentialRenameFail = false;
+static bool BOOL__T__CredentialReadFail = false;
+static bool BOOL__T__CredentialOpenFail = false;
 
 /* فایل‌سیستم تست در /tmp نگه داشته می‌شود تا مسیر ذخیره و بازیابی هم بررسی شود. */
 static std::string func__T_FsPath(const char *char__ptr_path)
@@ -145,9 +148,18 @@ File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
     {
         return File(std::string(), "r");
     }
-    if (BOOL__T__SettingsWriteFail && strcmp(char__ptr_path, SIMPLE_USERS_FILE) == 0 &&
+    if (strstr(char__ptr_path, ".tmp") != NULL &&
+        ((BOOL__T__CredentialReadFail && strcmp(char__ptr_mode, "r") == 0) ||
+         (BOOL__T__CredentialOpenFail && strcmp(char__ptr_mode, "w") == 0))) return File();
+    if (BOOL__T__SettingsWriteFail && (strcmp(char__ptr_path, SIMPLE_USERS_FILE) == 0 ||
+        strcmp(char__ptr_path, SIMPLE_USERS_FILE ".tmp") == 0) &&
         strcmp(char__ptr_mode, "w") == 0) return File();
     return File(func__T_FsPath(char__ptr_path), char__ptr_mode);
+}
+bool SimLittleFS::rename(const char *char__ptr_from, const char *char__ptr_to)
+{
+    if (BOOL__T__CredentialRenameFail) return false;
+    return ::rename(func__T_FsPath(char__ptr_from).c_str(), func__T_FsPath(char__ptr_to).c_str()) == 0;
 }
 bool SimLittleFS::remove(const char *char__ptr_path)
 {
@@ -422,12 +434,12 @@ static void func__T_TestResetOrderAndHandshake(void)
                   (string__panel.find("span class=\"evtd\"") != std::string::npos),
                   "فهرست لاگ فقط پیام کوتاه را نشان می‌دهد و جزئیات را نمایش نمی‌دهد");
     {
-        const std::size_t size_t__pg0 = string__panel.find("id=\"pg0\"");
-        const std::size_t size_t__pg1 = string__panel.find("id=\"pg1\"");
+        const std::size_t size_t__pg2 = string__panel.find("id=\"pg2\"");
+        const std::size_t size_t__admin = string__panel.find("id=\"adminCard\"");
         const std::size_t size_t__evt = string__panel.find("id=\"evtCard\"");
-        func__T_Check((size_t__pg0 != std::string::npos) && (size_t__evt > size_t__pg0) &&
-                      (size_t__evt < size_t__pg1),
-                      "کارت لاگ فقط داخل صفحهٔ وضعیت می‌نشیند، نه هر سه صفحه");
+        func__T_Check((size_t__pg2 != std::string::npos) && (size_t__evt > size_t__pg2) &&
+                      (size_t__evt < size_t__admin),
+                      "کارت لاگ فقط داخل تنظیمات و بیرون بخش مدیر می‌نشیند");
     }
     {
         /* نمودارها دیگر بازهٔ ثابت ندارند: کمینه/بیشینه و تعداد خط محور از
@@ -445,7 +457,7 @@ static void func__T_TestResetOrderAndHandshake(void)
                       (string__panel.find("هر نقطه یک ساعت یا یک روز") == std::string::npos) &&
                       (string__panel.find("لیست ۲۰ شارژ آخر") == std::string::npos) &&
                       (string__panel.find("id=\"voltAxisInfo\"") != std::string::npos) &&
-                      (string__panel.find("id=\"pctAxisInfo\"") != std::string::npos),
+                      (string__panel.find("id=\"pctAxisInfo\"") == std::string::npos),
                       "متن زیر نمودارها هم از داده نوشته می‌شود، نه دستی");
         func__T_Check((string__panel.find("repeat(auto-fit,minmax(min(100%") != std::string::npos) &&
                       (string__panel.find(".canvas-wrap canvas{width:100%!important;height:clamp(") != std::string::npos) &&
@@ -2963,6 +2975,99 @@ static void func__T_TestWifiJsonAudit(void)
     strcpy(CHAR__G__WifiSsid,SIMPLE_WIFI_AP_SSID);strcpy(CHAR__G__WifiPass,SIMPLE_WIFI_AP_PASS);func__Simple_WifiSave();
 }
 
+static void func__T_TestAutomaticBrowserClock(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.on("/clock", HTTP_POST, func__Simple_HttpClockSet);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/time", HTTP_POST, func__Simple_HttpTimeSync);
+    func__Simple_AuthDefaults();func__Simple_AuthLogout();func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    BOOL__G__FsOk = true;
+    const uint32_t uint32_t__sec = 1793793600u;
+    for (const char *char__query : {"sec=-1&tz=0", "sec=0", "sec=abc", "sec=2147483648", "sec=1793793600&tz=50401", "sec=1793793600&tz=bad"})
+    {
+        uint32_t uint32_t__before = func__Simple_NowSec();
+        int32_t int32_t__tzBefore = INT32_T__G__LogTzSec;
+        SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST, char__query);
+        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 400 &&
+                      func__Simple_NowSec() == uint32_t__before && INT32_T__G__LogTzSec == int32_t__tzBefore,
+                      "ساعت یا منطقهٔ نامعتبر بدون تغییر ساعت و منطقه رد می‌شود");
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403, "درخواست خالی ساعت هنوز مجوز مدیر را بررسی می‌کند");
+    uint8_t uint8_t__byte;while (Serial.takeEspByte(&uint8_t__byte)) {}
+    BOOL__G__TimeFromDisk = true;
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST, "sec=1793793600&tz=-18000");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_NowSec() == uint32_t__sec &&
+                  INT32_T__G__LogTzSec == -18000 && !func__Simple_IsAdmin(), "ساعت مرورگر بدون ورود و بدون اعطای دسترسی مدیر پذیرفته می‌شود");
+    uint8_t uint8_t__frame[16];unsigned uint__len = 0;
+    while (Serial.takeEspByte(&uint8_t__byte) && uint__len < sizeof(uint8_t__frame)) uint8_t__frame[uint__len++] = uint8_t__byte;
+    func__T_Check(uint__len == 12u && uint8_t__frame[3] == SIMPLE_MSG_TIME_SYNC &&
+                  func__Simple_ReadU32(uint8_t__frame,6u) == uint32_t__sec, "همان لحظه قاب واقعی همگام‌سازی با ساعت مرورگر برای برد فرستاده می‌شود");
+    func__T_Check(BOOL__G__BrowserTimePending && !BOOL__G__TimePushed && func__Simple_TimeBootReady(), "ساعت گوشی منتظر تأیید برد است ولی منتظر ساعت کهنهٔ دیسک نمی‌ماند");
+    func__T_Check(!func__Simple_TimeAdoptFromBoard(uint32_t__sec+3600u) &&
+                  !func__Simple_TimeAdoptFromBoard(uint32_t__sec-60u) && func__Simple_NowSec() == uint32_t__sec,
+                  "دیاگ کهنهٔ جلوتر یا عقب‌تر ساعت تازهٔ مرورگر را عوض نمی‌کند");
+    func__T_Check(func__Simple_TimeAdoptFromBoard(uint32_t__sec) && !BOOL__G__BrowserTimePending,
+                  "ساعت منطبق برد همگام‌سازی را تأیید می‌کند");
+    func__Simple_TimeLoad();
+    func__T_Check(func__Simple_NowSec() == uint32_t__sec && INT32_T__G__LogTzSec == -18000, "ساعت و منطقهٔ گوشی در فایل ساعت ذخیره و بازیابی می‌شوند");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/time", HTTP_POST, "ts=1793793600");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403, "عمومی‌شدن همگام‌سازی مسیر قدیمی مدیریت را باز نمی‌کند");
+    (void)func__Simple_AuthLogin("admin", "admin");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", CHAR__G__SessionToken);
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST, "sec=1793793660&tz=12600");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_NowSec() == uint32_t__sec+60u,
+                  "همگام‌سازی خودکار در نشست مدیر نیز کار می‌کند");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/clock", HTTP_POST);
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_IsAdmin(), "بررسی نشست مدیر با همگام‌سازی عمومی اشتباه نمی‌شود");
+    BOOL__G__BrowserTimePending = false;
+    func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+}
+
+static void func__T_TestFormatClearsAllHistory(void)
+{
+    func__Simple_AuthDefaults();func__Simple_AuthLogout();func__T_ClearCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    BOOL__G__FsOk = true;
+    auto func__seed = []() {
+        UINT8_T__G__DiagErrorCount = 1u;UINT8_T__G__PowerEventCount = 1u;UINT8_T__G__ChargeHistoryCount = 1u;
+        UINT8_T__G__ChartCount = 1u;UINT8_T__G__Chart1D_Count = 1u;UINT8_T__G__Chart7D_Count = 1u;
+        UINT8_T__G__Chart1M_Count = 1u;UINT8_T__G__Chart3M_Count = 1u;
+        SIMPLE_DIAG_ERROR_T__G__Errors[0].timestamp = 1790000000u;
+        BOOL__G__DiagDirty = true;BOOL__G__ChartsDirty = true;BOOL__G__ChargeHistDirty = true;
+        File file__diag = LittleFS.open(SIMPLE_DIAG_FILE, "w");file__diag.print("old diagnostic");file__diag.close();
+    };
+    func__seed();SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403 && UINT8_T__G__DiagErrorCount == 1u && LittleFS.exists(SIMPLE_DIAG_FILE), "فرمت بی‌مجوز تاریخچهٔ رم و فلش را تغییر نمی‌دهد");
+    func__Simple_LoginClear();(void)func__Simple_AuthLogin("admin", "admin");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", CHAR__G__SessionToken);
+    std::string string__token(CHAR__G__SessionToken);
+    BOOL__T__FormatFail = true;SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();BOOL__T__FormatFail = false;
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && UINT8_T__G__DiagErrorCount == 1u && LittleFS.exists(SIMPLE_DIAG_FILE), "شکست واقعی فرمت داده‌های قبلی را به‌دروغ پاک‌شده اعلام نمی‌کند");
+    uint8_t uint8_t__byte;while (Serial.takeEspByte(&uint8_t__byte)) {}
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && SIMPLE_WEB_SERVER_T__G__Server.simBody() == "ok", "فرمت مدیر پس از بررسی فلش موفق است");
+    func__T_Check(UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__PowerEventCount == 0u && UINT8_T__G__ChargeHistoryCount == 0u, "فرمت تاریخچهٔ خطا و قطعی و شارژ را از رم هم پاک می‌کند");
+    func__T_Check(UINT8_T__G__ChartCount == 0u && UINT8_T__G__Chart1D_Count == 0u && UINT8_T__G__Chart7D_Count == 0u && UINT8_T__G__Chart1M_Count == 0u && UINT8_T__G__Chart3M_Count == 0u, "فرمت نمونه‌های تمام بازه‌های نمودار را از رم هم پاک می‌کند");
+    func__T_Check(!BOOL__G__DiagDirty && !BOOL__G__ChartsDirty && !BOOL__G__ChargeHistDirty && !LittleFS.exists(SIMPLE_DIAG_FILE) && !LittleFS.exists(SIMPLE_CHARTS_FILE), "پرچم ذخیرهٔ کهنه نمی‌تواند دادهٔ پاک‌شده را به فلش برگرداند");
+    uint8_t uint8_t__frame[32];unsigned uint__len = 0;while (Serial.takeEspByte(&uint8_t__byte) && uint__len < sizeof(uint8_t__frame)) uint8_t__frame[uint__len++] = uint8_t__byte;
+    func__T_Check(BOOL__G__DiagClearPending && uint__len >= 9u && uint8_t__frame[3] == SIMPLE_MSG_DIAG_REQ && uint8_t__frame[4] == 1u && uint8_t__frame[6] == 1u, "فرمت دستور واقعی پاک‌کردن دیاگ برد را می‌فرستد و منتظر تأیید می‌ماند");
+    uint8_t uint8_t__payload[40] = {};uint8_t uint8_t__rx[80];uint8_t__payload[21] = 1u;uint8_t__payload[22] = 1u;
+    uint16_t uint16_t__len = func__T_MakeFrame(uint8_t__rx,SIMPLE_MSG_DIAG_DATA,uint8_t__payload,23u);
+    for(uint16_t uint16_t__i=0u;uint16_t__i<uint16_t__len;uint16_t__i++)func__Simple_ParseByte(uint8_t__rx[uint16_t__i]);
+    func__T_Check(UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__PowerEventCount == 0u && BOOL__G__DiagClearPending, "دیاگ کهنهٔ در راه پس از فرمت تاریخچه را برنمی‌گرداند");
+    uint8_t__payload[21] = 0u;uint8_t__payload[22] = 0u;uint16_t__len = func__T_MakeFrame(uint8_t__rx,SIMPLE_MSG_DIAG_DATA,uint8_t__payload,23u);
+    for(uint16_t uint16_t__i=0u;uint16_t__i<uint16_t__len;uint16_t__i++)func__Simple_ParseByte(uint8_t__rx[uint16_t__i]);
+    func__T_Check(!BOOL__G__DiagClearPending, "تأیید تاریخچهٔ خالی برد انتظار پاک‌کردن را تمام می‌کند");
+    func__T_Check(string__token == CHAR__G__SessionToken && func__Simple_IsAdmin() && LittleFS.exists(SIMPLE_USERS_FILE) && LittleFS.exists(SIMPLE_WIFI_FILE), "پاک‌کردن تاریخچه رمزها و نشست همان مدیر را حفظ می‌کند");
+    func__seed();BOOL__T__MountFail = true;SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();BOOL__T__MountFail = false;
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__Chart1D_Count == 0u, "حتی اگر بازشدن فلش بعد از فرمت شکست بخورد رم قدیمی باقی نمی‌ماند");
+    BOOL__G__FsOk = LittleFS.begin();BOOL__G__DiagClearPending = false;
+    func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+}
+
+#include "host_test_credentials.h"
+
 int main(void)
 {
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
@@ -2992,6 +3097,11 @@ int main(void)
     func__T_TestHeaderSession();
     func__T_TestFileDeletion();
     func__T_TestWifiJsonAudit();
+    func__T_TestAutomaticBrowserClock();
+    func__T_TestFormatClearsAllHistory();
+    func__T_TestCredentialDurability();
+    func__T_TestUnsignedCredentialNonce();
+    func__T_TestCredentialCommitFailures();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)
