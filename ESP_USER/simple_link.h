@@ -84,6 +84,7 @@ static void func__Simple_HandleHelloAck(const uint8_t *uint8_t__ptr_payload)
     UINT8_T__G__BoardFwVersion = uint8_t__ptr_payload[1];
     UINT8_T__G__BoardFlags = uint8_t__ptr_payload[2];
     UINT32_T__G__BoardUptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 4u);
+    func__Simple_TimeNoteBoard(UINT32_T__G__BoardUptimeSec);
     UINT32_T__G__BoardRxFrames = func__Simple_ReadU32(uint8_t__ptr_payload, 8u);
     UINT16_T__G__BoardCrcErrors = (uint16_t)(uint8_t__ptr_payload[12] |
                                              (uint16_t)((uint16_t)uint8_t__ptr_payload[13] << 8));
@@ -151,9 +152,11 @@ static void func__Simple_HandleFrame(void)
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
             UINT32_T__G__ResetCount = func__Simple_ReadU32(uint8_t__ptr_payload, 13u);
             UINT32_T__G__BoardTimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 17u);
+            func__Simple_TimeNoteBoard(UINT32_T__G__UptimeSec);
             if (func__Simple_TimeAdoptFromBoard(UINT32_T__G__BoardTimeSec) != false)
             {
                 BOOL__G__TimePushed = true;
+                func__Simple_TimeSave();
             }
             uint8_t uint8_t__newErr = uint8_t__ptr_payload[21];
             uint8_t uint8_t__newPwr = uint8_t__ptr_payload[22];

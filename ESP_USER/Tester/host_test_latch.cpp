@@ -1286,6 +1286,7 @@ static void func__T_TestStateHistoryLog(void)
                       "وضعیت قطع ثبت می‌ماند تا با اولین فریم جفت شود");
 
         /* ضربان هم بدون برد ادامه می‌یابد */
+        UINT32_T__G__LogLastBeatSec = func__Simple_NowSec() - (SIMPLE_LOG_HEARTBEAT_MS / 1000u);
         UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_HEARTBEAT_MS;
         func__SimpleLog_Tick();
         func__T_Check(UINT16_T__G__LogRowsToday == 3u,
@@ -1304,6 +1305,7 @@ static void func__T_TestStateHistoryLog(void)
     {
         const uint16_t uint16_t__before = UINT16_T__G__LogRowsToday;
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
+        UINT32_T__G__LogLastBeatSec = func__Simple_NowSec() - (SIMPLE_LOG_HEARTBEAT_MS / 1000u);
         UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_HEARTBEAT_MS;
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         func__SimpleLog_Tick();
@@ -2264,6 +2266,7 @@ static void func__T_TestLogMidnightRollover(void)
     func__T_Check(UINT16_T__G__LogRowsToday == SIMPLE_LOG_MAX_ROWS_PER_DAY && BOOL__G__LogDayFull,
                   "روز قبل واقعاً به سقف ۴۰۰ ردیف رسیده است");
     func__Simple_TimeSet(uint32_t__newEpoch, false);
+    UINT32_T__G__LogLastBeatSec = func__Simple_NowSec(); /* quiet rollover, not a due heartbeat */
     func__SimpleLog_Tick();
     func__T_Check(LittleFS.exists(char__newPath),
                   "با رسیدن روز بعد روی باتری و وای‌فای خاموش، فایل روز تازه ساخته می‌شود");
@@ -3067,6 +3070,7 @@ static void func__T_TestFormatClearsAllHistory(void)
 }
 
 #include "host_test_credentials.h"
+#include "host_test_battery_retention.h"
 
 int main(void)
 {
@@ -3102,6 +3106,8 @@ int main(void)
     func__T_TestCredentialDurability();
     func__T_TestUnsignedCredentialNonce();
     func__T_TestCredentialCommitFailures();
+    func__T_TestBatteryClockRetention();
+    func__T_TestBatteryLogRetention();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

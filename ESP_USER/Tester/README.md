@@ -108,3 +108,16 @@ HTML در نام، خطای شبکه و پاسخ دیررس پس از خروج �
 ۴۲۹۴۹۶۷۲۹۵، و رد nonce خراب/سرریز پوشش داده می‌شوند. آزمون DOM تنظیمات هم پیام
 خطای ذخیره و حفظ ورودی برای تلاش دوباره را بررسی می‌کند. این تست‌ها جای آزمون
 قطع تغذیه روی LittleFS واقعی نیستند.
+
+## Battery retention regression
+
+`host_test_battery_retention.h` runs inside the existing sanitized C++ suite.
+It resets clock/log RAM between boots and feeds CRC-framed HELLO_ACK or DIAG_DATA
+through the production parser. A 540-wake trace advances STM32 uptime by 180 seconds
+per cycle, with another reply 58 seconds into each powered session: 97,258 seconds,
+two midnight crossings, no browser or valid board epoch, exactly 28 stored rows.
+It covers first-frame-before-Tick initialization, empty-new-day restoration,
+excluded handshake/mains flags, hourly heartbeats, the 250 ms mains flush,
+pending update/event preservation, phone sync before HELLO, silent-boot saves,
+delayed saves after a board reply, board reset/re-anchor, and five clock/stamp
+storage fault stages. These are accelerated host tests, not elapsed hardware tests.

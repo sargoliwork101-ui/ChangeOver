@@ -123,3 +123,31 @@ bash ESP_USER/Tester/run_simple_tests.sh
 ```
 
 Browser time synchronization is automatic on page load, resume/focus, reconnect and every minute; failed requests retry after five seconds. Only time sync is public; other mutations remain admin-only. Browser time is sent to the board and stale diagnostics cannot replace it while awaiting a matching board clock.
+
+## Battery clock and logging retention
+
+`/time.json` stores `ts` (current Unix seconds), `tz`, a matched pair `bw` (wall
+seconds) / `bu` (STM32 uptime seconds), `fw`, and `beat` (last accepted row time).
+The pair is separate from `ts`: delayed or silent-session saves cannot double-count
+elapsed time. The next HELLO_ACK or DIAG_DATA uptime recovers ESP-off intervals;
+a decreased board uptime re-anchors without rewinding or inventing missing time.
+Phone sync before the first board reply retains/advances the saved pair; the live
+reply binds the authoritative phone clock to the actual board uptime. Newly acquired
+or reset pairs persist immediately. Ordinary saves retain the five-minute threshold
+and timezone-change exception. All clock writers, including the firmware stamp,
+use a verified temporary file and atomic LittleFS rename, never truncate the
+committed clock. No incomplete `.tmp` file is loaded at boot.
+
+Initial logging without history retains one boot row. A restored history suppresses
+plain repeated boot rows, not actual state changes, manual snapshots or firmware
+updates. Heartbeats use wall seconds restored from the clock and the newest actual
+log row (searching past empty day files). The eight-second boot-clock gate retains
+pending events/updates and prevents stale-day creation until recovery or timeout.
+Day cap, retention and storage budgets are unchanged. The main loop saves clock
+state with its existing 30-second maintenance pass (writes remain throttled);
+board epoch adoption occurs only on receipt, not repeatedly from stale RAM.
+
+Recovery requires an initially synchronized wall clock and a still-counting STM32.
+Events during physical ESP power-off cannot be individually observed by ESP;
+state differences are recorded when fresh telemetry returns. Complete board power
+loss needs external time synchronization; no new STM32/RTC behavior is introduced.

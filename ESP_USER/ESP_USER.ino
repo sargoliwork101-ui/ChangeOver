@@ -111,11 +111,6 @@ void loop(void)
         func__Simple_SendGetParams();
         bool__paramsReqDone = true;
     }
-    if (func__Simple_TimeAdoptFromBoard(UINT32_T__G__BoardTimeSec) != false)
-    {
-        func__Simple_TimeSave();
-        BOOL__G__TimePushed = true;
-    }
     if (BOOL__G__TimeValid && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
     {
         bool bool__fresh = ((uint32_t__now - UINT32_T__G__LastTlmMs) < SIMPLE_LINK_TIMEOUT_MS);
@@ -158,6 +153,7 @@ void loop(void)
     static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)
     {
+        func__Simple_TimeSave();
         if (BOOL__G__ChargeHistDirty) func__Simple_ChargeHistorySave();
         if (BOOL__G__DiagDirty) func__Simple_DiagSave();
         if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
