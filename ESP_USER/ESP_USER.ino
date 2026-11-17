@@ -109,7 +109,7 @@ void loop(void)
         func__Simple_SendGetParams();
         bool__paramsReqDone = true;
     }
-    if (BOOL__G__TimeValid && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
+    if (func__Simple_TimeBootReady() && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
     {
         bool bool__fresh = ((uint32_t__now - UINT32_T__G__LastTlmMs) < SIMPLE_LINK_TIMEOUT_MS);
         bool bool__due = false;

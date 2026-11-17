@@ -225,6 +225,11 @@ static uint32_t UINT32_T__G__TimeBootMs = 0u;
 static uint32_t UINT32_T__G__TimePairWallSec = 0u;
 static uint32_t UINT32_T__G__TimePairUptimeSec = 0u;
 static bool BOOL__G__TimePairValid = false;
+static bool BOOL__G__TimePairResetKnown = false;
+static uint32_t UINT32_T__G__TimePairResetCount = 0u;
+static bool BOOL__G__TimeBoardResetKnown = false;
+static uint32_t UINT32_T__G__TimeBoardResetCount = 0u;
+static bool BOOL__G__TimeBoardEpochBlocked = false;
 static bool BOOL__G__TimeBoardLive = false;
 static uint32_t UINT32_T__G__TimeBoardNowSec = 0u;
 static uint32_t UINT32_T__G__TimeBoardRxMs = 0u;
@@ -246,7 +251,7 @@ static uint32_t func__Simple_NowSec(void)
 }
 /* ==================== Set clock ==================== */
 /**
- * @brief Set wall time without dropping the board pair, even before HELLO.
+ * @brief Set wall time and bind only to an observed board uptime.
  * @param uint32_t__epochSec Unix seconds; bool__pushToBoard Request a board sync.
  */
 static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToBoard)
@@ -257,27 +262,31 @@ static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToB
         uint32_t uint32_t__elapsedSec = ((uint32_t)millis() - UINT32_T__G__TimeBoardRxMs) / 1000u;
         UINT32_T__G__TimePairUptimeSec = UINT32_T__G__TimeBoardNowSec + uint32_t__elapsedSec;
         BOOL__G__TimePairValid = true;
+        BOOL__G__TimePairResetKnown = BOOL__G__TimeBoardResetKnown;
+        UINT32_T__G__TimePairResetCount = UINT32_T__G__TimeBoardResetCount;
     }
-    else if (BOOL__G__TimePairValid)
+    else if (bool__pushToBoard)
     {
-        int64_t int64_t__advancedUptime = (int64_t)UINT32_T__G__TimePairUptimeSec;
-        int64_t__advancedUptime += (int64_t)uint32_t__epochSec - (int64_t)UINT32_T__G__TimePairWallSec;
-        BOOL__G__TimePairValid = (int64_t__advancedUptime > 0) && (int64_t__advancedUptime <= UINT32_MAX);
-        if (BOOL__G__TimePairValid) UINT32_T__G__TimePairUptimeSec = (uint32_t)int64_t__advancedUptime;
+        /* A phone correction cannot invent a matching board uptime. */
+        BOOL__G__TimePairValid = false;
+        BOOL__G__TimePairResetKnown = false;
     }
     UINT32_T__G__TimePairWallSec = uint32_t__epochSec;
     UINT32_T__G__TimeAnchorSec = uint32_t__epochSec;
     UINT32_T__G__TimeAnchorMs = (uint32_t)millis();
     BOOL__G__TimeValid = true;
-    if (bool__pushToBoard) BOOL__G__TimePushed = false;
+    if (bool__pushToBoard)
+    {
+        BOOL__G__TimePushed = false;
+        BOOL__G__TimeFromDisk = false;
+        BOOL__G__TimeBoardEpochBlocked = false;
+    }
 }
 /* ==================== Boot clock gate ==================== */
-/** @brief Wait for board time recovery, bounded by the boot grace interval. */
+/** @brief Only a live clock or a verified board recovery permits dated records. */
 static bool func__Simple_TimeBootReady(void)
 {
-    if (!BOOL__G__TimeFromDisk || BOOL__G__TimeBoardSeen) return true;
-    return ((uint32_t)((uint32_t)millis() - UINT32_T__G__TimeBootMs) >=
-            (uint32_t)SIMPLE_TIME_BOOT_GRACE_MS);
+    return BOOL__G__TimeValid && (!BOOL__G__TimeFromDisk || BOOL__G__TimeBoardSeen);
 }
 /* ==================== Board epoch adoption ==================== */
 /**
@@ -287,9 +296,8 @@ static bool func__Simple_TimeBootReady(void)
  */
 static bool func__Simple_TimeAdoptFromBoard(uint32_t uint32_t__epochSec)
 {
-    if (uint32_t__epochSec < SIMPLE_TIME_VALID_MIN) return false;
-    BOOL__G__TimeBoardSeen = true;
-    if (BOOL__G__TimeValid)
+    if (uint32_t__epochSec < SIMPLE_TIME_VALID_MIN || BOOL__G__TimeBoardEpochBlocked) return false;
+    if (func__Simple_TimeBootReady())
     {
         uint32_t uint32_t__panelSec = func__Simple_NowSec();
         if (BOOL__G__BrowserTimePending)
@@ -304,6 +312,8 @@ static bool func__Simple_TimeAdoptFromBoard(uint32_t uint32_t__epochSec)
             return ((uint32_t__panelSec - uint32_t__epochSec) < SIMPLE_TIME_ADOPT_DIFF_SEC);
         }
     }
+    BOOL__G__TimeFromDisk = false;
+    BOOL__G__TimeBoardSeen = true;
     func__Simple_TimeSet(uint32_t__epochSec, false);
     return true;
 }
@@ -311,15 +321,17 @@ static bool func__Simple_TimeAdoptFromBoard(uint32_t uint32_t__epochSec)
 /** @brief Verify a staged clock file before replacing the committed file. @return Success. */
 static bool func__Simple_TimeStore(void)
 {
-    char char__line[192];
-    uint32_t uint32_t__nowSec = func__Simple_NowSec();
+    char char__line[224];
+    uint32_t uint32_t__nowSec = (BOOL__G__TimeFromDisk && !BOOL__G__TimeBoardSeen)
+        ? UINT32_T__G__LastSavedTimeSec : func__Simple_NowSec();
     if (!BOOL__G__FsOk) return false;
     int int__length = snprintf(char__line, sizeof(char__line),
-        "{\"ts\":%lu,\"tz\":%ld,\"bu\":%lu,\"bw\":%lu,\"fw\":%lu,\"beat\":%lu}",
+        "{\"ts\":%lu,\"tz\":%ld,\"bu\":%lu,\"bw\":%lu,\"fw\":%lu,\"beat\":%lu,\"rk\":%u,\"rc\":%lu}",
         (unsigned long)uint32_t__nowSec, (long)INT32_T__G__LogTzSec,
         (unsigned long)(BOOL__G__TimePairValid ? UINT32_T__G__TimePairUptimeSec : 0u),
         (unsigned long)(BOOL__G__TimePairValid ? UINT32_T__G__TimePairWallSec : 0u),
-        (unsigned long)UINT32_T__G__TimeFwVersion, (unsigned long)UINT32_T__G__LogLastBeatSec);
+        (unsigned long)UINT32_T__G__TimeFwVersion, (unsigned long)UINT32_T__G__LogLastBeatSec,
+        BOOL__G__TimePairResetKnown ? 1u : 0u, (unsigned long)UINT32_T__G__TimePairResetCount);
     if ((int__length <= 0) || ((size_t)int__length >= sizeof(char__line))) return false;
     File file__out = LittleFS.open(SIMPLE_TIME_FILE ".tmp", "w");
     if (!file__out) return false;
@@ -347,7 +359,7 @@ static bool func__Simple_TimeStore(void)
 static void func__Simple_TimeSave(void)
 {
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
-    if (!BOOL__G__TimeValid || (uint32_t__nowSec < SIMPLE_TIME_VALID_MIN)) return;
+    if (!func__Simple_TimeBootReady() || (uint32_t__nowSec < SIMPLE_TIME_VALID_MIN)) return;
     uint32_t uint32_t__diff = (uint32_t__nowSec >= UINT32_T__G__LastSavedTimeSec)
         ? uint32_t__nowSec - UINT32_T__G__LastSavedTimeSec
         : UINT32_T__G__LastSavedTimeSec - uint32_t__nowSec;
@@ -358,27 +370,48 @@ static void func__Simple_TimeSave(void)
 }
 /* ==================== Recover battery sleep time ==================== */
 /**
- * @brief Reconstruct elapsed sleep from a live STM32 uptime; re-anchor after its reset.
- * @param uint32_t__uptimeSec Board uptime in seconds, zero means unavailable.
+ * @brief Recover ESP-off time only after matching the saved board reset identity.
+ * @param uint32_t__uptimeSec Board seconds; bool__resetKnown True for DIAG chunk zero.
+ * @param uint32_t__resetCount Existing board reset counter, not a new protocol field.
  */
-static void func__Simple_TimeNoteBoard(uint32_t uint32_t__uptimeSec)
+static void func__Simple_TimeNoteBoard(uint32_t uint32_t__uptimeSec,
+                                      bool bool__resetKnown = false, uint32_t uint32_t__resetCount = 0u)
 {
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
-    bool bool__phoneBeforeBoard = BOOL__G__BrowserTimePending && !BOOL__G__TimeBoardLive;
-    bool bool__newPair = !BOOL__G__TimePairValid || bool__phoneBeforeBoard;
-    if (uint32_t__uptimeSec == 0u) return;
+    bool bool__waiting = BOOL__G__TimeFromDisk && !BOOL__G__TimeBoardSeen;
+    bool bool__newPair = !BOOL__G__TimePairValid ||
+        (bool__resetKnown && !BOOL__G__TimePairResetKnown);
+    if (!bool__resetKnown && (uint32_t__uptimeSec == 0u || bool__waiting)) return;
     bool bool__restarted = (BOOL__G__TimePairValid &&
         (uint32_t__uptimeSec < UINT32_T__G__TimePairUptimeSec)) ||
-        (BOOL__G__TimeBoardLive && (uint32_t__uptimeSec < UINT32_T__G__TimeBoardNowSec));
-    if (BOOL__G__TimePairValid && !bool__restarted && !bool__phoneBeforeBoard)
+        (BOOL__G__TimeBoardLive && (uint32_t__uptimeSec < UINT32_T__G__TimeBoardNowSec)) ||
+        (bool__resetKnown && BOOL__G__TimePairResetKnown &&
+         (uint32_t__resetCount != UINT32_T__G__TimePairResetCount));
+    bool bool__sameBoot = bool__resetKnown && BOOL__G__TimePairResetKnown && !bool__restarted;
+    if (bool__waiting && (!BOOL__G__TimePairValid || !bool__sameBoot))
+    {
+        /* A retained board epoch is not a clock after its uptime restarted. */
+        BOOL__G__TimeBoardEpochBlocked = bool__restarted || BOOL__G__TimeBoardEpochBlocked ||
+            (BOOL__G__TimePairValid && !BOOL__G__TimePairResetKnown);
+        BOOL__G__TimeValid = false;
+        uint32_t__nowSec = 0u;
+    }
+    else if (BOOL__G__TimePairValid && !bool__restarted)
     {
         uint32_t uint32_t__elapsedSec = uint32_t__uptimeSec - UINT32_T__G__TimePairUptimeSec;
-        uint32_t uint32_t__recoveredSec = UINT32_T__G__TimePairWallSec + uint32_t__elapsedSec;
-        if (uint32_t__recoveredSec > uint32_t__nowSec) uint32_t__nowSec = uint32_t__recoveredSec;
+        uint64_t uint64_t__recoveredSec = (uint64_t)UINT32_T__G__TimePairWallSec + uint32_t__elapsedSec;
+        if (uint64_t__recoveredSec <= UINT32_MAX && (bool__waiting || uint64_t__recoveredSec > uint32_t__nowSec))
+            uint32_t__nowSec = (uint32_t)uint64_t__recoveredSec;
     }
     UINT32_T__G__TimeBoardNowSec = uint32_t__uptimeSec;
     UINT32_T__G__TimeBoardRxMs = (uint32_t)millis();
     BOOL__G__TimeBoardLive = true;
+    if (bool__resetKnown)
+    {
+        BOOL__G__TimeBoardResetKnown = true;
+        UINT32_T__G__TimeBoardResetCount = uint32_t__resetCount;
+    }
+    else if (bool__restarted) BOOL__G__TimeBoardResetKnown = false;
     if (!BOOL__G__TimeValid) return;
     func__Simple_TimeSet(uint32_t__nowSec, false);
     BOOL__G__TimeBoardSeen = true;
@@ -411,9 +444,20 @@ static uint32_t func__Simple_TimeField(const String &string__content, const char
     return 0u;
 }
 /* ==================== Restore clock ==================== */
-/** @brief Restore only the committed clock; defer logs until the board answers or grace expires. */
+/** @brief Load an unconfirmed disk anchor; never infer wall time from boot duration. */
 static void func__Simple_TimeLoad(void)
 {
+    UINT32_T__G__TimeBootMs = (uint32_t)millis();
+    BOOL__G__TimeValid = false;
+    BOOL__G__TimeFromDisk = false;
+    BOOL__G__TimeBoardSeen = false;
+    BOOL__G__TimeBoardLive = false;
+    BOOL__G__TimeBoardResetKnown = false;
+    BOOL__G__TimeBoardEpochBlocked = false;
+    BOOL__G__TimePairValid = false;
+    BOOL__G__TimePairResetKnown = false;
+    BOOL__G__BrowserTimePending = false;
+    UINT32_T__G__LastSavedTimeSec = 0u;
     if (!BOOL__G__FsOk) return;
     File file__clock = LittleFS.open(SIMPLE_TIME_FILE, "r");
     if (!file__clock) return;
@@ -437,6 +481,8 @@ static void func__Simple_TimeLoad(void)
     UINT32_T__G__TimePairWallSec = func__Simple_TimeField(string__content, "\"bw\":");
     BOOL__G__TimePairValid = (UINT32_T__G__TimePairUptimeSec != 0u) &&
                            (UINT32_T__G__TimePairWallSec >= SIMPLE_TIME_VALID_MIN);
+    BOOL__G__TimePairResetKnown = func__Simple_TimeField(string__content, "\"rk\":") == 1u;
+    UINT32_T__G__TimePairResetCount = func__Simple_TimeField(string__content, "\"rc\":");
     BOOL__G__TimePairSaveWanted = false;
     BOOL__G__TimeFromDisk = (uint32_t__savedSec >= SIMPLE_TIME_VALID_MIN);
     BOOL__G__TimeBoardSeen = false;

@@ -1453,7 +1453,7 @@ static void func__T_TestStateHistoryLog(void)
         }
     }
 
-    /* بدون ساعت هم ذخیره می‌شود: گوشی ممکن است ساعت‌ها بعد وصل شود */
+    /* Unknown wall time blocks samples; historical day-zero files stay readable. */
     {
         (void)func__SimpleLog_Clear();
         (void)LittleFS.remove("/evt-00000000.csv");
@@ -1469,8 +1469,10 @@ static void func__T_TestStateHistoryLog(void)
         UINT32_T__G__TlmField[15] = 23800u;
 
         func__SimpleLog_Tick();
-        func__T_Check(LittleFS.exists("/evt-00000000.csv"),
-                      "بدون ساعت هم اولین ردیف در فایل روزِ «بدون ساعت» ذخیره می‌شود");
+        func__T_Check(!LittleFS.exists("/evt-00000000.csv"),
+                      "بدون ساعت، نمونهٔ عادی حتی در فایل روز صفر هم ثبت نمی‌شود");
+        {File old=LittleFS.open("/evt-00000000.csv","w");old.print(SIMPLE_LOG_CLOCK_GAP_ROW);old.close();}
+        BOOL__G__LogScanValid=false;
         func__SimpleLog_OnFrame();   /* کاشتن وضعیت قبلی برای تشخیص تغییر */
 
         func__Simple_TimeSet(1792756800u, false);
@@ -2491,11 +2493,11 @@ static void func__T_TestBootClock(void)
                   "ساعتی که از فلش برگشته، تا جواب میکرو تأییدشده حساب نمی‌شود");
     func__T_Check(func__SimpleLog_WriteRow(0u, (uint8_t)SIMPLE_LOG_NOTE_MANUAL) == false,
                   "در پنجرهٔ انتظار هیچ ردیفی با ساعت کهنه نوشته نمی‌شود");
-    UINT32_T__G__TimeBootMs = (uint32_t)millis() - ((uint32_t)SIMPLE_TIME_BOOT_GRACE_MS + 100u);
-    func__T_Check(func__Simple_TimeBootReady() != false,
-                  "اگر میکرو جواب ندهد، بعد از پنجرهٔ انتظار نوشتن ادامه پیدا می‌کند");
-    func__T_Check(func__SimpleLog_WriteRow(0u, (uint8_t)SIMPLE_LOG_NOTE_MANUAL) != false,
-                  "بعد از پایان انتظار، همان ردیف نوشته می‌شود");
+    UINT32_T__G__TimeBootMs = (uint32_t)millis() - 8100u;
+    func__T_Check(func__Simple_TimeBootReady() == false,
+                  "گذشت هشت ثانیه ساعت ذخیره‌شده را معتبر نمی‌کند");
+    func__T_Check(func__SimpleLog_WriteRow(0u, (uint8_t)SIMPLE_LOG_NOTE_MANUAL) == false,
+                  "پس از هشت ثانیه هم هیچ ردیف تاریخ‌دار با ساعت قدیمی نوشته نمی‌شود");
     BOOL__G__TimeFromDisk = true;
     BOOL__G__TimeBoardSeen = false;
     UINT32_T__G__TimeBootMs = (uint32_t)millis();
@@ -3069,6 +3071,7 @@ static void func__T_TestFormatClearsAllHistory(void)
 
 #include "host_test_credentials.h"
 #include "host_test_battery_retention.h"
+#include "host_test_clock_gap.h"
 #include "host_test_chart_journal.h"
 
 int main(void)
@@ -3108,6 +3111,7 @@ int main(void)
     func__T_TestCredentialCommitFailures();
     func__T_TestBatteryClockRetention();
     func__T_TestBatteryLogRetention();
+    func__T_TestDelayedClockGap();
     func__T_TestChartTriggersAndReplay();
     func__T_TestChartFailureRecovery();
     func__T_TestChartLongRanges();

@@ -122,33 +122,66 @@ bash ESP_USER/Tester/run_simple_tests.sh
 
 Browser time synchronization is automatic on page load, resume/focus, reconnect and every minute; failed requests retry after five seconds. Only time sync is public; other mutations remain admin-only. Browser time is sent to the board and stale diagnostics cannot replace it while awaiting a matching board clock.
 
-## Battery clock and logging retention
+## Verified clock, battery recovery and missing-time incident
 
-`/time.json` stores `ts` (current Unix seconds), `tz`, a matched pair `bw` (wall
-seconds) / `bu` (STM32 uptime seconds), `fw`, and `beat` (last accepted row time).
-The pair is separate from `ts`: delayed or silent-session saves cannot double-count
-elapsed time. The next HELLO_ACK or DIAG_DATA uptime recovers ESP-off intervals;
-a decreased board uptime re-anchors without rewinding or inventing missing time.
-Phone sync before the first board reply retains/advances the saved pair; the live
-reply binds the authoritative phone clock to the actual board uptime. Newly acquired
-or reset pairs persist immediately. Ordinary saves retain the five-minute threshold
-and timezone-change exception. All clock writers, including the firmware stamp,
-use a verified temporary file and atomic LittleFS rename, never truncate the
-committed clock. No incomplete `.tmp` file is loaded at boot.
+`/time.json` stores `ts`, `tz`, the matched `bw`/`bu` wall/STM32-uptime pair,
+`rk` (known reset identity), `rc` (existing STM32 reset counter), `fw` and `beat`.
+Disk time is unconfirmed after every boot. There is no eight-second fallback.
+An existing DIAG chunk-zero reply must confirm the saved reset count and a
+non-decreased uptime before the pair can reconstruct ESP-off time. HELLO alone
+cannot confirm reset identity; once confirmed, HELLO/DIAG can advance the clock.
+Changed reset counters or decreased uptime reject the old pair, including a
+plausible retained board epoch belonging to the old uptime base. A currently
+running, trusted ESP clock can re-anchor across a board reset. Phone time received
+before the first reply does not invent an uptime; the next diagnostic pairs it.
+Legacy pairs without reset identity require a fresh sync. No STM32 code, packet
+length, message, telemetry field or byte offset is added or changed.
 
-Initial logging without history retains one boot row. A restored history suppresses
-plain repeated boot rows, not actual state changes, manual snapshots or firmware
-updates. Heartbeats use wall seconds restored from the clock and the newest actual
-log row (searching past empty day files). The eight-second boot-clock gate retains
-pending events/updates and prevents stale-day creation until recovery or timeout.
-Day cap, retention and storage budgets are unchanged. The main loop saves clock
-state with its existing 30-second maintenance pass (writes remain throttled);
-board epoch adoption occurs only on receipt, not repeatedly from stale RAM.
+The real loop continues existing HELLO (2 s) and DIAG requests (10 s) indefinitely,
+without a browser. A delayed valid reply corrects the clock immediately. While
+waiting, no chart sample, dated log or ESP-derived fault/power/charge-history
+record uses disk time. Live values and previously stored records remain visible;
+aggregate counters may still be saved. `/t` reports `timeOk=0, bt=0, boardTime=0`;
+`/diag` reports `timeOk=0, panelTime=0` while keeping the raw board response.
+Unconfirmed disk time is never sent to STM32 or advanced by periodic saves. The
+firmware-stamp writer preserves the committed disk timestamp while unconfirmed.
+No historical sample is synthesized to fill the gap. Existing change masks can
+coalesce while waiting and describe observed state on recovery, not every event
+in the missing interval. Hourly/500-mV triggers and shared summaries are unchanged.
 
-Recovery requires an initially synchronized wall clock and a still-counting STM32.
-Events during physical ESP power-off cannot be individually observed by ESP;
-state differences are recorded when fresh telemetry returns. Complete board power
-loss needs external time synchronization; no new STM32/RTC behavior is introduced.
+At 40,000 boot milliseconds without a trusted clock, retain one unresolved incident
+in `/clock_gap.json` (`note=7, reason=clock_unavailable`). The fixed small record is
+written to `.tmp`, read back and atomically renamed. Failed attempts retry at most
+once per five seconds; a committed marker is not continually rewritten. RAM holds
+it when storage is unavailable, with no claim of surviving power loss in that case.
+A committed marker survives ESP resets. The current `/evt` view and all-days CSV
+include a synthetic `epoch=0, note=7` warning while unresolved, not a dated sample;
+explicit unrelated historical-day views remain unchanged. The panel renders only
+the short Persian warning, not extra technical detail or a new card.
+
+After clock recovery, append and read back one dated `note=7` row on the correct
+day, then remove the pending marker. This row timestamps the recovery report,
+not an invented loss start/end time. It may bypass the normal day cap like a
+manual snapshot; normal capacity and retention constants are unchanged. A write
+failure retains the marker and does not repeatedly fill the fallback RAM ring.
+A failed marker removal retries without another append during that process;
+a power cut between append and removal can repeat the report after reboot
+(at-least-once reporting). Explicit log clear/full format clear pending warning
+state too. Existing account, session and Wi-Fi preservation is unchanged.
+
+Clock writes retain their five-minute/zone-change throttle and immediate newly
+acquired-pair exception, using verified temporary replacement. A restored history
+suppresses quiet boot rows, not real changes, snapshots or updates. Heartbeats use
+wall time and the newest actual row, searching past empty files. The 540-wake,
+97,258-board-second fixture still has exactly 28 rows across three dates.
+
+Limits: neither total power-off time nor a missing initial clock can be inferred.
+The existing STM32 reset counter is not a guaranteed unique boot nonce; if a reset
+reuses the same persisted counter and its new uptime has overtaken the saved pair,
+the existing protocol cannot always distinguish it from uninterrupted operation.
+No changes to that firmware are made here. A simulator restart also restarts its
+board model; persistence tests separately feed a continuing board. Host/simulator
+checks are not a physical ESP flash/power-cycle or target-RAM validation.
 
 ## Immediate chart persistence (supersedes daily snapshot scheduling)
 

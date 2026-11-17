@@ -123,10 +123,10 @@
 #define SIMPLE_TIME_SYNC_DELAY_MS       3000u
 #define SIMPLE_TIME_RESEND_MS           600000u
 #define SIMPLE_TIME_ADOPT_DIFF_SEC      300u
-/* [EN] After a power cut the clock is restored from the flash, but the board
- * is the one that kept counting.  Rows wait this long for the board's time so
- * the first rows of the boot never land on a stale day. */
-#define SIMPLE_TIME_BOOT_GRACE_MS       8000u
+/* A missing clock never expires into a trusted timestamp. */
+#define SIMPLE_TIME_WARN_MS             40000u
+#define SIMPLE_TIME_WARN_RETRY_MS       5000u
+#define SIMPLE_TIME_GAP_FILE            "/clock_gap.json"
 #define SIMPLE_LOG_MAX_DAYS             90u
 /* [EN] Three months kept.  A realistic day is ~14 rows = ~285 B with the
  * compact codec, so 90 days stay near 26 kB - far inside the 120 kB budget. */
@@ -172,7 +172,7 @@
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
     "# batt_pct: درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵، کارخانه ۲۱۰۰۰..۲۹۰۰۰ میلی‌ولت) / battery percent from the discharge map\n" \
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
-    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual\n" \
+    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual 7=clock unavailable; dated warning marks recovery, not the missing interval\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 #define SIMPLE_PARAMS_FILE              "/params.json"
 #define SIMPLE_THEME_FILE               "/theme.json"

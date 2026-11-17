@@ -6,6 +6,9 @@ static void func__T_BatteryResetRam(void)
     BOOL__G__TimePushed = false;BOOL__G__BrowserTimePending = false;
     UINT32_T__G__TimeAnchorSec = 0u;UINT32_T__G__TimeAnchorMs = 0u;
     BOOL__G__TimePairValid = false;BOOL__G__TimeBoardLive = false;BOOL__G__TimePairSaveWanted = false;
+    BOOL__G__TimePairResetKnown=false;BOOL__G__TimeBoardResetKnown=false;BOOL__G__TimeBoardEpochBlocked=false;
+    UINT32_T__G__TimePairResetCount=0u;UINT32_T__G__TimeBoardResetCount=0u;
+    BOOL__G__LogClockGap=false;BOOL__G__LogClockGapStored=false;BOOL__G__LogClockGapEmitted=false;BOOL__G__LogClockRetryArmed=false;
     UINT32_T__G__TimePairWallSec = 0u;UINT32_T__G__TimePairUptimeSec = 0u;
     UINT32_T__G__TimeBoardNowSec = 0u;UINT32_T__G__TimeBoardRxMs = 0u;
     UINT32_T__G__LastSavedTimeSec = 0u;UINT32_T__G__TimeFwVersion = 0u;
@@ -37,12 +40,17 @@ static void func__T_BatteryBoot(void)
     func__SimpleLog_Begin();
 }
 
-static void func__T_BatteryHello(uint32_t uptime, bool diag = false)
+static void func__T_BatteryHello(uint32_t uptime, bool diag = true, uint32_t resets = 1u, uint32_t epoch = 0u)
 {
     uint8_t payload[SIMPLE_HELLO_ACK_LEN] = {}, frame[64];
     payload[0] = diag ? 0u : SIMPLE_LINK_PROTOCOL_VERSION;
     unsigned offset = diag ? 9u : 4u;
     for (unsigned i = 0u; i < 4u; i++) payload[offset+i] = (uint8_t)(uptime >> (8u*i));
+    if(diag)for(unsigned i=0u;i<4u;i++)
+    {
+        payload[13u+i]=(uint8_t)(resets>>(8u*i));
+        payload[17u+i]=(uint8_t)(epoch>>(8u*i));
+    }
     uint16_t len = func__T_MakeFrame(frame, diag ? SIMPLE_MSG_DIAG_DATA : SIMPLE_MSG_HELLO_ACK,
                                     payload, diag ? 23u : SIMPLE_HELLO_ACK_LEN);
     for (uint16_t i = 0u; i < len; i++) func__Simple_ParseByte(frame[i]);
@@ -65,12 +73,12 @@ static void func__T_TestBatteryClockRetention(void)
     func__Simple_TimeSet(start, true);func__Simple_TimeSave();
     func__T_BatteryHello(100u);
     func__T_Check(func__Simple_TimeField(func__T_ReadCredentialFile(SIMPLE_TIME_FILE).c_str(), "\"bu\":") == 100u,
-                  "اولین پاسخ برد بلافاصله لنگر ساعت را حتی داخل مهلت پنج دقیقه ذخیره می‌کند");
+                  "اولین دیاگ برد بلافاصله لنگر ساعت را حتی داخل مهلت پنج دقیقه ذخیره می‌کند");
     func__T_BatteryBoot();
     func__T_Check(!func__Simple_TimeBootReady(), "بوت منتظر بازیابی ساعت از برد می‌ماند");
     func__T_BatteryHello(3700u);
     func__T_Check(func__Simple_NowSec() == start+3600u && func__Simple_TimeBootReady(),
-                  "یک ساعت خاموشی ESP فقط با آپتایم برد و بدون گوشی جبران می‌شود");
+                  "یک ساعت خاموشی ESP با آپتایم و شمارنده ریست فعلی برد و بدون گوشی جبران می‌شود");
     func__T_BatteryBoot();func__T_BatteryHello(7300u, true);
     func__T_Check(func__Simple_NowSec() == start+7200u, "دیاگ هم بدون HELLO زمان خواب را جبران می‌کند");
     func__T_BatteryBoot();
@@ -87,17 +95,17 @@ static void func__T_TestBatteryClockRetention(void)
     func__T_Check(func__Simple_NowSec() == start+18000u,
                   "ذخیره در بوت ساکت جفت زمان را نگه می‌دارد و زمان را دوباره نمی‌شمارد");
     uint32_t beforeReset = func__Simple_NowSec();
-    func__T_BatteryHello(10u);
+    func__T_BatteryHello(10u,true,2u);
     func__T_Check(func__Simple_NowSec() == beforeReset && UINT32_T__G__TimePairUptimeSec == 10u,
                   "ریست STM32 ساعت پنل را عقب نمی‌برد و لنگر تازه می‌سازد");
-    func__T_BatteryBoot();func__T_BatteryHello(190u);
+    func__T_BatteryBoot();func__T_BatteryHello(190u,true,2u);
     func__T_Check(func__Simple_NowSec() == beforeReset+180u,
                   "لنگر تازه پس از ریست STM32 فوراً ذخیره شده و خواب بعدی درست است");
     func__Simple_TimeAdoptFromBoard(func__Simple_NowSec()-60u);
     func__T_Check(func__Simple_NowSec() == beforeReset+180u, "دیاگ عقب‌تر حتی در بازه پنج دقیقه ساعت را عقب نمی‌برد");
     UINT32_T__G__TimeAnchorMs -= 30000u;UINT32_T__G__TimeBoardRxMs -= 30000u;
     INT32_T__G__LogTzSec = 12600;func__Simple_TimeSave();
-    func__T_BatteryBoot();func__T_BatteryHello(370u);
+    func__T_BatteryBoot();func__T_BatteryHello(370u,true,2u);
     func__T_Check(func__Simple_NowSec() == beforeReset+360u && INT32_T__G__LogTzSec == 12600,
                   "ذخیره سی ثانیه بعد از پاسخ برد، در خواب بعدی سی ثانیه اضافه نمی‌شمارد");
     std::string saved = func__T_ReadCredentialFile(SIMPLE_TIME_FILE);

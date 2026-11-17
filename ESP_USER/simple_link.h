@@ -152,7 +152,7 @@ static void func__Simple_HandleFrame(void)
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
             UINT32_T__G__ResetCount = func__Simple_ReadU32(uint8_t__ptr_payload, 13u);
             UINT32_T__G__BoardTimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 17u);
-            func__Simple_TimeNoteBoard(UINT32_T__G__UptimeSec);
+            func__Simple_TimeNoteBoard(UINT32_T__G__UptimeSec, true, UINT32_T__G__ResetCount);
             if (func__Simple_TimeAdoptFromBoard(UINT32_T__G__BoardTimeSec) != false)
             {
                 BOOL__G__TimePushed = true;
@@ -217,7 +217,7 @@ static void func__Simple_HandleFrame(void)
                 UINT32_T__G__ChargeCountCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 27u);
                 UINT32_T__G__ChargeSecCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 31u);
                 UINT32_T__G__ChargeSecCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 35u);
-                if (!BOOL__G__ChargeCountBaselineReady)
+                if (!BOOL__G__ChargeCountBaselineReady || !func__Simple_TimeBootReady())
                 {
                     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
                     UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;

@@ -112,7 +112,8 @@ HTML در نام، خطای شبکه و پاسخ دیررس پس از خروج �
 ## Battery retention regression
 
 `host_test_battery_retention.h` runs inside the existing sanitized C++ suite.
-It resets clock/log RAM between boots and feeds CRC-framed HELLO_ACK or DIAG_DATA
+It resets clock/log RAM between boots and feeds CRC-framed DIAG_DATA with the
+existing reset counter (and HELLO_ACK for live advancement)
 through the production parser. A 540-wake trace advances STM32 uptime by 180 seconds
 per cycle, with another reply 58 seconds into each powered session: 97,258 seconds,
 two midnight crossings, no browser or valid board epoch, exactly 28 stored rows.
@@ -127,7 +128,7 @@ storage fault stages. These are accelerated host tests, not elapsed hardware tes
 `host_test_chart_journal.h` is included by the existing sanitized host executable.
 It covers exact 3599/3600-second and 499/500-mV boundaries on either voltage in both
 directions; cumulative changes from the committed (not incoming-frame) baseline;
-no percentage-only or per-boot sample; clock grace; immediate persistence; replay;
+no percentage-only or per-boot sample; strict clock gate; immediate persistence; replay;
 every truncation of a new journal frame; short writes, post-write readback failure,
 open/rename/no-space failures and retries; checkpoint-before-journal-removal power
 loss; temporary-file isolation; file deletion/recreation; clear/reset; malformed
@@ -149,3 +150,24 @@ sketch startup/loop as well as removal of the production setter/recovery code.
 Direct account-save fault tests remain; only tests of the removed editing feature
 were replaced. DOM tests assert editing controls/handlers are absent while the
 login, Wi-Fi controls, password clearing, reset actions and format still work.
+
+## Delayed verified clock / durable warning
+
+`host_test_clock_gap.h` uses the real parser, clock, chart and log code. It covers
+8-second rejection, no deadline-based trust, 39/40-second warning boundaries,
+undated public log/CSV output, pending-marker survival across boots, delayed
+same-reset recovery across midnight without a browser, one dated warning and a
+fresh chart sample (no backfill). It also covers misleading larger uptimes after
+changed reset identity, rejection of old retained board epochs, initial missing
+clock, adjacent local fault/power histories, marker staging failures at all five
+stages, retries, failed dated append retention, explicit format, and recovery
+before 40 seconds without a spurious warning. DOM tests render the exact Persian
+message and the unknown-time label.
+
+`host_test_clock_loop.cpp` includes the real simulator entry/sketch and runs its
+actual `setup()` and `loop()`. Advancing host milliseconds through 40 seconds
+without board responses verifies repeated existing DIAG requests, no stale
+TIME_SYNC even with stored diagnostics and live telemetry, no dated samples,
+a durable warning, and recovery via a later CRC-framed UART response without any
+browser clock request. Both C++ executables run under ASan/UBSan in the existing
+runner. Time is accelerated; these are not hardware elapsed-time measurements.

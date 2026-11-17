@@ -139,7 +139,7 @@ static uint32_t func__Simple_ChartLastSec(const uint32_t *uint32_t__ptr_time,
 /* ==================== - STM32 ==================== */
 static void func__Simple_LocalRecordFault(uint32_t uint32_t__faultMask, uint32_t uint32_t__vin, uint32_t uint32_t__vpack, uint32_t uint32_t__vLow, uint32_t uint32_t__vHigh)
 {
-    if (uint32_t__faultMask == 0u) return;
+    if (!func__Simple_TimeBootReady() || uint32_t__faultMask == 0u) return;
     uint32_t uint32_t__newBits = uint32_t__faultMask & (uint32_t)(~UINT32_T__G__LastLocalFaultMask);
     if (uint32_t__newBits == 0u) return;
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
@@ -162,6 +162,12 @@ static void func__Simple_LocalRecordFault(uint32_t uint32_t__faultMask, uint32_t
 }
 static void func__Simple_LocalRecordPower(bool bool__inputPresent)
 {
+    if (!func__Simple_TimeBootReady())
+    {
+        BOOL__G__LastLocalInputValid = false;
+        BOOL__G__LocalPowerOffActive = false;
+        return;
+    }
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
     if (!BOOL__G__LastLocalInputValid)
     {

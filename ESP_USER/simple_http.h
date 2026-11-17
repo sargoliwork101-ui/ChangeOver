@@ -136,7 +136,7 @@ static void func__Simple_HttpTelemetry(void)
 {
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     uint32_t uint32_t__ageMs = uint32_t__nowMs - UINT32_T__G__LastTlmMs;
-    uint32_t uint32_t__panelTimeSec = func__Simple_NowSec();
+    uint32_t uint32_t__panelTimeSec = func__Simple_TimeBootReady() ? func__Simple_NowSec() : 0u;
     bool bool__online = BOOL__G__TlmSeen && (uint32_t__ageMs <= SIMPLE_LINK_TIMEOUT_MS);
     bool bool__authed = func__Simple_SessionValid();
     const char *char__ptr_user = bool__authed ? CHAR__G__CurrentUser : "";
@@ -167,7 +167,7 @@ static void func__Simple_HttpTelemetry(void)
             (unsigned int)UINT8_T__G__Theme,
             (unsigned long)uint32_t__panelTimeSec,
             (unsigned long)uint32_t__panelTimeSec,
-            BOOL__G__TimeValid ? 1u : 0u,
+            func__Simple_TimeBootReady() ? 1u : 0u,
             BOOL__G__BoardParamSeen ? 1u : 0u,
             0u,
             BOOL__G__HelloSeen ? 1u : 0u,
@@ -347,8 +347,8 @@ static void func__Simple_HttpDiag(void)
     s += ",\"uptimeSec\":"; s += String(UINT32_T__G__UptimeSec);
     s += ",\"resetCount\":"; s += String(UINT32_T__G__ResetCount);
     s += ",\"boardTime\":"; s += String(UINT32_T__G__BoardTimeSec);
-    s += ",\"panelTime\":"; s += String(func__Simple_NowSec());
-    s += ",\"timeOk\":"; s += String(BOOL__G__TimeValid ? 1u : 0u);
+    s += ",\"panelTime\":"; s += String(func__Simple_TimeBootReady() ? func__Simple_NowSec() : 0u);
+    s += ",\"timeOk\":"; s += String(func__Simple_TimeBootReady() ? 1u : 0u);
     s += ",\"errCount\":"; s += String(UINT8_T__G__DiagErrorCount);
     s += ",\"powerCount\":"; s += String(UINT8_T__G__PowerEventCount);
     s += ",\"errors\":[";
@@ -819,6 +819,13 @@ static void func__Simple_HttpEventLog(void)
     }
     (void)func__SimpleLog_Tail(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer),
                                uint32_t__day, SIMPLE_LOG_TAIL_LINES);
+    if (BOOL__G__LogClockGap && !BOOL__G__LogClockGapEmitted &&
+        (!bool__hasDay || uint32_t__day == SIMPLE_LOG_DAY_ZERO))
+    {
+        size_t size_t__used = strlen(CHAR__G__LogTailBuffer);
+        if (size_t__used + strlen(SIMPLE_LOG_CLOCK_GAP_ROW) < sizeof(CHAR__G__LogTailBuffer))
+            (void)strcpy(CHAR__G__LogTailBuffer + size_t__used, SIMPLE_LOG_CLOCK_GAP_ROW);
+    }
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
 }
 static void func__Simple_HttpEventDays(void)
@@ -875,6 +882,8 @@ static void func__Simple_HttpDownloadAllDays(void)
         }
         file__day.close();
     }
+    if (BOOL__G__LogClockGap && !BOOL__G__LogClockGapEmitted)
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent(SIMPLE_LOG_CLOCK_GAP_ROW);
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
 }
 static void func__Simple_HttpEventDownload(void)

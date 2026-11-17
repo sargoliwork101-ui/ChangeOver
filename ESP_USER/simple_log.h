@@ -102,6 +102,13 @@ static uint32_t UINT32_T__G__LogLastDrainMs = 0u;
 #define SIMPLE_LOG_NOTE_DAY_FULL  4u
 #define SIMPLE_LOG_NOTE_HEARTBEAT  5u
 #define SIMPLE_LOG_NOTE_MANUAL     6u
+#define SIMPLE_LOG_NOTE_CLOCK_GAP  7u
+#define SIMPLE_LOG_CLOCK_GAP_ROW "0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n"
+static bool BOOL__G__LogClockGap = false;
+static bool BOOL__G__LogClockGapStored = false;
+static bool BOOL__G__LogClockGapEmitted = false;
+static bool BOOL__G__LogClockRetryArmed = false;
+static uint32_t UINT32_T__G__LogClockRetryMs = 0u;
 #define SIMPLE_LOG_PATH_MAX       24u
 static bool BOOL__G__LogCodecCached = false;
 static char CHAR__G__LogCodecPath[SIMPLE_LOG_PATH_MAX];
@@ -1211,8 +1218,7 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     bool bool__force;
     /*
  * [EN] After a power cut the clock comes back from the flash and may be hours
- * behind. The board kept counting, so the first rows wait for its time (or for
- * the grace window) instead of being stamped onto a stale day.
+ * behind. Dated rows wait for a verified clock; a timeout never trusts disk time.
  */
     if (func__Simple_TimeBootReady() == false)
     {
@@ -1708,9 +1714,83 @@ static void func__SimpleLog_OnFrame(void)
     }
     func__SimpleLog_DetectChanges();
 }
+/* ==================== Undated clock warning persistence ==================== */
+/** @brief Atomically retain one missing-clock incident without inventing a timestamp. */
+static bool func__SimpleLog_ClockGapStore(void)
+{
+    const char *char__ptr_record = "{\"note\":7,\"reason\":\"clock_unavailable\"}";
+    if (!BOOL__G__FsOk) return false;
+    File file__out = LittleFS.open(SIMPLE_TIME_GAP_FILE ".tmp", "w");
+    if (!file__out) return false;
+    bool bool__ok = file__out.print(char__ptr_record) == strlen(char__ptr_record);
+    file__out.close();
+    if (bool__ok)
+    {
+        File file__check = LittleFS.open(SIMPLE_TIME_GAP_FILE ".tmp", "r");
+        bool__ok = file__check && file__check.readString() == char__ptr_record;
+        file__check.close();
+    }
+    if (bool__ok) bool__ok = LittleFS.rename(SIMPLE_TIME_GAP_FILE ".tmp", SIMPLE_TIME_GAP_FILE);
+    if (!bool__ok) (void)LittleFS.remove(SIMPLE_TIME_GAP_FILE ".tmp");
+    return bool__ok;
+}
+/* ==================== Clock warning and recovery ==================== */
+/** @brief Warn once after 40 boot seconds; retain the incident until a durable dated row exists. */
+static void func__SimpleLog_ClockGapTick(void)
+{
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+    bool bool__ready = func__Simple_TimeBootReady();
+    if (!bool__ready && (uint32_t)(uint32_t__nowMs - UINT32_T__G__TimeBootMs) >= SIMPLE_TIME_WARN_MS)
+        BOOL__G__LogClockGap = true;
+    if (!BOOL__G__LogClockGap) return;
+    if (BOOL__G__LogClockRetryArmed &&
+        (uint32_t)(uint32_t__nowMs - UINT32_T__G__LogClockRetryMs) < SIMPLE_TIME_WARN_RETRY_MS) return;
+    BOOL__G__LogClockRetryArmed = true;
+    UINT32_T__G__LogClockRetryMs = uint32_t__nowMs;
+    if (!BOOL__G__LogClockGapStored)
+    {
+        BOOL__G__LogClockGapStored = func__SimpleLog_ClockGapStore();
+        if (!BOOL__G__LogClockGapStored) func__SimpleLog_FaultRaise();
+    }
+    if (!bool__ready || !BOOL__G__FsOk) return;
+    if (!BOOL__G__LogClockGapEmitted)
+    {
+        /* Do not put repeated warning copies in the volatile fallback ring. */
+        func__SimpleLog_DrainRam();
+        if (UINT8_T__G__LogRamCount != 0u || !func__SimpleLog_ResolveDay(true)) return;
+        char char__row[SIMPLE_LOG_RAM_ROW_MAX];
+        func__SimpleLog_BuildRow(char__row, sizeof(char__row), 0u, SIMPLE_LOG_NOTE_CLOCK_GAP);
+        if (!func__SimpleLog_AppendRow(UINT32_T__G__LogDayCode, char__row)) return;
+        char char__path[SIMPLE_LOG_PATH_MAX];
+        func__SimpleLog_PathOf(char__path, UINT32_T__G__LogDayCode);
+        File file__check = LittleFS.open(char__path, "r");
+        SimpleLogCodec::State codec;
+        bool bool__verified = file__check && SimpleLogCodec::begin(file__check, codec) == 1;
+        if (bool__verified)
+        {
+            while (SimpleLogCodec::next(file__check, codec)) { }
+            bool__verified = !codec.ioError && codec.valid &&
+                codec.value[0] == func__SimpleLog_RowEpoch(char__row) && codec.value[3] == SIMPLE_LOG_NOTE_CLOCK_GAP;
+        }
+        file__check.close();
+        if (!bool__verified) return;
+        if (UINT16_T__G__LogRowsToday < 0xFFFFu) UINT16_T__G__LogRowsToday++;
+        BOOL__G__LogClockGapEmitted = true;
+    }
+    if (LittleFS.exists(SIMPLE_TIME_GAP_FILE) && !LittleFS.remove(SIMPLE_TIME_GAP_FILE))
+    {
+        func__SimpleLog_FaultRaise();
+        return;
+    }
+    BOOL__G__LogClockGap = false;
+    BOOL__G__LogClockGapStored = false;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
+}
 static void func__SimpleLog_Tick(void)
 {
     uint32_t uint32_t__nowMs;
+    func__SimpleLog_ClockGapTick();
     /* Do not open a stale day's file or consume events before clock recovery. */
     if (!func__Simple_TimeBootReady()) return;
     (void)func__SimpleLog_ResolveDay(false);
@@ -1804,6 +1884,10 @@ static void func__SimpleLog_Tick(void)
 }
 static void func__SimpleLog_Begin(void)
 {
+    BOOL__G__LogClockGapStored = BOOL__G__FsOk && LittleFS.exists(SIMPLE_TIME_GAP_FILE);
+    BOOL__G__LogClockGap = BOOL__G__LogClockGapStored;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
     BOOL__G__LogDayFileReady = false;
@@ -2191,6 +2275,11 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
 }
 static uint8_t func__SimpleLog_Clear(void)
 {
+    if (BOOL__G__FsOk) (void)LittleFS.remove(SIMPLE_TIME_GAP_FILE);
+    BOOL__G__LogClockGap = false;
+    BOOL__G__LogClockGapStored = false;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     uint8_t uint8_t__slot;
     uint8_t uint8_t__removed = 0u;
@@ -2414,6 +2503,10 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
 }
 static void func__SimpleLog_ResetStateAfterFormat(void)
 {
+    BOOL__G__LogClockGap = false;
+    BOOL__G__LogClockGapStored = false;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
     UINT8_T__G__LogIndexCount = 0u;
     BOOL__G__LogScanValid = false;
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;

@@ -42,10 +42,16 @@ g++ \
     -I "${DIRECTORY}/../Simulator" \
     -o "${BINARY}" \
     "${DIRECTORY}/host_test_latch.cpp"
+echo "      کامپایل آزمون ساعت با setup/loop واقعی"
+g++ -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable \
+    -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+    -I "${DIRECTORY}/../Simulator/stubinc" -I "${DIRECTORY}/../Simulator" \
+    -o "${BUILD_DIRECTORY}/host_test_clock_loop" "${DIRECTORY}/host_test_clock_loop.cpp"
 echo "[3/7] اجرا"
 export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 export ASAN_OPTIONS="detect_leaks=0"
 "${BINARY}"
+"${BUILD_DIRECTORY}/host_test_clock_loop"
 echo "[4/7] تست رفتاری آلارم اضافه‌ولتاژ (DOM)"
 # [EN] Optional: needs node + jsdom + the generated preview. SKIP when absent.
 if command -v node >/dev/null 2>&1 && [ -f "${DIRECTORY}/../simple_preview.html" ]; then
