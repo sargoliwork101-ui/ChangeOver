@@ -527,6 +527,31 @@
     padding: 0 4px;
   }
 
+  
+  .ctrl-scroll-toast {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 12, 18, 0.92);
+    border: 1px solid rgba(226, 183, 116, 0.45);
+    color: var(--gold-bright);
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 9px 18px;
+    border-radius: 8px;
+    box-shadow: 0 4px 25px rgba(0,0,0,0.8);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    z-index: 20;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+  .ctrl-scroll-toast.visible {
+    opacity: 1;
+  }
+
   .canvas-container {
     position: relative;
     border-radius: 12px;
@@ -1072,10 +1097,10 @@
           <div class="scope-actions">
             <!-- Zoom Controls -->
             <div class="zoom-ctrl-group">
-              <button class="btn-zoom" onclick="zoomIn()" title="بزرگنمایی (Zoom In)">🔍+</button>
-              <button class="btn-zoom" onclick="zoomOut()" title="کوچک‌نمایی (Zoom Out)">🔍−</button>
-              <button class="btn-zoom btn-zoom-reset" onclick="resetZoom()" title="بازنشانی زوم">↺ 1x</button>
-              <span class="pill safe" id="zoom_badge" style="margin-right:2px;">🔍 1.0x</span>
+              <button class="btn-zoom" onclick="zoomIn()" title="بزرگ‌نمایی سیگنال (Zoom In)">🔍+ بزرگ‌نمایی</button>
+              <button class="btn-zoom" onclick="zoomOut()" title="کوچک‌نمایی (Zoom Out)">🔍− کوچک‌نمایی</button>
+              <button class="btn-zoom btn-zoom-reset" onclick="resetZoom()" title="بازنشانی زوم به حالت ۱x">⟲ بازنشانی (1×)</button>
+              <span class="pill safe" id="zoom_badge">مقیاس: ۱.۰×</span>
             </div>
 
             <button class="btn-live" id="btn_live_toggle" onclick="toggleLiveAnimation()">
@@ -1096,11 +1121,12 @@
         </div>
 
         <div class="scope-hint-bar">
-          <span>💡 با <b>اسکرول ماوس (Mouse Scroll)</b> روی نمودار زوم کنید، با درگ جابجا شوید و با دوبار کلیک زوم را ریست کنید.</span>
+          <span>💡 <b>کنترل زوم:</b> از دکمه‌های <b>🔍+ / 🔍−</b> یا <b>Ctrl + اسکرول ماوس</b> استفاده کنید. با کشیدن (Drag) روی نمودار جابه‌جا شوید. دوبار کلیک = بازنشانی</span>
           <span>پریود تناوب: <b id="lbl_ts_info" style="color:var(--gold);">20.0 µs (50 kHz)</b></span>
         </div>
 
         <div class="canvas-container" id="canvas_box">
+          <div id="ctrl_scroll_toast" class="ctrl-scroll-toast">برای بزرگ‌نمایی نمودار، کلید Ctrl را نگه داشته و اسکرول کنید</div>
           <div class="scope-hud" id="scope_hud">
             <div>زمان: <b id="hud_t">0.00 µs</b> | فاز مداری: <b id="hud_phase">ماسفت روشن</b></div>
             <div>Vds(t): <b id="hud_vds" style="color:#60a5fa;">0.4 V</b> | i_Lp(t): <b id="hud_ilp" style="color:#4ade80;">0.0 A</b> | Vsn(t): <b id="hud_vsn" style="color:#fbbf24;">101.0 V</b></div>
@@ -1196,15 +1222,27 @@ function resetZoom() {
 }
 
 function zoomIn() {
-  zoomFactor = Math.min(25.0, zoomFactor * 1.35);
-  panOffsetX = Math.max(0, Math.min(2.0 - (2.0 / zoomFactor), panOffsetX));
+  const totalCycles = 2.0;
+  const visibleRange = totalCycles / zoomFactor;
+  const centerT = panOffsetX + visibleRange / 2;
+  
+  zoomFactor = Math.min(25.0, zoomFactor * 1.3);
+  const newVisibleRange = totalCycles / zoomFactor;
+  panOffsetX = Math.max(0, Math.min(totalCycles - newVisibleRange, centerT - newVisibleRange / 2));
+  
   updateZoomUI();
   triggerRedraw();
 }
 
 function zoomOut() {
-  zoomFactor = Math.max(1.0, zoomFactor / 1.35);
-  panOffsetX = Math.max(0, Math.min(2.0 - (2.0 / zoomFactor), panOffsetX));
+  const totalCycles = 2.0;
+  const visibleRange = totalCycles / zoomFactor;
+  const centerT = panOffsetX + visibleRange / 2;
+  
+  zoomFactor = Math.max(1.0, zoomFactor / 1.3);
+  const newVisibleRange = totalCycles / zoomFactor;
+  panOffsetX = Math.max(0, Math.min(totalCycles - newVisibleRange, centerT - newVisibleRange / 2));
+  
   updateZoomUI();
   triggerRedraw();
 }
@@ -1212,7 +1250,7 @@ function zoomOut() {
 function updateZoomUI() {
   const badge = document.getElementById('zoom_badge');
   if (badge) {
-    badge.innerText = '🔍 ' + zoomFactor.toFixed(1) + 'x';
+    badge.innerText = 'مقیاس: ' + zoomFactor.toFixed(1) + '×';
     badge.className = zoomFactor > 1.05 ? 'pill warn' : 'pill safe';
   }
 }
@@ -2149,8 +2187,23 @@ if (canvas) {
     triggerRedraw();
   });
 
-  // Mouse Wheel Scroll Zoom
+  // Mouse Wheel Zoom (Only active when Ctrl or Cmd is held, so normal page scroll is NEVER hijacked)
+  let toastTimer = null;
   canvas.addEventListener('wheel', function(e) {
+    if (!e.ctrlKey && !e.metaKey) {
+      // Normal page scrolling - do NOT prevent default!
+      const toast = document.getElementById('ctrl_scroll_toast');
+      if (toast) {
+        toast.classList.add('visible');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.remove('visible');
+        }, 1100);
+      }
+      return; // Page scrolls normally
+    }
+
+    // Ctrl + Wheel Zoom
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const mX = e.clientX - rect.left;
