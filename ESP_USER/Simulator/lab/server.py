@@ -219,9 +219,9 @@ class Board:
             total += sum(self.varint_len(value) for value in bucket)
         return total + 2
     def seed_charts(self, now):
-        """One shared five-minute fixture source, with UTC six-hour/daily sample means."""
-        source = self.chart_points(now, 300, self.SEED_DAYS * 288)
-        self.chart["1d"] = source[-288:]
+        """One shared hourly fixture source, with UTC six-hour/daily sample means."""
+        source = self.chart_points(now, 3600, self.SEED_DAYS * 24)
+        self.chart["1d"] = source[-24:]
         self.chart_buckets = []
         for key, period, capacity in (("7d", 21600, 28), ("1m", 86400, 30), ("3m", 86400, 90)):
             buckets = {}
@@ -292,8 +292,8 @@ class Board:
         self.logs_seeded = True
 
     def make_chart(self, now, rng):
-        step = {"1d": 300, "7d": 21600, "1m": 86400, "3m": 86400}[rng]
-        count = {"1d": 288, "7d": 28, "1m": 30, "3m": 90}[rng]
+        step = {"1d": 3600, "7d": 21600, "1m": 86400, "3m": 86400}[rng]
+        count = {"1d": 24, "7d": 28, "1m": 30, "3m": 90}[rng]
         out = []
         for i in range(count):
             stamp = now - (count - 1 - i) * step

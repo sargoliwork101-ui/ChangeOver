@@ -99,8 +99,8 @@
 #define SIMPLE_CHART_3M_SIZE            90u
 #define SIMPLE_CHARTS_FILE              "/charts.bin"
 #define SIMPLE_CHART_FILE_HEADER        12u
-/* Accepted samples: five wall minutes OR 500 mV in either observed voltage. */
-#define SIMPLE_CHART_SAMPLE_SEC         300u
+/* Accepted samples: one wall hour OR 500 mV in either observed voltage. */
+#define SIMPLE_CHART_SAMPLE_SEC         3600u
 #define SIMPLE_CHART_STEP_MV            500u
 /* Bound the append journal; compact only after verified snapshot replacement. */
 #define SIMPLE_CHART_JOURNAL_FILE       "/charts.jrn"

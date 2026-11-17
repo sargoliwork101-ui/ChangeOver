@@ -806,8 +806,8 @@ static void func__T_TestStm32TimeAndChartScheduling(void)
     func__T_Check((UINT16_T__G__Chart1D_Count == 1u) && (UINT16_T__G__Chart7D_Count == 1u),
                   "اولین نقطهٔ نمودار ۱ روزه و ۷ روزه با ساعت میکرو ثبت شد");
 
-    /* شبیه‌سازی گذشت ۵ دقیقه روی ساعت میکرو بدون افزایش millis بیش از ۱ دقیقه */
-    uint32_t__stmTimeSec += 300u;
+    /* Advance one board-clock hour without advancing ESP millis by an hour. */
+    uint32_t__stmTimeSec += SIMPLE_CHART_SAMPLE_SEC;
     uint8_t__payload[17] = (uint8_t)(uint32_t__stmTimeSec & 0xFFu);
     uint8_t__payload[18] = (uint8_t)((uint32_t__stmTimeSec >> 8) & 0xFFu);
     uint8_t__payload[19] = (uint8_t)((uint32_t__stmTimeSec >> 16) & 0xFFu);
@@ -884,7 +884,7 @@ static void func__T_TestChartZeroOnStaleTelemetry(void)
                   "با فریم تازه عددهای واقعی برمی‌گردند و نقطهٔ زمان‌دار زودتر از گام خودش ساخته نمی‌شود");
 
     /* یک گام کامل جلو می‌رویم تا نقطهٔ تازهٔ زمان‌دار هم ساخته شود */
-    func__Simple_TimeSet(uint32_t__baseSec + 300u, false);
+    func__Simple_TimeSet(uint32_t__baseSec + SIMPLE_CHART_SAMPLE_SEC, false);
     UINT32_T__G__LastTlmMs = (uint32_t)millis();
     UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
     func__Simple_ChartTick();
@@ -892,7 +892,7 @@ static void func__T_TestChartZeroOnStaleTelemetry(void)
                   (UINT32_T__G__Chart1D_Pct[1] > 0u) &&
                   (UINT32_T__G__Chart1D_Vin[1] == 24000u) &&
                   (UINT32_T__G__Chart1D_Vpack[1] == 25500u) &&
-                  (UINT32_T__G__Chart1D_Time[1] >= (uint32_t__baseSec + 300u)),
+                  (UINT32_T__G__Chart1D_Time[1] >= (uint32_t__baseSec + SIMPLE_CHART_SAMPLE_SEC)),
                   "پس از صفرِ بی‌داده، نقطهٔ تازه با زمان درست ثبت می‌شود");
 
     /* اگر برد از اول هم دیده نشده باشد، باز هم جای خالی داده صفر است */

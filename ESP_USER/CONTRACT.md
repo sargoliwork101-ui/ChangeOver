@@ -156,7 +156,7 @@ loss needs external time synchronization; no new STM32/RTC behavior is introduce
 
 Fresh observations are considered on the existing 5-second chart tick only after
 the boot-clock gate. Accept the first observation, otherwise elapsed wall time
->=300 s OR absolute input/pack change >=500 mV from the last committed sample.
+>=3600 s OR absolute input/pack change >=500 mV from the last committed sample.
 No independent percentage trigger, per-boot trigger or timer reset is used.
 A failed write retains one pending observation and retries before accepting more;
 it never advances the committed trigger baseline or invents a successful sample.

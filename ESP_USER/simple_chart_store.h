@@ -352,7 +352,7 @@ static void func__Simple_ChartsSave(void)
 }
 /* ==================== Time OR voltage trigger ==================== */
 /**
- * @brief Accept the first sample, or 300 wall seconds OR 500 mV from the last committed sample.
+ * @brief Accept the first sample, or 3600 wall seconds OR 500 mV from the last committed sample.
  * @param uint32_t__pct Percentage; uint32_t__vin Input mV; uint32_t__vpack Pack mV.
  */
 static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t__vin, uint32_t uint32_t__vpack)

@@ -27,33 +27,35 @@ static void func__T_TestChartTriggersAndReplay(void)
     func__T_ChartFixture();const uint32_t base = func__Simple_NowSec();
     func__Simple_ChartAddTimed(50u,24000u,25000u);
     func__T_Check(UINT32_T__G__ChartSequence == 1u && !BOOL__G__ChartsDirty && !func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE).empty(), "اولین نمونه همان لحظه روی فلش ثبت می‌شود");
-    func__T_ChartTime(base+299u);func__Simple_ChartAddTimed(90u,24499u,25499u);
-    func__T_Check(UINT32_T__G__ChartSequence == 1u, "۲۹۹ ثانیه و ۴۹۹ میلی‌ولت، حتی با تغییر درصد، نمونه اضافی نمی‌سازد");
     func__T_ChartTime(base+300u);func__Simple_ChartAddTimed(50u,24000u,25000u);
-    func__T_Check(UINT32_T__G__ChartSequence == 2u, "در مرز دقیق پنج دقیقه، ولتاژ ثابت هم ثبت می‌شود");
-    func__T_ChartTime(base+301u);func__Simple_ChartAddTimed(50u,24500u,25000u);
-    func__T_Check(UINT32_T__G__ChartSequence == 3u, "افزایش دقیق ۵۰۰ میلی‌ولت ورودی قبل از پنج دقیقه ثبت می‌شود");
-    func__T_ChartTime(base+302u);func__Simple_ChartAddTimed(50u,24500u,25500u);
+    func__T_Check(UINT32_T__G__ChartSequence == 1u, "گذشت پنج دقیقه دیگر برای ولتاژ ثابت نمونه نمی‌سازد");
+    func__T_ChartTime(base+3599u);func__Simple_ChartAddTimed(90u,24499u,25499u);
+    func__T_Check(UINT32_T__G__ChartSequence == 1u, "۳۵۹۹ ثانیه و ۴۹۹ میلی‌ولت، حتی با تغییر درصد، نمونه اضافی نمی‌سازد");
+    func__T_ChartTime(base+3600u);func__Simple_ChartAddTimed(50u,24000u,25000u);
+    func__T_Check(UINT32_T__G__ChartSequence == 2u, "در مرز دقیق یک ساعت، ولتاژ ثابت هم ثبت می‌شود");
+    func__T_ChartTime(base+3601u);func__Simple_ChartAddTimed(50u,24500u,25000u);
+    func__T_Check(UINT32_T__G__ChartSequence == 3u, "افزایش دقیق ۵۰۰ میلی‌ولت ورودی قبل از یک ساعت ثبت می‌شود");
+    func__T_ChartTime(base+3602u);func__Simple_ChartAddTimed(50u,24500u,25500u);
     func__T_Check(UINT32_T__G__ChartSequence == 4u, "افزایش دقیق ۵۰۰ میلی‌ولت پک هم مستقل ثبت می‌شود");
-    func__T_ChartTime(base+303u);func__Simple_ChartAddTimed(50u,24000u,25500u);
-    func__T_ChartTime(base+304u);func__Simple_ChartAddTimed(50u,24000u,25000u);
+    func__T_ChartTime(base+3603u);func__Simple_ChartAddTimed(50u,24000u,25500u);
+    func__T_ChartTime(base+3604u);func__Simple_ChartAddTimed(50u,24000u,25000u);
     func__T_Check(UINT32_T__G__ChartSequence == 6u, "کاهش ۵۰۰ میلی‌ولت هر دو ولتاژ هم ثبت می‌شود");
     func__T_Check(UINT__T__ChartSnapshotWrites == 0u, "برای شش نمونه فایل کامل نمودار حتی یک بار بازنویسی نمی‌شود");
-    func__Simple_ChartsLoad();func__T_ChartTime(base+305u);func__Simple_ChartAddTimed(50u,24200u,25200u);
+    func__Simple_ChartsLoad();func__T_ChartTime(base+3605u);func__Simple_ChartAddTimed(50u,24200u,25200u);
     func__T_Check(UINT32_T__G__ChartSequence == 6u && UINT16_T__G__Chart1D_Count == 6u, "بوت مجدد نه ردیف اجباری می‌سازد نه زمان و مبنای ولتاژ قبلی را پاک می‌کند");
     // Deltas compare against the committed sample, not each incoming measurement.
-    func__T_ChartTime(base+306u);func__Simple_ChartAddTimed(50u,24400u,25400u);
-    func__T_ChartTime(base+307u);func__Simple_ChartAddTimed(50u,24500u,25400u);
+    func__T_ChartTime(base+3606u);func__Simple_ChartAddTimed(50u,24400u,25400u);
+    func__T_ChartTime(base+3607u);func__Simple_ChartAddTimed(50u,24500u,25400u);
     func__T_Check(UINT32_T__G__ChartSequence == 7u, "تغییرهای کوچک نسبت به آخرین نمونه ثبت‌شده جمع می‌شوند، نه فریم قبلی");
     BOOL__G__TimeFromDisk = true;BOOL__G__TimeBoardSeen = false;UINT32_T__G__TimeBootMs = (uint32_t)millis();
     func__Simple_ChartAddTimed(50u,0u,25000u);
     func__T_Check(UINT32_T__G__ChartSequence == 7u, "پیش از بازیابی ساعت در بوت، حتی اختلاف بزرگ هم ثبت نمی‌شود");
     BOOL__G__TimeFromDisk = false;
-    func__T_ChartTime(base+607u);func__Simple_ChartAddTimed(50u,24500u,25400u);
+    func__T_ChartTime(base+7207u);func__Simple_ChartAddTimed(50u,24500u,25400u);
     func__T_Check(UINT32_T__G__ChartSequence == 8u, "پس از بوت زمان واقعی از آخرین ذخیره سنجیده می‌شود");
     // Every possible cut within the last record preserves exactly the committed prefix.
     const std::string before = func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE);
-    func__T_ChartTime(base+907u);func__Simple_ChartAddTimed(50u,24500u,25400u);
+    func__T_ChartTime(base+10807u);func__Simple_ChartAddTimed(50u,24500u,25400u);
     const std::string complete = func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE);
     bool cutsOk = true;
     for (size_t n=before.size();n<complete.size();n++)
@@ -62,7 +64,7 @@ static void func__T_TestChartTriggersAndReplay(void)
         cutsOk = cutsOk && UINT32_T__G__ChartSequence == 8u && UINT16_T__G__Chart1D_Count == 8u;
     }
     func__T_Check(cutsOk, "قطع نوشتن در هر بایت رکورد تازه، تمام هشت نمونه قبلی را سالم نگه می‌دارد");
-    func__T_ChartTime(base+1207u);func__Simple_ChartAddTimed(50u,24500u,25400u);func__Simple_ChartsLoad();
+    func__T_ChartTime(base+14407u);func__Simple_ChartAddTimed(50u,24500u,25400u);func__Simple_ChartsLoad();
     func__T_Check(UINT32_T__G__ChartSequence == 9u && UINT16_T__G__Chart1D_Count == 9u,
                   "بعد از فایل نیمه، ادامه ذخیره با تعمیر انتها و بدون ردیف تکراری انجام می‌شود");
 }
@@ -71,13 +73,13 @@ static void func__T_TestChartFailureRecovery(void)
     func__T_ChartFixture();const uint32_t base=func__Simple_NowSec();
     func__Simple_ChartAddTimed(50u,24000u,25000u);
     const std::string saved=func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE);
-    func__T_ChartTime(base+300u);SIM_BOOL__G__RefuseWrites=true;
+    func__T_ChartTime(base+3600u);SIM_BOOL__G__RefuseWrites=true;
     func__Simple_ChartAddTimed(50u,24000u,25000u);SIM_BOOL__G__RefuseWrites=false;
     func__T_Check(BOOL__G__ChartPending && BOOL__G__ChartsDirty && UINT32_T__G__ChartSequence == 1u && func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE)==saved,
                   "خطای فلش نمونه را ذخیره‌شده اعلام نمی‌کند، مبنا جلو نمی‌رود و نمونه منتظر تلاش مجدد می‌ماند");
     func__Simple_ChartsSave();func__Simple_ChartsLoad();
     func__T_Check(UINT32_T__G__ChartSequence == 2u && !BOOL__G__ChartPending, "تلاش مجدد همان نمونه را یک بار ثبت و بازیابی می‌کند");
-    func__T_ChartTime(base+600u);UINT__T__ChartReadFailureCountdown=2u;
+    func__T_ChartTime(base+7200u);UINT__T__ChartReadFailureCountdown=2u;
     const std::string verifiedPrefix=func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE);
     func__Simple_ChartAddTimed(50u,24000u,25000u);
     func__T_Check(BOOL__G__ChartPending && UINT32_T__G__ChartSequence==2u && func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE)==verifiedPrefix,
@@ -89,7 +91,7 @@ static void func__T_TestChartFailureRecovery(void)
     for (size_t limit=0u;limit<12u;limit++)
     {
         func__T_ChartWrite(SIMPLE_CHART_JOURNAL_FILE,committed);func__Simple_ChartsLoad();
-        func__T_ChartTime(base+600u);SIM_SIZE_T__G__WriteLimit=limit;
+        func__T_ChartTime(base+7200u);SIM_SIZE_T__G__WriteLimit=limit;
         func__Simple_ChartAddTimed(50u,24000u,25000u);SIM_SIZE_T__G__WriteLimit=(size_t)-1;
         shortWritesOk = shortWritesOk && UINT32_T__G__ChartSequence == 2u && BOOL__G__ChartPending && func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE)==committed;
     }
@@ -98,7 +100,7 @@ static void func__T_TestChartFailureRecovery(void)
     const uint32_t seq=UINT32_T__G__ChartSequence;
     func__T_Check(func__Simple_ChartCheckpoint(), "فشرده‌سازی دوره‌ای یک فایل کامل تاییدشده می‌سازد");
     const std::string checkpoint=func__T_ChartBytes(SIMPLE_CHARTS_FILE);
-    func__T_ChartTime(base+900u);func__Simple_ChartAddTimed(50u,24000u,25000u);
+    func__T_ChartTime(base+10800u);func__Simple_ChartAddTimed(50u,24000u,25000u);
     const std::string journal=func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE);
     bool *faults[]={&SIM_BOOL__G__RefuseWrites,&BOOL__T__CredentialOpenFail,&BOOL__T__CredentialReadFail,&BOOL__T__CredentialRenameFail};
     for (bool *fault:faults)
@@ -114,7 +116,7 @@ static void func__T_TestChartFailureRecovery(void)
                   "قطع بعد از ثبت فایل کامل و قبل از پاک‌کردن دفتر، نمونه‌ها و میانگین‌ها را دوبار حساب نمی‌کند");
     File tmp=LittleFS.open(SIMPLE_CHARTS_FILE ".tmp","w");tmp.print("torn");tmp.close();func__Simple_ChartsLoad();
     func__T_Check(UINT32_T__G__ChartSequence==seq+1u, "فایل موقت نیمه در بوت نادیده گرفته می‌شود");
-    LittleFS.remove(SIMPLE_CHART_JOURNAL_FILE);func__T_ChartTime(base+1200u);func__Simple_ChartAddTimed(50u,24000u,25000u);func__Simple_ChartsLoad();
+    LittleFS.remove(SIMPLE_CHART_JOURNAL_FILE);func__T_ChartTime(base+14400u);func__Simple_ChartAddTimed(50u,24000u,25000u);func__Simple_ChartsLoad();
     func__T_Check(UINT32_T__G__ChartSequence==seq+2u && UINT16_T__G__Chart1D_Count==seq+2u,
                   "حذف تکی دفتر نمونه‌ها، ذخیره و بازیابی نمونه بعدی را خراب نمی‌کند");
     func__Simple_ChartsClear();func__Simple_ChartsLoad();
@@ -145,11 +147,11 @@ static void func__T_TestChartLongRanges(void)
     func__T_ChartFixture();
     for (uint32_t i=0u;i<500u;i++)
     {
-        func__T_ChartTime(base+i*300u);func__Simple_ChartAddTimed(50u,24000u,25000u);
+        func__T_ChartTime(base+i*300u);func__Simple_ChartAddTimed(50u,24000u+(i%2u)*500u,25000u);
     }
     func__Simple_ChartsLoad();
     func__T_Check(UINT16_T__G__Chart1D_Count==288u && UINT32_T__G__ChartSequence==500u,
-                  "نمودار یک‌روزه واقعاً ظرفیت ۲۸۸ نمونه پنج‌دقیقه‌ای دارد، نه فقط ۲۴ نقطه");
+                  "نمودار یک‌روزه واقعاً ظرفیت ۲۸۸ نمونه ناشی از تغییر ولتاژ دارد، نه فقط ۲۴ نقطه");
     const size_t snapshot=func__T_ChartBytes(SIMPLE_CHARTS_FILE).size(), journalSize=func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE).size();
     printf("CHART STORAGE: 500 samples, snapshot=%zu bytes, journal=%zu bytes, checkpoint writes=%u\n",snapshot,journalSize,UINT__T__ChartSnapshotWrites);
     func__T_Check(snapshot<=SIMPLE_CHART_FILE_MAX_BYTES && journalSize<=SIMPLE_CHART_JOURNAL_MAX_BYTES && UINT__T__ChartSnapshotWrites<20u,
@@ -172,14 +174,14 @@ static void func__T_TestChartBatteryAndBounds(void)
         clockOk=clockOk && func__Simple_NowSec()==base+wake*180u;
         func__Simple_ChartAddTimed(50u,0u,25000u);
     }
-    func__T_Check(clockOk && UINT32_T__G__ChartSequence==271u,
-                  "در ۵۴۰ بیداری باتری، نمونه ثابت فقط با گذشت زمان واقعی ثبت می‌شود: ۲۷۱ نمونه، نه ۵۴۱ نمونه");
+    func__T_Check(clockOk && UINT32_T__G__ChartSequence==28u,
+                  "در ۵۴۰ بیداری باتری، نمونه ثابت فقط با گذشت زمان واقعی ثبت می‌شود: ۲۸ نمونه ساعتی، نه ۵۴۱ نمونه");
     func__T_Check(UINT32_T__G__LastChartSaveSec==base+97200u && UINT16_T__G__Chart1D_Count<=SIMPLE_CHART_1D_SIZE,
                   "ساعت و مبنای نمونه‌گیری پس از ۲۷ ساعت باتری و بوت‌های واقعی از فایل حفظ می‌شود");
     func__T_ChartFixture();
     for(uint32_t i=0u;i<20u;i++)
     {
-        func__T_ChartTime(base+i*300u);func__Simple_ChartAddTimed(100u,UINT32_MAX,UINT32_MAX);
+        func__T_ChartTime(base+i*300u);func__Simple_ChartAddTimed(100u,UINT32_MAX,UINT32_MAX-(i%2u)*500u);
     }
     bool checkpointOk=func__Simple_ChartCheckpoint();func__Simple_ChartsLoad();
     func__T_Check(checkpointOk && UINT16_T__G__Chart1D_Count==20u && UINT32_T__G__Chart7D_Vin[0]==UINT32_MAX &&
@@ -213,7 +215,7 @@ static void func__T_TestChartBatteryAndBounds(void)
     const std::string prefix=func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE);
     const uint32_t previous=UINT32_T__G__ChartSequence;
     SIM_SIZE_T__G__FsTotalBytes=info.usedBytes+8u;
-    func__T_ChartTime(base+6300u);func__Simple_ChartAddTimed(100u,UINT32_MAX,UINT32_MAX);
+    func__T_ChartTime(base+9600u);func__Simple_ChartAddTimed(100u,UINT32_MAX,UINT32_MAX);
     func__T_Check(BOOL__G__ChartPending && UINT32_T__G__ChartSequence==previous && func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE)==prefix,
                   "کمبود فضای واقعی حافظه پیش از نوشتن شناسایی می‌شود؛ سابقه سالم و نمونه معلق باقی می‌مانند");
     SIM_SIZE_T__G__FsTotalBytes=total;func__Simple_ChartsSave();func__Simple_ChartsLoad();
@@ -229,9 +231,9 @@ static void func__T_TestChartNinetyDayBudget(void)
         func__T_ChartTime(base+i*300u);func__Simple_ChartAddTimed(50u,24000u,25000u);
     }
     func__Simple_ChartsLoad();
-    func__T_Check(UINT32_T__G__ChartSequence==25921u && UINT16_T__G__Chart1D_Count==288u &&
+    func__T_Check(UINT32_T__G__ChartSequence==2161u && UINT16_T__G__Chart1D_Count==24u &&
                   UINT16_T__G__Chart7D_Count==28u && UINT16_T__G__Chart1M_Count==30u && UINT16_T__G__Chart3M_Count==90u,
-                  "۲۵٬۹۲۱ نمونه در ۹۰ روز، هر چهار بازه را با ظرفیت درست و مستقل از حذف داده‌های روزانه نگه می‌دارد");
+                  "۲٬۱۶۱ نمونه ساعتی از ۲۵٬۹۲۱ بررسی در ۹۰ روز، هر چهار بازه را با ظرفیت درست و مستقل از حذف داده‌های روزانه نگه می‌دارد");
     size_t chartBytes=func__T_ChartBytes(SIMPLE_CHARTS_FILE).size()+func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE).size();
     const size_t oldTotal=SIM_SIZE_T__G__FsTotalBytes;SIM_SIZE_T__G__FsTotalBytes=64000u;
     const uint32_t today=func__Simple_NowSec()/86400u;
