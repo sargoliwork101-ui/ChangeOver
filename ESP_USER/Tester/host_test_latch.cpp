@@ -374,6 +374,14 @@ static std::string func__T_ReadEspUserSource(const char *char__ptr_fileName)
     return stream__source.str();
 }
 
+// Seed a pre-existing credential in the test fixture, never through production HTTP.
+static bool func__T_SeedAdminPassword(const char *password)
+{
+    func__Simple_AuthDefaults();
+    func__Simple_HashPass(password, SIMPLE_USER_T__G__Users[0].passHash);
+    return func__Simple_AuthSave();
+}
+
 static void func__T_TestResetOrderAndHandshake(void)
 {
     const std::string string__http = func__T_ReadEspUserSource("simple_http.h");
@@ -404,10 +412,10 @@ static void func__T_TestResetOrderAndHandshake(void)
         const std::size_t size_t__tail = string__panel.find("id=\"admCardMsg\"");
         func__T_Check((size_t__card != std::string::npos) && (size_t__tail > size_t__card),
                       "کارت مدیریت در انتهای صفحهٔ تنظیمات می‌نشیند");
-        static const char *char__ptr_adminOnly[] = {"'/latch/reset'", "'/setpass'", "'/clear'",
+        static const char *char__ptr_adminOnly[] = {"'/latch/reset'", "'/clear'",
                                                     "'/evt/clr'", "'/evt/snap'", "'/wifi'"};
         bool bool__onlyInside = true;
-        for (std::size_t size_t__i = 0u; size_t__i < 6u; ++size_t__i)
+        for (std::size_t size_t__i = 0u; size_t__i < 5u; ++size_t__i)
         {
             const std::size_t size_t__pos = string__panel.find(char__ptr_adminOnly[size_t__i]);
             if ((size_t__pos == std::string::npos) || (size_t__pos < size_t__card))
@@ -416,7 +424,7 @@ static void func__T_TestResetOrderAndHandshake(void)
             }
         }
         func__T_Check(bool__onlyInside,
-                      "هر شش کار تغییر (قفل، رمز، تاریخچه، لاگ، وای‌فای) فقط داخل کارت مدیریت صدا زده می‌شود");
+                      "هر پنج کار تغییر (قفل، تاریخچه، لاگ، وای‌فای) فقط داخل کارت مدیریت صدا زده می‌شود");
         /* برد برای ریست قفل عدد n می‌خواهد (۵ کامل، ۶ ماسک مرده، ۸ ضعیف)؛
            بدون آن درخواست با ۴۰۰ رد می‌شد و دکمه بی‌اثر بود. */
         func__T_Check((string__panel.find("'/latch/reset',{n:5}") != std::string::npos) &&
@@ -2108,7 +2116,6 @@ static void func__T_TestSingleSessionPolicy(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/login", HTTP_POST, func__Simple_HttpLogin);
     SIMPLE_WEB_SERVER_T__G__Server.on("/logout", HTTP_POST, func__Simple_HttpLogout);
     SIMPLE_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Simple_HttpTelemetry);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/setpass", HTTP_POST, func__Simple_HttpSetPass);
     BOOL__G__FsOk = LittleFS.begin();
     func__Simple_CryptoKeyInit();
     func__Simple_AuthDefaults();
@@ -2124,8 +2131,8 @@ static void func__T_TestSingleSessionPolicy(void)
 
     /* تغییر بدون رمز بسته است */
     SIMPLE_WEB_SERVER_T__G__Server.simCall("/setpass", HTTP_POST, "");
-    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 403,
-                  "تغییر رمز بدون ورود مدیر با ۴۰۳ رد می‌شود");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 404,
+                  "مسیر حذف‌شده تغییر رمز بدون ورود هم وجود ندارد");
 
     func__T_ClearCookie();
     SIMPLE_WEB_SERVER_T__G__Server.simCall("/login", HTTP_POST, "user=admin&pass=admin");
@@ -2138,8 +2145,8 @@ static void func__T_TestSingleSessionPolicy(void)
     func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simBody().find("\"user\":\"admin\"") != std::string::npos,
                   "تله‌متری با کوکی مدیر، نام admin را نشان می‌دهد");
     SIMPLE_WEB_SERVER_T__G__Server.simCall("/setpass", HTTP_POST, "");
-    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() != 403,
-                  "با کوکی مدیر، تغییر رمز تا اعتبارسنجی ورودی جلو می‌رود");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 404,
+                  "حتی مدیر هم مسیر تغییر رمز ندارد");
 
     /* یک نشست فعال: دستگاه دوم رد می‌شود */
     func__T_ClearCookie();
@@ -2762,7 +2769,7 @@ static void func__T_TestLoginAndFormatRecovery(void)
                   !BOOL__G__FsMountFailed && !LittleFS.exists("/format-sentinel") &&
                   LittleFS.exists(SIMPLE_USERS_FILE) && LittleFS.exists(SIMPLE_WIFI_FILE),
                   "فرمت با نشست مدیر حافظه را آماده و حساب و وای‌فای را ذخیره می‌کند");
-    (void)func__Simple_SetUserPass("admin", "custom-password");
+    (void)func__T_SeedAdminPassword("custom-password");
     func__Simple_AuthLoad();
     func__T_Check(func__Simple_VerifyUserPass("admin", "custom-password") &&
                   !func__Simple_VerifyUserPass("admin", "admin"),
@@ -3095,6 +3102,7 @@ int main(void)
     func__T_TestWifiJsonAudit();
     func__T_TestAutomaticBrowserClock();
     func__T_TestFormatClearsAllHistory();
+    func__T_TestRetainedAdminPassword();
     func__T_TestCredentialDurability();
     func__T_TestUnsignedCredentialNonce();
     func__T_TestCredentialCommitFailures();

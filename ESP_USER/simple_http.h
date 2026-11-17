@@ -169,7 +169,7 @@ static void func__Simple_HttpTelemetry(void)
             (unsigned long)uint32_t__panelTimeSec,
             BOOL__G__TimeValid ? 1u : 0u,
             BOOL__G__BoardParamSeen ? 1u : 0u,
-            BOOL__G__RecoveryHappened ? 1u : 0u,
+            0u,
             BOOL__G__HelloSeen ? 1u : 0u,
             (unsigned int)UINT8_T__G__BoardProtoVersion,
             (unsigned int)UINT8_T__G__BoardFwVersion,
@@ -538,48 +538,6 @@ static void func__Simple_HttpSetWifi(void)
     BOOL__G__WifiRebootPending = true;
     UINT32_T__G__WifiRebootMs = (uint32_t)millis();
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"reboot\":1}");
-}
-/*
- * ==================== - /setpass ====================
- */
-static void func__Simple_HttpSetPass(void)
-{
-    String string__oldPass;
-    String string__newPass;
-    String string__newPass2;
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    if (!func__Simple_GetArg("new", string__newPass))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"new\"}");
-        return;
-    }
-    (void)func__Simple_GetArg("old", string__oldPass);
-    (void)func__Simple_GetArg("new2", string__newPass2);
-    if (string__newPass.length() < SIMPLE_USER_PASS_MIN || string__newPass.length() > SIMPLE_USER_PASS_MAX)
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pass 4-32\"}");
-        return;
-    }
-    if (string__newPass2.length() > 0u && string__newPass2 != string__newPass)
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mismatch\"}");
-        return;
-    }
-    if (!func__Simple_VerifyUserPass("admin", string__oldPass.c_str()))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"old\"}");
-        return;
-    }
-    if (!func__Simple_SetUserPass("admin", string__newPass.c_str()))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"storage\"}");
-        return;
-    }
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
 static void func__Simple_HttpClearHistory(void)
 {

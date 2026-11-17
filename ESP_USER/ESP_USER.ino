@@ -39,7 +39,6 @@ void setup(void)
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
     func__Simple_CryptoKeyInit();
     func__Simple_AuthLoad();
-    func__Simple_RecoveryApply();
     func__Simple_ThemeLoad();
     func__Simple_WifiLoad();
     func__Simple_TimeLoad();
@@ -62,7 +61,6 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/time", HTTP_POST, func__Simple_HttpTimeSync);
     SIMPLE_WEB_SERVER_T__G__Server.on("/login", HTTP_POST, func__Simple_HttpLogin);
     SIMPLE_WEB_SERVER_T__G__Server.on("/logout", HTTP_POST, func__Simple_HttpLogout);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/setpass", HTTP_POST, func__Simple_HttpSetPass);
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_GET, func__Simple_HttpGetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_POST, func__Simple_HttpSetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/setwifi", HTTP_POST, func__Simple_HttpSetWifi);
@@ -145,10 +143,6 @@ void loop(void)
                 : (func__Simple_NowSec() - UINT32_T__G__BoardTimeSec);
             if (uint32_t__diff <= (BOOL__G__BrowserTimePending ? 2u : 120u)) BOOL__G__TimePushed = true;
         }
-    }
-    if (!BOOL__G__SessionHadLogin && ((uint32_t)millis() > SIMPLE_RECOVERY_ARM_MS))
-    {
-        func__Simple_RecoveryArm();
     }
     static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)

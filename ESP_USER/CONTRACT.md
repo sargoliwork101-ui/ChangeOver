@@ -27,7 +27,6 @@
     "POST /latch/reset",
     "POST /login",
     "POST /logout",
-    "POST /setpass",
     "POST /setwifi",
     "POST /time",
     "POST /wifi"
@@ -72,7 +71,6 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/time` | POST | Admin session; `ts`, optional `tz` | JSON result |
 | `/login` | POST | `user`, `pass` | JSON result with session `token`, plus HttpOnly session cookie |
 | `/logout` | POST | Session cookie or `X-Admin-Token` | JSON result; invalidates session and expires cookie |
-| `/setpass` | POST | Admin session; `old`, `new`, optional `new2` | JSON action result for admin password |
 | `/wifi` | GET / POST | GET public; POST admin session with `ssid`, `pass` | GET only escaped `ssid` and `passSet`, never password; POST action result |
 | `/setwifi` | POST | Admin session; `ssid`, `pass` | JSON action result |
 | `/clear` | POST | Admin session; optional `type`: `charge`, `charts`, `diag`, or all | JSON action result |
@@ -103,7 +101,7 @@ the default admin account on the next reboot. This requires explicit UI confirma
 The application's storage is flat (root files); directories and traversal paths
 are not accepted. Listing never returns file contents or Wi-Fi passwords.
 
-Credential updates (`/setpass`, `/wifi`, `/setwifi`) stage encrypted data in
+Wi-Fi updates (`/wifi`, `/setwifi`) and retained account saves stage encrypted data in
 `/users.json.tmp` or `/wifi.json.tmp`, verify the closed file by reading it, then
 replace the committed file with LittleFS rename. A failed update keeps previous
 RAM credentials and the committed file, responds with `ok:0, e:"storage"` (500;
@@ -192,3 +190,18 @@ unpowered intervals cannot be measured. Clearing charts/format resets rings,
 active buckets, journal cursors and pending samples. Ordinary accepted samples
 append rather than rewrite all history; temporary space for the snapshot is
 required during compaction. Log retention and STM32 firmware are unchanged.
+
+## Retained administrator credential
+
+The existing valid encrypted administrator credential is loaded unchanged.
+No password setter or `/setpass` route is compiled; direct requests return 404,
+including authenticated requests. The settings page has no password-edit form;
+the hidden login and its current-password input remain. Login, logout, lockout,
+single-session ownership, idle renewal and Wi-Fi password editing are unchanged.
+There is no delayed no-login recovery, recovery-marker write or boot-time reset.
+A legacy `/boot_no_login.json` is inert and never consulted for authentication.
+The telemetry `recovery` key remains a constant zero for response compatibility.
+Format persists the current account and keeps the current session. Empty-storage
+initial credentials and existing missing/corrupt-user-file fallback behavior are
+unchanged; explicit deletion of the account file is still an admin-only operation.
+There is no panel password reset/change workflow in this version.

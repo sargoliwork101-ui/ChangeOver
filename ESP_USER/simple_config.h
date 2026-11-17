@@ -111,7 +111,6 @@
 #define SIMPLE_USERS_MAX                1u
 #define SIMPLE_USER_NAME_MAX            24u
 #define SIMPLE_USER_PASS_MAX            32u
-#define SIMPLE_USER_PASS_MIN            4u
 #define SIMPLE_LOGIN_FAIL_LIMIT         5u
 #define SIMPLE_LOGIN_BLOCK_MS           30000u
 #define SIMPLE_LOGIN_BLOCK_MAX_MS       300000u
@@ -181,9 +180,6 @@
 #define SIMPLE_CRYPTO_TAG_LEN           16u
 #define SIMPLE_CRYPTO_KEY_LEN           32u
 #define SIMPLE_CRYPTO_SALT              "ChangeOver_FS_2026_v1"
-#define SIMPLE_RECOVERY_FILE            "/boot_no_login.json"
-#define SIMPLE_RECOVERY_ARM_MS          10000u
-#define SIMPLE_RECOVERY_RETRY_MS        5000u
 typedef enum
 {
     SIMPLE_RX_WAIT_SOF0 = 0,

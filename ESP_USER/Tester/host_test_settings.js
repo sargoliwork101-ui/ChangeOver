@@ -23,7 +23,7 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve
  check([...d.querySelectorAll('#adminCard input')].every(e=>d.querySelector('label[for="'+e.id+'"]')),'admin fields keep permanent accessible labels');
  check([...d.querySelectorAll('#adminCard button')].every(e=>e.querySelector('svg')&&e.getAttribute('aria-label')&&e.title),'compact admin actions keep icons, names and guidance');
  w.admTokenSet('a'.repeat(64));w.admUnlock('admin');
- const secrets=['admPass','admOld','admNew','admNew2','admWpass'];
+ const secrets=['admPass','admWpass'];
  secrets.forEach(id=>d.getElementById(id).value='do-not-retain');w.admLock();
  check(secrets.every(id=>!d.getElementById(id).value),'locking removes all password values, not just the visible session');
  d.getElementById('admPass').value='cancelled-password';w.admClose();
@@ -69,8 +69,6 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve
  d.getElementById('admSsid').value='retained-network';d.getElementById('admWpass').value='retained-password';
  await w.uiAction(d.getElementById('admWifiBtn'),()=>w.admWifi(),true);
  check(d.getElementById('admWpass').value==='retained-password'&&d.getElementById('toastMsg').textContent.includes('تنظیمات قبلی حفظ شد')&&!d.getElementById('toastMsg').textContent.includes('retained-password'),'failed Wi-Fi storage gives clear feedback without discarding input or exposing password');
- d.getElementById('admOld').value='old-password';d.getElementById('admNew').value='new-password';d.getElementById('admNew2').value='new-password';
- await w.uiAction(d.getElementById('admPassBtn'),()=>w.admPass(),true);
- check(d.getElementById('admNew').value==='new-password'&&!d.getElementById('admPassBtn').disabled&&!d.getElementById('adminCard').hidden&&d.getElementById('admCardMsg').textContent.includes('ذخیره در حافظه انجام نشد'),'failed password storage remains retryable and never claims success or ends the session');
+ check(!d.querySelector('#admOld,#admNew,#admNew2,#admPassBtn')&&typeof w.admPass!=='function','password editing fields and handler are absent; login and Wi-Fi remain');
  console.log(`${checks} SETTINGS CHECKS; ${failures} FAILURES`);
 })().catch(e=>{failures++;console.error(e);}).finally(()=>{dom.window.close();if(failures)process.exitCode=1;});

@@ -627,11 +627,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 <div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg>ارتباط زنده</h3><div lang="en" dir="ltr" style="text-align:left;font-size:11px;line-height:1.9;overflow-wrap:anywhere"><div id="linkState">Link: --</div><div id="seqInfo">Frames: -- | Last update: -- ms ago</div></div></div>
 </div></details>
 <section class="cd" id="adminCard" hidden><div class="admin-head"><h2><svg class="glyph" aria-hidden="true"><use href="#i-lock"/></svg> مدیریت</h2><span id="admWho"></span><button class="btn action" type="button" title="خروج" aria-label="خروج"  onclick="uiAction(this,()=>admLogout(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-logout"/></svg><span>خروج</span></button></div><details class="setting-panel admin-section" open><summary><svg class="glyph" aria-hidden="true"><use href="#i-key"/></svg><span>امنیت و شبکه</span></summary>
-<div class="setting-body"><h3 class="ti">رمز مدیر</h3>
-<div class="settings-form"><label class="field" for="admOld"><span>رمز فعلی</span><input id="admOld" type="password" autocomplete="current-password" placeholder="رمز فعلی"></label>
-<label class="field" for="admNew"><span>رمز تازه</span><input id="admNew" type="password" autocomplete="new-password" placeholder="رمز تازه"></label>
-<label class="field" for="admNew2"><span>تکرار رمز</span><input id="admNew2" type="password" autocomplete="new-password" placeholder="تکرار رمز"></label>
-<div class="form-actions"><button class="btn action" type="button" title="تغییر رمز مدیر" aria-label="تغییر رمز مدیر" id="admPassBtn" onclick="uiAction(this,()=>admPass(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-key"/></svg><span>تغییر</span></button></div></div><h3 class="ti" style="margin-top:16px">وای‌فای</h3>
+<div class="setting-body"><h3 class="ti">وای‌فای</h3>
 <div class="settings-form"><label class="field" for="admSsid"><span>نام شبکه</span><input id="admSsid" placeholder="نام شبکه"></label>
 <label class="field" for="admWpass"><span>رمز شبکه</span><input id="admWpass" type="password" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر"></label>
 <div class="form-actions"><button class="btn action" type="button" title="ذخیره تنظیمات وای‌فای" aria-label="ذخیره تنظیمات وای‌فای" id="admWifiBtn" onclick="uiAction(this,()=>admWifi(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-save"/></svg><span>ذخیره</span></button></div></div></div></details>
@@ -1973,7 +1969,7 @@ function admUnlock(who){
 }
 function admLock(){
  evtFsId++;
- ['admPass','admOld','admNew','admNew2','admWpass'].forEach(id=>{document.getElementById(id).value='';});
+ ['admPass','admWpass'].forEach(id=>{document.getElementById(id).value='';});
  admReady=false;admTokenSet('');document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=true);
  const fs=document.getElementById('evtFs');if(fs){fs.innerHTML='';fs.style.display='none';}
  let c=document.getElementById('adminCard'); if(c) c.hidden=true;
@@ -2060,15 +2056,6 @@ function admWifi(){
   if(pass) pass.value='';
   if(j.reboot) admSay('admCardMsg','ذخیره شد؛ برد ریاستارت می‌شود و چند ثانیه بعد برمی‌گردد', true);
   loadWifi();
- });
-}
-function admPass(){
- let o=document.getElementById('admOld'), n1=document.getElementById('admNew'), n2=document.getElementById('admNew2');
- let v0=o?o.value:'', v1=n1?n1.value:'', v2=n2?n2.value:'';
- if(v1.length<4){ admSay('admCardMsg','رمز تازه باید ۴ کاراکتر یا بیشتر باشد', false); return; }
- if(v1!==v2){ admSay('admCardMsg','رمز تازه و تکرارش یکی نیست', false); return; }
- return admPost('/setpass',{old:v0, new:v1, new2:v2}, 'رمز مدیر عوض شد').then(function(j){
-  if(j){ [o,n1,n2].forEach(function(el){ if(el) el.value=''; }); }
  });
 }
 function admConfirm(path,obj,msg,question){

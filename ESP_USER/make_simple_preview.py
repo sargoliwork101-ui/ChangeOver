@@ -269,7 +269,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
-               token: '', deletedFiles: [], historyClearedAt: 0, userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
+               token: '', deletedFiles: [], historyClearedAt: 0, userPass: 'admin',   /* Fixed fixture credential, not writable through HTTP. */
                users: [{ name: 'admin', role: 1 }] };
   var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
   var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
@@ -657,22 +657,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       return jsonResponse('{"ok":0,"e":"wrong"}', 401);
     }
     if (path === 'logout') { mock.user = ''; mock.role = 0; mock.token = ''; return jsonResponse('{"ok":1}'); }
-    if (path === 'setpass') {
-      var change = bodyJson(options);
-      var target = (change.user || 'admin').trim();
-      if (!mock.user) { return jsonResponse('{"ok":0,"e":"login"}', 403); }
-      if (!target || !change.new) { return jsonResponse('{"ok":0,"e":"user/new"}', 400); }
-      if ((change.new || '').length < 4) { return jsonResponse('{"ok":0,"e":"pass 4-32"}', 400); }
-      if (change.new2 && change.new2 !== change.new) { return jsonResponse('{"ok":0,"e":"mismatch"}', 400); }
-      if (mock.role !== 1 && target !== mock.user) { return jsonResponse('{"ok":0,"e":"self"}', 403); }
-      var wantOld = (mock.userPass && target === mock.user) ? mock.userPass
-                                                           : ((target === 'admin') ? 'admin' : 'viewer');
-      if (target === mock.user && (change.old || '') !== wantOld) {
-        return jsonResponse('{\"ok\":0,\"e\":\"old\"}', 400);
-      }
-      if (target === mock.user) { mock.userPass = change.new; }   /* در حالت آفلاین هم رمز عوض می‌شود */
-      return jsonResponse('{"ok":1}');
-    }
+    if (path === 'setpass') { return jsonResponse('{"ok":0,"e":"unknown"}', 404); }
     if (path === 'users') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       if (method === 'POST') {

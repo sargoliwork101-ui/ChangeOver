@@ -44,7 +44,7 @@ CHROMIUM_PATH=/path/to/chromium node ESP_USER/Tester/host_test_settings_browser.
 را داخل Git نگذارید.
 
 تست `host_test_login_format.js` کلیک واقعی روی پیش‌نمایش تولیدشده را می‌سنجد:
-ورود با رمز اولیه، تغییر رمز، ورود مجدد، فرمت با تأیید، انصراف، خطای فرمت و پایان نشست.
+ورود با رمز اولیه، رد مسیر تغییر رمز، ورود مجدد، فرمت با تأیید، انصراف، خطای فرمت و پایان نشست.
 تست میزبان C++ هم ورود در حافظهٔ بازنشده، منع فرمت بدون مدیر، شکست واقعی فرمت و
 حفظ رمز سفارشی پس از فرمت را بررسی می‌کند.
 
@@ -100,7 +100,7 @@ HTML در نام، خطای شبکه و پاسخ دیررس پس از خروج �
 پاک‌کردن دیاگ برد با همان فرمان موجود ارسال می‌شود و پاسخ کهنه تا تأیید خالی‌شدن پذیرفته نمی‌شود.
 شکست خود فرمت داده را نگه می‌دارد؛ شکست mount پس از فرمت، رم کهنه را نگه نمی‌دارد.
 
-تست `host_test_credentials.h` از runner اصلی C++ اجرا می‌شود: حفظ رمز و شبکه در
+تست `host_test_credentials.h` از runner اصلی C++ اجرا می‌شود: حفظ حساب موجود و شبکه در
 نوشتن ناقص، بازنشدن فایل، شکست خواندن مجدد یا rename، بوت با فایل موقت نیمه، نبود
 ریستارت/موفقیت جعلی، ماندگاری پس از ذخیرهٔ موفق، رمزنگاری فایل و محرمانگی لاگ شبیه‌ساز.
 استاب `String::toInt` سقف علامت‌دار ۳۲ بیتی ESP را مدل می‌کند تا تفاوت `long` در PC
@@ -137,3 +137,15 @@ trace of 2,161 hourly samples from 25,921 observations on a 64,000-byte budget
 alongside 90 normal log days and 8,000 bytes of other files. The test File shim adds
 a binary short-write limit; it is not firmware. The DOM chart tests remain in the
 same runner. All timing/power-cut tests are accelerated host models, not hardware.
+
+## Read-only administrator password
+
+The credential fixture seeds a previously provisioned encrypted password without
+using a firmware password setter. Regressions cover 540 credential reloads with a
+legacy recovery marker, byte-for-byte unchanged account files, custom-password
+login, 404 for guest/admin password-edit requests, unchanged active sessions and
+custom-password retention through full format. Source checks cover the actual
+sketch startup/loop as well as removal of the production setter/recovery code.
+Direct account-save fault tests remain; only tests of the removed editing feature
+were replaced. DOM tests assert editing controls/handlers are absent while the
+login, Wi-Fi controls, password clearing, reset actions and format still work.

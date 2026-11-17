@@ -388,10 +388,10 @@ def findings_data():
     return [
         {
             "id": 1, "sev": "critical", "proof": "measured",
-            "title": "یک بار خاموش/روشن بدون ورود = پاک شدن کاربران و برگشت admin/admin",
-            "summary": "اگر پنل ۱۰ ثانیه بدون ورود روشن بماند، یک «پرچم بازیابی» روی حافظه می‌نویسد؛ در روشن‌شدن بعدی، اگر پرچم باشد، همهٔ کاربران حذف و فقط admin/admin ساخته می‌شود. هیچ تأیید فیزیکی یا رمزی لازم نیست.",
-            "example": "با هارنس خود پروژه (همان کد C پنل، ASan/UBSan): رمز admin را به MyStrongPass1 تغییر دادم → پرچم بازیابی ساخته شد → یک «بوت» بعدی شبیه‌سازی کردم → admin/admin معتبر شد، رمز قوی باطل شد، پرچم «بازیابی انجام شد» بالا رفت.",
-            "fix": "بازگردانی خودکار رمز حذف شود؛ فقط با تأیید فیزیکی (دکمهٔ داخل دستگاه یا کد یک‌بارمصرف) و با ثبت رویداد در تاریخچه.",
+            "title": "بازیابی خودکار رمز حذف شد؛ رمز موجود در بیداری باتری حفظ می‌شود",
+            "summary": "مسیر ساخت و اعمال پرچم بازیابی حذف شده است؛ پرچم قدیمی رمز را تغییر نمی‌دهد. فرم و مسیر تغییر رمز نیز حذف شده‌اند.",
+            "example": "آزمون رمز سفارشی ذخیره‌شده: ۵۴۰ بار بارگذاری همراه با پرچم قدیمی، بدون تغییر فایل حساب یا پذیرش رمز پیش‌فرض.",
+            "fix": "انجام شد؛ ورود و خروج و نشست مدیر باقی‌اند. رفتار خرابی یا حذف صریح فایل حساب موضوع جداست.",
         },
         {
             "id": 2, "sev": "critical", "proof": "measured",
@@ -760,19 +760,6 @@ class Handler(BaseHTTPRequestHandler):
                 BOARD.session = None
             self.extra_headers.append((
                 "Set-Cookie", "%s=; Path=/; HttpOnly; Max-Age=0" % SESSION_COOKIE))
-            return self.send(json_bytes({"ok": 1}))
-        if path == "/setpass" and method == "POST":
-            if not self.session_ok():
-                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
-            target = next((u for u in BOARD.users if u["name"] == "admin"), None)
-            if target is None:
-                return self.send(json_bytes({"ok": 0, "e": "user"}, 400))
-            new_pass = args.get("new", "")
-            if len(new_pass) < 4 or len(new_pass) > 32:
-                return self.send(json_bytes({"ok": 0, "e": "pass 4-32"}, 400))
-            if args.get("old", "") != target["pass"]:
-                return self.send(json_bytes({"ok": 0, "e": "old"}, 400))
-            target["pass"] = new_pass
             return self.send(json_bytes({"ok": 1}))
         if path == "/wifi" and method == "GET":
             # the saved password never leaves the board
