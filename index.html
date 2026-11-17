@@ -538,7 +538,7 @@
   <header class="glass-card">
     <div class="header-content">
       <h1>⚡ سیستم تحلیل جامع مداری، فیزیکی و حرارتی فلای‌بک (Flyback Engineering Engine)</h1>
-      <p>چیدمان استاندارد مهندسی: کارت‌های پارامترها و نتایج در سمت راست و اسیلوسکوپ در سمت چپ</p>
+      <p>محاسبات کامل تفکیک‌شده حرارتی ماسفت، مقاومت و دیود TVS کلمپ با اسیلوسکوپ داینامیک</p>
     </div>
     <div class="header-actions">
       <button class="btn-download" onclick="downloadCurrentHtml()">
@@ -658,19 +658,19 @@
         </div>
       </div>
 
-      <!-- Card 2: Snubber & Clamp -->
+      <!-- Card 2: Snubber, Clamp & TVS -->
       <div class="category-box snubber-box glass-card">
         <div class="box-top-line"></div>
         
         <div class="cat-header">
           <div class="cat-title" style="color:var(--gold);">
-            <span>🔧 ۲. اسنابر، کلمپ و مقاومت (Snubber & Clamp)</span>
+            <span>🔧 ۲. اسنابر، کلمپ، مقاومت و دیود TVS</span>
           </div>
           <span class="cat-badge pill" id="pill_snubber_top">وضعیت: نرمال</span>
         </div>
 
         <!-- Controls -->
-        <div class="sub-heading">مشخصات مداری و قطعات اسنابر</div>
+        <div class="sub-heading">مشخصات مداری، مقاومت و دیود TVS</div>
         <div class="form-grid">
           <div class="form-item">
             <div class="form-label-row"><span>نوع توپولوژی مدار اسنابر</span></div>
@@ -718,22 +718,35 @@
             </select>
           </div>
 
+          <!-- TVS Controls (Visible in RCDZ) -->
           <div class="form-item" id="group_tvs" style="display:none;">
-            <div class="form-label-row"><span>ولتاژ شکست نامی TVS (Vz)</span></div>
-            <select id="vz" oninput="runSimulation()" onchange="runSimulation()">
-              <option value="33">33 ولت (P6KE33A / 1.5KE33A)</option>
-              <option value="36">36 ولت (P6KE36A / 1.5KE36A)</option>
-              <option value="43">43 ولت (P6KE43A / 1.5KE43A)</option>
-              <option value="51" selected>51 ولت (P6KE51A / 1.5KE51A)</option>
-              <option value="56">56 ولت (P6KE56A / 1.5KE56A)</option>
-              <option value="68">68 ولت (P6KE68A / 1.5KE68A)</option>
-              <option value="75">75 ولت (P6KE75A / 1.5KE75A)</option>
-            </select>
+            <div class="form-label-row">
+              <span>ولتاژ شکست نامی TVS (Vz)</span>
+              <span class="val-badge" id="lbl_vz" style="color:var(--amber);">51 V</span>
+            </div>
+            <div class="input-control" style="margin-bottom:6px;">
+              <select id="vz" oninput="runSimulation()" onchange="runSimulation()" style="flex:1;">
+                <option value="33">33 ولت (P6KE33A / 1.5KE33A)</option>
+                <option value="36">36 ولت (P6KE36A / 1.5KE36A)</option>
+                <option value="43">43 ولت (P6KE43A / 1.5KE43A)</option>
+                <option value="51" selected>51 ولت (P6KE51A / 1.5KE51A)</option>
+                <option value="56">56 ولت (P6KE56A / 1.5KE56A)</option>
+                <option value="68">68 ولت (P6KE68A / 1.5KE68A)</option>
+                <option value="75">75 ولت (P6KE75A / 1.5KE75A)</option>
+                <option value="82">82 ولت (P6KE82A / 1.5KE82A)</option>
+                <option value="100">100 ولت (P6KE100A / 1.5KE100A)</option>
+              </select>
+              <select id="tvs_package" oninput="runSimulation()" onchange="runSimulation()" style="flex:1;">
+                <option value="P6KE" selected>پکیج P6KE (توان دائم 5W / Rth=75°C/W)</option>
+                <option value="1.5KE">پکیج 1.5KE (توان دائم 6.5W / Rth=50°C/W)</option>
+                <option value="SMBJ">پکیج SMD مدل SMBJ (توان دائم 5W / Rth=90°C/W)</option>
+              </select>
+            </div>
           </div>
         </div>
 
         <!-- Outputs -->
-        <div class="sub-heading" style="margin-top:4px;">نتایج اختصاصی اسنابر و مقاومت</div>
+        <div class="sub-heading" style="margin-top:4px;">نتایج اختصاصی اسنابر، مقاومت و TVS</div>
         <div class="output-grid">
           <div class="metric-card">
             <div class="metric-card-top">
@@ -743,7 +756,7 @@
             <div class="metric-val">
               <span id="res_pr">3.69</span><span class="metric-unit">W</span>
             </div>
-            <div class="metric-sub">درصد از توان نامی: <b id="res_pr_pct">184%</b></div>
+            <div class="metric-sub">درصد توان نامی: <b id="res_pr_pct">184%</b></div>
           </div>
 
           <div class="metric-card">
@@ -755,6 +768,29 @@
               <span id="res_temp">145</span><span class="metric-unit">°C</span>
             </div>
             <div class="metric-sub">توان سلف نشتی: <b id="res_pleak_sub">2.33 W</b></div>
+          </div>
+
+          <!-- TVS Output Cards -->
+          <div class="metric-card" id="card_tvs_power" style="display:none;">
+            <div class="metric-card-top">
+              <span>توان اتلافی TVS (PTVS)</span>
+              <span class="pill safe" id="pill_ptvs">خنک</span>
+            </div>
+            <div class="metric-val">
+              <span id="res_ptvs">0.00</span><span class="metric-unit">W</span>
+            </div>
+            <div class="metric-sub">سهم کلمپ TVS: <b id="res_ptvs_pct">0%</b></div>
+          </div>
+
+          <div class="metric-card" id="card_tvs_temp" style="display:none;">
+            <div class="metric-card-top">
+              <span>دمای پیوند TVS (Tj_TVS)</span>
+              <span class="pill safe" id="pill_ttvs">خنک</span>
+            </div>
+            <div class="metric-val">
+              <span id="res_ttvs">25</span><span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-sub">ولتاژ کلمپ Vz: <b id="res_vz_sub">51 V</b></div>
           </div>
 
           <div class="metric-card">
@@ -1147,6 +1183,7 @@ function setPreset(p) {
     document.getElementById('prated').value = "2.0";
     syncVal('csn', 2.2);
     document.getElementById('vz').value = "51";
+    document.getElementById('tvs_package').value = "P6KE";
     document.getElementById('mosfet_model').value = 'IRFB4227';
     syncVal('vdss', 200);
     syncVal('rdson', 0.021);
@@ -1181,6 +1218,7 @@ function runSimulation() {
   const Prated = parseFloat(document.getElementById('prated').value) || 2.0;
   const Csn = (parseFloat(document.getElementById('csn').value) || 470) * 1e-9;
   const Vz = parseFloat(document.getElementById('vz') ? document.getElementById('vz').value : 51) || 51;
+  const tvsPkg = document.getElementById('tvs_package') ? document.getElementById('tvs_package').value : 'P6KE';
   const n = parseFloat(document.getElementById('turns_ratio').value) || 1.5;
   const mosfetModel = document.getElementById('mosfet_model').value;
   const heatsinkType = document.getElementById('heatsink_type').value;
@@ -1196,6 +1234,12 @@ function runSimulation() {
   if (heatsinkType === 'medium') Rth_heatsink = 6.5;
   else if (heatsinkType === 'free') Rth_heatsink = 62.0;
 
+  // TVS parameters
+  let Rth_tvs = 75.0;
+  let Ptvs_max = 5.0;
+  if (tvsPkg === '1.5KE') { Rth_tvs = 50.0; Ptvs_max = 6.5; }
+  else if (tvsPkg === 'SMBJ') { Rth_tvs = 90.0; Ptvs_max = 5.0; }
+
   // Sync labels
   document.getElementById('lbl_vdss').innerText = Vdss.toFixed(0) + ' V';
   document.getElementById('lbl_rdson').innerText = Rds.toFixed(3) + ' Ω';
@@ -1210,10 +1254,13 @@ function runSimulation() {
   document.getElementById('lbl_csn').innerText = (Csn*1e9).toFixed(1) + ' nF';
   document.getElementById('lbl_turns').innerText = n === 1.5 ? '15:10 (n=1.5)' : (n === 1.2 ? '12:10 (n=1.2)' : '20:10 (n=2.0)');
 
-  if (type === 'RCDZ') {
-    document.getElementById('group_tvs').style.display = 'block';
-  } else {
-    document.getElementById('group_tvs').style.display = 'none';
+  const isTVS = (type === 'RCDZ');
+  document.getElementById('group_tvs').style.display = isTVS ? 'block' : 'none';
+  document.getElementById('card_tvs_power').style.display = isTVS ? 'flex' : 'none';
+  document.getElementById('card_tvs_temp').style.display = isTVS ? 'flex' : 'none';
+  if (isTVS) {
+    document.getElementById('lbl_vz').innerText = Vz + ' V (' + tvsPkg + ')';
+    document.getElementById('res_vz_sub').innerText = Vz + ' V';
   }
 
   const Ts = 1 / fsw;
@@ -1246,7 +1293,10 @@ function runSimulation() {
   let DeltaV = 0;
   let Vdrain_pk = 0;
   let PR = 0;
+  let PTVS = 0;
+  let Ptotal = 0;
   let TR = 25;
+  let TTVS = 25;
 
   const tau_ratio = (Rsn * Csn) / Ts;
 
@@ -1270,23 +1320,30 @@ function runSimulation() {
     }
 
     PR = (Vsn_avg * Vsn_avg) / Rsn;
+    Ptotal = PR;
     const Rth = Prated <= 1.0 ? 80 : (Prated <= 2.0 ? 55 : (Prated <= 3.0 ? 45 : (Prated <= 5.0 ? 35 : 22)));
     TR = 25 + PR * Rth;
   } else if (type === 'RCDZ') {
     Vsn_avg = Vz;
-    const Ptotal = Pleak * (Vz / (Vz - Vor));
+    Ptotal = Pleak * (Vz / (Math.max(2, Vz - Vor)));
     DeltaV = Math.min(8, Vz / (Rsn * Csn * fsw));
     Vdrain_pk = Vin + Vz;
-    const Vcap = Math.min(Vz * 0.85, Math.sqrt(Ptotal * Rsn));
+    
+    // Power shared between resistor & TVS
+    const Vcap = Math.min(Vz * 0.90, Math.sqrt(Ptotal * Rsn));
     PR = (Vcap * Vcap) / Rsn;
+    PTVS = Math.max(0, Ptotal - PR);
+    
     const Rth = Prated <= 2.0 ? 55 : (Prated <= 3.0 ? 45 : 35);
     TR = 25 + PR * Rth;
+    TTVS = 25 + PTVS * Rth_tvs;
   } else if (type === 'RC') {
     const Vring = Math.sqrt((Llk * Ipk * Ipk) / Csn);
     Vsn_avg = Vor + Vring;
     DeltaV = Vring;
     Vdrain_pk = Vin + Vsn_avg;
     PR = Csn * (Vdrain_pk * Vdrain_pk) * fsw + Pleak;
+    Ptotal = PR;
     const Rth = Prated <= 2.0 ? 55 : (Prated <= 3.0 ? 45 : 35);
     TR = 25 + PR * Rth;
   }
@@ -1329,7 +1386,7 @@ function runSimulation() {
   pillVm.className = marginPct >= 35 ? 'pill safe' : (marginPct >= 15 ? 'pill warn' : 'pill danger');
   pillVm.innerText = marginPct >= 35 ? 'امن' : (marginPct >= 15 ? 'حاشیه کم' : 'خطر شکست!');
 
-  // Update DOM: Group 2 Snubber
+  // Update DOM: Group 2 Snubber & TVS
   document.getElementById('res_pr').innerText = PR.toFixed(2);
   const prPct = (PR / Prated * 100);
   document.getElementById('res_pr_pct').innerText = prPct.toFixed(0) + '%';
@@ -1352,6 +1409,26 @@ function runSimulation() {
     pillSnubTop.className = 'cat-badge pill danger'; pillSnubTop.innerText = 'خطر داغی مقاومت!';
   }
 
+  // TVS Outputs
+  if (isTVS) {
+    document.getElementById('res_ptvs').innerText = PTVS.toFixed(2);
+    const tvsSharePct = Ptotal > 0 ? (PTVS / Ptotal * 100) : 0;
+    document.getElementById('res_ptvs_pct').innerText = tvsSharePct.toFixed(0) + '%';
+    const pillPtvs = document.getElementById('pill_ptvs');
+    pillPtvs.className = PTVS <= 2.0 ? 'pill safe' : (PTVS <= 4.0 ? 'pill warn' : 'pill danger');
+    pillPtvs.innerText = PTVS <= 2.0 ? 'خنک' : (PTVS <= 4.0 ? 'متوسط' : 'توان بالا');
+
+    document.getElementById('res_ttvs').innerText = Math.min(200, TTVS).toFixed(0);
+    const pillTtvs = document.getElementById('pill_ttvs');
+    if (TTVS < 65) {
+      pillTtvs.className = 'pill safe'; pillTtvs.innerText = 'خنک';
+    } else if (TTVS < 105) {
+      pillTtvs.className = 'pill warn'; pillTtvs.innerText = 'گرم استاندارد';
+    } else {
+      pillTtvs.className = 'pill danger'; pillTtvs.innerText = 'داغ (>105°C)!';
+    }
+  }
+
   document.getElementById('res_ripple').innerText = DeltaV.toFixed(1);
   document.getElementById('res_tau').innerText = tau_ratio.toFixed(1) + ' × Ts';
   const pillRip = document.getElementById('pill_ripple');
@@ -1372,11 +1449,16 @@ function runSimulation() {
   document.getElementById('res_treset').innerText = (Treset_time * 1e6).toFixed(2) + ' µs';
 
   // Math proof
+  let tvsMath = '';
+  if (isTVS) {
+    tvsMath = `<br>• تحلیل دیود TVS کلمپ (${tvsPkg} با <b>Vz = ${Vz}V</b>): توان کل نشتی = <b>${Ptotal.toFixed(2)}W</b> ➔ سهم مقاومت: <b>PR = ${PR.toFixed(2)}W</b> | سهم دیود TVS: <b>PTVS = <span class="val">${PTVS.toFixed(2)} W</span></b> (دمای پیوند TVS: <b><span class="${TTVS > 100 ? 'bad' : 'res'}">${TTVS.toFixed(0)} °C</span></b>)`;
+  }
+
   document.getElementById('math_output').innerHTML = `
     1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(1)} × (${Vout.toFixed(1)} + 0.5) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
     2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی (Pleak ∝ D²): <b>Pleak = <span class="val">${Pleak.toFixed(2)} W</span></b><br>
     3. تلفات ماسفت قدرت (${mosfetModel} با <b>Vdss = ${Vdss}V</b>): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند <b><span class="${Tj_mos > 90 ? 'bad' : 'res'}">${Tj_mos.toFixed(0)} °C</span></b>)<br>
-    4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه تا مرز شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)
+    4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه تا مرز شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)${tvsMath}
   `;
 
   // Store data for scope re-rendering
