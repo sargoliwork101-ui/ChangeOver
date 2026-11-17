@@ -551,25 +551,24 @@ static void func__Simple_HttpClearHistory(void)
     {
         string__type = "all";
     }
-    if (string__type == "charge")
+    bool bool__ok = false;
+    if (string__type == "charge") bool__ok = func__Simple_ChargeHistoryClear();
+    else if (string__type == "charts") bool__ok = func__Simple_ChartsClear();
+    else if (string__type == "diag") bool__ok = func__Simple_DiagClear();
+    else if (string__type == "all")
     {
-        func__Simple_ChargeHistoryClear();
-    }
-    else if (string__type == "charts")
-    {
-        func__Simple_ChartsClear();
-    }
-    else if (string__type == "diag")
-    {
-        func__Simple_DiagClear();
+        bool bool__charge = func__Simple_ChargeHistoryClear();
+        bool bool__charts = func__Simple_ChartsClear();
+        bool bool__diag = func__Simple_DiagClear();
+        bool__ok = bool__charge && bool__charts && bool__diag;
     }
     else
     {
-        func__Simple_ChargeHistoryClear();
-        func__Simple_ChartsClear();
-        func__Simple_DiagClear();
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"type\"}");
+        return;
     }
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+    SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 500, "application/json",
+        bool__ok ? "{\"ok\":1}" : "{\"ok\":0,\"e\":\"storage\"}");
 }
 /**
 * @return JSON ok → e=1 → e=2
@@ -750,10 +749,10 @@ static void func__Simple_HttpEventFormat(void)
         return;
     }
     func__SimpleLog_ResetStateAfterFormat();
-    /* Clear RAM before remount too: the files are already gone after format. */
-    func__Simple_ChargeHistoryClear();
-    func__Simple_ChartsClear();
-    func__Simple_DiagClear();
+    /* Clear RAM after successful format even when remount subsequently fails. */
+    (void)func__Simple_ChargeHistoryClear(false);
+    (void)func__Simple_ChartsClear(false);
+    (void)func__Simple_DiagClear(false);
 #if defined(ESP8266)
     (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();
@@ -1011,10 +1010,16 @@ static void func__Simple_HttpEventClear(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
+    if (!BOOL__G__FsOk)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0,\"e\":\"storage\"}");
+        return;
+    }
     uint8_t__removed = func__SimpleLog_Clear();
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json",
-                                        String("{\"ok\":1,\"removed\":") +
-                                        String((unsigned int)uint8_t__removed) + "}");
+    bool bool__ok = func__SimpleLog_ScanDays(true) == 0u && !LittleFS.exists(SIMPLE_TIME_GAP_FILE);
+    SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 500, "application/json",
+        String(bool__ok ? "{\"ok\":1,\"removed\":" : "{\"ok\":0,\"e\":\"storage\",\"removed\":") +
+        String((unsigned int)uint8_t__removed) + "}");
 }
 static void func__Simple_HttpEventSnap(void)
 {

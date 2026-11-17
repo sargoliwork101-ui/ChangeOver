@@ -128,9 +128,9 @@
 #define SIMPLE_TIME_WARN_RETRY_MS       5000u
 #define SIMPLE_TIME_GAP_FILE            "/clock_gap.json"
 #define SIMPLE_LOG_MAX_DAYS             90u
-/* [EN] Three months kept.  A realistic day is ~14 rows = ~285 B with the
- * compact codec, so 90 days stay near 26 kB - far inside the 120 kB budget. */
+/* Retention is bounded by age, payload quotas and actual flash allocation. */
 #define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
+#define SIMPLE_LOG_DAY_MAX_BYTES        4096u
 #define SIMPLE_LOG_TAIL_LINES           30u
 #define SIMPLE_LOG_DAY_AUTO             0xFFFFFFFFu
 #define SIMPLE_LOG_DAY_ZERO             0xFFFFFFFEu
@@ -150,13 +150,18 @@
 #define SIMPLE_HTTP_ROOT_MAX_MS         15000u
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
 #define SIMPLE_DIAG_FILE                "/diag.json"
-#define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u
-/* [EN] The log may never eat the whole flash: the settings, the charts, the
- * diagnostics and the charge history live there too.  On a 64 kB file system
- * this leaves 44 kB for the history, i.e. three months of normal days. */
-#define SIMPLE_LOG_RESERVE_BYTES          20000u
+/* Payload ceilings share one 64 KiB physical envelope, including metadata. */
+#define SIMPLE_STORAGE_TOTAL_BYTES       65536u
+#define SIMPLE_LOG_TOTAL_BUDGET_BYTES     28672u
+#define SIMPLE_STORAGE_CHART_BYTES       10240u
+#define SIMPLE_STORAGE_HISTORY_BYTES     6144u
+#define SIMPLE_STORAGE_SETTINGS_BYTES    4096u
+#define SIMPLE_LOG_RESERVE_BYTES         16384u
 #define SIMPLE_LOG_RECLAIM_MAX_PER_CALL   4u
-#define SIMPLE_LOG_MIN_BUDGET_BYTES       16000u
+#define SIMPLE_LOG_MIN_BUDGET_BYTES       0u
+static_assert(SIMPLE_LOG_TOTAL_BUDGET_BYTES + SIMPLE_STORAGE_CHART_BYTES +
+    SIMPLE_STORAGE_HISTORY_BYTES + SIMPLE_STORAGE_SETTINGS_BYTES +
+    SIMPLE_LOG_RESERVE_BYTES == SIMPLE_STORAGE_TOTAL_BYTES, "Storage allocation must total 64 KiB");
 #define SIMPLE_LOG_MIN_INTERVAL_MS      2000u
 /*
  * [EN] A queued mains cut/return is written after this short coalescing

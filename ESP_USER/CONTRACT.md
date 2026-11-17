@@ -238,3 +238,38 @@ Format persists the current account and keeps the current session. Empty-storage
 initial credentials and existing missing/corrupt-user-file fallback behavior are
 unchanged; explicit deletion of the account file is still an admin-only operation.
 There is no panel password reset/change workflow in this version.
+
+## Shared 64 KiB storage policy (supersedes earlier retention budgets)
+The physical envelope is min(reported partition capacity, 65536 bytes), not a
+new flash partition or a RAM allocation. Committed payload ceilings are 28672
+log bytes, 10240 chart bytes, 6144 charge/diagnostic bytes and 4096 settings bytes;
+16384 bytes are budgeted for filesystem overhead and temporary/COW writes.
+These ceilings are not guaranteed reservations: actual LittleFS allocation wins
+and may reclaim logs before their payload ceiling is reached. Space admission
+checks allocated bytes, rounded staging space and a spare erase block before
+all snapshot writers and chart appends. Only oldest log days are auto-deleted;
+credentials, Wi-Fi, clock and other settings are never reclaim candidates.
+A writer protects its destination day, but a sole previous day can be reclaimed
+before creating a new day. Reclaim is bounded to four days per call; a failed
+reclaim/write returns failure and keeps dirty/pending state for retry.
+Daily log files are bounded at 4096 bytes. Before overflow, an atomic verified
+rewrite keeps the newest half of the day's rows, restarting a full codec chain.
+Verification compares every decoded field against the original suffix before
+rename. Old committed data survive short writes, readback or rename failures.
+This is retention deletion, not a promise that every old event remains.
+Parameters, charge and diagnostic snapshots now use the same staged byte-verified
+rename path as clock and credentials. Dirty flags clear only on success.
+History clear returns success only after an empty snapshot is committed; chart
+clear advances a checkpoint past the old journal so a failed journal deletion
+cannot resurrect data. New samples resume from a new chain after reboot.
+Clear-all is per-class, not a cross-file atomic transaction; partial success
+returns an error and may be retried. Unknown selectors return 400. Log clear
+rescans remaining files and reports failed deletion rather than unconditional ok.
+Successful physical format still clears RAM even if the following remount fails.
+The 3600-second OR 500-mV chart trigger, capacities, verified clock recovery,
+40-second warning, authentication policy and STM32 protocol are unchanged.
+Normal 90-day virtual-NOR tests exercise allocation, eviction and continued new
+writes; they do not imply 90 retained days. Fixed per-day files remain separate.
+Read-only/corrupt storage or unreclaimable non-log occupancy can still prevent
+progress; failure is visible and committed snapshots are not destroyed.
+See STORAGE_64K.md for the measured workloads and test commands.

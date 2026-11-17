@@ -213,29 +213,7 @@ static bool func__Simple_ChartCheckpoint(void)
     uint16_t uint16_t__crc = SimpleLogCodec::crc(UINT8_T__G__ChartFileBuf, size_t__at);
     UINT8_T__G__ChartFileBuf[size_t__at++] = (uint8_t)uint16_t__crc;
     UINT8_T__G__ChartFileBuf[size_t__at++] = (uint8_t)(uint16_t__crc >> 8);
-    (void)LittleFS.remove(SIMPLE_CHARTS_FILE ".tmp");
-    if (func__SimpleLog_FreeBytes() < (size_t__at + 128u)) return false;
-    File file__out = LittleFS.open(SIMPLE_CHARTS_FILE ".tmp", "w");
-    if (!file__out) return false;
-    bool bool__ok = file__out.write(UINT8_T__G__ChartFileBuf, size_t__at) == size_t__at;
-    file__out.close();
-    if (bool__ok)
-    {
-        File file__check = LittleFS.open(SIMPLE_CHARTS_FILE ".tmp", "r");
-        bool__ok = file__check && (file__check.size() == size_t__at);
-        for (size_t size_t__i = 0u; bool__ok && (size_t__i < size_t__at); size_t__i++)
-        {
-            if ((size_t__i % 64u) == 0u) yield();
-            bool__ok = file__check.read() == UINT8_T__G__ChartFileBuf[size_t__i];
-        }
-        file__check.close();
-    }
-    if (bool__ok) bool__ok = LittleFS.rename(SIMPLE_CHARTS_FILE ".tmp", SIMPLE_CHARTS_FILE);
-    if (!bool__ok)
-    {
-        (void)LittleFS.remove(SIMPLE_CHARTS_FILE ".tmp");
-        return false;
-    }
+    if (!func__Simple_StorageCommit(SIMPLE_CHARTS_FILE, UINT8_T__G__ChartFileBuf, size_t__at)) return false;
     UINT32_T__G__ChartSnapshotSequence = UINT32_T__G__ChartSequence;
     /* A crash here leaves old journal records; sequence numbers prevent duplicate replay. */
     if (LittleFS.exists(SIMPLE_CHART_JOURNAL_FILE) && !LittleFS.remove(SIMPLE_CHART_JOURNAL_FILE)) return false;
@@ -276,6 +254,9 @@ static bool func__Simple_ChartDecode(const uint8_t *uint8_t__ptr_frame, size_t s
 static bool func__Simple_ChartAppend(void)
 {
     if (!BOOL__G__FsOk || (UINT32_T__G__ChartSequence == UINT32_MAX)) return false;
+    /* A clear checkpoint can be newer than the surviving journal's final sequence. */
+    if (BOOL__G__ChartCodecValid && UINT32_T__G__ChartCodecPrev[0] < UINT32_T__G__ChartSnapshotSequence)
+        if (!func__Simple_ChartCheckpoint()) return false;
     bool bool__missingJournal = !LittleFS.exists(SIMPLE_CHART_JOURNAL_FILE);
     bool bool__missingSnapshot = UINT32_T__G__ChartSnapshotSequence && !LittleFS.exists(SIMPLE_CHARTS_FILE);
     bool bool__shortJournal = false;
@@ -310,7 +291,8 @@ static bool func__Simple_ChartAppend(void)
     uint16_t uint16_t__crc = SimpleLogCodec::crc(uint8_t__frame+2u, size_t__length-2u);
     uint8_t__frame[size_t__length++] = (uint8_t)uint16_t__crc;
     uint8_t__frame[size_t__length++] = (uint8_t)(uint16_t__crc>>8);
-    if (func__SimpleLog_FreeBytes() < (size_t__length + 128u)) return false;
+    if (!func__Simple_StorageQuota(SIMPLE_CHART_JOURNAL_FILE, UINT32_T__G__ChartJournalBytes + size_t__length) ||
+        !func__Simple_StorageRoom(size_t__length, UINT32_T__G__LogDayCode)) return false;
     File file__out = LittleFS.open(SIMPLE_CHART_JOURNAL_FILE, "a");
     if (!file__out) return false;
     bool bool__ok = (file__out.size() == UINT32_T__G__ChartJournalBytes) || file__out.truncate(UINT32_T__G__ChartJournalBytes);

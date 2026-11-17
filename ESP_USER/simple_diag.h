@@ -47,25 +47,19 @@ static uint8_t func__Simple_JsonReadNumbers(const String &string__content,
 static void func__Simple_ParamsSave(void)
 {
     uint8_t uint8_t__i;
-    if (!BOOL__G__FsOk)
-    {
-        BOOL__G__BoardParamsDirty = false;
-        return;
-    }
-    File file__f = LittleFS.open(SIMPLE_PARAMS_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"pv\":[");
+    if (!BOOL__G__FsOk) return;
+    String string__data;
+    if (!func__Simple_StorageTextAppend(string__data, String("{\"pv\":["))) return;
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_PARAM_UI_COUNT; uint8_t__i++)
     {
         uint8_t uint8_t__id = UINT8_T__G__ParamUiIds[uint8_t__i];
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print(uint8_t__id);
-        file__f.print(",");
-        file__f.print(func__Simple_BoardParam(uint8_t__id));
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(uint8_t__id))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(func__Simple_BoardParam(uint8_t__id)))) return;
     }
-    file__f.print("]}");
-    file__f.close();
-    BOOL__G__BoardParamsDirty = false;
+    if (!func__Simple_StorageTextAppend(string__data, String("]}"))) return;
+    if (func__Simple_StorageWrite(SIMPLE_PARAMS_FILE, string__data)) BOOL__G__BoardParamsDirty = false;
 }
 static void func__Simple_ParamsLoad(void)
 {
@@ -341,30 +335,28 @@ static void func__Simple_SendGetParams(void)
 static void func__Simple_ChargeHistorySave(void)
 {
     if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_CHARGE_HISTORY_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"count\":");
-    file__f.print(UINT8_T__G__ChargeHistoryCount);
-    file__f.print(",\"prevCh1\":");
-    file__f.print(UINT32_T__G__PrevChargeCountCh1);
-    file__f.print(",\"prevCh2\":");
-    file__f.print(UINT32_T__G__PrevChargeCountCh2);
-    file__f.print(",\"hist\":[");
+    String string__data;
+    if (!func__Simple_StorageTextAppend(string__data, String("{\"count\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT8_T__G__ChargeHistoryCount))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"prevCh1\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT32_T__G__PrevChargeCountCh1))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"prevCh2\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT32_T__G__PrevChargeCountCh2))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"hist\":["))) return;
     uint8_t uint8_t__i;
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__ChargeHistoryCount; uint8_t__i++)
     {
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print("{\"ts\":");
-        file__f.print(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].timestamp);
-        file__f.print(",\"ch\":");
-        file__f.print(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].channel);
-        file__f.print(",\"dur\":");
-        file__f.print(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].durationSec);
-        file__f.print("}");
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("{\"ts\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].timestamp))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"ch\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].channel))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"dur\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].durationSec))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("}"))) return;
     }
-    file__f.print("]}");
-    file__f.close();
-    BOOL__G__ChargeHistDirty = false;
+    if (!func__Simple_StorageTextAppend(string__data, String("]}"))) return;
+    if (func__Simple_StorageWrite(SIMPLE_CHARGE_HISTORY_FILE, string__data)) BOOL__G__ChargeHistDirty = false;
 }
 static void func__Simple_ChargeHistoryLoad(void)
 {
@@ -443,50 +435,48 @@ static void func__Simple_ChargeHistoryLoad(void)
 static void func__Simple_DiagSave(void)
 {
     if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_DIAG_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"ec\":");
-    file__f.print(UINT8_T__G__DiagErrorCount);
-    file__f.print(",\"pc\":");
-    file__f.print(UINT8_T__G__PowerEventCount);
-    file__f.print(",\"err\":[");
+    String string__data;
+    if (!func__Simple_StorageTextAppend(string__data, String("{\"ec\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT8_T__G__DiagErrorCount))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"pc\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT8_T__G__PowerEventCount))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"err\":["))) return;
     uint8_t uint8_t__i;
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__DiagErrorCount; uint8_t__i++)
     {
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print("{\"ts\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].timestamp);
-        file__f.print(",\"fm\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].faultMask);
-        file__f.print(",\"vin\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vIn);
-        file__f.print(",\"vp\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vPack);
-        file__f.print(",\"vl\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vLow);
-        file__f.print(",\"vh\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vHigh);
-        file__f.print(",\"s1\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state1);
-        file__f.print(",\"s2\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state2);
-        file__f.print("}");
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("{\"ts\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].timestamp))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"fm\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].faultMask))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vin\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vIn))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vp\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vPack))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vl\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vLow))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vh\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vHigh))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"s1\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state1))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"s2\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state2))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("}"))) return;
     }
-    file__f.print("],\"pwr\":[");
+    if (!func__Simple_StorageTextAppend(string__data, String("],\"pwr\":["))) return;
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__PowerEventCount; uint8_t__i++)
     {
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print("{\"off\":");
-        file__f.print(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].offTime);
-        file__f.print(",\"on\":");
-        file__f.print(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].onTime);
-        file__f.print(",\"dur\":");
-        file__f.print(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].durationSec);
-        file__f.print("}");
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("{\"off\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].offTime))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"on\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].onTime))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"dur\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].durationSec))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("}"))) return;
     }
-    file__f.print("]}");
-    file__f.close();
-    BOOL__G__DiagDirty = false;
+    if (!func__Simple_StorageTextAppend(string__data, String("]}"))) return;
+    if (func__Simple_StorageWrite(SIMPLE_DIAG_FILE, string__data)) BOOL__G__DiagDirty = false;
 }
 static void func__Simple_DiagLoad(void)
 {
@@ -613,25 +603,39 @@ static void func__Simple_DiagLoad(void)
         }
     }
 }
-static void func__Simple_ChargeHistoryClear(void)
+static bool func__Simple_ChargeHistoryClear(bool bool__persist = true)
 {
+    String string__empty;
+    if (!func__Simple_StorageTextAppend(string__empty, String("{\"count\":0,\"prevCh1\":")) ||
+        !func__Simple_StorageTextAppend(string__empty, String(UINT32_T__G__ChargeCountCh1)) ||
+        !func__Simple_StorageTextAppend(string__empty, String(",\"prevCh2\":")) ||
+        !func__Simple_StorageTextAppend(string__empty, String(UINT32_T__G__ChargeCountCh2)) ||
+        !func__Simple_StorageTextAppend(string__empty, String(",\"hist\":[]}"))) return false;
+    if (bool__persist && !func__Simple_StorageWrite(SIMPLE_CHARGE_HISTORY_FILE, string__empty)) return false;
     UINT8_T__G__ChargeHistoryCount = 0u;
     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
     UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
     BOOL__G__ChargeCountBaselineReady = BOOL__G__DiagValid;
     BOOL__G__ChargeHistDirty = false;
-    if (BOOL__G__FsOk)
-    {
-        LittleFS.remove(SIMPLE_CHARGE_HISTORY_FILE);
-    }
-    if (BOOL__G__ChargeCountBaselineReady)
-    {
-        func__Simple_ChargeHistorySave();
-    }
+    return true;
 }
-static void func__Simple_ChartsClear(void)
+static bool func__Simple_ChartsClear(bool bool__persist = true)
 {
-    func__Simple_ChartStoreReset(true);
+    /* Empty snapshot supersedes even a complete unacknowledged journal tail. */
+    uint32_t uint32_t__sequence = UINT32_T__G__ChartSequence;
+    if (bool__persist && uint32_t__sequence == UINT32_MAX) return false;
+    uint32_t__sequence = bool__persist ? uint32_t__sequence + 1u : 0u;
+    uint8_t uint8_t__empty[SIMPLE_CHART_FILE_HEADER + 19u + 2u] = {};
+    (void)memcpy(uint8_t__empty, "CHTD\2\4\0\0", 8u);
+    for (uint8_t uint8_t__i = 0u; uint8_t__i < 4u; uint8_t__i++)
+        uint8_t__empty[8u + uint8_t__i] = (uint8_t)(uint32_t__sequence >> (8u * uint8_t__i));
+    uint16_t uint16_t__crc = SimpleLogCodec::crc(uint8_t__empty, sizeof(uint8_t__empty) - 2u);
+    uint8_t__empty[sizeof(uint8_t__empty) - 2u] = (uint8_t)uint16_t__crc;
+    uint8_t__empty[sizeof(uint8_t__empty) - 1u] = (uint8_t)(uint16_t__crc >> 8);
+    if (bool__persist && !func__Simple_StorageCommit(SIMPLE_CHARTS_FILE, uint8_t__empty, sizeof(uint8_t__empty))) return false;
+    func__Simple_ChartStoreReset(false);
+    UINT32_T__G__ChartSequence = uint32_t__sequence;
+    UINT32_T__G__ChartSnapshotSequence = uint32_t__sequence;
     UINT8_T__G__ChartCount = 0u;
     UINT8_T__G__ChartIndex = 0u;
     UINT16_T__G__Chart1D_Count = 0u; UINT16_T__G__Chart1D_Index = 0u;
@@ -641,13 +645,12 @@ static void func__Simple_ChartsClear(void)
     UINT32_T__G__Last1D_Ms = 0u; UINT32_T__G__Last7D_Ms = 0u; UINT32_T__G__Last1M_Ms = 0u; UINT32_T__G__Last3M_Ms = 0u;
     UINT32_T__G__LastChartSaveSec = 0u;
     BOOL__G__ChartsDirty = false;
-    if (BOOL__G__FsOk)
-    {
-        LittleFS.remove(SIMPLE_CHARTS_FILE);
-    }
+    if (bool__persist) (void)LittleFS.remove(SIMPLE_CHART_JOURNAL_FILE);
+    return true;
 }
-static void func__Simple_DiagClear(void)
+static bool func__Simple_DiagClear(bool bool__persist = true)
 {
+    if (bool__persist && !func__Simple_StorageWrite(SIMPLE_DIAG_FILE, String("{\"ec\":0,\"pc\":0,\"err\":[],\"pwr\":[]}"))) return false;
     UINT8_T__G__DiagErrorCount = 0u;
     UINT8_T__G__PowerEventCount = 0u;
     UINT32_T__G__LastLocalFaultMask = UINT32_T__G__TlmField[19];
@@ -655,9 +658,6 @@ static void func__Simple_DiagClear(void)
     BOOL__G__LocalPowerOffActive = false;
     BOOL__G__DiagClearPending = true;
     BOOL__G__DiagDirty = false;
-    if (BOOL__G__FsOk)
-    {
-        LittleFS.remove(SIMPLE_DIAG_FILE);
-    }
     func__Simple_SendDiagReq();
+    return true;
 }

@@ -2263,8 +2263,12 @@ static void func__T_TestLogMidnightRollover(void)
 
     /* ۱) روز قبل پر، باتری، وای‌فای خاموش: خودِ چرخش روز باید فایل تازه را بسازد. */
     func__T_RolloverSetup(true);
-    func__T_Check(UINT16_T__G__LogRowsToday == SIMPLE_LOG_MAX_ROWS_PER_DAY && BOOL__G__LogDayFull,
-                  "روز قبل واقعاً به سقف ۴۰۰ ردیف رسیده است");
+    const uint16_t keptRows = func__SimpleLog_CountRows(char__oldPath);
+    func__T_Check(keptRows > 0u && keptRows < SIMPLE_LOG_MAX_ROWS_PER_DAY &&
+                  func__Simple_StorageFileBytes(char__oldPath) <= SIMPLE_LOG_DAY_MAX_BYTES,
+                  "روز پرترافیک با حذف قدیمی‌ترین ردیف‌ها داخل یک بلوک می‌ماند");
+    /* Also exercise a legacy full-day latch at rollover. */
+    UINT16_T__G__LogRowsToday = SIMPLE_LOG_MAX_ROWS_PER_DAY; BOOL__G__LogDayFull = true;
     func__Simple_TimeSet(uint32_t__newEpoch, false);
     UINT32_T__G__LogLastBeatSec = func__Simple_NowSec(); /* quiet rollover, not a due heartbeat */
     func__SimpleLog_Tick();
@@ -2273,8 +2277,8 @@ static void func__T_TestLogMidnightRollover(void)
     func__T_Check(UINT32_T__G__LogDayCode == func__SimpleLog_TodayCode() &&
                   UINT16_T__G__LogRowsToday == 0u && !BOOL__G__LogDayFull,
                   "سقف و شمارندهٔ روز قبل به روز تازه منتقل نمی‌شود");
-    func__T_Check(func__SimpleLog_CountRows(char__oldPath) == SIMPLE_LOG_MAX_ROWS_PER_DAY,
-                  "فایل روز قبل دست‌نخورده و همان ۴۰۰ ردیف می‌ماند");
+    func__T_Check(func__SimpleLog_CountRows(char__oldPath) == keptRows,
+                  "چرخش روز، ردیف‌های باقی‌ماندهٔ روز قبل را دست‌نخورده نگه می‌دارد");
 
     /* ۲) همان حالت، با ضربان رسیده: اولین ردیف روز تازه باید بنشیند. */
     func__T_RolloverSetup(true);
@@ -2447,8 +2451,8 @@ static void func__T_TestChartStorage(void)
                   "اولین ذخیره، فایل باینری نمودار را می‌سازد");
     SIM_SIZE_T__G__FsTotalBytes = 64000u;
     func__T_Check(func__SimpleLog_BudgetBytes() ==
-                  ((size_t)64000u - (size_t)SIMPLE_LOG_RESERVE_BYTES),
-                  "روی فلش ۶۴ کیلوبایتی بودجهٔ تاریخچه ۴۴ کیلوبایت می‌شود");
+                  (size_t)SIMPLE_LOG_TOTAL_BUDGET_BYTES,
+                  "سقف حجم گزارش‌ها روی فلش ۶۴ کیلوبایتی ۲۸ کیبی‌بایت است");
     {
         char char__ptr_day[SIMPLE_LOG_PATH_MAX];
         std::string string__day(284u, 'z');
@@ -2465,7 +2469,7 @@ static void func__T_TestChartStorage(void)
         }
         func__SimpleLog_TrimDays();
         func__T_Check(UINT8_T__G__LogIndexCount == 90u,
-                      "سه ماه تاریخچهٔ عادی روی همان فلش ۶۴ کیلوبایتی جا می‌شود");
+                      "حجم محتوای ۹۰ فایل آزمایشی داخل سقف است؛ این تست تخصیص واقعی فلش را مدل نمی‌کند");
         for (uint16_t uint16_t__k = 0u; uint16_t__k < 90u; uint16_t__k++)
         {
             func__SimpleLog_PathOf(char__ptr_day, 20260801u + uint16_t__k);
@@ -2474,7 +2478,7 @@ static void func__T_TestChartStorage(void)
     }
     SIM_SIZE_T__G__FsTotalBytes = size_t__realTotal;
     func__T_Check(func__SimpleLog_BudgetBytes() == (size_t)SIMPLE_LOG_TOTAL_BUDGET_BYTES,
-                  "روی فلش بزرگ همان سقف ۱۲۰ کیلوبایتی می‌ماند");
+                  "روی فلش بزرگ نیز سقف گزارش‌های این برنامه افزایش نمی‌یابد");
     func__Simple_ChartsClear();
 }
 
@@ -2598,15 +2602,15 @@ static void func__T_TestSpaceReclaim(void)
     func__T_Check((bool__ok == false) && (UINT8_T__G__LogIndexCount == 1u) &&
                   LittleFS.exists("/evt-20261003.csv"),
                   "وقتی فقط روز جاری می‌ماند، دیگر چیزی پاک نمی‌شود");
-    /* نوشتن ردیف روی فلش پر: جای روز پاک‌شده گرفته می‌شود و نوشتن ادامه پیدا می‌کند */
-    (void)func__SimpleLog_PrepareDayFile(20261001u);
+    /* Reclaim cannot claim a successful write if physical admission still fails. */
+    { File old = LittleFS.open("/evt-20261001.csv", "w"); old.print("old"); old.close(); }
     BOOL__G__LogScanValid = false;
     uint16_t__before = UINT16_T__G__LogReclaimed;
     func__Simple_TimeSet(1762000000u, false);
     func__SimpleLog_BuildRow(char__row, sizeof(char__row), 0x0001u, 0u);
     bool__ok = func__SimpleLog_AppendRow(20261003u, char__row);
-    func__T_Check((bool__ok != false) && !LittleFS.exists("/evt-20261001.csv"),
-                  "روی فلش پر، ردیف تازه نوشته می‌شود و جای آن با پاک‌شدن روز قدیمی باز می‌شود");
+    func__T_Check(!bool__ok && !LittleFS.exists("/evt-20261001.csv"),
+                  "اگر پس از حذف قدیمی‌ها هنوز جا نیست، نوشتن موفق گزارش نمی‌شود");
     func__T_Check((uint16_t)(UINT16_T__G__LogReclaimed - uint16_t__before) == 1u,
                   "پاک‌سازی خودکار هنگام نوشتن هم شمرده می‌شود");
     (void)LittleFS.remove("/evt-20261001.csv");
@@ -3074,8 +3078,10 @@ static void func__T_TestFormatClearsAllHistory(void)
 #include "host_test_clock_gap.h"
 #include "host_test_chart_journal.h"
 
+#include "host_test_storage64.h"
 int main(void)
 {
+    LittleFS.format();
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
 
     func__T_TestResetOrderAndHandshake();
@@ -3117,6 +3123,7 @@ int main(void)
     func__T_TestChartLongRanges();
     func__T_TestChartBatteryAndBounds();
     func__T_TestChartNinetyDayBudget();
+    func__T_TestStorage64();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

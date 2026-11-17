@@ -418,22 +418,7 @@ static bool func__Simple_AuthHasOldHash(const String &string__content)
  */
 static bool func__Simple_CredentialWrite(const char *char__ptr_path, const String &string__data)
 {
-    if (!BOOL__G__FsOk || string__data.length() == 0u) return false;
-    String string__temp = String(char__ptr_path) + ".tmp";
-    File file__out = LittleFS.open(string__temp.c_str(), "w");
-    if (!file__out) return false;
-    bool bool__ok = (file__out.print(string__data) == string__data.length());
-    file__out.close();
-    if (bool__ok)
-    {
-        File file__check = LittleFS.open(string__temp.c_str(), "r");
-        bool__ok = file__check && (file__check.readString() == string__data);
-        file__check.close();
-    }
-    /* Never unlink the committed file: LittleFS rename replaces it atomically. */
-    if (bool__ok) bool__ok = LittleFS.rename(string__temp.c_str(), char__ptr_path);
-    if (!bool__ok) (void)LittleFS.remove(string__temp.c_str());
-    return bool__ok;
+    return func__Simple_StorageWrite(char__ptr_path, string__data);
 }
 static bool func__Simple_AuthSave(void)
 {

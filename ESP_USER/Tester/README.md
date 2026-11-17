@@ -171,3 +171,22 @@ TIME_SYNC even with stored diagnostics and live telemetry, no dated samples,
 a durable warning, and recovery via a later CRC-framed UART response without any
 browser clock request. Both C++ executables run under ASan/UBSan in the existing
 runner. Time is accelerated; these are not hardware elapsed-time measurements.
+
+## Shared 64 KiB storage regressions
+`host_test_storage64.h` runs with the existing ASan/UBSan host suite: snapshot
+failures, unchanged dirty flags, payload ceilings, durable clear/replay, current-day
+compaction and honest deletion failures. Previous byte-count-only assertions are
+not physical flash-fit proofs.
+`host_test_storage_littlefs.cpp` runs production storage code on real LittleFS
+with 16 erase blocks of 4096 bytes, 64-byte read/program/cache, block_cycles=16.
+The in-memory NOR enforces erase-before-program; GNU stdio wrappers adapt the
+existing File shim without copying production storage code. No network is used
+by the runner. Supply upstream LittleFS sources at ESP8266's pinned commit:
+`6a53d76e90af33f0656333c1db09bd337fa75d23`.
+Run `LITTLEFS_SOURCE=/path/to/littlefs bash ESP_USER/Tester/run_storage_littlefs.sh`.
+Three independent 90-day workloads run at one-minute observation intervals:
+steady mains, one daily 2-hour outage, two daily 2-hour outages. Each includes
+clock writes, hourly/voltage chart persistence, snapshots, final replay/clear and
+1000 within-day burst rows. Assertions require zero ENOSPC writes, no pending
+chart/dirty history, no RAM log loss, bounded day files and unchanged account
+bytes. This is software validation, not physical power-cut or endurance testing.

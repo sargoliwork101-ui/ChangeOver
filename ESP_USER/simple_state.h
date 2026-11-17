@@ -317,6 +317,12 @@ static bool func__Simple_TimeAdoptFromBoard(uint32_t uint32_t__epochSec)
     func__Simple_TimeSet(uint32_t__epochSec, false);
     return true;
 }
+/* ==================== Shared storage admission ==================== */
+/** @brief Stage bounded bytes and verify before atomic rename; text uses Print fault checks. */
+static bool func__Simple_StorageCommit(const char *char__ptr_path, const uint8_t *uint8_t__ptr_data,
+    size_t size_t__length, bool bool__text = false);
+/** @brief Persist one complete JSON snapshot; false leaves the committed file unchanged. */
+static bool func__Simple_StorageWrite(const char *char__ptr_path, const String &string__data);
 /* ==================== Atomic clock replacement ==================== */
 /** @brief Verify a staged clock file before replacing the committed file. @return Success. */
 static bool func__Simple_TimeStore(void)
@@ -333,22 +339,7 @@ static bool func__Simple_TimeStore(void)
         (unsigned long)UINT32_T__G__TimeFwVersion, (unsigned long)UINT32_T__G__LogLastBeatSec,
         BOOL__G__TimePairResetKnown ? 1u : 0u, (unsigned long)UINT32_T__G__TimePairResetCount);
     if ((int__length <= 0) || ((size_t)int__length >= sizeof(char__line))) return false;
-    File file__out = LittleFS.open(SIMPLE_TIME_FILE ".tmp", "w");
-    if (!file__out) return false;
-    bool bool__ok = (file__out.print(char__line) == (size_t)int__length);
-    file__out.close();
-    if (bool__ok)
-    {
-        File file__check = LittleFS.open(SIMPLE_TIME_FILE ".tmp", "r");
-        bool__ok = file__check && (file__check.readString() == String(char__line));
-        file__check.close();
-    }
-    if (bool__ok) bool__ok = LittleFS.rename(SIMPLE_TIME_FILE ".tmp", SIMPLE_TIME_FILE);
-    if (!bool__ok)
-    {
-        (void)LittleFS.remove(SIMPLE_TIME_FILE ".tmp");
-        return false;
-    }
+    if (!func__Simple_StorageWrite(SIMPLE_TIME_FILE, String(char__line))) return false;
     UINT32_T__G__LastSavedTimeSec = uint32_t__nowSec;
     INT32_T__G__LastSavedTzSec = INT32_T__G__LogTzSec;
     BOOL__G__TimePairSaveWanted = false;

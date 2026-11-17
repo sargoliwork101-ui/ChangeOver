@@ -16,7 +16,7 @@ static void func__T_ChartTime(uint32_t sec)
 }
 static void func__T_ChartFixture(void)
 {
-    BOOL__G__FsOk = true;LittleFS.format();func__Simple_ChartsClear();
+    BOOL__G__FsOk = true;LittleFS.format();func__Simple_ChartsClear(false);
     BOOL__G__TimePairValid = false;BOOL__G__TimeBoardLive = false;
     func__T_ChartTime(1793836800u);
     UINT__T__ChartSnapshotWrites = 0u;
@@ -246,6 +246,6 @@ static void func__T_TestChartNinetyDayBudget(void)
     func__SimpleLog_ScanDays(true);func__SimpleLog_TrimDays();FSInfo info;LittleFS.info(info);
     printf("CHART 90 DAYS: chart files=%zu bytes; combined with 90 log days and 8000 other bytes=%zu / %zu\n",chartBytes,info.usedBytes,info.totalBytes);
     func__T_Check(chartBytes<6000u && info.usedBytes<64000u && UINT8_T__G__LogIndexCount==90u,
-                  "نمودار و ۹۰ روز لاگ عادی و هشت کیلوبایت فایل دیگر، هم‌زمان در فلش ۶۴ کیلوبایتی جا می‌شوند");
-    SIM_SIZE_T__G__FsTotalBytes=oldTotal;LittleFS.format();func__Simple_ChartsClear();
+                  "سقف محتوای فایل‌ها جدا از تخصیص واقعی فلش است؛ تست LittleFS آن تخصیص را می‌سنجد");
+    SIM_SIZE_T__G__FsTotalBytes=oldTotal;LittleFS.format();func__Simple_ChartsClear(false);
 }
