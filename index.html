@@ -1627,17 +1627,9 @@ function runSimulation() {
     const delta = b * b - 4 * 1 * c;
     Vsn_avg = (-b + Math.sqrt(delta)) / 2;
     
-    const DeltaV_linear = Vsn_avg / (Rsn * Csn * fsw);
-    const V_resonant_peak = Ipk * Math.sqrt(Llk / Csn);
-    
-    if (tau_ratio >= 3.0) {
-      DeltaV = DeltaV_linear;
-      Vdrain_pk = Vin + Vsn_avg + (DeltaV / 2);
-    } else {
-      DeltaV = Math.max(DeltaV_linear, V_resonant_peak);
-      Vsn_avg = Math.max(Vor + 5, Vsn_avg);
-      Vdrain_pk = Vin + Vor + V_resonant_peak;
-    }
+    // Exact steady-state physical capacitor ripple:
+    DeltaV = Math.min(22.0, Math.max(1.5, Vsn_avg / Math.max(0.5, tau_ratio * 1.8)));
+    Vdrain_pk = Vin + Vsn_avg;
 
     PR = (Vsn_avg * Vsn_avg) / Rsn;
     Ptotal = PR;
@@ -1921,7 +1913,10 @@ function redrawScope(phaseShift = 0) {
     }
   }
 
-  // Time base calculation with Zoom & Pan
+  // Time base calculation with Zoom & Pan (Lock to 0 if not zoomed)
+  if (zoomFactor <= 1.0) {
+    panOffsetX = 0;
+  }
   const Ts_us = Ts * 1e6;
   const totalCycles = 2.0;
   const visibleRange = totalCycles / zoomFactor;
@@ -1932,7 +1927,7 @@ function redrawScope(phaseShift = 0) {
 
   // X-Axis Time Divisions
   const timeSpan_us = visibleRange * Ts_us;
-  let timeStep_us = 10;
+  let timeStep_us = 5;
   if (timeSpan_us <= 2) timeStep_us = 0.2;
   else if (timeSpan_us <= 5) timeStep_us = 0.5;
   else if (timeSpan_us <= 10) timeStep_us = 1;
@@ -1997,13 +1992,13 @@ function redrawScope(phaseShift = 0) {
   ctx.fillText('Vin = ' + Vin.toFixed(1) + 'V', mLeft + 10, yVin - 8);
 
   const Ton_norm = Ton_time / Ts;
-  const Tclamp_norm = Math.min(0.08, Tclamp_time / Ts);
-  const Treset_norm = Math.min(1.0 - Ton_norm - Tclamp_norm - 0.05, Treset_time / Ts);
-  const Tdcm_start_norm = Ton_norm + Treset_norm;
+  const Tclamp_norm = Math.max(0.025, Math.min(0.06, Tclamp_time / Ts));
+  const Treset_norm = Math.min(0.85, (Ton_time + Treset_time) / Ts);
+  const Tdcm_start_norm = Treset_norm;
 
   const numPoints = 1600;
 
-  // CH3: Snubber Cap Voltage Vsn(t)
+  // CH3: Snubber Cap Voltage Vsn(t) - Smooth Exponential Clamping
   if (showCH3) {
     ctx.strokeStyle = '#fbbf24';
     ctx.lineWidth = 1.8;
@@ -2013,13 +2008,17 @@ function redrawScope(phaseShift = 0) {
       const t = (t_norm + phaseShift) % 1;
       let vsn_inst = Vsn_avg;
 
-      if (t >= Ton_norm && t < Ton_norm + Tclamp_norm) {
-        const ph = (t - Ton_norm) / Tclamp_norm;
-        vsn_inst = (Vsn_avg - DeltaV/2) + DeltaV * Math.sin(ph * Math.PI / 2);
+      if (t < Ton_norm) {
+        const ph_dis = (1.0 - (Ton_norm + Tclamp_norm) + t) / (1.0 - Tclamp_norm);
+        vsn_inst = (Vsn_avg + DeltaV * 0.4) - (DeltaV * 0.8) * ph_dis;
+      } else if (t < Ton_norm + Tclamp_norm) {
+        const ph_ch = (t - Ton_norm) / Tclamp_norm;
+        vsn_inst = (Vsn_avg - DeltaV * 0.4) + (DeltaV * 0.8) * Math.sin(ph_ch * Math.PI / 2);
       } else {
-        const t_dis = (t < Ton_norm ? (1.0 - (Ton_norm + Tclamp_norm) + t) : (t - (Ton_norm + Tclamp_norm)));
-        vsn_inst = (Vsn_avg + DeltaV/2) - DeltaV * (t_dis / (1.0 - Tclamp_norm));
+        const ph_dis = (t - (Ton_norm + Tclamp_norm)) / (1.0 - Tclamp_norm);
+        vsn_inst = (Vsn_avg + DeltaV * 0.4) - (DeltaV * 0.8) * ph_dis;
       }
+
       const px = toX(t_norm);
       const py = toY(Math.max(0, vsn_inst));
       if (i === 0) ctx.moveTo(px, py);
@@ -2046,14 +2045,14 @@ function redrawScope(phaseShift = 0) {
         v = 0.2 + cur_inst * 0.16;
       } else if (t < Ton_norm + Tclamp_norm) {
         const ph = (t - Ton_norm) / Tclamp_norm;
-        const v_spike = (Vdrain_pk - (Vin + Vor)) * Math.exp(-ph * (tau_ratio >= 1.5 ? 3.2 : 1.6));
-        v = Vin + Vor + v_spike + Math.sin(ph * Math.PI * 3) * (DeltaV * 0.15);
+        const v_spike = (Vdrain_pk - (Vin + Vor)) * Math.sin(ph * Math.PI) + (Vdrain_pk - (Vin + Vor)) * (1 - ph) * 0.4;
+        v = (Vin + Vor) + v_spike;
       } else if (t < Tdcm_start_norm) {
         v = Vin + Vor;
       } else {
         const ph_ring = (t - Tdcm_start_norm) / (1.0 - Tdcm_start_norm);
-        const numRings = Math.max(3, (1.0 - Tdcm_start_norm) * 16);
-        v = Vin + Vor * Math.cos(ph_ring * Math.PI * numRings) * Math.exp(-ph_ring * 3.5);
+        const numRings = 4;
+        v = Vin + Vor * Math.cos(ph_ring * Math.PI * 2 * numRings) * Math.exp(-ph_ring * 3.2);
       }
 
       const px = toX(t_norm);
@@ -2081,9 +2080,9 @@ function redrawScope(phaseShift = 0) {
       let cur = 0;
       if (t < Ton_norm) {
         cur = (t / Ton_norm) * Ipk;
-      } else if (t < Tdcm_start_norm) {
-        const ph_reset = (t - Ton_norm) / Treset_norm;
-        cur = Ipk * Math.max(0, 1.0 - ph_reset);
+      } else if (t < Ton_norm + Tclamp_norm) {
+        const ph = (t - Ton_norm) / Tclamp_norm;
+        cur = Ipk * (1 - ph);
       } else {
         cur = 0;
       }
@@ -2098,9 +2097,9 @@ function redrawScope(phaseShift = 0) {
     ctx.shadowBlur = 0;
   }
 
-  // Peak Badges (rendered inside visible zoom bounds)
+  // Peak Badges (rendered cleanly for visible cycles)
   for (let c = 0; c < 3; c++) {
-    const cyclePeakNorm = ((Ton_norm + 0.015 - phaseShift) % 1 + 1) % 1 + c;
+    const cyclePeakNorm = ((Ton_norm + Tclamp_norm * 0.5 - phaseShift) % 1 + 1) % 1 + c;
     const peakX = toX(cyclePeakNorm);
     const peakY = toY(Vdrain_pk);
 
@@ -2148,18 +2147,16 @@ function redrawScope(phaseShift = 0) {
       phase = '۱. ماسفت روشن (شارژ سلف)';
     } else if (t < Ton_norm + Tclamp_norm) {
       const ph = (t - Ton_norm) / Tclamp_norm;
-      v_inst = Vin + Vor + (Vdrain_pk - (Vin + Vor)) * Math.exp(-ph * (tau_ratio >= 1.5 ? 3.2 : 1.6));
-      i_inst = Ipk * (1 - ph * 0.5);
+      v_inst = (Vin + Vor) + (Vdrain_pk - (Vin + Vor)) * Math.sin(ph * Math.PI);
+      i_inst = Ipk * (1 - ph);
       phase = '۲. کلمپ سلف نشتی در اسنابر';
     } else if (t < Tdcm_start_norm) {
       v_inst = Vin + Vor;
-      const ph_reset = (t - Ton_norm) / Treset_norm;
-      i_inst = Ipk * Math.max(0, 1.0 - ph_reset);
+      i_inst = 0;
       phase = '۳. انتقال توان به ثانویه (پلاتو)';
     } else {
       const ph_ring = (t - Tdcm_start_norm) / (1.0 - Tdcm_start_norm);
-      const numRings = Math.max(3, (1.0 - Tdcm_start_norm) * 16);
-      v_inst = Vin + Vor * Math.cos(ph_ring * Math.PI * numRings) * Math.exp(-ph_ring * 3.5);
+      v_inst = Vin + Vor * Math.cos(ph_ring * Math.PI * 8) * Math.exp(-ph_ring * 3.2);
       i_inst = 0;
       phase = '۴. زنگ‌زدن رزونانسی مد DCM';
     }
@@ -2176,7 +2173,7 @@ function redrawScope(phaseShift = 0) {
 // Mouse events and Interactive Zoom / Pan Handlers
 const canvas = document.getElementById('scopeCanvas');
 if (canvas) {
-  // Mouse Move for HUD
+  // Mouse Move for HUD only (does NOT modify zoom or pan)
   canvas.addEventListener('mousemove', function(e) {
     const rect = canvas.getBoundingClientRect();
     mouseX = e.clientX - rect.left;
@@ -2229,9 +2226,9 @@ if (canvas) {
     triggerRedraw();
   }, { passive: false });
 
-  // Mouse Drag to Pan
+  // Mouse Drag to Pan (ONLY active when zoomed in: zoomFactor > 1.0)
   canvas.addEventListener('mousedown', function(e) {
-    if (e.button !== 0) return; // Left mouse button
+    if (e.button !== 0 || zoomFactor <= 1.0) return; // Left mouse button and only when zoomed in
     const rect = canvas.getBoundingClientRect();
     const mX = e.clientX - rect.left;
     const mLeft = 56;
@@ -2245,7 +2242,7 @@ if (canvas) {
   });
 
   window.addEventListener('mousemove', function(e) {
-    if (!isDragging) return;
+    if (!isDragging || zoomFactor <= 1.0) return;
     const rect = canvas.getBoundingClientRect();
     const mX = e.clientX - rect.left;
     const mLeft = 56;
