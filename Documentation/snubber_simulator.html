@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>سیستم مهندسی تحلیل جامع اسنابر، ماسفت و ترانس فلای‌بک | ChangeOver 24V</title>
 
-<!-- Google Font: Vazirmatn -->
+<!-- Google Font: Vazirmatn + CDN Fallback -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css">
 
 <style>
   :root {
@@ -16,10 +17,10 @@
     --bg-base: #0a0c12;
     --bg-gradient: radial-gradient(circle at 50% 0%, #1a1724 0%, #0c0e16 50%, #06070a 100%);
     
-    --card-bg: rgba(20, 22, 32, 0.88);
+    --card-bg: rgba(20, 22, 32, 0.90);
     --card-bg-subtle: rgba(14, 16, 24, 0.75);
     --card-border: rgba(226, 183, 116, 0.18);
-    --card-border-hover: rgba(226, 183, 116, 0.4);
+    --card-border-hover: rgba(226, 183, 116, 0.45);
     --card-inner-border: rgba(255, 255, 255, 0.07);
     
     /* Warm Gold, Bronze, Copper Accents */
@@ -43,7 +44,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   }
   
   body {
@@ -280,7 +281,6 @@
     color: var(--text-secondary);
   }
   .val-badge {
-    font-family: monospace, 'Vazirmatn';
     font-weight: 700;
     font-size: 0.85rem;
     color: var(--gold);
@@ -306,7 +306,6 @@
     padding: 6px 9px;
     border-radius: 8px;
     font-size: 0.85rem;
-    font-family: monospace, 'Vazirmatn';
     font-weight: 600;
     text-align: center;
     outline: none;
@@ -319,7 +318,6 @@
   select {
     width: 100%;
     text-align: right;
-    font-family: 'Vazirmatn', sans-serif;
     cursor: pointer;
   }
 
@@ -390,7 +388,6 @@
   .metric-val {
     font-size: 1.35rem;
     font-weight: 900;
-    font-family: monospace, 'Vazirmatn';
     color: #fff;
     display: flex;
     align-items: baseline;
@@ -408,7 +405,6 @@
   }
   .metric-sub b {
     color: var(--gold);
-    font-family: monospace, 'Vazirmatn';
   }
 
   /* Status Pills */
@@ -428,7 +424,7 @@
     padding: 20px 24px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
   }
   .scope-toolbar {
     display: flex;
@@ -447,10 +443,41 @@
   }
   .scope-actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
   }
+
+  /* Zoom Control Buttons */
+  .zoom-ctrl-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(226, 183, 116, 0.2);
+    border-radius: 8px;
+    padding: 2px 4px;
+  }
+  .btn-zoom {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-zoom:hover {
+    background: rgba(226, 183, 116, 0.2);
+    color: var(--gold-bright);
+  }
+  .btn-zoom-reset {
+    background: rgba(226, 183, 116, 0.12);
+    color: var(--gold-bright);
+  }
+
   .btn-live {
     background: rgba(34, 197, 94, 0.15);
     border: 1px solid #4ade80;
@@ -491,6 +518,15 @@
   }
   .ch-option input { accent-color: var(--gold); cursor: pointer; }
 
+  .scope-hint-bar {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px;
+  }
+
   .canvas-container {
     position: relative;
     border-radius: 12px;
@@ -500,6 +536,7 @@
     box-shadow: inset 0 2px 10px rgba(0,0,0,0.85);
     width: 100%;
     min-height: 430px;
+    user-select: none;
   }
   canvas {
     width: 100%;
@@ -516,7 +553,6 @@
     border: 1px solid rgba(226, 183, 116, 0.25);
     border-radius: 8px;
     padding: 8px 14px;
-    font-family: monospace, 'Vazirmatn';
     font-size: 0.76rem;
     color: var(--text-secondary);
     backdrop-filter: blur(10px);
@@ -530,7 +566,6 @@
   /* Math & Formal Analysis Box */
   .math-card {
     padding: 20px 24px;
-    font-family: monospace, 'Vazirmatn';
     font-size: 0.82rem;
     color: var(--text-secondary);
     line-height: 1.85;
@@ -576,8 +611,8 @@
   <!-- Executive Header -->
   <header class="glass-card">
     <div class="header-content">
-      <h1>⚡ سیستم تحلیل جامع مداری، فیزیکی و حرارتی فلای‌بک (Flyback Engineering Engine)</h1>
-      <p>محاسبه‌گر دینامیک تلفات حرارتی ماسفت، کلمپ اسنابر RCD/RCDZ و ترانسفورمر سوئیچینگ ۲۴ ولت برد ChangeOver</p>
+      <h1>⚡ سیستم مهندسی تحلیل جامع اسنابر، ماسفت و ترانس فلای‌بک (ChangeOver 24V)</h1>
+      <p>محاسبه‌گر دقیق مداری مطابق AN-4147 فیرچایلد و AN-1048 اس‌تی، مجهز به زوم اسکرول اسیلوسکوپ و تحلیل حرارتی پیشرفته</p>
     </div>
     <div class="header-actions">
       <button class="btn-download" onclick="downloadCurrentHtml()">
@@ -589,11 +624,11 @@
   <!-- Preset Bar -->
   <div class="preset-bar glass-card">
     <span class="preset-label">🎯 حالات کاری پیش‌فرض برد:</span>
-    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">🔴 مدار فعلی برد با هیت‌سینک (1kΩ / 470nF)</button>
-    <button class="preset-btn" id="btn_no_hs" onclick="setPreset('no_hs')">🔥 مدار فعلی بدون هیت‌سینک (IRF640 داغ ۲۷۹°C)</button>
-    <button class="preset-btn" id="btn_small_c" onclick="setPreset('small_c')">⚠️ خازن خیلی کوچک (1kΩ / 2.2nF)</button>
-    <button class="preset-btn" id="btn_opt_rcd" onclick="setPreset('opt_rcd')">🟢 RCD بهینه با ۵ وات (2.2kΩ / 100nF / 5W)</button>
-    <button class="preset-btn" id="btn_rcdz" onclick="setPreset('rcdz')">🔵 ساختار هیبرید RCDZ با TVS (10kΩ / 2.2nF + 51V)</button>
+    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">🔴 مدار فعلی با هیت‌سینک (1kΩ / 470nF)</button>
+    <button class="preset-btn" id="btn_no_hs" onclick="setPreset('no_hs')">🔥 مدار فعلی بدون هیت‌سینک (IRF640 داغ ۲۸۴°C)</button>
+    <button class="preset-btn" id="btn_small_c" onclick="setPreset('small_c')">⚠️ خازن خیلی کوچک (1kΩ / 2.2nF ➔ ۲۵۶ ولت)</button>
+    <button class="preset-btn" id="btn_opt_rcd" onclick="setPreset('opt_rcd')">🟢 RCD بهینه ۵ وات (2.2kΩ / 100nF + IRFB4227)</button>
+    <button class="preset-btn" id="btn_rcdz" onclick="setPreset('rcdz')">🔵 ساختار هیبرید RCDZ با TVS (10kΩ + 51V)</button>
     <button class="preset-btn" id="btn_sandwich" onclick="setPreset('sandwich')">⭐ ترانسفورمر ساندویچی بهینه (Llk=0.2µH)</button>
   </div>
 
@@ -657,7 +692,7 @@
                 <input type="checkbox" id="chk_heatsink" checked onchange="toggleHeatsinkCheckbox()">
                 <span>نصب هیت‌سینک روی ماسفت (Heatsink)</span>
               </label>
-              <span class="val-badge" id="lbl_temp_drop" style="color:var(--warm-green); font-size:0.8rem;">-191°C کاهش دما</span>
+              <span class="val-badge" id="lbl_temp_drop" style="color:var(--warm-green); font-size:0.8rem;">-197°C کاهش دما</span>
             </div>
 
             <div class="form-item" id="heatsink_ctrl_group">
@@ -691,18 +726,18 @@
             <div class="metric-val">
               <span id="res_tmos">87</span><span class="metric-unit">°C</span>
             </div>
-            <div class="metric-sub">بدون هیت‌سینک: <b id="res_tmos_no_hs" style="color:var(--warm-red);">279°C</b></div>
+            <div class="metric-sub">بدون هیت‌سینک: <b id="res_tmos_no_hs" style="color:var(--warm-red);">284°C</b></div>
           </div>
 
           <div class="metric-card">
             <div class="metric-card-top">
               <span>تلفات ماسفت (Pmos)</span>
-              <span class="pill safe" id="pill_pcond">Irms=3.28A</span>
+              <span class="pill safe" id="pill_pcond">Irms=3.27A</span>
             </div>
             <div class="metric-val">
               <span id="res_pmos">4.09</span><span class="metric-unit">W</span>
             </div>
-            <div class="metric-sub">هدایتی: <b id="res_pcond">2.90 W</b> | سوئیچینگ: <b id="res_psw">1.19 W</b></div>
+            <div class="metric-sub">هدایتی: <b id="res_pcond">2.89 W</b> | سوئیچینگ: <b id="res_psw">1.20 W</b></div>
           </div>
 
           <div class="metric-card">
@@ -711,7 +746,7 @@
               <span class="pill safe" id="pill_vdss_margin">امن</span>
             </div>
             <div class="metric-val">
-              <span id="res_vmargin">110.5</span><span class="metric-unit">V</span>
+              <span id="res_vmargin">109.9</span><span class="metric-unit">V</span>
             </div>
             <div class="metric-sub">حد شکست: <b id="res_vdss_sub" style="color:var(--warm-red);">200 V</b> (<b id="res_margin_pct">55%</b>)</div>
           </div>
@@ -816,9 +851,9 @@
               <span class="pill danger" id="pill_pr">اضافه توان</span>
             </div>
             <div class="metric-val">
-              <span id="res_pr">3.69</span><span class="metric-unit">W</span>
+              <span id="res_pr">3.70</span><span class="metric-unit">W</span>
             </div>
-            <div class="metric-sub">درصد توان نامی: <b id="res_pr_pct">184%</b></div>
+            <div class="metric-sub">درصد توان نامی: <b id="res_pr_pct">185% (2.0W)</b></div>
           </div>
 
           <div class="metric-card">
@@ -827,7 +862,7 @@
               <span class="pill danger" id="pill_temp">بسیار داغ!</span>
             </div>
             <div class="metric-val">
-              <span id="res_temp">145</span><span class="metric-unit">°C</span>
+              <span id="res_temp">154</span><span class="metric-unit">°C</span>
             </div>
             <div class="metric-sub">توان سلف نشتی: <b id="res_pleak_sub">2.33 W</b></div>
           </div>
@@ -992,9 +1027,9 @@
               <span class="pill safe" id="pill_vdrain">امن</span>
             </div>
             <div class="metric-val">
-              <span id="res_vdrain">89.5</span><span class="metric-unit">V</span>
+              <span id="res_vdrain">90.1</span><span class="metric-unit">V</span>
             </div>
-            <div class="metric-sub">سطح پلاتو: <b id="res_vplateau">50.4 V</b></div>
+            <div class="metric-sub">سطح پلاتو: <b id="res_vplateau">50.5 V</b></div>
           </div>
 
           <div class="metric-card">
@@ -1005,7 +1040,7 @@
             <div class="metric-val">
               <span id="res_ipk">10.6</span><span class="metric-unit">A</span>
             </div>
-            <div class="metric-sub">جریان موثر: <b id="res_irms">3.28 A</b></div>
+            <div class="metric-sub">جریان موثر: <b id="res_irms">3.27 A</b></div>
           </div>
 
           <div class="metric-card">
@@ -1016,7 +1051,7 @@
             <div class="metric-val">
               <span id="res_duty">28.5</span><span class="metric-unit">%</span>
             </div>
-            <div class="metric-sub">Treset: <b id="res_treset">7.13 µs</b></div>
+            <div class="metric-sub">Treset: <b id="res_treset">7.08 µs</b></div>
           </div>
         </div>
       </div>
@@ -1033,27 +1068,40 @@
             <span>📈 اسیلوسکوپ دیجیتال شبیه‌سازی ۴ فاز سوئیچینگ (Digital Scope)</span>
           </div>
           <div class="scope-actions">
+            <!-- Zoom Controls -->
+            <div class="zoom-ctrl-group">
+              <button class="btn-zoom" onclick="zoomIn()" title="بزرگنمایی (Zoom In)">🔍+</button>
+              <button class="btn-zoom" onclick="zoomOut()" title="کوچک‌نمایی (Zoom Out)">🔍−</button>
+              <button class="btn-zoom btn-zoom-reset" onclick="resetZoom()" title="بازنشانی زوم">↺ 1x</button>
+              <span class="pill safe" id="zoom_badge" style="margin-right:2px;">🔍 1.0x</span>
+            </div>
+
             <button class="btn-live" id="btn_live_toggle" onclick="toggleLiveAnimation()">
-              <span id="live_icon">▶️</span> <span id="live_text">حرکت زنده (Live Sweep)</span>
+              <span id="live_icon">▶️</span> <span id="live_text">حرکت زنده (Live)</span>
             </button>
             <div class="ch-selectors">
               <label class="ch-option" style="color:#60a5fa;">
-                <input type="checkbox" id="chk_ch1" checked onchange="triggerRedraw()"> CH1: Vds(t) [درین-سورس]
+                <input type="checkbox" id="chk_ch1" checked onchange="triggerRedraw()"> CH1: Vds(t) [درین]
               </label>
               <label class="ch-option" style="color:#4ade80;">
-                <input type="checkbox" id="chk_ch2" checked onchange="triggerRedraw()"> CH2: i_Lp(t) [جریان اولیه]
+                <input type="checkbox" id="chk_ch2" checked onchange="triggerRedraw()"> CH2: i_Lp(t) [جریان]
               </label>
               <label class="ch-option" style="color:#fbbf24;">
-                <input type="checkbox" id="chk_ch3" checked onchange="triggerRedraw()"> CH3: Vsn(t) [ولتاژ اسنابر]
+                <input type="checkbox" id="chk_ch3" checked onchange="triggerRedraw()"> CH3: Vsn(t) [خازن]
               </label>
             </div>
           </div>
         </div>
 
+        <div class="scope-hint-bar">
+          <span>💡 با <b>اسکرول ماوس (Mouse Scroll)</b> روی نمودار زوم کنید، با درگ جابجا شوید و با دوبار کلیک زوم را ریست کنید.</span>
+          <span>پریود تناوب: <b id="lbl_ts_info" style="color:var(--gold);">20.0 µs (50 kHz)</b></span>
+        </div>
+
         <div class="canvas-container" id="canvas_box">
           <div class="scope-hud" id="scope_hud">
             <div>زمان: <b id="hud_t">0.00 µs</b> | فاز مداری: <b id="hud_phase">ماسفت روشن</b></div>
-            <div>Vds(t): <b id="hud_vds" style="color:#60a5fa;">0.4 V</b> | i_Lp(t): <b id="hud_ilp" style="color:#4ade80;">0.0 A</b> | Vsn(t): <b id="hud_vsn" style="color:#fbbf24;">60.7 V</b></div>
+            <div>Vds(t): <b id="hud_vds" style="color:#60a5fa;">0.4 V</b> | i_Lp(t): <b id="hud_ilp" style="color:#4ade80;">0.0 A</b> | Vsn(t): <b id="hud_vsn" style="color:#fbbf24;">60.8 V</b></div>
           </div>
           <canvas id="scopeCanvas"></canvas>
         </div>
@@ -1070,15 +1118,15 @@
         <div class="fixes-box">
           <div class="fix-card">
             <div class="fix-title">🛠️ راهکار ۱: ارتقای مقاومت به ۵ وات سرامیکی</div>
-            <div class="fix-desc">مقاومت ۲ وات فعلی برای تلفات مدار کم است. با نصب مقاومت ۲.۲kΩ با پکیج ۵ وات آجری (سفید)، دمای بدنه از ۱۴۵ درجه به کمتر از ۶۰ درجه کاهش می‌یابد.</div>
+            <div class="fix-desc">مقاومت ۲ وات فعلی برای تلفات مدار (۳.۷۰W) کم است. با نصب مقاومت ۲.۲kΩ با پکیج ۵ وات آجری، دمای بدنه از ۱۵۴ درجه به کمتر از ۶۰ درجه کاهش می‌یابد.</div>
           </div>
           <div class="fix-card">
             <div class="fix-title">🛠️ راهکار ۲: افزودن دیود TVS (مدار هیبرید RCDZ)</div>
-            <div class="fix-desc">با قرار دادن یک دیود TVS مدل P6KE51A موازی با خازن اسنابر، مقاومت Rsn را تا ۱۰kΩ افزایش داده و بخش عمده انرژی لحظه‌ای توسط TVS مهار می‌شود و مقاومت کاملاً خنک می‌ماند.</div>
+            <div class="fix-desc">با قرار دادن دیود TVS مدل P6KE51A موازی با خازن اسنابر، مقاومت Rsn را تا ۱۰kΩ افزایش داده و بخش عمده انرژی لحظه‌ای توسط TVS مهار شده و مقاومت در ۳۴ درجه کاملاً خنک می‌ماند.</div>
           </div>
           <div class="fix-card">
             <div class="fix-title">🛠️ راهکار ۳: اصلاح سیم‌پیچی ترانس (ساندویچی)</div>
-            <div class="fix-desc">با پیچیدن ثانویه مابین دولایه اولیه (Sandwich Winding)، سلف نشتی از ۰.۸۲µH به ۰.۲µH می‌رسد و توان نشتی از ۲.۳W به کمتر از ۰.۶W تقلیل یافته و مدار با مقاومت ۲W خنک می‌ماند.</div>
+            <div class="fix-desc">با پیچیدن ثانویه مابین دولایه اولیه (Sandwich Winding)، سلف نشتی از ۰.۸۲µH به ۰.۲µH می‌رسد و توان نشتی از ۲.۳۳W به ۰.۵۷W تقلیل یافته و مدار با مقاومت ۲W خنک می‌ماند.</div>
           </div>
         </div>
       </div>
@@ -1096,6 +1144,13 @@ let isLiveRunning = false;
 let animPhaseOffset = 0;
 let animFrameId = null;
 
+// Zoom and Pan state
+let zoomFactor = 1.0;
+let panOffsetX = 0.0;
+let isDragging = false;
+let dragStartX = 0;
+let dragStartPan = 0;
+
 function toggleLiveAnimation() {
   isLiveRunning = !isLiveRunning;
   const btn = document.getElementById('btn_live_toggle');
@@ -1105,12 +1160,12 @@ function toggleLiveAnimation() {
   if (isLiveRunning) {
     if (btn) btn.className = 'btn-live';
     if (icon) icon.innerText = '⏸️';
-    if (text) text.innerText = 'توقف حرکت (Pause)';
+    if (text) text.innerText = 'توقف (Pause)';
     runAnimationLoop();
   } else {
     if (btn) btn.className = 'btn-live paused';
     if (icon) icon.innerText = '▶️';
-    if (text) text.innerText = 'حرکت زنده (Live Sweep)';
+    if (text) text.innerText = 'حرکت (Live)';
     if (animFrameId) cancelAnimationFrame(animFrameId);
     triggerRedraw();
   }
@@ -1118,7 +1173,7 @@ function toggleLiveAnimation() {
 
 function runAnimationLoop() {
   if (!isLiveRunning) return;
-  animPhaseOffset = (animPhaseOffset + 0.006) % 1.0;
+  animPhaseOffset = (animPhaseOffset + 0.005) % 1.0;
   redrawScope(animPhaseOffset);
   animFrameId = requestAnimationFrame(runAnimationLoop);
 }
@@ -1128,6 +1183,35 @@ function triggerRedraw() {
     redrawScope(animPhaseOffset);
   } else {
     redrawScope(0);
+  }
+}
+
+function resetZoom() {
+  zoomFactor = 1.0;
+  panOffsetX = 0.0;
+  updateZoomUI();
+  triggerRedraw();
+}
+
+function zoomIn() {
+  zoomFactor = Math.min(25.0, zoomFactor * 1.35);
+  panOffsetX = Math.max(0, Math.min(2.0 - (2.0 / zoomFactor), panOffsetX));
+  updateZoomUI();
+  triggerRedraw();
+}
+
+function zoomOut() {
+  zoomFactor = Math.max(1.0, zoomFactor / 1.35);
+  panOffsetX = Math.max(0, Math.min(2.0 - (2.0 / zoomFactor), panOffsetX));
+  updateZoomUI();
+  triggerRedraw();
+}
+
+function updateZoomUI() {
+  const badge = document.getElementById('zoom_badge');
+  if (badge) {
+    badge.innerText = '🔍 ' + zoomFactor.toFixed(1) + 'x';
+    badge.className = zoomFactor > 1.05 ? 'pill warn' : 'pill safe';
   }
 }
 
@@ -1395,10 +1479,10 @@ function runSimulation() {
   else if (mosfetModel === 'IRFB4610') tf = 25e-9;
   else if (mosfetModel === 'IRF540N') tf = 35e-9;
 
-  // TVS parameters
-  let Rth_tvs = 75.0;
-  if (tvsPkg === '1.5KE') Rth_tvs = 50.0;
-  else if (tvsPkg === 'SMBJ') Rth_tvs = 90.0;
+  // TVS thermal resistance
+  let Rth_tvs = 20.0; // Lead/trace heatsinking
+  if (tvsPkg === '1.5KE') Rth_tvs = 15.0;
+  else if (tvsPkg === 'SMBJ') Rth_tvs = 26.0;
 
   // Sync labels
   const setElText = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
@@ -1414,6 +1498,7 @@ function runSimulation() {
   setElText('lbl_prated', Prated.toFixed(1) + ' W');
   setElText('lbl_csn', (Csn*1e9).toFixed(1) + ' nF');
   setElText('lbl_turns', n === 1.5 ? '15:10 (n=1.5)' : (n === 1.2 ? '12:10 (n=1.2)' : '20:10 (n=2.0)'));
+  setElText('lbl_ts_info', (1e6/fsw).toFixed(1) + ' µs (' + (fsw/1000).toFixed(0) + ' kHz)');
 
   const isTVS = (type === 'RCDZ');
   const tvsGroup = document.getElementById('group_tvs_ctrls');
@@ -1431,7 +1516,7 @@ function runSimulation() {
   const Ts = 1 / fsw;
 
   // Reflected voltage & Power
-  const VF = 0.5;
+  const VF = 0.6; // Schottky forward drop
   const Vor = n * (Vout + VF);
   const Pout = Vout * Iout;
   const eta = 0.85;
@@ -1451,7 +1536,8 @@ function runSimulation() {
   }
 
   const Ton_time = Don * Ts;
-  const Pleak = 0.5 * Llk * (Ipk * Ipk) * fsw;
+  const Eleak = 0.5 * Llk * (Ipk * Ipk);
+  const Pleak_raw = Eleak * fsw;
   const Treset_time = (Lp * Ipk) / Vor;
 
   let Vsn_avg = 0;
@@ -1463,17 +1549,17 @@ function runSimulation() {
   let TR = 25;
   let TTVS = 25;
 
-  const tau_ratio = (Rsn * Csn) / Ts;
+  const tau = Rsn * Csn;
+  const tau_ratio = tau / Ts;
 
   if (type === 'RCD') {
     const b = -Vor;
-    const c = -(Pleak * Rsn);
+    const c = -(Pleak_raw * Rsn);
     const delta = b * b - 4 * 1 * c;
     Vsn_avg = (-b + Math.sqrt(delta)) / 2;
     
-    const Eleak = 0.5 * Llk * Ipk * Ipk;
     const DeltaV_linear = Vsn_avg / (Rsn * Csn * fsw);
-    const V_resonant_peak = Math.sqrt((2 * Eleak) / Csn);
+    const V_resonant_peak = Ipk * Math.sqrt(Llk / Csn);
     
     if (tau_ratio >= 3.0) {
       DeltaV = DeltaV_linear;
@@ -1486,30 +1572,30 @@ function runSimulation() {
 
     PR = (Vsn_avg * Vsn_avg) / Rsn;
     Ptotal = PR;
-    const Rth = Prated <= 1.0 ? 80 : (Prated <= 2.0 ? 55 : (Prated <= 3.0 ? 45 : (Prated <= 5.0 ? 35 : 22)));
-    TR = 25 + PR * Rth;
+    const Rth_res = Prated <= 1.0 ? 55 : (Prated <= 2.0 ? 35 : (Prated <= 3.0 ? 25 : (Prated <= 5.0 ? 15 : 10)));
+    TR = 25 + PR * Rth_res;
   } else if (type === 'RCDZ') {
     Vsn_avg = Vz;
-    Ptotal = Pleak * (Vz / (Math.max(2, Vz - Vor)));
-    DeltaV = Math.min(8, Vz / (Rsn * Csn * fsw));
+    Ptotal = Pleak_raw * (Vz / (Math.max(2, Vz - Vor)));
+    DeltaV = Math.min(6, Vz / (Rsn * Csn * fsw));
     Vdrain_pk = Vin + Vz;
     
-    const Vcap = Math.min(Vz * 0.90, Math.sqrt(Ptotal * Rsn));
+    const Vcap = Math.min(Vz, Math.sqrt(Ptotal * Rsn));
     PR = (Vcap * Vcap) / Rsn;
     PTVS = Math.max(0, Ptotal - PR);
     
-    const Rth = Prated <= 2.0 ? 55 : (Prated <= 3.0 ? 45 : 35);
-    TR = 25 + PR * Rth;
+    const Rth_res = Prated <= 2.0 ? 35 : (Prated <= 3.0 ? 25 : 15);
+    TR = 25 + PR * Rth_res;
     TTVS = 25 + PTVS * Rth_tvs;
   } else if (type === 'RC') {
-    const Vring = Math.sqrt((Llk * Ipk * Ipk) / Csn);
+    const Vring = Ipk * Math.sqrt(Llk / Csn);
     Vsn_avg = Vor + Vring;
     DeltaV = Vring;
     Vdrain_pk = Vin + Vsn_avg;
-    PR = Csn * (Vdrain_pk * Vdrain_pk) * fsw + Pleak;
+    PR = Csn * (Vdrain_pk * Vdrain_pk) * fsw + Pleak_raw;
     Ptotal = PR;
-    const Rth = Prated <= 2.0 ? 55 : (Prated <= 3.0 ? 45 : 35);
-    TR = 25 + PR * Rth;
+    const Rth_res = Prated <= 2.0 ? 35 : (Prated <= 3.0 ? 25 : 15);
+    TR = 25 + PR * Rth_res;
   }
 
   const Tclamp_time = (Llk * Ipk) / Math.max(2, Vsn_avg - Vor);
@@ -1547,11 +1633,11 @@ function runSimulation() {
     if (Tj_mos < 55) {
       pillM.className = 'pill safe'; pillM.innerText = 'بسیار خنک';
       pillMTop.className = 'cat-badge pill safe'; pillMTop.innerText = 'خنک و ایمن (' + Tj_mos.toFixed(0) + '°C)';
-    } else if (Tj_mos < 88) {
+    } else if (Tj_mos < 90) {
       pillM.className = 'pill warn'; pillM.innerText = 'گرم / استاندارد';
       pillMTop.className = 'cat-badge pill warn'; pillMTop.innerText = 'استاندارد (' + Tj_mos.toFixed(0) + '°C)';
     } else {
-      pillM.className = 'pill danger'; pillM.innerText = 'بسیار داغ (>100°C)!';
+      pillM.className = 'pill danger'; pillM.innerText = 'بسیار داغ (>90°C)!';
       pillMTop.className = 'cat-badge pill danger'; pillMTop.innerText = 'خطر داغی ماسفت (' + Tj_mos.toFixed(0) + '°C)';
     }
   }
@@ -1584,7 +1670,7 @@ function runSimulation() {
   }
 
   setElText('res_temp', Math.min(250, TR).toFixed(0));
-  setElText('res_pleak_sub', Pleak.toFixed(2) + ' W');
+  setElText('res_pleak_sub', Pleak_raw.toFixed(2) + ' W');
   
   const pillT = document.getElementById('pill_temp');
   const pillSnubTop = document.getElementById('pill_snubber_top');
@@ -1668,8 +1754,8 @@ function runSimulation() {
   const mathEl = document.getElementById('math_output');
   if (mathEl) {
     mathEl.innerHTML = `
-      1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(1)} × (${Vout.toFixed(1)} + 0.5) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
-      2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی: <b>Pleak = <span class="val">${Pleak.toFixed(2)} W</span></b><br>
+      1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(1)} × (${Vout.toFixed(1)} + 0.6) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
+      2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی: <b>Pleak = <span class="val">${Pleak_raw.toFixed(2)} W</span></b><br>
       3. تلفات ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند ${hsStatusText})<br>
       4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)${tvsMath}
     `;
@@ -1743,7 +1829,7 @@ function redrawScope(phaseShift = 0) {
   ctx.strokeStyle = 'rgba(212, 175, 55, 0.08)';
   ctx.lineWidth = 1;
   ctx.fillStyle = '#848e9f';
-  ctx.font = '11px Vazirmatn, monospace';
+  ctx.font = '11px Vazirmatn, sans-serif';
 
   // Left Y-Axis Voltage
   ctx.textAlign = 'right';
@@ -1766,16 +1852,41 @@ function redrawScope(phaseShift = 0) {
     }
   }
 
-  // X-Axis Time (2 cycles)
+  // Time base calculation with Zoom & Pan
   const Ts_us = Ts * 1e6;
-  const totalTime_us = Ts_us * 2;
+  const totalCycles = 2.0;
+  const visibleRange = totalCycles / zoomFactor;
+  const tStart = Math.max(0, Math.min(totalCycles - visibleRange, panOffsetX));
+  const tEnd = tStart + visibleRange;
+
+  const toX = (t_norm) => mLeft + ((t_norm - tStart) / visibleRange) * plotW;
+
+  // X-Axis Time Divisions
+  const timeSpan_us = visibleRange * Ts_us;
+  let timeStep_us = 10;
+  if (timeSpan_us <= 2) timeStep_us = 0.2;
+  else if (timeSpan_us <= 5) timeStep_us = 0.5;
+  else if (timeSpan_us <= 10) timeStep_us = 1;
+  else if (timeSpan_us <= 20) timeStep_us = 2;
+  else if (timeSpan_us <= 40) timeStep_us = 5;
+  else timeStep_us = 10;
+
+  const tStart_us = tStart * Ts_us;
+  const tEnd_us = tEnd * Ts_us;
+  const firstTick = Math.ceil(tStart_us / timeStep_us) * timeStep_us;
+
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#cbd5e1';
-  for (let t = 0; t <= totalTime_us; t += (totalTime_us / 4)) {
-    const x = mLeft + (t / totalTime_us) * plotW;
-    ctx.beginPath(); ctx.moveTo(x, mTop); ctx.lineTo(x, H - mBottom); ctx.stroke();
-    ctx.fillText(t.toFixed(0) + ' µs', x, H - mBottom + 8);
+  ctx.font = '11px Vazirmatn, sans-serif';
+
+  for (let t_us = firstTick; t_us <= tEnd_us + 0.001; t_us += timeStep_us) {
+    const t_norm = t_us / Ts_us;
+    const x = toX(t_norm);
+    if (x >= mLeft && x <= W - mRight) {
+      ctx.beginPath(); ctx.moveTo(x, mTop); ctx.lineTo(x, H - mBottom); ctx.stroke();
+      ctx.fillText(t_us.toFixed(timeStep_us < 1 ? 1 : 0) + ' µs', x, H - mBottom + 8);
+    }
   }
 
   // 1. TRANSISTOR BREAKDOWN VOLTAGE LIMIT LINE (Vdss) - RED DASHED LINE
@@ -1790,7 +1901,7 @@ function redrawScope(phaseShift = 0) {
   ctx.setLineDash([]);
   
   ctx.fillStyle = '#ef4444';
-  ctx.font = 'bold 11px Vazirmatn, monospace';
+  ctx.font = 'bold 11px Vazirmatn, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('⚠️ حد ولتاژ شکست ترانزیستور (Vdss = ' + Vdss + 'V)', mLeft + 12, yVdss - 8);
 
@@ -1821,7 +1932,7 @@ function redrawScope(phaseShift = 0) {
   const Treset_norm = Math.min(1.0 - Ton_norm - Tclamp_norm - 0.05, Treset_time / Ts);
   const Tdcm_start_norm = Ton_norm + Treset_norm;
 
-  const numPoints = 1200;
+  const numPoints = 1600;
 
   // CH3: Snubber Cap Voltage Vsn(t)
   if (showCH3) {
@@ -1829,7 +1940,7 @@ function redrawScope(phaseShift = 0) {
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     for (let i = 0; i <= numPoints; i++) {
-      const t_norm = (i / numPoints) * 2;
+      const t_norm = tStart + (i / numPoints) * visibleRange;
       const t = (t_norm + phaseShift) % 1;
       let vsn_inst = Vsn_avg;
 
@@ -1840,7 +1951,7 @@ function redrawScope(phaseShift = 0) {
         const t_dis = (t < Ton_norm ? (1.0 - (Ton_norm + Tclamp_norm) + t) : (t - (Ton_norm + Tclamp_norm)));
         vsn_inst = (Vsn_avg + DeltaV/2) - DeltaV * (t_dis / (1.0 - Tclamp_norm));
       }
-      const px = mLeft + (t_norm / 2) * plotW;
+      const px = toX(t_norm);
       const py = toY(Math.max(0, vsn_inst));
       if (i === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
@@ -1857,7 +1968,7 @@ function redrawScope(phaseShift = 0) {
     ctx.beginPath();
 
     for (let i = 0; i <= numPoints; i++) {
-      const t_norm = (i / numPoints) * 2;
+      const t_norm = tStart + (i / numPoints) * visibleRange;
       const t = (t_norm + phaseShift) % 1;
 
       let v = 0;
@@ -1876,7 +1987,7 @@ function redrawScope(phaseShift = 0) {
         v = Vin + Vor * Math.cos(ph_ring * Math.PI * numRings) * Math.exp(-ph_ring * 3.5);
       }
 
-      const px = mLeft + (t_norm / 2) * plotW;
+      const px = toX(t_norm);
       const py = toY(v);
 
       if (i === 0) ctx.moveTo(px, py);
@@ -1895,7 +2006,7 @@ function redrawScope(phaseShift = 0) {
     ctx.beginPath();
 
     for (let i = 0; i <= numPoints; i++) {
-      const t_norm = (i / numPoints) * 2;
+      const t_norm = tStart + (i / numPoints) * visibleRange;
       const t = (t_norm + phaseShift) % 1;
 
       let cur = 0;
@@ -1908,7 +2019,7 @@ function redrawScope(phaseShift = 0) {
         cur = 0;
       }
 
-      const px = mLeft + (t_norm / 2) * plotW;
+      const px = toX(t_norm);
       const py = toY_I(cur);
 
       if (i === 0) ctx.moveTo(px, py);
@@ -1918,20 +2029,20 @@ function redrawScope(phaseShift = 0) {
     ctx.shadowBlur = 0;
   }
 
-  // Peak Badges for both cycle 1 and cycle 2
-  for (let c = 0; c < 2; c++) {
+  // Peak Badges (rendered inside visible zoom bounds)
+  for (let c = 0; c < 3; c++) {
     const cyclePeakNorm = ((Ton_norm + 0.015 - phaseShift) % 1 + 1) % 1 + c;
-    const peakX = mLeft + (cyclePeakNorm / 2) * plotW;
+    const peakX = toX(cyclePeakNorm);
     const peakY = toY(Vdrain_pk);
 
-    if (peakX >= mLeft + 20 && peakX <= W - mRight - 20) {
+    if (peakX >= mLeft + 25 && peakX <= W - mRight - 25) {
       ctx.fillStyle = '#e2b774';
       ctx.beginPath();
       ctx.arc(peakX, peakY, 4, 0, Math.PI * 2);
       ctx.fill();
 
       const badgeText = 'Vpk = ' + Vdrain_pk.toFixed(1) + ' V';
-      ctx.font = 'bold 11px Vazirmatn, monospace';
+      ctx.font = 'bold 11px Vazirmatn, sans-serif';
       const textWidth = ctx.measureText(badgeText).width;
       ctx.fillStyle = 'rgba(11, 13, 19, 0.95)';
       ctx.strokeStyle = '#e2b774';
@@ -1945,7 +2056,7 @@ function redrawScope(phaseShift = 0) {
     }
   }
 
-  // Mouse HUD
+  // Mouse HUD & Crosshair
   if (mouseX >= mLeft && mouseX <= W - mRight) {
     ctx.strokeStyle = 'rgba(226, 183, 116, 0.45)';
     ctx.lineWidth = 1;
@@ -1953,9 +2064,10 @@ function redrawScope(phaseShift = 0) {
     ctx.beginPath(); ctx.moveTo(mouseX, mTop); ctx.lineTo(mouseX, H - mBottom); ctx.stroke();
     ctx.setLineDash([]);
 
-    const t_frac = ((mouseX - mLeft) / plotW) * 2;
-    const t_curr_us = t_frac * Ts_us;
-    const t = (t_frac + phaseShift) % 1;
+    const mouseFrac = (mouseX - mLeft) / plotW;
+    const t_norm = tStart + mouseFrac * visibleRange;
+    const t_curr_us = t_norm * Ts_us;
+    const t = (t_norm + phaseShift) % 1;
 
     let v_inst = 0;
     let i_inst = 0;
@@ -1964,7 +2076,7 @@ function redrawScope(phaseShift = 0) {
     if (t < Ton_norm) {
       i_inst = (t / Ton_norm) * Ipk;
       v_inst = 0.2 + i_inst * 0.16;
-      phase = '۱. ماسفت روشن (شارژ اولیه)';
+      phase = '۱. ماسفت روشن (شارژ سلف)';
     } else if (t < Ton_norm + Tclamp_norm) {
       const ph = (t - Ton_norm) / Tclamp_norm;
       v_inst = Vin + Vor + (Vdrain_pk - (Vin + Vor)) * Math.exp(-ph * (tau_ratio >= 3 ? 3.2 : 1.6));
@@ -1992,9 +2104,10 @@ function redrawScope(phaseShift = 0) {
   }
 }
 
-// Mouse events
+// Mouse events and Interactive Zoom / Pan Handlers
 const canvas = document.getElementById('scopeCanvas');
 if (canvas) {
+  // Mouse Move for HUD
   canvas.addEventListener('mousemove', function(e) {
     const rect = canvas.getBoundingClientRect();
     mouseX = e.clientX - rect.left;
@@ -2003,6 +2116,76 @@ if (canvas) {
   canvas.addEventListener('mouseleave', function() {
     mouseX = -1;
     triggerRedraw();
+  });
+
+  // Mouse Wheel Scroll Zoom
+  canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mX = e.clientX - rect.left;
+    const mLeft = 56;
+    const mRight = 56;
+    const plotW = Math.max(10, rect.width - mLeft - mRight);
+    
+    if (mX < mLeft || mX > rect.width - mRight) return;
+
+    const mouseFrac = (mX - mLeft) / plotW;
+    const totalCycles = 2.0;
+    const visibleRange = totalCycles / zoomFactor;
+    const currentT = panOffsetX + mouseFrac * visibleRange;
+
+    const zoomStep = e.deltaY < 0 ? 1.25 : 0.8;
+    zoomFactor = Math.max(1.0, Math.min(25.0, zoomFactor * zoomStep));
+
+    const newVisibleRange = totalCycles / zoomFactor;
+    panOffsetX = currentT - mouseFrac * newVisibleRange;
+    panOffsetX = Math.max(0, Math.min(totalCycles - newVisibleRange, panOffsetX));
+
+    updateZoomUI();
+    triggerRedraw();
+  }, { passive: false });
+
+  // Mouse Drag to Pan
+  canvas.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return; // Left mouse button
+    const rect = canvas.getBoundingClientRect();
+    const mX = e.clientX - rect.left;
+    const mLeft = 56;
+    const mRight = 56;
+    if (mX >= mLeft && mX <= rect.width - mRight) {
+      isDragging = true;
+      dragStartX = mX;
+      dragStartPan = panOffsetX;
+      canvas.style.cursor = 'grabbing';
+    }
+  });
+
+  window.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const mX = e.clientX - rect.left;
+    const mLeft = 56;
+    const mRight = 56;
+    const plotW = Math.max(10, rect.width - mLeft - mRight);
+    const totalCycles = 2.0;
+    const newVisibleRange = totalCycles / zoomFactor;
+
+    const dx = mX - dragStartX;
+    const dt = -(dx / plotW) * newVisibleRange;
+    panOffsetX = Math.max(0, Math.min(totalCycles - newVisibleRange, dragStartPan + dt));
+    triggerRedraw();
+  });
+
+  window.addEventListener('mouseup', function() {
+    if (isDragging) {
+      isDragging = false;
+      canvas.style.cursor = 'crosshair';
+    }
+  });
+
+  // Double click resets zoom
+  canvas.addEventListener('dblclick', function() {
+    resetZoom();
   });
 }
 
