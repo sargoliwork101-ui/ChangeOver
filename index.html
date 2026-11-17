@@ -3,162 +3,182 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سیستم تحلیل جامع مداری، فیزیکی و حرارتی فلای‌بک (Flyback Engineering Engine)</title>
+<title>سیستم مهندسی تحلیل جامع اسنابر، ماسفت و ترانس فلای‌بک | ChangeOver 24V</title>
+
+<!-- Google Font: Vazirmatn -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
   :root {
-    --bg-base: #07090e;
-    --bg-surface: #0e111a;
-    --bg-card: rgba(18, 22, 34, 0.85);
-    --card-border: rgba(226, 183, 116, 0.16);
-    --card-inner-border: rgba(255, 255, 255, 0.07);
-    --card-bg-subtle: rgba(255, 255, 255, 0.025);
+    /* Warm Executive Engineering Palette */
+    --bg-base: #0a0c12;
+    --bg-gradient: radial-gradient(circle at 50% 0%, #1a1724 0%, #0c0e16 50%, #06070a 100%);
     
-    --gold: #d4af37;
-    --gold-bright: #f5d77f;
-    --copper: #ea580c;
-    --copper-glow: #fb923c;
-    --warm-violet: #a855f7;
-    --warm-green: #22c55e;
+    --card-bg: rgba(20, 22, 32, 0.88);
+    --card-bg-subtle: rgba(14, 16, 24, 0.75);
+    --card-border: rgba(226, 183, 116, 0.18);
+    --card-border-hover: rgba(226, 183, 116, 0.4);
+    --card-inner-border: rgba(255, 255, 255, 0.07);
+    
+    /* Warm Gold, Bronze, Copper Accents */
+    --gold: #e2b774;
+    --gold-bright: #fcd34d;
+    --copper: #c28854;
+    --amber: #f59e0b;
     --warm-red: #ef4444;
+    --warm-green: #22c55e;
+    --warm-blue: #60a5fa;
+    --warm-violet: #c084fc;
+    
+    /* Typography Colors */
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    --text-muted: #848e9f;
+    --text-dim: #5a6475;
   }
 
   * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
   }
-
+  
   body {
-    background-color: var(--bg-base);
-    background-image: 
-      radial-gradient(circle at 15% 10%, rgba(212, 175, 55, 0.06) 0%, transparent 40%),
-      radial-gradient(circle at 85% 90%, rgba(234, 88, 12, 0.05) 0%, transparent 40%),
-      linear-gradient(180deg, #07090e 0%, #0d111a 100%);
-    background-attachment: fixed;
+    background: var(--bg-gradient);
     color: var(--text-primary);
-    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    line-height: 1.5;
-    padding: 20px;
+    padding: clamp(12px, 2vw, 24px);
     min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: -0.1px;
+    overflow-x: hidden;
   }
 
   .container {
-    max-width: 1540px;
+    width: 100%;
+    max-width: 1680px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
   }
 
-  /* Glassmorphic card styling */
+  /* Formal Glass Component */
   .glass-card {
-    background: var(--bg-card);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--card-border);
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .glass-card:hover {
+    border-color: var(--card-border-hover);
   }
 
-  /* Header */
+  /* Executive Header */
   header {
-    padding: 20px 28px;
+    padding: 18px 26px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 16px;
-    border-bottom: 2px solid rgba(212, 175, 55, 0.25);
+    gap: 14px;
+    border-top: 2px solid var(--gold);
   }
   .header-content h1 {
-    font-size: 1.35rem;
-    font-weight: 900;
-    background: linear-gradient(135deg, #fff 20%, var(--gold-bright) 70%, var(--copper-glow) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 4px;
+    font-size: clamp(1.1rem, 2vw, 1.38rem);
+    font-weight: 800;
+    color: var(--gold);
     display: flex;
     align-items: center;
     gap: 10px;
   }
   .header-content p {
-    font-size: 0.86rem;
+    font-size: clamp(0.75rem, 1.2vw, 0.86rem);
     color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   .btn-download {
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(234, 88, 12, 0.2) 100%);
+    background: linear-gradient(135deg, rgba(226, 183, 116, 0.15) 0%, rgba(194, 136, 84, 0.25) 100%);
     border: 1px solid var(--gold);
     color: var(--gold-bright);
-    padding: 9px 18px;
+    padding: 8px 18px;
     border-radius: 10px;
-    font-size: 0.85rem;
-    font-weight: 700;
     cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: 700;
     display: flex;
     align-items: center;
     gap: 8px;
     transition: all 0.25s ease;
-    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.15);
   }
   .btn-download:hover {
     background: linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%);
-    color: #07090e;
+    color: #0b0d13;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
+    box-shadow: 0 6px 20px rgba(226, 183, 116, 0.35);
   }
 
   /* Preset Bar */
   .preset-bar {
     padding: 12px 20px;
     display: flex;
+    gap: 8px;
     align-items: center;
-    gap: 10px;
     flex-wrap: wrap;
   }
   .preset-label {
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 700;
     color: var(--gold);
-    margin-left: 6px;
+    margin-left: 4px;
   }
   .preset-btn {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-inner-border);
     color: var(--text-secondary);
-    padding: 6px 14px;
+    padding: 6px 13px;
     border-radius: 8px;
+    cursor: pointer;
     font-size: 0.8rem;
     font-weight: 600;
-    cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
   }
   .preset-btn:hover {
-    background: rgba(212, 175, 55, 0.12);
-    border-color: var(--gold);
-    color: #fff;
+    background: rgba(226, 183, 116, 0.12);
+    color: var(--gold-bright);
+    border-color: rgba(226, 183, 116, 0.3);
   }
   .preset-btn.active {
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(234, 88, 12, 0.25) 100%);
-    border-color: var(--gold-bright);
-    color: var(--gold-bright);
+    background: var(--gold);
+    color: #0b0d13;
+    border-color: var(--gold);
     font-weight: 700;
+    box-shadow: 0 2px 12px rgba(226, 183, 116, 0.25);
   }
 
-  /* 2-COLUMN MAIN DASHBOARD LAYOUT */
+  /* 2-COLUMN MAIN DASHBOARD LAYOUT (راست: کارت‌ها | چپ: نمودار) */
   .dashboard-layout {
     display: grid;
-    grid-template-columns: 550px 1fr;
+    grid-template-columns: minmax(480px, 530px) 1fr;
     gap: 20px;
     align-items: start;
   }
-  @media (max-width: 1240px) {
+  @media (max-width: 1200px) {
     .dashboard-layout {
       grid-template-columns: 1fr;
     }
@@ -294,7 +314,7 @@
   }
   input[type="number"]:focus, select:focus {
     border-color: var(--gold);
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
+    box-shadow: 0 0 10px rgba(226, 183, 116, 0.25);
   }
   select {
     width: 100%;
@@ -303,46 +323,38 @@
     cursor: pointer;
   }
 
-  /* Segregated Sub-boxes */
-  .sub-box {
-    background: rgba(0, 0, 0, 0.25);
+  /* Sleek Group Container */
+  .group-box {
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--card-inner-border);
-    border-radius: 12px;
-    padding: 14px;
+    border-radius: 10px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    transition: border-color 0.2s ease;
+    gap: 8px;
   }
-  .sub-box:hover {
-    border-color: rgba(212, 175, 55, 0.25);
-  }
-  .sub-box.box-resistor { border-right: 3px solid var(--copper); }
-  .sub-box.box-cap { border-right: 3px solid var(--gold); }
-  .sub-box.box-tvs { border-right: 3px solid var(--warm-violet); background: rgba(168, 85, 247, 0.03); }
-  .sub-box.box-heatsink { border-right: 3px solid var(--warm-green); background: rgba(34, 197, 94, 0.03); }
-
-  .sub-box-header {
+  .group-box-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.84rem;
+    font-size: 0.78rem;
     font-weight: 700;
+    color: var(--text-secondary);
   }
 
   .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.82rem;
-    color: var(--gold-bright);
+    gap: 7px;
+    font-size: 0.8rem;
+    color: var(--text-primary);
     font-weight: 700;
     cursor: pointer;
     user-select: none;
   }
   .checkbox-label input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     accent-color: var(--warm-green);
     cursor: pointer;
   }
@@ -364,7 +376,7 @@
     transition: transform 0.2s ease, border-color 0.2s ease;
   }
   .metric-card:hover {
-    border-color: rgba(212, 175, 55, 0.25);
+    border-color: rgba(226, 183, 116, 0.25);
     transform: translateY(-2px);
   }
   .metric-card-top {
@@ -484,7 +496,7 @@
     border-radius: 12px;
     overflow: hidden;
     background: #06070a;
-    border: 1px solid rgba(212, 175, 55, 0.18);
+    border: 1px solid rgba(226, 183, 116, 0.15);
     box-shadow: inset 0 2px 10px rgba(0,0,0,0.85);
     width: 100%;
     min-height: 430px;
@@ -501,7 +513,7 @@
     top: 14px;
     left: 14px;
     background: rgba(11, 13, 19, 0.92);
-    border: 1px solid rgba(212, 175, 55, 0.25);
+    border: 1px solid rgba(226, 183, 116, 0.25);
     border-radius: 8px;
     padding: 8px 14px;
     font-family: monospace, 'Vazirmatn';
@@ -565,7 +577,7 @@
   <header class="glass-card">
     <div class="header-content">
       <h1>⚡ سیستم تحلیل جامع مداری، فیزیکی و حرارتی فلای‌بک (Flyback Engineering Engine)</h1>
-      <p>تفکیک کامل کادرهای مقاومت، خازن و TVS به همراه محاسبه‌گر هوشمند کاهش دمای ماسفت با هیت‌سینک</p>
+      <p>محاسبه‌گر دینامیک تلفات حرارتی ماسفت، کلمپ اسنابر RCD/RCDZ و ترانسفورمر سوئیچینگ ۲۴ ولت برد ChangeOver</p>
     </div>
     <div class="header-actions">
       <button class="btn-download" onclick="downloadCurrentHtml()">
@@ -637,14 +649,14 @@
             </div>
           </div>
 
-          <!-- Heatsink Option Box with Reduction Calculator -->
-          <div class="sub-box box-heatsink">
-            <div class="sub-box-header">
+          <!-- Heatsink Option Box -->
+          <div class="group-box">
+            <div class="group-box-header">
               <label class="checkbox-label">
                 <input type="checkbox" id="chk_heatsink" checked onchange="runSimulation()">
-                <span>✅ نصب هیت‌سینک روی ماسفت (Heatsink Enabled)</span>
+                <span>نصب هیت‌سینک روی ماسفت (Heatsink)</span>
               </label>
-              <span class="val-badge" id="lbl_temp_drop" style="color:var(--warm-green);">-191°C کاهش دما</span>
+              <span class="val-badge" id="lbl_temp_drop" style="color:var(--warm-green); font-size:0.8rem;">-191°C کاهش دما</span>
             </div>
 
             <div class="form-item" id="heatsink_ctrl_group">
@@ -704,145 +716,76 @@
         </div>
       </div>
 
-      <!-- Card 2: Snubber, Clamp, Resistor & TVS (کاملاً تفکیک‌شده) -->
+      <!-- Card 2: Snubber, Clamp & TVS -->
       <div class="category-box snubber-box glass-card">
         <div class="box-top-line"></div>
         
         <div class="cat-header">
           <div class="cat-title" style="color:var(--gold);">
-            <span>🔧 ۲. اسنابر، کلمپ، مقاومت و دیود TVS (تفکیک‌شده)</span>
+            <span>🔧 ۲. اسنابر، کلمپ، مقاومت و دیود TVS</span>
           </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span class="cat-badge pill" id="pill_snubber_top">وضعیت: استاندارد</span>
-            <select id="snubber_type" oninput="runSimulation()" onchange="runSimulation()" style="width:auto; padding:3px 10px; font-size:0.8rem;">
-              <option value="RCD" selected>مدار RCD استاندارد</option>
-              <option value="RCDZ">مدار هیبرید RCDZ ترکیبی (+TVS)</option>
-              <option value="RC">مدار RC خالص دمپینگ</option>
+          <span class="cat-badge pill" id="pill_snubber_top">وضعیت: استاندارد</span>
+        </div>
+
+        <!-- Controls -->
+        <div class="sub-heading">مشخصات مداری، مقاومت، خازن و کلمپ</div>
+        <div class="form-grid">
+          <div class="form-item">
+            <div class="form-label-row"><span>نوع توپولوژی مدار اسنابر</span></div>
+            <select id="snubber_type" oninput="runSimulation()" onchange="runSimulation()">
+              <option value="RCD" selected>RCD استاندارد (مقاومت + خازن + دیود سریع UF4007)</option>
+              <option value="RCDZ">RCDZ هیبرید ترکیبی (RCD موازی با دیود کلمپ TVS)</option>
+              <option value="RC">RC خالص دمپینگ (بدون دیود کلمپ)</option>
             </select>
           </div>
-        </div>
 
-        <!-- 1. RESISTOR SUB-BOX (کادر اختصاصی مقاومت) -->
-        <div class="sub-box box-resistor">
-          <div class="sub-box-header">
-            <span style="color:var(--copper);">🟫 ۱. مشخصات و تحلیل حرارتی مقاومت اسنابر (Resistor)</span>
-            <span class="pill danger" id="pill_pr">اضافه توان</span>
-          </div>
-          
-          <div class="form-grid">
-            <div class="form-item">
-              <div class="form-label-row">
-                <span>مقدار مقاومت اسنابر (Rsn)</span>
-                <span class="val-badge" id="lbl_rsn">1000 Ω</span>
-              </div>
-              <div class="input-control">
-                <input type="range" id="rsn" min="10" max="25000" step="50" value="1000" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
-                <input type="number" id="rsn_num" value="1000" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
-              </div>
+          <!-- Resistor Sub-Section -->
+          <div class="form-item">
+            <div class="form-label-row">
+              <span>مقاومت اسنابر (Rsn)</span>
+              <span class="val-badge" id="lbl_rsn">1000 Ω</span>
             </div>
-
-            <div class="form-item">
-              <div class="form-label-row">
-                <span>توان نامی پکیج فیزیکی مقاومت</span>
-                <span class="val-badge" id="lbl_prated">2.0 W</span>
-              </div>
-              <select id="prated" oninput="runSimulation()" onchange="runSimulation()">
-                <option value="0.5">0.5 وات (معمولی ۱/۲W)</option>
-                <option value="1.0">1.0 وات (متال‌فیلم ۱W)</option>
-                <option value="2.0" selected>2.0 وات (استاندارد ۲W)</option>
-                <option value="3.0">3.0 وات (پاور ۳W)</option>
-                <option value="5.0">5.0 وات (آجری / سرامیکی ۵W)</option>
-                <option value="10.0">10.0 وات (آجری بزرگ ۱۰W)</option>
-              </select>
+            <div class="input-control">
+              <input type="range" id="rsn" min="10" max="25000" step="50" value="1000" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
+              <input type="number" id="rsn_num" value="1000" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
             </div>
           </div>
 
-          <!-- Resistor Output Grid -->
-          <div class="output-grid">
-            <div class="metric-card">
-              <div class="metric-card-top">
-                <span>تلفات مقاومت (PR)</span>
-                <span class="pill danger" id="pill_pr_badge">184% توان</span>
-              </div>
-              <div class="metric-val">
-                <span id="res_pr">3.69</span><span class="metric-unit">W</span>
-              </div>
-              <div class="metric-sub">درصد پکیج (<b id="res_prated_sub">2.0W</b>): <b id="res_pr_pct" style="color:var(--warm-red);">184%</b></div>
+          <div class="form-item">
+            <div class="form-label-row">
+              <span>توان نامی پکیج فیزیکی مقاومت</span>
+              <span class="val-badge" id="lbl_prated">2.0 W</span>
             </div>
-
-            <div class="metric-card">
-              <div class="metric-card-top">
-                <span>دمای بدنه مقاومت (TR)</span>
-                <span class="pill danger" id="pill_temp">بسیار داغ!</span>
-              </div>
-              <div class="metric-val">
-                <span id="res_temp">145</span><span class="metric-unit">°C</span>
-              </div>
-              <div class="metric-sub">توان سلف نشتی: <b id="res_pleak_sub">2.33 W</b></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. CAPACITOR SUB-BOX (کادر اختصاصی خازن) -->
-        <div class="sub-box box-cap">
-          <div class="sub-box-header">
-            <span style="color:var(--gold);">🟨 ۲. مشخصات و ریپل خازن اسنابر (Capacitor)</span>
-            <span class="pill safe" id="pill_ripple">ریپل ناچیز</span>
+            <select id="prated" oninput="runSimulation()" onchange="runSimulation()">
+              <option value="0.5">0.5 وات (معمولی ۱/۲W)</option>
+              <option value="1.0">1.0 وات (متال‌فیلم ۱W)</option>
+              <option value="2.0" selected>2.0 وات (استاندارد ۲W)</option>
+              <option value="3.0">3.0 وات (پاور ۳W)</option>
+              <option value="5.0">5.0 وات (آجری / سرامیکی ۵W)</option>
+              <option value="10.0">10.0 وات (آجری بزرگ ۱۰W)</option>
+            </select>
           </div>
 
-          <div class="form-grid">
-            <div class="form-item">
-              <div class="form-label-row">
-                <span>ظرفیت خازن اسنابر (Csn)</span>
-                <span class="val-badge" id="lbl_csn">470 nF</span>
-              </div>
-              <div class="input-control">
-                <input type="range" id="csn" min="0.5" max="680" step="0.5" value="470" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
-                <input type="number" id="csn_num" value="470" step="1" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
-              </div>
+          <!-- Capacitor Sub-Section -->
+          <div class="form-item">
+            <div class="form-label-row">
+              <span>ظرفیت خازن اسنابر (Csn)</span>
+              <span class="val-badge" id="lbl_csn">470 nF</span>
+            </div>
+            <div class="input-control">
+              <input type="range" id="csn" min="0.5" max="680" step="0.5" value="470" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
+              <input type="number" id="csn_num" value="470" step="1" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
             </div>
           </div>
 
-          <!-- Cap Output Grid -->
-          <div class="output-grid">
-            <div class="metric-card">
-              <div class="metric-card-top">
-                <span>ریپل ولتاژ خازن (ΔVsn)</span>
-                <span class="pill safe">مطلوب</span>
-              </div>
-              <div class="metric-val">
-                <span id="res_ripple">2.6</span><span class="metric-unit">V</span>
-              </div>
-              <div class="metric-sub">ولتاژ متوسط خازن: <b id="res_vsn_avg">60.7 V</b></div>
+          <!-- TVS Sub-Section (Visible only when RCDZ) -->
+          <div class="form-item" id="group_tvs_ctrls" style="display:none;">
+            <div class="form-label-row">
+              <span>مشخصات و پکیج دیود TVS کلمپ</span>
+              <span class="val-badge" id="lbl_vz" style="color:var(--warm-violet);">51 V (P6KE)</span>
             </div>
-
-            <div class="metric-card">
-              <div class="metric-card-top">
-                <span>ثابت زمانی دشارژ (τ / Ts)</span>
-                <span class="pill safe">پایدار</span>
-              </div>
-              <div class="metric-val">
-                <span id="res_tau">23.5</span><span class="metric-unit">× Ts</span>
-              </div>
-              <div class="metric-sub">ثابت τ: <b id="res_tau_val">470 µs</b></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. TVS DIODE SUB-BOX (کادر اختصاصی دیود TVS) -->
-        <div class="sub-box box-tvs" id="sub_box_tvs" style="display:none;">
-          <div class="sub-box-header">
-            <span style="color:var(--warm-violet);">🟪 ۳. مشخصات، توان و دمای دیود TVS کلمپ</span>
-            <span class="pill safe" id="pill_tvs_status">فعال در مد RCDZ</span>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-item">
-              <div class="form-label-row">
-                <span>ولتاژ شکست نامی TVS (Vz)</span>
-                <span class="val-badge" id="lbl_vz" style="color:var(--warm-violet);">51 V</span>
-              </div>
-              <select id="vz" oninput="runSimulation()" onchange="runSimulation()">
+            <div class="input-control">
+              <select id="vz" oninput="runSimulation()" onchange="runSimulation()" style="flex:1;">
                 <option value="33">33 ولت (P6KE33A / 1.5KE33A)</option>
                 <option value="36">36 ولت (P6KE36A / 1.5KE36A)</option>
                 <option value="43">43 ولت (P6KE43A / 1.5KE43A)</option>
@@ -853,47 +796,74 @@
                 <option value="82">82 ولت (P6KE82A / 1.5KE82A)</option>
                 <option value="100">100 ولت (P6KE100A / 1.5KE100A)</option>
               </select>
-            </div>
-
-            <div class="form-item">
-              <div class="form-label-row">
-                <span>پکیج فیزیکی و توان دائم TVS</span>
-                <span class="val-badge" id="lbl_tvs_pkg">P6KE (5W)</span>
-              </div>
-              <select id="tvs_package" oninput="runSimulation()" onchange="runSimulation()">
-                <option value="P6KE" selected>پکیج P6KE (توان دائم 5W / Rth=75°C/W)</option>
-                <option value="1.5KE">پکیج 1.5KE (توان دائم 6.5W / Rth=50°C/W)</option>
-                <option value="SMBJ">پکیج SMD مدل SMBJ (توان دائم 5W / Rth=90°C/W)</option>
+              <select id="tvs_package" oninput="runSimulation()" onchange="runSimulation()" style="flex:1;">
+                <option value="P6KE" selected>پکیج P6KE (توان 5W)</option>
+                <option value="1.5KE">پکیج 1.5KE (توان 6.5W)</option>
+                <option value="SMBJ">پکیج SMD مدل SMBJ (5W)</option>
               </select>
-            </div>
-          </div>
-
-          <!-- TVS Output Grid -->
-          <div class="output-grid">
-            <div class="metric-card">
-              <div class="metric-card-top">
-                <span>تلفات TVS کلمپ (PTVS)</span>
-                <span class="pill safe" id="pill_ptvs">خنک</span>
-              </div>
-              <div class="metric-val">
-                <span id="res_ptvs">0.00</span><span class="metric-unit">W</span>
-              </div>
-              <div class="metric-sub">سهم TVS از کل: <b id="res_ptvs_pct">0%</b></div>
-            </div>
-
-            <div class="metric-card">
-              <div class="metric-card-top">
-                <span>دمای پیوند TVS (Tj_TVS)</span>
-                <span class="pill safe" id="pill_ttvs">خنک</span>
-              </div>
-              <div class="metric-val">
-                <span id="res_ttvs">25</span><span class="metric-unit">°C</span>
-              </div>
-              <div class="metric-sub">سطح کلمپ Vz: <b id="res_vz_sub">51 V</b></div>
             </div>
           </div>
         </div>
 
+        <!-- Outputs -->
+        <div class="sub-heading" style="margin-top:4px;">نتایج اختصاصی اسنابر، مقاومت و TVS</div>
+        <div class="output-grid">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <span>تلفات مقاومت (PR)</span>
+              <span class="pill danger" id="pill_pr">اضافه توان</span>
+            </div>
+            <div class="metric-val">
+              <span id="res_pr">3.69</span><span class="metric-unit">W</span>
+            </div>
+            <div class="metric-sub">درصد توان نامی: <b id="res_pr_pct">184%</b></div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <span>دمای بدنه مقاومت (TR)</span>
+              <span class="pill danger" id="pill_temp">بسیار داغ!</span>
+            </div>
+            <div class="metric-val">
+              <span id="res_temp">145</span><span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-sub">توان سلف نشتی: <b id="res_pleak_sub">2.33 W</b></div>
+          </div>
+
+          <!-- TVS Metrics (visible when RCDZ) -->
+          <div class="metric-card" id="card_tvs_power" style="display:none;">
+            <div class="metric-card-top">
+              <span>توان اتلافی TVS</span>
+              <span class="pill safe" id="pill_ptvs">خنک</span>
+            </div>
+            <div class="metric-val">
+              <span id="res_ptvs">0.00</span><span class="metric-unit">W</span>
+            </div>
+            <div class="metric-sub">سهم کلمپ TVS: <b id="res_ptvs_pct">0%</b></div>
+          </div>
+
+          <div class="metric-card" id="card_tvs_temp" style="display:none;">
+            <div class="metric-card-top">
+              <span>دمای پیوند TVS</span>
+              <span class="pill safe" id="pill_ttvs">خنک</span>
+            </div>
+            <div class="metric-val">
+              <span id="res_ttvs">25</span><span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-sub">ولتاژ کلمپ Vz: <b id="res_vz_sub">51 V</b></div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <span>ریپل خازن (ΔVsn)</span>
+              <span class="pill safe" id="pill_ripple">ناچیز</span>
+            </div>
+            <div class="metric-val">
+              <span id="res_ripple">2.6</span><span class="metric-unit">V</span>
+            </div>
+            <div class="metric-sub">ثابت زمانی دشارژ: <b id="res_tau">23.5 × Ts</b></div>
+          </div>
+        </div>
       </div>
 
       <!-- Card 3: Power, Load & Transformer -->
@@ -902,22 +872,31 @@
         
         <div class="cat-header">
           <div class="cat-title" style="color:var(--copper);">
-            <span>⚡ ۳. مدار تغذیه، بار و مشخصات ترانسفورمر (Power & Transformer)</span>
+            <span>⚡ ۳. تغذیه، بار و ترانسفورمر (Power & Trans)</span>
           </div>
-          <select id="duty_mode" oninput="toggleDutyMode()" onchange="toggleDutyMode()" style="width:auto; padding:3px 10px; font-size:0.8rem;">
-            <option value="auto" selected>محاسبه خودکار Duty (مد DCM)</option>
-            <option value="manual">تنظیم دستی دیوتی سایکل (%)</option>
-          </select>
+          <span class="cat-badge pill" id="pill_power_top">مد DCM</span>
         </div>
 
+        <!-- Controls -->
+        <div class="sub-heading">مشخصات منبع، بار و ترانس EE33</div>
         <div class="form-grid">
-          <div class="form-item" id="group_manual_duty" style="display:none; background:rgba(234,88,12,0.08); padding:8px; border-radius:8px;">
+          <div class="form-item">
             <div class="form-label-row">
-              <span>دیوتی سایکل دستی (Duty Cycle %)</span>
+              <span>حالت کنترل دیوتی‌سایکل</span>
+            </div>
+            <select id="duty_mode" oninput="toggleDutyMode()" onchange="toggleDutyMode()">
+              <option value="auto" selected>خودکار (DCM Closed-Loop: محاسبه از توان بار و Vin)</option>
+              <option value="manual">دستی (Manual Duty Cycle: تنظیم مستقیم D)</option>
+            </select>
+          </div>
+
+          <div class="form-item" id="group_manual_duty" style="display:none;">
+            <div class="form-label-row">
+              <span>دیوتی‌سایکل دستی (D)</span>
               <span class="val-badge" id="lbl_duty_manual">28.5 %</span>
             </div>
             <div class="input-control">
-              <input type="range" id="duty_manual" min="5" max="65" step="0.5" value="28.5" oninput="syncVal('duty_manual', this.value, this)" onchange="syncVal('duty_manual', this.value, this)">
+              <input type="range" id="duty_manual" min="10" max="65" step="0.5" value="28.5" oninput="syncVal('duty_manual', this.value, this)" onchange="syncVal('duty_manual', this.value, this)">
               <input type="number" id="duty_manual_num" value="28.5" step="0.5" oninput="syncVal('duty_manual', this.value, this)" onchange="syncVal('duty_manual', this.value, this)">
             </div>
           </div>
@@ -1143,7 +1122,9 @@ function runAnimationLoop() {
 }
 
 function triggerRedraw() {
-  if (!isLiveRunning) {
+  if (isLiveRunning) {
+    redrawScope(animPhaseOffset);
+  } else {
     redrawScope(0);
   }
 }
@@ -1151,17 +1132,17 @@ function triggerRedraw() {
 function updateMosfetParams() {
   const model = document.getElementById('mosfet_model').value;
   if (model === 'IRF640') {
-    syncVal('vdss', 200);
-    syncVal('rdson', 0.180);
+    setVal('vdss', 200);
+    setVal('rdson', 0.180);
   } else if (model === 'IRFB4227') {
-    syncVal('vdss', 200);
-    syncVal('rdson', 0.021);
+    setVal('vdss', 200);
+    setVal('rdson', 0.021);
   } else if (model === 'IRFB4610') {
-    syncVal('vdss', 100);
-    syncVal('rdson', 0.014);
+    setVal('vdss', 100);
+    setVal('rdson', 0.014);
   } else if (model === 'IRF540N') {
-    syncVal('vdss', 100);
-    syncVal('rdson', 0.044);
+    setVal('vdss', 100);
+    setVal('rdson', 0.044);
   }
   runSimulation();
 }
@@ -1202,6 +1183,15 @@ function downloadCurrentHtml() {
   URL.revokeObjectURL(url);
 }
 
+function setVal(name, value) {
+  const numVal = parseFloat(value);
+  if (isNaN(numVal)) return;
+  const rangeEl = document.getElementById(name);
+  const numEl = document.getElementById(name + '_num');
+  if (rangeEl) rangeEl.value = numVal;
+  if (numEl) numEl.value = numVal;
+}
+
 function syncVal(name, value, sender) {
   const numVal = parseFloat(value);
   if (isNaN(numVal)) return;
@@ -1224,81 +1214,82 @@ function setPreset(p) {
   if (p === 'current') {
     document.getElementById('btn_current').classList.add('active');
     document.getElementById('snubber_type').value = 'RCD';
-    syncVal('vin', 28);
-    syncVal('vout', 14.4);
-    syncVal('iout', 2.5);
-    syncVal('fsw', 50);
-    syncVal('lp', 15);
-    syncVal('lleak', 0.825);
-    syncVal('rsn', 1000);
+    setVal('vin', 28);
+    setVal('vout', 14.4);
+    setVal('iout', 2.5);
+    setVal('fsw', 50);
+    setVal('lp', 15);
+    setVal('lleak', 0.825);
+    setVal('rsn', 1000);
     document.getElementById('prated').value = "2.0";
-    syncVal('csn', 470);
+    setVal('csn', 470);
     document.getElementById('mosfet_model').value = 'IRF640';
-    syncVal('vdss', 200);
-    syncVal('rdson', 0.180);
+    setVal('vdss', 200);
+    setVal('rdson', 0.180);
   } else if (p === 'small_c') {
     document.getElementById('btn_small_c').classList.add('active');
     document.getElementById('snubber_type').value = 'RCD';
-    syncVal('vin', 28);
-    syncVal('vout', 14.4);
-    syncVal('iout', 2.5);
-    syncVal('fsw', 50);
-    syncVal('lp', 15);
-    syncVal('lleak', 0.825);
-    syncVal('rsn', 1000);
+    setVal('vin', 28);
+    setVal('vout', 14.4);
+    setVal('iout', 2.5);
+    setVal('fsw', 50);
+    setVal('lp', 15);
+    setVal('lleak', 0.825);
+    setVal('rsn', 1000);
     document.getElementById('prated').value = "2.0";
-    syncVal('csn', 2.2);
+    setVal('csn', 2.2);
     document.getElementById('mosfet_model').value = 'IRF640';
-    syncVal('vdss', 200);
-    syncVal('rdson', 0.180);
+    setVal('vdss', 200);
+    setVal('rdson', 0.180);
   } else if (p === 'opt_rcd') {
     document.getElementById('btn_opt_rcd').classList.add('active');
     document.getElementById('snubber_type').value = 'RCD';
-    syncVal('vin', 28);
-    syncVal('vout', 14.4);
-    syncVal('iout', 2.5);
-    syncVal('fsw', 50);
-    syncVal('lp', 15);
-    syncVal('lleak', 0.825);
-    syncVal('rsn', 2200);
+    setVal('vin', 28);
+    setVal('vout', 14.4);
+    setVal('iout', 2.5);
+    setVal('fsw', 50);
+    setVal('lp', 15);
+    setVal('lleak', 0.825);
+    setVal('rsn', 2200);
     document.getElementById('prated').value = "5.0";
-    syncVal('csn', 100);
+    setVal('csn', 100);
     document.getElementById('mosfet_model').value = 'IRFB4227';
-    syncVal('vdss', 200);
-    syncVal('rdson', 0.021);
+    setVal('vdss', 200);
+    setVal('rdson', 0.021);
   } else if (p === 'rcdz') {
     document.getElementById('btn_rcdz').classList.add('active');
     document.getElementById('snubber_type').value = 'RCDZ';
-    syncVal('vin', 28);
-    syncVal('vout', 14.4);
-    syncVal('iout', 2.5);
-    syncVal('fsw', 50);
-    syncVal('lp', 15);
-    syncVal('lleak', 0.825);
-    syncVal('rsn', 10000);
+    setVal('vin', 28);
+    setVal('vout', 14.4);
+    setVal('iout', 2.5);
+    setVal('fsw', 50);
+    setVal('lp', 15);
+    setVal('lleak', 0.825);
+    setVal('rsn', 10000);
     document.getElementById('prated').value = "2.0";
-    syncVal('csn', 2.2);
+    setVal('csn', 2.2);
     document.getElementById('vz').value = "51";
     document.getElementById('tvs_package').value = "P6KE";
     document.getElementById('mosfet_model').value = 'IRFB4227';
-    syncVal('vdss', 200);
-    syncVal('rdson', 0.021);
+    setVal('vdss', 200);
+    setVal('rdson', 0.021);
   } else if (p === 'sandwich') {
     document.getElementById('btn_sandwich').classList.add('active');
     document.getElementById('snubber_type').value = 'RCD';
-    syncVal('vin', 28);
-    syncVal('vout', 14.4);
-    syncVal('iout', 2.5);
-    syncVal('fsw', 50);
-    syncVal('lp', 15);
-    syncVal('lleak', 0.206);
-    syncVal('rsn', 3300);
+    setVal('vin', 28);
+    setVal('vout', 14.4);
+    setVal('iout', 2.5);
+    setVal('fsw', 50);
+    setVal('lp', 15);
+    setVal('lleak', 0.206);
+    setVal('rsn', 3300);
     document.getElementById('prated').value = "2.0";
-    syncVal('csn', 120);
+    setVal('csn', 120);
     document.getElementById('mosfet_model').value = 'IRFB4227';
-    syncVal('vdss', 200);
-    syncVal('rdson', 0.021);
+    setVal('vdss', 200);
+    setVal('rdson', 0.021);
   }
+  runSimulation();
 }
 
 function runSimulation() {
@@ -1356,11 +1347,15 @@ function runSimulation() {
   setElText('lbl_turns', n === 1.5 ? '15:10 (n=1.5)' : (n === 1.2 ? '12:10 (n=1.2)' : '20:10 (n=2.0)'));
 
   const isTVS = (type === 'RCDZ');
-  const tvsBox = document.getElementById('sub_box_tvs');
-  if (tvsBox) tvsBox.style.display = isTVS ? 'flex' : 'none';
+  const tvsGroup = document.getElementById('group_tvs_ctrls');
+  if (tvsGroup) tvsGroup.style.display = isTVS ? 'flex' : 'none';
+  const cardTvsP = document.getElementById('card_tvs_power');
+  if (cardTvsP) cardTvsP.style.display = isTVS ? 'flex' : 'none';
+  const cardTvsT = document.getElementById('card_tvs_temp');
+  if (cardTvsT) cardTvsT.style.display = isTVS ? 'flex' : 'none';
+
   if (isTVS) {
     setElText('lbl_vz', Vz + ' V (' + tvsPkg + ')');
-    setElText('lbl_tvs_pkg', tvsPkg + ' (' + (tvsPkg === '1.5KE' ? '6.5W' : '5W') + ')');
     setElText('res_vz_sub', Vz + ' V');
   }
 
@@ -1465,7 +1460,7 @@ function runSimulation() {
 
   // Update DOM: Group 1 MOSFET
   setElText('res_tmos', Math.min(350, Tj_mos).toFixed(0));
-  setElText('res_pmos', P_mos_total.toFixed(2));
+  setElText('res_pmos', P_mos_total.toFixed(2) + ' W');
   
   const pillM = document.getElementById('pill_mosfet');
   const pillMTop = document.getElementById('pill_mosfet_top');
@@ -1498,22 +1493,15 @@ function runSimulation() {
     pillVm.innerText = marginPct >= 35 ? 'امن' : (marginPct >= 15 ? 'حاشیه کم' : 'خطر شکست!');
   }
 
-  // Update DOM: Group 2 Segregated Sub-boxes
-  // 1. Resistor Sub-box
+  // Update DOM: Group 2 Snubber, Resistor & TVS
   setElText('res_pr', PR.toFixed(2));
-  setElText('res_prated_sub', Prated.toFixed(1) + ' W');
   const prPct = (PR / Prated * 100);
-  setElText('res_pr_pct', prPct.toFixed(0) + '%');
+  setElText('res_pr_pct', prPct.toFixed(0) + '% (' + Prated.toFixed(1) + 'W)');
   
   const pillPr = document.getElementById('pill_pr');
-  const pillPrBadge = document.getElementById('pill_pr_badge');
   if (pillPr) {
     pillPr.className = prPct <= 65 ? 'pill safe' : (prPct <= 100 ? 'pill warn' : 'pill danger');
     pillPr.innerText = prPct <= 65 ? 'خنک' : (prPct <= 100 ? 'مرز توان' : 'اضافه توان');
-  }
-  if (pillPrBadge) {
-    pillPrBadge.className = prPct <= 65 ? 'pill safe' : (prPct <= 100 ? 'pill warn' : 'pill danger');
-    pillPrBadge.innerText = prPct.toFixed(0) + '% توان';
   }
 
   setElText('res_temp', Math.min(250, TR).toFixed(0));
@@ -1540,22 +1528,19 @@ function runSimulation() {
     }
   }
 
-  // 2. Capacitor Sub-box
   setElText('res_ripple', DeltaV.toFixed(1));
-  setElText('res_vsn_avg', Vsn_avg.toFixed(1) + ' V');
-  setElText('res_tau', tau_ratio.toFixed(1));
-  setElText('res_tau_val', (Rsn * Csn * 1e6).toFixed(0) + ' µs');
+  setElText('res_tau', tau_ratio.toFixed(1) + ' × Ts');
   const pillRip = document.getElementById('pill_ripple');
   if (pillRip) {
     pillRip.className = tau_ratio >= 3.0 ? 'pill safe' : (tau_ratio >= 1.5 ? 'pill warn' : 'pill danger');
     pillRip.innerText = tau_ratio >= 3.0 ? 'ریپل ناچیز' : (tau_ratio >= 1.5 ? 'ریپل متوسط' : 'خازن کوچک!');
   }
 
-  // 3. TVS Sub-box
+  // TVS Output Cards
   if (isTVS) {
     setElText('res_ptvs', PTVS.toFixed(2));
     const tvsSharePct = Ptotal > 0 ? (PTVS / Ptotal * 100) : 0;
-    setElText('res_ptvs_pct', tvsSharePct.toFixed(0) + '%');
+    setElText('res_ptvs_pct', tvsSharePct.toFixed(0) + '% (از کل)');
     const pillPtvs = document.getElementById('pill_ptvs');
     if (pillPtvs) {
       pillPtvs.className = PTVS <= 2.0 ? 'pill safe' : (PTVS <= 4.0 ? 'pill warn' : 'pill danger');
@@ -1624,7 +1609,7 @@ function resizeCanvasToDisplaySize() {
 
   const dpr = window.devicePixelRatio || 1;
   const rect = container.getBoundingClientRect();
-  const width = Math.max(320, Math.floor(rect.width || 600));
+  const width = Math.max(300, Math.floor(rect.width || 600));
   const height = 430;
 
   if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
@@ -1672,9 +1657,9 @@ function redrawScope(phaseShift = 0) {
   const toY_I = (i) => mTop + plotH - (i / maxI) * plotH;
 
   // Background Grid with Warm Tone
-  ctx.strokeStyle = 'rgba(212, 175, 55, 0.09)';
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.08)';
   ctx.lineWidth = 1;
-  ctx.fillStyle = '#94a3b8';
+  ctx.fillStyle = '#848e9f';
   ctx.font = '11px Vazirmatn, monospace';
 
   // Left Y-Axis Voltage
@@ -1739,7 +1724,7 @@ function redrawScope(phaseShift = 0) {
 
   // 3. DC Equilibrium Line (Vin) - GREY
   const yVin = toY(Vin);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.lineWidth = 1.0;
   ctx.setLineDash([2, 4]);
   ctx.beginPath(); ctx.moveTo(mLeft, yVin); ctx.lineTo(W - mRight, yVin); ctx.stroke();
@@ -1879,7 +1864,7 @@ function redrawScope(phaseShift = 0) {
 
   // Mouse HUD
   if (mouseX >= mLeft && mouseX <= W - mRight) {
-    ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
+    ctx.strokeStyle = 'rgba(226, 183, 116, 0.45)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(mouseX, mTop); ctx.lineTo(mouseX, H - mBottom); ctx.stroke();
@@ -1942,18 +1927,6 @@ if (canvas) {
 window.addEventListener('resize', function() {
   resizeCanvasToDisplaySize();
   triggerRedraw();
-});
-
-// Real-Time Event Delegation across ALL elements
-document.addEventListener('input', function(e) {
-  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
-    runSimulation();
-  }
-});
-document.addEventListener('change', function(e) {
-  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
-    runSimulation();
-  }
 });
 
 window.onload = function() {
