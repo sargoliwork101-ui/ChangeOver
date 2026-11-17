@@ -3,210 +3,162 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سیستم مهندسی تحلیل جامع اسنابر، ماسفت و ترانس فلای‌بک | ChangeOver 24V</title>
-
-<!-- Google Font: Vazirmatn -->
+<title>سیستم تحلیل جامع مداری، فیزیکی و حرارتی فلای‌بک (Flyback Engineering Engine)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-
 <style>
   :root {
-    /* Warm Executive Engineering Palette */
-    --bg-base: #0a0c12;
-    --bg-gradient: radial-gradient(circle at 50% 0%, #1a1724 0%, #0c0e16 50%, #06070a 100%);
-    
-    --card-bg: rgba(20, 22, 32, 0.85);
-    --card-bg-subtle: rgba(14, 16, 24, 0.75);
-    --card-inner-box: rgba(10, 12, 18, 0.65);
-    --card-border: rgba(226, 183, 116, 0.18);
-    --card-border-hover: rgba(226, 183, 116, 0.4);
+    --bg-base: #07090e;
+    --bg-surface: #0e111a;
+    --bg-card: rgba(18, 22, 34, 0.85);
+    --card-border: rgba(226, 183, 116, 0.16);
     --card-inner-border: rgba(255, 255, 255, 0.07);
+    --card-bg-subtle: rgba(255, 255, 255, 0.025);
     
-    /* Warm Gold, Bronze, Copper Accents */
-    --gold: #e2b774;
-    --gold-bright: #fcd34d;
-    --copper: #c28854;
-    --amber: #f59e0b;
-    --warm-red: #ef4444;
+    --gold: #d4af37;
+    --gold-bright: #f5d77f;
+    --copper: #ea580c;
+    --copper-glow: #fb923c;
+    --warm-violet: #a855f7;
     --warm-green: #22c55e;
-    --warm-blue: #60a5fa;
-    --warm-violet: #c084fc;
-    
-    /* Typography Colors */
+    --warm-red: #ef4444;
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
-    --text-muted: #848e9f;
-    --text-dim: #5a6475;
+    --text-muted: #94a3b8;
   }
 
   * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
   }
-  
+
   body {
-    background: var(--bg-gradient);
+    background-color: var(--bg-base);
+    background-image: 
+      radial-gradient(circle at 15% 10%, rgba(212, 175, 55, 0.06) 0%, transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(234, 88, 12, 0.05) 0%, transparent 40%),
+      linear-gradient(180deg, #07090e 0%, #0d111a 100%);
+    background-attachment: fixed;
     color: var(--text-primary);
-    padding: clamp(12px, 2vw, 24px);
+    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    padding: 20px;
     min-height: 100vh;
-    font-size: 14px;
-    line-height: 1.6;
-    letter-spacing: -0.1px;
-    overflow-x: hidden;
   }
 
   .container {
-    width: 100%;
-    max-width: 1680px;
+    max-width: 1540px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 20px;
   }
 
-  /* Formal Glass Component */
+  /* Glassmorphic card styling */
   .glass-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--card-border);
     border-radius: 16px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: border-color 0.25s ease, box-shadow 0.25s ease;
-  }
-  .glass-card:hover {
-    border-color: var(--card-border-hover);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
-  /* Inner Segregated Sub-Box Component */
-  .sub-box {
-    background: var(--card-inner-box);
-    border: 1px solid var(--card-inner-border);
-    border-radius: 12px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    position: relative;
-    border-right: 3px solid var(--gold);
-  }
-  .sub-box.box-resistor { border-right-color: var(--copper); }
-  .sub-box.box-cap { border-right-color: var(--gold); }
-  .sub-box.box-tvs { border-right-color: var(--warm-violet); }
-  .sub-box.box-heatsink { border-right-color: var(--warm-green); }
-
-  .sub-box-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding-bottom: 6px;
-    font-size: 0.84rem;
-    font-weight: 700;
-  }
-
-  /* Executive Header */
+  /* Header */
   header {
-    padding: 18px 26px;
+    padding: 20px 28px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 14px;
-    border-top: 2px solid var(--gold);
+    gap: 16px;
+    border-bottom: 2px solid rgba(212, 175, 55, 0.25);
   }
   .header-content h1 {
-    font-size: clamp(1.1rem, 2vw, 1.38rem);
-    font-weight: 800;
-    color: var(--gold);
+    font-size: 1.35rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #fff 20%, var(--gold-bright) 70%, var(--copper-glow) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
     gap: 10px;
   }
   .header-content p {
-    font-size: clamp(0.75rem, 1.2vw, 0.86rem);
+    font-size: 0.86rem;
     color: var(--text-muted);
-    margin-top: 4px;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
   }
 
   .btn-download {
-    background: linear-gradient(135deg, rgba(226, 183, 116, 0.15) 0%, rgba(194, 136, 84, 0.25) 100%);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(234, 88, 12, 0.2) 100%);
     border: 1px solid var(--gold);
     color: var(--gold-bright);
-    padding: 8px 18px;
+    padding: 9px 18px;
     border-radius: 10px;
-    cursor: pointer;
-    font-size: 0.84rem;
+    font-size: 0.85rem;
     font-weight: 700;
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
     transition: all 0.25s ease;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.15);
   }
   .btn-download:hover {
     background: linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%);
-    color: #0b0d13;
+    color: #07090e;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(226, 183, 116, 0.35);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
   }
 
   /* Preset Bar */
   .preset-bar {
     padding: 12px 20px;
     display: flex;
-    gap: 8px;
     align-items: center;
+    gap: 10px;
     flex-wrap: wrap;
   }
   .preset-label {
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     font-weight: 700;
     color: var(--gold);
-    margin-left: 4px;
+    margin-left: 6px;
   }
   .preset-btn {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--card-inner-border);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
-    padding: 6px 13px;
+    padding: 6px 14px;
     border-radius: 8px;
-    cursor: pointer;
     font-size: 0.8rem;
     font-weight: 600;
+    cursor: pointer;
     transition: all 0.2s ease;
-    white-space: nowrap;
   }
   .preset-btn:hover {
-    background: rgba(226, 183, 116, 0.12);
-    color: var(--gold-bright);
-    border-color: rgba(226, 183, 116, 0.3);
+    background: rgba(212, 175, 55, 0.12);
+    border-color: var(--gold);
+    color: #fff;
   }
   .preset-btn.active {
-    background: var(--gold);
-    color: #0b0d13;
-    border-color: var(--gold);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(234, 88, 12, 0.25) 100%);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
     font-weight: 700;
-    box-shadow: 0 2px 12px rgba(226, 183, 116, 0.25);
   }
 
   /* 2-COLUMN MAIN DASHBOARD LAYOUT */
   .dashboard-layout {
     display: grid;
-    grid-template-columns: 540px 1fr;
+    grid-template-columns: 550px 1fr;
     gap: 20px;
     align-items: start;
   }
-  @media (max-width: 1200px) {
+  @media (max-width: 1240px) {
     .dashboard-layout {
       grid-template-columns: 1fr;
     }
@@ -254,6 +206,8 @@
     align-items: center;
     border-bottom: 1px solid var(--card-inner-border);
     padding-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .cat-title {
     font-size: 0.98rem;
@@ -340,13 +294,40 @@
   }
   input[type="number"]:focus, select:focus {
     border-color: var(--gold);
-    box-shadow: 0 0 10px rgba(226, 183, 116, 0.25);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
   }
   select {
     width: 100%;
     text-align: right;
     font-family: 'Vazirmatn', sans-serif;
     cursor: pointer;
+  }
+
+  /* Segregated Sub-boxes */
+  .sub-box {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--card-inner-border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s ease;
+  }
+  .sub-box:hover {
+    border-color: rgba(212, 175, 55, 0.25);
+  }
+  .sub-box.box-resistor { border-right: 3px solid var(--copper); }
+  .sub-box.box-cap { border-right: 3px solid var(--gold); }
+  .sub-box.box-tvs { border-right: 3px solid var(--warm-violet); background: rgba(168, 85, 247, 0.03); }
+  .sub-box.box-heatsink { border-right: 3px solid var(--warm-green); background: rgba(34, 197, 94, 0.03); }
+
+  .sub-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.84rem;
+    font-weight: 700;
   }
 
   .checkbox-label {
@@ -383,7 +364,7 @@
     transition: transform 0.2s ease, border-color 0.2s ease;
   }
   .metric-card:hover {
-    border-color: rgba(226, 183, 116, 0.25);
+    border-color: rgba(212, 175, 55, 0.25);
     transform: translateY(-2px);
   }
   .metric-card-top {
@@ -445,7 +426,7 @@
     gap: 12px;
   }
   .scope-title {
-    font-size: 1.05rem;
+    font-size: 1.02rem;
     font-weight: 800;
     color: var(--gold);
     display: flex;
@@ -503,13 +484,14 @@
     border-radius: 12px;
     overflow: hidden;
     background: #06070a;
-    border: 1px solid rgba(226, 183, 116, 0.12);
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+    border: 1px solid rgba(212, 175, 55, 0.18);
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.85);
     width: 100%;
+    min-height: 430px;
   }
   canvas {
     width: 100%;
-    height: 420px;
+    height: 430px;
     display: block;
     cursor: crosshair;
   }
@@ -519,7 +501,7 @@
     top: 14px;
     left: 14px;
     background: rgba(11, 13, 19, 0.92);
-    border: 1px solid rgba(226, 183, 116, 0.2);
+    border: 1px solid rgba(212, 175, 55, 0.25);
     border-radius: 8px;
     padding: 8px 14px;
     font-family: monospace, 'Vazirmatn';
@@ -700,13 +682,13 @@
 
           <div class="metric-card">
             <div class="metric-card-top">
-              <span>تلفات هدایتی (Pcond)</span>
+              <span>تلفات ماسفت (Pmos)</span>
               <span class="pill safe" id="pill_pcond">Irms=3.28A</span>
             </div>
             <div class="metric-val">
-              <span id="res_pcond">2.90</span><span class="metric-unit">W</span>
+              <span id="res_pmos">4.09</span><span class="metric-unit">W</span>
             </div>
-            <div class="metric-sub">سوئیچینگ (Psw): <b id="res_psw">1.19 W</b></div>
+            <div class="metric-sub">هدایتی: <b id="res_pcond">2.90 W</b> | سوئیچینگ: <b id="res_psw">1.19 W</b></div>
           </div>
 
           <div class="metric-card">
@@ -730,11 +712,14 @@
           <div class="cat-title" style="color:var(--gold);">
             <span>🔧 ۲. اسنابر، کلمپ، مقاومت و دیود TVS (تفکیک‌شده)</span>
           </div>
-          <select id="snubber_type" oninput="runSimulation()" onchange="runSimulation()" style="width:auto; padding:3px 10px; font-size:0.8rem;">
-            <option value="RCD" selected>مدار RCD استاندارد</option>
-            <option value="RCDZ">مدار هیبرید RCDZ ترکیبی (+TVS)</option>
-            <option value="RC">مدار RC خالص دمپینگ</option>
-          </select>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="cat-badge pill" id="pill_snubber_top">وضعیت: استاندارد</span>
+            <select id="snubber_type" oninput="runSimulation()" onchange="runSimulation()" style="width:auto; padding:3px 10px; font-size:0.8rem;">
+              <option value="RCD" selected>مدار RCD استاندارد</option>
+              <option value="RCDZ">مدار هیبرید RCDZ ترکیبی (+TVS)</option>
+              <option value="RC">مدار RC خالص دمپینگ</option>
+            </select>
+          </div>
         </div>
 
         <!-- 1. RESISTOR SUB-BOX (کادر اختصاصی مقاومت) -->
@@ -782,7 +767,7 @@
               <div class="metric-val">
                 <span id="res_pr">3.69</span><span class="metric-unit">W</span>
               </div>
-              <div class="metric-sub">پکیج فیزیکی: <b id="res_prated_sub">2.0 W</b></div>
+              <div class="metric-sub">درصد پکیج (<b id="res_prated_sub">2.0W</b>): <b id="res_pr_pct" style="color:var(--warm-red);">184%</b></div>
             </div>
 
             <div class="metric-card">
@@ -887,13 +872,13 @@
           <div class="output-grid">
             <div class="metric-card">
               <div class="metric-card-top">
-                <span>توان تلفاتی TVS (PTVS)</span>
+                <span>تلفات TVS کلمپ (PTVS)</span>
                 <span class="pill safe" id="pill_ptvs">خنک</span>
               </div>
               <div class="metric-val">
                 <span id="res_ptvs">0.00</span><span class="metric-unit">W</span>
               </div>
-              <div class="metric-sub">سهم کلمپ TVS: <b id="res_ptvs_pct">0%</b></div>
+              <div class="metric-sub">سهم TVS از کل: <b id="res_ptvs_pct">0%</b></div>
             </div>
 
             <div class="metric-card">
@@ -904,7 +889,7 @@
               <div class="metric-val">
                 <span id="res_ttvs">25</span><span class="metric-unit">°C</span>
               </div>
-              <div class="metric-sub">ولتاژ کلمپ: <b id="res_vz_sub">51 V</b></div>
+              <div class="metric-sub">سطح کلمپ Vz: <b id="res_vz_sub">51 V</b></div>
             </div>
           </div>
         </div>
@@ -917,31 +902,22 @@
         
         <div class="cat-header">
           <div class="cat-title" style="color:var(--copper);">
-            <span>🧲 ۳. تغذیه، بار و ترانسفورمر (Power & Trans)</span>
+            <span>⚡ ۳. مدار تغذیه، بار و مشخصات ترانسفورمر (Power & Transformer)</span>
           </div>
-          <span class="cat-badge pill" id="pill_power_top">مد DCM</span>
+          <select id="duty_mode" oninput="toggleDutyMode()" onchange="toggleDutyMode()" style="width:auto; padding:3px 10px; font-size:0.8rem;">
+            <option value="auto" selected>محاسبه خودکار Duty (مد DCM)</option>
+            <option value="manual">تنظیم دستی دیوتی سایکل (%)</option>
+          </select>
         </div>
 
-        <!-- Controls -->
-        <div class="sub-heading">مشخصات منبع، بار و ترانس EE33</div>
         <div class="form-grid">
-          <div class="form-item">
+          <div class="form-item" id="group_manual_duty" style="display:none; background:rgba(234,88,12,0.08); padding:8px; border-radius:8px;">
             <div class="form-label-row">
-              <span>حالت کنترل دیوتی‌سایکل</span>
-            </div>
-            <select id="duty_mode" oninput="toggleDutyMode()" onchange="toggleDutyMode()">
-              <option value="auto" selected>خودکار (DCM Closed-Loop: محاسبه از توان بار و Vin)</option>
-              <option value="manual">دستی (Manual Duty Cycle: تنظیم مستقیم D)</option>
-            </select>
-          </div>
-
-          <div class="form-item" id="group_manual_duty" style="display:none;">
-            <div class="form-label-row">
-              <span>دیوتی‌سایکل دستی (D)</span>
+              <span>دیوتی سایکل دستی (Duty Cycle %)</span>
               <span class="val-badge" id="lbl_duty_manual">28.5 %</span>
             </div>
             <div class="input-control">
-              <input type="range" id="duty_manual" min="10" max="65" step="0.5" value="28.5" oninput="syncVal('duty_manual', this.value, this)" onchange="syncVal('duty_manual', this.value, this)">
+              <input type="range" id="duty_manual" min="5" max="65" step="0.5" value="28.5" oninput="syncVal('duty_manual', this.value, this)" onchange="syncVal('duty_manual', this.value, this)">
               <input type="number" id="duty_manual_num" value="28.5" step="0.5" oninput="syncVal('duty_manual', this.value, this)" onchange="syncVal('duty_manual', this.value, this)">
             </div>
           </div>
@@ -1146,14 +1122,14 @@ function toggleLiveAnimation() {
   const text = document.getElementById('live_text');
   
   if (isLiveRunning) {
-    btn.className = 'btn-live';
-    icon.innerText = '⏸️';
-    text.innerText = 'توقف حرکت (Pause)';
+    if (btn) btn.className = 'btn-live';
+    if (icon) icon.innerText = '⏸️';
+    if (text) text.innerText = 'توقف حرکت (Pause)';
     runAnimationLoop();
   } else {
-    btn.className = 'btn-live paused';
-    icon.innerText = '▶️';
-    text.innerText = 'حرکت زنده (Live Sweep)';
+    if (btn) btn.className = 'btn-live paused';
+    if (icon) icon.innerText = '▶️';
+    if (text) text.innerText = 'حرکت زنده (Live Sweep)';
     if (animFrameId) cancelAnimationFrame(animFrameId);
     triggerRedraw();
   }
@@ -1161,7 +1137,7 @@ function toggleLiveAnimation() {
 
 function runAnimationLoop() {
   if (!isLiveRunning) return;
-  animPhaseOffset = (animPhaseOffset + 0.008) % 1.0;
+  animPhaseOffset = (animPhaseOffset + 0.006) % 1.0;
   redrawScope(animPhaseOffset);
   animFrameId = requestAnimationFrame(runAnimationLoop);
 }
@@ -1349,8 +1325,10 @@ function runSimulation() {
   const customRth = parseFloat(document.getElementById('rth_num').value) || 14.0;
   const Rth_heatsink = hasHeatsink ? customRth : 62.0;
 
-  document.getElementById('heatsink_ctrl_group').style.opacity = hasHeatsink ? '1' : '0.4';
-  document.getElementById('lbl_rth').innerText = Rth_heatsink.toFixed(1) + ' °C/W';
+  const hsCtrl = document.getElementById('heatsink_ctrl_group');
+  if (hsCtrl) hsCtrl.style.opacity = hasHeatsink ? '1' : '0.4';
+  const lblRth = document.getElementById('lbl_rth');
+  if (lblRth) lblRth.innerText = Rth_heatsink.toFixed(1) + ' °C/W';
 
   let tf = 50e-9;
   if (mosfetModel === 'IRFB4227') tf = 35e-9;
@@ -1363,25 +1341,27 @@ function runSimulation() {
   else if (tvsPkg === 'SMBJ') Rth_tvs = 90.0;
 
   // Sync labels
-  document.getElementById('lbl_vdss').innerText = Vdss.toFixed(0) + ' V';
-  document.getElementById('lbl_rdson').innerText = Rds.toFixed(3) + ' Ω';
-  document.getElementById('lbl_vin').innerText = Vin.toFixed(1) + ' V';
-  document.getElementById('lbl_vout').innerText = Vout.toFixed(1) + ' V';
-  document.getElementById('lbl_iout').innerText = Iout.toFixed(1) + ' A';
-  document.getElementById('lbl_fsw').innerText = (fsw/1000).toFixed(0) + ' kHz';
-  document.getElementById('lbl_lp').innerText = (Lp*1e6).toFixed(0) + ' µH';
-  document.getElementById('lbl_lleak').innerText = (Llk*1e6).toFixed(3) + ' µH (' + ((Llk/Lp)*100).toFixed(1) + '%)';
-  document.getElementById('lbl_rsn').innerText = Rsn >= 1000 ? (Rsn/1000).toFixed(1) + ' kΩ' : Rsn.toFixed(0) + ' Ω';
-  document.getElementById('lbl_prated').innerText = Prated.toFixed(1) + ' W';
-  document.getElementById('lbl_csn').innerText = (Csn*1e9).toFixed(1) + ' nF';
-  document.getElementById('lbl_turns').innerText = n === 1.5 ? '15:10 (n=1.5)' : (n === 1.2 ? '12:10 (n=1.2)' : '20:10 (n=2.0)');
+  const setElText = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+  setElText('lbl_vdss', Vdss.toFixed(0) + ' V');
+  setElText('lbl_rdson', Rds.toFixed(3) + ' Ω');
+  setElText('lbl_vin', Vin.toFixed(1) + ' V');
+  setElText('lbl_vout', Vout.toFixed(1) + ' V');
+  setElText('lbl_iout', Iout.toFixed(1) + ' A');
+  setElText('lbl_fsw', (fsw/1000).toFixed(0) + ' kHz');
+  setElText('lbl_lp', (Lp*1e6).toFixed(0) + ' µH');
+  setElText('lbl_lleak', (Llk*1e6).toFixed(3) + ' µH (' + ((Llk/Lp)*100).toFixed(1) + '%)');
+  setElText('lbl_rsn', Rsn >= 1000 ? (Rsn/1000).toFixed(1) + ' kΩ' : Rsn.toFixed(0) + ' Ω');
+  setElText('lbl_prated', Prated.toFixed(1) + ' W');
+  setElText('lbl_csn', (Csn*1e9).toFixed(1) + ' nF');
+  setElText('lbl_turns', n === 1.5 ? '15:10 (n=1.5)' : (n === 1.2 ? '12:10 (n=1.2)' : '20:10 (n=2.0)'));
 
   const isTVS = (type === 'RCDZ');
-  document.getElementById('sub_box_tvs').style.display = isTVS ? 'flex' : 'none';
+  const tvsBox = document.getElementById('sub_box_tvs');
+  if (tvsBox) tvsBox.style.display = isTVS ? 'flex' : 'none';
   if (isTVS) {
-    document.getElementById('lbl_vz').innerText = Vz + ' V (' + tvsPkg + ')';
-    document.getElementById('lbl_tvs_pkg').innerText = tvsPkg + ' (' + (tvsPkg === '1.5KE' ? '6.5W' : '5W') + ')';
-    document.getElementById('res_vz_sub').innerText = Vz + ' V';
+    setElText('lbl_vz', Vz + ' V (' + tvsPkg + ')');
+    setElText('lbl_tvs_pkg', tvsPkg + ' (' + (tvsPkg === '1.5KE' ? '6.5W' : '5W') + ')');
+    setElText('res_vz_sub', Vz + ' V');
   }
 
   const Ts = 1 / fsw;
@@ -1398,7 +1378,7 @@ function runSimulation() {
 
   if (dutyMode === 'manual') {
     Don = (parseFloat(document.getElementById('duty_manual').value) || 28.5) / 100;
-    document.getElementById('lbl_duty_manual').innerText = (Don * 100).toFixed(1) + ' %';
+    setElText('lbl_duty_manual', (Don * 100).toFixed(1) + ' %');
     const Ton_man = Don * Ts;
     Ipk = (Vin * Ton_man) / Lp;
   } else {
@@ -1480,107 +1460,136 @@ function runSimulation() {
   const Tj_mos_no_hs = 25 + P_mos_total * (62.0 + 1.2);
   const tempDrop = Math.max(0, Tj_mos_no_hs - Tj_mos);
 
-  document.getElementById('lbl_temp_drop').innerText = hasHeatsink ? ('-' + tempDrop.toFixed(0) + '°C کاهش دما') : 'بدون هیت‌سینک!';
-  document.getElementById('res_tmos_no_hs').innerText = Tj_mos_no_hs.toFixed(0) + '°C';
+  setElText('lbl_temp_drop', hasHeatsink ? ('-' + tempDrop.toFixed(0) + '°C کاهش دما') : 'بدون هیت‌سینک!');
+  setElText('res_tmos_no_hs', Tj_mos_no_hs.toFixed(0) + '°C');
 
   // Update DOM: Group 1 MOSFET
-  document.getElementById('res_tmos').innerText = Math.min(350, Tj_mos).toFixed(0);
-  document.getElementById('res_pmos').innerText = P_mos_total.toFixed(2) + ' W';
+  setElText('res_tmos', Math.min(350, Tj_mos).toFixed(0));
+  setElText('res_pmos', P_mos_total.toFixed(2));
+  
   const pillM = document.getElementById('pill_mosfet');
   const pillMTop = document.getElementById('pill_mosfet_top');
-  if (Tj_mos < 55) {
-    pillM.className = 'pill safe'; pillM.innerText = 'بسیار خنک';
-    pillMTop.className = 'cat-badge pill safe'; pillMTop.innerText = 'خنک و ایمن (' + Tj_mos.toFixed(0) + '°C)';
-  } else if (Tj_mos < 88) {
-    pillM.className = 'pill warn'; pillM.innerText = 'گرم / استاندارد';
-    pillMTop.className = 'cat-badge pill warn'; pillMTop.innerText = 'استاندارد (' + Tj_mos.toFixed(0) + '°C)';
-  } else {
-    pillM.className = 'pill danger'; pillM.innerText = 'بسیار داغ!';
-    pillMTop.className = 'cat-badge pill danger'; pillMTop.innerText = 'خطر داغی ماسفت (' + Tj_mos.toFixed(0) + '°C)';
+  if (pillM && pillMTop) {
+    if (Tj_mos < 55) {
+      pillM.className = 'pill safe'; pillM.innerText = 'بسیار خنک';
+      pillMTop.className = 'cat-badge pill safe'; pillMTop.innerText = 'خنک و ایمن (' + Tj_mos.toFixed(0) + '°C)';
+    } else if (Tj_mos < 88) {
+      pillM.className = 'pill warn'; pillM.innerText = 'گرم / استاندارد';
+      pillMTop.className = 'cat-badge pill warn'; pillMTop.innerText = 'استاندارد (' + Tj_mos.toFixed(0) + '°C)';
+    } else {
+      pillM.className = 'pill danger'; pillM.innerText = 'بسیار داغ!';
+      pillMTop.className = 'cat-badge pill danger'; pillMTop.innerText = 'خطر داغی ماسفت (' + Tj_mos.toFixed(0) + '°C)';
+    }
   }
 
-  document.getElementById('res_pcond').innerText = Pcond.toFixed(2);
-  document.getElementById('res_psw').innerText = Psw.toFixed(2) + ' W';
-  document.getElementById('pill_pcond').innerText = 'Irms=' + Irms.toFixed(2) + 'A';
+  setElText('res_pcond', Pcond.toFixed(2) + ' W');
+  setElText('res_psw', Psw.toFixed(2) + ' W');
+  const pillPcond = document.getElementById('pill_pcond');
+  if (pillPcond) pillPcond.innerText = 'Irms=' + Irms.toFixed(2) + 'A';
 
   const marginVolts = Math.max(0, Vdss - Vdrain_pk);
   const marginPct = Math.max(0, (Vdss - Vdrain_pk) / Vdss * 100);
-  document.getElementById('res_vmargin').innerText = marginVolts.toFixed(1);
-  document.getElementById('res_vdss_sub').innerText = Vdss.toFixed(0) + ' V';
-  document.getElementById('res_margin_pct').innerText = marginPct.toFixed(0) + '%';
+  setElText('res_vmargin', marginVolts.toFixed(1));
+  setElText('res_vdss_sub', Vdss.toFixed(0) + ' V');
+  setElText('res_margin_pct', marginPct.toFixed(0) + '%');
   const pillVm = document.getElementById('pill_vdss_margin');
-  pillVm.className = marginPct >= 35 ? 'pill safe' : (marginPct >= 15 ? 'pill warn' : 'pill danger');
-  pillVm.innerText = marginPct >= 35 ? 'امن' : (marginPct >= 15 ? 'حاشیه کم' : 'خطر شکست!');
+  if (pillVm) {
+    pillVm.className = marginPct >= 35 ? 'pill safe' : (marginPct >= 15 ? 'pill warn' : 'pill danger');
+    pillVm.innerText = marginPct >= 35 ? 'امن' : (marginPct >= 15 ? 'حاشیه کم' : 'خطر شکست!');
+  }
 
   // Update DOM: Group 2 Segregated Sub-boxes
   // 1. Resistor Sub-box
-  document.getElementById('res_pr').innerText = PR.toFixed(2);
-  document.getElementById('res_prated_sub').innerText = Prated.toFixed(1) + ' W';
+  setElText('res_pr', PR.toFixed(2));
+  setElText('res_prated_sub', Prated.toFixed(1) + ' W');
   const prPct = (PR / Prated * 100);
-  document.getElementById('res_pr_pct').innerText = prPct.toFixed(0) + '%';
+  setElText('res_pr_pct', prPct.toFixed(0) + '%');
+  
   const pillPr = document.getElementById('pill_pr');
   const pillPrBadge = document.getElementById('pill_pr_badge');
-  pillPr.className = prPct <= 65 ? 'pill safe' : (prPct <= 100 ? 'pill warn' : 'pill danger');
-  pillPr.innerText = prPct <= 65 ? 'خنک' : (prPct <= 100 ? 'مرز توان' : 'اضافه توان');
-  pillPrBadge.className = pillPr.className;
-  pillPrBadge.innerText = prPct.toFixed(0) + '% توان';
+  if (pillPr) {
+    pillPr.className = prPct <= 65 ? 'pill safe' : (prPct <= 100 ? 'pill warn' : 'pill danger');
+    pillPr.innerText = prPct <= 65 ? 'خنک' : (prPct <= 100 ? 'مرز توان' : 'اضافه توان');
+  }
+  if (pillPrBadge) {
+    pillPrBadge.className = prPct <= 65 ? 'pill safe' : (prPct <= 100 ? 'pill warn' : 'pill danger');
+    pillPrBadge.innerText = prPct.toFixed(0) + '% توان';
+  }
 
-  document.getElementById('res_temp').innerText = Math.min(250, TR).toFixed(0);
-  document.getElementById('res_pleak_sub').innerText = Pleak.toFixed(2) + ' W';
+  setElText('res_temp', Math.min(250, TR).toFixed(0));
+  setElText('res_pleak_sub', Pleak.toFixed(2) + ' W');
+  
   const pillT = document.getElementById('pill_temp');
   const pillSnubTop = document.getElementById('pill_snubber_top');
-  if (TR < 65) {
-    pillT.className = 'pill safe'; pillT.innerText = 'خنک';
-    pillSnubTop.className = 'cat-badge pill safe'; pillSnubTop.innerText = 'خنک و پایدار';
-  } else if (TR < 100) {
-    pillT.className = 'pill warn'; pillT.innerText = 'گرم';
-    pillSnubTop.className = 'cat-badge pill warn'; pillSnubTop.innerText = 'گرم استاندارد';
-  } else {
-    pillT.className = 'pill danger'; pillT.innerText = 'بسیار داغ!';
-    pillSnubTop.className = 'cat-badge pill danger'; pillSnubTop.innerText = 'خطر داغی مقاومت!';
+  if (pillT) {
+    if (TR < 65) {
+      pillT.className = 'pill safe'; pillT.innerText = 'خنک';
+    } else if (TR < 100) {
+      pillT.className = 'pill warn'; pillT.innerText = 'گرم';
+    } else {
+      pillT.className = 'pill danger'; pillT.innerText = 'بسیار داغ!';
+    }
+  }
+  if (pillSnubTop) {
+    if (TR < 65) {
+      pillSnubTop.className = 'cat-badge pill safe'; pillSnubTop.innerText = 'خنک و پایدار';
+    } else if (TR < 100) {
+      pillSnubTop.className = 'cat-badge pill warn'; pillSnubTop.innerText = 'گرم استاندارد';
+    } else {
+      pillSnubTop.className = 'cat-badge pill danger'; pillSnubTop.innerText = 'خطر داغی مقاومت!';
+    }
   }
 
   // 2. Capacitor Sub-box
-  document.getElementById('res_ripple').innerText = DeltaV.toFixed(1);
-  document.getElementById('res_vsn_avg').innerText = Vsn_avg.toFixed(1) + ' V';
-  document.getElementById('res_tau').innerText = tau_ratio.toFixed(1);
-  document.getElementById('res_tau_val').innerText = (Rsn * Csn * 1e6).toFixed(0) + ' µs';
+  setElText('res_ripple', DeltaV.toFixed(1));
+  setElText('res_vsn_avg', Vsn_avg.toFixed(1) + ' V');
+  setElText('res_tau', tau_ratio.toFixed(1));
+  setElText('res_tau_val', (Rsn * Csn * 1e6).toFixed(0) + ' µs');
   const pillRip = document.getElementById('pill_ripple');
-  pillRip.className = tau_ratio >= 3.0 ? 'pill safe' : (tau_ratio >= 1.5 ? 'pill warn' : 'pill danger');
-  pillRip.innerText = tau_ratio >= 3.0 ? 'ریپل ناچیز' : (tau_ratio >= 1.5 ? 'ریپل متوسط' : 'خازن کوچک!');
+  if (pillRip) {
+    pillRip.className = tau_ratio >= 3.0 ? 'pill safe' : (tau_ratio >= 1.5 ? 'pill warn' : 'pill danger');
+    pillRip.innerText = tau_ratio >= 3.0 ? 'ریپل ناچیز' : (tau_ratio >= 1.5 ? 'ریپل متوسط' : 'خازن کوچک!');
+  }
 
   // 3. TVS Sub-box
   if (isTVS) {
-    document.getElementById('res_ptvs').innerText = PTVS.toFixed(2);
+    setElText('res_ptvs', PTVS.toFixed(2));
     const tvsSharePct = Ptotal > 0 ? (PTVS / Ptotal * 100) : 0;
-    document.getElementById('res_ptvs_pct').innerText = tvsSharePct.toFixed(0) + '%';
+    setElText('res_ptvs_pct', tvsSharePct.toFixed(0) + '%');
     const pillPtvs = document.getElementById('pill_ptvs');
-    pillPtvs.className = PTVS <= 2.0 ? 'pill safe' : (PTVS <= 4.0 ? 'pill warn' : 'pill danger');
-    pillPtvs.innerText = PTVS <= 2.0 ? 'خنک' : (PTVS <= 4.0 ? 'متوسط' : 'توان بالا');
+    if (pillPtvs) {
+      pillPtvs.className = PTVS <= 2.0 ? 'pill safe' : (PTVS <= 4.0 ? 'pill warn' : 'pill danger');
+      pillPtvs.innerText = PTVS <= 2.0 ? 'خنک' : (PTVS <= 4.0 ? 'متوسط' : 'توان بالا');
+    }
 
-    document.getElementById('res_ttvs').innerText = Math.min(200, TTVS).toFixed(0);
+    setElText('res_ttvs', Math.min(200, TTVS).toFixed(0));
     const pillTtvs = document.getElementById('pill_ttvs');
-    if (TTVS < 65) {
-      pillTtvs.className = 'pill safe'; pillTtvs.innerText = 'خنک';
-    } else if (TTVS < 105) {
-      pillTtvs.className = 'pill warn'; pillTtvs.innerText = 'گرم استاندارد';
-    } else {
-      pillTtvs.className = 'pill danger'; pillTtvs.innerText = 'داغ (>105°C)!';
+    if (pillTtvs) {
+      if (TTVS < 65) {
+        pillTtvs.className = 'pill safe'; pillTtvs.innerText = 'خنک';
+      } else if (TTVS < 105) {
+        pillTtvs.className = 'pill warn'; pillTtvs.innerText = 'گرم استاندارد';
+      } else {
+        pillTtvs.className = 'pill danger'; pillTtvs.innerText = 'داغ (>105°C)!';
+      }
     }
   }
 
   // Update DOM: Group 3 Power & Transformer
-  document.getElementById('res_vdrain').innerText = Vdrain_pk.toFixed(1);
-  document.getElementById('res_vplateau').innerText = (Vin + Vor).toFixed(1) + ' V';
+  setElText('res_vdrain', Vdrain_pk.toFixed(1));
+  setElText('res_vplateau', (Vin + Vor).toFixed(1) + ' V');
   const pillVd = document.getElementById('pill_vdrain');
-  pillVd.className = Vdrain_pk < Vdss * 0.7 ? 'pill safe' : (Vdrain_pk < Vdss * 0.85 ? 'pill warn' : 'pill danger');
-  pillVd.innerText = Vdrain_pk < Vdss * 0.7 ? 'امن' : (Vdrain_pk < Vdss * 0.85 ? 'هشدار ولتاژ' : 'نزدیک شکست');
+  if (pillVd) {
+    pillVd.className = Vdrain_pk < Vdss * 0.7 ? 'pill safe' : (Vdrain_pk < Vdss * 0.85 ? 'pill warn' : 'pill danger');
+    pillVd.innerText = Vdrain_pk < Vdss * 0.7 ? 'امن' : (Vdrain_pk < Vdss * 0.85 ? 'هشدار ولتاژ' : 'نزدیک شکست');
+  }
 
-  document.getElementById('res_ipk').innerText = Ipk.toFixed(1);
-  document.getElementById('res_irms').innerText = Irms.toFixed(2) + ' A';
-  document.getElementById('res_duty').innerText = (Don * 100).toFixed(1);
-  document.getElementById('pill_duty').innerText = 'Ton=' + (Ton_time * 1e6).toFixed(1) + 'µs';
-  document.getElementById('res_treset').innerText = (Treset_time * 1e6).toFixed(2) + ' µs';
+  setElText('res_ipk', Ipk.toFixed(1));
+  setElText('res_irms', Irms.toFixed(2) + ' A');
+  setElText('res_duty', (Don * 100).toFixed(1));
+  const pillDuty = document.getElementById('pill_duty');
+  if (pillDuty) pillDuty.innerText = 'Ton=' + (Ton_time * 1e6).toFixed(1) + 'µs';
+  setElText('res_treset', (Treset_time * 1e6).toFixed(2) + ' µs');
 
   // Math proof
   let tvsMath = '';
@@ -1588,12 +1597,15 @@ function runSimulation() {
     tvsMath = `<br>• تفکیک توان کلمپ TVS (${tvsPkg} با <b>Vz = ${Vz}V</b>): توان کل نشتی = <b>${Ptotal.toFixed(2)}W</b> ➔ سهم مقاومت: <b>PR = ${PR.toFixed(2)}W</b> | سهم دیود TVS: <b>PTVS = <span class="val">${PTVS.toFixed(2)} W</span></b> (دمای پیوند TVS: <b><span class="${TTVS > 100 ? 'bad' : 'res'}">${TTVS.toFixed(0)} °C</span></b>)`;
   }
 
-  document.getElementById('math_output').innerHTML = `
-    1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(1)} × (${Vout.toFixed(1)} + 0.5) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
-    2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی: <b>Pleak = <span class="val">${Pleak.toFixed(2)} W</span></b><br>
-    3. تلفات ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند با هیت‌سینک <b><span class="${Tj_mos > 90 ? 'bad' : 'res'}">${Tj_mos.toFixed(0)} °C</span></b> | بدون هیت‌سینک: <b><span class="bad">${Tj_mos_no_hs.toFixed(0)} °C</span></b> ➔ اثر هیت‌سینک: <b><span class="res">${tempDrop.toFixed(0)}°C کاهش دما</span></b>)<br>
-    4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)${tvsMath}
-  `;
+  const mathEl = document.getElementById('math_output');
+  if (mathEl) {
+    mathEl.innerHTML = `
+      1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(1)} × (${Vout.toFixed(1)} + 0.5) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
+      2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی: <b>Pleak = <span class="val">${Pleak.toFixed(2)} W</span></b><br>
+      3. تلفات ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند با هیت‌سینک <b><span class="${Tj_mos > 90 ? 'bad' : 'res'}">${Tj_mos.toFixed(0)} °C</span></b> | بدون هیت‌سینک: <b><span class="bad">${Tj_mos_no_hs.toFixed(0)} °C</span></b> ➔ اثر هیت‌سینک: <b><span class="res">${tempDrop.toFixed(0)}°C کاهش دما</span></b>)<br>
+      4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)${tvsMath}
+    `;
+  }
 
   // Store data for scope re-rendering
   lastSimData = {
@@ -1612,16 +1624,14 @@ function resizeCanvasToDisplaySize() {
 
   const dpr = window.devicePixelRatio || 1;
   const rect = container.getBoundingClientRect();
-  const width = Math.floor(rect.width);
-  const height = 420;
+  const width = Math.max(320, Math.floor(rect.width || 600));
+  const height = 430;
 
-  if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+  if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
   }
 }
 
@@ -1630,21 +1640,28 @@ function redrawScope(phaseShift = 0) {
   const { Vin, Vor, Vsn_avg, DeltaV, Vdrain_pk, Ipk, fsw, Ts, Ton_time, Treset_time, Tclamp_time, tau_ratio, Don, Vdss } = lastSimData;
 
   const canvas = document.getElementById('scopeCanvas');
+  if (!canvas) return;
+  
+  resizeCanvasToDisplaySize();
+  
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const W = canvas.width / dpr;
   const H = canvas.height / dpr;
 
+  if (W <= 0 || H <= 0) return;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  const showCH1 = document.getElementById('chk_ch1').checked;
-  const showCH2 = document.getElementById('chk_ch2').checked;
-  const showCH3 = document.getElementById('chk_ch3').checked;
+  const showCH1 = document.getElementById('chk_ch1') ? document.getElementById('chk_ch1').checked : true;
+  const showCH2 = document.getElementById('chk_ch2') ? document.getElementById('chk_ch2').checked : true;
+  const showCH3 = document.getElementById('chk_ch3') ? document.getElementById('chk_ch3').checked : true;
 
-  const mTop = 32;
-  const mBottom = 38;
-  const mLeft = 55;
-  const mRight = 55;
+  const mTop = 34;
+  const mBottom = 40;
+  const mLeft = 56;
+  const mRight = 56;
   const plotW = Math.max(10, W - mLeft - mRight);
   const plotH = Math.max(10, H - mTop - mBottom);
 
@@ -1655,9 +1672,9 @@ function redrawScope(phaseShift = 0) {
   const toY_I = (i) => mTop + plotH - (i / maxI) * plotH;
 
   // Background Grid with Warm Tone
-  ctx.strokeStyle = 'rgba(217, 175, 116, 0.08)';
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.09)';
   ctx.lineWidth = 1;
-  ctx.fillStyle = '#848e9f';
+  ctx.fillStyle = '#94a3b8';
   ctx.font = '11px Vazirmatn, monospace';
 
   // Left Y-Axis Voltage
@@ -1707,7 +1724,7 @@ function redrawScope(phaseShift = 0) {
   ctx.fillStyle = '#ef4444';
   ctx.font = 'bold 11px Vazirmatn, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText('⚠️ حد ولتاژ شکست ترانزیستور (Vdss = ' + Vdss + 'V)', mLeft + 12, yVdss - 7);
+  ctx.fillText('⚠️ حد ولتاژ شکست ترانزیستور (Vdss = ' + Vdss + 'V)', mLeft + 12, yVdss - 8);
 
   // 2. Reflected voltage Plateau Line (Vin + Vor) - PURPLE
   const yReflected = toY(Vin + Vor);
@@ -1718,18 +1735,18 @@ function redrawScope(phaseShift = 0) {
   ctx.setLineDash([]);
   ctx.fillStyle = '#c084fc';
   ctx.textAlign = 'right';
-  ctx.fillText('پلاتو: Vin + Vor = ' + (Vin + Vor).toFixed(1) + 'V', W - mRight - 10, yReflected - 7);
+  ctx.fillText('پلاتو: Vin + Vor = ' + (Vin + Vor).toFixed(1) + 'V', W - mRight - 10, yReflected - 8);
 
   // 3. DC Equilibrium Line (Vin) - GREY
   const yVin = toY(Vin);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
   ctx.lineWidth = 1.0;
   ctx.setLineDash([2, 4]);
   ctx.beginPath(); ctx.moveTo(mLeft, yVin); ctx.lineTo(W - mRight, yVin); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = '#cbd5e1';
   ctx.textAlign = 'left';
-  ctx.fillText('Vin = ' + Vin.toFixed(1) + 'V', mLeft + 10, yVin - 7);
+  ctx.fillText('Vin = ' + Vin.toFixed(1) + 'V', mLeft + 10, yVin - 8);
 
   const Ton_norm = Ton_time / Ts;
   const Tclamp_norm = Math.min(0.08, Tclamp_time / Ts);
@@ -1747,6 +1764,7 @@ function redrawScope(phaseShift = 0) {
       const t_norm = (i / numPoints) * 2;
       const t = (t_norm + phaseShift) % 1;
       let vsn_inst = Vsn_avg;
+
       if (t >= Ton_norm && t < Ton_norm + Tclamp_norm) {
         const ph = (t - Ton_norm) / Tclamp_norm;
         vsn_inst = (Vsn_avg - DeltaV/2) + DeltaV * Math.sin(ph * Math.PI / 2);
@@ -1832,34 +1850,36 @@ function redrawScope(phaseShift = 0) {
     ctx.shadowBlur = 0;
   }
 
-  // Peak Badge
-  let peakNorm = ((Ton_norm + 0.015 - phaseShift) % 1 + 1) % 1;
-  const peakY = toY(Vdrain_pk);
-  const peakX = mLeft + (peakNorm / 2) * plotW;
+  // Peak Badges for both cycle 1 and cycle 2
+  for (let c = 0; c < 2; c++) {
+    const cyclePeakNorm = ((Ton_norm + 0.015 - phaseShift) % 1 + 1) % 1 + c;
+    const peakX = mLeft + (cyclePeakNorm / 2) * plotW;
+    const peakY = toY(Vdrain_pk);
 
-  if (peakX >= mLeft && peakX <= W - mRight) {
-    ctx.fillStyle = '#e2b774';
-    ctx.beginPath();
-    ctx.arc(peakX, peakY, 4, 0, Math.PI * 2);
-    ctx.fill();
+    if (peakX >= mLeft + 20 && peakX <= W - mRight - 20) {
+      ctx.fillStyle = '#e2b774';
+      ctx.beginPath();
+      ctx.arc(peakX, peakY, 4, 0, Math.PI * 2);
+      ctx.fill();
 
-    const badgeText = 'Vpk = ' + Vdrain_pk.toFixed(1) + ' V';
-    ctx.font = 'bold 11px Vazirmatn, monospace';
-    const textWidth = ctx.measureText(badgeText).width;
-    ctx.fillStyle = 'rgba(11, 13, 19, 0.95)';
-    ctx.strokeStyle = '#e2b774';
-    ctx.lineWidth = 1;
-    ctx.fillRect(peakX - textWidth/2 - 6, peakY - 24, textWidth + 12, 17);
-    ctx.strokeRect(peakX - textWidth/2 - 6, peakY - 24, textWidth + 12, 17);
-    ctx.fillStyle = '#fcd34d';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(badgeText, peakX, peakY - 15);
+      const badgeText = 'Vpk = ' + Vdrain_pk.toFixed(1) + ' V';
+      ctx.font = 'bold 11px Vazirmatn, monospace';
+      const textWidth = ctx.measureText(badgeText).width;
+      ctx.fillStyle = 'rgba(11, 13, 19, 0.95)';
+      ctx.strokeStyle = '#e2b774';
+      ctx.lineWidth = 1;
+      ctx.fillRect(peakX - textWidth/2 - 6, peakY - 24, textWidth + 12, 17);
+      ctx.strokeRect(peakX - textWidth/2 - 6, peakY - 24, textWidth + 12, 17);
+      ctx.fillStyle = '#fcd34d';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, peakX, peakY - 15);
+    }
   }
 
   // Mouse HUD
   if (mouseX >= mLeft && mouseX <= W - mRight) {
-    ctx.strokeStyle = 'rgba(226, 183, 116, 0.4)';
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(mouseX, mTop); ctx.lineTo(mouseX, H - mBottom); ctx.stroke();
@@ -1895,25 +1915,28 @@ function redrawScope(phaseShift = 0) {
       phase = '۴. زنگ‌زدن رزونانسی مد DCM';
     }
 
-    document.getElementById('hud_t').innerText = t_curr_us.toFixed(2) + ' µs';
-    document.getElementById('hud_phase').innerText = phase;
-    document.getElementById('hud_vds').innerText = v_inst.toFixed(1) + ' V';
-    document.getElementById('hud_ilp').innerText = i_inst.toFixed(2) + ' A';
-    document.getElementById('hud_vsn').innerText = Vsn_avg.toFixed(1) + ' V';
+    const setHudText = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+    setHudText('hud_t', t_curr_us.toFixed(2) + ' µs');
+    setHudText('hud_phase', phase);
+    setHudText('hud_vds', v_inst.toFixed(1) + ' V');
+    setHudText('hud_ilp', i_inst.toFixed(2) + ' A');
+    setHudText('hud_vsn', Vsn_avg.toFixed(1) + ' V');
   }
 }
 
 // Mouse events
 const canvas = document.getElementById('scopeCanvas');
-canvas.addEventListener('mousemove', function(e) {
-  const rect = canvas.getBoundingClientRect();
-  mouseX = e.clientX - rect.left;
-  triggerRedraw();
-});
-canvas.addEventListener('mouseleave', function() {
-  mouseX = -1;
-  triggerRedraw();
-});
+if (canvas) {
+  canvas.addEventListener('mousemove', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    triggerRedraw();
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseX = -1;
+    triggerRedraw();
+  });
+}
 
 // Window resize listener for fluid responsiveness
 window.addEventListener('resize', function() {
