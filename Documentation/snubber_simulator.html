@@ -589,7 +589,8 @@
   <!-- Preset Bar -->
   <div class="preset-bar glass-card">
     <span class="preset-label">🎯 حالات کاری پیش‌فرض برد:</span>
-    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">🔴 مدار فعلی برد (1kΩ / 470nF / 2W)</button>
+    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">🔴 مدار فعلی برد با هیت‌سینک (1kΩ / 470nF)</button>
+    <button class="preset-btn" id="btn_no_hs" onclick="setPreset('no_hs')">🔥 مدار فعلی بدون هیت‌سینک (IRF640 داغ ۲۷۹°C)</button>
     <button class="preset-btn" id="btn_small_c" onclick="setPreset('small_c')">⚠️ خازن خیلی کوچک (1kΩ / 2.2nF)</button>
     <button class="preset-btn" id="btn_opt_rcd" onclick="setPreset('opt_rcd')">🟢 RCD بهینه با ۵ وات (2.2kΩ / 100nF / 5W)</button>
     <button class="preset-btn" id="btn_rcdz" onclick="setPreset('rcdz')">🔵 ساختار هیبرید RCDZ با TVS (10kΩ / 2.2nF + 51V)</button>
@@ -653,7 +654,7 @@
           <div class="group-box">
             <div class="group-box-header">
               <label class="checkbox-label">
-                <input type="checkbox" id="chk_heatsink" checked onchange="runSimulation()">
+                <input type="checkbox" id="chk_heatsink" checked onchange="toggleHeatsinkCheckbox()">
                 <span>نصب هیت‌سینک روی ماسفت (Heatsink)</span>
               </label>
               <span class="val-badge" id="lbl_temp_drop" style="color:var(--warm-green); font-size:0.8rem;">-191°C کاهش دما</span>
@@ -661,18 +662,19 @@
 
             <div class="form-item" id="heatsink_ctrl_group">
               <div class="form-label-row">
-                <span>مقاومت حرارتی هیت‌سینک (Rth)</span>
+                <span>وضعیت هیت‌سینک و مقاومت حرارتی (Rth)</span>
                 <span class="val-badge" id="lbl_rth">14.0 °C/W</span>
               </div>
               <div class="input-control">
                 <select id="heatsink_type" oninput="updateHeatsinkSelect()" onchange="updateHeatsinkSelect()" style="flex:1;">
-                  <option value="14.0" selected>هیت‌سینک گیره‌ای آلومینیومی استاندارد TO-220 (14°C/W)</option>
-                  <option value="6.5">هیت‌سینک پره‌دار متوسط (6.5°C/W)</option>
-                  <option value="3.0">هیت‌سینک بزرگ اکستروژن حرفه‌ای (3.0°C/W)</option>
-                  <option value="1.5">هیت‌سینک بزرگ + فن دمنده فعال (1.5°C/W)</option>
-                  <option value="custom">تنظیم دستی مقاومت حرارتی Rth</option>
+                  <option value="none">❌ بدون هیت‌سینک (هوای آزاد TO-220 با Rth = 62°C/W)</option>
+                  <option value="14.0" selected>✅ هیت‌سینک گیره‌ای آلومینیومی استاندارد TO-220 (14°C/W)</option>
+                  <option value="6.5">✅ هیت‌سینک پره‌دار متوسط (6.5°C/W)</option>
+                  <option value="3.0">✅ هیت‌سینک بزرگ اکستروژن حرفه‌ای (3.0°C/W)</option>
+                  <option value="1.5">✅ هیت‌سینک بزرگ + فن دمنده فعال (1.5°C/W)</option>
+                  <option value="custom">⚙️ تنظیم دستی مقاومت حرارتی Rth</option>
                 </select>
-                <input type="number" id="rth_num" value="14.0" step="0.5" min="0.5" max="60" oninput="syncRth(this.value)" style="width:75px;">
+                <input type="number" id="rth_num" value="14.0" step="0.5" min="0.5" max="70" oninput="syncRth(this.value)" style="width:75px;">
               </div>
             </div>
           </div>
@@ -1147,16 +1149,49 @@ function updateMosfetParams() {
   runSimulation();
 }
 
+function toggleHeatsinkCheckbox() {
+  const chk = document.getElementById('chk_heatsink').checked;
+  const sel = document.getElementById('heatsink_type');
+  const num = document.getElementById('rth_num');
+  if (!chk) {
+    sel.value = 'none';
+    num.value = '62.0';
+  } else {
+    if (sel.value === 'none') {
+      sel.value = '14.0';
+      num.value = '14.0';
+    }
+  }
+  runSimulation();
+}
+
 function updateHeatsinkSelect() {
   const val = document.getElementById('heatsink_type').value;
-  if (val !== 'custom') {
-    document.getElementById('rth_num').value = parseFloat(val).toFixed(1);
+  const chk = document.getElementById('chk_heatsink');
+  const num = document.getElementById('rth_num');
+  if (val === 'none') {
+    chk.checked = false;
+    num.value = '62.0';
+  } else if (val === 'custom') {
+    chk.checked = true;
+  } else {
+    chk.checked = true;
+    num.value = parseFloat(val).toFixed(1);
   }
   runSimulation();
 }
 
 function syncRth(val) {
-  document.getElementById('heatsink_type').value = 'custom';
+  const numVal = parseFloat(val);
+  const chk = document.getElementById('chk_heatsink');
+  const sel = document.getElementById('heatsink_type');
+  if (numVal >= 60) {
+    sel.value = 'none';
+    chk.checked = false;
+  } else {
+    sel.value = 'custom';
+    chk.checked = true;
+  }
   runSimulation();
 }
 
@@ -1207,12 +1242,30 @@ function setPreset(p) {
   document.getElementById('duty_mode').value = 'auto';
   document.getElementById('group_manual_duty').style.display = 'none';
   document.getElementById('turns_ratio').value = '1.5';
-  document.getElementById('chk_heatsink').checked = true;
-  document.getElementById('heatsink_type').value = '14.0';
-  document.getElementById('rth_num').value = '14.0';
   
   if (p === 'current') {
     document.getElementById('btn_current').classList.add('active');
+    document.getElementById('chk_heatsink').checked = true;
+    document.getElementById('heatsink_type').value = '14.0';
+    document.getElementById('rth_num').value = '14.0';
+    document.getElementById('snubber_type').value = 'RCD';
+    setVal('vin', 28);
+    setVal('vout', 14.4);
+    setVal('iout', 2.5);
+    setVal('fsw', 50);
+    setVal('lp', 15);
+    setVal('lleak', 0.825);
+    setVal('rsn', 1000);
+    document.getElementById('prated').value = "2.0";
+    setVal('csn', 470);
+    document.getElementById('mosfet_model').value = 'IRF640';
+    setVal('vdss', 200);
+    setVal('rdson', 0.180);
+  } else if (p === 'no_hs') {
+    document.getElementById('btn_no_hs').classList.add('active');
+    document.getElementById('chk_heatsink').checked = false;
+    document.getElementById('heatsink_type').value = 'none';
+    document.getElementById('rth_num').value = '62.0';
     document.getElementById('snubber_type').value = 'RCD';
     setVal('vin', 28);
     setVal('vout', 14.4);
@@ -1228,6 +1281,9 @@ function setPreset(p) {
     setVal('rdson', 0.180);
   } else if (p === 'small_c') {
     document.getElementById('btn_small_c').classList.add('active');
+    document.getElementById('chk_heatsink').checked = true;
+    document.getElementById('heatsink_type').value = '14.0';
+    document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
     setVal('vin', 28);
     setVal('vout', 14.4);
@@ -1243,6 +1299,9 @@ function setPreset(p) {
     setVal('rdson', 0.180);
   } else if (p === 'opt_rcd') {
     document.getElementById('btn_opt_rcd').classList.add('active');
+    document.getElementById('chk_heatsink').checked = true;
+    document.getElementById('heatsink_type').value = '14.0';
+    document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
     setVal('vin', 28);
     setVal('vout', 14.4);
@@ -1258,6 +1317,9 @@ function setPreset(p) {
     setVal('rdson', 0.021);
   } else if (p === 'rcdz') {
     document.getElementById('btn_rcdz').classList.add('active');
+    document.getElementById('chk_heatsink').checked = true;
+    document.getElementById('heatsink_type').value = '14.0';
+    document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCDZ';
     setVal('vin', 28);
     setVal('vout', 14.4);
@@ -1275,6 +1337,9 @@ function setPreset(p) {
     setVal('rdson', 0.021);
   } else if (p === 'sandwich') {
     document.getElementById('btn_sandwich').classList.add('active');
+    document.getElementById('chk_heatsink').checked = true;
+    document.getElementById('heatsink_type').value = '14.0';
+    document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
     setVal('vin', 28);
     setVal('vout', 14.4);
@@ -1311,15 +1376,19 @@ function runSimulation() {
   const Vdss = parseFloat(document.getElementById('vdss').value) || 200;
   const Rds = parseFloat(document.getElementById('rdson').value) || 0.180;
 
-  // Heatsink checkbox & Rth
-  const hasHeatsink = document.getElementById('chk_heatsink').checked;
+  // Heatsink state
+  const hasHeatsink = document.getElementById('chk_heatsink').checked && document.getElementById('heatsink_type').value !== 'none';
   const customRth = parseFloat(document.getElementById('rth_num').value) || 14.0;
   const Rth_heatsink = hasHeatsink ? customRth : 62.0;
 
   const hsCtrl = document.getElementById('heatsink_ctrl_group');
-  if (hsCtrl) hsCtrl.style.opacity = hasHeatsink ? '1' : '0.4';
+  if (hsCtrl) hsCtrl.style.opacity = hasHeatsink ? '1' : '0.75';
+  
   const lblRth = document.getElementById('lbl_rth');
-  if (lblRth) lblRth.innerText = Rth_heatsink.toFixed(1) + ' °C/W';
+  if (lblRth) {
+    lblRth.innerText = hasHeatsink ? (Rth_heatsink.toFixed(1) + ' °C/W') : '62.0 °C/W (هوای آزاد / بدون هیت‌سینک)';
+    lblRth.style.color = hasHeatsink ? 'var(--gold)' : 'var(--warm-red)';
+  }
 
   let tf = 50e-9;
   if (mosfetModel === 'IRFB4227') tf = 35e-9;
@@ -1455,8 +1524,18 @@ function runSimulation() {
   const Tj_mos_no_hs = 25 + P_mos_total * (62.0 + 1.2);
   const tempDrop = Math.max(0, Tj_mos_no_hs - Tj_mos);
 
-  setElText('lbl_temp_drop', hasHeatsink ? ('-' + tempDrop.toFixed(0) + '°C کاهش دما') : 'بدون هیت‌سینک!');
-  setElText('res_tmos_no_hs', Tj_mos_no_hs.toFixed(0) + '°C');
+  const lblTempDrop = document.getElementById('lbl_temp_drop');
+  if (lblTempDrop) {
+    if (hasHeatsink) {
+      lblTempDrop.innerText = '-' + tempDrop.toFixed(0) + '°C کاهش دما';
+      lblTempDrop.style.color = 'var(--warm-green)';
+    } else {
+      lblTempDrop.innerText = '⚠️ بدون هیت‌سینک (خطر داغی!)';
+      lblTempDrop.style.color = 'var(--warm-red)';
+    }
+  }
+
+  setElText('res_tmos_no_hs', hasHeatsink ? (Tj_mos_no_hs.toFixed(0) + '°C') : 'بدون هیت‌سینک');
 
   // Update DOM: Group 1 MOSFET
   setElText('res_tmos', Math.min(350, Tj_mos).toFixed(0));
@@ -1472,7 +1551,7 @@ function runSimulation() {
       pillM.className = 'pill warn'; pillM.innerText = 'گرم / استاندارد';
       pillMTop.className = 'cat-badge pill warn'; pillMTop.innerText = 'استاندارد (' + Tj_mos.toFixed(0) + '°C)';
     } else {
-      pillM.className = 'pill danger'; pillM.innerText = 'بسیار داغ!';
+      pillM.className = 'pill danger'; pillM.innerText = 'بسیار داغ (>100°C)!';
       pillMTop.className = 'cat-badge pill danger'; pillMTop.innerText = 'خطر داغی ماسفت (' + Tj_mos.toFixed(0) + '°C)';
     }
   }
@@ -1582,12 +1661,16 @@ function runSimulation() {
     tvsMath = `<br>• تفکیک توان کلمپ TVS (${tvsPkg} با <b>Vz = ${Vz}V</b>): توان کل نشتی = <b>${Ptotal.toFixed(2)}W</b> ➔ سهم مقاومت: <b>PR = ${PR.toFixed(2)}W</b> | سهم دیود TVS: <b>PTVS = <span class="val">${PTVS.toFixed(2)} W</span></b> (دمای پیوند TVS: <b><span class="${TTVS > 100 ? 'bad' : 'res'}">${TTVS.toFixed(0)} °C</span></b>)`;
   }
 
+  const hsStatusText = hasHeatsink 
+    ? `با هیت‌سینک <b><span class="${Tj_mos > 90 ? 'bad' : 'res'}">${Tj_mos.toFixed(0)} °C</span></b> | بدون هیت‌سینک: <b><span class="bad">${Tj_mos_no_hs.toFixed(0)} °C</span></b> ➔ اثر هیت‌سینک: <b><span class="res">${tempDrop.toFixed(0)}°C کاهش دما</span></b>`
+    : `بدون هیت‌سینک در هوای آزاد <b><span class="bad">${Tj_mos.toFixed(0)} °C</span></b> ➔ ⚠️ خطر سوختن پیوند ترانزیستور!`;
+
   const mathEl = document.getElementById('math_output');
   if (mathEl) {
     mathEl.innerHTML = `
       1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(1)} × (${Vout.toFixed(1)} + 0.5) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
       2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی: <b>Pleak = <span class="val">${Pleak.toFixed(2)} W</span></b><br>
-      3. تلفات ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند با هیت‌سینک <b><span class="${Tj_mos > 90 ? 'bad' : 'res'}">${Tj_mos.toFixed(0)} °C</span></b> | بدون هیت‌سینک: <b><span class="bad">${Tj_mos_no_hs.toFixed(0)} °C</span></b> ➔ اثر هیت‌سینک: <b><span class="res">${tempDrop.toFixed(0)}°C کاهش دما</span></b>)<br>
+      3. تلفات ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند ${hsStatusText})<br>
       4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)${tvsMath}
     `;
   }
