@@ -234,23 +234,23 @@ static void func__Simple_HttpTelemetry(void)
  * instead of one, so a 3-month chart costs ~20 sends, not 360. */
 static void func__Simple_SendChartArray(const char *char__ptr_head,
                                         const uint32_t *uint32_t__ptr_values,
-                                        uint8_t uint8_t__size, uint8_t uint8_t__count,
-                                        uint8_t uint8_t__index)
+                                        uint16_t uint16_t__size, uint16_t uint16_t__count,
+                                        uint16_t uint16_t__index)
 {
     char char__buf[96];
     size_t size_t__used = 0u;
-    uint8_t uint8_t__i;
+    uint16_t uint16_t__i;
     SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__ptr_head);
-    for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+    for (uint16_t__i = 0u; uint16_t__i < uint16_t__count; uint16_t__i++)
     {
-        int int__slot = (int)uint8_t__index + (int)uint8_t__size - (int)uint8_t__count + (int)uint8_t__i;
+        int int__slot = (int)uint16_t__index + (int)uint16_t__size - (int)uint16_t__count + (int)uint16_t__i;
         int int__written;
-        while (int__slot >= (int)uint8_t__size)
+        while (int__slot >= (int)uint16_t__size)
         {
-            int__slot -= (int)uint8_t__size;
+            int__slot -= (int)uint16_t__size;
         }
         int__written = snprintf(&char__buf[size_t__used], sizeof(char__buf) - size_t__used,
-                                (uint8_t__i == 0u) ? "%lu" : ",%lu",
+                                (uint16_t__i == 0u) ? "%lu" : ",%lu",
                                 (unsigned long)uint32_t__ptr_values[int__slot]);
         if ((int__written < 0) || ((size_t)int__written >= (sizeof(char__buf) - size_t__used)))
         {
@@ -274,9 +274,9 @@ static void func__Simple_HttpCharts(void)
 {
     String string__range = SIMPLE_WEB_SERVER_T__G__Server.hasArg("range") ? SIMPLE_WEB_SERVER_T__G__Server.arg("range") : "1d";
     const char *char__ptr_tag = "1d";
-    uint8_t uint8_t__size = (uint8_t)SIMPLE_CHART_1D_SIZE;
-    uint8_t uint8_t__count = UINT8_T__G__Chart1D_Count;
-    uint8_t uint8_t__index = UINT8_T__G__Chart1D_Index;
+    uint16_t uint16_t__size = (uint16_t)SIMPLE_CHART_1D_SIZE;
+    uint16_t uint16_t__count = UINT16_T__G__Chart1D_Count;
+    uint16_t uint16_t__index = UINT16_T__G__Chart1D_Index;
     const uint32_t *uint32_t__ptrPct = UINT32_T__G__Chart1D_Pct;
     const uint32_t *uint32_t__ptrVin = UINT32_T__G__Chart1D_Vin;
     const uint32_t *uint32_t__ptrVpack = UINT32_T__G__Chart1D_Vpack;
@@ -286,9 +286,9 @@ static void func__Simple_HttpCharts(void)
     if (string__range == "7d")
     {
         char__ptr_tag = "7d";
-        uint8_t__size = (uint8_t)SIMPLE_CHART_7D_SIZE;
-        uint8_t__count = UINT8_T__G__Chart7D_Count;
-        uint8_t__index = UINT8_T__G__Chart7D_Index;
+        uint16_t__size = (uint16_t)SIMPLE_CHART_7D_SIZE;
+        uint16_t__count = UINT16_T__G__Chart7D_Count;
+        uint16_t__index = UINT16_T__G__Chart7D_Index;
         uint32_t__ptrPct = UINT32_T__G__Chart7D_Pct;
         uint32_t__ptrVin = UINT32_T__G__Chart7D_Vin;
         uint32_t__ptrVpack = UINT32_T__G__Chart7D_Vpack;
@@ -297,9 +297,9 @@ static void func__Simple_HttpCharts(void)
     else if (string__range == "1m")
     {
         char__ptr_tag = "1m";
-        uint8_t__size = (uint8_t)SIMPLE_CHART_1M_SIZE;
-        uint8_t__count = UINT8_T__G__Chart1M_Count;
-        uint8_t__index = UINT8_T__G__Chart1M_Index;
+        uint16_t__size = (uint16_t)SIMPLE_CHART_1M_SIZE;
+        uint16_t__count = UINT16_T__G__Chart1M_Count;
+        uint16_t__index = UINT16_T__G__Chart1M_Index;
         uint32_t__ptrPct = UINT32_T__G__Chart1M_Pct;
         uint32_t__ptrVin = UINT32_T__G__Chart1M_Vin;
         uint32_t__ptrVpack = UINT32_T__G__Chart1M_Vpack;
@@ -308,9 +308,9 @@ static void func__Simple_HttpCharts(void)
     else if (string__range == "3m")
     {
         char__ptr_tag = "3m";
-        uint8_t__size = (uint8_t)SIMPLE_CHART_3M_SIZE;
-        uint8_t__count = UINT8_T__G__Chart3M_Count;
-        uint8_t__index = UINT8_T__G__Chart3M_Index;
+        uint16_t__size = (uint16_t)SIMPLE_CHART_3M_SIZE;
+        uint16_t__count = UINT16_T__G__Chart3M_Count;
+        uint16_t__index = UINT16_T__G__Chart3M_Index;
         uint32_t__ptrPct = UINT32_T__G__Chart3M_Pct;
         uint32_t__ptrVin = UINT32_T__G__Chart3M_Vin;
         uint32_t__ptrVpack = UINT32_T__G__Chart3M_Vpack;
@@ -319,11 +319,11 @@ static void func__Simple_HttpCharts(void)
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
     (void)snprintf(char__head, sizeof(char__head), "{\"range\":\"%s\",\"count\":%u,\"pct\":[",
-                   char__ptr_tag, (unsigned int)uint8_t__count);
-    func__Simple_SendChartArray(char__head, uint32_t__ptrPct, uint8_t__size, uint8_t__count, uint8_t__index);
-    func__Simple_SendChartArray("],\"vin\":[", uint32_t__ptrVin, uint8_t__size, uint8_t__count, uint8_t__index);
-    func__Simple_SendChartArray("],\"vpack\":[", uint32_t__ptrVpack, uint8_t__size, uint8_t__count, uint8_t__index);
-    func__Simple_SendChartArray("],\"time\":[", uint32_t__ptrTime, uint8_t__size, uint8_t__count, uint8_t__index);
+                   char__ptr_tag, (unsigned int)uint16_t__count);
+    func__Simple_SendChartArray(char__head, uint32_t__ptrPct, uint16_t__size, uint16_t__count, uint16_t__index);
+    func__Simple_SendChartArray("],\"vin\":[", uint32_t__ptrVin, uint16_t__size, uint16_t__count, uint16_t__index);
+    func__Simple_SendChartArray("],\"vpack\":[", uint32_t__ptrVpack, uint16_t__size, uint16_t__count, uint16_t__index);
+    func__Simple_SendChartArray("],\"time\":[", uint32_t__ptrTime, uint16_t__size, uint16_t__count, uint16_t__index);
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
 }
 static void func__Simple_HttpDiag(void)

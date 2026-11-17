@@ -93,13 +93,19 @@
 #define SIMPLE_JSON_BUFFER_SIZE         1024u
 #define SIMPLE_PANEL_HTML_MAX_BYTES     175000u
 #define SIMPLE_CHART_HISTORY_SIZE       60u
-#define SIMPLE_CHART_1D_SIZE            24u
+#define SIMPLE_CHART_1D_SIZE            288u
 #define SIMPLE_CHART_7D_SIZE            28u
 #define SIMPLE_CHART_1M_SIZE            30u
 #define SIMPLE_CHART_3M_SIZE            90u
 #define SIMPLE_CHARTS_FILE              "/charts.bin"
-#define SIMPLE_CHART_FILE_HEADER        8u
-#define SIMPLE_CHART_FILE_MAX_BYTES     2048u
+#define SIMPLE_CHART_FILE_HEADER        12u
+/* Accepted samples: five wall minutes OR 500 mV in either observed voltage. */
+#define SIMPLE_CHART_SAMPLE_SEC         300u
+#define SIMPLE_CHART_STEP_MV            500u
+/* Bound the append journal; compact only after verified snapshot replacement. */
+#define SIMPLE_CHART_JOURNAL_FILE       "/charts.jrn"
+#define SIMPLE_CHART_JOURNAL_MAX_BYTES  1024u
+#define SIMPLE_CHART_FILE_MAX_BYTES     9216u
 #define SIMPLE_DIAG_MAX_ERRORS          10u
 #define SIMPLE_DIAG_MAX_POWER_EVENTS    20u
 #define SIMPLE_USERS_MAX                1u

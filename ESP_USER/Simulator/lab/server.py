@@ -204,19 +204,39 @@ class Board:
             previous = values
         return total
     def chart_file_bytes(self):
-        """Size of /charts.bin: header, four delta blocks and the CRC16."""
-        total = 8
-        now = int(time.time())
-        for count, step in ((24, 3600), (28, 6 * 3600), (30, 86400), (self.MAX_DAYS, 86400)):
-            total += 2
+        """Version-2 checkpoint size for this illustrative seeded fixture, not a flash test."""
+        total = 12
+        for points in self.chart.values():
+            total += self.varint_len(len(points))
             previous = [0, 0, 0, 0]
-            for point in self.chart_points(now, step, count):
+            for point in points:
                 for field, value in enumerate((point["time"], point["pct"],
                                                point["vin"], point["vpack"])):
                     diff = value - previous[field]
                     total += self.varint_len(diff * 2 if diff >= 0 else -diff * 2 - 1)
                     previous[field] = value
+        for bucket in self.chart_buckets:
+            total += sum(self.varint_len(value) for value in bucket)
         return total + 2
+    def seed_charts(self, now):
+        """One shared five-minute fixture source, with UTC six-hour/daily sample means."""
+        source = self.chart_points(now, 300, self.SEED_DAYS * 288)
+        self.chart["1d"] = source[-288:]
+        self.chart_buckets = []
+        for key, period, capacity in (("7d", 21600, 28), ("1m", 86400, 30), ("3m", 86400, 90)):
+            buckets = {}
+            for point in source:
+                bucket = point["time"] // period
+                values = buckets.setdefault(bucket, [0, 0, 0, 0, 0])
+                values[0] += 1
+                for i, field in enumerate(("pct", "vin", "vpack"), 1):
+                    values[i] += point[field]
+                values[4] = point["time"]
+            kept = list(buckets.items())[-capacity:]
+            self.chart[key] = [dict(time=v[4], pct=v[1] // v[0], vin=v[2] // v[0],
+                                    vpack=v[3] // v[0]) for _, v in kept]
+            bucket, values = kept[-1]
+            self.chart_buckets.append([bucket] + values[:4])
     def chart_points(self, now, step, count):
         out = []
         for i in range(count):
@@ -249,10 +269,7 @@ class Board:
             midnight = int(day_start // 86400) * 86400
             key = time.strftime("%Y%m%d", time.localtime(midnight))
             self.rows[key] = self.make_day_rows(midnight, day_index)
-        self.chart["1d"] = self.chart_points(now, 3600, 24)
-        self.chart["7d"] = self.chart_points(now, 6 * 3600, 28)
-        self.chart["1m"] = self.chart_points(now, 86400, 30)
-        self.chart["3m"] = self.chart_points(now, 86400, self.SEED_DAYS)
+        self.seed_charts(now)
         self.charge_history = self.make_charges(now)
         self.charge_count = len(self.charge_history)
         per_channel = [sum(1 for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
@@ -275,8 +292,8 @@ class Board:
         self.logs_seeded = True
 
     def make_chart(self, now, rng):
-        step = {"1d": 3600, "7d": 21600, "1m": 86400, "3m": 86400}[rng]
-        count = {"1d": 24, "7d": 28, "1m": 30, "3m": 60}[rng]
+        step = {"1d": 300, "7d": 21600, "1m": 86400, "3m": 86400}[rng]
+        count = {"1d": 288, "7d": 28, "1m": 30, "3m": 90}[rng]
         out = []
         for i in range(count):
             stamp = now - (count - 1 - i) * step
@@ -823,6 +840,7 @@ class Handler(BaseHTTPRequestHandler):
                      ("/time.json", 42), ("/params.json", 2040),
                      ("/diag.json", 1180),
                      ("/charts.bin", BOARD.chart_file_bytes()),
+                     ("/charts.jrn", 0),  # seeded fixture is a full checkpoint
                      ("/charge_hist.json", 2 + len(BOARD.charge_history) * 36)]
             for name, size in extra:
                 if name not in BOARD.deleted_files:
@@ -851,7 +869,7 @@ class Handler(BaseHTTPRequestHandler):
             match = re.fullmatch(r"/evt-([0-9]{8})\.csv", name)
             if match and match[1] in BOARD.rows:
                 del BOARD.rows[match[1]]
-            elif name in {"/users.json", "/wifi.json", "/time.json", "/params.json", "/diag.json", "/charts.bin", "/charge_hist.json"} and name not in BOARD.deleted_files:
+            elif name in {"/users.json", "/wifi.json", "/time.json", "/params.json", "/diag.json", "/charts.bin", "/charts.jrn", "/charge_hist.json"} and name not in BOARD.deleted_files:
                 BOARD.deleted_files.add(name)
             else:
                 return self.send(json_bytes({"ok": 0, "e": "missing"}, 404))
@@ -866,6 +884,7 @@ class Handler(BaseHTTPRequestHandler):
                 BOARD.power = []
                 BOARD.charge_history = []
                 BOARD.chart = {key: [] for key in BOARD.chart}
+                BOARD.chart_buckets = []
                 return self.send(text_bytes("ok"))
             return self.send(json_bytes({"ok": 1, "removed": 1, "freed": 1024}))
         if path == "/evt/snap" and method == "POST":

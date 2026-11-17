@@ -159,26 +159,6 @@ void loop(void)
         if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
         uint32_t__lastSaveMs = uint32_t__now;
     }
-    static uint32_t uint32_t__lastChartSaveMs = 0u;
-    uint32_t uint32_t__nowSecForChartSave = func__Simple_NowSec();
-    if ((uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN) &&
-        (UINT32_T__G__LastChartSaveSec == 0u))
-    {
-        UINT32_T__G__LastChartSaveSec = uint32_t__nowSecForChartSave;
-    }
-    if (((uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN) &&
-         (uint32_t__nowSecForChartSave >= UINT32_T__G__LastChartSaveSec) &&
-         ((uint32_t__nowSecForChartSave - UINT32_T__G__LastChartSaveSec) >= 86400u)) ||
-        ((uint32_t__now - uint32_t__lastChartSaveMs) >= 86400000u))
-    {
-        if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
-        if (BOOL__G__TimeValid) func__Simple_TimeSave();
-        uint32_t__lastChartSaveMs = uint32_t__now;
-        if (uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN)
-        {
-            UINT32_T__G__LastChartSaveSec = uint32_t__nowSecForChartSave;
-        }
-    }
     if (BOOL__G__WifiRebootPending)
     {
         if ((uint32_t__now - UINT32_T__G__WifiRebootMs) > 2000u)

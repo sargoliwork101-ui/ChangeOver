@@ -84,6 +84,10 @@ static bool BOOL__T__RemoveFail = false;
 static bool BOOL__T__CredentialRenameFail = false;
 static bool BOOL__T__CredentialReadFail = false;
 static bool BOOL__T__CredentialOpenFail = false;
+static bool BOOL__T__ChartJournalOpenFail = false;
+static bool BOOL__T__ChartJournalReadFail = false;
+static unsigned UINT__T__ChartReadFailureCountdown = 0u;
+static unsigned UINT__T__ChartSnapshotWrites = 0u;
 
 /* فایل‌سیستم تست در /tmp نگه داشته می‌شود تا مسیر ذخیره و بازیابی هم بررسی شود. */
 static std::string func__T_FsPath(const char *char__ptr_path)
@@ -148,6 +152,12 @@ File SimLittleFS::open(const char *char__ptr_path, const char *char__ptr_mode)
     {
         return File(std::string(), "r");
     }
+    if (strcmp(char__ptr_path, SIMPLE_CHART_JOURNAL_FILE) == 0 && strcmp(char__ptr_mode, "r") == 0 &&
+        UINT__T__ChartReadFailureCountdown && --UINT__T__ChartReadFailureCountdown == 0u) return File();
+    if (strcmp(char__ptr_path, SIMPLE_CHARTS_FILE ".tmp") == 0 && strcmp(char__ptr_mode, "w") == 0) UINT__T__ChartSnapshotWrites++;
+    if (strcmp(char__ptr_path, SIMPLE_CHART_JOURNAL_FILE) == 0 &&
+        ((BOOL__T__ChartJournalOpenFail && strcmp(char__ptr_mode, "a") == 0) ||
+         (BOOL__T__ChartJournalReadFail && strcmp(char__ptr_mode, "r") == 0))) return File();
     if (strstr(char__ptr_path, ".tmp") != NULL &&
         ((BOOL__T__CredentialReadFail && strcmp(char__ptr_mode, "r") == 0) ||
          (BOOL__T__CredentialOpenFail && strcmp(char__ptr_mode, "w") == 0))) return File();
@@ -768,6 +778,7 @@ static void func__T_TestStm32TimeAndChartScheduling(void)
 
     (void)printf("\n== همگام‌سازی ساعت از میکرو STM32 و ثبت نمودار زمان‌دار ==\n");
 
+    BOOL__G__FsOk = true;
     func__Simple_ChartsClear();
     /* پنل با یک ساعت قدیمی‌تر (مثلاً ۲ دقیقه عقب‌تر از میکرو بعد از خواب CH_PD) بیدار می‌شود */
     func__Simple_TimeSet(uint32_t__stmTimeSec - 120u, false);
@@ -792,7 +803,7 @@ static void func__T_TestStm32TimeAndChartScheduling(void)
                   "به‌محض دریافت دیاگ از میکرو STM32، ساعت پنل با ساعت جلوترِ میکرو همگام می‌شود");
 
     func__Simple_ChartAddTimed(80u, 24000u, 25000u);
-    func__T_Check((UINT8_T__G__Chart1D_Count == 1u) && (UINT8_T__G__Chart7D_Count == 1u),
+    func__T_Check((UINT16_T__G__Chart1D_Count == 1u) && (UINT16_T__G__Chart7D_Count == 1u),
                   "اولین نقطهٔ نمودار ۱ روزه و ۷ روزه با ساعت میکرو ثبت شد");
 
     /* شبیه‌سازی گذشت ۵ دقیقه روی ساعت میکرو بدون افزایش millis بیش از ۱ دقیقه */
@@ -808,7 +819,7 @@ static void func__T_TestStm32TimeAndChartScheduling(void)
     }
 
     func__Simple_ChartAddTimed(82u, 24000u, 25200u);
-    func__T_Check((UINT8_T__G__Chart1D_Count == 2u) && (UINT8_T__G__Chart7D_Count == 2u),
+    func__T_Check((UINT16_T__G__Chart1D_Count == 2u) && (UINT16_T__G__Chart7D_Count == 1u) && (UINT32_T__G__Chart7D_Vpack[0] == 25100u),
                   "نقطهٔ بعدی نمودارها بر اساس ثانیهٔ واقعی میکرو (حتی پس از ریست millis) ثبت شد");
 }
 
@@ -850,26 +861,10 @@ static void func__T_TestChartZeroOnStaleTelemetry(void)
                   (UINT32_T__G__ChartPct[uint8_t__lastSlot] == 0u) &&
                   (UINT32_T__G__ChartImb[uint8_t__lastSlot] == 0u),
                   "تله‌متری کهنه در نمودار کوتاه به‌جای عددهای قبلی صفر می‌نشیند");
-    func__T_Check((UINT8_T__G__Chart1D_Count == 1u) &&
-                  (UINT32_T__G__Chart1D_Pct[0] == 0u) &&
-                  (UINT32_T__G__Chart1D_Vin[0] == 0u) &&
-                  (UINT32_T__G__Chart1D_Vpack[0] == 0u) &&
-                  (UINT32_T__G__Chart1D_Time[0] >= uint32_t__baseSec) &&
-                  (UINT32_T__G__Chart1D_Time[0] <= (uint32_t__baseSec + 1u)),
-                  "نقطهٔ صفر با زمان واقعی همان لحظه ذخیره می‌شود، نه زمان فریم کهنه");
-    func__T_Check((UINT8_T__G__Chart7D_Count == 1u) &&
-                  (UINT8_T__G__Chart1M_Count == 1u) &&
-                  (UINT8_T__G__Chart3M_Count == 1u) &&
-                  (UINT32_T__G__Chart7D_Pct[0] == 0u) &&
-                  (UINT32_T__G__Chart1M_Pct[0] == 0u) &&
-                  (UINT32_T__G__Chart3M_Pct[0] == 0u) &&
-                  (UINT32_T__G__Chart7D_Vin[0] == 0u) &&
-                  (UINT32_T__G__Chart1M_Vin[0] == 0u) &&
-                  (UINT32_T__G__Chart3M_Vin[0] == 0u) &&
-                  (UINT32_T__G__Chart7D_Vpack[0] == 0u) &&
-                  (UINT32_T__G__Chart1M_Vpack[0] == 0u) &&
-                  (UINT32_T__G__Chart3M_Vpack[0] == 0u),
-                  "هر چهار بازهٔ زمان‌دار جای بی‌داده را صفر می‌گیرند");
+    func__T_Check(UINT16_T__G__Chart1D_Count == 0u,
+                  "داده کهنه نقطه صفر جعلی در نمودار ذخیره‌شده نمی‌سازد");
+    func__T_Check(UINT16_T__G__Chart7D_Count == 0u && UINT16_T__G__Chart1M_Count == 0u && UINT16_T__G__Chart3M_Count == 0u,
+                  "خلاصه‌های بلندمدت هم فقط از نمونه معتبر ساخته می‌شوند");
     func__T_Check((UINT8_T__G__PowerEventCount == 0u) &&
                   (BOOL__G__LastLocalInputPresent != false),
                   "دادهٔ کهنه رویداد قطع برق محلی نمی‌سازد");
@@ -885,19 +880,19 @@ static void func__T_TestChartZeroOnStaleTelemetry(void)
     func__T_Check((UINT8_T__G__ChartCount == 2u) &&
                   (UINT32_T__G__ChartVin[uint8_t__lastSlot] == 24000u) &&
                   (UINT32_T__G__ChartVpack[uint8_t__lastSlot] == 25500u) &&
-                  (UINT8_T__G__Chart1D_Count == 1u),
+                  (UINT16_T__G__Chart1D_Count == 1u),
                   "با فریم تازه عددهای واقعی برمی‌گردند و نقطهٔ زمان‌دار زودتر از گام خودش ساخته نمی‌شود");
 
     /* یک گام کامل جلو می‌رویم تا نقطهٔ تازهٔ زمان‌دار هم ساخته شود */
-    func__Simple_TimeSet(uint32_t__baseSec + 60u, false);
+    func__Simple_TimeSet(uint32_t__baseSec + 300u, false);
     UINT32_T__G__LastTlmMs = (uint32_t)millis();
     UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
     func__Simple_ChartTick();
-    func__T_Check((UINT8_T__G__Chart1D_Count == 2u) &&
+    func__T_Check((UINT16_T__G__Chart1D_Count == 2u) &&
                   (UINT32_T__G__Chart1D_Pct[1] > 0u) &&
                   (UINT32_T__G__Chart1D_Vin[1] == 24000u) &&
                   (UINT32_T__G__Chart1D_Vpack[1] == 25500u) &&
-                  (UINT32_T__G__Chart1D_Time[1] >= (uint32_t__baseSec + 60u)),
+                  (UINT32_T__G__Chart1D_Time[1] >= (uint32_t__baseSec + 300u)),
                   "پس از صفرِ بی‌داده، نقطهٔ تازه با زمان درست ثبت می‌شود");
 
     /* اگر برد از اول هم دیده نشده باشد، باز هم جای خالی داده صفر است */
@@ -906,12 +901,8 @@ static void func__T_TestChartZeroOnStaleTelemetry(void)
     func__Simple_TimeSet(uint32_t__baseSec + 120u, false);
     UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
     func__Simple_ChartTick();
-    func__T_Check((UINT8_T__G__Chart1D_Count == 1u) &&
-                  (UINT32_T__G__Chart1D_Pct[0] == 0u) &&
-                  (UINT32_T__G__Chart1D_Vin[0] == 0u) &&
-                  (UINT32_T__G__Chart1D_Vpack[0] == 0u) &&
-                  (UINT32_T__G__Chart1D_Time[0] >= (uint32_t__baseSec + 120u)),
-                  "بردِ هرگز دیده‌نشده هم نقطهٔ صفرِ زمان‌دار می‌گیرد");
+    func__T_Check(UINT16_T__G__Chart1D_Count == 0u,
+                  "برد دیده‌نشده هیچ نقطه جعلی روی فلش نمی‌سازد");
 
     func__Simple_ChartsClear();
     BOOL__G__TlmSeen = false;
@@ -2332,43 +2323,43 @@ static void func__T_TestLogMidnightRollover(void)
 /* ==================== ۱۰) ذخیرهٔ نمودارها: فقط تغییرها ==================== */
 static void func__T_FillChartSamples(void)
 {
-    uint8_t uint8_t__i;
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_1D_SIZE; uint8_t__i++)
+    uint16_t uint16_t__i;
+    for (uint16_t__i = 0u; uint16_t__i < SIMPLE_CHART_1D_SIZE; uint16_t__i++)
     {
-        UINT32_T__G__Chart1D_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 3600u);
-        UINT32_T__G__Chart1D_Pct[uint8_t__i] = 55u + (uint32_t)(uint8_t__i % 10u);
-        UINT32_T__G__Chart1D_Vin[uint8_t__i] = 24100u;
-        UINT32_T__G__Chart1D_Vpack[uint8_t__i] = 24000u + ((uint32_t)uint8_t__i * 40u);
+        UINT32_T__G__Chart1D_Time[uint16_t__i] = 1762300000u + ((uint32_t)uint16_t__i * 3600u);
+        UINT32_T__G__Chart1D_Pct[uint16_t__i] = 55u + (uint32_t)(uint16_t__i % 10u);
+        UINT32_T__G__Chart1D_Vin[uint16_t__i] = 24100u;
+        UINT32_T__G__Chart1D_Vpack[uint16_t__i] = 24000u + ((uint32_t)uint16_t__i * 40u);
     }
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_7D_SIZE; uint8_t__i++)
+    for (uint16_t__i = 0u; uint16_t__i < SIMPLE_CHART_7D_SIZE; uint16_t__i++)
     {
-        UINT32_T__G__Chart7D_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 21600u);
-        UINT32_T__G__Chart7D_Pct[uint8_t__i] = 70u - (uint32_t)(uint8_t__i % 20u);
-        UINT32_T__G__Chart7D_Vin[uint8_t__i] = (uint8_t__i % 2u == 0u) ? 0u : 24150u;
-        UINT32_T__G__Chart7D_Vpack[uint8_t__i] = 23000u + ((uint32_t)uint8_t__i * 30u);
+        UINT32_T__G__Chart7D_Time[uint16_t__i] = 1762300000u + ((uint32_t)uint16_t__i * 21600u);
+        UINT32_T__G__Chart7D_Pct[uint16_t__i] = 70u - (uint32_t)(uint16_t__i % 20u);
+        UINT32_T__G__Chart7D_Vin[uint16_t__i] = (uint16_t__i % 2u == 0u) ? 0u : 24150u;
+        UINT32_T__G__Chart7D_Vpack[uint16_t__i] = 23000u + ((uint32_t)uint16_t__i * 30u);
     }
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_1M_SIZE; uint8_t__i++)
+    for (uint16_t__i = 0u; uint16_t__i < SIMPLE_CHART_1M_SIZE; uint16_t__i++)
     {
-        UINT32_T__G__Chart1M_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 86400u);
-        UINT32_T__G__Chart1M_Pct[uint8_t__i] = 30u + (uint32_t)(uint8_t__i % 50u);
-        UINT32_T__G__Chart1M_Vin[uint8_t__i] = 24080u + (uint32_t)(uint8_t__i % 4u) * 10u;
-        UINT32_T__G__Chart1M_Vpack[uint8_t__i] = 22000u + ((uint32_t)uint8_t__i * 60u);
+        UINT32_T__G__Chart1M_Time[uint16_t__i] = 1762300000u + ((uint32_t)uint16_t__i * 86400u);
+        UINT32_T__G__Chart1M_Pct[uint16_t__i] = 30u + (uint32_t)(uint16_t__i % 50u);
+        UINT32_T__G__Chart1M_Vin[uint16_t__i] = 24080u + (uint32_t)(uint16_t__i % 4u) * 10u;
+        UINT32_T__G__Chart1M_Vpack[uint16_t__i] = 22000u + ((uint32_t)uint16_t__i * 60u);
     }
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_CHART_3M_SIZE; uint8_t__i++)
+    for (uint16_t__i = 0u; uint16_t__i < SIMPLE_CHART_3M_SIZE; uint16_t__i++)
     {
-        UINT32_T__G__Chart3M_Time[uint8_t__i] = 1762300000u + ((uint32_t)uint8_t__i * 86400u);
-        UINT32_T__G__Chart3M_Pct[uint8_t__i] = 40u + (uint32_t)(uint8_t__i % 60u);
-        UINT32_T__G__Chart3M_Vin[uint8_t__i] = (uint8_t__i % 3u == 0u) ? 0u : (24100u + (uint32_t)(uint8_t__i % 7u) * 15u);
-        UINT32_T__G__Chart3M_Vpack[uint8_t__i] = 21000u + (uint32_t)(uint8_t__i % 60u) * 80u;
+        UINT32_T__G__Chart3M_Time[uint16_t__i] = 1762300000u + ((uint32_t)uint16_t__i * 86400u);
+        UINT32_T__G__Chart3M_Pct[uint16_t__i] = 40u + (uint32_t)(uint16_t__i % 60u);
+        UINT32_T__G__Chart3M_Vin[uint16_t__i] = (uint16_t__i % 3u == 0u) ? 0u : (24100u + (uint32_t)(uint16_t__i % 7u) * 15u);
+        UINT32_T__G__Chart3M_Vpack[uint16_t__i] = 21000u + (uint32_t)(uint16_t__i % 60u) * 80u;
     }
-    UINT8_T__G__Chart1D_Count = (uint8_t)SIMPLE_CHART_1D_SIZE;
-    UINT8_T__G__Chart7D_Count = (uint8_t)SIMPLE_CHART_7D_SIZE;
-    UINT8_T__G__Chart1M_Count = (uint8_t)SIMPLE_CHART_1M_SIZE;
-    UINT8_T__G__Chart3M_Count = (uint8_t)SIMPLE_CHART_3M_SIZE;
-    UINT8_T__G__Chart1D_Index = 0u;
-    UINT8_T__G__Chart7D_Index = 0u;
-    UINT8_T__G__Chart1M_Index = 0u;
-    UINT8_T__G__Chart3M_Index = 0u;
+    UINT16_T__G__Chart1D_Count = (uint16_t)SIMPLE_CHART_1D_SIZE;
+    UINT16_T__G__Chart7D_Count = (uint16_t)SIMPLE_CHART_7D_SIZE;
+    UINT16_T__G__Chart1M_Count = (uint16_t)SIMPLE_CHART_1M_SIZE;
+    UINT16_T__G__Chart3M_Count = (uint16_t)SIMPLE_CHART_3M_SIZE;
+    UINT16_T__G__Chart1D_Index = 0u;
+    UINT16_T__G__Chart7D_Index = 0u;
+    UINT16_T__G__Chart1M_Index = 0u;
+    UINT16_T__G__Chart3M_Index = 0u;
 }
 static void func__T_TestChartStorage(void)
 {
@@ -2393,19 +2384,19 @@ static void func__T_TestChartStorage(void)
                   (uint32_t__size <= (uint32_t)SIMPLE_CHART_FILE_MAX_BYTES),
                   "فایل نمودار ساخته می‌شود و داخل سقف خودش می‌ماند");
     /* همان چهار بازه به‌صورت JSON متنی حدود ۴٬۳۰۰ بایت بود */
-    func__T_Check(uint32_t__size < 1600u,
-                  "چهار بازهٔ کامل (۱۷۲ نقطه) زیر ۱٬۶۰۰ بایت ذخیره می‌شود، نه ۴٬۳۰۰");
-    UINT8_T__G__Chart1D_Count = 0u;
-    UINT8_T__G__Chart7D_Count = 0u;
-    UINT8_T__G__Chart1M_Count = 0u;
-    UINT8_T__G__Chart3M_Count = 0u;
+    func__T_Check(uint32_t__size < 4096u,
+                  "چهار بازهٔ کامل با ۲۸۸ نقطه روزانه زیر ۴ کیلوبایت ذخیره می‌شود");
+    UINT16_T__G__Chart1D_Count = 0u;
+    UINT16_T__G__Chart7D_Count = 0u;
+    UINT16_T__G__Chart1M_Count = 0u;
+    UINT16_T__G__Chart3M_Count = 0u;
     func__Simple_ChartsLoad();
-    func__T_Check((UINT8_T__G__Chart1D_Count == (uint8_t)SIMPLE_CHART_1D_SIZE) &&
-                  (UINT8_T__G__Chart7D_Count == (uint8_t)SIMPLE_CHART_7D_SIZE) &&
-                  (UINT8_T__G__Chart1M_Count == (uint8_t)SIMPLE_CHART_1M_SIZE) &&
-                  (UINT8_T__G__Chart3M_Count == (uint8_t)SIMPLE_CHART_3M_SIZE),
+    func__T_Check((UINT16_T__G__Chart1D_Count == (uint16_t)SIMPLE_CHART_1D_SIZE) &&
+                  (UINT16_T__G__Chart7D_Count == (uint16_t)SIMPLE_CHART_7D_SIZE) &&
+                  (UINT16_T__G__Chart1M_Count == (uint16_t)SIMPLE_CHART_1M_SIZE) &&
+                  (UINT16_T__G__Chart3M_Count == (uint16_t)SIMPLE_CHART_3M_SIZE),
                   "هر چهار بازه با همان تعداد نقطه برمی‌گردند");
-    func__T_Check((UINT32_T__G__Chart3M_Time[(uint8_t)SIMPLE_CHART_3M_SIZE - 1u] ==
+    func__T_Check((UINT32_T__G__Chart3M_Time[(uint16_t)SIMPLE_CHART_3M_SIZE - 1u] ==
                    (1762300000u + (((uint32_t)SIMPLE_CHART_3M_SIZE - 1u) * 86400u))) &&
                   (UINT32_T__G__Chart3M_Pct[5] == 45u) &&
                   (UINT32_T__G__Chart3M_Vin[3] == 0u) &&
@@ -2430,16 +2421,16 @@ static void func__T_TestChartStorage(void)
             file__write.close();
         }
     }
-    UINT8_T__G__Chart1D_Count = 0u;
-    UINT8_T__G__Chart7D_Count = 0u;
-    UINT8_T__G__Chart1M_Count = 0u;
-    UINT8_T__G__Chart3M_Count = 0u;
+    UINT16_T__G__Chart1D_Count = 0u;
+    UINT16_T__G__Chart7D_Count = 0u;
+    UINT16_T__G__Chart1M_Count = 0u;
+    UINT16_T__G__Chart3M_Count = 0u;
     func__Simple_ChartsLoad();
-    func__T_Check((UINT8_T__G__Chart1D_Count == 0u) && (UINT8_T__G__Chart3M_Count == 0u),
+    func__T_Check((UINT16_T__G__Chart1D_Count == 0u) && (UINT16_T__G__Chart3M_Count == 0u),
                   "فایل نمودار خراب کلاً رد می‌شود و نمودار جعلی نمی‌کشد");
     LittleFS.remove(SIMPLE_CHARTS_FILE);
     func__Simple_ChartsLoad();
-    func__T_Check(UINT8_T__G__Chart1D_Count == 0u,
+    func__T_Check(UINT16_T__G__Chart1D_Count == 0u,
                   "بدون فایل نمودار چیزی خوانده نمی‌شود (فایل متنی قدیمی دیگر پشتیبانی نمی‌شود)");
     BOOL__G__ChartsDirty = true;
     func__Simple_ChartsSave();
@@ -3034,8 +3025,8 @@ static void func__T_TestFormatClearsAllHistory(void)
     BOOL__G__FsOk = true;
     auto func__seed = []() {
         UINT8_T__G__DiagErrorCount = 1u;UINT8_T__G__PowerEventCount = 1u;UINT8_T__G__ChargeHistoryCount = 1u;
-        UINT8_T__G__ChartCount = 1u;UINT8_T__G__Chart1D_Count = 1u;UINT8_T__G__Chart7D_Count = 1u;
-        UINT8_T__G__Chart1M_Count = 1u;UINT8_T__G__Chart3M_Count = 1u;
+        UINT8_T__G__ChartCount = 1u;UINT16_T__G__Chart1D_Count = 1u;UINT16_T__G__Chart7D_Count = 1u;
+        UINT16_T__G__Chart1M_Count = 1u;UINT16_T__G__Chart3M_Count = 1u;
         SIMPLE_DIAG_ERROR_T__G__Errors[0].timestamp = 1790000000u;
         BOOL__G__DiagDirty = true;BOOL__G__ChartsDirty = true;BOOL__G__ChargeHistDirty = true;
         File file__diag = LittleFS.open(SIMPLE_DIAG_FILE, "w");file__diag.print("old diagnostic");file__diag.close();
@@ -3051,7 +3042,7 @@ static void func__T_TestFormatClearsAllHistory(void)
     SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();
     func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && SIMPLE_WEB_SERVER_T__G__Server.simBody() == "ok", "فرمت مدیر پس از بررسی فلش موفق است");
     func__T_Check(UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__PowerEventCount == 0u && UINT8_T__G__ChargeHistoryCount == 0u, "فرمت تاریخچهٔ خطا و قطعی و شارژ را از رم هم پاک می‌کند");
-    func__T_Check(UINT8_T__G__ChartCount == 0u && UINT8_T__G__Chart1D_Count == 0u && UINT8_T__G__Chart7D_Count == 0u && UINT8_T__G__Chart1M_Count == 0u && UINT8_T__G__Chart3M_Count == 0u, "فرمت نمونه‌های تمام بازه‌های نمودار را از رم هم پاک می‌کند");
+    func__T_Check(UINT8_T__G__ChartCount == 0u && UINT16_T__G__Chart1D_Count == 0u && UINT16_T__G__Chart7D_Count == 0u && UINT16_T__G__Chart1M_Count == 0u && UINT16_T__G__Chart3M_Count == 0u, "فرمت نمونه‌های تمام بازه‌های نمودار را از رم هم پاک می‌کند");
     func__T_Check(!BOOL__G__DiagDirty && !BOOL__G__ChartsDirty && !BOOL__G__ChargeHistDirty && !LittleFS.exists(SIMPLE_DIAG_FILE) && !LittleFS.exists(SIMPLE_CHARTS_FILE), "پرچم ذخیرهٔ کهنه نمی‌تواند دادهٔ پاک‌شده را به فلش برگرداند");
     uint8_t uint8_t__frame[32];unsigned uint__len = 0;while (Serial.takeEspByte(&uint8_t__byte) && uint__len < sizeof(uint8_t__frame)) uint8_t__frame[uint__len++] = uint8_t__byte;
     func__T_Check(BOOL__G__DiagClearPending && uint__len >= 9u && uint8_t__frame[3] == SIMPLE_MSG_DIAG_REQ && uint8_t__frame[4] == 1u && uint8_t__frame[6] == 1u, "فرمت دستور واقعی پاک‌کردن دیاگ برد را می‌فرستد و منتظر تأیید می‌ماند");
@@ -3064,13 +3055,14 @@ static void func__T_TestFormatClearsAllHistory(void)
     func__T_Check(!BOOL__G__DiagClearPending, "تأیید تاریخچهٔ خالی برد انتظار پاک‌کردن را تمام می‌کند");
     func__T_Check(string__token == CHAR__G__SessionToken && func__Simple_IsAdmin() && LittleFS.exists(SIMPLE_USERS_FILE) && LittleFS.exists(SIMPLE_WIFI_FILE), "پاک‌کردن تاریخچه رمزها و نشست همان مدیر را حفظ می‌کند");
     func__seed();BOOL__T__MountFail = true;SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();BOOL__T__MountFail = false;
-    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && UINT8_T__G__DiagErrorCount == 0u && UINT8_T__G__Chart1D_Count == 0u, "حتی اگر بازشدن فلش بعد از فرمت شکست بخورد رم قدیمی باقی نمی‌ماند");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && UINT8_T__G__DiagErrorCount == 0u && UINT16_T__G__Chart1D_Count == 0u, "حتی اگر بازشدن فلش بعد از فرمت شکست بخورد رم قدیمی باقی نمی‌ماند");
     BOOL__G__FsOk = LittleFS.begin();BOOL__G__DiagClearPending = false;
     func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
 }
 
 #include "host_test_credentials.h"
 #include "host_test_battery_retention.h"
+#include "host_test_chart_journal.h"
 
 int main(void)
 {
@@ -3108,6 +3100,11 @@ int main(void)
     func__T_TestCredentialCommitFailures();
     func__T_TestBatteryClockRetention();
     func__T_TestBatteryLogRetention();
+    func__T_TestChartTriggersAndReplay();
+    func__T_TestChartFailureRecovery();
+    func__T_TestChartLongRanges();
+    func__T_TestChartBatteryAndBounds();
+    func__T_TestChartNinetyDayBudget();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

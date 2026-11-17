@@ -13,7 +13,7 @@
 
 | فایل | چه چیزی را اثبات می‌کند |
 |---|---|
-| `host_test_latch.cpp` | صف و فریم ریست قفل‌ها، CRC16، پژواک/NAK، مسیر عادی پارامترها، ترتیب سناریوی ۵ (۲۰۰، ۲۰۱، سپس ۲۰۲)، اینکه پنل فقط با پژواک تازهٔ شناسهٔ هدف و تعداد پاسخ‌های لازم موفقیت می‌گوید، اینکه با تله‌متری کهنه نمودار به‌جای عددهای قبلی صفرِ زمان‌دار می‌گیرد، و نشست یکتا: ورود هم‌سطح رد، دسترسی بالاتر جایگزین، کوکی صاحب نشست، خروج و پایان مهلت. |
+| `host_test_latch.cpp` | صف و فریم ریست قفل‌ها، CRC16، پژواک/NAK، مسیر عادی پارامترها، ترتیب سناریوی ۵ (۲۰۰، ۲۰۱، سپس ۲۰۲)، اینکه پنل فقط با پژواک تازهٔ شناسهٔ هدف و تعداد پاسخ‌های لازم موفقیت می‌گوید، اینکه تله‌متری کهنه فقط در نمودار زنده صفر می‌شود و نمونهٔ جعلی روی فلش نمی‌سازد، و نشست یکتا: ورود هم‌سطح رد، دسترسی بالاتر جایگزین، کوکی صاحب نشست، خروج و پایان مهلت. |
 | `host_test_ov.js` | آلارم اضافه‌ولتاژ پنل از سقف ورودی برد و هیسترزیس زنده ساخته می‌شود، نه از عدد ثابت. |
 | `host_test_diag_clock.js` | ساعت زندهٔ کارت آمار: زمان کل شارژ در بی‌کاری، لینک قطع یا داده کهنه جلو نمی‌رود؛ با شارژ فعال و داده تازه جلو می‌رود؛ کارکرد برد جداست. |
 | `host_test_chart_refresh.js` | رفرش صفحه و بازکردن تب، بوم پنهان، آماده‌نبودن context، تغییر اندازه و تراکم پیکسل، حذف درخواست تکراری، پاسخ دیررس بازهٔ قبلی، حفظ داده در خطای شبکه و جلوگیری از بازگشت تاریخچه پس از فرمت. |
@@ -121,3 +121,18 @@ excluded handshake/mains flags, hourly heartbeats, the 250 ms mains flush,
 pending update/event preservation, phone sync before HELLO, silent-boot saves,
 delayed saves after a board reply, board reset/re-anchor, and five clock/stamp
 storage fault stages. These are accelerated host tests, not elapsed hardware tests.
+
+## Chart journal and trigger regressions
+
+`host_test_chart_journal.h` is included by the existing sanitized host executable.
+It covers exact 299/300-second and 499/500-mV boundaries on either voltage in both
+directions; cumulative changes from the committed (not incoming-frame) baseline;
+no percentage-only or per-boot sample; clock grace; immediate persistence; replay;
+every truncation of a new journal frame; short writes, post-write readback failure,
+open/rename/no-space failures and retries; checkpoint-before-journal-removal power
+loss; temporary-file isolation; file deletion/recreation; clear/reset; malformed
+CRC-valid snapshots/deltas; 64-bit aggregation sums; 288-point HTTP serialization;
+540 cold battery wakes; and a 90-day trace of 25,921 samples on a 64,000-byte budget
+alongside 90 normal log days and 8,000 bytes of other files. The test File shim adds
+a binary short-write limit; it is not firmware. The DOM chart tests remain in the
+same runner. All timing/power-cut tests are accelerated host models, not hardware.

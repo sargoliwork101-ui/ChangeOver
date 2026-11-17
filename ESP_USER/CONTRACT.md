@@ -112,7 +112,7 @@ Successful save does not invalidate the admin session. An incomplete temporary
 file is not a boot credential source. Crypto nonces use the full unsigned 32-bit
 range, not Arduino's signed `String::toInt` range.
 
-LittleFS files: `/wifi.json`, `/charts.bin`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
+LittleFS files: `/wifi.json`, `/charts.bin`, `/charts.jrn`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
 The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
 
@@ -151,3 +151,44 @@ Recovery requires an initially synchronized wall clock and a still-counting STM3
 Events during physical ESP power-off cannot be individually observed by ESP;
 state differences are recorded when fresh telemetry returns. Complete board power
 loss needs external time synchronization; no new STM32/RTC behavior is introduced.
+
+## Immediate chart persistence (supersedes daily snapshot scheduling)
+
+Fresh observations are considered on the existing 5-second chart tick only after
+the boot-clock gate. Accept the first observation, otherwise elapsed wall time
+>=300 s OR absolute input/pack change >=500 mV from the last committed sample.
+No independent percentage trigger, per-boot trigger or timer reset is used.
+A failed write retains one pending observation and retries before accepting more;
+it never advances the committed trigger baseline or invents a successful sample.
+Stale/no-board data remain zero in the transient live ring, not in persisted ranges.
+
+A shared accepted source feeds a 288-point/24-hour bounded daily ring; voltage
+event bursts may reach capacity before a full day. The 28 six-hour UTC buckets,
+30 daily UTC buckets and 90 daily UTC buckets hold sample-weighted averages of
+that same source, including the in-progress bucket. These are neither additional
+measurements nor time-weighted averages/minimum-maximum envelopes. Bucket sums
+and counts persist so reboot cannot reset the average. Old summaries survive
+expiration of source points. Persistent ring indices/counts and HTTP serialization
+are 16-bit; public chart JSON shape remains unchanged.
+
+`/charts.jrn` has CRC16-protected full/delta records: A6 C4, one-byte payload size,
+one-byte delta flag, five unsigned/zig-zag varints (sequence, epoch, pct, vin,
+vpack), little-endian CRC over size/flag/payload. Full frames restart the delta
+chain at least every 16 records. Each append is closed and read-verified before
+RAM publication. Torn tails are discarded to the verified prefix; replay stops
+at the first invalid frame and never decodes a delta against a missing base.
+
+The journal is bounded at 1024 bytes. Before exhaustion, version-2 CHTD snapshots
+store sequence, four delta-varint rings and three active sum/count buckets, with
+CRC16. Snapshot size is bounded at 9216 bytes. A second validation pass publishes
+all ranges together. Only a complete staged/read-verified snapshot may atomically
+replace `/charts.bin`; only then may the old journal be removed. Sequence numbers
+skip already-compacted frames after a crash between rename and journal removal.
+The temporary snapshot is never a boot source. Version-1 snapshots are not imported.
+
+Flash-space failures retain committed files and the pending observation. The
+current pending observation itself is volatile until a write succeeds; physically
+unpowered intervals cannot be measured. Clearing charts/format resets rings,
+active buckets, journal cursors and pending samples. Ordinary accepted samples
+append rather than rewrite all history; temporary space for the snapshot is
+required during compaction. Log retention and STM32 firmware are unchanged.
