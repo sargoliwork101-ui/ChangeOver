@@ -612,7 +612,7 @@
   <header class="glass-card">
     <div class="header-content">
       <h1>⚡ سیستم مهندسی تحلیل جامع اسنابر، ماسفت و ترانس فلای‌بک (ChangeOver 24V)</h1>
-      <p>محاسبه‌گر دقیق مداری مطابق AN-4147 فیرچایلد و AN-1048 اس‌تی، مجهز به زوم اسکرول اسیلوسکوپ و تحلیل حرارتی پیشرفته</p>
+      <p>محاسبه‌گر دقیق مداری بر اساس استاندارد بین‌المللی Fairchild AN-4147 و ST AN-1048، مجهز به زوم اسکرول اسیلوسکوپ</p>
     </div>
     <div class="header-actions">
       <button class="btn-download" onclick="downloadCurrentHtml()">
@@ -624,11 +624,12 @@
   <!-- Preset Bar -->
   <div class="preset-bar glass-card">
     <span class="preset-label">🎯 حالات کاری پیش‌فرض برد:</span>
-    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">🔴 مدار فعلی با هیت‌سینک (1kΩ / 470nF)</button>
+    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">🔴 مدار استاندارد شماتیک برد (3.3kΩ / 10nF / 40:24)</button>
     <button class="preset-btn" id="btn_no_hs" onclick="setPreset('no_hs')">🔥 مدار فعلی بدون هیت‌سینک (IRF640 داغ ۲۸۴°C)</button>
-    <button class="preset-btn" id="btn_small_c" onclick="setPreset('small_c')">⚠️ خازن خیلی کوچک (1kΩ / 2.2nF ➔ ۲۵۶ ولت)</button>
-    <button class="preset-btn" id="btn_opt_rcd" onclick="setPreset('opt_rcd')">🟢 RCD بهینه ۵ وات (2.2kΩ / 100nF + IRFB4227)</button>
-    <button class="preset-btn" id="btn_rcdz" onclick="setPreset('rcdz')">🔵 ساختار هیبرید RCDZ با TVS (10kΩ + 51V)</button>
+    <button class="preset-btn" id="btn_mod_1k" onclick="setPreset('mod_1k')">⚠️ مدار با مقاومت ۱kΩ (Rsn=1kΩ / Csn=470nF)</button>
+    <button class="preset-btn" id="btn_small_c" onclick="setPreset('small_c')">⚠️ خازن خیلی کوچک (Rsn=3.3kΩ / Csn=1nF)</button>
+    <button class="preset-btn" id="btn_opt_rcd" onclick="setPreset('opt_rcd')">🟢 RCD بهینه با ۵ وات (Rsn=4.7kΩ / 22nF / 5W)</button>
+    <button class="preset-btn" id="btn_rcdz" onclick="setPreset('rcdz')">🔵 ساختار هیبرید RCDZ با TVS (10kΩ + P6KE51A)</button>
     <button class="preset-btn" id="btn_sandwich" onclick="setPreset('sandwich')">⭐ ترانسفورمر ساندویچی بهینه (Llk=0.2µH)</button>
   </div>
 
@@ -655,7 +656,7 @@
           <div class="form-item">
             <div class="form-label-row"><span>مدل ماسفت قدرت</span></div>
             <select id="mosfet_model" oninput="updateMosfetParams()" onchange="updateMosfetParams()">
-              <option value="IRF640" selected>IRF640 (Vdss=200V, Rds=0.18Ω) - مدل فعلی برد</option>
+              <option value="IRF640" selected>IRF640PBF (Vdss=200V, Rds=0.18Ω) - مدل شماتیک برد</option>
               <option value="IRFB4227">IRFB4227 (Vdss=200V, Rds=0.021Ω) - فوق‌العاده خنک</option>
               <option value="IRFB4610">IRFB4610 (Vdss=100V, Rds=0.014Ω) - راندمان ماکزیمم</option>
               <option value="IRF540N">IRF540N (Vdss=100V, Rds=0.044Ω) - اقتصادی و خنک</option>
@@ -746,9 +747,9 @@
               <span class="pill safe" id="pill_vdss_margin">امن</span>
             </div>
             <div class="metric-val">
-              <span id="res_vmargin">109.9</span><span class="metric-unit">V</span>
+              <span id="res_vmargin">71.0</span><span class="metric-unit">V</span>
             </div>
-            <div class="metric-sub">حد شکست: <b id="res_vdss_sub" style="color:var(--warm-red);">200 V</b> (<b id="res_margin_pct">55%</b>)</div>
+            <div class="metric-sub">حد شکست: <b id="res_vdss_sub" style="color:var(--warm-red);">200 V</b> (<b id="res_margin_pct">36%</b>)</div>
           </div>
         </div>
       </div>
@@ -780,11 +781,11 @@
           <div class="form-item">
             <div class="form-label-row">
               <span>مقاومت اسنابر (Rsn)</span>
-              <span class="val-badge" id="lbl_rsn">1000 Ω</span>
+              <span class="val-badge" id="lbl_rsn">3300 Ω</span>
             </div>
             <div class="input-control">
-              <input type="range" id="rsn" min="10" max="25000" step="50" value="1000" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
-              <input type="number" id="rsn_num" value="1000" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
+              <input type="range" id="rsn" min="10" max="25000" step="50" value="3300" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
+              <input type="number" id="rsn_num" value="3300" oninput="syncVal('rsn', this.value, this)" onchange="syncVal('rsn', this.value, this)">
             </div>
           </div>
 
@@ -796,7 +797,7 @@
             <select id="prated" oninput="runSimulation()" onchange="runSimulation()">
               <option value="0.5">0.5 وات (معمولی ۱/۲W)</option>
               <option value="1.0">1.0 وات (متال‌فیلم ۱W)</option>
-              <option value="2.0" selected>2.0 وات (استاندارد ۲W)</option>
+              <option value="2.0" selected>2.0 وات (استاندارد ۲W - پکیج شماتیک R62)</option>
               <option value="3.0">3.0 وات (پاور ۳W)</option>
               <option value="5.0">5.0 وات (آجری / سرامیکی ۵W)</option>
               <option value="10.0">10.0 وات (آجری بزرگ ۱۰W)</option>
@@ -807,11 +808,11 @@
           <div class="form-item">
             <div class="form-label-row">
               <span>ظرفیت خازن اسنابر (Csn)</span>
-              <span class="val-badge" id="lbl_csn">470 nF</span>
+              <span class="val-badge" id="lbl_csn">10.0 nF</span>
             </div>
             <div class="input-control">
-              <input type="range" id="csn" min="0.5" max="680" step="0.5" value="470" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
-              <input type="number" id="csn_num" value="470" step="1" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
+              <input type="range" id="csn" min="0.5" max="680" step="0.5" value="10" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
+              <input type="number" id="csn_num" value="10" step="1" oninput="syncVal('csn', this.value, this)" onchange="syncVal('csn', this.value, this)">
             </div>
           </div>
 
@@ -851,9 +852,9 @@
               <span class="pill danger" id="pill_pr">اضافه توان</span>
             </div>
             <div class="metric-val">
-              <span id="res_pr">3.70</span><span class="metric-unit">W</span>
+              <span id="res_pr">3.09</span><span class="metric-unit">W</span>
             </div>
-            <div class="metric-sub">درصد توان نامی: <b id="res_pr_pct">185% (2.0W)</b></div>
+            <div class="metric-sub">درصد توان نامی: <b id="res_pr_pct">155% (2.0W)</b></div>
           </div>
 
           <div class="metric-card">
@@ -862,7 +863,7 @@
               <span class="pill danger" id="pill_temp">بسیار داغ!</span>
             </div>
             <div class="metric-val">
-              <span id="res_temp">154</span><span class="metric-unit">°C</span>
+              <span id="res_temp">133</span><span class="metric-unit">°C</span>
             </div>
             <div class="metric-sub">توان سلف نشتی: <b id="res_pleak_sub">2.33 W</b></div>
           </div>
@@ -893,12 +894,12 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <span>ریپل خازن (ΔVsn)</span>
-              <span class="pill safe" id="pill_ripple">ناچیز</span>
+              <span class="pill safe" id="pill_ripple">مطلوب</span>
             </div>
             <div class="metric-val">
-              <span id="res_ripple">2.6</span><span class="metric-unit">V</span>
+              <span id="res_ripple">61.2</span><span class="metric-unit">V</span>
             </div>
-            <div class="metric-sub">ثابت زمانی دشارژ: <b id="res_tau">23.5 × Ts</b></div>
+            <div class="metric-sub">ثابت زمانی دشارژ: <b id="res_tau">1.65 × Ts</b></div>
           </div>
         </div>
       </div>
@@ -911,11 +912,11 @@
           <div class="cat-title" style="color:var(--copper);">
             <span>⚡ ۳. تغذیه، بار و ترانسفورمر (Power & Trans)</span>
           </div>
-          <span class="cat-badge pill" id="pill_power_top">مد DCM</span>
+          <span class="cat-badge pill" id="pill_power_top">مد DCM/BCM</span>
         </div>
 
         <!-- Controls -->
-        <div class="sub-heading">مشخصات منبع، بار و ترانس EE33</div>
+        <div class="sub-heading">مشخصات منبع، بار و ترانس Trans1/Trans2</div>
         <div class="form-grid">
           <div class="form-item">
             <div class="form-label-row">
@@ -951,7 +952,7 @@
 
           <div class="form-item">
             <div class="form-label-row">
-              <span>ولتاژ خروجی بار (Vout)</span>
+              <span>ولتاژ خروجی شارژ باتری (Vout)</span>
               <span class="val-badge" id="lbl_vout">14.4 V</span>
             </div>
             <div class="input-control">
@@ -996,12 +997,13 @@
           <div class="form-item">
             <div class="form-label-row">
               <span>نسبت دور سیم‌پیچی ترانس (Np : Ns)</span>
-              <span class="val-badge" id="lbl_turns">15:10 (n=1.5)</span>
+              <span class="val-badge" id="lbl_turns">40:24 (n=1.67)</span>
             </div>
             <select id="turns_ratio" oninput="runSimulation()" onchange="runSimulation()">
-              <option value="1.5" selected>15 به 10 (Np=15, Ns=10 ➔ n = 1.5)</option>
-              <option value="1.2">12 به 10 (Np=12, Ns=10 ➔ n = 1.2)</option>
-              <option value="2.0">20 به 10 (Np=20, Ns=10 ➔ n = 2.0)</option>
+              <option value="1.6667" selected>40 به 24 (Np=40, Ns=24 ➔ n = 1.67) - مطابق شماتیک برد</option>
+              <option value="1.5">15 به 10 (Np=15, Ns=10 ➔ n = 1.50)</option>
+              <option value="1.2">12 به 10 (Np=12, Ns=10 ➔ n = 1.20)</option>
+              <option value="2.0">20 به 10 (Np=20, Ns=10 ➔ n = 2.00)</option>
             </select>
           </div>
 
@@ -1027,9 +1029,9 @@
               <span class="pill safe" id="pill_vdrain">امن</span>
             </div>
             <div class="metric-val">
-              <span id="res_vdrain">90.1</span><span class="metric-unit">V</span>
+              <span id="res_vdrain">129.0</span><span class="metric-unit">V</span>
             </div>
-            <div class="metric-sub">سطح پلاتو: <b id="res_vplateau">50.5 V</b></div>
+            <div class="metric-sub">سطح پلاتو: <b id="res_vplateau">52.9 V</b></div>
           </div>
 
           <div class="metric-card">
@@ -1051,7 +1053,7 @@
             <div class="metric-val">
               <span id="res_duty">28.5</span><span class="metric-unit">%</span>
             </div>
-            <div class="metric-sub">Treset: <b id="res_treset">7.08 µs</b></div>
+            <div class="metric-sub">Treset: <b id="res_treset">6.40 µs</b></div>
           </div>
         </div>
       </div>
@@ -1077,7 +1079,7 @@
             </div>
 
             <button class="btn-live" id="btn_live_toggle" onclick="toggleLiveAnimation()">
-              <span id="live_icon">▶️</span> <span id="live_text">حرکت زنده (Live)</span>
+              <span id="live_icon">▶️</span> <span id="live_text">حرکت (Live)</span>
             </button>
             <div class="ch-selectors">
               <label class="ch-option" style="color:#60a5fa;">
@@ -1101,7 +1103,7 @@
         <div class="canvas-container" id="canvas_box">
           <div class="scope-hud" id="scope_hud">
             <div>زمان: <b id="hud_t">0.00 µs</b> | فاز مداری: <b id="hud_phase">ماسفت روشن</b></div>
-            <div>Vds(t): <b id="hud_vds" style="color:#60a5fa;">0.4 V</b> | i_Lp(t): <b id="hud_ilp" style="color:#4ade80;">0.0 A</b> | Vsn(t): <b id="hud_vsn" style="color:#fbbf24;">60.8 V</b></div>
+            <div>Vds(t): <b id="hud_vds" style="color:#60a5fa;">0.4 V</b> | i_Lp(t): <b id="hud_ilp" style="color:#4ade80;">0.0 A</b> | Vsn(t): <b id="hud_vsn" style="color:#fbbf24;">101.0 V</b></div>
           </div>
           <canvas id="scopeCanvas"></canvas>
         </div>
@@ -1118,7 +1120,7 @@
         <div class="fixes-box">
           <div class="fix-card">
             <div class="fix-title">🛠️ راهکار ۱: ارتقای مقاومت به ۵ وات سرامیکی</div>
-            <div class="fix-desc">مقاومت ۲ وات فعلی برای تلفات مدار (۳.۷۰W) کم است. با نصب مقاومت ۲.۲kΩ با پکیج ۵ وات آجری، دمای بدنه از ۱۵۴ درجه به کمتر از ۶۰ درجه کاهش می‌یابد.</div>
+            <div class="fix-desc">مقاومت ۲ وات فعلی برای تلفات مدار (۳.۰۹W) کم است. با نصب مقاومت ۳.۳kΩ با پکیج ۵ وات آجری (سفید)، دمای بدنه از ۱۳۳ درجه به کمتر از ۶۰ درجه کاهش می‌یابد.</div>
           </div>
           <div class="fix-card">
             <div class="fix-title">🛠️ راهکار ۲: افزودن دیود TVS (مدار هیبرید RCDZ)</div>
@@ -1325,7 +1327,6 @@ function setPreset(p) {
   document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
   document.getElementById('duty_mode').value = 'auto';
   document.getElementById('group_manual_duty').style.display = 'none';
-  document.getElementById('turns_ratio').value = '1.5';
   
   if (p === 'current') {
     document.getElementById('btn_current').classList.add('active');
@@ -1333,15 +1334,16 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
+    document.getElementById('turns_ratio').value = '1.6667';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
     setVal('fsw', 50);
     setVal('lp', 15);
     setVal('lleak', 0.825);
-    setVal('rsn', 1000);
+    setVal('rsn', 3300);
     document.getElementById('prated').value = "2.0";
-    setVal('csn', 470);
+    setVal('csn', 10);
     document.getElementById('mosfet_model').value = 'IRF640';
     setVal('vdss', 200);
     setVal('rdson', 0.180);
@@ -1351,6 +1353,26 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = 'none';
     document.getElementById('rth_num').value = '62.0';
     document.getElementById('snubber_type').value = 'RCD';
+    document.getElementById('turns_ratio').value = '1.6667';
+    setVal('vin', 28);
+    setVal('vout', 14.4);
+    setVal('iout', 2.5);
+    setVal('fsw', 50);
+    setVal('lp', 15);
+    setVal('lleak', 0.825);
+    setVal('rsn', 3300);
+    document.getElementById('prated').value = "2.0";
+    setVal('csn', 10);
+    document.getElementById('mosfet_model').value = 'IRF640';
+    setVal('vdss', 200);
+    setVal('rdson', 0.180);
+  } else if (p === 'mod_1k') {
+    document.getElementById('btn_mod_1k').classList.add('active');
+    document.getElementById('chk_heatsink').checked = true;
+    document.getElementById('heatsink_type').value = '14.0';
+    document.getElementById('rth_num').value = '14.0';
+    document.getElementById('snubber_type').value = 'RCD';
+    document.getElementById('turns_ratio').value = '1.6667';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1369,15 +1391,16 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
+    document.getElementById('turns_ratio').value = '1.6667';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
     setVal('fsw', 50);
     setVal('lp', 15);
     setVal('lleak', 0.825);
-    setVal('rsn', 1000);
+    setVal('rsn', 3300);
     document.getElementById('prated').value = "2.0";
-    setVal('csn', 2.2);
+    setVal('csn', 1.0);
     document.getElementById('mosfet_model').value = 'IRF640';
     setVal('vdss', 200);
     setVal('rdson', 0.180);
@@ -1387,15 +1410,16 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
+    document.getElementById('turns_ratio').value = '1.6667';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
     setVal('fsw', 50);
     setVal('lp', 15);
     setVal('lleak', 0.825);
-    setVal('rsn', 2200);
+    setVal('rsn', 4700);
     document.getElementById('prated').value = "5.0";
-    setVal('csn', 100);
+    setVal('csn', 22);
     document.getElementById('mosfet_model').value = 'IRFB4227';
     setVal('vdss', 200);
     setVal('rdson', 0.021);
@@ -1405,6 +1429,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCDZ';
+    document.getElementById('turns_ratio').value = '1.6667';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1413,7 +1438,7 @@ function setPreset(p) {
     setVal('lleak', 0.825);
     setVal('rsn', 10000);
     document.getElementById('prated').value = "2.0";
-    setVal('csn', 2.2);
+    setVal('csn', 10);
     document.getElementById('vz').value = "51";
     document.getElementById('tvs_package').value = "P6KE";
     document.getElementById('mosfet_model').value = 'IRFB4227';
@@ -1425,15 +1450,16 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
+    document.getElementById('turns_ratio').value = '1.6667';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
     setVal('fsw', 50);
     setVal('lp', 15);
     setVal('lleak', 0.206);
-    setVal('rsn', 3300);
+    setVal('rsn', 6800);
     document.getElementById('prated').value = "2.0";
-    setVal('csn', 120);
+    setVal('csn', 10);
     document.getElementById('mosfet_model').value = 'IRFB4227';
     setVal('vdss', 200);
     setVal('rdson', 0.021);
@@ -1450,12 +1476,12 @@ function runSimulation() {
   const fsw = (parseFloat(document.getElementById('fsw').value) || 50) * 1000;
   const Lp = (parseFloat(document.getElementById('lp').value) || 15) * 1e-6;
   const Llk = (parseFloat(document.getElementById('lleak').value) || 0.825) * 1e-6;
-  const Rsn = parseFloat(document.getElementById('rsn').value) || 1000;
+  const Rsn = parseFloat(document.getElementById('rsn').value) || 3300;
   const Prated = parseFloat(document.getElementById('prated').value) || 2.0;
-  const Csn = (parseFloat(document.getElementById('csn').value) || 470) * 1e-9;
+  const Csn = (parseFloat(document.getElementById('csn').value) || 10) * 1e-9;
   const Vz = parseFloat(document.getElementById('vz') ? document.getElementById('vz').value : 51) || 51;
   const tvsPkg = document.getElementById('tvs_package') ? document.getElementById('tvs_package').value : 'P6KE';
-  const n = parseFloat(document.getElementById('turns_ratio').value) || 1.5;
+  const n = parseFloat(document.getElementById('turns_ratio').value) || 1.6667;
   const mosfetModel = document.getElementById('mosfet_model').value;
   const Vdss = parseFloat(document.getElementById('vdss').value) || 200;
   const Rds = parseFloat(document.getElementById('rdson').value) || 0.180;
@@ -1480,7 +1506,7 @@ function runSimulation() {
   else if (mosfetModel === 'IRF540N') tf = 35e-9;
 
   // TVS thermal resistance
-  let Rth_tvs = 20.0; // Lead/trace heatsinking
+  let Rth_tvs = 20.0;
   if (tvsPkg === '1.5KE') Rth_tvs = 15.0;
   else if (tvsPkg === 'SMBJ') Rth_tvs = 26.0;
 
@@ -1497,7 +1523,12 @@ function runSimulation() {
   setElText('lbl_rsn', Rsn >= 1000 ? (Rsn/1000).toFixed(1) + ' kΩ' : Rsn.toFixed(0) + ' Ω');
   setElText('lbl_prated', Prated.toFixed(1) + ' W');
   setElText('lbl_csn', (Csn*1e9).toFixed(1) + ' nF');
-  setElText('lbl_turns', n === 1.5 ? '15:10 (n=1.5)' : (n === 1.2 ? '12:10 (n=1.2)' : '20:10 (n=2.0)'));
+  
+  let turnsText = '40:24 (n=1.67)';
+  if (Math.abs(n - 1.5) < 0.05) turnsText = '15:10 (n=1.50)';
+  else if (Math.abs(n - 1.2) < 0.05) turnsText = '12:10 (n=1.20)';
+  else if (Math.abs(n - 2.0) < 0.05) turnsText = '20:10 (n=2.00)';
+  setElText('lbl_turns', turnsText);
   setElText('lbl_ts_info', (1e6/fsw).toFixed(1) + ' µs (' + (fsw/1000).toFixed(0) + ' kHz)');
 
   const isTVS = (type === 'RCDZ');
@@ -1516,7 +1547,7 @@ function runSimulation() {
   const Ts = 1 / fsw;
 
   // Reflected voltage & Power
-  const VF = 0.6; // Schottky forward drop
+  const VF = 0.55; // MBR20100CT Schottky diode forward drop
   const Vor = n * (Vout + VF);
   const Pout = Vout * Iout;
   const eta = 0.85;
@@ -1694,11 +1725,11 @@ function runSimulation() {
   }
 
   setElText('res_ripple', DeltaV.toFixed(1));
-  setElText('res_tau', tau_ratio.toFixed(1) + ' × Ts');
+  setElText('res_tau', tau_ratio.toFixed(2) + ' × Ts');
   const pillRip = document.getElementById('pill_ripple');
   if (pillRip) {
-    pillRip.className = tau_ratio >= 3.0 ? 'pill safe' : (tau_ratio >= 1.5 ? 'pill warn' : 'pill danger');
-    pillRip.innerText = tau_ratio >= 3.0 ? 'ریپل ناچیز' : (tau_ratio >= 1.5 ? 'ریپل متوسط' : 'خازن کوچک!');
+    pillRip.className = tau_ratio >= 1.5 ? 'pill safe' : (tau_ratio >= 0.5 ? 'pill warn' : 'pill danger');
+    pillRip.innerText = tau_ratio >= 1.5 ? 'ریپل مطلوب' : (tau_ratio >= 0.5 ? 'ریپل متوسط' : 'خازن خیلی کوچک!');
   }
 
   // TVS Output Cards
@@ -1754,7 +1785,7 @@ function runSimulation() {
   const mathEl = document.getElementById('math_output');
   if (mathEl) {
     mathEl.innerHTML = `
-      1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(1)} × (${Vout.toFixed(1)} + 0.6) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
+      1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(2)} × (${Vout.toFixed(1)} + 0.55) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
       2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی: <b>Pleak = <span class="val">${Pleak_raw.toFixed(2)} W</span></b><br>
       3. تلفات ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند ${hsStatusText})<br>
       4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)${tvsMath}
@@ -1977,7 +2008,7 @@ function redrawScope(phaseShift = 0) {
         v = 0.2 + cur_inst * 0.16;
       } else if (t < Ton_norm + Tclamp_norm) {
         const ph = (t - Ton_norm) / Tclamp_norm;
-        const v_spike = (Vdrain_pk - (Vin + Vor)) * Math.exp(-ph * (tau_ratio >= 3 ? 3.2 : 1.6));
+        const v_spike = (Vdrain_pk - (Vin + Vor)) * Math.exp(-ph * (tau_ratio >= 1.5 ? 3.2 : 1.6));
         v = Vin + Vor + v_spike + Math.sin(ph * Math.PI * 3) * (DeltaV * 0.15);
       } else if (t < Tdcm_start_norm) {
         v = Vin + Vor;
@@ -2079,7 +2110,7 @@ function redrawScope(phaseShift = 0) {
       phase = '۱. ماسفت روشن (شارژ سلف)';
     } else if (t < Ton_norm + Tclamp_norm) {
       const ph = (t - Ton_norm) / Tclamp_norm;
-      v_inst = Vin + Vor + (Vdrain_pk - (Vin + Vor)) * Math.exp(-ph * (tau_ratio >= 3 ? 3.2 : 1.6));
+      v_inst = Vin + Vor + (Vdrain_pk - (Vin + Vor)) * Math.exp(-ph * (tau_ratio >= 1.5 ? 3.2 : 1.6));
       i_inst = Ipk * (1 - ph * 0.5);
       phase = '۲. کلمپ سلف نشتی در اسنابر';
     } else if (t < Tdcm_start_norm) {
