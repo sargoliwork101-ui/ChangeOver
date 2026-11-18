@@ -1,4 +1,5 @@
 #include <LittleFS.h>
+#include "simple_json.h"
 static void func__Simple_ThemeLoad(void)
 {
     UINT8_T__G__Theme = 0u;
@@ -20,39 +21,19 @@ static void func__Simple_ThemeLoad(void)
         UINT8_T__G__Theme = (uint8_t)int32_t__theme;
     }
 }
-static void func__Simple_ThemeSave(void)
-{
-    if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_THEME_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"theme\":");
-    file__f.print(UINT8_T__G__Theme);
-    file__f.print("}");
-    file__f.close();
-}
-static bool func__Simple_SetTheme(uint8_t uint8_t__theme)
-{
-    if (uint8_t__theme > SIMPLE_THEME_MAX) return false;
-    if (UINT8_T__G__Theme == uint8_t__theme) return true;
-    UINT8_T__G__Theme = uint8_t__theme;
-    func__Simple_ThemeSave();
-    return true;
-}
-static void func__Simple_WifiSave(void)
+static bool func__Simple_WifiSave(void)
 {
     String string__plain;
     String string__enc;
-    if (!BOOL__G__FsOk) return;
-    string__plain = "{\"ssid\":\"";
-    string__plain += CHAR__G__WifiSsid;
-    string__plain += "\",\"pass\":\"";
-    string__plain += CHAR__G__WifiPass;
-    string__plain += "\"}";
+    if (!BOOL__G__FsOk) return false;
+    if (!BOOL__G__CryptoKeyReady) func__Simple_CryptoKeyInit();
+    string__plain = "{\"ssid\":";
+    string__plain += func__Simple_JsonQuote(CHAR__G__WifiSsid);
+    string__plain += ",\"pass\":";
+    string__plain += func__Simple_JsonQuote(CHAR__G__WifiPass);
+    string__plain += "}";
     func__Simple_CryptoEncrypt(string__plain, string__enc);
-    File file__f = LittleFS.open(SIMPLE_WIFI_FILE, "w");
-    if (!file__f) return;
-    file__f.print(string__enc);
-    file__f.close();
+    return func__Simple_CredentialWrite(SIMPLE_WIFI_FILE, string__enc);
 }
 static void func__Simple_WifiLoad(void)
 {
@@ -70,36 +51,15 @@ static void func__Simple_WifiLoad(void)
     file__f.close();
     uint8_t__state = func__Simple_CryptoDecrypt(string__raw, string__content);
     if (uint8_t__state == 0u) return;
-    int32_t int32_t__ssidPos = string__content.indexOf("\"ssid\":\"");
-    if (int32_t__ssidPos >= 0)
-    {
-        int32_t__ssidPos += 8;
-        int32_t int32_t__end = string__content.indexOf("\"", int32_t__ssidPos);
-        if (int32_t__end > int32_t__ssidPos)
-        {
-            String string__ssid = string__content.substring(int32_t__ssidPos, int32_t__end);
-            if (string__ssid.length() > 0u && string__ssid.length() <= SIMPLE_WIFI_SSID_MAX)
-            {
-                (void)strncpy(CHAR__G__WifiSsid, string__ssid.c_str(), SIMPLE_WIFI_SSID_MAX);
-                CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX] = '\0';
-            }
-        }
-    }
-    int32_t int32_t__passPos = string__content.indexOf("\"pass\":\"");
-    if (int32_t__passPos >= 0)
-    {
-        int32_t__passPos += 8;
-        int32_t int32_t__end = string__content.indexOf("\"", int32_t__passPos);
-        if (int32_t__end > int32_t__passPos)
-        {
-            String string__pass = string__content.substring(int32_t__passPos, int32_t__end);
-            if (string__pass.length() >= 8u && string__pass.length() <= SIMPLE_WIFI_PASS_MAX)
-            {
-                (void)strncpy(CHAR__G__WifiPass, string__pass.c_str(), SIMPLE_WIFI_PASS_MAX);
-                CHAR__G__WifiPass[SIMPLE_WIFI_PASS_MAX] = '\0';
-            }
-        }
-    }
+    String string__ssid, string__pass;
+    if (!func__Simple_JsonReadString(string__content, "ssid", string__ssid) ||
+        !func__Simple_JsonReadString(string__content, "pass", string__pass) ||
+        string__ssid.length() == 0u || string__ssid.length() > SIMPLE_WIFI_SSID_MAX ||
+        string__pass.length() < 8u || string__pass.length() > SIMPLE_WIFI_PASS_MAX) return;
+    (void)strncpy(CHAR__G__WifiSsid, string__ssid.c_str(), SIMPLE_WIFI_SSID_MAX);
+    CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX] = '\0';
+    (void)strncpy(CHAR__G__WifiPass, string__pass.c_str(), SIMPLE_WIFI_PASS_MAX);
+    CHAR__G__WifiPass[SIMPLE_WIFI_PASS_MAX] = '\0';
     if (uint8_t__state == 1u)
     {
         func__Simple_WifiSave();

@@ -269,7 +269,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
-               userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
+               token: '', deletedFiles: [], historyClearedAt: 0, userPass: 'admin',   /* Fixed fixture credential, not writable through HTTP. */
                users: [{ name: 'admin', role: 1 }] };
   var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
   var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
@@ -502,6 +502,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var now = counters.boardTime;
     var pct = [], vin = [], vpack = [], time = [];
     for (var i = 0; i < conf.len; i++) {
+      if (mock.historyClearedAt && now - (conf.len - 1 - i) * conf.stepSec < mock.historyClearedAt) continue;
       var phase = (i / conf.len) * Math.PI * 2;
       var wobble = Math.round(Math.sin(phase) * 4);
       pct.push(Math.max(0, Math.min(100,
@@ -510,7 +511,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       vpack.push(sim.vpack - (i % 4) * 90);
       time.push(now - (conf.len - 1 - i) * conf.stepSec);
     }
-    return JSON.stringify({ range: range, count: conf.len, pct: pct, vin: vin, vpack: vpack, time: time });
+    return JSON.stringify({ range: range, count: time.length, pct: pct, vin: vin, vpack: vpack, time: time });
   }
 
   function diagJson() {
@@ -521,14 +522,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       chargeCount: counters.chargeCount, chargeCountCh1: counters.chargeCountCh1,
       chargeCountCh2: counters.chargeCountCh2, chargeSecCh1: counters.chargeSecCh1,
       chargeSecCh2: counters.chargeSecCh2, uptimeSec: uptimeSec(),
-      resetCount: counters.resetCount, boardTime: now, errCount: 2, powerCount: 2,
-      errors: [
+      resetCount: counters.resetCount, boardTime: now, errCount: mock.historyClearedAt?0:2, powerCount: mock.historyClearedAt?0:2,
+      errors: mock.historyClearedAt?[]:[
         { ts: now - 7200, fault: 128, vin: 0, vpack: 25900, vlow: 12900, vhigh: 13000, s1: 1, s2: 0 },
         { ts: now - 86400, fault: 64, vin: 24100, vpack: 25200, vlow: 12400, vhigh: 12100, s1: 8, s2: 8 }
       ],
-      power: [{ off: now - 3600, on: now - 3000, dur: 600 },
+      power: mock.historyClearedAt?[]:[{ off: now - 3600, on: now - 3000, dur: 600 },
               { off: now - 172800, on: now - 171000, dur: 1800 }],
-      chargeHistory: [{ ts: now - 5400, ch: 1, dur: 3120 }, { ts: now - 12600, ch: 2, dur: 2880 }]
+      chargeHistory: mock.historyClearedAt?[]:[{ ts: now - 5400, ch: 1, dur: 3120 }, { ts: now - 12600, ch: 2, dur: 2880 }]
     });
   }
 
@@ -546,7 +547,12 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
              text: function () { return Promise.resolve(text); } };
   }
   function bodyJson(options) {
-    try { return JSON.parse((options && options.body) || '{}'); } catch (e) { return {}; }
+    var body = (options && options.body) || '';
+    try { return JSON.parse(body || '{}'); } catch (e) {
+      var out = {};
+      new URLSearchParams(body).forEach(function (value, key) { out[key] = value; });
+      return out;
+    }
   }
   function query(url, name) {
     var found = new RegExp('[?&]' + name + '=([^&]*)').exec(url);
@@ -578,6 +584,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       return jsonResponse(evtCsvText(dlRows), 200);
     }
     if (path === 'evt/clr') {
+      if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       var rmDays = evtDaysList().length;
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
@@ -585,11 +592,24 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     if (path === 'evt/fs') {
       var daysNow = evtDaysList();
-      var fsFiles = daysNow.map(function (d) { return { name: 'evt-' + d + '.csv', size: 1024, own: 1 }; });
-      fsFiles.push({ name: 'users.json', size: 164, own: 1 });
-      fsFiles.push({ name: 'wifi.json', size: 128, own: 1 });
+      var fsFiles = daysNow.map(function (d) { return { name: '/evt-' + d + '.csv', size: 1024 }; });
+      if(mock.deletedFiles.indexOf('/users.json')<0)fsFiles.push({ name: '/users.json', size: 164 });
+      if(mock.deletedFiles.indexOf('/wifi.json')<0)fsFiles.push({ name: '/wifi.json', size: 128 });
       var usedSum = fsFiles.reduce(function (s, x) { return s + x.size; }, 0);
-      return jsonResponse(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used: usedSum, files: fsFiles, fileBytes: usedSum, more: 0 }), 200);
+      if(mock.role!==1)fsFiles=fsFiles.filter(function(f){return /^\/evt-/.test(f.name);});
+      var offset=+(query(url,'offset')||0),count=fsFiles.length,page=fsFiles.slice(offset,offset+32),next=offset+page.length;
+      return jsonResponse(JSON.stringify({ fs: 1, mountFail: 0, total: 2097152, used: usedSum, files: page, fileBytes: usedSum, more: Math.max(0,count-next),count:count,next:next<count?next:-1 }), 200);
+    }
+    if (path === 'evt/file') {
+      if(method!=='POST')return jsonResponse('{"ok":0}',405);
+      if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var name=bodyJson(options).name||'',match=/^\/evt-(\d{8})\.csv$/.exec(name);
+      if(!/^\/[^/\\\x00-\x1f]+$/.test(name)||name==='/.'||name==='/..')return jsonResponse('{"ok":0,"e":"path"}',400);
+      var exists=match?evtDaysList().indexOf(match[1])>=0:(['/users.json','/wifi.json'].indexOf(name)>=0&&mock.deletedFiles.indexOf(name)<0);
+      if(!exists)return jsonResponse('{"ok":0,"e":"missing"}',404);
+      if(match){evtRows=evtRows.filter(function(r){return String(evtDayCode(r[0]))!==match[1];});evtPersist();}
+      else mock.deletedFiles.push(name);
+      return jsonResponse('{"ok":1}',200);
     }
     if (path === 'evt/clean') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
@@ -597,6 +617,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     if (path === 'evt/format') {
       if (mock.role !== 1) { return jsonResponse('admin', 403); }
+      mock.deletedFiles=[];mock.historyClearedAt=counters.boardTime+1;
       evtRows = []; evtHasPrev = false; evtLastRowOk = false; evtBooted = false;
       evtPersist();
       return jsonResponse('ok', 200);
@@ -623,36 +644,20 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var credentials = bodyJson(options);
       var user = credentials.user !== undefined ? credentials.user : query(url, 'user');
       var pass = credentials.pass !== undefined ? credentials.pass : query(url, 'pass');
-      var defaultPass = (user === 'admin') ? 'admin' : ((user === 'viewer') ? 'viewer' : null);
-      var expected = (mock.userPass && user === mock.user) ? mock.userPass : defaultPass;
+      var expected = user === 'admin' ? (mock.userPass || 'admin') : null;
       if (expected !== null && pass === expected) {
         var newRole = (user === 'admin') ? 1 : 0;
         /* نشست یکتا: هم‌سطح یا پایین‌تر رد؛ فقط دسترسی بالاتر جایگزین می‌شود */
-        if (mock.user && newRole <= mock.role) {
+        if (mock.user && newRole <= mock.role && (!mock.token || !options || !options.headers || options.headers['X-Admin-Token'] !== mock.token)) {
           return jsonResponse('{"ok":0,"e":"busy","msg":"یک ورود فعال هست؛ فقط دسترسی بالاتر می‌تواند جای آن را بگیرد"}', 409);
         }
-        mock.user = user; mock.role = newRole;
-        return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + '}');
+        mock.user = user; mock.role = newRole;mock.token=mock.token||'f'.repeat(64);
+        return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + ',"token":"'+mock.token+'"}');
       }
       return jsonResponse('{"ok":0,"e":"wrong"}', 401);
     }
-    if (path === 'logout') { mock.user = ''; mock.role = 0; return jsonResponse('{"ok":1}'); }
-    if (path === 'setpass') {
-      var change = bodyJson(options);
-      var target = (change.user || '').trim();
-      if (!mock.user) { return jsonResponse('{"ok":0,"e":"login"}', 403); }
-      if (!target || !change.new) { return jsonResponse('{"ok":0,"e":"user/new"}', 400); }
-      if ((change.new || '').length < 4) { return jsonResponse('{"ok":0,"e":"pass 4-32"}', 400); }
-      if (change.new2 && change.new2 !== change.new) { return jsonResponse('{"ok":0,"e":"mismatch"}', 400); }
-      if (mock.role !== 1 && target !== mock.user) { return jsonResponse('{"ok":0,"e":"self"}', 403); }
-      var wantOld = (mock.userPass && target === mock.user) ? mock.userPass
-                                                           : ((target === 'admin') ? 'admin' : 'viewer');
-      if (target === mock.user && (change.old || '') !== wantOld) {
-        return jsonResponse('{\"ok\":0,\"e\":\"old\"}', 400);
-      }
-      if (target === mock.user) { mock.userPass = change.new; }   /* در حالت آفلاین هم رمز عوض می‌شود */
-      return jsonResponse('{"ok":1}');
-    }
+    if (path === 'logout') { mock.user = ''; mock.role = 0; mock.token = ''; return jsonResponse('{"ok":1}'); }
+    if (path === 'setpass') { return jsonResponse('{"ok":0,"e":"unknown"}', 404); }
     if (path === 'users') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       if (method === 'POST') {
@@ -690,6 +695,19 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var wifi = bodyJson(options);
       mock.ssid = wifi.ssid || mock.ssid; mock.pass = wifi.pass || mock.pass;
       return jsonResponse('{"ok":1,"reboot":1}');
+    }
+    if (path === 'clock') {
+      var clock = bodyJson(options), secText = query(url,'sec');
+      if (secText === null || secText === '') secText = clock.sec;
+      var hasSec = secText !== undefined && secText !== null;
+      var tzText = query(url,'tz');
+      if (tzText === null || tzText === '') tzText = clock.tz;
+      if (!hasSec && mock.role !== 1) return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var sec = Number(secText), tz = tzText === undefined || tzText === null ? 0 : Number(tzText);
+      if ((hasSec && (!/^[0-9]+$/.test(String(secText)) || sec < 1600000000 || sec > 2147483647)) ||
+          !Number.isInteger(tz) || tz < -50400 || tz > 50400) return jsonResponse('{"ok":0,"e":"time"}',400);
+      if (hasSec) counters.boardTime = sec;
+      return jsonResponse(JSON.stringify({ok:hasSec?1:0,sec:counters.boardTime}));
     }
     if (path === 'time') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }

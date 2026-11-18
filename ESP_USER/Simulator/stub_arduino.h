@@ -147,7 +147,12 @@ public:
     }
     unsigned int length(void) const { return (unsigned int)text.size(); }
     const char *c_str(void) const { return text.c_str(); }
-    long toInt(void) const { return atol(text.c_str()); }
+    long toInt(void) const
+    {
+        const long long value = strtoll(text.c_str(), NULL, 10);
+        // ESP long is signed 32-bit; host long can be 64-bit.
+        return value > INT32_MAX ? INT32_MAX : value < INT32_MIN ? INT32_MIN : (long)value;
+    }
     void reserve(unsigned int unsigned_int__size) { text.reserve(unsigned_int__size); }
     char operator[](unsigned int unsigned_int__index) const
     {
@@ -235,6 +240,8 @@ private:
 extern SimSerialLink Serial;
 /* ==================== File LittleFS: ==================== */
 static bool SIM_BOOL__G__RefuseWrites = false;
+static bool SIM_BOOL__G__ShortPrint = false;
+static size_t SIM_SIZE_T__G__WriteLimit = (size_t)-1;
 class File
 {
 public:
@@ -251,7 +258,8 @@ public:
     {
         if ((handle == NULL) || (char__ptr_text == NULL)) { return 0u; }
         if (SIM_BOOL__G__RefuseWrites) { return 0u; }
-        return fwrite(char__ptr_text, 1u, strlen(char__ptr_text), handle);
+        const size_t count = strlen(char__ptr_text);
+        return fwrite(char__ptr_text, 1u, SIM_BOOL__G__ShortPrint ? count / 2u : count, handle);
     }
     size_t print(const String &string__text) { return print(string__text.c_str()); }
     size_t print(int int__value) { return func__Stub_FilePrintNumber("%d", (long)int__value); }
@@ -328,6 +336,42 @@ public:
         (void)fseek(handle, long__here, SEEK_SET);
         return (long__end > 0) ? (size_t)long__end : 0u;
     }
+    size_t write(const uint8_t *uint8_t__ptr_bytes, size_t size_t__count)
+    {
+        if ((handle == NULL) || (uint8_t__ptr_bytes == NULL)) { return 0u; }
+        /* [EN] A full flash refuses the write, exactly like the text path. */
+        if (SIM_BOOL__G__RefuseWrites) { return 0u; }
+        const size_t limit = (size_t__count < SIM_SIZE_T__G__WriteLimit) ? size_t__count : SIM_SIZE_T__G__WriteLimit;
+        return fwrite(uint8_t__ptr_bytes, 1u, limit, handle);
+    }
+    size_t readBytes(char *char__ptr_buffer, size_t size_t__length)
+    {
+        if ((handle == NULL) || (char__ptr_buffer == NULL)) { return 0u; }
+        return fread(char__ptr_buffer, 1u, size_t__length, handle);
+    }
+    /*
+ * [EN] The log stores binary records now: a torn tail is cut with truncate()
+ * and the reader needs position(). Both exist on the real ESP8266 File, so the
+ * stub must show them or the host tests would miss that path.
+ */
+    bool truncate(uint32_t uint32_t__length)
+    {
+        if (handle == NULL) { return false; }
+        (void)fflush(handle);
+        if (ftruncate(fileno(handle), (off_t)uint32_t__length) != 0) { return false; }
+        long long__here = ftell(handle);
+        if ((long__here < 0) || (long__here > (long)uint32_t__length))
+        {
+            if (fseek(handle, 0, SEEK_END) != 0) { return false; }
+        }
+        return true;
+    }
+    uint32_t position(void)
+    {
+        if (handle == NULL) { return 0u; }
+        long long__here = ftell(handle);
+        return (long__here > 0) ? (uint32_t)long__here : 0u;
+    }
     String readStringUntil(char char__terminator)
     {
         String string__line;
@@ -386,6 +430,9 @@ public:
  * [EN] the real LittleFS calls this type "Dir"; the program uses that name.
  */
 typedef SimDir Dir;
+/* [EN] The size the stub reports for the file system.  The tests shrink it to
+ * a real 64 kB partition; the board reports its own numbers. */
+[[maybe_unused]] static size_t SIM_SIZE_T__G__FsTotalBytes = 2097152u;
 struct FSInfo
 {
     size_t totalBytes = 2097152u;
@@ -405,10 +452,13 @@ class SimLittleFS
 public:
     bool autoFormatCfg = true;
     bool setConfig(const LittleFSConfig &cfg__value) { autoFormatCfg = cfg__value._autoFormat; return true; }
+    unsigned endCount = 0u;
+    void end(void) { endCount++; }
     bool begin(bool bool__formatOnFail = false);
     bool format(void);
     bool info(FSInfo &fsInfo__out);
     File open(const char *char__ptr_path, const char *char__ptr_mode);
+    bool rename(const char *char__ptr_from, const char *char__ptr_to);
     bool remove(const char *char__ptr_path);
     bool exists(const char *char__ptr_path);
     SimDir openDir(const char *char__ptr_path);
@@ -467,8 +517,8 @@ public:
         ssidText = (char__ptr_ssid != NULL) ? char__ptr_ssid : "";
         passwordText = (char__ptr_password != NULL) ? char__ptr_password : "";
         apActive = true;
-        printf("[sim] اکسس‌پوینت شبیه‌سازی‌شده: %s / %s (هیچ رادیویی روشن نمی‌شود)\n",
-               ssidText.c_str(), passwordText.c_str());
+        printf("[sim] اکسس‌پوینت شبیه‌سازی‌شده: %s (هیچ رادیویی روشن نمی‌شود)\n",
+               ssidText.c_str());
         return true;
     }
     bool softAPdisconnect(bool bool__wifioff = false)

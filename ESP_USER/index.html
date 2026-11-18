@@ -11,7 +11,7 @@
 :root{--r:20px;--r-sm:12px;--r-full:999px}
 body[data-theme="0"]{
  --bg:#070a10;--bg2:#0d121e;--bg3:#111827;
- --cd:#121826;--cd2:#192339;--cd3:#1e2c45;
+ --cd:rgba(18,24,38,.82);--cd2:rgba(25,35,57,.92);--cd3:rgba(30,44,69,.96);
  --in:#0e1420;--in2:#151e2f;
  --ln:#1c2940;--ln2:#253652;--ln3:#2e4263;
  --tx:#eef2f8;--tx2:#b8c2d4;--mu:#6e7d98;--mu2:#4b5a73;
@@ -23,22 +23,8 @@ body[data-theme="0"]{
  --sh2:0 6px 20px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.03) inset;
  --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg),var(--acglow);
 }
-body[data-theme="1"]{
- --bg:#f6f8fb;--bg2:#eef2f7;--bg3:#e4eaf3;
- --cd:#ffffff;--cd2:#f8fafc;--cd3:#f1f5f9;
- --in:#f1f5f9;--in2:#e2e8f0;
- --ln:#dde4ee;--ln2:#cbd5e1;--ln3:#b8c5d6;
- --tx:#0f172a;--tx2:#334155;--mu:#7a8699;--mu2:#94a3b8;
- --ac:#3b6bf6;--ac2:#5b8def;--ac3:#2f5ad6;--acbg:rgba(59,107,246,.08);--acbd:rgba(59,107,246,.18);--acglow:0 0 20px rgba(59,107,246,.15);
- --ok:#059669;--ok2:#10b981;--okbg:rgba(5,150,105,.08);--okbd:rgba(5,150,105,.16);
- --wa:#b45309;--wabg:rgba(180,83,9,.08);--wabd:rgba(180,83,9,.16);
- --er:#dc2626;--erbg:rgba(220,38,38,.06);--erbd:rgba(220,38,38,.12);
- --sh:0 8px 28px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.04);
- --sh2:0 4px 14px rgba(0,0,0,.05),0 0 0 1px rgba(0,0,0,.03);
- --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg);
-}
 *{box-sizing:border-box;margin:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;background:#070a10;color-scheme:dark}
 body{
  background:
   radial-gradient(900px 500px at 10% -10%,var(--acbg),transparent 60%),
@@ -56,17 +42,16 @@ button,input,select{font-family:Vazirmatn,Inter,system-ui}
 header{
  position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;
  padding:14px 6px;margin:0 -16px 20px;padding-left:16px;padding-right:16px;
- background:rgba(7,10,16,.72);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
- border-bottom:1px solid var(--ln);transition:.3s;
+ background:rgba(7,10,16,.72);backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);
+ border-bottom:1px solid var(--ln);transition:background .3s,border-color .3s;
 }
-body[data-theme="1"] header{background:rgba(246,248,251,.82)}
 header .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-.2px}
 header .brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:14px;box-shadow:var(--acglow),0 4px 12px var(--acbg);position:relative;overflow:hidden}
 header .brand-mark::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.2),transparent);pointer-events:none}
 header .brand-text{line-height:1.1}
 header .brand-text b{display:block;font-size:14px}
 header .brand-text span{display:block;font-size:10.5px;color:var(--mu);font-weight:600;letter-spacing:.6px;margin-top:1px}
-header .hdr{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mu);background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 14px 6px 8px;box-shadow:var(--sh2);backdrop-filter:blur(8px)}
+header .hdr{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mu);background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 14px 6px 8px;box-shadow:var(--sh2)}
 header .dot{width:8px;height:8px;border-radius:50%;background:var(--mu2);display:inline-block;position:relative;transition:.3s}
 header .dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid currentColor;opacity:.3;animation:pulse 2s infinite}
 header .dot.on{background:var(--ok);color:var(--ok);box-shadow:0 0 12px var(--ok)}
@@ -79,7 +64,7 @@ nav button.a{background:var(--cd3);color:var(--tx);border:1px solid var(--ln2);b
 nav button.a::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:2px;background:var(--ac);box-shadow:var(--acglow)}
 /* Main */
 main{display:grid;gap:16px}
-.cd{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 40%),var(--cd);border:1px solid var(--ln);border-radius:var(--r);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:.22s}
+.cd,nav{backdrop-filter:blur(10px) saturate(120%);-webkit-backdrop-filter:blur(10px) saturate(120%)}.cd{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0) 42%),var(--cd);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:.22s}
 .cd:hover{border-color:var(--ln2);box-shadow:0 16px 48px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.05) inset}
 .cd::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);pointer-events:none}
 .ti{font-size:10.5px;font-weight:800;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:14px}
@@ -128,7 +113,7 @@ main{display:grid;gap:16px}
 .hero.err{border-color:var(--erbd);box-shadow:0 0 0 1px var(--erbd),var(--sh)}
 .hero.ok{border-color:var(--okbd)}
 .hero-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.bdg{display:inline-flex;align-items:center;gap:7px;background:var(--in);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 13px;font-size:11px;font-weight:700;color:var(--mu);backdrop-filter:blur(6px);transition:.2s}
+.bdg{display:inline-flex;align-items:center;gap:7px;background:var(--in);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 13px;font-size:11px;font-weight:700;color:var(--mu);transition:.2s}
 .bdg i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;box-shadow:0 0 8px currentColor}
 .bdg.ok{color:var(--ok);background:var(--okbg);border-color:var(--okbd)}
 .bdg.warn{color:var(--wa);background:var(--wabg);border-color:var(--wabd)}
@@ -186,7 +171,9 @@ main{display:grid;gap:16px}
 .chip span{font-size:9.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;display:block}
 
 /* Charts */
-canvas{width:100%;height:170px;background:var(--in);border:1px solid var(--ln);border-radius:12px;display:block;transition:.2s}
+canvas{width:100%;height:170px;background-color:var(--in);background-image:none;border:1px solid var(--ln);border-radius:12px;display:block;transition:border-color .2s}
+.cd.chart-card{background:#121826;backdrop-filter:none;-webkit-backdrop-filter:none}
+.cd.chart-card::before{display:none}
 canvas:hover{border-color:var(--ln2)}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stat{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--in);border:1px solid var(--ln);border-radius:14px;padding:14px;text-align:center;position:relative;overflow:hidden;transition:.2s}
@@ -202,6 +189,7 @@ canvas:hover{border-color:var(--ln2)}
 .log .row:last-child{border:0}
 input,select{width:100%;background:var(--in);color:var(--tx);border:1px solid var(--ln);border-radius:10px;padding:11px 13px;font:12.5px Vazirmatn;transition:.18s}
 input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 4px var(--acbg);outline:0;background:var(--cd)}
+.axl{font-size:10px;color:var(--mu);margin-top:8px;direction:ltr}.mb2{font-size:10px;color:var(--mu);margin-bottom:8px}.lh6{font-size:11px;color:var(--mu);line-height:1.6}.mu{font-size:11px;color:var(--mu)}.mu2{font-size:10px;color:var(--mu)}.bs{padding:5px 10px;font-size:11px;min-height:26px}.icog{display:inline-flex;gap:6px}.btn.ico{padding:0;width:36px;min-height:36px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn.ico .lbl{display:none;font-size:12px;font-weight:800}@media(min-width:900px){.btn.ico{width:auto;padding:0 13px}.btn.ico .lbl{display:inline}}.bxs{padding:4px 10px;font-size:10px;min-height:26px}
 button.btn{border:1px solid var(--ln);border-radius:10px;padding:11px 18px;font-weight:800;cursor:pointer;min-height:40px;font-size:12.5px;transition:.18s cubic-bezier(.2,.8,.2,1);background:var(--cd2);color:var(--tx);position:relative;overflow:hidden}
 button.btn::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.06),transparent);opacity:0;transition:.2s;pointer-events:none}
 button.btn:hover{border-color:var(--ln2);transform:translateY(-1px);box-shadow:var(--sh2)} button.btn:hover::before{opacity:1}
@@ -254,7 +242,7 @@ button.btn.danger{background:var(--erbg);border-color:var(--erbd);color:var(--er
 .chart-tooltip b{font-family:Vazirmatn;font-weight:800;display:block}
 .chart-tooltip span{color:var(--mu);font-size:10.5px}
 /* پیام کوتاه پایین صفحه (مثل «خروجی گرفته شد») */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--cd2);border:1px solid var(--ln2);color:var(--tx);padding:9px 18px;border-radius:12px;font-size:12px;font-weight:800;box-shadow:var(--sh2);z-index:80;max-width:90vw;text-align:center}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--cd2);border:1px solid var(--ln2);color:var(--tx);padding:9px 18px;border-radius:12px;font-size:12px;font-weight:800;box-shadow:var(--sh2);z-index:120;max-width:90vw;text-align:center}
 
 /* Login animations */
 @keyframes fadeIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
@@ -291,7 +279,6 @@ code,pre,.mono{font-family:Vazirmatn !important}
  .hero-badges{justify-content:center !important;margin-top:8px !important;gap:6px !important}
  .hero-fault{margin-top:8px !important;font-size:11px !important;padding:8px 10px !important}
  .bdg{font-size:10px !important;padding:4px 10px !important}
-}
  .segmented{min-width:0 !important;width:100%}
  .segmented.sm{min-width:0 !important;width:100%}
  .cd{padding:14px}
@@ -334,7 +321,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
 
 /* Charging bolt - زرد + جرقه */
 .bat-bolt{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:26px;line-height:1;display:none;filter:drop-shadow(0 0 8px rgba(255,184,77,.9));animation:boltPulse 1s infinite;z-index:5;pointer-events:none}
-.bat-bolt.show{display:block}
+.bat-bolt.show{display:block;color:var(--wa)}
+.bat-bolt .glyph{width:26px;height:26px}
 @keyframes boltPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:1}50%{transform:translate(-50%,-50%) scale(1.15);opacity:.9}}
 .bat-wrap.charging .bat-fill{filter:drop-shadow(0 0 12px rgba(255,184,77,.45)) !important}
 .evtrow{display:flex;gap:8px;flex-wrap:wrap;padding:5px 8px;margin:3px 0;border-radius:8px;align-items:baseline}
@@ -343,36 +331,91 @@ code,pre,.mono{font-family:Vazirmatn !important}
 .m{display:inline-block;margin:1px 2px;padding:1px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:11px}
 .evtt{color:var(--mu);white-space:nowrap;min-width:58px}
 .evtd{flex:1}
-.evtv{color:var(--mu)}
+/* ===== لایهٔ داینامیک ۲۰۲۶ =====
+   فونت، فاصله، ستون‌ها و ارتفاع نمودار با clamp/auto-fit از عرض صفحه
+   حساب می‌شوند؛ بعد از media queryها می‌آید تا بر آن‌ها مقدم باشد. */
+body{font-size:clamp(12px,0.35vw + 11.2px,13.6px);padding:0 clamp(10px,2vw,20px) clamp(24px,5vw,40px)}
+header{padding:clamp(8px,1.6vw,14px) clamp(10px,2vw,20px);margin:0 calc(-1 * clamp(8px,2vw,20px)) clamp(10px,2vw,18px)}
+main{padding:0;max-width:min(1180px,100%)}
+nav{top:clamp(48px,9vw,64px);gap:clamp(3px,0.8vw,6px);padding:clamp(3px,0.8vw,5px)}
+nav button{padding:clamp(7px,1.4vw,10px) clamp(4px,1vw,10px);font-size:clamp(10.5px,2.6vw,12.5px)}
+.cd{padding:clamp(10px,2.4vw,18px)}
+.half-grid,.stat-grid,.row2,.dynamic-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,clamp(150px,42vw,270px)),1fr))!important}
+.hero-grid{flex-wrap:wrap;min-height:0!important}
+.hero-visual{width:clamp(80px,17vw,120px)!important;height:clamp(112px,21vw,158px)!important;min-height:0!important;max-height:none!important}
+.hero-visual .bat-wrap{width:100%!important;height:100%!important;min-height:0!important;max-height:none!important}
+.hero-info{min-width:0!important;padding:clamp(10px,2.4vw,22px)!important}
+select,input{max-width:100%}
+.hero-pct{font-size:clamp(26px,6.4vw,40px)!important}
+.hero-title{font-size:clamp(12px,2.6vw,14px)!important}
+.hero-sub,.hero-fault{font-size:clamp(10.5px,2.4vw,12px)!important}
+.bat-wrap{width:clamp(64px,15vw,90px)!important;height:clamp(100px,22vw,130px)!important}
+.segmented,.segmented.sm{min-width:0!important;width:auto!important;flex:1 1 auto;max-width:100%}
+.segmented button{font-size:clamp(10px,2.4vw,11.5px);padding:clamp(4px,1vw,7px) clamp(4px,1vw,9px)}
+canvas{height:auto;max-width:100%}
+.canvas-wrap canvas{width:100%!important;height:clamp(120px,24vw,210px)!important;aspect-ratio:auto!important}
+#cCharge{height:clamp(130px,26vw,220px)!important}
+.ti{flex-wrap:wrap;gap:clamp(4px,1vw,10px)}
+.ti > div{flex-wrap:wrap}
+.stat b,.half-stat b{font-size:clamp(15px,3.4vw,19px)}
+.log{max-height:clamp(160px,38vw,320px)}
+.evtrow{font-size:clamp(10.5px,2.4vw,12px)}
+.footer{flex-wrap:wrap;font-size:clamp(9.5px,2.2vw,11px)}
+/* ===== دسترسی مدیر (مخفی) =====
+   تا رمز درست نیاید هیچ نشانه‌ای از مدیریت دیده نمی‌شود. */
+.fwtap{cursor:default;-webkit-user-select:none;user-select:none;opacity:.75}
+.gate{position:fixed;inset:0;background:rgba(4,7,13,.72);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px}
+.gate[hidden],#adminCard[hidden],[data-admin][hidden]{display:none!important}
+.gatebox{background:var(--cd);border:1px solid var(--ln2);border-radius:16px;padding:18px;width:min(340px,100%);display:grid;gap:10px;box-shadow:var(--sh)}
+.gatebox input{width:100%;background:var(--in);border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit;padding:8px 10px;min-height:34px}
+.gmsg{font-size:11px;color:var(--wa);min-height:14px;line-height:1.5}
+.gmsg.ok{color:var(--ok)}
+
+.glyph{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;flex:none}
+button:disabled,a[aria-busy="true"]{opacity:.55;cursor:wait;pointer-events:none}button[aria-busy="true"]{box-shadow:inset 0 -2px var(--ac)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset:3px}
+@supports not (backdrop-filter:blur(1px)){.cd,nav,header{background:#121826}}
+/* Grouped settings and compact local SVG actions. */
+#settingsContent{display:grid;gap:12px}nav button{display:flex;align-items:center;justify-content:center;gap:6px}
+.setting-panel{padding:0;min-width:0}
+.setting-panel>summary{display:flex;align-items:center;gap:10px;padding:16px;cursor:pointer;list-style:none;font-size:13px;font-weight:800}
+.setting-panel>summary::-webkit-details-marker{display:none}
+.setting-panel>summary .summary-note{margin-right:auto;font-size:10px;color:var(--mu);font-weight:500}
+.setting-panel>summary::after{content:'›';color:var(--mu);font-size:20px;transition:transform .15s}
+.setting-panel[open]>summary::after{transform:rotate(-90deg)}
+.setting-panel>summary:focus-visible{outline:2px solid var(--ac2);outline-offset:-4px;border-radius:12px}
+.setting-body{padding:0 16px 16px;min-width:0}
+.settings-grid,.settings-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
+.setting-block{padding:12px;background:var(--in);border:1px solid var(--ln);border-radius:12px;min-width:0}
+.setting-block h3{display:flex;align-items:center;gap:8px;font-size:12px;margin:0 0 12px}
+.setting-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;font-size:11px;overflow-wrap:anywhere}
+.setting-row>span,.field>span{color:var(--mu)}
+.setting-note{font-size:10.5px;color:var(--mu);line-height:1.8;margin:8px 0 0}
+.field{display:grid;gap:6px;min-width:0;font-size:11px}
+.settings-form input,.settings-form select{width:100%;min-width:0;min-height:38px;background:var(--in);border:1px solid var(--ln);border-radius:9px;color:var(--tx);font:inherit;padding:8px 10px}
+.settings-form .form-actions{grid-column:1/-1}
+.action-row,.form-actions,.log-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn.action{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;min-height:38px;font-size:11px;line-height:1.4;white-space:nowrap;text-decoration:none}
+.btn.action .glyph{width:17px;height:17px}
+.log-tools{margin:0 0 12px}.log-tools select{flex:1;min-width:120px;max-width:220px}
+.icog{flex-wrap:wrap}.icog .btn.ico{min-height:40px;min-width:40px}
+.admin-section{margin-top:12px;border:1px solid var(--ln);border-radius:12px}
+.admin-section>summary{padding:12px;font-size:12px}.admin-section .setting-body{padding:0 12px 12px}
+.admin-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.admin-head h2{margin:0;font-size:13px}.admin-head #admWho{margin-left:auto;color:var(--mu);font-size:10px}
+.danger-zone{border-color:var(--erbd)}.danger-zone>summary{color:var(--er)}
+.file-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--ln);font-size:11px}.file-row>span:first-child{min-width:0;overflow-wrap:anywhere}.file-meta{display:flex;align-items:center;gap:6px;flex:none}
+@media(max-width:480px){.setting-panel>summary .summary-note{display:none}.setting-body{padding:0 12px 12px}.btn.action{min-height:40px}.action-row{gap:6px}.icog .btn.ico{width:40px;padding:0}.icog .btn.ico .lbl{display:none}.icog .btn.ico.danger{width:auto;padding:0 9px}.icog .btn.ico.danger .lbl{display:inline}}
 </style>
 </head>
-<body data-theme="0">
-<div id="loginPage" style="position:fixed;inset:0;z-index:100;background:radial-gradient(800px 400px at 50% -100px,var(--acbg),transparent 60%),var(--bg);display:none;place-items:center;padding:20px">
- <div class="cd login-box login-animate" style="width:100%;max-width:400px;margin:0;box-shadow:var(--sh);border:1px solid var(--ln2)">
-  <div style="text-align:center;margin-bottom:20px">
-   <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:20px;margin:0 auto 12px;box-shadow:var(--acglow)">CO</div>
-   <div style="font-size:16px;font-weight:900;letter-spacing:-.2px">ChangeOver</div>
-   <div style="font-size:11px;color:var(--mu);margin-top:4px;letter-spacing:.5px">SMART BATTERY • ورود به پنل</div>
-  </div>
-  <div class="ti">ورود</div>
-  <div class="form">
-   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">نام کاربری</span><input id="loginUserMain" placeholder="admin"></div>
-   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز عبور</span><div class="pass-wrap"><input id="loginPassMain" type="password" placeholder="••••••••"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPassMain',this)">👁</button></div></div>
-   <button class="btn pri" onclick="doLoginMain()" style="width:100%;margin-top:4px">ورود به پنل</button>
-   <div id="loginMsgMain" style="font-size:12px;color:var(--mu);text-align:center;min-height:18px"></div>
-   <div id="recoveryMsgMain" class="bdg warn" style="display:none;margin:8px auto 0;text-align:center;line-height:1.7;font-size:11px">بازیابی انجام شد - کاربران به پیش‌فرض برگشتند: admin / admin - بعد از ورود، رمز را عوض کنید</div>
-   <div style="font-size:10.5px;color:var(--mu2);text-align:center;margin-top:8px;line-height:1.6">پیش‌فرض: نام کاربری <b style="color:var(--tx)">admin</b> و رمز <b style="color:var(--tx)">admin</b></div>
-  </div>
- </div>
-</div>
+<body data-theme="0"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-memory" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M20 12a8 8 0 0 0-14-5M4 12a8 8 0 0 0 14 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></symbol><symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3M4 10h16v11H4ZM12 14v3"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM11 11v10m0-4h4m-4 3h3"/></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H4V3h5m5 4 5 5-5 5m-6-5h13"/></symbol><symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 8M3 4v6h6"/></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M14 4h-4L8 7H3v14h18V7h-5ZM16 14a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol><symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h5v18h-5M9 7l5 5-5 5M3 12h11"/></symbol><symbol id="i-next" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol><symbol id="i-first" viewBox="0 0 24 24"><path d="M17 6 11 12l6 6M6 6v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H4v20h16V8ZM14 2v6h6"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-5 4 3 5-7"/></symbol></defs></svg>
 <header>
  <div class="brand"><div class="brand-mark">CO</div><div class="brand-text"><b>ChangeOver</b><span>SMART BATTERY • INDUSTRIAL</span></div></div>
- <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span><button class="btn sec" style="padding:5px 12px;font-size:11px;min-height:30px" onclick="doLogout()">خروج</button></div>
+ <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span></div>
 </header>
 <nav>
- <button id="tab0" class="a" onclick="showTab(0)">وضعیت</button>
- <button id="tab1" onclick="showTab(1)">نمودارها</button>
- <button id="tab2" onclick="showTab(2)">تنظیمات</button>
+ <button id="tab0" class="a" aria-label="وضعیت" onclick="showTab(0)"><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg><span>وضعیت</span></button>
+ <button id="tab1" aria-label="نمودارها" onclick="showTab(1)"><svg class="glyph" aria-hidden="true"><use href="#i-chart"/></svg><span>نمودارها</span></button>
+ <button id="tab2" aria-label="تنظیمات" onclick="showTab(2)"><svg class="glyph" aria-hidden="true"><use href="#i-settings"/></svg><span>تنظیمات</span></button>
 </nav>
 <main>
  <div id="pg0" class="pgx a">
@@ -380,7 +423,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div class="hero-grid">
     <div class="hero-visual">
      <div class="bat-wrap" id="batMainWrap" style="width:100%;height:100%;min-height:200px;margin:0;position:relative">
-      <div id="batMainBolt" class="bat-bolt">⚡</div>
+      <div id="batMainBolt" class="bat-bolt"><svg class="glyph" aria-hidden="true"><use href="#i-bolt"/></svg></div>
       <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
        <defs>
         <linearGradient id="gMain" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#1ee6a0"/><stop offset="100%" stop-color="#6ef0c2"/></linearGradient>
@@ -419,7 +462,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
     <div class="half">
      <div class="half-name">باتری بالا - کانال ۱</div>
      <div class="bat-wrap" id="batHighWrap" style="position:relative">
-      <div id="batHighBolt" class="bat-bolt">⚡</div>
+      <div id="batHighBolt" class="bat-bolt"><svg class="glyph" aria-hidden="true"><use href="#i-bolt"/></svg></div>
       <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
        <defs>
         <linearGradient id="gh" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#1ee6a0"/><stop offset="100%" stop-color="#6ef0c2"/></linearGradient>
@@ -452,7 +495,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
     <div class="half">
      <div class="half-name">باتری پایین - کانال ۲</div>
      <div class="bat-wrap" id="batLowWrap" style="position:relative">
-      <div id="batLowBolt" class="bat-bolt">⚡</div>
+      <div id="batLowBolt" class="bat-bolt"><svg class="glyph" aria-hidden="true"><use href="#i-bolt"/></svg></div>
       <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
        <defs><clipPath id="clipLow"><rect x="11" y="18" width="50" height="79" rx="9"/></clipPath></defs>
        <rect class="bat-cap" x="24" y="2" width="24" height="9" rx="3"/>
@@ -497,6 +540,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div class="ti">۱۰ خطای آخر - دیاگ</div>
    <div id="diagErrors" class="log">--</div>
   </div>
+
+
  </div>
 
  <div id="pg1" class="pgx">
@@ -510,34 +555,10 @@ code,pre,.mono{font-family:Vazirmatn !important}
    </div>
   </div>
 
-  <div class="cd">
-   <div class="ti">درصد شارژ پک - با زمان واقعی
-    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
-     <span style="font-size:10px;color:var(--mu)">بازه:</span>
-     <div class="segmented sm" id="segPct" style="min-width:200px"><div class="seg-indicator" id="segPctIndicator" style="width:calc(25% - 3px);right:4px"></div>
-      <button class="a" id="pct1d" onclick="setChartRange('pct','1d')">۱ روزه</button>
-      <button id="pct7d" onclick="setChartRange('pct','7d')">۷ روزه</button>
-      <button id="pct1m" onclick="setChartRange('pct','1m')">۱ ماهه</button>
-      <button id="pct3m" onclick="setChartRange('pct','3m')">۳ ماهه</button>
-     </div>
-    </div>
-   </div>
-   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی زمان واقعی - هر نقطه یک ساعت یا یک روز</div>
-   <div class="canvas-wrap"><canvas id="cPct" width="700" height="180"></canvas></div>
-   <div id="cPctLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
-   <div id="pctInfo" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
-    <span class="bdg ac" id="pctCurrent">-- ٪</span>
-    <span class="bdg" id="pctRangeInfo">--</span>
-    <span style="display:flex;gap:6px;margin-right:auto">
-     <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('pct')">خروجی CSV</button>
-     <button class="btn danger" id="clearPctBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charts')">پاک کردن</button>
-    </span>
-   </div>
-  </div>
-  <div class="cd">
+  <div class="cd chart-card">
    <div class="ti">تاریخچه شارژ - کی و چه ساعتی شارژ شده
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
-     <span style="font-size:10px;color:var(--mu)">بازه:</span>
+     <span class="mu2">بازه:</span>
      <div class="segmented sm" id="segCharge" style="min-width:200px"><div class="seg-indicator" id="segChargeIndicator" style="width:calc(25% - 3px);right:4px"></div>
       <button class="a" id="charge1d" onclick="setChartRange('charge','1d')">۱ روزه</button>
       <button id="charge7d" onclick="setChartRange('charge','7d')">۷ روزه</button>
@@ -548,20 +569,16 @@ code,pre,.mono{font-family:Vazirmatn !important}
    </div>
    <div style="font-size:10.5px;color:var(--mu);margin-bottom:10px;line-height:1.6">نمودار نشان می‌دهد هر باتری در چه روز و ساعتی شارژ کامل شده</div>
    <div class="canvas-wrap"><canvas id="cCharge" width="700" height="200"></canvas></div>
-   <div id="cChargeLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="cChargeLabels" class="axl"></div>
    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
-    <span style="font-size:11px;color:var(--mu)">لیست ۲۰ شارژ آخر</span>
-    <button class="btn danger" id="clearChargeBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
-   </div>
-   <div style="display:flex;gap:6px;margin-top:10px">
-    <button class="btn" title="دانلود خروجی CSV تاریخچه شارژ" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('charge')">خروجی CSV</button>
+    <span id="chargeCap" style="font-size:11px;color:var(--mu)">شارژهای اخیر</span>
    </div>
    <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
   </div>
-  <div class="cd">
+  <div class="cd chart-card">
    <div class="ti">ولتاژ ورودی و پک - دو نمودار روی یک محور با زمان واقعی
     <div style="margin-right:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-     <span style="font-size:10px;color:var(--mu)">بازه:</span>
+     <span class="mu2">بازه:</span>
      <div class="segmented sm" id="segVolt" style="min-width:200px"><div class="seg-indicator" id="segVoltIndicator" style="width:calc(25% - 3px);right:4px"></div>
       <button class="a" id="volt1d" onclick="setChartRange('volt','1d')">۱ روزه</button>
       <button id="volt7d" onclick="setChartRange('volt','7d')">۷ روزه</button>
@@ -570,174 +587,69 @@ code,pre,.mono{font-family:Vazirmatn !important}
      </div>
      <span class="bdg" style="background:rgba(91,141,239,.15);color:#5b8def;border-color:rgba(91,141,239,.3)">Vin - ورودی</span>
      <span class="bdg" style="background:rgba(30,230,160,.15);color:#1ee6a0;border-color:rgba(30,230,160,.3)">Vpack - پک باتری</span>
-     <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('volt')">خروجی CSV</button>
     </div>
    </div>
-   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور عمودی: ولتاژ ۱۸ تا ۳۰ ولت - محور افقی: زمان واقعی - هر نقطه با ریت کم (۱ دقیقه اولیه، بعد ساعتی/روزانه) - دو خط روی هم</div>
+   <div id="voltAxisInfo" class="mb2">محور عمودی: خودکار از دادهٔ همین بازه - محور افقی: زمان واقعی</div>
    <div class="canvas-wrap" style="position:relative">
     <canvas id="cVolt" width="700" height="200"></canvas>
    </div>
-   <div id="cVoltLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="cVoltLabels" class="axl"></div>
    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap;gap:8px"><span id="voltRangeInfo">--</span><span id="voltMinMax">--</span><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
   </div>
-    <div class="cd"><div class="ti">۲۰ قطع و وصل آخر برق شهر</div><div id="powerLog" class="log">--</div></div>
  </div>
 
- <div id="pg2" class="pgx">
-  <div class="cd login-box" id="loginCard">
-   <div class="ti">ورود به پنل</div>
-   <div class="form">
-    <input id="loginUser" placeholder="نام کاربری - پیش‌فرض admin">
-    <div class="pass-wrap"><input id="loginPass" type="password" placeholder="رمز - پیش‌فرض admin"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPass',this)">👁</button></div>
-    <button class="btn pri" onclick="doLogin()">ورود</button>
-    <div id="loginMsg" style="font-size:12px;color:var(--mu)"></div>
-   </div>
-  </div>
-
-  <div id="settingsContent" style="display:none">
-   <div class="cd">
-    <div class="ti">تم - دو حالت: تیره و روشن - فقط ادمین</div>
-    <div class="theme-grid" style="grid-template-columns:1fr 1fr">
-     <div class="theme-card" id="themeCard0" onclick="selectTheme(0)">
-      <div class="theme-preview" style="background:#070a10"><div class="tp1" style="background:#121826"></div><div class="tp2" style="background:#5b8def"></div><div class="tp3" style="background:#1ee6a0"></div></div>
-      <div class="theme-name">تیره</div>
-      <div class="theme-desc">پیش‌فرض</div>
-     </div>
-     <div class="theme-card" id="themeCard1" onclick="selectTheme(1)">
-      <div class="theme-preview" style="background:#f6f8fb"><div class="tp1" style="background:#ffffff"></div><div class="tp2" style="background:#3b6bf6"></div><div class="tp3" style="background:#059669"></div></div>
-      <div class="theme-name">روشن</div>
-      <div class="theme-desc">روز</div>
-     </div>
-    </div>
-    <div id="themeMsg" style="font-size:12px;color:var(--mu);margin-top:10px"></div>
-   </div>
-
-   <div class="cd">
-    <div class="ti">وای‌فای - نام و رمز - فقط ادمین</div>
-    <div class="form">
-     <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
-     <input id="wifiNewSsid" placeholder="نام وای‌فای جدید - مثل changeover_userpannel" maxlength="32">
-     <div class="pass-wrap"><input id="wifiNewPass" type="password" placeholder="رمز جدید - حداقل ۸ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('wifiNewPass',this)">👁</button></div>
-     <button class="btn pri" onclick="setWifi()">ذخیره وای‌فای - نیاز به ریستارت برد</button>
-     <div id="wifiMsg" style="font-size:11px;color:var(--mu);line-height:1.6">بعد از ذخیره، برد را خاموش و روشن کنید تا با نام جدید بالا بیاید</div>
-    </div>
-   </div>
-
-   <div class="cd">
-    <div class="ti">همگام‌سازی ساعت برد</div>
-    <div class="form">
-     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:Vazirmatn">--</b></div>
-     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:Vazirmatn">--</b></div>
-     <button class="btn pri" onclick="syncTime()">ارسال ساعت گوشی به برد (ادمین)</button>
-     <div id="timeMsg" style="font-size:12px;color:var(--mu)"></div>
-    </div>
-   </div>
-
-   <div class="cd">
-    <div class="ti">مدیریت کاربران - دو نقش <span id="usersCount" style="margin-right:auto;background:var(--in);border:1px solid var(--ln);border-radius:999px;padding:2px 8px;font-size:10px;color:var(--mu)">--</span></div>
-    <div id="usersList" class="log" style="margin-bottom:12px;max-height:260px">--</div>
-    <div class="form">
-     <div class="row2"><input id="newUserName" placeholder="نام کاربری جدید"><select id="newUserRole"><option value="0">کاربر ساده - فقط دیدن</option><option value="1">ادمین - همه کار</option></select></div>
-     <input id="newUserPass" placeholder="رمز عبور">
-     <button class="btn pri" onclick="addUser()">افزودن / ویرایش کاربر</button>
-     <div class="row2"><input id="delUserName" placeholder="نام کاربری برای حذف"><button class="btn danger" onclick="delUser()">حذف کاربر</button></div>
-     <div id="userMsg" style="font-size:12px;color:var(--mu)"></div>
-    </div>
-   </div>
-
-   <div class="cd">
-    <div class="ti">تغییر رمز عبور</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:10px">هر کاربر رمز خودش را عوض می‌کند (رمز فعلی را باید بداند). ادمین رمز هر کاربری را می‌تواند عوض کند. رمز جدید حداقل ۴ کاراکتر.</div>
-    <div class="form">
-     <input id="setPassUser" placeholder="نام کاربری" maxlength="24">
-     <div class="pass-wrap"><input id="setPassOld" type="password" placeholder="رمز فعلی" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassOld',this)">👁</button></div>
-     <div class="pass-wrap"><input id="setPassNew" type="password" placeholder="رمز جدید - حداقل ۴ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew',this)">👁</button></div>
-     <div class="pass-wrap"><input id="setPassNew2" type="password" placeholder="تکرار رمز جدید" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew2',this)">👁</button></div>
-     <button class="btn pri" onclick="setPass()">تغییر رمز عبور</button>
-     <div id="setPassMsg" style="font-size:12px;color:var(--mu);min-height:18px"></div>
-    </div>
-   </div>
-
-   <div class="cd" id="clearHistoryCard" style="display:none">
-    <div class="ti">پاک‌سازی تاریخچه - فقط ادمین</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">تاریخچه‌های ذخیره شده در حافظه داخلی ESP را پاک می‌کند - این عمل غیرقابل بازگشت است</div>
-    <div class="form">
-     <div class="row2">
-      <button class="btn danger" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
-      <button class="btn danger" onclick="clearHistory('charts')">پاک کردن نمودارها</button>
-     </div>
-     <div class="row2">
-      <button class="btn danger" onclick="clearHistory('diag')">پاک کردن خطاها و قطعی‌ها</button>
-      <button class="btn danger" style="background:var(--er);color:#fff;border-color:var(--er)" onclick="clearHistory('all')">پاک کردن همه تاریخچه‌ها</button>
-     </div>
-     <div id="clearMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
-    </div>
-   </div>
-
-   <div class="cd" id="latchCard" style="display:none">
-    <div class="ti">ریست قفل‌ها - فقط ادمین</div>
-    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">قفل عدم‌توازن و حکم‌های «باتری خراب» و «باتری ضعیف» با حافظه کار می‌کنند و با خاموش/روشن شدن پاک نمی‌شوند. از اینجا پاکشان کنید تا خطا برود و شمارش از صفر شروع شود.</div>
-    <div class="form">
-     <div class="row2">
-      <button class="btn danger" onclick="latchReset(5)">ریست قفل عدم‌توازن و شمارنده‌ها</button>
-      <button class="btn danger" onclick="latchReset(6)">ریست حکم باتری خراب</button>
-      <button class="btn danger" onclick="latchReset(8)">ریست حکم باتری ضعیف</button>
-     </div>
-     <div id="latchState" style="font-size:12px;color:var(--mu);line-height:1.9;margin-top:6px;text-align:center">—</div>
-    <div id="latchMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
-    </div>
-   </div>
-
-   <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
-  </div>
- </div>
-
- <div class="cd" id="evtCard">
-  <div class="ti">تاریخچهٔ وضعیت (لاگ)</div>
-  <div style="font-size:12px;color:var(--mu);line-height:1.9">
-   این جدول می‌گوید برد از وقتی پنل باز شده چه وضعیت‌هایی را گذرانده است: برق شهر، مرحلهٔ شارژ، خطاها، قفل‌ها، نتیجه‌ها، قطع و وصل مسیر باتری، استراحت حرارتی، مود دستی، معتبر بودن دادهٔ برد و قطع/برگشت ارتباط.
-   فقط وقتی چیزی عوض شود یک خط نوشته می‌شود و هر روز یک فایل جدا روی حافظهٔ همین پنل ذخیره می‌شود (۳۰ روز نگه‌داری). ساعت از گوشی یا کامپیوتری گرفته می‌شود که این صفحه را باز کرده است.
-   <br>رنگ نوار کنار هر خط: <b style="color:#e5484d">قرمز = خطا یا قفل</b> · <b style="color:#c9a227">نارنجی = هشدار</b> · <b style="color:#2f9e63">سبز = برگشت به سلامتی</b> · خاکستری = تغییر سادهٔ وضعیت
-  </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+ <div id="pg2" class="pgx"><div id="settingsContent">
+<details class="cd setting-panel" id="connectionSettings" open>
+<summary><svg class="glyph" aria-hidden="true"><use href="#i-wifi"/></svg><span>اتصال و ساعت</span><span class="summary-note">همگام‌سازی خودکار</span></summary>
+<div class="setting-body settings-grid">
+<section class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-wifi"/></svg>وای‌فای</h3><div class="setting-row"><span>نام شبکه</span><b id="wifiCurrentSsid" dir="auto">--</b></div><p class="setting-note">تغییر شبکه فقط با مدیر.</p></section>
+<section class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-clock"/></svg>ساعت</h3><div class="setting-row"><span>این دستگاه</span><b id="phoneTime">--</b></div><div class="setting-row"><span>پنل / برد</span><b id="boardTimeSet">--</b></div><p class="setting-note">همگام‌سازی خودکار؛ بدون ورود و دکمه.</p></section>
+</div></details>
+<details class="cd setting-panel" id="evtCard">
+ <summary><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span>حافظه و تاریخچه</span><span class="summary-note">فایل‌ها و رویدادها</span></summary><div class="setting-body">
+  <div class="log-tools">
    <select id="evtDay" onchange="evtFetch(0)" style="min-width:150px"><option value="">امروز</option></select>
-   <button class="btn" type="button" onclick="evtSnap()">به‌روزرسانی</button>
-   <button class="btn" type="button" onclick="evtFs(1)">حافظهٔ ESP</button>
-   <button class="btn" type="button" onclick="evtDl()">دانلود این روز</button>
-   <button class="btn" type="button" onclick="evtDlAll()">دانلود همهٔ روزها</button>
-   <button class="btn" type="button" onclick="evtClear()">پاک کردن</button>
+   <span class="icog">
+    <button class="btn ico" type="button" title="حافظهٔ ESP" aria-label="حافظهٔ ESP" onclick="uiAction(this,()=>evtFs(1))"><svg class="glyph" aria-hidden="true"><use href="#i-memory"/></svg><span class="lbl">حافظه</span></button>
+    <button class="btn ico" type="button" title="بروزرسانی فهرست" aria-label="بروزرسانی فهرست" onclick="uiAction(this,()=>evtFs(0))"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg><span class="lbl">تازه‌سازی</span></button>
+    <button class="btn ico" type="button" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها" onclick="uiAction(this,()=>evtDlAll())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">دانلود</span></button>
+    <button id="evtFormat" data-admin hidden class="btn ico danger" type="button" title="فرمت کامل حافظه" aria-label="فرمت کامل حافظه" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span class="lbl">فرمت</span></button>
+   </span>
   </div>
   <div id="evtFs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
   <div id="evtSum" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;min-height:16px"></div>
   <div id="evtSt" style="font-size:11px;color:var(--mu);min-height:16px"></div>
   <div id="evtList" style="max-height:300px;overflow:auto;font-size:12px;line-height:1.9;border-top:1px solid var(--ln);margin-top:6px">در حال خواندن…</div>
-</div>
+</div></details>
+<details class="cd setting-panel" id="technicalInfo"><summary><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg><span>اطلاعات فنی</span><span class="summary-note">برد و ارتباط</span></summary><div class="setting-body settings-grid">
+<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-settings"/></svg>اطلاعات برد</h3><div id="boardInfo" class="log">--</div></div>
+<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg>ارتباط زنده</h3><div lang="en" dir="ltr" style="text-align:left;font-size:11px;line-height:1.9;overflow-wrap:anywhere"><div id="linkState">Link: --</div><div id="seqInfo">Frames: -- | Last update: -- ms ago</div></div></div>
+</div></details>
+<section class="cd" id="adminCard" hidden><div class="admin-head"><h2><svg class="glyph" aria-hidden="true"><use href="#i-lock"/></svg> مدیریت</h2><span id="admWho"></span><button class="btn action" type="button" title="خروج" aria-label="خروج"  onclick="uiAction(this,()=>admLogout(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-logout"/></svg><span>خروج</span></button></div><details class="setting-panel admin-section" open><summary><svg class="glyph" aria-hidden="true"><use href="#i-key"/></svg><span>امنیت و شبکه</span></summary>
+<div class="setting-body"><h3 class="ti">وای‌فای</h3>
+<div class="settings-form"><label class="field" for="admSsid"><span>نام شبکه</span><input id="admSsid" placeholder="نام شبکه"></label>
+<label class="field" for="admWpass"><span>رمز شبکه</span><input id="admWpass" type="password" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر"></label>
+<div class="form-actions"><button class="btn action" type="button" title="ذخیره تنظیمات وای‌فای" aria-label="ذخیره تنظیمات وای‌فای" id="admWifiBtn" onclick="uiAction(this,()=>admWifi(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-save"/></svg><span>ذخیره</span></button></div></div></div></details>
+<details class="setting-panel admin-section"><summary><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>بازیابی خطا</span></summary>
+<div class="setting-body action-row"><button class="btn action" type="button" title="ریست قفل خطا" aria-label="ریست قفل خطا"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:5},'قفل خطا ریست شد','ریست قفل بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست قفل</span></button><button class="btn action" type="button" title="پاک‌کردن ماسک باتری مرده" aria-label="پاک‌کردن ماسک باتری مرده"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:6},'ماسک باتری مرده پاک شد','ماسک باتری مرده پاک شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست خرابی</span></button><button class="btn action" type="button" title="ریست قفل باتری ضعیف" aria-label="ریست قفل باتری ضعیف"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:8},'ریست ضعیف انجام شد','قفل باتری ضعیف بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست ضعف</span></button></div></details>
+<details class="setting-panel admin-section"><summary><svg class="glyph" aria-hidden="true"><use href="#i-file"/></svg><span>ثبت و دانلود</span></summary>
+<div class="setting-body action-row"><button class="btn action" type="button" title="ثبت لحظه" aria-label="ثبت لحظه"  onclick="uiAction(this,()=>admPost('/evt/snap',{},'عکس لحظه ثبت شد'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-camera"/></svg><span>ثبت لحظه</span></button><button class="btn action" type="button" title="دانلود روز" aria-label="دانلود روز"  onclick="uiAction(this,()=>admDl())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span>دانلود روز</span></button></div></details>
+<details class="setting-panel admin-section danger-zone"><summary><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌سازی</span></summary>
+<div class="setting-body"><div class="settings-form"><label class="field" for="admClearType"><span>نوع تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">دیاگ</option></select></label>
+<div class="form-actions"><button class="btn action danger" type="button" title="پاک‌کردن تاریخچهٔ انتخاب‌شده" aria-label="پاک‌کردن تاریخچهٔ انتخاب‌شده"  onclick="uiAction(this,()=>admClear(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌کردن</span></button><button class="btn action danger" type="button" title="حذف لاگ" aria-label="حذف لاگ"  onclick="uiAction(this,()=>admConfirm('/evt/clr',{},'همهٔ لاگ‌ها پاک شد','همهٔ روزهای لاگ حذف شوند؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>حذف لاگ</span></button><button class="btn action danger" type="button" title="فرمت حافظه و حذف همهٔ تاریخچه‌ها" aria-label="فرمت حافظه و حذف همهٔ تاریخچه‌ها" id="admFormat" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>فرمت</span></button></div></div><p class="setting-note">حذف تاریخچه برگشت‌پذیر نیست؛ فرمت همهٔ تاریخچه‌ها را پاک می‌کند. رمزها حفظ می‌شوند.</p></div></details>
+<div class="gmsg" id="admCardMsg"></div></section>
+</div></div>
 
 <div id="chartTooltip" class="chart-tooltip"></div>
-<div id="toastMsg" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span></div>
+<div id="toastMsg" role="status" aria-live="polite" aria-atomic="true" class="toast" style="display:none"></div><div class="footer"><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
+<div id="admGate" class="gate" hidden><div class="gatebox">
+ <div class="ti" style="margin:0">دسترسی مدیر</div>
+ <input id="admPass" aria-label="رمز مدیر" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('admLoginBtn').click();}">
+ <div class="gmsg" id="admMsg"></div>
+ <div style="display:flex;gap:8px"><button class="btn action" type="button" title="ورود" aria-label="ورود" id="admLoginBtn" onclick="uiAction(this,()=>admLogin(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-login"/></svg><span>ورود</span></button><button class="btn action" type="button" title="انصراف" aria-label="انصراف"  onclick="admClose()"><svg class="glyph" aria-hidden="true"><use href="#i-x"/></svg><span>انصراف</span></button></div>
+</div></div>
 </main>
 <script>
-let currentTheme=0;
-function applyTheme(t){
- t=(t===1)?1:0;   /* فقط دو تم داریم: ۰ تیره، ۱ روشن (تم سوم حذف شد) */
- currentTheme=t;
- document.body.setAttribute('data-theme', String(t));
- localStorage.setItem('co_theme', String(t));
- for(let i=0;i<=1;i++){ let c=document.getElementById('themeCard'+i); if(c) c.classList.toggle('a', i===t); }
-}
-function selectTheme(t){
- applyTheme(t);
- fetch('/settheme?theme='+t,{method:'POST'}).then(r=>r.json()).then(j=>{
-  let tm=document.getElementById('themeMsg'); if(tm) tm.textContent=j.ok?'تم ذخیره شد':'خطا - فقط ادمین';
-  setTimeout(()=>{let tmm=document.getElementById('themeMsg'); if(tmm) tmm.textContent='';},3000);
- }).catch(()=>{ let tmc=document.getElementById('themeMsg'); if(tmc) tmc.textContent='تم در مرورگر ذخیره شد (آفلاین)'; });
-}
-async function loadTheme(){
- try{ let r=await fetch('/theme',{cache:'no-store'}); let j=await r.json(); if(j.theme!==undefined){ applyTheme(j.theme); return; } }catch(e){}
- let saved=localStorage.getItem('co_theme'); if(saved!==null){ applyTheme(parseInt(saved)); } else { applyTheme(0); }
-}
-loadTheme();
-
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
@@ -747,11 +659,7 @@ const CHG_VMIN=21000, CHG_VMAX=29000;
 const RUN_HYST=2, CHG_HYST=5, ZERO_EXIT=2, ONE_EXIT=3, FULL_ENTER=100, FULL_EXIT=95;
 const GREEN_PERIOD=1000, GREEN_MIN_OFF=10, YELLOW_PERIOD=1000, YELLOW_MIN_ON=150, YELLOW_MIN_REMAIN=2;
 
-/* پارامترهای خود برد - درصد فول/خالی باتری و زمان‌بندی چشمک‌ها از این‌ها می‌آید.
-   این عددها پارامترهای همان برد هستند (۷۴/۷۵ و ۸۰/۸۱/۸۲ و ۶۶/۶۷ و ...) که
-   چراغ سبز برد با آن‌ها چشمک می‌زند؛ با هر قاب /t از برد خوانده می‌شوند و
-   اگر کاربر روی برد عوضشان کند، نمایش هم همان را نشان می‌دهد. تا آمدن اولین
-   جواب، پیش‌فرض‌های بالای همین فایل می‌مانند. */
+
 let brd={gPer:GREEN_PERIOD, gOff:GREEN_MIN_OFF, yPer:YELLOW_PERIOD, yOn:YELLOW_MIN_ON,
          vmin:BAT_VMIN, vmax:BAT_VMAX, halfMin:HALF_VMIN, halfMax:HALF_VMAX,
          hEnt:FULL_ENTER, hExit:FULL_EXIT, cHyst:CHG_HYST, rHyst:RUN_HYST,
@@ -788,7 +696,6 @@ function vToPctPack(v){ return vToPctMap(v, brd.vmin, brd.vmax); }
 function vToPctHalf(v){ return vToPctMap(v, brd.halfMin, brd.halfMax); }
 function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
 
-function fmtSecShort(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+'h '+m+'m'; }
 /* زمان زنده با ثانیه - برای «زمان کل شارژ» و «کارکرد برد» که کاربر باید
    ببیند همین حالا دارد می‌شمارد (قبلاً فقط ساعت و دقیقه بود و ثابت به نظر می‌رسید) */
 function fmtSecLive(s){
@@ -800,11 +707,7 @@ function fmtSecLive(s){
  if(h>0 || m>0) out+=m+' دقیقه ';
  return out+sec+' ثانیه';
 }
-/* ==================== تاریخ شمسی ====================
-   تبدیل میلادی به هجری شمسی به‌صورت خالص، بدون تکیه بر تقویم مرورگر، تا روی
-   هر گوشی و مرورگری یک جواب بدهد. ترتیب محاسبه:
-   ۱) تاریخ میلادی → شمارهٔ روز از مبدأ  ۲) روز → سال و ماه و روز شمسی
-   (۶ ماه اول ۳۱ روزه، ۵ ماه بعد ۳۰ روزه، ماه دوازدهم کبیسه). خروجی: [سال، ماه، روز]. */
+
 function jDiv(a,b){ return Math.floor(a/b); }
 function jMod(a,b){ return a - Math.floor(a/b)*b; }
 function jFromDate(d){
@@ -825,7 +728,6 @@ function jOf(ts){ return jFromDate(new Date(ts*1000)); }
 function p2(n){ return (n<10?'0':'')+n; }
 function faDigits(str){ return String(str).replace(/[0-9]/g,function(c){ return '۰۱۲۳۴۵۶۷۸۹'[+c]; }); }
 /* لاتین برای فایل خروجی (اکسل می‌فهمد)، فارسی برای نمایش روی صفحه */
-function jLatinDate(ts){ let j=jOf(ts); return j[0]+'/'+p2(j[1])+'/'+p2(j[2]); }
 const J_MONTHS=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const J_WEEKDAYS=['یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه','شنبه'];
 /* نمونه: «۲۲ مهر ۱۴۰۵ - ۱۴:۳۵» */
@@ -840,6 +742,21 @@ function fmtJalaliFull(ts){
  let d=new Date(ts*1000); let j=jFromDate(d);
  return J_WEEKDAYS[d.getDay()]+' '+faDigits(j[2]+' '+J_MONTHS[j[1]-1]+' '+j[0])+' ساعت '+faDigits(p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds()));
 }
+/* محور: تاریخ واقعی، نه روز هفته */
+function fmtJalaliSpan(ts,spanSec){ if(!ts||ts<1000000000) return '';
+ let d=new Date(ts*1000), j=jFromDate(d);
+ if(spanSec<=2*86400) return faDigits(p2(d.getHours())+':'+p2(d.getMinutes()));
+ if(spanSec<=120*86400) return faDigits(j[2]+' '+J_MONTHS[j[1]-1]);
+ return faDigits(J_MONTHS[j[1]-1]+' '+j[0]); }
+/* «از ۲ تا ۲۰ آبان ۱۴۰۵» */
+function fmtJalaliRange(a,b){ if(!a||!b||a<1000000000||b<1000000000) return '';
+ let ja=jFromDate(new Date(a*1000)), jb=jFromDate(new Date(b*1000));
+ let ma=J_MONTHS[ja[1]-1], mb=J_MONTHS[jb[1]-1], t;
+ if(ja[0]===jb[0]&&ja[1]===jb[1]&&ja[2]===jb[2]) t=ja[2]+' '+ma+' '+ja[0];
+ else if(ja[0]===jb[0]&&ja[1]===jb[1]) t=ja[2]+' تا '+jb[2]+' '+mb+' '+jb[0];
+ else if(ja[0]===jb[0]) t=ja[2]+' '+ma+' تا '+jb[2]+' '+mb+' '+jb[0];
+ else t=ja[2]+' '+ma+' '+ja[0]+' تا '+jb[2]+' '+mb+' '+jb[0];
+ return faDigits(t); }
 /* عنوان محور زمان نمودار: ۱ روزه ساعت، ۷ روزه روز هفته + ساعت، بلندتر روز + ماه */
 function fmtJalaliAxis(ts, range){
  if(!ts || ts<1000000000) return '';
@@ -849,19 +766,7 @@ function fmtJalaliAxis(ts, range){
  return faDigits(j[2]+' '+J_MONTHS[j[1]-1]);
 }
 
-/* ==================== خروجی CSV نمودارها ====================
-   فایل سمت مرورگر ساخته می‌شود (هیچ فشاری روی برد نیست). عددهای فایل لاتین
-   هستند تا اکسل درست بخواند و برای فارسی، BOM به ابتدای فایل اضافه می‌شود. */
-function csvCell(v){
- let t=(v===null||v===undefined)?'':String(v);
- return /[",\r\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
-}
-function csvText(rows){
- let out=[];
- for(let i=0;i<rows.length;i++) out.push(rows[i].map(csvCell).join(','));
- return out.join('\r\n');
-}
-function csvFileStamp(ts){ let d=new Date(ts*1000); return jLatinDate(ts).replace(/\//g,'-')+'-'+p2(d.getHours())+p2(d.getMinutes()); }
+/* ==================== Stored log downloads ==================== */
 function downloadCsvText(fileName, text){
  let blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'});
  let url=URL.createObjectURL(blob);
@@ -870,51 +775,14 @@ function downloadCsvText(fileName, text){
  document.body.appendChild(a); a.click();
  setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} },1500);
 }
-/* ردیف‌های خروجی هر نمودار: زمان یونیکس، تاریخ شمسی، ساعت، بعد داده‌ها */
-function csvRowsFromColumns(timeData, columns){
- let rows=[];
- let head=['زمان یونیکس','تاریخ شمسی','ساعت'];
- for(let c=0;c<columns.length;c++) head.push(columns[c].title);
- rows.push(head);
- for(let i=0;i<timeData.length;i++){
-  let ts=timeData[i]||0, d=new Date(ts*1000);
-  let row=[ts, ts?jLatinDate(ts):'', ts?p2(d.getHours())+':'+p2(d.getMinutes()):''];
-  for(let c=0;c<columns.length;c++) row.push(columns[c].values[i]);
-  rows.push(row);
- }
- return rows;
+async function uiAction(el,run,admin){
+ if(el.getAttribute('aria-busy')==='true')return;
+ const controls=admin?Array.from(document.querySelectorAll('#adminCard button,#admLoginBtn,[data-admin]')):el.closest('.icog')?Array.from(el.closest('.icog').querySelectorAll('button')):[el];
+ const states=controls.map(b=>[b,b.disabled]);
+ controls.forEach(b=>{b.disabled=true;b.setAttribute('aria-busy','true');});
+ try{await run();}catch(e){showToast('انجام نشد؛ ارتباط با برد را بررسی کن');}
+ finally{states.forEach(([b,disabled])=>{b.disabled=disabled;b.removeAttribute('aria-busy');});}
 }
-function pctCsvData(){
- let d=chartDataPct, list=d.pct||[], tm=d.time||[];
- let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
- return {name:'changeover-darsad-'+d.range+'-'+csvFileStamp(last)+'.csv',
-         rows:csvRowsFromColumns(tm,[{title:'درصد باتری',values:list}]), count:list.length};
-}
-function voltCsvData(){
- let d=chartDataVolt, vin=d.vin||[], vpack=d.vpack||[], tm=d.time||[];
- let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
- return {name:'changeover-voltaj-'+d.range+'-'+csvFileStamp(last)+'.csv',
-         rows:csvRowsFromColumns(tm,[{title:'ولتاژ ورودی (میلی‌ولت)',values:vin},{title:'ولتاژ پک (میلی‌ولت)',values:vpack}]), count:vin.length};
-}
-function chargeCsvData(){
- /* فقط زمان و کانالِ شارژ کامل خروجی گرفته می‌شود؛ مدت هر شارژ اندازه‌گیری
-    نمی‌شود و ستون آن به درخواست کاربر حذف شده است. تاریخچه دست‌نخورده می‌ماند. */
- let events=(window._lastChargeHistory||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
- let tm=[], ch=[];
- for(let i=0;i<events.length;i++){ tm.push(events[i].ts); ch.push(events[i].ch); }
- let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
- return {name:'changeover-sharzh-'+csvFileStamp(last)+'.csv',
-         rows:csvRowsFromColumns(tm,[{title:'کانال',values:ch}]), count:events.length};
-}
-function exportCsv(kind){
- let data=(kind==='pct')?pctCsvData():(kind==='volt')?voltCsvData():chargeCsvData();
- if(!data.count){ showToast('داده‌ای برای خروجی نیست - هنوز نمونه‌ای ثبت نشده'); return; }
- try{
-  downloadCsvText(data.name, csvText(data.rows));
-  showToast('خروجی گرفته شد: '+faDigits(data.count)+' نمونه');
- }catch(e){ showToast('خروجی گرفتن در این مرورگر ممکن نشد'); }
-}
-/* پیام کوتاه پایین صفحه */
 let g_toastTimer=0;
 function showToast(msg, ms){
  let el=document.getElementById('toastMsg'); if(!el) return;
@@ -1153,33 +1021,20 @@ function renderLeds(){
 
 }
 
-let chartRanges={pct:'1d',charge:'1d',volt:'1d'};
+let chartRanges={charge:'1d',volt:'1d'};
 function setChartRange(chart, r){
- if(chart==='volt'){
-  chartRanges.volt=r;
-  const order=['1d','7d','1m','3m'];
-  let seg=document.getElementById('segVolt'); let ind=document.getElementById('segVoltIndicator');
-  if(seg && ind){ let idx=order.indexOf(r); if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; } }
-  for(let id of order){ let b=document.getElementById('volt'+id); if(b) b.classList.toggle('a', id===r); }
-  pollChartsVolt();
-  return;
- }
- chartRanges[chart]=r;
+ if(chart!=='volt' && chart!=='charge') return;
  const order=['1d','7d','1m','3m'];
- let segId='seg'+chart.charAt(0).toUpperCase()+chart.slice(1);
- let indId=segId+'Indicator';
- let seg=document.getElementById(segId);
- if(!seg){
-  if(chart==='pct') { seg=document.getElementById('segPct'); indId='segPctIndicator'; }
-  else if(chart==='charge') { seg=document.getElementById('segCharge'); indId='segChargeIndicator'; }
- }
- let ind=document.getElementById(indId);
- if(seg && ind){ let idx=order.indexOf(r); if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; } }
+ if(!order.includes(r)) return;
+ chartRanges[chart]=r;
+ let segId=chart==='volt'?'segVolt':'segCharge';
+ let seg=document.getElementById(segId), ind=document.getElementById(segId+'Indicator');
+ if(seg && ind){ let idx=order.indexOf(r), btnW=(seg.clientWidth-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; }
  for(let id of order){ let b=document.getElementById(chart+id); if(b) b.classList.toggle('a', id===r); }
- if(chart==='pct') pollChartsPct();
- else if(chart==='charge'){ if(window._lastChargeHistory) { drawChargeHistory(window._lastChargeHistory, r); } }
+ if(chart==='volt'){if(chartCache[r])renderVoltFromServer(chartCache[r]);pollChartsVolt();}
+ else if(window._lastChargeHistory) drawChargeHistory(window._lastChargeHistory,r);
 }
-function setRange(r){ setChartRange('pct', r); setChartRange('charge', r); setChartRange('volt', r); }
+function setRange(r){ setChartRange('charge',r); setChartRange('volt',r); }
 
 function fmtTimeLabel(ts, range){
  if(!ts || ts<1000000000) return '';
@@ -1187,10 +1042,23 @@ function fmtTimeLabel(ts, range){
  return fmtJalaliAxis(ts, range);
 }
 
-/* ==================== ابزارهای مشترک نمودارها ====================
-   هر نمودار یک ناحیهٔ ترسیم دارد: از چپ به‌اندازهٔ محور عمودی و از راست
-   کمی فاصله. همین اعداد برای برچسب‌های محور زمان هم استفاده می‌شوند تا
-   برچسب دقیقاً زیر نقطهٔ خودش بنشیند. */
+/* ==================== آماده‌سازی بوم نمودار ====================
+   بوم به اندازهٔ واقعی خودش و با تراکم پیکسل دستگاه ساخته می‌شود تا عددهای
+   محور تیز و خوانا باشند. */
+function chartMetrics(c){
+ const page=c.closest('.pgx');
+ if(document.hidden || (page && !page.classList.contains('a')) || c.clientWidth<=0 || c.clientHeight<=0) return null;
+ return {w:Math.max(160,Math.round(c.clientWidth)),h:Math.max(110,Math.round(c.clientHeight)),dpr:Math.max(1,Math.min(3,window.devicePixelRatio||1))};
+}
+function prepCanvas(c, metrics){
+ const m=metrics||chartMetrics(c); if(!m) return null;
+ const ctx=c.getContext('2d'); if(!ctx) return null;
+ const bw=Math.round(m.w*m.dpr),bh=Math.round(m.h*m.dpr);
+ if(c.width!==bw || c.height!==bh){c.width=bw;c.height=bh;}
+ ctx.setTransform(m.dpr,0,0,m.dpr,0,0);
+ return {ctx:ctx,w:m.w,h:m.h,dpr:m.dpr};
+}
+
 const CHART_PAD_L=34, CHART_PAD_R=8, CHART_PAD_T=8, CHART_PAD_B=8;
 function chartPlotWidth(w){ return w - CHART_PAD_L - CHART_PAD_R; }
 function chartX(i, n, w){
@@ -1210,7 +1078,7 @@ function drawAxisY(ctx, ticks, min, max, w, h, styles, format){
  ctx.setLineDash([4,5]);
  ctx.strokeStyle='rgba(100,116,139,.22)';
  ctx.fillStyle=line;
- ctx.font='9px Vazirmatn';
+ ctx.font='10px Vazirmatn, Tahoma, sans-serif';
  ctx.textAlign='right';
  ctx.textBaseline='middle';
  for(let i=0;i<ticks.length;i++){
@@ -1251,82 +1119,77 @@ function drawChartNotice(ctx, w, h, styles, text){
  ctx.fillText(text, w/2, h/2);
  ctx.textAlign='left';
 }
-function chartSignature(parts){ return parts.join('|'); }
-
-function drawChart(canvasId, data, color, min, max, timeData, range){
- let c=document.getElementById(canvasId); if(!c) return;
- let n=(data&&data.length)?data.length:0;
- let sig=chartSignature(['p', range, n, n?data[n-1]:'-', n?(timeData&&timeData[n-1]||0):0, color]);
- if(c._sig===sig && c._drawn){ return; }   /* همان تصویر: دوباره رسم نکن (بدون چشمک) */
- c._sig=sig; c._drawn=true;
-
- let ctx=c.getContext('2d'); let w=c.width, h=c.height;
- let styles=getComputedStyle(document.body);
- let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
- ctx.clearRect(0,0,w,h);
- ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
-
- c._chartData=data; c._chartTime=timeData; c._chartRange=range; c._chartColor=color; c._chartMin=min; c._chartMax=max;
- if(!c._hasTooltip){
-  c.addEventListener('mousemove', function(e){
-   let list=c._chartData||[]; if(list.length===0) return;
-   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
-   let plotX=(mx*scaleX)-CHART_PAD_L;
-   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(w))*(list.length-1));
-   if(idx<0) idx=0; if(idx>=list.length) idx=list.length-1;
-   let val=list[idx]; let ts=c._chartTime?c._chartTime[idx]:null;
-   let tip=document.getElementById('chartTooltip');
-   if(tip && val!=null){ let dStr=ts?fmtTime(ts):''; tip.innerHTML='<b>'+faNum(val)+' ٪</b><span>'+(dStr||'')+'</span>'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; tip.classList.add('show'); }
-  });
-  c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
-  c._hasTooltip=true;
- }
-
- drawAxisY(ctx, [0,25,50,75,100], min, max, w, h, styles, function(v){ return faNum(v)+'٪'; });
-
- if(n===0){
-  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
-  drawTimeLabels(canvasId+'Labels', [], range, w);
-  return;
- }
-
- let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'38'); grad.addColorStop(1, color+'06');
- if(n>=2){
-  ctx.beginPath();
-  for(let i=0;i<n;i++){ let x=chartX(i,n,w); let v=data[i]; if(v==null) continue; let y=chartY(v,min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.lineTo(w-CHART_PAD_R,h-CHART_PAD_B); ctx.lineTo(CHART_PAD_L,h-CHART_PAD_B); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
-  ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.lineCap='round';
-  for(let i=0;i<n;i++){ let x=chartX(i,n,w); let v=data[i]; if(v==null) continue; let y=chartY(v,min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.stroke();
-  let last=data[n-1]; let y=chartY(last,min,max,h);
-  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(chartX(n-1,n,w),y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
- } else {
-  let y=chartY(data[0],min,max,h);
-  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(chartX(0,1,w),y,5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
- }
- drawTimeLabels(canvasId+'Labels', timeData, range, w);
+/* ==================== بازهٔ خودکار محور ====================
+   بازه از خود داده می‌آید (کمینه/بیشینهٔ واقعی با گام خوش‌عدد) و تعداد خط
+   محور از ارتفاع بوم؛ پیش‌تر ۰..۱۰۰ و ۱۸..۳۰ ولت در کد ثابت بود. */
+function niceStep(span, count){
+ if(!(span>0) || !(count>0)) return 1;
+ let raw=span/count, mag=Math.pow(10, Math.floor(Math.log10(raw))), n=raw/mag;
+ let k = n<=1?1 : n<=2?2 : n<=2.5?2.5 : n<=5?5 : 10;
+ return k*mag;
+}
+function ticksBetween(min, max, h){
+ let count=Math.max(3, Math.min(6, Math.round((h||170)/42)));
+ let step=niceStep(max-min, count-1);
+ let lo=Math.floor(min/step)*step, hi=Math.ceil(max/step)*step;
+ if(hi-lo<step) hi=lo+step;
+ let out=[]; for(let v=lo; v<=hi+step*0.001; v+=step) out.push(Math.round(v*1000)/1000);
+ return out;
+}
+function autoScale(lists, h, hardMin, hardMax){
+ let vals=[];
+ (lists||[]).forEach(function(a){ (a||[]).forEach(function(v){ if(v!==null && v!==undefined && isFinite(v)) vals.push(Number(v)); }); });
+ if(vals.length===0) return {min:0, max:1, ticks:[0,0.5,1]};
+ let lo=Math.min.apply(null, vals), hi=Math.max.apply(null, vals);
+ if(hardMin!==undefined && hardMin!==null && lo<hardMin) lo=hardMin;
+ if(hardMax!==undefined && hardMax!==null && hi>hardMax) hi=hardMax;
+ if(hi===lo){ let d=Math.abs(lo)*0.02 || 1; lo-=d; hi+=d; }
+ if(hardMin!==undefined && hardMin!==null && lo<hardMin) lo=hardMin;
+ if(hardMax!==undefined && hardMax!==null && hi>hardMax) hi=hardMax;
+ let ticks=ticksBetween(lo, hi, h);
+ return {min:ticks[0], max:ticks[ticks.length-1], ticks:ticks};
+}
+function fmtVolt(v){
+ let k=v/1000;
+ let t=(Math.abs(k-Math.round(k))<0.05) ? Math.round(k) : Math.round(k*10)/10;
+ return faNum(t)+'V';
+}
+/* گام نمونه‌برداری از فاصلهٔ خود زمان‌ها درمی‌آید، نه از یک متن ثابت */
+function sampleStep(timeData){
+ if(!timeData || timeData.length<2) return '';
+ let d=[]; for(let i=1;i<timeData.length;i++){ let x=timeData[i]-timeData[i-1]; if(x>0) d.push(x); }
+ if(!d.length) return '';
+ d.sort(function(a,b){ return a-b; });
+ let m=d[Math.floor(d.length/2)];
+ if(m<3600) return faNum(Math.max(1,Math.round(m/60)))+' دقیقه';
+ if(m<86400) return faNum(Math.round(m/3600))+' ساعت';
+ return faNum(Math.round(m/86400))+' روز';
 }
 
 /* نمودار ترکیبی ولتاژ - دو خط روی هم + محور عمودی */
 function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
  let n=(vinData&&vinData.length)?vinData.length:0;
- let sig=chartSignature(['v', range, n, n?vinData[n-1]:'-', n?vpackData[n-1]:'-', n?(timeData&&timeData[n-1]||0):0]);
- if(c._sig===sig && c._drawn){ return; }
- c._sig=sig; c._drawn=true;
-
- let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ c._chartData=vinData; c._chartData2=vpackData; c._chartTime=timeData; c._chartRange=range;
+ const metrics=chartMetrics(c); if(!metrics) return;
+ const sig=JSON.stringify([range,vinData,vpackData,timeData,metrics]);
+ if(c._sig===sig && c._drawn) return;
+ let prep=prepCanvas(c,metrics); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
  ctx.clearRect(0,0,w,h);
  ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
 
- let min=18000, max=30000, rangeVal=max-min;
- drawAxisY(ctx, [18000,21000,24000,27000,30000], min, max, w, h, styles, function(v){ return (v/1000)+'V'; });
+ let sc=autoScale([vinData, vpackData], h);
+ let min=sc.min, max=sc.max, rangeVal=(max-min)||1;
+ drawAxisY(ctx, sc.ticks, min, max, w, h, styles, fmtVolt);
+ let axisInfo=document.getElementById('voltAxisInfo');
+ if(axisInfo) axisInfo.textContent='محور عمودی: '+fmtVolt(min)+' تا '+fmtVolt(max)+' (خودکار از دادهٔ همین بازه) - محور افقی: زمان واقعی';
 
  if(n===0){
-  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
+  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای در این بازه ثبت نشده');
   drawTimeLabels(canvasId+'Labels', [], range, w);
+  c._sig=sig;c._drawn=true;
   return;
  }
  function drawLine(data, color){
@@ -1334,10 +1197,6 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
   if(data.length===1){
    let y=chartY(data[0],min,max,h); ctx.beginPath(); ctx.fillStyle=color; ctx.arc(chartX(0,1,w),y,4,0,Math.PI*2); ctx.fill(); return;
   }
-  let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'22'); grad.addColorStop(1, color+'04');
-  ctx.beginPath();
-  for(let i=0;i<data.length;i++){ let x=chartX(i,data.length,w); let y=chartY(data[i],min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.lineTo(w-CHART_PAD_R,h-CHART_PAD_B); ctx.lineTo(CHART_PAD_L,h-CHART_PAD_B); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
   ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.2; ctx.lineJoin='round';
   for(let i=0;i<data.length;i++){ let x=chartX(i,data.length,w); let y=chartY(data[i],min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
   ctx.stroke();
@@ -1350,9 +1209,9 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  if(!c._hasTooltip){
   c.addEventListener('mousemove', function(e){
    let list=(c._chartData&&c._chartData.length)?c._chartData:null; if(!list) return;
-   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
+   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=c._plotWidth/rect.width;
    let plotX=(mx*scaleX)-CHART_PAD_L;
-   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(w))*(list.length-1));
+   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(c._plotWidth))*(list.length-1));
    if(idx<0) idx=0; if(idx>=list.length) idx=list.length-1;
    let v1=list[idx], v2=(c._chartData2||[])[idx];
    let ts=c._chartTime?c._chartTime[idx]:null;
@@ -1366,51 +1225,59 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
   c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
   c._hasTooltip=true;
  }
- c._chartData=vinData; c._chartData2=vpackData; c._chartTime=timeData; c._chartRange=range;
+ c._plotWidth=w;
  drawTimeLabels(canvasId+'Labels', timeData, range, w);
+ c._sig=sig;c._drawn=true;
 }
 
-let chartDataPct={pct:[],time:[],range:'1d'};
-let chartDataVolt={vin:[],vpack:[],time:[],range:'1d'};
+let chartDataVolt={vin:[],vpack:[],time:[],range:'1d'},chartCache={},chartRequest=null,chartAbort=null,chartRequestRange='',chartRequestId=0,historyEpoch=0;
 function rangeTitle(range){ return range==='1d'?'۱ روزه':range==='7d'?'۷ روزه':range==='1m'?'۱ ماهه':range==='3m'?'۳ ماهه':range; }
-/* هر نمودار فقط از پاسخ خودش پر می‌شود. پیش‌تر پاسخ «ولتاژ» که همیشه
-   بازهٔ ۱ روزه بود روی نمودار درصد هم می‌نشست و بازهٔ انتخابی کاربر را
-   برمی‌گرداند؛ الان هر کدام جدا به‌روز می‌شوند. */
-function renderPctFromServer(j){
- if(!j || !j.pct) return;
- if(j.range) chartDataPct.range=j.range;
- chartDataPct.pct=j.pct;
- chartDataPct.time=j.time||[];
- drawChart('cPct', chartDataPct.pct, '#ffb84d', 0, 100, chartDataPct.time, chartDataPct.range);
- let n=chartDataPct.pct.length;
- if(n>0){ setTxt('pctCurrent', faNum(chartDataPct.pct[n-1])+' ٪'); }
- else { setTxt('pctCurrent', '-- ٪'); }
- setTxt('pctRangeInfo', 'بازه: '+rangeTitle(chartDataPct.range)+' - '+n+' نمونه'+(n<2?' - در حال جمع‌آوری':''));
-}
 function renderVoltFromServer(j){
- if(!j || !j.vin || !j.vpack) return;
+ if(!j || !Array.isArray(j.vin) || !Array.isArray(j.vpack) || !Array.isArray(j.time) || j.vin.length!==j.vpack.length || j.vin.length!==j.time.length) return;
  if(j.range) chartDataVolt.range=j.range;
- chartDataVolt.vin=j.vin; chartDataVolt.vpack=j.vpack; chartDataVolt.time=j.time||[];
+ chartDataVolt.vin=j.vin; chartDataVolt.vpack=j.vpack; chartDataVolt.time=j.time;
+ chartCache[chartDataVolt.range]={range:chartDataVolt.range,vin:j.vin,vpack:j.vpack,time:j.time};
  drawVoltChart('cVolt', chartDataVolt.vin, chartDataVolt.vpack, chartDataVolt.time, chartDataVolt.range);
  let n=j.vin.length;
+ setTxt('voltCountInfo',faDigits(n)+' نمونه');
  setTxt('voltRangeInfo', 'بازه: '+rangeTitle(chartDataVolt.range)+' - '+n+' نمونه'+(n<2?' - در حال جمع‌آوری':''));
  if(n>0){
   let v1min=Math.min(...j.vin), v1max=Math.max(...j.vin), v2min=Math.min(...j.vpack), v2max=Math.max(...j.vpack);
   setTxt('voltMinMax', 'Vin '+(v1min/1000).toFixed(1)+'-'+(v1max/1000).toFixed(1)+'V | Vpack '+(v2min/1000).toFixed(1)+'-'+(v2max/1000).toFixed(1)+'V');
- }
+ }else setTxt('voltMinMax','');
 }
-async function pollChartsPct(){
- try{ let r=await fetch('/charts?range='+chartRanges.pct,{cache:'no-store'}); let j=await r.json(); renderPctFromServer(j); }catch(e){}
+function pollChartsVolt(){
+ const range=chartRanges.volt;
+ if(chartRequest && chartRequestRange===range) return chartRequest;
+ if(chartAbort) chartAbort.abort();
+ const id=++chartRequestId,epoch=historyEpoch,ac=new AbortController();
+ chartAbort=ac;chartRequestRange=range;
+ const timer=setTimeout(()=>ac.abort(),8000);
+ const request=(async()=>{
+  try{
+   const r=await fetch('/charts?range='+range,{cache:'no-store',signal:ac.signal});
+   if(!r.ok) throw Error('charts');
+   const j=await r.json();
+   if(id!==chartRequestId || epoch!==historyEpoch || range!==chartRanges.volt) return;
+   if(j.range!==range || !Array.isArray(j.vin) || !Array.isArray(j.vpack) || !Array.isArray(j.time) || j.vin.length!==j.vpack.length || j.vin.length!==j.time.length) throw Error('chart data');
+   renderVoltFromServer(j);
+  }catch(e){if(id===chartRequestId && epoch===historyEpoch)setTxt('voltRangeInfo','دریافت نمودار انجام نشد؛ دادهٔ قبلی حفظ شد - تلاش دوباره خودکار');}
+  finally{clearTimeout(timer);if(id===chartRequestId){chartRequest=null;chartAbort=null;}}
+ })();
+ chartRequest=request;return request;
 }
-async function pollChartsVolt(){
- try{ let r=await fetch('/charts?range='+chartRanges.volt,{cache:'no-store'}); let j=await r.json(); renderVoltFromServer(j); }catch(e){}
+function pollCharts(){
+ if(document.hidden || !document.getElementById('pg1').classList.contains('a')) return Promise.resolve();
+ return pollChartsVolt();
 }
-async function pollCharts(){ await pollChartsPct(); await pollChartsVolt(); }
 
 function drawChargeHistory(events, range){
  window._lastChargeHistory=events;
  let c=document.getElementById('cCharge'); if(!c) return;
- let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ const metrics=chartMetrics(c);if(!metrics)return;
+ const sig=JSON.stringify([events,range,metrics,Math.floor(Date.now()/60000)]);
+ if(c._sig===sig && c._drawn)return;
+ let prep=prepCanvas(c,metrics); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  ctx.clearRect(0,0,w,h);
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
@@ -1421,6 +1288,7 @@ function drawChargeHistory(events, range){
  if(!events || events.length==0){
   ctx.fillStyle=styles.getPropertyValue('--mu'); ctx.font='12px Vazirmatn'; ctx.textAlign='center';
   ctx.fillText('تاریخچه شارژی ثبت نشده', w/2, h/2);
+  setHtml('cChargeLabels','');c._sig=sig;c._drawn=true;
   return;
  }
  let now=Math.floor(Date.now()/1000);
@@ -1441,8 +1309,8 @@ function drawChargeHistory(events, range){
   let color=ev.ch===1 ? '#5b8def' : '#1ee6a0';
   ctx.beginPath(); ctx.strokeStyle=color+'55'; ctx.lineWidth=1;
   ctx.moveTo(x, h); ctx.lineTo(x, y); ctx.stroke();
-  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=12;
-  ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.fillStyle=color;
+  ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle='#fff'; ctx.font='bold 9px Vazirmatn'; ctx.textAlign='center'; ctx.fillText('CH'+ev.ch, x, y+3);
  });
  let labelDiv=document.getElementById('cChargeLabels');
@@ -1455,7 +1323,7 @@ function drawChargeHistory(events, range){
     let i=(count===1)?0:Math.round(k*(filtered.length-1)/(count-1));
     if(i===last) continue;
     last=i;
-    let lbl=fmtJalaliAxis(filtered[i].ts, '7d');
+    let lbl=fmtJalaliSpan(filtered[i].ts, span);
     let pctX=(filtered.length<2)?50:((filtered[i].ts-minTs)/span)*100;
     html+='<span style="position:absolute;left:'+pctX.toFixed(2)+'%;transform:translateX(-50%);white-space:nowrap">'+lbl+'</span>';
    }
@@ -1465,33 +1333,41 @@ function drawChargeHistory(events, range){
   labelDiv.style.height='16px';
   if(labelDiv.innerHTML!==html) labelDiv.innerHTML=html;
  }
+ c._sig=sig;c._drawn=true;
 }
+const CHARGE_LIST_MAX=20;   /* سقف نمایش؛ عدد داخل متن دستی نوشته نمی‌شود */
 function renderChargeHistoryList(events){
  let div=document.getElementById('chargeHistoryList'); if(!div) return;
- if(!events || events.length==0){ div.textContent='تاریخچه شارژی ثبت نشده'; return; }
+ let cap=document.getElementById('chargeCap');
+ if(!events || events.length==0){ div.textContent='تاریخچه شارژی ثبت نشده'; if(cap) cap.textContent='شارژهای اخیر'; return; }
  let sorted=[...events].sort((a,b)=>b.ts-a.ts);
+ let shown=Math.min(sorted.length, CHARGE_LIST_MAX);
+ if(cap){ let period=fmtJalaliRange(sorted[shown-1].ts, sorted[0].ts);
+  cap.textContent=faNum(shown)+' شارژ آخر از '+faNum(sorted.length)+' رویداد'+(period?' · از '+period:''); }
  let html='';
- for(let i=0;i<Math.min(sorted.length,20);i++){
+ for(let i=0;i<shown;i++){
   let e=sorted[i];
-  let dateStr=fmtJalaliFull(e.ts);
+  /* بی‌روزِ هفته: تاریخ + ساعت */
+  let dateStr=fmtJalaliFull(e.ts).replace(/^\S+ /,'');
   let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
   let color=e.ch===1?'var(--ac)':'var(--ok)';
-  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div></div>';
+  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span class="mu">'+dateStr+'</span></div></div>';
  }
  div.innerHTML=html;
 }
 
 function getBatStatus(pct){
- if(pct>=80) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'عالی',cls:'high'};
- if(pct>=50) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'خوب',cls:'high'};
- if(pct>=20) return {grad:'url(#gm)',gradMain:'url(#gMainM)',txt:'متوسط',cls:'mid'};
+ /* آستانه‌ها درصدی از «درصد پرِ خود برد» هستند (brd.hEnt که از /t می‌آید)؛
+    اگر کاربر روی برد آن را عوض کند، برچسب عالی/خوب/متوسط هم جابه‌جا می‌شود. */
+ let full=(brd && brd.hEnt>0) ? brd.hEnt : 100;
+ let hi=full*0.8, mid=full*0.5, low=full*0.2;
+ if(pct>=hi) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'عالی',cls:'high'};
+ if(pct>=mid) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'خوب',cls:'high'};
+ if(pct>=low) return {grad:'url(#gm)',gradMain:'url(#gMainM)',txt:'متوسط',cls:'mid'};
  if(pct>0) return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'کم',cls:'low'};
  return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'خالی',cls:'low'};
 }
-/* ==================== نوشتن فقط در صورت تغییر ====================
-   اگر مقدار جدید با مقدار فعلی یکی باشد، DOM دست نمی‌خورد. با این کار
-   ترنزیشن‌های CSS (نوار باتری و ...) هر ثانیه از نو شروع نمی‌شوند و صفحه
-   هیچ پرش/چشمکی نمی‌زند - کاربر فقط نتیجه را می‌بیند، نه به‌روزرسانی را. */
+
 function setTxt(id, txt){
  let el=document.getElementById(id); if(!el) return;
  let val=String(txt);
@@ -1533,19 +1409,19 @@ function setBatFill(id, pct, status, gradOverride){
 }
 function render(data){
  lastData=data;
- g_tlmReceiveAt=Date.now(); /* تازگی داده برای ساعت شارژ؛ قطع fetch یعنی داده کهنه */
- updBoardParams(data.pv); /* پارامترهای خود برد پیش از هر محاسبه‌ای */
+ g_tlmReceiveAt=Date.now();
+ updBoardParams(data.pv);
  let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
- let vPack=vPackRaw; /* برد اصلی درصد را از V24 (v_bat24_mv) می‌گیرد - چشمک سبز - نه از جمع Vlow+Vhigh */
- let vPackPct=vPackRaw; /* برد پیش از نگاشت درصد، پک را با سقف نگاشت شارژ گیره می‌کند */
+ let vPack=vPackRaw;
+ let vPackPct=vPackRaw;
  if(vPackPct>brd.cvmax) vPackPct=brd.cvmax;
  let vPackSum=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw; /* فقط برای نمایش ولتاژ جمع اگر لازم شد */
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
  let deadMask=data.t[T_DEAD]||0;
  let fl=data.fl||0, fl2=data.fl2||0;
- let isImbLatched=((fl2 & 0x02)!==0); /* بیت دوم = قفل دائمی عدم‌توازن */
- let isImbEpisode=((fl2 & 0x01)!==0); /* بیت اول = اپیزود جاری عدم‌توازن */
- let isWeak=((fl2 & 0x10)!==0); /* بیت ۰x۱۰ = حکم باتری ضعیف سناریوی ۸ */
+ let isImbLatched=((fl2 & 0x02)!==0);
+ let isImbEpisode=((fl2 & 0x01)!==0);
+ let isWeak=((fl2 & 0x10)!==0);
  let isDead=(deadMask!==0);
  let deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
  let inpInfo=updInputState(vIn, data.inputPresent);
@@ -1566,7 +1442,6 @@ function render(data){
   chgStablePack=chgPackState.stable;
  }
  let pctPack=stablePack, pctLow=stableLow, pctHigh=stableHigh;
- let greenTiming=calcGreenTiming(inputPresent ? 100 : stablePack);
  /* درصد نمایش = درصد پایدار همان نردبان ولتاژ V24 که برد چشمک سبز را از آن
     می‌سازد؛ هرگز از روی زمانِ چشمک حساب نمی‌شود (کف خاموشی ۱۰ms باعث می‌شد پک
     کامل ۹۹٪ نشان داده شود) */
@@ -1607,7 +1482,7 @@ function render(data){
  /* تا وقتی ساعت یک‌بار تنظیم نشده یادآوری می‌شود؛ بعد از آن ساعت ذخیره‌شده
     خودش برمی‌گردد و هیچ پیامی پرسیده نمی‌شود */
  if(boardTs && boardTs>1000000000){ setTxt('boardTime', 'ساعت پنل: '+fmtTime(boardTs)); }
- else { setTxt('boardTime', 'ساعت تنظیم نشده - یک‌بار از تنظیمات بفرستید'); }
+ else { setTxt('boardTime', 'در حال همگام‌سازی خودکار ساعت'); }
  let highSt=getBatStatus(pctHigh), lowSt=getBatStatus(pctLow);
  if(!g_ch1Charging){ setBatFill('batHighFill', pctHigh, highSt); }
  if(!g_ch2Charging){ setBatFill('batLowFill', pctLow, lowSt); }
@@ -1617,29 +1492,12 @@ function render(data){
  if(!ch1Charging) setHtml('batHighPct', pctHigh+'<small>%</small>');
  setShow('batLowPct', !ch2Charging);
  if(!ch2Charging) setHtml('batLowPct', pctLow+'<small>%</small>');
- setTxt('batHighStatus', highSt.txt+(ch1Charging?' - در حال شارژ ⚡':'' ));
- setTxt('batLowStatus', lowSt.txt+(ch2Charging?' - در حال شارژ ⚡':'' ));
- let ib=document.getElementById('imbBox'); if(ib){
-  let charging=(s1==1||s1==2||s2==1||s2==2);
-  let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
-  let sameState=(ch1==ch2);
-  if(isDead){ setTxt('imbBox','قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'); setCls(ib,'imb show err'); }
-  else if(isImbLatched){ setTxt('imbBox','قفل دائمی - باتری را تعویض کنید'); setCls(ib,'imb show err'); }
-  else if(isWeak){ setTxt('imbBox','حکم باتری ضعیف - مسیر باتری بسته مانده تا باتری سالم شود'); setCls(ib,'imb show err'); }
-  else if(isImbEpisode){ setTxt('imbBox','عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت'); setCls(ib,'imb show'); }
-  else if(!charging && sameState && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
-  else { setCls(ib,'imb'); setTxt('imbBox',''); }
- }
- /* وضعیت زندهٔ سه قفل در کارت «قفل‌ها» — همان بیت‌های فریم زنده */
- {let ls=document.getElementById('latchState');
-  if(ls){
-   const lat=v=>'<b style="color:'+(v?'#e05252':'#2ea36b')+'">'+(v?'قفل است':'پاک است')+'</b>';
-   ls.innerHTML='عدم‌توازن: '+lat(isImbLatched)+' · باتری خراب: '+lat(isDead)+' · باتری ضعیف: '+lat(isWeak);
-  }}
+ setTxt('batHighStatus', highSt.txt+(ch1Charging?' - در حال شارژ ↯':'' ));
+ setTxt('batLowStatus', lowSt.txt+(ch2Charging?' - در حال شارژ ↯':'' ));
  let bIn=document.getElementById('bdgInput');
  if(bIn){
   if(inputOV){ setHtml('bdgInput','<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg err'); }
-  else if(!inputPresent){ setHtml('bdgInput','<i></i>برق ورودی قطع - حالت باتری'); setCls(bIn,'bdg warn'); }
+  else if(!inputPresent){ setHtml('bdgInput','<i></i>برق ورودی: قطع'); setCls(bIn,'bdg warn'); }
   else { setHtml('bdgInput','<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg ok'); }
  }
  /* ارتباط دوطرفه (v1.111): تله‌متری آمدن با «برد جواب ما را می‌دهد» یکی نیست.
@@ -1655,45 +1513,48 @@ function render(data){
   else if(bce>0 || bvm>0){ setHtml('bdgLink','<i></i>ارتباط دوطرفه: پرخطا - CRC '+bce+' / نسخه '+bvm); setCls(bLk,'bdg warn'); }
   else { setHtml('bdgLink','<i></i>ارتباط دوطرفه سالم - برد '+brx+' فریم از ما گرفت'); setCls(bLk,'bdg ok'); }
  }
- let st=document.getElementById('statusTitle'), ss=document.getElementById('statusSub');
  let heroCard=document.getElementById('heroCard');
  let heroFault=document.getElementById('heroFault');
- /* پیام بالای صفحه: همیشه از یک مسیر نوشته می‌شود تا نمایش قبلی پاک شود */
- let heroCls='hero', heroFaultCls='hero-fault show', heroFaultTxt='', heroFaultHtml=false, stTxt='', ssTxt='';
- if(!data.on){ stTxt='ارتباط با برد قطع است'; ssTxt='کابل یا تغذیه برد را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='ارتباط قطع - کابل UART یا تغذیه برد را بررسی کنید'; }
- else if(fault & FAULT_BAT_LOST){ stTxt='باتری قطع شده'; ssTxt='سیم باتری را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='برد نیاز به بررسی دارد'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(fault & FAULT_ADC){ stTxt='در حال بررسی'; ssTxt='سنسورها در حال کالیبره'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
- else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد '+(brd.imax/1000).toFixed(1)+' ولت'; }
- else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; }
- else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری را تعویض کنید'; }
- else if(isWeak){ stTxt='باتری ضعیف'; ssTxt='حکم قفل است - باتری بار را تحمل نمی‌کند'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='حکم باتری ضعیف: مسیر باتری بسته مانده؛ با شارژ و استراحت سالم خودش پاک می‌شود'; }
+ // Each surface owns one message: operating mode, action, input state, extra warning.
+ let heroCls='hero', heroFaultCls='hero-fault show', heroFaultTxt='', heroFaultHtml=false, stTxt='', ssTxt='', imbalanceInHero=false;
+ if(!data.on){ stTxt='ارتباط با برد قطع است'; ssTxt='کابل UART یا تغذیه برد را بررسی کنید'; heroCls='hero err'; }
+ else if(fault & FAULT_BAT_LOST){ stTxt='باتری قطع شده'; ssTxt='سیم باتری را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=(fault & ~FAULT_BAT_LOST)?faultText(fault & ~FAULT_BAT_LOST):''; heroFaultHtml=true; }
+ else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='طبقهٔ قدرت برد را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=(fault & ~FAULT_TECH)?faultText(fault & ~FAULT_TECH):''; heroFaultHtml=true; }
+ else if(fault & FAULT_ADC){ stTxt='خطای اندازه‌گیری ولتاژ'; ssTxt='سنسور یا سیم‌کشی را بررسی کنید'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=(fault & ~FAULT_ADC)?faultText(fault & ~FAULT_ADC):''; heroFaultHtml=true; }
+ else if(inputOV){ stTxt='ورودی نامناسب'; ssTxt='حد '+(brd.imax/1000).toFixed(1)+' ولت - منبع تغذیه را بررسی کنید'; heroCls='hero err'; }
+ else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - '+deadWho+' را تعویض کنید'; heroCls='hero err'; imbalanceInHero=true; }
+ else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; imbalanceInHero=true; }
+ else if(isWeak){ stTxt='باتری ضعیف'; ssTxt='مسیر باتری بسته است؛ پس از شارژ و استراحت باتری سالم، قفل خودکار پاک می‌شود'; heroCls='hero err'; imbalanceInHero=true; }
  else if(!inputPresent){
-  let charging=(s1==1||s1==2||s2==1||s2==2);
-  let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
-  let sameState=(ch1==ch2);
-  stTxt='برق ورودی قطع - حالت باتری'; ssTxt='شارژ '+pctPack+' درصد - Vin '+(vIn/1000).toFixed(1)+'V';
-  if(pctPack<=1){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ بحرانی - کمتر از ۱٪ - برق ورودی قطع'; }
-  else if(pctPack<=5){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ خیلی کم - '+pctPack+'٪ - برق ورودی قطع'; }
-  else if(pctPack<=20){ heroFaultCls='hero-fault warn show'; heroFaultTxt='شارژ کم - '+pctPack+'٪ - برق ورودی قطع'; }
-  else if(!charging && sameState && imb>300){ heroFaultCls='hero-fault warn show'; heroFaultTxt='اختلاف دو باتری زیاد است ('+imb+'mV) - برق ورودی قطع'; }
-  else if(pctPack>=100){ heroFaultCls='hero-fault ok show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری - پک کامل ('+pctPack+'٪) - سبز ثابت بدون چشمک'; }
-  else { heroFaultCls='hero-fault warn show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+brd.gPer+'ms'; }
+  stTxt='تغذیه از باتری';
+  if(pctPack<=1){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ بحرانی - کمتر از ۱٪'; }
+  else if(pctPack<=5){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ خیلی کم'; }
+  else if(pctPack<=20){ heroFaultCls='hero-fault warn show'; heroFaultTxt='شارژ کم'; }
  }
- else if(isImbEpisode && !isCharging){ stTxt='عدم‌توازن در جریان'; ssTxt='اختلاف دو نیم‌پک '+imb+' میلی‌ولت'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt='عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت - زیر نظر'; }
- else if(fullActive){ stTxt='شارژ کامل'; ssTxt='باتری پر - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='شارژ کامل - باتری پر ('+pctPack+'٪)'; }
+ else if(isImbEpisode && !isCharging){ stTxt='عدم‌توازن در جریان'; ssTxt='اختلاف دو نیم‌پک '+imb+' میلی‌ولت - نیاز به بررسی'; heroCls='hero warn'; imbalanceInHero=true; }
+ else if(fullActive){ stTxt='شارژ کامل'; heroCls='hero ok'; }
  else if(isThermalRest){
   stTxt='استراحت حرارتی شارژر';
-  ssTxt='استراحت ۱۰ دقیقه‌ای پس از ۱ ساعت شارژ - باتری '+pctPack+' درصد';
+  ssTxt='۱۰ دقیقه استراحت پس از ۱ ساعت شارژ';
  }
- else if(s1==1||s1==2||s2==1||s2==2){
+ else if(isCharging){
   let q=getChargingBounds(pctPack);
-  stTxt='در حال شارژ ⚡ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
-  ssTxt='باتری '+pctPack+' درصد - انیمیشن زرد داخل همان قسمت';
+  stTxt='در حال شارژ';
+  ssTxt='قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
  }
- else { stTxt='متصل - برق ورودی وصل'; ssTxt='باتری '+pctPack+' درصد - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); }
+ else { stTxt='آماده به کار'; heroCls='hero ok'; }
+ let ib=document.getElementById('imbBox'); if(ib){
+  if(imbalanceInHero){ setCls(ib,'imb'); setTxt('imbBox',''); }
+  else if(isDead){ setTxt('imbBox','قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'); setCls(ib,'imb show err'); }
+  else if(isImbLatched){ setTxt('imbBox','قفل دائمی - باتری را تعویض کنید'); setCls(ib,'imb show err'); }
+  else if(isWeak){ setTxt('imbBox','حکم باتری ضعیف - مسیر باتری بسته مانده تا باتری سالم شود'); setCls(ib,'imb show err'); }
+  else if(isImbEpisode){ setTxt('imbBox','عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت'); setCls(ib,'imb show'); }
+  else if(!isCharging && (ch1Charging===ch2Charging) && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
+  else { setCls(ib,'imb'); setTxt('imbBox',''); }
+ }
  setTxt('statusTitle', stTxt);
  setTxt('statusSub', ssTxt);
+ setShow('statusSub', ssTxt!=='');
  setCls(heroCard, heroCls);
  if(heroFault){
   /* اگر پیام برای این حالت خالی است، کامل پنهان می‌شود (متن و کلاس هم پاک
@@ -1702,44 +1563,17 @@ function render(data){
   if(heroFaultTxt===''){ if(heroFault.innerHTML!=='') heroFault.innerHTML=''; setShow('heroFault', false); }
   else { if(heroFaultHtml) setHtml('heroFault', heroFaultTxt); else setTxt('heroFault', heroFaultTxt); setShow('heroFault', true); }
  }
- setTxt('linkState', 'لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V');
- setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ در بازهٔ ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':''));
+ setTxt('linkState', 'Link: '+(data.on?'Connected':'Disconnected')+' | CRC errors: '+data.ce+' | Vin: '+(vIn/1000).toFixed(2)+' V');
+ setTxt('seqInfo', 'Frames: '+data.n+' | Last update: '+data.age+' ms ago | Battery: '+pctPack+'% | Raw: '+rawPackDis+'%'+(isCharging?' | Charging range: '+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%':''));
  setCls(document.getElementById('hdrDot'), 'dot '+(data.on?'on':''));
  setTxt('hdrText', data.on?'متصل':'قطع');
- setTxt('hdrUser', data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'');
- /* فرم تغییر رمز: نام کاربری پیش‌فرض = همان کاربر واردشده */
- { let spu=document.getElementById('setPassUser'); if(spu && data.user && !spu.value) spu.value=data.user; }
- let loginPage=document.getElementById('loginPage');
- let loginCard=document.getElementById('loginCard'), setContent=document.getElementById('settingsContent');
- if(data.user){
-  if(loginPage) loginPage.style.display='none';
-  document.body.style.overflow='';
-  if(loginCard) loginCard.style.display='none'; if(setContent) setContent.style.display='grid';
- } else {
-  if(loginPage) loginPage.style.display='grid';
-  document.body.style.overflow='hidden';
-  if(loginCard) loginCard.style.display='block'; if(setContent) setContent.style.display='none';
- }
+
+ document.body.style.overflow='';
  let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=fmtJalaliFull(Math.floor(Date.now()/1000));
- /* اگر در همین بوت رمزها به پیش‌فرض برگشته باشند، به کاربر گفته می‌شود */
- setShow('recoveryMsgMain', data.recovery==1);
- if(data.theme!==undefined && data.theme!==currentTheme){ let saved=localStorage.getItem('co_theme'); if(saved===null) applyTheme(data.theme); }
- let isAdmin=data.role==1;
- let clearCard=document.getElementById('clearHistoryCard');
- if(clearCard) clearCard.style.display=isAdmin?'block':'none';
- let clearPct=document.getElementById('clearPctBtn');
- if(clearPct) clearPct.style.display=isAdmin?'inline-flex':'none';
- let clearCharge=document.getElementById('clearChargeBtn');
- if(clearCharge) clearCharge.style.display=isAdmin?'inline-flex':'none';
- let latchCard=document.getElementById('latchCard');
- if(latchCard) latchCard.style.display=isAdmin?'block':'none';
+
 }
 
-/* ==================== ساعت‌های زندهٔ کارت آمار ====================
-   دیاگ هر ۵ ثانیه می‌آید. «کارکرد برد» بین دو دیاگ جلو می‌رود، ولی
-   «زمان کل شارژ» فقط وقتی جلو می‌رود که شارژ فعال و تله‌متری تازه باشد.
-   در بی‌کاری، قطع لینک یا کهنه‌شدن داده، عدد شارژ ثابت می‌ماند تا الکی
-   بالا نرود و بعد برنگردد. */
+
 let g_diagBase=null;
 let g_diagChargeAccumMs=0;
 let g_diagChargeTickAt=0;
@@ -1759,8 +1593,7 @@ function tickDiagClocks(){
 }
 function renderDiag(j){
  if(!j) return;
- /* تا وقتی برد دادهٔ دیاگ نفرستاده (valid=0) صفر نشان نمی‌دهیم تا با «واقعاً
-    صفر» اشتباه نشود؛ همان لحظهٔ رسیدن دیاگ اول، ساعت زنده راه می‌افتد */
+
  if(!j.valid){
   g_diagBase=null;
   g_diagChargeAccumMs=0;
@@ -1784,12 +1617,7 @@ function renderDiag(j){
  let errDiv=document.getElementById('diagErrors');
  if(errDiv){
   if(!j.errors || j.errors.length==0) errDiv.textContent='خطایی ثبت نشده - سیستم سالم';
-  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span style="font-size:11px;color:var(--mu)">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span style="font-size:11px;color:var(--mu)">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
- }
- let pDiv=document.getElementById('powerLog');
- if(pDiv){
-  if(!j.power || j.power.length==0) pDiv.textContent='قطعی ثبت نشده';
-  else { let html=''; for(let i=0;i<j.power.length;i++){ let p=j.power[i]; html+='<div class=row>قطع: '+fmtTime(p.off)+' وصل: '+fmtTime(p.on)+' مدت: '+fmtSecShort(p.dur)+'</div>'; } pDiv.innerHTML=html; }
+  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span class="mu">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span class="mu">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
  }
  let info=document.getElementById('boardInfo');
  if(info){ info.innerHTML='زمان کل شارژ: '+fmtSecLive(j.totalChargeSec)+'<br>تعداد شارژ: '+(j.chargeCount||0)+'<br>کارکرد: '+fmtSecLive(j.uptimeSec)+'<br>ریست: '+(j.resetCount||0)+'<br>ساعت برد: '+(j.boardTime?fmtTime(j.boardTime):'--'); }
@@ -1800,121 +1628,27 @@ function renderDiag(j){
  }
 }
 async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
-async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
+async function pollDiag(){const epoch=historyEpoch;try{let r=await fetch('/diag',{cache:'no-store'});if(!r.ok)return;let j=await r.json();if(epoch===historyEpoch)renderDiag(j);}catch(e){}}
 
-async function clearHistory(type){
- if(!confirm('آیا مطمئن هستید؟ تاریخچه '+type+' پاک خواهد شد - غیرقابل بازگشت')) return;
- let msgEl=document.getElementById('clearMsg');
- try{
-  let r=await fetch('/clear?type='+encodeURIComponent(type),{method:'POST'});
-  let j=await r.json();
-  if(j.ok){
-   if(msgEl) msgEl.textContent='تاریخچه '+type+' پاک شد';
-   if(type==='charge' || type==='all'){
-    window._lastChargeHistory=[];
-    drawChargeHistory([], chartRanges.charge); renderChargeHistoryList([]);
-   }
-   if(type==='charts' || type==='all'){
-    chartDataPct.pct=[]; chartDataPct.time=[];
-    chartDataVolt.vin=[]; chartDataVolt.vpack=[]; chartDataVolt.time=[];
-    drawChart('cPct', [], '#ffb84d', 0, 100, [], '1d');
-    drawVoltChart('cVolt', [], [], [], '1d');
-   }
-   if(type==='diag' || type==='all'){
-    let errDiv=document.getElementById('diagErrors'); if(errDiv) errDiv.textContent='خطایی ثبت نشده';
-    let pDiv=document.getElementById('powerLog'); if(pDiv) pDiv.textContent='قطعی ثبت نشده';
-   }
-  } else { if(msgEl) msgEl.textContent='خطا: '+(j.msg||'نامشخص'); }
- }catch(e){ if(msgEl) msgEl.textContent='خطا در ارتباط'; }
- setTimeout(()=>{ if(msgEl) msgEl.textContent=''; },3000);
-}
 
-function doLogin(){ let u=document.getElementById('loginUser').value, p=document.getElementById('loginPass').value; fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p})}).then(r=>r.json()).then(j=>{ let m=document.getElementById('loginMsg'); if(j.ok){ m.textContent='ورود موفق'; poll(); } else { m.textContent=j.msg||'خطا'; } }).catch(()=>{ let m=document.getElementById('loginMsg'); if(m) m.textContent='خطا در ارتباط'; }); }
-function doLoginMain(){ let u=document.getElementById('loginUserMain').value, p=document.getElementById('loginPassMain').value; fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p})}).then(r=>r.json()).then(j=>{ let m=document.getElementById('loginMsgMain'); if(j.ok){ m.textContent='ورود موفق'; if(m) m.parentElement.parentElement.parentElement.style.display='none'; document.body.style.overflow=''; poll(); } else { m.textContent=j.msg||'خطا'; let box=document.querySelector('.login-box'); if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); } } }).catch(()=>{ let m=document.getElementById('loginMsgMain'); if(m) m.textContent='خطا در ارتباط'; }); }
-function doLogout(){ fetch('/logout',{method:'POST'}).then(()=>{ location.reload(); }).catch(()=>{ location.reload(); }); }
-function showTab(n){ for(let i=0;i<3;i++){ let pg=document.getElementById('pg'+i), tb=document.getElementById('tab'+i); if(pg) pg.classList.toggle('a', i===n); if(tb) tb.classList.toggle('a', i===n); } if(n===1) pollCharts(); if(n===0) pollDiag(); }
-async function addUser(){ let u=document.getElementById('newUserName').value, r=document.getElementById('newUserRole').value, p=document.getElementById('newUserPass').value; let res=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add',user:u,role:parseInt(r),pass:p})}); let j=await res.json(); let m=document.getElementById('userMsg'); if(m) m.textContent=j.ok?'کاربر ذخیره شد':(j.msg||'خطا'); loadUsers(); }
-async function delUser(){ let u=document.getElementById('delUserName').value; let res=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'del',user:u})}); let j=await res.json(); let m=document.getElementById('userMsg'); if(m) m.textContent=j.ok?'کاربر حذف شد':(j.msg||'خطا'); loadUsers(); }
-/* ریست قفل‌ها: درخواست به برد می‌رود و تأیید از پژواک REPORT خوانده می‌شود
-   (‎rep‎ بالاتر و مقدار صفر)؛ NAK یعنی برد نپذیرفت. فقط ادمین. */
-async function latchReset(n){
- let m=document.getElementById('latchMsg');
- if(!confirm(n===5?'قفل عدم‌توازن پاک شود و شمارنده‌ها از صفر شمرده شوند؟':n===6?'حکم «باتری خراب» پاک شود و شارژ آن کانال آزاد شود؟':'حکم «باتری ضعیف» پاک شود و یک بار وصل دوباره آزاد شود؟'))return;
- if(m)m.textContent='در حال ارسال…';
- const targetId=n===5?202:(n===6?203:204);
- const requiredEchoes=n===5?3:1;
- try{
-  const beforeResp=await fetch('/latch',{cache:'no-store'});
-  if(!beforeResp.ok)throw new Error('وضعیت فعلی قفل خوانده نشد؛ بعد از وصل لینک دوباره بزن');
-  const b=await beforeResp.json();
-  if(!Number.isFinite(Number(b.rep))||!Number.isFinite(Number(b.nak)))
-   throw new Error('وضعیت فعلی قفل ناقص است؛ بعد از وصل لینک دوباره بزن');
-  const postResp=await fetch('/latch/reset?n='+n,{method:'POST'});
-  const j=await postResp.json();
-  if(!postResp.ok||!j.ok){ if(m)m.textContent=(j.e===1?'صف پر است؛ چند لحظه بعد دوباره بزن':'درخواست رد شد - فقط ادمین'); return; }
-  for(let k=0;k<25;k++){
-   await new Promise(r=>setTimeout(r,200));
-   const resp=await fetch('/latch',{cache:'no-store'});
-   if(!resp.ok)continue;
-   const st=await resp.json();
-   if(Number(st.nak)>Number(b.nak)){ if(m)m.textContent='⚠ برد درخواست را نپذیرفت'; return; }
-   if(Number(st.rep)>=Number(b.rep)+requiredEchoes&&Number(st.id)===targetId&&
-      Number(st.val)===0&&Number(st.q)===0){ if(m)m.textContent='✅ پاک شد'+(n===5?'؛ از صفر شمرده می‌شود':''); showToast('قفل پاک شد'); return; }
-  }
-  if(m)m.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک را ببین';
- }catch(e){ if(m)m.textContent='⚠ '+(e&&e.message?e.message:'خطای شبکه'); }
-}
-async function loadUsers(){ try{ let r=await fetch('/users',{cache:'no-store'}); let j=await r.json(); let div=document.getElementById('usersList'); let cnt=document.getElementById('usersCount'); if(cnt) cnt.textContent=(j.users?j.users.length:0)+' کاربر'; if(div){ if(!j.users||j.users.length==0) div.textContent='کاربری ثبت نشده'; else { let html=''; for(let u of j.users){ html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><span>'+(u.name||u.user)+' <span class=badge '+(u.role==1?'admin':'viewer')+'>'+(u.role==1?'ادمین':'ساده')+'</span></span><span style="font-size:10px;color:var(--mu)">'+(u.lastLogin?fmtTime(u.lastLogin):'--')+'</span></div>'; } div.innerHTML=html; } } }catch(e){} }
-async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
-async function loadWifi(){ try{ let r=await fetch('/wifi',{cache:'no-store'}); let j=await r.json(); let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--'; }catch(e){} }
-async function syncTime(){ 
- let ts=Math.floor(Date.now()/1000); 
- let m=document.getElementById('timeMsg'); 
- if(m) m.textContent='در حال ارسال ساعت گوشی ('+fmtJalaliFull(Math.floor(Date.now()/1000))+') به برد...';
- try{
-  let tz=-new Date().getTimezoneOffset()*60;
-  let r=await fetch('/time?ts='+ts+'&tz='+tz,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts,tz:tz})});
-  let j=await r.json(); 
-  if(m) m.textContent=j.ok?'ساعت برد تنظیم شد به '+fmtTime(ts):('خطا: '+(j.e||j.msg||'نامشخص'));
-  if(j.ok){ setTimeout(poll,500); setTimeout(pollDiag,600); }
- }catch(e){ if(m) m.textContent='خطا در ارتباط - '+e; }
-}
-/* ==================== نمایش/پنهان رمز ====================
-   همان دکمهٔ چشم: هر بار که زده شود نوع ورودی بین password و text عوض می‌شود */
+
+
+
 function togglePass(id, btn){
  let el=document.getElementById(id); if(!el) return;
  let show=(el.type==='password');
  el.type=show?'text':'password';
- if(btn){ btn.textContent=show?'🙈':'👁'; btn.classList.toggle('on', show); }
-}
-
-/* ==================== تغییر رمز عبور - /setpass ==================== */
-async function setPass(){
- let u=(document.getElementById('setPassUser')||{}).value||'';
- let o=(document.getElementById('setPassOld')||{}).value||'';
- let n=(document.getElementById('setPassNew')||{}).value||'';
- let n2=(document.getElementById('setPassNew2')||{}).value||'';
- let m=document.getElementById('setPassMsg');
- u=u.trim();
- if(!u || !n){ if(m) m.textContent='نام کاربری و رمز جدید لازم است'; return; }
- if(n!==n2){ if(m) m.textContent='رمز جدید و تکرارش یکی نیست'; return; }
- try{
-  let r=await fetch('/setpass',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,old:o,new:n,new2:n2})});
-  let j=await r.json();
-  if(m) m.textContent=j.ok?'رمز عوض شد':'خطا: '+(j.e||j.msg||'نامشخص');
-  if(j.ok){ let a=document.getElementById('setPassOld'), b=document.getElementById('setPassNew'), c=document.getElementById('setPassNew2');
-            if(a) a.value=''; if(b) b.value=''; if(c) c.value=''; loadUsers(); }
- }catch(e){ if(m) m.textContent='خطا در ارتباط'; }
+ if(btn){ btn.innerHTML='<svg class="glyph" aria-hidden="true"><use href="#i-eye"/></svg>'; btn.setAttribute('aria-label',show?'پنهان‌کردن رمز':'نمایش رمز'); btn.classList.toggle('on', show); }
 }
 
 
-/* ==================== تاریخچهٔ وضعیت (لاگ روزانه) ====================
-   ESP برای هر تغییر واقعی یک ردیف می‌نویسد؛ اینجا آن ردیف‌ها به خط فارسی
-   تبدیل می‌شوند و ساعت گوشی به پنل می‌رسد. */
+
+
+
 const EVT_CHG_FA=['خاموش','شارژ اصلی','جذب','شناور','راه‌اندازی','انتظار تلاش دوباره','منتظر ورودی','خطای نهایی','باتری وصل نیست','دستی','استراحت حرارتی'];
 const EVT_FAULT_FA=['اندازه‌گیری (ADC)','اضافه‌جریان کانال ۱','اضافه‌جریان کانال ۲','ولتاژ باتری','تلاش دوبارهٔ ۱','تلاش دوبارهٔ ۲','قطع باتری','خطای فنی','قفل عدم‌توازن','باتری فرسوده'];
 const EVT_FLAG_FA=[[1,'اپیزود عدم‌توازن'],[2,'قفل عدم‌توازن'],[4,'خروجی مسدود شد'],[8,'قطع شارژ'],[16,'باتری ضعیف شناخته شد'],[32,'مسیر باتری قطع'],[64,'استراحت حرارتی']];
-/* بایت عمومی فریم: هر بیت یک وضعیت واقعی برد */
+
 const EVT_FL_FA=[[1,'دادهٔ لحظه‌ای رسید'],[2,'برق ورودی وصل شد'],[4,'اندازه‌گیری معتبر شد'],[8,'شارژر ۱ اجازه گرفت'],[16,'شارژر ۲ اجازه گرفت'],[32,'مود دستی روشن شد']];
 const EVT_LVC=['#4a5568','#2f9e63','#c9a227','#e5484d'];
 const EVT_LVB=['rgba(255,255,255,.02)','rgba(47,158,99,.10)','rgba(201,162,39,.10)','rgba(229,72,77,.10)'];
@@ -1922,8 +1656,7 @@ const EVT_LVN=['خاکستری: تغییر ساده','سبز: برگشت به س
 function evtPad(n){return String(n).padStart(2,'0');}
 function evtFaNum(x){return String(x).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
 function evtToday(){const d=new Date();return d.getFullYear()+evtPad(d.getMonth()+1)+evtPad(d.getDate());}
-/* v1.99: هر تاریخی که لاگ نشان می‌دهد - فهرست روزها، خط وضعیت، نام فایل دانلود -
-   تاریخ ایرانی (شمسی) است. [EN] every date the log shows is an Iranian (Jalali) date. */
+
 const evtDv=(a,b)=>~~(a/b),evtMd=(a,b)=>a-~~(a/b)*b;
 function evtG2d(gy,gm,gd){let d=evtDv((gy+evtDv(gm-8,6)+100100)*1461,4)+evtDv(153*evtMd(gm+9,12)+2,5)+gd-34840408;return d-evtDv(evtDv(gy+100100+evtDv(gm-8,6),100)*3,4)+752;}
 const EVT_JF=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
@@ -1954,7 +1687,7 @@ function evtTimeFa(epoch){
  const d=new Date(epoch*1000);
  return evtPad(d.getHours())+':'+evtPad(d.getMinutes())+':'+evtPad(d.getSeconds());
 }
-/* هر ردیف → یک خط فارسی + شدت: ۳ خطا، ۲ هشدار، ۱ برگشت به سلامتی، ۰ تغییر ساده */
+
 function evtTextFa(r){
  const parts=[];let lv=0;
  const add=(t,l)=>{parts.push(t);if(l>lv)lv=l;};
@@ -1979,12 +1712,13 @@ function evtTextFa(r){
   add('نتیجه: '+who+' فرسوده شناخته شد',3);
  }
  if(r.chg&256){
-  /* فقط بیت‌های روشن نام برده می‌شوند؛ اگر همه خاموش باشند خط همان را می‌گوید */
+
   let any=0;
   EVT_FL_FA.forEach(b=>{if(r.fl&b[0]){any=1;add(b[1],((b[0]&5)!==0)?1:2);}});
   if(!any)add('کلیدهای وضعیت خاموش شد (مود دستی و اجازهٔ شارژرها) و دادهٔ برد نامعتبر است',2);
  }
- /* ردیف ضربان یعنی «هیچ اتفاقی نیفتاد و پنل زنده است» */
+
+ if(r.note===7)add('ساعت تنظیم نبود؛ ثبت داده‌های تاریخ‌دار انجام نشد',2);
  if(r.note===5)add('گزارش دوره‌ای — هیچ تغییری نبود و پنل زنده است',0);
  if(r.note===6)add('ثبت دستی (به‌روزرسانی) — کانال ۱ «'+(EVT_CHG_FA[r.c1]||r.c1)+'» · کانال ۲ «'+(EVT_CHG_FA[r.c2]||r.c2)+'»',0);
  if(r.note===4)add('سقف ردیف‌های امروز پر شد؛ بقیهٔ امروز ثبت نمی‌شود',3);
@@ -2001,32 +1735,44 @@ function evtParse(line){
          d1:(f.length>19)?+f[19]:null,d2:(f.length>20)?+f[20]:null,
          pct:(f.length>21)?+f[21]:null};
 }
-/* v1.99: هر تکه از خط در span خودش می‌نشیند؛ عدد و واژهٔ انگلیسی جدا نگه داشته
-   می‌شوند تا متن راست‌به‌چپ قاطی نشود. [EN] every piece in its own span, bidi-isolated. */
-const evtIso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
+
+const evtIso=s=>String(s==null?'':s).split(/([0-9A-Za-z][0-9A-Za-z.:%-]*)/).map((x,i)=>i%2?'<span class="lt">'+evtEsc(x)+'</span>':evtEsc(x)).join('');
 const evtSpr=(s,c)=>s.split(' · ').map(x=>'<span class="'+c+'">'+evtIso(x)+'</span>').join('');
-let evtBusy=false,evtClkBusy=false;
+let evtBusy=false,evtClkBusy=false,evtClkRetry=0,evtLogId=0,evtFsId=0,admToken='';
+try{admToken=sessionStorage.getItem('co_admin')||'';}catch(e){}
+function admTokenSet(t){
+ admToken=/^[a-f0-9]{64}$/.test(t||'')?t:'';
+ try{if(admToken)sessionStorage.setItem('co_admin',admToken);else sessionStorage.removeItem('co_admin');}catch(e){}
+}
+function admHeaders(h){h=h||{};if(admToken)h['X-Admin-Token']=admToken;return h;}
 async function evtHttp(u,m,ms){
- const o={method:m||'GET',cache:'no-store'};
+ const o={method:m||'GET',cache:'no-store',credentials:'same-origin',headers:admHeaders()};
  let ac=null,tm=0;
  if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
- try{return await fetch(u,o);}finally{if(tm)clearTimeout(tm);}
+ try{
+  let r=await fetch(u,o);
+  const data=await r.text();
+  return {ok:r.ok,status:r.status,headers:r.headers,text:async()=>data,json:async()=>JSON.parse(data)};
+ }finally{if(tm)clearTimeout(tm);}
 }
 function evtEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function actionIcon(name){return '<svg class="glyph" aria-hidden="true"><use href="#i-'+name+'"/></svg>';}
 function evtKb(b){return evtFaNum(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
 async function evtClock(){
  if(evtClkBusy)return;
  evtClkBusy=true;
+ clearTimeout(evtClkRetry);evtClkRetry=0;
  try{
   const sec=Math.floor(Date.now()/1000),tz=-new Date().getTimezoneOffset()*60;
-  await evtHttp('/clock?sec='+sec+'&tz='+tz,'POST',3000);
- }catch(e){}finally{evtClkBusy=false;}
+  const r=await evtHttp('/clock?sec='+sec+'&tz='+tz,'POST',3000);
+  if(!r.ok || (await r.json()).ok!==1)throw Error('clock');
+ }catch(e){evtClkRetry=setTimeout(evtClock,5000);}finally{evtClkBusy=false;}
 }
 function evtRenderFa(text,day,ram,src){
  const box=document.getElementById('evtList');if(!box)return;
  const sum=document.getElementById('evtSum');
  const rows=(text||'').trim().split('\n').filter(l=>l&&l[0]!=='#').map(evtParse);
- const fsWarn=(src==='3')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">حافظه سوار نشد — تاریخچه پاک نشده <a href="#" onclick="evtfmt();return false">فرمت</a></span>'
+ const fsWarn=(src==='3')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">حافظه سوار نشد — تاریخچه پاک نشده </span>'
   :(src==='2')?'<span style="padding:2px 8px;border-radius:999px;background:rgba(229,72,77,.16);color:#ffb4b4">فلش نپذیرفت (پر یا خراب) — چند ردیف آخر در رم است</span>'
   :(ram?'<span style="padding:2px 8px;border-radius:999px;background:rgba(201,162,39,.16);color:#ffe08a">حافظهٔ موقت رم — چیدمان فلش دارای FS انتخاب شود</span>':'');
  if(sum)sum.innerHTML=fsWarn;
@@ -2042,38 +1788,15 @@ function evtRenderFa(text,day,ram,src){
   '<span style="padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mu)">مجموع: '+rows.length+' خط</span>';
  box.innerHTML=rows.slice().reverse().map(r=>{
   const t=evtTextFa(r);
-  /* v1.109: هر ردیف وضعیت باتری را هم می‌گوید - درصد (از نسخهٔ ۱٫۱۰۹ روی
-     خود ردیف است و برای فایل قدیمی دوباره حساب می‌شود)، سمتی که هست
-     (دشارژ / کدام مرحلهٔ شارژ / برق وصل بدون شارژ) و توان باتری بر حسب وات.
-     [EN] v1.109: every row also speaks the battery state - percent (stored on
-     the row since v1.109, or recomputed for older files), the side it is on,
-     and the battery power in watts (V x A2). */
-  const bpct=((r.pct!==null&&r.pct!==undefined)?r.pct:(function(){
-   const vmin=(typeof P!=='undefined'&&P[74]!=null)?P[74]:21000,
-         vmax=(typeof P!=='undefined'&&P[75]!=null)?P[75]:29000;
-   if(r.v24<=vmin)return 0;if(r.v24>=vmax)return 100;
-   return Math.round((r.v24-vmin)*100/(vmax-vmin));})());
-  const phn=x=>((typeof EVT_CHG_FA!=='undefined')&&EVT_CHG_FA[x])?EVT_CHG_FA[x]:('#'+x);
-  const bmode=(!r.mains)?'دشارژ':(((r.c1>0)||(r.c2>0))?('شارژ — '+phn(r.c1>=r.c2?r.c1:r.c2)):'برق وصل — شارژ خاموش');
-  let v='باتری '+bpct+'٪ · حالت: '+bmode+' · ولتاژ پک '+(r.v24/1000).toFixed(2)+'V · نیم‌باتری پایین '+(r.vlow/1000).toFixed(2)+'V · نیم‌باتری بالا '+(r.vhigh/1000).toFixed(2)+'V · اختلاف دو نیم‌باتری '+r.imbal+'mV';
-  /* ولتاژ ورودی و نود، جریان و duty هر دو کانال؛ فایل‌های قدیمی این ستون‌ها
-     را ندارند و فقط ولتاژها را نشان می‌دهند. */
-  const extra=[];
-  if(r.vin!==null)extra.push('ولتاژ ورودی '+(r.vin/1000).toFixed(2)+'V');
-  if(r.v12!==null)extra.push('نود ۱۲ ولت '+(r.v12/1000).toFixed(2)+'V');
-  if(r.i1!==null)extra.push('جریان کانال ۱ '+(r.i1/1000).toFixed(2)+'A');
-  if(r.i2!==null)extra.push('جریان کانال ۲ '+(r.i2/1000).toFixed(2)+'A');
-  if(r.d1!==null)extra.push('فرمان کانال ۱ '+(r.d1/10).toFixed(0)+'٪');
-  if(r.d2!==null)extra.push('فرمان کانال ۲ '+(r.d2/10).toFixed(0)+'٪');
-  if(r.i2!==null)extra.push('توان باتری '+(r.v24*(r.i2||0)/1e6).toFixed(0)+'W');
-  if(extra.length)v+=' · '+extra.join(' · ');
+
+
   return '<div class="evtrow" style="border-inline-start:3px solid '+EVT_LVC[t.lv]+';background:'+EVT_LVB[t.lv]+'">'+
    '<span class="evtt">'+evtIso(evtTimeFa(r.epoch))+'</span>'+
-   '<span class="evtd">'+evtSpr(t.txt,'ep')+'</span>'+
-   '<span class="evtv">'+evtSpr(v,'m')+'</span></div>';
+   '<span class="evtd">'+evtSpr(t.txt,'ep')+'</span></div>';
  }).join('');
 }
 async function evtFetch(manual){
+ const id=++evtLogId,epoch=historyEpoch;
  const sel=document.getElementById('evtDay');
  const day=sel?sel.value.trim():'';
  try{
@@ -2082,70 +1805,45 @@ async function evtFetch(manual){
   const lost=(r.headers&&r.headers.get&&r.headers.get('X-Log-Lost'))||'0';
   const ram=(src==='0'||src==='2'||src==='3');
   const t=await r.text();
+  if(id!==evtLogId||epoch!==historyEpoch)return;
   evtRenderFa(t,day,ram,src);
   const st=document.getElementById('evtSt');
   if(st){const n=t.trim().split('\n').filter(l=>l&&l[0]!=='#').length;st.textContent=((src==='2')?'فلش نپذیرفت · ':(ram?'رم · ':''))+evtDayFa(day||evtToday())+' · '+n+' خط'+((+lost>0)?(' · '+evtFaNum(lost)+' ردیف از دست رفت'):'');}
- }catch(e){const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
+ }catch(e){if(id!==evtLogId||epoch!==historyEpoch)return;const st=document.getElementById('evtSt');if(st)st.textContent='ارتباط با برد قطع شد · تاریخچه روی برد ثبت می‌شود و با وصل شدن همین‌جا دیده می‌شود';}
 }
-async function evtSnap(){
- const sel=document.getElementById('evtDay');if(sel)sel.value='';
- try{await evtHttp('/evt/snap','POST',4000);}catch(e){}
- await evtDays();await evtFetch(0);
- const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
-}
-async function evtFs(toggle){
+async function evtFs(toggle,offset){
  const box=document.getElementById('evtFs');if(!box)return;
+ const id=++evtFsId,key=admToken;
  if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
  box.style.display='block';box.innerHTML='<span style="color:var(--mu)">در حال خواندن حافظهٔ ESP…</span>';
  try{
-  const r=await evtHttp('/evt/fs','GET',4000);const j=await r.json();
+  const r=await evtHttp('/evt/fs'+(offset?'?offset='+offset:''),'GET',4000);if(!r.ok)throw Error();const j=await r.json();if(key!==admToken||id!==evtFsId)return;
   const files=Array.isArray(j.files)?j.files:[];
-  const oldCnt=files.filter(f=>!f.own).length;
   const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
-  let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b><span>';
-  h+='<button class="btn" type="button" onclick="evtFs(0)">بروزرسانی فهرست</button> ';
-  if(oldCnt>0)h+='<button class="btn" type="button" onclick="evtClean()">حذف فایل‌های جامانده ('+evtFaNum(oldCnt)+')</button> ';
-  h+='<button class="btn" type="button" onclick="evtfmt()">فرمت کامل حافظهٔ ESP</button></span></div>';
+  let h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between"><b>وضعیت حافظهٔ فلش ESP</b></div>';
+
   if(!j.fs){
-   h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
+   h+='<div style="color:#e5484d;margin-top:4px">'+(j.mountFail?'حافظه در دسترس نیست؛ تاریخچه خودکار پاک نمی‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
   }else{
-   h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFaNum(files.length+(+j.more||0))+'</b></div>';
+   h+='<div style="color:var(--mu);margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · فایل‌ها: <b>'+evtFaNum(j.count===undefined?files.length+(+j.more||0):j.count)+'</b></div>';
+   if(+j.reclaimed>0)h+='<div style="color:var(--ok);margin-top:4px">برای باز کردن جا، '+evtFaNum(j.reclaimed)+' روز قدیمی پاک شد (قدیمی‌ترین‌ها).</div>';
    if(!files.length)h+='<div style="color:var(--mu);margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
    else{
     h+='<div style="margin-top:6px;max-height:160px;overflow:auto;border-top:1px solid var(--ln);padding-top:4px">';
     files.forEach(f=>{
-     const tag=f.own?'<span style="color:#2f9e63">فایل همین برنامه</span>':'<b style="color:#c9a227">جامانده از برنامهٔ قبلی</b>';
-     h+='<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--ln);padding:2px 0"><span dir="ltr">'+evtEsc(f.name)+'</span><span>'+evtKb(f.size)+' · '+tag+'</span></div>';
+     const m=/^\/evt-(\d{8})\.csv$/.exec(f.name);
+     const nameHtml=m
+       ? '<button class="btn action" title="دانلود لاگ همین روز" onclick="uiAction(this,()=>evtDlDay(\''+m[1]+'\'))">'+actionIcon('download')+'<span dir="ltr">'+evtEsc(f.name)+'</span></button>'
+       : '<span dir="ltr">'+evtEsc(f.name)+'</span>';
+     h+='<div class="file-row"><span>'+nameHtml+'</span><span class="file-meta">'+evtKb(f.size)+(admReady?' <button class="btn action danger" aria-label="حذف فایل" title="حذف همین فایل" data-admin data-file="'+evtEsc(f.name)+'" onclick="uiAction(this,()=>evtDelete(this.dataset.file),true)">'+actionIcon('trash')+'<span>حذف</span></button>':'')+'</span></div>';
     });
-    if(+j.more>0)h+='<div style="color:var(--mu)">+ '+evtFaNum(j.more)+' فایل دیگر</div>';
+    if(+j.next>0)h+='<button class="btn action" onclick="uiAction(this,()=>evtFs(0,'+(+j.next)+'))">'+actionIcon('next')+'<span>بعدی</span></button>';
+    if(offset)h+='<button class="btn action" onclick="uiAction(this,()=>evtFs(0))">'+actionIcon('first')+'<span>ابتدا</span></button>';
     h+='</div>';
    }
   }
-  box.innerHTML=h;
- }catch(e){box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
-}
-async function evtClean(){
- if(!confirm('فقط فایل‌های جامانده از برنامه‌های قبلی پاک شوند؟ تنظیمات و تاریخچهٔ برنامهٔ فعلی حفظ می‌شوند.'))return;
- const st=document.getElementById('evtSt');
- try{
-  const r=await evtHttp('/evt/clean','POST',5000);
-  if(r.status===403){if(st)st.textContent='فقط ادمین اجازهٔ پاک‌سازی حافظه را دارد';return;}
-  const j=await r.json();
-  if(st)st.textContent=(j&&j.removed>0)?('پاک‌سازی انجام شد: '+evtFaNum(j.removed)+' فایل قدیمی حذف شد'):'فایل جامانده‌ای برای حذف نبود';
- }catch(e){}
- await evtFs(0);await evtDays();await evtFetch(1);
-}
-async function evtfmt(){
- if(!confirm('کل حافظهٔ فلش ESP فرمت و همهٔ فایل‌های قبلی و تاریخچه پاک شوند؟ (حساب کاربری و وای‌فای حفظ می‌شوند)'))return;
- const st=document.getElementById('evtSt');
- try{
-  const r=await evtHttp('/evt/format','POST',8000);
-  if(r.status===403){if(st)st.textContent='فقط ادمین اجازهٔ فرمت حافظه را دارد';return;}
-  const t=(await r.text()).trim();
-  if(st)st.textContent=(t==='ok')?'حافظهٔ فلش ESP کامل فرمت و آماده شد':'فرمت حافظه انجام نشد';
- }catch(e){if(st)st.textContent='فرمت حافظه ناموفق بود';}
- await evtDays();await evtFetch(1);
- const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
+  box.innerHTML=h;showToast('فهرست حافظه به‌روز شد');return j;
+ }catch(e){if(key!==admToken||id!==evtFsId)return;showToast('خواندن حافظه انجام نشد');box.innerHTML='<span style="color:#e5484d">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
 }
 async function evtDays(){
  try{
@@ -2163,62 +1861,233 @@ async function evtDays(){
   return days;
  }catch(e){return [];}
 }
-function evtDl(){
- const sel=document.getElementById('evtDay');
- const raw=(sel&&sel.value.trim())||'';
- const a=document.createElement('a');
- a.href='/evt/dl'+(raw?'?day='+encodeURIComponent(raw):'');
- a.download='تاریخچه-'+evtDaySh(raw||evtToday())+'.csv';a.click();
-}
-async function evtDlAll(){
- const days=await evtDays();
- if(!days.length){alert('تاریخچه‌ای برای دانلود نیست.');return;}
- let out='';
- for(const d of days){
-  const r=await evtHttp('/evt/dl?day='+d,'GET',5000);
-  out+='# '+evtDayFa(d)+'\n'+(await r.text());
- }
- const a=document.createElement('a');
- a.href=URL.createObjectURL(new Blob([out],{type:'text/csv;charset=utf-8'}));
- a.download='تاریخچه-کامل.csv';a.click();URL.revokeObjectURL(a.href);
-}
-async function evtClear(){
- if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟'))return;
- const st=document.getElementById('evtSt');
+async function evtDelete(name){
+ if(!admReady){admOpen();return;}
+ const log=/^\/evt-\d{8}\.csv$/.test(name);
+ if(!confirm('فایل '+name+' حذف شود؟'+(log?' ثبت داده‌های تازه ادامه دارد.':name==='/users.json'?' پس از ریست، رمز مدیر پیش‌فرض می‌شود.':' تنظیمات ذخیره‌شده حذف می‌شود؛ دادهٔ رم می‌ماند و ممکن است فایل دوباره ساخته شود.')))return;
  try{
-  const r=await evtHttp('/evt/clr','POST',5000);
-  let j={};try{j=await r.json();}catch(e){}
-  const src=(r.headers&&r.headers.get&&r.headers.get('X-Log-Fs'))||'1';
-  /* [EN] v1.113: the answer says how many day files really went. "Cleared" is
-          only printed when something WAS cleared, so a button that hits a file
-          system it cannot reach can no longer look successful (user report
-          2026-10-28: rows that could not be deleted).
-     [FA] نسخهٔ ۱٫۱۱۳: پاسخ می‌گوید واقعاً چند فایل روز پاک شد. «پاک شد» فقط
-          وقتی نوشته می‌شود که چیزی پاک شده باشد، تا دکمه‌ای که به فایل‌سیستم
-          نمی‌رسد دیگر موفق به نظر نرسد (گزارش کاربر ۲۰۲۶-۱۰-۲۸: ردیف‌هایی که
-          پاک نمی‌شدند). */
-  if(st){
-   if(r.status===403)st.textContent='فقط ادمین اجازهٔ پاک‌کردن تاریخچه را دارد';
-   else if(r.status!==200)st.textContent='پاک نشد (پاسخ '+r.status+')';
-   else if(src!=='1')st.textContent='پاک نشد: حافظهٔ پنل سوار نشد؛ فقط رم پاک شد';
-   else if((j&&j.removed)>0)st.textContent='پاک شد: '+evtFaNum(j.removed)+' روز';
-   else st.textContent='چیزی برای پاک‌کردن نبود';
-  }
-  await evtDays();await evtFetch(1);
-  const box=document.getElementById('evtFs');if(box&&box.style.display!=='none')await evtFs(0);
- }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
+  const x=await admCall('/evt/file',{name});
+  if(x.status===403){admLock();showToast('نشست مدیر تمام شد');return;}
+  if(x.status!==200||x.body.ok!==1){showToast(({missing:'فایل دیگر وجود ندارد',fs:'حافظه در دسترس نیست',path:'نام فایل نامعتبر است',remove:'حذف فایل انجام نشد'})[x.body.e]||'حذف فایل انجام نشد');return;}
+  await evtFs(0);await evtDays();await evtFetch(0);showToast('فایل حذف شد');
+ }catch(e){showToast('پاسخ حذف نرسید؛ فهرست حافظه را تازه کن');}
 }
+async function evtfmt(){
+ if(!admReady){admOpen();return;}
+ if(!confirm('همهٔ فایل‌ها و تاریخچهٔ حافظهٔ ESP پاک می‌شوند. ادامه می‌دهی؟'))return;
+ admSay('admCardMsg','در حال فرمت حافظه…',true);
+ try{
+  const r=await evtHttp('/evt/format','POST',60000),t=(await r.text()).trim();
+  if(r.status===403){admLock();showToast('نشست مدیر تمام شد؛ دوباره وارد شو');return;}
+  if(!r.ok||t!=='ok'){
+   if(t==='mount'||t==='write')resetHistoryView();
+   admSay('admCardMsg',t==='mount'?'فرمت شد ولی حافظه باز نشد؛ چیدمان فلش را بررسی کن':t==='write'?'فرمت شد ولی ذخیره و خواندن تأیید نشد':'فرمت انجام نشد؛ اندازه و چیدمان فلش را بررسی کن',false);await evtFs(0);return;
+  }
+  resetHistoryView();
+  await pollDiag();await pollCharts();
+  const sel=document.getElementById('evtDay');if(sel)sel.value='';
+  await evtDays();await evtFetch(0);const fs=await evtFs(0),ok=!!(fs&&fs.fs&&+fs.total>0);
+  admSay('admCardMsg',ok?'حافظه فرمت شد؛ نوشتن و خواندن تأیید شد؛ رمزها حفظ شدند':fs?'پاسخ فرمت موفق بود ولی حافظه هنوز در دسترس نیست':'فرمت تأیید شد؛ وضعیت نهایی حافظه دریافت نشد',ok);
+ }catch(e){admSay('admCardMsg','پاسخ فرمت نرسید؛ نتیجه نامشخص است؛ وضعیت حافظه را بخوان',false);}
+}
+async function evtDownload(query,name){
+ showToast('در حال آماده‌کردن فایل…');
+ const r=await evtHttp('/evt/dl?'+query,'GET',15000);
+ if(!r.ok)throw Error();
+ downloadCsvText(name,await r.text());
+ showToast('فایل آماده شد؛ دانلود به مرورگر سپرده شد');
+}
+function evtDlDay(day){
+ if(day)return evtDownload('day='+encodeURIComponent(day),'تاریخچه-'+evtDaySh(day)+'.csv');
+}
+function evtDlAll(){return evtDownload('all=1','تاریخچه-کامل.csv');}
 async function evtTick(){
  if(document.hidden||evtBusy)return;
  evtBusy=true;
  try{await evtDays();await evtFetch(0);}finally{evtBusy=false;}
 }
 evtClock().then(()=>evtDays()).then(()=>evtFetch(0));setInterval(evtClock,60000);
-addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)evtClock();});
+addEventListener('focus',()=>evtClock());
 addEventListener('online',()=>evtClock());
 setInterval(evtTick,10000);
 
-function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); setInterval(tickDiagClocks,1000); }
+async function loadWifi(){
+ try{
+  let r=await fetch('/wifi',{cache:'no-store'});
+  let j=await r.json();
+  let cur=document.getElementById('wifiCurrentSsid');
+  if(cur) cur.textContent=j.ssid||'--';
+ }catch(e){}
+}
+
+function showTab(n){
+ for(let i=0;i<3;i++){
+  let pg=document.getElementById('pg'+i), tb=document.getElementById('tab'+i);
+  if(pg) pg.classList.toggle('a', i===n);
+  if(tb) tb.classList.toggle('a', i===n);
+ }
+ if(n===1){redrawCharts();pollCharts();}
+ if(n===0) pollDiag();
+}
+
+let admTapCount=0, admTapAt=0, admReady=false;
+function admTap(){
+ let now=Date.now();
+ if(now-admTapAt>1500) admTapCount=0;
+ admTapAt=now;
+ if(++admTapCount<5) return;
+ admTapCount=0;
+ admProbe();
+}
+function admSay(id, txt, ok){
+ let el=document.getElementById(id);
+ if(!el) return;
+ el.textContent=txt||'';
+ el.className='gmsg'+(ok?' ok':'');
+ if(txt&&id==='admCardMsg')showToast(txt);
+}
+function admOpen(){
+ let g=document.getElementById('admGate'); if(!g) return;
+ g.hidden=false;
+ admSay('admMsg','');
+ let pw=document.getElementById('admPass');
+ if(pw){ pw.value=''; try{pw.focus();}catch(e){} }
+}
+function admClose(){
+ document.getElementById('admPass').value='';
+ let g=document.getElementById('admGate'); if(!g) return;
+ g.hidden=true;
+ admSay('admMsg','');
+}
+function admUnlock(who){
+ admReady=true;document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=false);
+ let c=document.getElementById('adminCard'); if(c) c.hidden=false;
+ let w=document.getElementById('admWho'); if(w) w.textContent=who||'ادمین';
+ if(typeof showTab==='function') showTab(2);
+ admSay('admCardMsg','');
+}
+function admLock(){
+ evtFsId++;
+ ['admPass','admWpass'].forEach(id=>{document.getElementById(id).value='';});
+ admReady=false;admTokenSet('');document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=true);
+ const fs=document.getElementById('evtFs');if(fs){fs.innerHTML='';fs.style.display='none';}
+ let c=document.getElementById('adminCard'); if(c) c.hidden=true;
+}
+function admBody(obj){
+ let out=[];
+ Object.keys(obj||{}).forEach(function(k){
+  out.push(encodeURIComponent(k)+'='+encodeURIComponent(obj[k]===undefined?'':obj[k]));
+ });
+ return out.join('&');
+}
+async function admCall(path, obj){
+ const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),10000);
+ try{return await fetch(path,{method:'POST',credentials:'same-origin',signal:ac.signal,
+  headers:admHeaders({'Content-Type':'application/x-www-form-urlencoded'}),
+  body:admBody(obj)}).then(function(r){
+   return r.json().then(function(j){ return {status:r.status, body:j}; });
+  });}finally{clearTimeout(timer);}
+}
+
+const ADM_ERR={old:'رمز فعلی درست نیست', mismatch:'رمز تازه و تکرارش یکی نیست',
+ 'pass 4-32':'رمز باید ۴ تا ۳۲ کاراکتر باشد', admin:'نشست مدیر لازم است',
+ storage:'ذخیره در حافظه انجام نشد؛ تنظیمات قبلی حفظ شد', user:'ذخیره نشد', ts:'زمان نامعتبر است', 'ssid/pass':'نام و رمز وای‌فای لازم است',
+ new:'رمز تازه را بزن', 2:'این درخواست را برد نمی‌شناسد'};
+function admWhy(x){
+ let j=x.body||{};
+ if(x.status===409) return 'برد مشغول است؛ چند لحظه بعد دوباره بزن';
+ if(j.e!==undefined && j.e!==null) return ADM_ERR[j.e] || ('رد شد: '+j.e);
+ return j.msg || 'انجام نشد';
+}
+function admPost(path, obj, okMsg){
+ return admCall(path, obj).then(function(x){
+  if(x.status===403){
+   admLock(); admSay('admCardMsg','نشست مدیر تمام شد؛ دوباره روی «نسخهٔ» پنج ضربه بزن', false);
+   return null;
+  }
+  let j=x.body||{};
+  if(j.ok!==1){
+   admSay('admCardMsg', admWhy(x), false);
+   return null;
+  }
+  admSay('admCardMsg', okMsg||'انجام شد', true);
+  return j;
+ }).catch(function(){ admSay('admCardMsg','ارتباط با برد برقرار نشد', false); return null; });
+}
+
+function admDl(){
+ const sel=document.getElementById('evtDay');
+ return evtDlDay((sel&&sel.value)||evtToday());
+}
+function admLogin(){
+ let pw=document.getElementById('admPass');
+ let pass=pw?pw.value:'';
+ if(!pass){ admSay('admMsg','رمز را بزن', false); return; }
+ admSay('admMsg','در حال بررسی...', true);
+ return admCall('/login',{user:'admin', pass:pass}).then(function(x){
+  let j=x.body||{};
+  if(x.status===200 && j.ok===1){ admTokenSet(j.token);admClose(); admUnlock(j.user||'admin'); showToast('دسترسی مدیر باز شد'); return; }
+  if(x.status===409){ admSay('admMsg','یک نشست باز است؛ چند دقیقه بعد دوباره تلاش کن', false); return; }
+  if(x.status===429){ admSay('admMsg','چند بار پشت‌سرهم اشتباه بود؛ کمی صبر کن', false); return; }
+  admSay('admMsg','رمز نادرست است', false);
+ }).catch(function(){ admSay('admMsg','ارتباط با برد برقرار نشد', false); });
+}
+function admLogout(){
+ return admCall('/logout',{}).then(function(x){
+  if(x.status!==200||x.body.ok!==1)throw Error();
+  admLock();showToast('از حالت مدیر خارج شد');
+ }).catch(function(){admSay('admCardMsg','خروج تأیید نشد؛ دوباره تلاش کن',false);});
+}
+
+function admProbe(){
+ admCall('/clock',{}).then(function(x){
+  if(x.status===200){ admUnlock('ادمین'); return; }
+  admOpen();
+ }).catch(function(){ admOpen(); });
+}
+function admWifi(){
+ let ssid=document.getElementById('admSsid'), pass=document.getElementById('admWpass');
+ let v1=ssid?ssid.value.trim():'', v2=pass?pass.value:'';
+ if(!v1){ admSay('admCardMsg','نام وای‌فای را بنویس', false); return; }
+ if(v2.length<8){ admSay('admCardMsg','رمز وای‌فای باید ۸ کاراکتر یا بیشتر باشد', false); return; }
+ return admPost('/wifi',{ssid:v1, pass:v2}, 'وای‌فای ذخیره شد').then(function(j){
+  if(!j) return;
+  if(pass) pass.value='';
+  if(j.reboot) admSay('admCardMsg','ذخیره شد؛ برد ریاستارت می‌شود و چند ثانیه بعد برمی‌گردد', true);
+  loadWifi();
+ });
+}
+function admConfirm(path,obj,msg,question){
+ if(!admReady){admOpen();return Promise.resolve(null);}
+ return confirm(question)?admPost(path,obj,msg):Promise.resolve(null);
+}
+function admClear(){
+ let sel=document.getElementById('admClearType');
+ let t=sel?sel.value:'all';
+ return admConfirm('/clear',{type:t},'تاریخچه پاک شد','تاریخچهٔ «'+sel.options[sel.selectedIndex].text+'» پاک شود؟');
+}
+
+function redrawCharts(){
+ for(const id of ['cVolt','cCharge']){const c=document.getElementById(id);c._sig=null;c._drawn=false;}
+ const data=chartCache[chartRanges.volt];if(data)renderVoltFromServer(data);
+ if(window._lastChargeHistory)drawChargeHistory(window._lastChargeHistory,chartRanges.charge);
+}
+function resetHistoryView(){
+ historyEpoch++;chartRequestId++;if(chartAbort)chartAbort.abort();chartRequest=null;chartAbort=null;
+ chartCache={};chartDataVolt={vin:[],vpack:[],time:[],range:chartRanges.volt};
+ window._lastChargeHistory=[];
+ renderVoltFromServer(chartDataVolt);drawChargeHistory([],chartRanges.charge);renderChargeHistoryList([]);
+ setTxt('diagErrors','خطایی ثبت نشده - سیستم سالم');
+}
+window.addEventListener('resize',function(){
+ clearTimeout(window._rzT);
+ window._rzT=setTimeout(redrawCharts,200);
+});
+if(document.fonts && document.fonts.ready){
+ document.fonts.ready.then(function(){ redrawCharts(); });
+}
+function init(){ poll(); pollCharts(); pollDiag(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(tickDiagClocks,1000); }
 window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>

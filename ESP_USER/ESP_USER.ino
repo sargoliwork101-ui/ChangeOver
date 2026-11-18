@@ -39,7 +39,6 @@ void setup(void)
     BOOL__G__FsMountFailed = (BOOL__G__FsOk == false);
     func__Simple_CryptoKeyInit();
     func__Simple_AuthLoad();
-    func__Simple_RecoveryApply();
     func__Simple_ThemeLoad();
     func__Simple_WifiLoad();
     func__Simple_TimeLoad();
@@ -62,13 +61,6 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/time", HTTP_POST, func__Simple_HttpTimeSync);
     SIMPLE_WEB_SERVER_T__G__Server.on("/login", HTTP_POST, func__Simple_HttpLogin);
     SIMPLE_WEB_SERVER_T__G__Server.on("/logout", HTTP_POST, func__Simple_HttpLogout);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_GET, func__Simple_HttpUsers);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_POST, func__Simple_HttpUsersPost);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/setpass", HTTP_POST, func__Simple_HttpSetPass);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/adduser", HTTP_POST, func__Simple_HttpAddUser);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/deluser", HTTP_POST, func__Simple_HttpDelUser);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/theme", HTTP_GET, func__Simple_HttpGetTheme);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/settheme", HTTP_POST, func__Simple_HttpSetTheme);
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_GET, func__Simple_HttpGetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_POST, func__Simple_HttpSetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/setwifi", HTTP_POST, func__Simple_HttpSetWifi);
@@ -82,11 +74,11 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Simple_HttpEventClear);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/snap", HTTP_POST, func__Simple_HttpEventSnap);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Simple_HttpEventFormat);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/file", HTTP_POST, func__Simple_HttpFileDelete);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Simple_HttpEventFsStatus);
-    SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clean", HTTP_POST, func__Simple_HttpEventClean);
     {
-        static const char *char__ptr_headerKeys[] = {"Cookie"};
-        SIMPLE_WEB_SERVER_T__G__Server.collectHeaders(char__ptr_headerKeys, 1u);
+        static const char *char__ptr_headerKeys[] = {"Cookie", "X-Admin-Token"};
+        SIMPLE_WEB_SERVER_T__G__Server.collectHeaders(char__ptr_headerKeys, 2u);
     }
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
@@ -117,29 +109,7 @@ void loop(void)
         func__Simple_SendGetParams();
         bool__paramsReqDone = true;
     }
-    if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
-    {
-        bool bool__adopt = !BOOL__G__TimeValid;
-        if (BOOL__G__TimeValid)
-        {
-            uint32_t uint32_t__panelSec = func__Simple_NowSec();
-            if (UINT32_T__G__BoardTimeSec > uint32_t__panelSec)
-            {
-                bool__adopt = true;
-            }
-            else if ((uint32_t__panelSec - UINT32_T__G__BoardTimeSec) >= SIMPLE_TIME_ADOPT_DIFF_SEC)
-            {
-                bool__adopt = true;
-            }
-        }
-        if (bool__adopt)
-        {
-            func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
-            func__Simple_TimeSave();
-            BOOL__G__TimePushed = true;
-        }
-    }
-    if (BOOL__G__TimeValid && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
+    if (func__Simple_TimeBootReady() && BOOL__G__TlmSeen && BOOL__G__DiagValid && !BOOL__G__TimePushed)
     {
         bool bool__fresh = ((uint32_t__now - UINT32_T__G__LastTlmMs) < SIMPLE_LINK_TIMEOUT_MS);
         bool bool__due = false;
@@ -171,40 +141,17 @@ void loop(void)
             uint32_t uint32_t__diff = (UINT32_T__G__BoardTimeSec > func__Simple_NowSec())
                 ? (UINT32_T__G__BoardTimeSec - func__Simple_NowSec())
                 : (func__Simple_NowSec() - UINT32_T__G__BoardTimeSec);
-            if (uint32_t__diff <= 120u) BOOL__G__TimePushed = true;
+            if (uint32_t__diff <= (BOOL__G__BrowserTimePending ? 2u : 120u)) BOOL__G__TimePushed = true;
         }
-    }
-    if (!BOOL__G__SessionHadLogin && ((uint32_t)millis() > SIMPLE_RECOVERY_ARM_MS))
-    {
-        func__Simple_RecoveryArm();
     }
     static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)
     {
+        func__Simple_TimeSave();
         if (BOOL__G__ChargeHistDirty) func__Simple_ChargeHistorySave();
         if (BOOL__G__DiagDirty) func__Simple_DiagSave();
         if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
         uint32_t__lastSaveMs = uint32_t__now;
-    }
-    static uint32_t uint32_t__lastChartSaveMs = 0u;
-    uint32_t uint32_t__nowSecForChartSave = func__Simple_NowSec();
-    if ((uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN) &&
-        (UINT32_T__G__LastChartSaveSec == 0u))
-    {
-        UINT32_T__G__LastChartSaveSec = uint32_t__nowSecForChartSave;
-    }
-    if (((uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN) &&
-         (uint32_t__nowSecForChartSave >= UINT32_T__G__LastChartSaveSec) &&
-         ((uint32_t__nowSecForChartSave - UINT32_T__G__LastChartSaveSec) >= 86400u)) ||
-        ((uint32_t__now - uint32_t__lastChartSaveMs) >= 86400000u))
-    {
-        if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
-        if (BOOL__G__TimeValid) func__Simple_TimeSave();
-        uint32_t__lastChartSaveMs = uint32_t__now;
-        if (uint32_t__nowSecForChartSave >= SIMPLE_TIME_VALID_MIN)
-        {
-            UINT32_T__G__LastChartSaveSec = uint32_t__nowSecForChartSave;
-        }
     }
     if (BOOL__G__WifiRebootPending)
     {

@@ -35,6 +35,9 @@ setTimeout(() => {
             if (on === undefined) on = true;
             win.eval('lastData={on:' + (!!on) + ',age:0}; g_isCharging=' + (!!charging) + '; g_tlmReceiveAt=Date.now();');
         }
+        const warning=win.evtTextFa(win.evtParse('0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'));
+        check(warning.txt==='ساعت تنظیم نبود؛ ثبت داده‌های تاریخ‌دار انجام نشد' && warning.lv===2,'هشدار ساعت با متن کوتاه و بدون شرح عددی نمایش داده می‌شود');
+        check(win.evtTimeFa(0)==='بی‌ساعت','هشدارِ پیش از بازیابی تاریخ ساختگی ندارد');
         diag(600, 1000);
         tlm(false);
         tick();

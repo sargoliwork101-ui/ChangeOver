@@ -437,22 +437,13 @@ def sec_defaults(ids):
                cl.group(1).strip() if cl else "clamp not found")
         m = re.search(r"nav button\[data-t=\\?\"(\d)\\?\"\]'\);if\(t\d\)t\d\.click", srv)
         land = m.group(1) if m else None
-        # which page div is the single chart mount inside? scan backwards
-        # from the mount to the nearest id="pN" - derived, never assumed.
-        # [EN] This used to derive the landing page from the chart mount.
-        #      The chart has since been ordered off the chargers page, so
-        #      following it would open the preview on the settings tab and
-        #      hide the page the user actually asked to review. The anchor
-        #      moves to the operating table, which is what the chargers page
-        #      is for - still derived from the markup, never hardcoded.
-        #      v1.36: that table was removed wholesale (user order), so the
-        #      landing anchor moved to the chargers page section itself.
-        mi = P_PAN.find('id="ch"')
-        pm = list(re.finditer(r'id="p(\d)"', P_PAN[:mi])) if mi >= 0 else []
-        mount_page = pm[-1].group(1) if pm else "?"
+        # [EN] Calibration review now owns the preview landing page. Derive it
+        # from the real bench form's mount, not an assumed numeric tab index.
+        bench = re.search(r"\$\('p(\d)'\)\.innerHTML=`[^`]*id=\"wSw\"", P_PAN)
+        mount_page = bench.group(1) if bench else "?"
         ok(land == mount_page,
-           "the preview must land on the chargers page",
-           f"server lands on tab {land}, but the chargers section is on p{mount_page}")
+           "the preview must land on the bench calibration page",
+           f"server lands on tab {land}, but the bench form is on p{mount_page}")
         # [EN] v1.32 (user order: "I wanted to click ON the chart, not have you
         #      write it below it"): the chip strip is gone. Everything settable
         #      is now drawn inside the SVG - axis labels for the voltages and
@@ -1355,15 +1346,10 @@ def sec_preview():
            "ESP_Calibration/panel_preview.html is stale",
            "plink_panel.h changed without re-running tools/make_panel_preview.py, "
            "so the preview shows an older page than the firmware serves")
-        ok("OFFLINE SHIM" in after and after.index("OFFLINE SHIM") < after.index("function qgraph"),
-           "the preview's offline shim must be injected BEFORE the panel script",
-           "otherwise fetch is replaced too late and the page stays empty")
-    # [EN] Both simulators must speak the CURRENT frame. The Node server
-    #      hardcoded a 20-field telemetry array while the link had carried 25
-    #      since v1.25, so indices 20..24 - the raw ADC counts the whole
-    #      calibration effort now rests on - read back undefined in the
-    #      preview, and the version-mismatch banner could never be seen
-    #      because vm/ce were absent. Neither simulator may retype the width.
+        ok("OFFLINE SHIM" not in after and "window.fetch =" not in after
+           and "preview-bench.js" not in after,
+           "the generated panel must not embed a simulator or demo controls")
+    # [EN] Only the external Node test server simulates telemetry now.
     cfg = read("ESP_Calibration/plink_config.h")
     m = re.search(r"#define\s+ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u?", cfg)
     n_fields = int(m.group(1)) if m else -1
@@ -1373,22 +1359,18 @@ def sec_preview():
     #      the derivation out while leaving the comment behind would pass. The
     #      comments go first, then the question is asked.
     prev_js = live(PREV)
-    gen_py = live(read("tools/make_panel_preview.py"))
     ok("ESP_LINK_TLM_FIELD_COUNT" in prev_js,
        "the preview server must DERIVE the telemetry width from plink_config.h",
        "a retyped width silently truncates the frame when a field is added")
-    ok("ESP_LINK_TLM_FIELD_COUNT" in gen_py,
-       "the preview generator must DERIVE the telemetry width from plink_config.h",
-       "a retyped width silently truncates the frame when a field is added")
-    # no literal array of the old width may survive in either simulator
-    for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+    # [EN] The external simulator must not hardcode an obsolete telemetry width.
+    for name, src in (("preview server", prev_js),):
         lits = re.findall(r"new Array\((\d+)\)", src)
         ok(not lits,
            f"the {name} still builds a fixed-length telemetry array",
            f"literal length(s) {', '.join(lits)} - derive from "
            f"ESP_LINK_TLM_FIELD_COUNT ({n_fields}) instead")
-    # the link-health counters must exist on both, or the banner is untestable
-    for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+    # [EN] The external simulator must expose link-health counters.
+    for name, src in (("preview server", prev_js),):
         missing = [k for k in ("vm", "ce") if not re.search(r"\b" + k + r"\s*:", src)]
         ok(not missing,
            f"the {name} does not publish link health {missing}",
@@ -1399,7 +1381,7 @@ def sec_preview():
     comp_off = re.search(r"#define\s+CAL_BATTERY12_BENCH_COMP_ENABLE\s+0u",
                          read("Firmware/Modules/Measurement/calibration.h"))
     if comp_off:
-        for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+        for name, src in (("preview server", prev_js),):
             ok(not re.search(r"t\[16\]\s*=\s*[^;]*\b150\b", src),
                f"the {name} still applies the disabled 12 V bench compensation",
                "CAL_BATTERY12_BENCH_COMP_ENABLE is 0, so battery12 == batteryLow")
@@ -1877,8 +1859,12 @@ def sec_ov_single_source():
        "calibration panel is missing the one-click jump to the q34 field")
     ok("id!==70&&id!==72&&id!==73&&id!==76" in pan,
        "panel backup set still includes the derived id 70")
-    ok("n===70)continue" in pan,
-       "panel pending-restore still accepts the derived id 70")
+    # [EN] Automatic pending replay was removed after its startup TDZ failure;
+    #      explicit file import is still limited to the non-derived XIDS above.
+    ok(not re.search(r"function\s+(?:pendRestore|pendSave)\s*\(", pan)
+       and "pendRestore();" not in pan
+       and "localStorage.removeItem('changeover-panel-pending-v1')" in pan,
+       "obsolete automatic pending-restore/write path or its stored data remains")
     user = read("ESP_USER/simple_panel.h")
     ok("const ovThr=brd.imax" in user and "ovClr=brd.imax-brd.ovHyst" in user,
        "ESP_USER OV threshold/clear are not derived from the board limits")
@@ -1946,32 +1932,28 @@ def sec_diag_clock():
     ok("host_test_diag_clock.js" in runner,
        "ESP_USER test runner does not run the diag-clock DOM test")
 def sec_charge_csv():
-    """[EN] Charge-history CSV is time+channel only; the duration column was
-       removed by user order and must not come back through a preview mirror.
-       [FA] CSV تاریخچهٔ شارژ فقط زمان و کانال دارد؛ ستون مدت به دستور کاربر
-       حذف شده و نباید از آینهٔ پیش‌نمایش برگردد."""
-    panel = read("ESP_USER/simple_panel.h")
-    m = re.search(r"function chargeCsvData\(\)\{(.*?)\n\}", panel, re.S)
-    ok(m is not None, "ESP_USER chargeCsvData is missing")
-    if m:
-        body = m.group(1)
-        ok("title:'مدت" not in body and "مدت (ثانیه)" not in body,
-           "charge CSV still has a duration column header")
-        ok("events[i].dur" not in body and ".dur" not in body,
-           "charge CSV still reads the legacy duration field")
-        ok("csvRowsFromColumns(tm,[{title:'کانال',values:ch}])" in body,
-           "charge CSV is not exactly time columns + channel")
-    for rel in ("ESP_USER/simple_preview.html", "ESP_USER/index.html",
-                "ESP_USER/simple_panel_clean.html"):
+    """Chart CSV export is removed; stored event-log downloads must remain."""
+    removed = ("function exportCsv(", "function chargeCsvData(",
+               "function voltCsvData(", "function csvRowsFromColumns(",
+               "function csvText(", "function csvCell(", "function csvFileStamp(")
+    for rel in ("ESP_USER/simple_panel.h", "ESP_USER/simple_preview.html",
+                "ESP_USER/index.html", "ESP_USER/simple_panel_clean.html"):
         body = read(rel)
-        mm = re.search(r"function chargeCsvData\(\)\{(.*?)\n\}", body, re.S)
-        ok(mm is not None and "title:'مدت" not in mm.group(1)
-           and "مدت (ثانیه)" not in mm.group(1) and ".dur" not in mm.group(1),
-           f"{rel} charge CSV mirror still has the duration column")
-    test = read("ESP_USER/Tester/host_test_csv.js")
-    ok("ALL ESP_USER CSV TESTS PASSED" in test, "ESP_USER CSV DOM test is missing")
+        ok(all(marker not in body for marker in removed),
+           f"{rel} still contains removed chart CSV export code")
+        ok("exportCsv(" not in body,
+           f"{rel} still contains a chart CSV export control")
+        ok("function downloadCsvText(" in body and
+           "downloadCsvText(name,await r.text())" in body and
+           "function evtDlDay(" in body and "function evtDlAll(" in body,
+           f"{rel} lost stored event-log downloads")
+    test = read("ESP_USER/Tester/host_test_panel_actions.js")
+    ok("charts have no CSV export controls" in test and
+       "stored history downloads remain available in settings" in test,
+       "ESP_USER DOM tests do not cover chart export removal and stored downloads")
     runner = read("ESP_USER/Tester/run_simple_tests.sh")
-    ok("host_test_csv.js" in runner, "ESP_USER runner does not run the CSV test")
+    ok("host_test_panel_actions.js" in runner and "host_test_csv.js" not in runner,
+       "ESP_USER runner must use panel actions, not the obsolete chart CSV test")
     cfg = read("ESP_USER/simple_config.h")
     ok(define(cfg, "SIMPLE_ESP_FW_VERSION") == 118,
        "ESP_USER firmware version is not 118 after the log rollover rewrite")

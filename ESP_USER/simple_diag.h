@@ -47,25 +47,19 @@ static uint8_t func__Simple_JsonReadNumbers(const String &string__content,
 static void func__Simple_ParamsSave(void)
 {
     uint8_t uint8_t__i;
-    if (!BOOL__G__FsOk)
-    {
-        BOOL__G__BoardParamsDirty = false;
-        return;
-    }
-    File file__f = LittleFS.open(SIMPLE_PARAMS_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"pv\":[");
+    if (!BOOL__G__FsOk) return;
+    String string__data;
+    if (!func__Simple_StorageTextAppend(string__data, String("{\"pv\":["))) return;
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_PARAM_UI_COUNT; uint8_t__i++)
     {
         uint8_t uint8_t__id = UINT8_T__G__ParamUiIds[uint8_t__i];
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print(uint8_t__id);
-        file__f.print(",");
-        file__f.print(func__Simple_BoardParam(uint8_t__id));
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(uint8_t__id))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(func__Simple_BoardParam(uint8_t__id)))) return;
     }
-    file__f.print("]}");
-    file__f.close();
-    BOOL__G__BoardParamsDirty = false;
+    if (!func__Simple_StorageTextAppend(string__data, String("]}"))) return;
+    if (func__Simple_StorageWrite(SIMPLE_PARAMS_FILE, string__data)) BOOL__G__BoardParamsDirty = false;
 }
 static void func__Simple_ParamsLoad(void)
 {
@@ -103,116 +97,43 @@ static void func__Simple_ChartPushRange(uint32_t *uint32_t__ptr_pct,
                                         uint32_t *uint32_t__ptr_vin,
                                         uint32_t *uint32_t__ptr_vpack,
                                         uint32_t *uint32_t__ptr_time,
-                                        uint8_t *uint8_t__ptr_count, uint8_t *uint8_t__ptr_index,
-                                        uint8_t uint8_t__size, uint32_t uint32_t__nowSec,
+                                        uint16_t *uint16_t__ptr_count, uint16_t *uint16_t__ptr_index,
+                                        uint16_t uint16_t__size, uint32_t uint32_t__nowSec,
                                         uint32_t uint32_t__pct, uint32_t uint32_t__vin,
                                         uint32_t uint32_t__vpack)
 {
-    uint8_t uint8_t__slot = *uint8_t__ptr_index;
-    if (*uint8_t__ptr_count > 0u)
+    uint16_t uint16_t__slot = *uint16_t__ptr_index;
+    if (*uint16_t__ptr_count > 0u)
     {
-        uint8_t uint8_t__newestSlot = (uint8_t)((*uint8_t__ptr_index + uint8_t__size - 1u) % uint8_t__size);
-        if (uint32_t__nowSec <= uint32_t__ptr_time[uint8_t__newestSlot]) return;
+        uint16_t uint16_t__newestSlot = (uint16_t)((*uint16_t__ptr_index + uint16_t__size - 1u) % uint16_t__size);
+        if (uint32_t__nowSec <= uint32_t__ptr_time[uint16_t__newestSlot]) return;
     }
     BOOL__G__ChartsDirty = true;
-    uint32_t__ptr_pct[uint8_t__slot] = uint32_t__pct;
-    uint32_t__ptr_vin[uint8_t__slot] = uint32_t__vin;
-    uint32_t__ptr_vpack[uint8_t__slot] = uint32_t__vpack;
-    uint32_t__ptr_time[uint8_t__slot] = uint32_t__nowSec;
-    *uint8_t__ptr_index = (uint8_t)((uint8_t__slot + 1u) % uint8_t__size);
-    if (*uint8_t__ptr_count < uint8_t__size)
+    uint32_t__ptr_pct[uint16_t__slot] = uint32_t__pct;
+    uint32_t__ptr_vin[uint16_t__slot] = uint32_t__vin;
+    uint32_t__ptr_vpack[uint16_t__slot] = uint32_t__vpack;
+    uint32_t__ptr_time[uint16_t__slot] = uint32_t__nowSec;
+    *uint16_t__ptr_index = (uint16_t)((uint16_t__slot + 1u) % uint16_t__size);
+    if (*uint16_t__ptr_count < uint16_t__size)
     {
-        *uint8_t__ptr_count = (uint8_t)(*uint8_t__ptr_count + 1u);
+        *uint16_t__ptr_count = (uint16_t)(*uint16_t__ptr_count + 1u);
     }
 }
 static uint32_t func__Simple_ChartLastSec(const uint32_t *uint32_t__ptr_time,
-                                          uint8_t uint8_t__count,
-                                          uint8_t uint8_t__index,
-                                          uint8_t uint8_t__size)
+                                          uint16_t uint16_t__count,
+                                          uint16_t uint16_t__index,
+                                          uint16_t uint16_t__size)
 {
-    uint8_t uint8_t__newestSlot;
-    if (uint8_t__count == 0u) return 0u;
-    uint8_t__newestSlot = (uint8_t)((uint8_t__index + uint8_t__size - 1u) % uint8_t__size);
-    return uint32_t__ptr_time[uint8_t__newestSlot];
+    uint16_t uint16_t__newestSlot;
+    if (uint16_t__count == 0u) return 0u;
+    uint16_t__newestSlot = (uint16_t)((uint16_t__index + uint16_t__size - 1u) % uint16_t__size);
+    return uint32_t__ptr_time[uint16_t__newestSlot];
 }
-static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t__vin, uint32_t uint32_t__vpack)
-{
-    uint32_t uint32_t__nowSec = func__Simple_NowSec();
-    uint32_t uint32_t__nowMs = (uint32_t)millis();
-    if (uint32_t__nowSec == 0u) return;
-    {
-        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) ? 60u : 3600u;
-        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart1D_Time, UINT8_T__G__Chart1D_Count,
-            UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
-        if ((uint32_t__lastSec == 0u) ||
-            ((uint32_t__nowSec >= uint32_t__lastSec) &&
-             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
-        {
-            func__Simple_ChartPushRange(UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin,
-                                        UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
-                                        &UINT8_T__G__Chart1D_Count, &UINT8_T__G__Chart1D_Index,
-                                        SIMPLE_CHART_1D_SIZE, uint32_t__nowSec,
-                                        uint32_t__pct, uint32_t__vin, uint32_t__vpack);
-            UINT32_T__G__Last1D_Ms = uint32_t__nowMs;
-        }
-    }
-    {
-        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) ? 300u : 21600u;
-        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart7D_Time, UINT8_T__G__Chart7D_Count,
-            UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
-        if ((uint32_t__lastSec == 0u) ||
-            ((uint32_t__nowSec >= uint32_t__lastSec) &&
-             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
-        {
-            func__Simple_ChartPushRange(UINT32_T__G__Chart7D_Pct, UINT32_T__G__Chart7D_Vin,
-                                        UINT32_T__G__Chart7D_Vpack, UINT32_T__G__Chart7D_Time,
-                                        &UINT8_T__G__Chart7D_Count, &UINT8_T__G__Chart7D_Index,
-                                        SIMPLE_CHART_7D_SIZE, uint32_t__nowSec,
-                                        uint32_t__pct, uint32_t__vin, uint32_t__vpack);
-            UINT32_T__G__Last7D_Ms = uint32_t__nowMs;
-        }
-    }
-    {
-        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) ? 900u : 86400u;
-        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart1M_Time, UINT8_T__G__Chart1M_Count,
-            UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
-        if ((uint32_t__lastSec == 0u) ||
-            ((uint32_t__nowSec >= uint32_t__lastSec) &&
-             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
-        {
-            func__Simple_ChartPushRange(UINT32_T__G__Chart1M_Pct, UINT32_T__G__Chart1M_Vin,
-                                        UINT32_T__G__Chart1M_Vpack, UINT32_T__G__Chart1M_Time,
-                                        &UINT8_T__G__Chart1M_Count, &UINT8_T__G__Chart1M_Index,
-                                        SIMPLE_CHART_1M_SIZE, uint32_t__nowSec,
-                                        uint32_t__pct, uint32_t__vin, uint32_t__vpack);
-            UINT32_T__G__Last1M_Ms = uint32_t__nowMs;
-        }
-    }
-    {
-        uint32_t uint32_t__intervalSec = (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) ? 1800u : 86400u;
-        uint32_t uint32_t__lastSec = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart3M_Time, UINT8_T__G__Chart3M_Count,
-            UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
-        if ((uint32_t__lastSec == 0u) ||
-            ((uint32_t__nowSec >= uint32_t__lastSec) &&
-             ((uint32_t__nowSec - uint32_t__lastSec) >= uint32_t__intervalSec)))
-        {
-            func__Simple_ChartPushRange(UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin,
-                                        UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
-                                        &UINT8_T__G__Chart3M_Count, &UINT8_T__G__Chart3M_Index,
-                                        SIMPLE_CHART_3M_SIZE, uint32_t__nowSec,
-                                        uint32_t__pct, uint32_t__vin, uint32_t__vpack);
-            UINT32_T__G__Last3M_Ms = uint32_t__nowMs;
-        }
-    }
-}
+#include "simple_chart_store.h"
 /* ==================== - STM32 ==================== */
 static void func__Simple_LocalRecordFault(uint32_t uint32_t__faultMask, uint32_t uint32_t__vin, uint32_t uint32_t__vpack, uint32_t uint32_t__vLow, uint32_t uint32_t__vHigh)
 {
-    if (uint32_t__faultMask == 0u) return;
+    if (!func__Simple_TimeBootReady() || uint32_t__faultMask == 0u) return;
     uint32_t uint32_t__newBits = uint32_t__faultMask & (uint32_t)(~UINT32_T__G__LastLocalFaultMask);
     if (uint32_t__newBits == 0u) return;
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
@@ -235,6 +156,12 @@ static void func__Simple_LocalRecordFault(uint32_t uint32_t__faultMask, uint32_t
 }
 static void func__Simple_LocalRecordPower(bool bool__inputPresent)
 {
+    if (!func__Simple_TimeBootReady())
+    {
+        BOOL__G__LastLocalInputValid = false;
+        BOOL__G__LocalPowerOffActive = false;
+        return;
+    }
     uint32_t uint32_t__nowSec = func__Simple_NowSec();
     if (!BOOL__G__LastLocalInputValid)
     {
@@ -307,7 +234,8 @@ static void func__Simple_ChartTick(void)
         }
     }
     func__Simple_ChartAdd(uint32_t__vin, uint32_t__vpack, uint32_t__pct, uint32_t__imb);
-    func__Simple_ChartAddTimed(uint32_t__pct, uint32_t__vin, uint32_t__vpack);
+    func__Simple_ChartsSave();
+    if (bool__tlmFresh) func__Simple_ChartAddTimed(uint32_t__pct, uint32_t__vin, uint32_t__vpack);
     if (!bool__tlmFresh) return;
     uint32_t uint32_t__vLow = UINT32_T__G__TlmField[17];
     uint32_t uint32_t__vHigh = UINT32_T__G__TlmField[18];
@@ -407,30 +335,28 @@ static void func__Simple_SendGetParams(void)
 static void func__Simple_ChargeHistorySave(void)
 {
     if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_CHARGE_HISTORY_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"count\":");
-    file__f.print(UINT8_T__G__ChargeHistoryCount);
-    file__f.print(",\"prevCh1\":");
-    file__f.print(UINT32_T__G__PrevChargeCountCh1);
-    file__f.print(",\"prevCh2\":");
-    file__f.print(UINT32_T__G__PrevChargeCountCh2);
-    file__f.print(",\"hist\":[");
+    String string__data;
+    if (!func__Simple_StorageTextAppend(string__data, String("{\"count\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT8_T__G__ChargeHistoryCount))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"prevCh1\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT32_T__G__PrevChargeCountCh1))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"prevCh2\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT32_T__G__PrevChargeCountCh2))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"hist\":["))) return;
     uint8_t uint8_t__i;
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__ChargeHistoryCount; uint8_t__i++)
     {
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print("{\"ts\":");
-        file__f.print(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].timestamp);
-        file__f.print(",\"ch\":");
-        file__f.print(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].channel);
-        file__f.print(",\"dur\":");
-        file__f.print(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].durationSec);
-        file__f.print("}");
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("{\"ts\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].timestamp))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"ch\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].channel))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"dur\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].durationSec))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("}"))) return;
     }
-    file__f.print("]}");
-    file__f.close();
-    BOOL__G__ChargeHistDirty = false;
+    if (!func__Simple_StorageTextAppend(string__data, String("]}"))) return;
+    if (func__Simple_StorageWrite(SIMPLE_CHARGE_HISTORY_FILE, string__data)) BOOL__G__ChargeHistDirty = false;
 }
 static void func__Simple_ChargeHistoryLoad(void)
 {
@@ -503,225 +429,54 @@ static void func__Simple_ChargeHistoryLoad(void)
     }
     UINT8_T__G__ChargeHistoryCount = uint8_t__found;
 }
-static void func__Simple_ChartArraySave(File &file__f, const char *char__ptr_name,
-                                        const uint32_t *uint32_t__ptr_values,
-                                        uint8_t uint8_t__count, uint8_t uint8_t__index,
-                                        uint8_t uint8_t__size)
-{
-    uint8_t uint8_t__i;
-    file__f.print("\"");
-    file__f.print(char__ptr_name);
-    file__f.print("\":[");
-    for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
-    {
-        uint8_t uint8_t__slot = (uint8_t)((uint8_t__index + uint8_t__size - uint8_t__count + uint8_t__i) % uint8_t__size);
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print(uint32_t__ptr_values[uint8_t__slot]);
-    }
-    file__f.print("]");
-}
-static void func__Simple_ChartRangeSave(File &file__f, const char *char__ptr_tag,
-                                        const uint32_t *uint32_t__ptr_pct,
-                                        const uint32_t *uint32_t__ptr_vin,
-                                        const uint32_t *uint32_t__ptr_vpack,
-                                        const uint32_t *uint32_t__ptr_time,
-                                        uint8_t uint8_t__count, uint8_t uint8_t__index,
-                                        uint8_t uint8_t__size)
-{
-    file__f.print("\"");
-    file__f.print(char__ptr_tag);
-    file__f.print("\":{\"c\":");
-    file__f.print(uint8_t__count);
-    file__f.print(",");
-    func__Simple_ChartArraySave(file__f, "pct", uint32_t__ptr_pct, uint8_t__count, uint8_t__index, uint8_t__size);
-    file__f.print(",");
-    func__Simple_ChartArraySave(file__f, "vin", uint32_t__ptr_vin, uint8_t__count, uint8_t__index, uint8_t__size);
-    file__f.print(",");
-    func__Simple_ChartArraySave(file__f, "vpack", uint32_t__ptr_vpack, uint8_t__count, uint8_t__index, uint8_t__size);
-    file__f.print(",");
-    func__Simple_ChartArraySave(file__f, "time", uint32_t__ptr_time, uint8_t__count, uint8_t__index, uint8_t__size);
-    file__f.print("}");
-}
-static void func__Simple_ChartsSave(void)
-{
-    if (!BOOL__G__ChartsDirty) return;
-    if (!BOOL__G__FsOk)
-    {
-        BOOL__G__ChartsDirty = false;
-        return;
-    }
-    File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{");
-    func__Simple_ChartRangeSave(file__f, "1d",
-        UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin, UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
-        UINT8_T__G__Chart1D_Count, UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
-    file__f.print(",");
-    func__Simple_ChartRangeSave(file__f, "7d",
-        UINT32_T__G__Chart7D_Pct, UINT32_T__G__Chart7D_Vin, UINT32_T__G__Chart7D_Vpack, UINT32_T__G__Chart7D_Time,
-        UINT8_T__G__Chart7D_Count, UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
-    file__f.print(",");
-    func__Simple_ChartRangeSave(file__f, "1m",
-        UINT32_T__G__Chart1M_Pct, UINT32_T__G__Chart1M_Vin, UINT32_T__G__Chart1M_Vpack, UINT32_T__G__Chart1M_Time,
-        UINT8_T__G__Chart1M_Count, UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
-    file__f.print(",");
-    func__Simple_ChartRangeSave(file__f, "3m",
-        UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin, UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
-        UINT8_T__G__Chart3M_Count, UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
-    file__f.print("}");
-    file__f.close();
-    BOOL__G__ChartsDirty = false;
-    if (func__Simple_NowSec() >= SIMPLE_TIME_VALID_MIN)
-    {
-        UINT32_T__G__LastChartSaveSec = func__Simple_NowSec();
-    }
-}
-static bool func__Simple_ChartRangeLoad(const String &string__content, const char *char__ptr_tag,
-                                        uint32_t *uint32_t__ptr_pct,
-                                        uint32_t *uint32_t__ptr_vin,
-                                        uint32_t *uint32_t__ptr_vpack,
-                                        uint32_t *uint32_t__ptr_time,
-                                        uint8_t *uint8_t__ptr_count, uint8_t *uint8_t__ptr_index,
-                                        uint8_t uint8_t__size)
-{
-    String string__tagPrefix = String("\"") + char__ptr_tag + "\":";
-    int32_t int32_t__tagPos = string__content.indexOf(string__tagPrefix);
-    uint8_t uint8_t__nPct;
-    uint8_t uint8_t__nVin;
-    uint8_t uint8_t__nVpack;
-    uint8_t uint8_t__nTime;
-    uint8_t uint8_t__count;
-    if (int32_t__tagPos < 0) return false;
-    uint8_t__nPct = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"pct\":[", int32_t__tagPos), uint32_t__ptr_pct, uint8_t__size);
-    uint8_t__nVin = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"vin\":[", int32_t__tagPos), uint32_t__ptr_vin, uint8_t__size);
-    uint8_t__nVpack = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"vpack\":[", int32_t__tagPos), uint32_t__ptr_vpack, uint8_t__size);
-    uint8_t__nTime = func__Simple_JsonReadNumbers(string__content,
-        string__content.indexOf("\"time\":[", int32_t__tagPos), uint32_t__ptr_time, uint8_t__size);
-    uint8_t__count = uint8_t__nPct;
-    if (uint8_t__nVin < uint8_t__count) uint8_t__count = uint8_t__nVin;
-    if (uint8_t__nVpack < uint8_t__count) uint8_t__count = uint8_t__nVpack;
-    if (uint8_t__nTime < uint8_t__count) uint8_t__count = uint8_t__nTime;
-    if (uint8_t__count == 0u) return false;
-    {
-        uint8_t uint8_t__keep = 0u;
-        uint8_t uint8_t__i;
-        uint32_t uint32_t__lastStamp = 0u;
-        for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
-        {
-            if (uint32_t__ptr_time[uint8_t__i] < SIMPLE_TIME_VALID_MIN) continue;
-            if (uint32_t__ptr_time[uint8_t__i] <= uint32_t__lastStamp) continue;
-            uint32_t__lastStamp = uint32_t__ptr_time[uint8_t__i];
-            uint32_t__ptr_pct[uint8_t__keep] = uint32_t__ptr_pct[uint8_t__i];
-            uint32_t__ptr_vin[uint8_t__keep] = uint32_t__ptr_vin[uint8_t__i];
-            uint32_t__ptr_vpack[uint8_t__keep] = uint32_t__ptr_vpack[uint8_t__i];
-            uint32_t__ptr_time[uint8_t__keep] = uint32_t__ptr_time[uint8_t__i];
-            uint8_t__keep++;
-        }
-        uint8_t__count = uint8_t__keep;
-    }
-    if (uint8_t__count == 0u) return false;
-    *uint8_t__ptr_count = uint8_t__count;
-    *uint8_t__ptr_index = (uint8_t)(uint8_t__count % uint8_t__size);
-    return true;
-}
-static void func__Simple_ChartsLoad(void)
-{
-    if (!BOOL__G__FsOk) return;
-    if (!LittleFS.exists(SIMPLE_CHARTS_FILE)) return;
-    File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "r");
-    if (!file__f) return;
-    String string__content = file__f.readString();
-    file__f.close();
-    (void)func__Simple_ChartRangeLoad(string__content, "1d",
-        UINT32_T__G__Chart1D_Pct, UINT32_T__G__Chart1D_Vin, UINT32_T__G__Chart1D_Vpack, UINT32_T__G__Chart1D_Time,
-        &UINT8_T__G__Chart1D_Count, &UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "7d",
-        UINT32_T__G__Chart7D_Pct, UINT32_T__G__Chart7D_Vin, UINT32_T__G__Chart7D_Vpack, UINT32_T__G__Chart7D_Time,
-        &UINT8_T__G__Chart7D_Count, &UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "1m",
-        UINT32_T__G__Chart1M_Pct, UINT32_T__G__Chart1M_Vin, UINT32_T__G__Chart1M_Vpack, UINT32_T__G__Chart1M_Time,
-        &UINT8_T__G__Chart1M_Count, &UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
-    (void)func__Simple_ChartRangeLoad(string__content, "3m",
-        UINT32_T__G__Chart3M_Pct, UINT32_T__G__Chart3M_Vin, UINT32_T__G__Chart3M_Vpack, UINT32_T__G__Chart3M_Time,
-        &UINT8_T__G__Chart3M_Count, &UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
-    {
-        uint32_t uint32_t__maxSec = 0u;
-        uint32_t uint32_t__s1 = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart1D_Time, UINT8_T__G__Chart1D_Count,
-            UINT8_T__G__Chart1D_Index, SIMPLE_CHART_1D_SIZE);
-        uint32_t uint32_t__s7 = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart7D_Time, UINT8_T__G__Chart7D_Count,
-            UINT8_T__G__Chart7D_Index, SIMPLE_CHART_7D_SIZE);
-        uint32_t uint32_t__s1m = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart1M_Time, UINT8_T__G__Chart1M_Count,
-            UINT8_T__G__Chart1M_Index, SIMPLE_CHART_1M_SIZE);
-        uint32_t uint32_t__s3m = func__Simple_ChartLastSec(
-            UINT32_T__G__Chart3M_Time, UINT8_T__G__Chart3M_Count,
-            UINT8_T__G__Chart3M_Index, SIMPLE_CHART_3M_SIZE);
-        if (uint32_t__s1 > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s1;
-        if (uint32_t__s7 > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s7;
-        if (uint32_t__s1m > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s1m;
-        if (uint32_t__s3m > uint32_t__maxSec) uint32_t__maxSec = uint32_t__s3m;
-        if (uint32_t__maxSec >= SIMPLE_TIME_VALID_MIN)
-        {
-            UINT32_T__G__LastChartSaveSec = uint32_t__maxSec;
-        }
-    }
-    BOOL__G__ChartsDirty = false;
-}
 #ifndef SIMPLE_DIAG_FILE
 #define SIMPLE_DIAG_FILE            "/diag.json"
 #endif
 static void func__Simple_DiagSave(void)
 {
     if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_DIAG_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"ec\":");
-    file__f.print(UINT8_T__G__DiagErrorCount);
-    file__f.print(",\"pc\":");
-    file__f.print(UINT8_T__G__PowerEventCount);
-    file__f.print(",\"err\":[");
+    String string__data;
+    if (!func__Simple_StorageTextAppend(string__data, String("{\"ec\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT8_T__G__DiagErrorCount))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"pc\":"))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(UINT8_T__G__PowerEventCount))) return;
+    if (!func__Simple_StorageTextAppend(string__data, String(",\"err\":["))) return;
     uint8_t uint8_t__i;
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__DiagErrorCount; uint8_t__i++)
     {
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print("{\"ts\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].timestamp);
-        file__f.print(",\"fm\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].faultMask);
-        file__f.print(",\"vin\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vIn);
-        file__f.print(",\"vp\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vPack);
-        file__f.print(",\"vl\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vLow);
-        file__f.print(",\"vh\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vHigh);
-        file__f.print(",\"s1\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state1);
-        file__f.print(",\"s2\":");
-        file__f.print(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state2);
-        file__f.print("}");
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("{\"ts\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].timestamp))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"fm\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].faultMask))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vin\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vIn))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vp\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vPack))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vl\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vLow))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"vh\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].vHigh))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"s1\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state1))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"s2\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__i].state2))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("}"))) return;
     }
-    file__f.print("],\"pwr\":[");
+    if (!func__Simple_StorageTextAppend(string__data, String("],\"pwr\":["))) return;
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__PowerEventCount; uint8_t__i++)
     {
-        if (uint8_t__i != 0u) file__f.print(",");
-        file__f.print("{\"off\":");
-        file__f.print(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].offTime);
-        file__f.print(",\"on\":");
-        file__f.print(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].onTime);
-        file__f.print(",\"dur\":");
-        file__f.print(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].durationSec);
-        file__f.print("}");
+        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("{\"off\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].offTime))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"on\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].onTime))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(",\"dur\":"))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__i].durationSec))) return;
+        if (!func__Simple_StorageTextAppend(string__data, String("}"))) return;
     }
-    file__f.print("]}");
-    file__f.close();
-    BOOL__G__DiagDirty = false;
+    if (!func__Simple_StorageTextAppend(string__data, String("]}"))) return;
+    if (func__Simple_StorageWrite(SIMPLE_DIAG_FILE, string__data)) BOOL__G__DiagDirty = false;
 }
 static void func__Simple_DiagLoad(void)
 {
@@ -848,40 +603,54 @@ static void func__Simple_DiagLoad(void)
         }
     }
 }
-static void func__Simple_ChargeHistoryClear(void)
+static bool func__Simple_ChargeHistoryClear(bool bool__persist = true)
 {
+    String string__empty;
+    if (!func__Simple_StorageTextAppend(string__empty, String("{\"count\":0,\"prevCh1\":")) ||
+        !func__Simple_StorageTextAppend(string__empty, String(UINT32_T__G__ChargeCountCh1)) ||
+        !func__Simple_StorageTextAppend(string__empty, String(",\"prevCh2\":")) ||
+        !func__Simple_StorageTextAppend(string__empty, String(UINT32_T__G__ChargeCountCh2)) ||
+        !func__Simple_StorageTextAppend(string__empty, String(",\"hist\":[]}"))) return false;
+    if (bool__persist && !func__Simple_StorageWrite(SIMPLE_CHARGE_HISTORY_FILE, string__empty)) return false;
     UINT8_T__G__ChargeHistoryCount = 0u;
     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
     UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
     BOOL__G__ChargeCountBaselineReady = BOOL__G__DiagValid;
     BOOL__G__ChargeHistDirty = false;
-    if (BOOL__G__FsOk)
-    {
-        LittleFS.remove(SIMPLE_CHARGE_HISTORY_FILE);
-    }
-    if (BOOL__G__ChargeCountBaselineReady)
-    {
-        func__Simple_ChargeHistorySave();
-    }
+    return true;
 }
-static void func__Simple_ChartsClear(void)
+static bool func__Simple_ChartsClear(bool bool__persist = true)
 {
+    /* Empty snapshot supersedes even a complete unacknowledged journal tail. */
+    uint32_t uint32_t__sequence = UINT32_T__G__ChartSequence;
+    if (bool__persist && uint32_t__sequence == UINT32_MAX) return false;
+    uint32_t__sequence = bool__persist ? uint32_t__sequence + 1u : 0u;
+    uint8_t uint8_t__empty[SIMPLE_CHART_FILE_HEADER + 19u + 2u] = {};
+    (void)memcpy(uint8_t__empty, "CHTD\2\4\0\0", 8u);
+    for (uint8_t uint8_t__i = 0u; uint8_t__i < 4u; uint8_t__i++)
+        uint8_t__empty[8u + uint8_t__i] = (uint8_t)(uint32_t__sequence >> (8u * uint8_t__i));
+    uint16_t uint16_t__crc = SimpleLogCodec::crc(uint8_t__empty, sizeof(uint8_t__empty) - 2u);
+    uint8_t__empty[sizeof(uint8_t__empty) - 2u] = (uint8_t)uint16_t__crc;
+    uint8_t__empty[sizeof(uint8_t__empty) - 1u] = (uint8_t)(uint16_t__crc >> 8);
+    if (bool__persist && !func__Simple_StorageCommit(SIMPLE_CHARTS_FILE, uint8_t__empty, sizeof(uint8_t__empty))) return false;
+    func__Simple_ChartStoreReset(false);
+    UINT32_T__G__ChartSequence = uint32_t__sequence;
+    UINT32_T__G__ChartSnapshotSequence = uint32_t__sequence;
     UINT8_T__G__ChartCount = 0u;
     UINT8_T__G__ChartIndex = 0u;
-    UINT8_T__G__Chart1D_Count = 0u; UINT8_T__G__Chart1D_Index = 0u;
-    UINT8_T__G__Chart7D_Count = 0u; UINT8_T__G__Chart7D_Index = 0u;
-    UINT8_T__G__Chart1M_Count = 0u; UINT8_T__G__Chart1M_Index = 0u;
-    UINT8_T__G__Chart3M_Count = 0u; UINT8_T__G__Chart3M_Index = 0u;
+    UINT16_T__G__Chart1D_Count = 0u; UINT16_T__G__Chart1D_Index = 0u;
+    UINT16_T__G__Chart7D_Count = 0u; UINT16_T__G__Chart7D_Index = 0u;
+    UINT16_T__G__Chart1M_Count = 0u; UINT16_T__G__Chart1M_Index = 0u;
+    UINT16_T__G__Chart3M_Count = 0u; UINT16_T__G__Chart3M_Index = 0u;
     UINT32_T__G__Last1D_Ms = 0u; UINT32_T__G__Last7D_Ms = 0u; UINT32_T__G__Last1M_Ms = 0u; UINT32_T__G__Last3M_Ms = 0u;
     UINT32_T__G__LastChartSaveSec = 0u;
     BOOL__G__ChartsDirty = false;
-    if (BOOL__G__FsOk)
-    {
-        LittleFS.remove(SIMPLE_CHARTS_FILE);
-    }
+    if (bool__persist) (void)LittleFS.remove(SIMPLE_CHART_JOURNAL_FILE);
+    return true;
 }
-static void func__Simple_DiagClear(void)
+static bool func__Simple_DiagClear(bool bool__persist = true)
 {
+    if (bool__persist && !func__Simple_StorageWrite(SIMPLE_DIAG_FILE, String("{\"ec\":0,\"pc\":0,\"err\":[],\"pwr\":[]}"))) return false;
     UINT8_T__G__DiagErrorCount = 0u;
     UINT8_T__G__PowerEventCount = 0u;
     UINT32_T__G__LastLocalFaultMask = UINT32_T__G__TlmField[19];
@@ -889,9 +658,6 @@ static void func__Simple_DiagClear(void)
     BOOL__G__LocalPowerOffActive = false;
     BOOL__G__DiagClearPending = true;
     BOOL__G__DiagDirty = false;
-    if (BOOL__G__FsOk)
-    {
-        LittleFS.remove(SIMPLE_DIAG_FILE);
-    }
     func__Simple_SendDiagReq();
+    return true;
 }

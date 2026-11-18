@@ -93,17 +93,27 @@
 #define SIMPLE_JSON_BUFFER_SIZE         1024u
 #define SIMPLE_PANEL_HTML_MAX_BYTES     175000u
 #define SIMPLE_CHART_HISTORY_SIZE       60u
-#define SIMPLE_CHART_1D_SIZE            24u
+#define SIMPLE_CHART_1D_SIZE            288u
 #define SIMPLE_CHART_7D_SIZE            28u
 #define SIMPLE_CHART_1M_SIZE            30u
 #define SIMPLE_CHART_3M_SIZE            90u
-#define SIMPLE_CHARTS_FILE              "/charts.json"
+#define SIMPLE_CHARTS_FILE              "/charts.bin"
+#define SIMPLE_CHART_FILE_HEADER        12u
+/* Accepted samples: one wall hour OR 500 mV in either observed voltage. */
+#define SIMPLE_CHART_SAMPLE_SEC         3600u
+#define SIMPLE_CHART_STEP_MV            500u
+/* Bound the append journal; compact only after verified snapshot replacement. */
+#define SIMPLE_CHART_JOURNAL_FILE       "/charts.jrn"
+#define SIMPLE_CHART_JOURNAL_MAX_BYTES  1024u
+#define SIMPLE_CHART_FILE_MAX_BYTES     9216u
 #define SIMPLE_DIAG_MAX_ERRORS          10u
 #define SIMPLE_DIAG_MAX_POWER_EVENTS    20u
-#define SIMPLE_USERS_MAX                8u
+#define SIMPLE_USERS_MAX                1u
 #define SIMPLE_USER_NAME_MAX            24u
 #define SIMPLE_USER_PASS_MAX            32u
-#define SIMPLE_USER_PASS_MIN            4u
+#define SIMPLE_LOGIN_FAIL_LIMIT         5u
+#define SIMPLE_LOGIN_BLOCK_MS           30000u
+#define SIMPLE_LOGIN_BLOCK_MAX_MS       300000u
 #define SIMPLE_USERS_FILE               "/users.json"
 #define SIMPLE_SESSION_TIMEOUT_MS       1800000u
 #define SIMPLE_SESSION_COOKIE           "co_sess"
@@ -113,8 +123,14 @@
 #define SIMPLE_TIME_SYNC_DELAY_MS       3000u
 #define SIMPLE_TIME_RESEND_MS           600000u
 #define SIMPLE_TIME_ADOPT_DIFF_SEC      300u
-#define SIMPLE_LOG_MAX_DAYS             30u
+/* A missing clock never expires into a trusted timestamp. */
+#define SIMPLE_TIME_WARN_MS             40000u
+#define SIMPLE_TIME_WARN_RETRY_MS       5000u
+#define SIMPLE_TIME_GAP_FILE            "/clock_gap.json"
+#define SIMPLE_LOG_MAX_DAYS             90u
+/* Retention is bounded by age, payload quotas and actual flash allocation. */
 #define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
+#define SIMPLE_LOG_DAY_MAX_BYTES        4096u
 #define SIMPLE_LOG_TAIL_LINES           30u
 #define SIMPLE_LOG_DAY_AUTO             0xFFFFFFFFu
 #define SIMPLE_LOG_DAY_ZERO             0xFFFFFFFEu
@@ -134,7 +150,18 @@
 #define SIMPLE_HTTP_ROOT_MAX_MS         15000u
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
 #define SIMPLE_DIAG_FILE                "/diag.json"
-#define SIMPLE_LOG_TOTAL_BUDGET_BYTES     120000u
+/* Payload ceilings share one 64 KiB physical envelope, including metadata. */
+#define SIMPLE_STORAGE_TOTAL_BYTES       65536u
+#define SIMPLE_LOG_TOTAL_BUDGET_BYTES     28672u
+#define SIMPLE_STORAGE_CHART_BYTES       10240u
+#define SIMPLE_STORAGE_HISTORY_BYTES     6144u
+#define SIMPLE_STORAGE_SETTINGS_BYTES    4096u
+#define SIMPLE_LOG_RESERVE_BYTES         16384u
+#define SIMPLE_LOG_RECLAIM_MAX_PER_CALL   4u
+#define SIMPLE_LOG_MIN_BUDGET_BYTES       0u
+static_assert(SIMPLE_LOG_TOTAL_BUDGET_BYTES + SIMPLE_STORAGE_CHART_BYTES +
+    SIMPLE_STORAGE_HISTORY_BYTES + SIMPLE_STORAGE_SETTINGS_BYTES +
+    SIMPLE_LOG_RESERVE_BYTES == SIMPLE_STORAGE_TOTAL_BYTES, "Storage allocation must total 64 KiB");
 #define SIMPLE_LOG_MIN_INTERVAL_MS      2000u
 /*
  * [EN] A queued mains cut/return is written after this short coalescing
@@ -150,17 +177,14 @@
     "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
     "# batt_pct: درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵، کارخانه ۲۱۰۰۰..۲۹۰۰۰ میلی‌ولت) / battery percent from the discharge map\n" \
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
-    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual\n" \
+    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual 7=clock unavailable; dated warning marks recovery, not the missing interval\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 #define SIMPLE_PARAMS_FILE              "/params.json"
 #define SIMPLE_THEME_FILE               "/theme.json"
-#define SIMPLE_THEME_MAX                1u
+#define SIMPLE_THEME_MAX                0u
 #define SIMPLE_CRYPTO_TAG_LEN           16u
 #define SIMPLE_CRYPTO_KEY_LEN           32u
 #define SIMPLE_CRYPTO_SALT              "ChangeOver_FS_2026_v1"
-#define SIMPLE_RECOVERY_FILE            "/boot_no_login.json"
-#define SIMPLE_RECOVERY_ARM_MS          10000u
-#define SIMPLE_RECOVERY_RETRY_MS        5000u
 typedef enum
 {
     SIMPLE_RX_WAIT_SOF0 = 0,

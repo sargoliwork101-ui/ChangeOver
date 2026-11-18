@@ -144,7 +144,7 @@ check(tag({ chg: 0, note: 5 }).indexOf("Heartbeat") >= 0,
                            { chg: 512, dm: 3 }, { chg: 256, fl: 33 }, { chg: 0, note: 4 }]) {
         long.push(tag(rowTest));
     }
-    const worst = long.map(x => x.split(/\s+/).length).reduce((a, b) => Math.max(a, b), 0);
+    const worst = long.flatMap(x => x.split(" · ")).map(x => x.split(/\s+/).length).reduce((a, b) => Math.max(a, b), 0);
     check(worst <= 3,
           "every tag stays at one or two words (three with its colon prefix)",
           worst + " words: " + long.join(" | "));
