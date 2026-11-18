@@ -21,7 +21,10 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
 (async()=>{
     await tick();
     const stepLabel=w.evtTextFa({chg:1024,note:0});
-    check(stepLabel.txt==='ولتاژ پک تغییر پله‌ای داشت','voltage-step label stays valid for both old 200 mV and new 500 mV records');
+    check(stepLabel.txt==='ولتاژ پک یک پلهٔ ۵۰۰ میلی‌ولتی جابه‌جا شد','voltage-step label explicitly names 500 mV');
+    check(w.evtTextFa({chg:0,note:7}).txt==='شروع روز','day-start marker has its own Persian label');
+    const parsed=w.evtParse('1793836800,60,512,0,1,4,1,2,256,18,12000,12500,2,28000,100,200,300,400');
+    check(parsed.vlow===12000 && parsed.vhigh===12500 && parsed.v24===24500 && parsed.dm===2 && parsed.vin===28000 && parsed.i1===100 && parsed.i2===200 && parsed.d1===300 && parsed.d2===400 && !('pct' in parsed),'18-column row is decoded in calibration order without battery percent');
     const config=fs.readFileSync(path.join(__dirname,'..','simple_config.h'),'utf8');
     const step=Number(config.match(/#define\s+SIMPLE_LOG_VSTEP_MV\s+(\d+)u/)[1]);
     const preview=fs.readFileSync(path.join(__dirname,'..','simple_preview.html'),'utf8');

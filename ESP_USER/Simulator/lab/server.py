@@ -104,7 +104,7 @@ class Board:
     # The owner asked to see the panel with a long series of data. Everything
     # below is deterministic: the same day always shows the same numbers, so a
     # screenshot today matches a screenshot tomorrow.
-    MAX_DAYS = 90             # mirrors SIMPLE_LOG_MAX_DAYS in simple_config.h
+    MAX_DAYS = 30             # mirrors SIMPLE_LOG_MAX_DAYS in simple_config.h
     CYCLE_HOURS = 48          # 8 h charging, 40 h running on the battery
     CHARGE_HOURS = 8
     SEED_DAYS = 90
@@ -123,7 +123,7 @@ class Board:
         return pct, vin, 21000 + pct * 80
 
     def row_at(self, stamp, uptime_s, chg, note, fault, pct, vin, vpack):
-        """One CSV row with the same 22 columns the firmware writes."""
+        """One CSV row with the same 18 columns the firmware writes."""
         # both packs hang on the same charger, so they always charge together:
         # one stage for both channels and both currents non-zero at the same time
         stage = 0 if vin == 0 else 1 + min(8, max(0, pct - 30) * 8 // 70)
@@ -131,14 +131,15 @@ class Board:
         i2 = 0 if stage == 0 else 1120 + (pct % 5) * 10
         return ",".join(str(v) for v in [
             stamp, uptime_s, chg, note, 1 if vin else 0,
-            3 if vin else 2, stage, stage,
-            fault, 0, vpack, 12600, 12900, self.imbalance, self.dead,
-            vin, 12000, i1, i2, 500, 500, pct,
+            1 if vin else 0, stage, stage,
+            fault, 0, (vpack-self.imbalance)//2, vpack-(vpack-self.imbalance)//2, self.dead,
+            vin, i1, i2, 500, 500,
         ])
 
     def make_day_rows(self, midnight, day_index):
         """A believable day: boot, mains in/out, charge stages, a few notes."""
-        rows = []
+        pct, vin, vpack = self.state_at(midnight)
+        rows = [self.row_at(midnight, 0, 0, 7, 0, pct, vin, vpack)]
         for hour in range(24):
             stamp = midnight + hour * 3600
             pct, vin, vpack = self.state_at(stamp)
@@ -166,7 +167,7 @@ class Board:
                 bits |= 0x0080
                 note = 3                            # link back
             # the firmware also writes a row whenever the pack voltage moves
-            # by 200 mV, which on this 48 h cycle is roughly every two hours
+            # by 500 mV; these illustrative fixtures are not a firmware timing test
             if (bits or note) or (hour % 2 == 0):
                 rows.append(self.row_at(stamp, (day_index + 1) * 3600 + hour * 60,
                                         bits, note, fault, pct, vin, vpack))
@@ -264,7 +265,7 @@ class Board:
     def seed(self):
         """Three months of rows, charts, charge events and a few recorded errors."""
         now = int(time.time())
-        for day_index in range(self.SEED_DAYS - 1, -1, -1):
+        for day_index in range(self.MAX_DAYS - 1, -1, -1):
             day_start = now - day_index * 86400
             midnight = int(day_start // 86400) * 86400
             key = time.strftime("%Y%m%d", time.localtime(midnight))
@@ -302,13 +303,12 @@ class Board:
                         "vpack": 21000 + pct * 80, "time": stamp})
         return out
     def row(self, stamp, chg, note, fault=0):
-        """One CSV row, same 22 columns the firmware writes."""
-        pct = max(0, min(100, (self.vpack - 21000) * 100 // 8000))
+        """One CSV row, same 18 columns the firmware writes."""
         return ",".join(str(v) for v in [
             stamp, 3600 + (self.tick % 600), chg, note, 1 if self.mains else 0,
-            3 if self.mains else 2, self.stage1, self.stage2, fault, 0,
-            self.vpack, 12600, 12900, self.imbalance, self.dead,
-            24100, 12000, 1200, 900, 500, 500, pct,
+            1 if self.mains else 0, self.stage1, self.stage2, fault, 0,
+            (self.vpack-self.imbalance)//2, self.vpack-(self.vpack-self.imbalance)//2, self.dead,
+            24100, 1200, 900, 500, 500,
         ])
     def advance(self):
         """Move the simulated board forward by roughly one second."""
@@ -892,9 +892,9 @@ class Handler(BaseHTTPRequestHandler):
     def event_text(self, day):
         header = (
             "# \u062a\u0627\u0631\u06cc\u062e\u0686\u0647\u0654 \u0648\u0636\u0639\u06cc\u062a / state history\n"
-            "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,"
-            "vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,"
-            "duty1_permille,duty2_permille,batt_pct\n")
+            "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,"
+            "vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,"
+            "duty1_permille,duty2_permille\n")
         chosen = day if day and day in BOARD.rows else BOARD.today()
         rows = BOARD.rows.get(chosen) or []
         return header + "\n".join(rows[-40:]) + "\n"

@@ -138,7 +138,7 @@ loss; temporary-file isolation; file deletion/recreation; clear/reset; malformed
 CRC-valid snapshots/deltas; 64-bit aggregation sums; 288-point HTTP serialization;
 540 cold battery wakes; rejection of the former 300-second trigger; and a 90-day
 trace of 2,161 hourly samples from 25,921 observations on a 64,000-byte budget
-alongside 90 normal log days and 8,000 bytes of other files. The test File shim adds
+alongside 30 normal log days and 8,000 bytes of other files. The test File shim adds
 a binary short-write limit; it is not firmware. The DOM chart tests remain in the
 same runner. All timing/power-cut tests are accelerated host models, not hardware.
 
@@ -193,3 +193,12 @@ clock writes, hourly/voltage chart persistence, snapshots, final replay/clear an
 1000 within-day burst rows. Assertions require zero ENOSPC writes, no pending
 chart/dirty history, no RAM log loss, bounded day files and unchanged account
 bytes. This is software validation, not physical power-cut or endurance testing.
+
+## 18-column user log
+
+Current log policy is 30 retained day files and 200 ordinary rows, with the
+existing 4-KiB day compaction and 28-KiB total budget. Chart range remains 90
+days. Schema tests verify the calibration column order without battery percent.
+Day-start note 7 is not an event slot; clock-gap warning is note 8. Battery-wake
+and midnight regressions ensure day markers do not reset hourly scheduling.
+The old 22-column logs must be cleared before deploying; they are not migrated.

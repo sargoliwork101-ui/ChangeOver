@@ -112,7 +112,7 @@ range, not Arduino's signed `String::toInt` range.
 
 LittleFS files: `/wifi.json`, `/charts.bin`, `/charts.jrn`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
-The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
+The day files keep their `.csv` name for the existing day-list API, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 18 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. The previous 22-column history is cleared by the owner before deployment. Format: `ESP_USER/simple_log_codec.h`.
 
 ## Run checks
 
@@ -150,16 +150,16 @@ coalesce while waiting and describe observed state on recovery, not every event
 in the missing interval. Hourly/500-mV triggers and shared summaries are unchanged.
 
 At 40,000 boot milliseconds without a trusted clock, retain one unresolved incident
-in `/clock_gap.json` (`note=7, reason=clock_unavailable`). The fixed small record is
+in `/clock_gap.json` (`note=8, reason=clock_unavailable`). The fixed small record is
 written to `.tmp`, read back and atomically renamed. Failed attempts retry at most
 once per five seconds; a committed marker is not continually rewritten. RAM holds
 it when storage is unavailable, with no claim of surviving power loss in that case.
 A committed marker survives ESP resets. The current `/evt` view and all-days CSV
-include a synthetic `epoch=0, note=7` warning while unresolved, not a dated sample;
+include a synthetic `epoch=0, note=8` warning while unresolved, not a dated sample;
 explicit unrelated historical-day views remain unchanged. The panel renders only
 the short Persian warning, not extra technical detail or a new card.
 
-After clock recovery, append and read back one dated `note=7` row on the correct
+After clock recovery, append and read back one dated `note=8` row on the correct
 day, then remove the pending marker. This row timestamps the recovery report,
 not an invented loss start/end time. It may bypass the normal day cap like a
 manual snapshot; normal capacity and retention constants are unchanged. A write
@@ -273,3 +273,18 @@ writes; they do not imply 90 retained days. Fixed per-day files remain separate.
 Read-only/corrupt storage or unreclaimable non-log occupancy can still prevent
 progress; failure is visible and committed snapshots are not destroyed.
 See STORAGE_64K.md for the measured workloads and test commands.
+
+## User event-log schema and retention (2026-11-04)
+
+New day files use the calibration codec's 18-field order: epoch, uptime_s,
+change_bits, note, mains, fl, chg1, chg2, fault_mask, flags2, vlow_mv,
+vhigh_mv, dead_mask, vin_mv, i1_ma, i2_ma, duty1_permille, duty2_permille.
+No battery percent is persisted. Pack voltage for restored comparisons is the
+sum of the two half-pack readings. Existing 22-field days must be cleared before
+using this schema; no migration is provided. Charts keep their existing schema
+and 90-day range. Logs retain at most 30 day files and 200 ordinary rows. The
+existing 4-KiB day compaction and 28-KiB aggregate budget remain in force.
+A note=7 day-start row is durable once per new current day, excluded from the
+ordinary-row cap and preserved during day compaction. It never resets the
+heartbeat/change baseline, including across reboot. Unresolved-clock warnings
+use note=8 in both the synthetic response and the recovered dated row.

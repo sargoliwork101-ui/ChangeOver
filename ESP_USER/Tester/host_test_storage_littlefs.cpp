@@ -108,7 +108,9 @@ int main(int argc,char**argv){
     for (unsigned burst=0;burst<1000u;burst++) {
         clockAt(1793836800u+90u*86400u-60u);
         UINT32_T__G__TlmField[15]=22000u+(burst%30u)*200u;
-        check(func__SimpleLog_WriteRow(SIMPLE_LOG_CHG_VSTEP,0u),"within-day burst persists");
+        bool accepted=func__SimpleLog_WriteRow(SIMPLE_LOG_CHG_VSTEP,0u);
+        check(accepted || (BOOL__G__LogDayFull && UINT16_T__G__LogRowsToday==SIMPLE_LOG_MAX_ROWS_PER_DAY),
+              "within-day burst persists or reaches the explicit 200-row cap");
         FSInfo i;LittleFS.info(i);
     }
     char dayPath[SIMPLE_LOG_PATH_MAX];func__SimpleLog_PathOf(dayPath,UINT32_T__G__LogDayCode);
@@ -120,5 +122,6 @@ int main(int argc,char**argv){
     File f=LittleFS.open(SIMPLE_USERS_FILE,"r");check(std::string(f.readString().c_str())==users,"account bytes unchanged");f.close();
     check(failures==0,"no physical ENOSPC writes");func__SimpleLog_ScanDays(true);
     printf("REAL LITTLEFS 64KiB PASS: profile=%d minutes=%u retained_days=%u reclaimed=%u peak_allocated=%d blocked=%u write_errors=%d\n",profile,observations,UINT8_T__G__LogIndexCount,UINT16_T__G__LogReclaimed,peak,blocked,failures);
+    check(UINT8_T__G__LogIndexCount<=30u,"only logs are limited to 30 days");
     check(streams.empty(),"all files closed");lfs_unmount(&flash);return 0;
 }

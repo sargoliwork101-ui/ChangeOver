@@ -353,49 +353,49 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       EVT_CHG_FAULT=16, EVT_CHG_FLAGS=32, EVT_CHG_BAND=64, EVT_CHG_LINK=128,
       EVT_CHG_MODE=256, EVT_CHG_DEAD=512, EVT_CHG_VSTEP=1024;
   var EVT_NOTE_NONE=0, EVT_NOTE_LOW_STOP=1, EVT_NOTE_LINK_LOST=2,
-      EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5, EVT_NOTE_MANUAL=6;
+      EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5, EVT_NOTE_MANUAL=6, EVT_NOTE_DAY_START=7;
   var EVT_MIN_MS=2000, EVT_VSTEP_MV=__LOG_VSTEP_MV__, EVT_VSTEP_MIN_MS=60000,
-      EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=3600000, EVT_MAX_ROWS=2000;
+      EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=3600000, EVT_MAX_ROWS=__LOG_MAX_ROWS__, EVT_MAX_DAYS=__LOG_MAX_DAYS__;
   var evtRows=[], evtPendingMask=0, evtPendingNote=0, evtLastRowMs=0, evtLastRowOk=false,
       evtLastStepMs=0, evtLastStepOk=false, evtHasPrev=false, evtPrev=null,
       evtPrevV24=0, evtLinkDown=false, evtLastFrameMs=0, evtSeen=false,
       evtSessionMs=Date.now(), evtBooted=false;
   try {
-    var evtSaved = window.localStorage && localStorage.getItem('co_evt_rows_v1');
+    var evtSaved = window.localStorage && localStorage.getItem('co_evt_rows_v2_18');
     if (evtSaved) { evtRows = JSON.parse(evtSaved) || []; if (evtRows.length) evtLastRowOk = true; }
   } catch (e) { evtRows = []; }
   function evtPersist() {
-    try { if (window.localStorage) localStorage.setItem('co_evt_rows_v1', JSON.stringify(evtRows)); } catch (e) {}
+    try { if (window.localStorage) localStorage.setItem('co_evt_rows_v2_18', JSON.stringify(evtRows)); } catch (e) {}
   }
   function evtNowSec() { return Math.floor(Date.now() / 1000); }
   function evtDayCode(sec) {
     var d = new Date((sec || evtNowSec()) * 1000);
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   }
-  function evtPct(v) {
-    /* v1.109 mirror: discharge map 74/75, factory 21,000..29,000 mV */
-    var P0 = (typeof P !== 'undefined') ? P : {};
-    var vmin = (P0[74] != null) ? P0[74] : 21000, vmax = (P0[75] != null) ? P0[75] : 29000;
-    if (v <= vmin) return 0;
-    if (v >= vmax) return 100;
-    return Math.floor(((v - vmin) * 100) / (vmax - vmin));
-  }
   function evtWrite(mask, note, flags, fl2, t) {
-    if (evtRows.length >= EVT_MAX_ROWS) { return; }
+    var today=evtDayCode(evtNowSec());
+    var cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-EVT_MAX_DAYS+1);
+    evtRows=evtRows.filter(function(r){return r[0]>=cutoff.getTime()/1000;});
+    var dayRows=evtRows.filter(function(r){return evtDayCode(r[0])===today;});
+    if (!dayRows.length && note!==EVT_NOTE_DAY_START) evtWrite(0,EVT_NOTE_DAY_START,flags,fl2,t);
+    var count=dayRows.filter(function(r){return r[3]!==EVT_NOTE_DAY_START;}).length;
+    if (note!==EVT_NOTE_DAY_START && count>=EVT_MAX_ROWS) return;
+    if (note!==4 && count===EVT_MAX_ROWS-1) note=4;
     var row = [evtNowSec(), Math.floor((Date.now() - counters.t0) / 1000), mask, note,
-               (flags & 0x02) ? 1 : 0, flags,
+               (flags & 0x02) ? 1 : 0, flags & 0x3D,
                t[IDX.state1], t[IDX.state2], t[IDX.fault_mask], fl2,
-               t[IDX.v_bat24_mv], t[IDX.v_bat_low_mv], t[IDX.v_bat_high_mv],
-               t[IDX.imb_mv], t[IDX.dead_mask],
-               t[IDX.v_in_mv], t[IDX.v_bat12_mv],
+               t[IDX.v_bat_low_mv], t[IDX.v_bat_high_mv], t[IDX.dead_mask],
+               t[IDX.v_in_mv],
                t[IDX.i1_filtered_ma], t[IDX.i2_filtered_ma],
-               t[IDX.duty1_permille], t[IDX.duty2_permille], evtPct(t[IDX.v_bat24_mv])];
+               t[IDX.duty1_permille], t[IDX.duty2_permille]];
     evtRows.push(row);
+    if (note===EVT_NOTE_DAY_START) { evtPersist(); return; }
     evtLastRowMs = Date.now(); evtLastRowOk = true;
     if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
     evtPrevV24 = t[IDX.v_bat24_mv];
     evtPendingMask = 0; evtPendingNote = EVT_NOTE_NONE;
     evtPersist();
+    if (count===EVT_MAX_ROWS-2 && note!==4) evtWrite(0,4,flags,fl2,t);
   }
   function evtFlush() {
     if (!evtPendingMask && evtPendingNote === EVT_NOTE_NONE) { return; }
@@ -411,6 +411,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
   var evtLastFlags = 0, evtLastFl2 = 0, evtLastT = null;
   function evtFrame(linkUp, flags, fl2, t) {
     evtLastFlags = flags; evtLastFl2 = fl2; evtLastT = t;
+    if (!evtRows.some(function(r){return evtDayCode(r[0])===evtDayCode(evtNowSec());}))
+      evtWrite(0,EVT_NOTE_DAY_START,flags,fl2,t);
     if (!evtBooted) {
       evtBooted = true;
       evtWrite(EVT_CHG_BOOT, EVT_NOTE_NONE, flags, fl2, t);
@@ -467,7 +469,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }, 60000);
   }
   function evtCsvText(rows) {
-    var head = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,v24,vlow,vhigh,imb,dm,vin,v12,i1,i2,d1,d2';
+    var head = '# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille';
     var lines = rows.map(function (r) { return r.join(','); });
     return [head].concat(lines).join('\n');
   }
@@ -1031,7 +1033,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
 """
 PLACEHOLDERS = ("__FIELD_INDEX__", "__TLM_N__", "__FAULT_BITS__", "__STATES__", "__RANGES__",
                 "__SCALES__", "__WIFI_SSID__", "__WIFI_PASS__", "__PANEL__", "__BOOT__",
-                "__MA_PER_COUNT__", "__UV_PER_COUNT__", "__LOG_VSTEP_MV__")
+                "__MA_PER_COUNT__", "__UV_PER_COUNT__", "__LOG_VSTEP_MV__", "__LOG_MAX_ROWS__", "__LOG_MAX_DAYS__")
 def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
     """[FA] جای‌گذاری مقادیر مشتق‌شده در قالب JS سیمولاتور."""
     shim = SHIM
@@ -1039,6 +1041,8 @@ def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
             ("__FIELD_INDEX__", json.dumps(field_map, ensure_ascii=False)),
             ("__TLM_N__", str(tlm_n)),
             ("__LOG_VSTEP_MV__", str(config_define("SIMPLE_LOG_VSTEP_MV"))),
+            ("__LOG_MAX_ROWS__", str(config_define("SIMPLE_LOG_MAX_ROWS_PER_DAY"))),
+            ("__LOG_MAX_DAYS__", str(config_define("SIMPLE_LOG_MAX_DAYS"))),
             ("__FAULT_BITS__", json.dumps(bits, ensure_ascii=False)),
             ("__STATES__", json.dumps(states, ensure_ascii=False)),
             ("__RANGES__", json.dumps(ranges, ensure_ascii=False)),
