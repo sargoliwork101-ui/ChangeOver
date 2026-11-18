@@ -262,6 +262,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var query = '';
     if (board.vmin !== PANEL.BAT_VMIN) { query += '&p74=' + board.vmin; }
     if (board.vmax !== PANEL.BAT_VMAX) { query += '&p75=' + board.vmax; }
+    if (board.cvmin !== PANEL.CHG_VMIN) { query += '&p119=' + board.cvmin; }
+    if (board.cvmax !== PANEL.CHG_VMAX) { query += '&p120=' + board.cvmax; }
     return query;
   }
 
@@ -730,6 +732,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var linkFlag = num('link'); if (linkFlag !== null) { sim.linkUp = (linkFlag === 1); }
       var param = num('p74'); if (param !== null) { board.vmin = param; }
       param = num('p75'); if (param !== null) { board.vmax = param; }
+      param = num('p119'); if (param !== null) { board.cvmin = param; }
+      param = num('p120'); if (param !== null) { board.cvmax = param; }
       param = num('p66'); if (param !== null) { board.gPer = param; }
       param = num('p67'); if (param !== null) { board.gOff = param; }
       return jsonResponse('{"ok":1}');
@@ -851,8 +855,6 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     input.addEventListener('input', function () {
       board[id] = Number(input.value);
-      if (id === 'vmin') { board.cvmin = board[id]; }
-      if (id === 'vmax') { board.cvmax = board[id]; }
       readout.textContent = board[id] + ' mV';
       applySim(); simRefresh();
     });
@@ -890,8 +892,10 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var paramBox = el('div', { 'class': 'simbox' });
     paramBox.appendChild(el('div', { 'class': 'simhint' },
       'پارامترهای خود برد (درصد فول/خالی باتری - همان‌هایی که چراغ سبز با آن‌ها چشمک می‌زند)'));
-    paramSlider(paramBox, '۰٪ باتری (پارامتر ۷۴)', 'vmin', 15000, 25000);
-    paramSlider(paramBox, '۱۰۰٪ باتری (پارامتر ۷۵)', 'vmax', 25000, 32000);
+    paramSlider(paramBox, '۰٪ دشارژ (پارامتر ۷۴)', 'vmin', 15000, 25000);
+    paramSlider(paramBox, '۱۰۰٪ دشارژ (پارامتر ۷۵)', 'vmax', 25000, 32000);
+    paramSlider(paramBox, '۰٪ شارژ (پارامتر ۱۱۹)', 'cvmin', 15000, 25000);
+    paramSlider(paramBox, '۱۰۰٪ شارژ (پارامتر ۱۲۰)', 'cvmax', 25000, 32000);
     page.appendChild(paramBox);
 
     var stateBox = el('div', { 'class': 'simbox' });

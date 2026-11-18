@@ -696,6 +696,7 @@ function vToPctMap(v, vmin, vmax){ if(v<=vmin) return 0; if(v>=vmax) return 100;
 function vToPctPack(v){ return vToPctMap(v, brd.vmin, brd.vmax); }
 function vToPctHalf(v){ return vToPctMap(v, brd.halfMin, brd.halfMax); }
 function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
+function vToPctHalfChg(v){ return vToPctMap(v, Math.floor(brd.cvmin/2), Math.floor(brd.cvmax/2)); }
 
 /* زمان زنده با ثانیه - برای «زمان کل شارژ» و «کارکرد برد» که کاربر باید
    ببیند همین حالا دارد می‌شمارد (قبلاً فقط ساعت و دقیقه بود و ثابت به نظر می‌رسید) */
@@ -1414,8 +1415,6 @@ function render(data){
  updBoardParams(data.pv);
  let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
  let vPack=vPackRaw;
- let vPackPct=vPackRaw;
- if(vPackPct>brd.cvmax) vPackPct=brd.cvmax;
  let vPackSum=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw; /* فقط برای نمایش ولتاژ جمع اگر لازم شد */
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
  let deadMask=data.t[T_DEAD]||0;
@@ -1427,8 +1426,9 @@ function render(data){
  let deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
  let inpInfo=updInputState(vIn, data.inputPresent);
  let inputPresent=inpInfo.present, inputOV=inpInfo.ov;
- let rawPackDis=vToPctPack(vPackPct), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
- let rawPackChg=vToPctPackChg(vPackPct), rawLowChg=vToPctHalf(vLow), rawHighChg=vToPctHalf(vHigh);
+ // Each map saturates independently; charge bounds never clip discharge voltage.
+ let rawPackDis=vToPctPack(vPackRaw), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
+ let rawPackChg=vToPctPackChg(vPackRaw), rawLowChg=vToPctHalfChg(vLow), rawHighChg=vToPctHalfChg(vHigh);
  let stablePack, stableLow, stableHigh, chgStablePack, chgStableLow, chgStableHigh;
  if(inputPresent){
   chgStablePack=updChgStable(rawPackChg, chgPackState);

@@ -471,6 +471,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     var query = '';
     if (board.vmin !== PANEL.BAT_VMIN) { query += '&p74=' + board.vmin; }
     if (board.vmax !== PANEL.BAT_VMAX) { query += '&p75=' + board.vmax; }
+    if (board.cvmin !== PANEL.CHG_VMIN) { query += '&p119=' + board.cvmin; }
+    if (board.cvmax !== PANEL.CHG_VMAX) { query += '&p120=' + board.cvmax; }
     return query;
   }
 
@@ -939,6 +941,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
       var linkFlag = num('link'); if (linkFlag !== null) { sim.linkUp = (linkFlag === 1); }
       var param = num('p74'); if (param !== null) { board.vmin = param; }
       param = num('p75'); if (param !== null) { board.vmax = param; }
+      param = num('p119'); if (param !== null) { board.cvmin = param; }
+      param = num('p120'); if (param !== null) { board.cvmax = param; }
       param = num('p66'); if (param !== null) { board.gPer = param; }
       param = num('p67'); if (param !== null) { board.gOff = param; }
       return jsonResponse('{"ok":1}');
@@ -1060,8 +1064,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     }
     input.addEventListener('input', function () {
       board[id] = Number(input.value);
-      if (id === 'vmin') { board.cvmin = board[id]; }
-      if (id === 'vmax') { board.cvmax = board[id]; }
       readout.textContent = board[id] + ' mV';
       applySim(); simRefresh();
     });
@@ -1099,8 +1101,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     var paramBox = el('div', { 'class': 'simbox' });
     paramBox.appendChild(el('div', { 'class': 'simhint' },
       'پارامترهای خود برد (درصد فول/خالی باتری - همان‌هایی که چراغ سبز با آن‌ها چشمک می‌زند)'));
-    paramSlider(paramBox, '۰٪ باتری (پارامتر ۷۴)', 'vmin', 15000, 25000);
-    paramSlider(paramBox, '۱۰۰٪ باتری (پارامتر ۷۵)', 'vmax', 25000, 32000);
+    paramSlider(paramBox, '۰٪ دشارژ (پارامتر ۷۴)', 'vmin', 15000, 25000);
+    paramSlider(paramBox, '۱۰۰٪ دشارژ (پارامتر ۷۵)', 'vmax', 25000, 32000);
+    paramSlider(paramBox, '۰٪ شارژ (پارامتر ۱۱۹)', 'cvmin', 15000, 25000);
+    paramSlider(paramBox, '۱۰۰٪ شارژ (پارامتر ۱۲۰)', 'cvmax', 25000, 32000);
     page.appendChild(paramBox);
 
     var stateBox = el('div', { 'class': 'simbox' });
@@ -1525,6 +1529,7 @@ function vToPctMap(v, vmin, vmax){ if(v<=vmin) return 0; if(v>=vmax) return 100;
 function vToPctPack(v){ return vToPctMap(v, brd.vmin, brd.vmax); }
 function vToPctHalf(v){ return vToPctMap(v, brd.halfMin, brd.halfMax); }
 function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
+function vToPctHalfChg(v){ return vToPctMap(v, Math.floor(brd.cvmin/2), Math.floor(brd.cvmax/2)); }
 
 /* زمان زنده با ثانیه - برای «زمان کل شارژ» و «کارکرد برد» که کاربر باید
    ببیند همین حالا دارد می‌شمارد (قبلاً فقط ساعت و دقیقه بود و ثابت به نظر می‌رسید) */
@@ -2243,8 +2248,6 @@ function render(data){
  updBoardParams(data.pv);
  let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
  let vPack=vPackRaw;
- let vPackPct=vPackRaw;
- if(vPackPct>brd.cvmax) vPackPct=brd.cvmax;
  let vPackSum=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw; /* فقط برای نمایش ولتاژ جمع اگر لازم شد */
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
  let deadMask=data.t[T_DEAD]||0;
@@ -2256,8 +2259,9 @@ function render(data){
  let deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
  let inpInfo=updInputState(vIn, data.inputPresent);
  let inputPresent=inpInfo.present, inputOV=inpInfo.ov;
- let rawPackDis=vToPctPack(vPackPct), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
- let rawPackChg=vToPctPackChg(vPackPct), rawLowChg=vToPctHalf(vLow), rawHighChg=vToPctHalf(vHigh);
+ // Each map saturates independently; charge bounds never clip discharge voltage.
+ let rawPackDis=vToPctPack(vPackRaw), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
+ let rawPackChg=vToPctPackChg(vPackRaw), rawLowChg=vToPctHalfChg(vLow), rawHighChg=vToPctHalfChg(vHigh);
  let stablePack, stableLow, stableHigh, chgStablePack, chgStableLow, chgStableHigh;
  if(inputPresent){
   chgStablePack=updChgStable(rawPackChg, chgPackState);

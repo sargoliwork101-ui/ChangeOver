@@ -218,18 +218,19 @@ static void func__Simple_ChartTick(void)
         uint32_t__imb = UINT32_T__G__TlmField[25];
         uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
         uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
-        uint32_t uint32_t__vMaxChgMv = func__Simple_BoardParam(SIMPLE_PARAM_CHG_PCT_VMAX_MV);
-        uint32_t uint32_t__vpackClamped = uint32_t__vpack;
-        if (uint32_t__vpackClamped > uint32_t__vMaxChgMv)
+        /* Stored chart percentages retain the discharge scale, independent of charge bounds. */
+        if ((uint32_t__vMaxMv > uint32_t__vMinMv) && (uint32_t__vpack >= uint32_t__vMinMv))
         {
-            uint32_t__vpackClamped = uint32_t__vMaxChgMv;
-        }
-        if ((uint32_t__vMaxMv > uint32_t__vMinMv) && (uint32_t__vpackClamped >= uint32_t__vMinMv))
-        {
-            uint32_t__pct = ((uint32_t__vpackClamped - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
-            if (uint32_t__pct > 100u)
+            uint32_t uint32_t__voltageAboveMinMv = uint32_t__vpack - uint32_t__vMinMv;
+            uint32_t uint32_t__voltageRangeMv = uint32_t__vMaxMv - uint32_t__vMinMv;
+            if (uint32_t__voltageAboveMinMv >= uint32_t__voltageRangeMv)
             {
                 uint32_t__pct = 100u;
+            }
+            else
+            {
+                uint32_t uint32_t__scaledPercent = uint32_t__voltageAboveMinMv * 100u;
+                uint32_t__pct = uint32_t__scaledPercent / uint32_t__voltageRangeMv;
             }
         }
     }

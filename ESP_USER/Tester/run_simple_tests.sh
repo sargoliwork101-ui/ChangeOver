@@ -78,6 +78,7 @@ if command -v node >/dev/null 2>&1 && node -e "require('jsdom')" >/dev/null 2>&1
     node "${DIRECTORY}/host_test_panel_actions.js"
     node "${DIRECTORY}/host_test_chart_refresh.js"
     node "${DIRECTORY}/host_test_settings.js"
+    node "${DIRECTORY}/host_test_battery_percent.js"
 else
     echo "  SKIP: node یا jsdom نصب نیست"
 fi

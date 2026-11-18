@@ -3079,6 +3079,51 @@ static void func__T_TestFormatClearsAllHistory(void)
 #include "host_test_chart_journal.h"
 
 #include "host_test_storage64.h"
+/* ==================== Independent board voltage maps ==================== */
+/** @brief Exercise real bulk-parameter parsing, HTTP publication and chart discharge percentages. */
+static void func__T_TestIndependentVoltageMaps(void)
+{
+    LittleFS.format(); BOOL__G__FsOk = true;
+    func__Simple_ChartsClear(false);
+    func__Simple_TimeSet(1793836800u, true);
+    const uint8_t ids[] = {74u, 75u, 119u, 120u};
+    const uint32_t values[] = {21000u, 29000u, 22000u, 27000u};
+    uint8_t payload[21] = {4u}, frame[40];
+    for (unsigned i = 0u; i < 4u; i++) {
+        payload[1u + i * 5u] = ids[i];
+        for (unsigned b = 0u; b < 4u; b++)
+            payload[2u + i * 5u + b] = (uint8_t)(values[i] >> (b * 8u));
+    }
+    uint16_t length = func__T_MakeFrame(frame, SIMPLE_MSG_PARAMS_BULK, payload, sizeof(payload));
+    for (unsigned i = 0u; i < length; i++) func__Simple_ParseByte(frame[i]);
+    for (unsigned i = 0u; i < 4u; i++)
+        func__T_Check(BOOL__G__BoardParamKnown[ids[i]] && func__Simple_BoardParam(ids[i]) == values[i],
+            "received board charge/discharge bounds remain separate by parameter ID");
+    func__Simple_HttpTelemetry();
+    const std::string reply = SIMPLE_WEB_SERVER_T__G__Server.simBody().c_str();
+    func__T_Check(reply.find(",21000,29000,") != std::string::npos &&
+        reply.find(",22000,27000,") != std::string::npos,
+        "telemetry publishes both independent board maps to the renderer");
+    BOOL__G__TlmSeen = true; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    UINT32_T__G__TlmField[14] = 0u; UINT32_T__G__TlmField[15] = 29000u;
+    UINT32_T__G__TlmField[17] = 14500u; UINT32_T__G__TlmField[18] = 14500u;
+    func__Simple_ChartTick();
+    unsigned slot = (UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - 1u) % SIMPLE_CHART_HISTORY_SIZE;
+    func__T_Check(UINT32_T__G__ChartPct[slot] == 100u && UINT16_T__G__Chart1D_Count == 1u &&
+        UINT32_T__G__Chart1D_Pct[0] == 100u,
+        "charge ceiling cannot clip the discharge percent in live or persisted charts");
+    func__T_Check(func__SimpleLog_Pct(29000u) == 100u,
+        "log percent retains the same independent discharge scale");
+    func__Simple_TimeSet(1793840400u, true);
+    UINT32_T__G__LastTlmMs = (uint32_t)millis();
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    UINT32_T__G__TlmField[15] = UINT32_MAX;
+    func__Simple_ChartTick();
+    slot = (UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - 1u) % SIMPLE_CHART_HISTORY_SIZE;
+    func__T_Check(UINT32_T__G__ChartPct[slot] == 100u,
+        "out-of-range telemetry saturates before percent multiplication can overflow");
+}
 int main(void)
 {
     LittleFS.format();
@@ -3124,6 +3169,7 @@ int main(void)
     func__T_TestChartBatteryAndBounds();
     func__T_TestChartNinetyDayBudget();
     func__T_TestStorage64();
+    func__T_TestIndependentVoltageMaps();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

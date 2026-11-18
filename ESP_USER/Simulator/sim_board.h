@@ -693,7 +693,8 @@ inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
     {
         static const struct { const char *name; uint8_t id; } SIM_PARAM_ARG_TABLE[] =
         {
-            { "p66", 66u }, { "p67", 67u }, { "p74", 74u }, { "p75", 75u }
+            { "p66", 66u }, { "p67", 67u }, { "p74", 74u }, { "p75", 75u },
+            { "p119", 119u }, { "p120", 120u }
         };
         for (uint32_t uint32_t__i = 0u; uint32_t__i < (sizeof(SIM_PARAM_ARG_TABLE) / sizeof(SIM_PARAM_ARG_TABLE[0])); uint32_t__i++)
         {
