@@ -1109,8 +1109,16 @@ static void func__T_TestStateHistoryLog(void)
                   "خواندن تاریخچه ردیف‌های ذخیره‌شده را برمی‌گرداند");
 
     /* ---------- v1.96: گام ولتاژ، ضربان و بودجهٔ حجم ---------- */
+    func__T_Check(SIMPLE_LOG_VSTEP_MV == 500u, "event-log voltage step is 500 mV");
+    /* Keep the minute gate open so sub-threshold rows are rejected by voltage, not time. */
+    UINT32_T__G__LogLastStepMs = (uint32_t)millis() - SIMPLE_LOG_VSTEP_MIN_MS - 10u;
     UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
-    UINT32_T__G__TlmField[15] = 20608u + 199u;
+    UINT32_T__G__TlmField[15] = 20608u + 200u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 4u,
+                  "a 200 mV voltage-only move no longer creates a log row");
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+    UINT32_T__G__TlmField[15] = 20608u + 499u;
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 4u,
                   "جهش کمتر از گام ولتاژ ردیف نمی‌سازد");
@@ -1118,10 +1126,10 @@ static void func__T_TestStateHistoryLog(void)
     /* پنجرهٔ «یک ردیف گام در دقیقه» را باز می‌کنیم تا گامِ تنها بنویسد */
     UINT32_T__G__LogLastStepMs = (uint32_t)millis() - SIMPLE_LOG_VSTEP_MIN_MS - 10u;
     UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
-    UINT32_T__G__TlmField[15] = 20608u + 200u;
+    UINT32_T__G__TlmField[15] = 20608u + 500u;
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 5u,
-                  "پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک ردیف می‌سازد");
+                  "پلهٔ ۵۰۰ میلی‌ولتی ولتاژ پک یک ردیف می‌سازد");
     {
         char char__ptr_tail[1024];
         (void)func__SimpleLog_Tail(char__ptr_tail, sizeof(char__ptr_tail), 0u, 10u);
@@ -1194,9 +1202,9 @@ static void func__T_TestStateHistoryLog(void)
         func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__before + 1u),
                       "قطع برق شهر برای شروع دشارژ یک ردیف می‌نویسد");
 
-        /* بالا آمدنِ ۳۰۰ میلی‌ولتی، هنوز داخل همان دقیقهٔ گام قبلی */
+        /* A 500 mV discharge rise still bypasses the minute cooldown. */
         const uint16_t uint16_t__mid = UINT16_T__G__LogRowsToday;
-        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] + 300u;
+        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] + 500u;
         UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
         func__SimpleLog_OnFrame();
         func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__mid + 1u),
@@ -1206,7 +1214,7 @@ static void func__T_TestStateHistoryLog(void)
 
         /* پایین‌رفتنِ همان اندازه، هنوز داخل دقیقه، بی‌صدا می‌ماند */
         const uint16_t uint16_t__mid2 = UINT16_T__G__LogRowsToday;
-        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] - 300u;
+        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] - 500u;
         UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
         func__SimpleLog_OnFrame();
         func__T_Check(UINT16_T__G__LogRowsToday == uint16_t__mid2,

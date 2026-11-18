@@ -347,17 +347,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     return { flags: flags, t: t };
   }
 
-  /* ---------- مدل کوچک «تاریخچهٔ وضعیت» (آینهٔ simple_log.h) ----------
-     همان قواعد فرم‌ور: ردیف فقط با تغییر واقعی، ادغام ۲ثانیه‌ای، گام ۲۰۰ میلی‌ولت
-     حداکثر یکی در دقیقه، قطع/وصل ارتباط پس از ۵ ثانیه، ضربان ۶ساعته. ردیف بوت
-     بی‌نیاز از برد نوشته می‌شود (v1.106). ردیف‌ها در حافظهٔ مرورگر می‌مانند تا
-     بعداً قابل استفاده باشند و از همان جا CSV می‌گیرند. */
+  /* Event-log model: voltage step is derived from the firmware configuration.
+     Existing coalescing, minute cooldown and discharge-rise exception are unchanged. */
   var EVT_CHG_BOOT=1, EVT_CHG_MAINS=2, EVT_CHG_CHG1=4, EVT_CHG_CHG2=8,
       EVT_CHG_FAULT=16, EVT_CHG_FLAGS=32, EVT_CHG_BAND=64, EVT_CHG_LINK=128,
       EVT_CHG_MODE=256, EVT_CHG_DEAD=512, EVT_CHG_VSTEP=1024;
   var EVT_NOTE_NONE=0, EVT_NOTE_LOW_STOP=1, EVT_NOTE_LINK_LOST=2,
       EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5, EVT_NOTE_MANUAL=6;
-  var EVT_MIN_MS=2000, EVT_VSTEP_MV=200, EVT_VSTEP_MIN_MS=60000,
+  var EVT_MIN_MS=2000, EVT_VSTEP_MV=__LOG_VSTEP_MV__, EVT_VSTEP_MIN_MS=60000,
       EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=3600000, EVT_MAX_ROWS=2000;
   var evtRows=[], evtPendingMask=0, evtPendingNote=0, evtLastRowMs=0, evtLastRowOk=false,
       evtLastStepMs=0, evtLastStepOk=false, evtHasPrev=false, evtPrev=null,
@@ -1034,13 +1031,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
 """
 PLACEHOLDERS = ("__FIELD_INDEX__", "__TLM_N__", "__FAULT_BITS__", "__STATES__", "__RANGES__",
                 "__SCALES__", "__WIFI_SSID__", "__WIFI_PASS__", "__PANEL__", "__BOOT__",
-                "__MA_PER_COUNT__", "__UV_PER_COUNT__")
+                "__MA_PER_COUNT__", "__UV_PER_COUNT__", "__LOG_VSTEP_MV__")
 def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
     """[FA] جای‌گذاری مقادیر مشتق‌شده در قالب JS سیمولاتور."""
     shim = SHIM
     for token, value in (
             ("__FIELD_INDEX__", json.dumps(field_map, ensure_ascii=False)),
             ("__TLM_N__", str(tlm_n)),
+            ("__LOG_VSTEP_MV__", str(config_define("SIMPLE_LOG_VSTEP_MV"))),
             ("__FAULT_BITS__", json.dumps(bits, ensure_ascii=False)),
             ("__STATES__", json.dumps(states, ensure_ascii=False)),
             ("__RANGES__", json.dumps(ranges, ensure_ascii=False)),

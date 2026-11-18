@@ -143,7 +143,7 @@
 #define SIMPLE_LOG_CUT_BAND_MV          21200u
 #define SIMPLE_LOG_BAND_OFF_MV          21400u
 #define SIMPLE_LOG_VSTEP_MIN_MS         60000u
-#define SIMPLE_LOG_VSTEP_MV             200u
+#define SIMPLE_LOG_VSTEP_MV             500u
 #define SIMPLE_LOG_HEARTBEAT_MS         3600000u
 #define SIMPLE_LOG_DRAIN_RETRY_MS       30000u
 #define SIMPLE_HTTP_SEND_TIMEOUT_MS     1000u

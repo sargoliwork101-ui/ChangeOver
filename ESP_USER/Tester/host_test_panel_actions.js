@@ -20,6 +20,12 @@ function check(value, message) {assert.ok(value, message); checks++; console.log
 function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})').call(button);}
 (async()=>{
     await tick();
+    const stepLabel=w.evtTextFa({chg:1024,note:0});
+    check(stepLabel.txt==='ولتاژ پک تغییر پله‌ای داشت','voltage-step label stays valid for both old 200 mV and new 500 mV records');
+    const config=fs.readFileSync(path.join(__dirname,'..','simple_config.h'),'utf8');
+    const step=Number(config.match(/#define\s+SIMPLE_LOG_VSTEP_MV\s+(\d+)u/)[1]);
+    const preview=fs.readFileSync(path.join(__dirname,'..','simple_preview.html'),'utf8');
+    check(step===500 && preview.includes('EVT_VSTEP_MV='+step+','),'generated preview log step matches the 500 mV firmware setting');
     check(Buffer.byteLength(html) <= 175000, 'panel stays within literal budget');
     check(!d.getElementById('labBar') && !html.includes('نوار شیمیولیتور'), 'user panel never includes the simulator bottom strip');
     check(d.styleSheets.length === 1 && d.styleSheets[0].cssRules.length > 100, 'complete stylesheet parses, including mobile media queries');
