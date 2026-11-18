@@ -631,6 +631,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 <label class="field" for="admWpass"><span>رمز شبکه</span><input id="admWpass" type="password" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر"></label>
 <div class="form-actions"><button class="btn action" type="button" title="ذخیره تنظیمات وای‌فای" aria-label="ذخیره تنظیمات وای‌فای" id="admWifiBtn" onclick="uiAction(this,()=>admWifi(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-save"/></svg><span>ذخیره</span></button></div></div></div></details>
 <details class="setting-panel admin-section"><summary><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>بازیابی خطا</span></summary>
+<div class="setting-body"><p id="resetHelp" class="mu">گزینه‌های مجاز: ریست قفل خطا، ریست خرابی باتری و ریست ضعف باتری.</p></div>
 <div class="setting-body action-row"><button class="btn action" type="button" title="ریست قفل خطا" aria-label="ریست قفل خطا"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:5},'قفل خطا ریست شد','ریست قفل بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست قفل</span></button><button class="btn action" type="button" title="پاک‌کردن ماسک باتری مرده" aria-label="پاک‌کردن ماسک باتری مرده"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:6},'ماسک باتری مرده پاک شد','ماسک باتری مرده پاک شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست خرابی</span></button><button class="btn action" type="button" title="ریست قفل باتری ضعیف" aria-label="ریست قفل باتری ضعیف"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:8},'ریست ضعیف انجام شد','قفل باتری ضعیف بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست ضعف</span></button></div></details>
 <details class="setting-panel admin-section"><summary><svg class="glyph" aria-hidden="true"><use href="#i-file"/></svg><span>ثبت و دانلود</span></summary>
 <div class="setting-body action-row"><button class="btn action" type="button" title="ثبت لحظه" aria-label="ثبت لحظه"  onclick="uiAction(this,()=>admPost('/evt/snap',{},'عکس لحظه ثبت شد'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-camera"/></svg><span>ثبت لحظه</span></button><button class="btn action" type="button" title="دانلود روز" aria-label="دانلود روز"  onclick="uiAction(this,()=>admDl())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span>دانلود روز</span></button></div></details>
@@ -1992,6 +1993,7 @@ async function admCall(path, obj){
 const ADM_ERR={old:'رمز فعلی درست نیست', mismatch:'رمز تازه و تکرارش یکی نیست',
  'pass 4-32':'رمز باید ۴ تا ۳۲ کاراکتر باشد', admin:'نشست مدیر لازم است',
  storage:'ذخیره در حافظه انجام نشد؛ تنظیمات قبلی حفظ شد', user:'ذخیره نشد', ts:'زمان نامعتبر است', 'ssid/pass':'نام و رمز وای‌فای لازم است',
+ reset:'درخواست ریست نامعتبر است؛ فقط ۵ (قفل خطا)، ۶ (خرابی باتری) و ۸ (ضعف باتری) مجازند',
  new:'رمز تازه را بزن', 2:'این درخواست را برد نمی‌شناسد'};
 function admWhy(x){
  let j=x.body||{};

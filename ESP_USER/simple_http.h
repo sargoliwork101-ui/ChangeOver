@@ -581,38 +581,33 @@ static void func__Simple_HttpLatchReset(void)
         return;
     }
     String string__n;
-    bool bool__ok = false;
-    if (func__Simple_GetArg("n", string__n))
+    /* Accept only the three canonical commands, before touching the slot queue. */
+    if (!func__Simple_GetArg("n", string__n) ||
+        ((string__n != "5") && (string__n != "6") && (string__n != "8")))
     {
-        int32_t int32_t__n = (int32_t)string__n.toInt();
-        if (int32_t__n == 5)
-        {
-            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u);
-            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) == true) && bool__ok;
-            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u) == true) && bool__ok;
-        }
-        else if (int32_t__n == 6)
-        {
-            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u);
-        }
-        else if (int32_t__n == 8)
-        {
-            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_WEAK_RESET_ID, 0u);
-        }
-        else
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
-            return;
-        }
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json",
+            "{\"ok\":0,\"e\":\"reset\",\"allowed\":[5,6,8]}");
+        return;
+    }
+    uint8_t uint8_t__n = (uint8_t)(string__n[0] - '0');
+    bool bool__ok = false;
+    if (uint8_t__n == 5u)
+    {
+        bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u);
+        bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) == true) && bool__ok;
+        bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u) == true) && bool__ok;
+    }
+    else if (uint8_t__n == 6u)
+    {
+        bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u);
     }
     else
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
-        return;
+        bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_WEAK_RESET_ID, 0u);
     }
     char char__A__Out[48];
-    (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%s}",
-                   bool__ok ? 1u : 0u, string__n.c_str());
+    (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%u}",
+                   bool__ok ? 1u : 0u, (unsigned)uint8_t__n);
     SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 409, "application/json", char__A__Out);
 }
 /**

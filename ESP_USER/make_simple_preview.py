@@ -710,6 +710,13 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       if (hasSec) counters.boardTime = sec;
       return jsonResponse(JSON.stringify({ok:hasSec?1:0,sec:counters.boardTime}));
     }
+    if (path === 'latch/reset') {
+      if (mock.role !== 1) return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var resetN=bodyJson(options).n;
+      if (resetN!=='5' && resetN!=='6' && resetN!=='8')
+        return jsonResponse('{"ok":0,"e":"reset","allowed":[5,6,8]}',400);
+      return jsonResponse(JSON.stringify({ok:1,n:Number(resetN)}));
+    }
     if (path === 'time') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       counters.boardTime = parseInt(query(url, 'ts') || '0', 10) || counters.boardTime;

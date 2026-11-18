@@ -26,10 +26,23 @@ async function login(password){
     const format=d.getElementById('admFormat');
     check(format && format.closest('#adminCard').hidden,'format lives only in hidden admin card');
     check((await w.fetch('/evt/format',{method:'POST'})).status===403,'offline format requires authentication');
+    check((await w.fetch('/latch/reset',{method:'POST',body:'n=5'})).status===403,'offline reset requires administrator authentication');
     await login('wrong');
     check(!d.getElementById('admGate').hidden && d.getElementById('admMsg').textContent.includes('نادرست'),'wrong password still refused');
     await login('admin');
     check(d.getElementById('admGate').hidden && !d.getElementById('adminCard').hidden,'admin password accepted through actual click and form encoding');
+    check(d.getElementById('resetHelp').textContent.includes('ریست ضعف باتری'),'permitted reset choices are explained in the panel');
+    for(const n of ['','5junk','6junk','8junk','05','+5',' 5','5 ','5.0','7','۵']){
+        const r=await w.fetch('/latch/reset',{method:'POST',body:new w.URLSearchParams({n}).toString()});
+        const j=await r.json();
+        check(r.status===400 && j.e==='reset' && j.allowed.join(',')==='5,6,8','offline reset refuses noncanonical command '+JSON.stringify(n));
+    }
+    for(const n of ['5','6','8']){
+        const r=await w.fetch('/latch/reset',{method:'POST',body:'n='+n});
+        const j=await r.json();
+        check(r.status===200 && j.ok===1 && j.n===Number(n),'offline reset accepts canonical command '+n);
+    }
+    check(w.admWhy({status:400,body:{e:'reset'}}).includes('۵') && w.admWhy({status:400,body:{e:'reset'}}).includes('۸'),'reset error explains permitted values');
     const originalFetch=w.fetch;let formatCalls=0;
     w.fetch=(u,o)=>{if(u==='/evt/format')formatCalls++;return originalFetch(u,o);};
     w.confirm=()=>true;await w.evtFs(0);

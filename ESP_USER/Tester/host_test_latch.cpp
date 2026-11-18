@@ -1399,6 +1399,7 @@ static void func__T_TestStateHistoryLog(void)
 
     /* یک ماه تاریخچه: ۳۰ روز عادی داخل بودجه جا می‌شود و روز بعدی قدیمی‌ترین را می‌برد */
     {
+        func__Simple_TimeSet(1788048000u,true); // 2026-08-30: fixtures cover the current 30 calendar days.
         const uint16_t uint16_t__days = 30u;
         const uint32_t uint32_t__rowBytes = 300u;   /* اندازهٔ اندازه‌گیری‌شدهٔ یک روز عادی */
         char char__ptr_day[SIMPLE_LOG_PATH_MAX];
@@ -1420,6 +1421,7 @@ static void func__T_TestStateHistoryLog(void)
         func__T_Check(UINT32_T__G__LogIndexDay[0] == 20260801u,
                       "وقتی جا هست، قدیمی‌ترین روز هم می‌ماند");
         {
+            func__Simple_TimeSet(1788134400u,true); // Advance the calendar with the added day.
             uint32_t uint32_t__code = 20260801u + uint16_t__days;
             func__SimpleLog_PathOf(char__ptr_day, uint32_t__code);
             File file__extra = LittleFS.open(char__ptr_day, "w");
@@ -2439,6 +2441,7 @@ static void func__T_TestChartStorage(void)
     {
         char char__ptr_day[SIMPLE_LOG_PATH_MAX];
         std::string string__day(284u, 'z');
+        func__Simple_TimeSet(1788048000u,true);
         (void)func__SimpleLog_Clear();
         UINT8_T__G__LogIndexCount = 0u;
         for (uint16_t uint16_t__k = 0u; uint16_t__k < 30u; uint16_t__k++)
@@ -3063,6 +3066,9 @@ static void func__T_TestFormatClearsAllHistory(void)
 
 #include "host_test_storage64.h"
 #include "host_test_log_policy.h"
+#include "host_test_log_row_cap.h"
+#include "host_test_log_recovery_retention.h"
+#include "host_test_reset_validation.h"
 /* ==================== Independent board voltage maps ==================== */
 /** @brief Exercise real bulk-parameter parsing, HTTP publication and chart discharge percentages. */
 static void func__T_TestIndependentVoltageMaps(void)
@@ -3112,6 +3118,7 @@ int main(void)
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
 
     func__T_TestResetOrderAndHandshake();
+    func__T_TestResetValidation();
     func__T_TestQueue();
     func__T_TestSender();
     func__T_TestEchoAndNak();
@@ -3153,6 +3160,8 @@ int main(void)
     func__T_TestStorage64();
     func__T_TestIndependentVoltageMaps();
     func__T_TestLogPolicy();
+    func__T_TestLogRowCap();
+    func__T_TestLogRecoveryRetention();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

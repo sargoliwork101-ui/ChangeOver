@@ -83,9 +83,9 @@ static void func__T_TestStorage64(void)
         *fault=true;bool ok=func__SimpleLog_CompactDay(path,day);*fault=false;
         func__T_Check(!ok&&func__T_ChartBytes(path)==before,"failed day compaction preserves original committed rows");
     }
-    func__T_Check(func__SimpleLog_CompactDay(path,day)&&func__SimpleLog_CountRows(path)==110u,"day compaction keeps newest half in independently decodable records");
+    func__T_Check(func__SimpleLog_CompactDay(path,day)&&func__SimpleLog_CountRows(path)==200u,"compaction removes only the 20 excess oldest events when all 200 fit");
     std::string newest=func__T_DayText(path);
-    func__T_Check(newest.find("1793843400,")!=std::string::npos&&newest.find("1793849940,")!=std::string::npos,"compaction drops oldest rows, never newest rows");
+    func__T_Check(newest.find("1793838000,")!=std::string::npos&&newest.find("1793837940,")==std::string::npos&&newest.find("1793849940,")!=std::string::npos,"compaction drops oldest rows, never newest rows");
     func__T_Check(func__T_DayText(path).find(",0,7,")!=std::string::npos,"day compaction preserves the original day-start marker");
     // No manual delete success on a failed filesystem remove.
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr",HTTP_POST,func__Simple_HttpEventClear);

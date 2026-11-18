@@ -75,7 +75,7 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/setwifi` | POST | Admin session; `ssid`, `pass` | JSON action result |
 | `/clear` | POST | Admin session; optional `type`: `charge`, `charts`, `diag`, or all | JSON action result |
 | `/latch` | GET | Public read-only | JSON reset-slot state |
-| `/latch/reset` | POST | Admin session; `n`: 5, 6, or 8 | JSON queued/result status |
+| `/latch/reset` | POST | Admin session; exact `n`: `5` (error latch), `6` (dead battery), or `8` (weak battery) | Numeric JSON `n`; invalid values return HTTP 400, `e:"reset", allowed:[5,6,8]`, without queueing |
 | `/clock` | POST | Public automatic sync with valid `sec`, optional `tz` (−50400..50400); requests without `sec` require admin (session probe) | JSON result and current seconds |
 | `/evt` | GET | Optional `day` | Plain-text event-log tail |
 | `/evt/days` | GET | — | Plain-text available days |
@@ -111,6 +111,8 @@ file is not a boot credential source. Crypto nonces use the full unsigned 32-bit
 range, not Arduino's signed `String::toInt` range.
 
 LittleFS files: `/wifi.json`, `/charts.bin`, `/charts.jrn`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
+
+Daily logs retain today and the preceding 29 local calendar days only after clock verification, subject to the unchanged 28-KiB log budget and 4-KiB day limit. A partial initial header/marker is repaired before ordinary rows. Byte pressure removes the minimum oldest-event prefix whose re-encoded suffix plus the incoming row fits; count pressure from RAM drain likewise retains at most 200 newest ordinary rows. The single day-start marker is preserved outside that count. Replacement is staged, decoded/verified and renamed atomically; failure preserves the old committed day and queued incoming row. Ordinary day-full writes still stop at 200.
 
 The day files keep their `.csv` name for the existing day-list API, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 18 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. The previous 22-column history is cleared by the owner before deployment. Format: `ESP_USER/simple_log_codec.h`.
 

@@ -22,6 +22,7 @@ Usage
     python3 ESP_USER/Simulator/lab/server.py --port 8090
     python3 ESP_USER/Simulator/lab/server.py --export   # write FINDINGS.md
 """
+import datetime
 import json
 import os
 import re
@@ -310,16 +311,41 @@ class Board:
             (self.vpack-self.imbalance)//2, self.vpack-(self.vpack-self.imbalance)//2, self.dead,
             24100, 1200, 900, 500, 500,
         ])
+    def trim_logs(self):
+        """Mirror calendar age and minimum oldest-event eviction; this is not a flash model."""
+        first = (datetime.date.fromtimestamp(time.time()) -
+                 datetime.timedelta(days=self.MAX_DAYS - 1)).strftime("%Y%m%d")
+        for day in list(self.rows):
+            if day != "00000000" and day < first:
+                del self.rows[day]
+                continue
+            rows = self.rows[day]
+            events = sum(row.split(",")[3] != "7" for row in rows)
+            while events > 200 or self.encoded_day_bytes(rows) > 4096:
+                oldest = next((i for i, row in enumerate(rows) if row.split(",")[3] != "7"), None)
+                if oldest is None:
+                    break
+                rows.pop(oldest)
+                events -= 1
+    def append_log(self, change, note):
+        """Keep the ordinary day-full stop and create one start marker for a new day."""
+        now = int(time.time())
+        rows = self.rows.setdefault(self.today(), [])
+        if not rows:
+            rows.append(self.row(now, 0, 7))
+        if sum(row.split(",")[3] != "7" for row in rows) < 200:
+            rows.append(self.row(now, change, note))
+        self.trim_logs()
     def advance(self):
         """Move the simulated board forward by roughly one second."""
         with self.lock:
             self.tick += 1
             self.board_uptime += 1
+            self.trim_logs()
             cycle = self.tick % 120
             if cycle == 0:
                 self.mains = not self.mains
-                self.rows.setdefault(self.today(), []).append(
-                    self.row(int(time.time()), 2, 0))
+                self.append_log(2, 0)
                 if self.mains:
                     self.power.insert(0, {"off": int(time.time()) - 90,
                                           "on": int(time.time()), "dur": 90})
@@ -338,8 +364,7 @@ class Board:
                 self.fault_until = time.time() + 20
             elif self.fault and time.time() > self.fault_until:
                 self.fault = 0
-                self.rows.setdefault(self.today(), []).append(
-                    self.row(int(time.time()), 16, 0))
+                self.append_log(16, 0)
     def today(self):
         return time.strftime("%Y%m%d", time.localtime(time.time() + 0))
     def telemetry(self):
@@ -776,14 +801,14 @@ class Handler(BaseHTTPRequestHandler):
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             # مثل خود برد: بدون n (یا n بیرون از ۵/۶/۸) درخواست رد می‌شود.
-            n = str(args.get("n", "")).strip()
+            n = str(args.get("n", ""))
             if n not in ("5", "6", "8"):
-                return self.send(json_bytes({"ok": 0, "e": 2}, 400))
+                return self.send(json_bytes({"ok": 0, "e": "reset", "allowed": [5, 6, 8]}, 400))
             if n == "5":
                 BOARD.latch["rep"] += 1
                 BOARD.latch["val"] = 0
                 BOARD.latch["known"] = 1
-            return self.send(json_bytes({"ok": 1, "n": n}))
+            return self.send(json_bytes({"ok": 1, "n": int(n)}))
         if path == "/clock" and method == "POST":
             has_sec = "sec" in args
             if not has_sec and not self.session_ok():

@@ -196,9 +196,23 @@ bytes. This is software validation, not physical power-cut or endurance testing.
 
 ## 18-column user log
 
-Current log policy is 30 retained day files and 200 ordinary rows, with the
-existing 4-KiB day compaction and 28-KiB total budget. Chart range remains 90
+Current log policy is today plus the preceding 29 local calendar days (at most 30 day files) and 200 ordinary rows, with the
+4-KiB minimally trimmed day limit and 28-KiB total budget. Chart range remains 90
 days. Schema tests verify the calibration column order without battery percent.
 Day-start note 7 is not an event slot; clock-gap warning is note 8. Battery-wake
 and midnight regressions ensure day markers do not reset hourly scheduling.
 The old 22-column logs must be cleared before deploying; they are not migrated.
+
+Row-cap regression: production RAM drain retains exactly events 8..207 from a
+191+16 burst, preserving the start marker outside the 200-event cap. It also
+checks a previously overfull day, temporary-file open/read/write/rename failure,
+short writes, retry without duplicates, reopening and a cross-midnight drain.
+Byte-limit eviction now measures successive re-encoded suffixes and commits only
+the minimum necessary deletion together with the incoming event. The ordinary
+day-full stop is unchanged.
+
+Recovery/retention regressions cover every header/start-marker cut boundary,
+verified-clock gating, 29/30/60-day age boundaries, local midnight/leap/year
+transitions, expiration failure/retry and protection of account/Wi-Fi/chart files.
+High-entropy byte-pressure rows verify the exact newest suffix, that one more
+old event would not fit after re-encoding, and atomic failure preservation.

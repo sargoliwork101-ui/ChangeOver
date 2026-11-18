@@ -485,10 +485,38 @@ static size_t func__SimpleLog_BudgetBytes(void)
 {
     return SIMPLE_LOG_TOTAL_BUDGET_BYTES;
 }
+/* ==================== Calendar retention ==================== */
+/** @brief Test whether a day precedes the verified local 30-day window, including today. */
+static bool func__SimpleLog_DayExpired(uint32_t uint32_t__dayCode)
+{
+    if (uint32_t__dayCode == 0u || !func__Simple_TimeBootReady()) return false;
+    int64_t int64_t__local = (int64_t)func__Simple_NowSec() + INT32_T__G__LogTzSec;
+    if (int64_t__local < 0) return false;
+    uint32_t uint32_t__today = (uint32_t)(int64_t__local / 86400);
+    if (uint32_t__today < SIMPLE_LOG_MAX_DAYS - 1u) return false;
+    uint32_t uint32_t__first = func__SimpleLog_DateCode(uint32_t__today - (SIMPLE_LOG_MAX_DAYS - 1u));
+    return uint32_t__dayCode < uint32_t__first;
+}
+/* ==================== Retained day files ==================== */
+/** @brief Remove expired days first, then enforce file-count and shared payload limits. */
 static void func__SimpleLog_TrimDays(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     uint8_t uint8_t__slot;
+    uint8_t uint8_t__expired = 0u;
+    while (uint8_t__expired < UINT8_T__G__LogIndexCount)
+    {
+        if (!func__SimpleLog_DayExpired(UINT32_T__G__LogIndexDay[uint8_t__expired]))
+        {
+            uint8_t__expired++;
+            continue;
+        }
+        func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__expired]);
+        if (!LittleFS.remove(char__ptr_path)) { func__SimpleLog_FaultRaise(); break; }
+        for (uint8_t__slot = (uint8_t)(uint8_t__expired + 1u); uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+            UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] = UINT32_T__G__LogIndexDay[uint8_t__slot];
+        UINT8_T__G__LogIndexCount--;
+    }
     while (UINT8_T__G__LogIndexCount > SIMPLE_LOG_MAX_DAYS)
     {
         func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[0]);
@@ -875,6 +903,8 @@ static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
     if (!LittleFS.exists(char__ptr_path) &&
         !func__Simple_StorageRoom(SimpleLogCodec::HeaderSize, uint32_t__dayCode)) return false;
+    /* Repair first: an interrupted header may become empty and must be rebuilt below. */
+    if (LittleFS.exists(char__ptr_path) && !func__SimpleLog_RepairTail(char__ptr_path)) return false;
     {
         File file__day = LittleFS.open(char__ptr_path, "a");
         if (!file__day)
@@ -900,10 +930,6 @@ static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
     {
         func__SimpleLog_FaultRaise();
         return false;
-    }
-    if (uint32_t__size > 0u)
-    {
-        bool__ok = func__SimpleLog_RepairTail(char__ptr_path);
     }
     /* A header-only current day needs one durable marker; retries cannot duplicate it. */
     if (bool__ok && uint32_t__dayCode == func__SimpleLog_TodayCode() &&
@@ -1137,9 +1163,40 @@ static bool func__SimpleLog_CodecAppend(const char *char__ptr_path, const char *
     }
     return bool__ok;
 }
+/* ==================== Encoded suffix sizing ==================== */
+/**
+ * @brief Measure a freshly encoded suffix and optional incoming row without writing flash.
+ * @param uint16_t__skip Number of oldest events to omit; day-start markers are retained.
+ * @return true when the source decoded without damage or I/O failure.
+ */
+static bool func__SimpleLog_SuffixBytes(File &file__old, uint16_t uint16_t__skip,
+                                       const uint32_t *uint32_t__incoming, uint32_t *uint32_t__bytes)
+{
+    SimpleLogCodec::State codec__old, codec__new;
+    if (SimpleLogCodec::begin(file__old, codec__old) != 1) return false;
+    uint32_t uint32_t__size = SimpleLogCodec::HeaderSize;
+    uint16_t uint16_t__row = 0u;
+    uint8_t uint8_t__frame[SimpleLogCodec::MaxFrame];
+    while (SimpleLogCodec::next(file__old, codec__old))
+    {
+        if (codec__old.value[3] != SIMPLE_LOG_NOTE_DAY_START && uint16_t__row++ < uint16_t__skip) continue;
+        uint32_t__size += (uint32_t)SimpleLogCodec::encode(codec__new, codec__old.value, uint8_t__frame);
+    }
+    if (codec__old.ioError || codec__old.damaged) return false;
+    if (uint32_t__incoming != NULL)
+        uint32_t__size += (uint32_t)SimpleLogCodec::encode(codec__new, uint32_t__incoming, uint8_t__frame);
+    *uint32_t__bytes = uint32_t__size;
+    return true;
+}
 /* ==================== Bounded current-day history ==================== */
-/** @brief Keep the newest half of a full day; verify every decoded value before atomic replacement. */
-static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint32_t__dayCode)
+/**
+ * @brief Atomically rewrite a day, retaining its start marker and verified newest rows.
+ * @param char__row Optional incoming row, committed together with the retained suffix.
+ * @param uint32_t__reserve Encoded bytes to leave free after replacement (zero for an incoming row).
+ * @return true after the replacement and every retained/incoming value are verified.
+ */
+static bool func__SimpleLog_RewriteDay(const char *char__ptr_path, uint32_t uint32_t__dayCode,
+                                      const char *char__row, uint32_t uint32_t__reserve = 0u)
 {
     File file__old = LittleFS.open(char__ptr_path, "r");
     SimpleLogCodec::State codec__old;
@@ -1147,8 +1204,29 @@ static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint
     uint16_t uint16_t__count = 0u;
     while (SimpleLogCodec::next(file__old, codec__old))
         if (codec__old.value[3] != SIMPLE_LOG_NOTE_DAY_START) uint16_t__count++;
-    if (codec__old.ioError || codec__old.damaged || uint16_t__count < 2u) return false;
-    uint16_t uint16_t__skip = (uint16_t)(uint16_t__count / 2u);
+    if (codec__old.ioError || codec__old.damaged || uint32_t__reserve > SIMPLE_LOG_DAY_MAX_BYTES) return false;
+    uint32_t uint32_t__incoming[SimpleLogCodec::Fields];
+    const uint32_t *uint32_t__incomingPtr = NULL;
+    uint32_t uint32_t__events = uint16_t__count;
+    if (char__row != NULL)
+    {
+        if (!SimpleLogCodec::parse(char__row, uint32_t__incoming)) return false;
+        uint32_t__incomingPtr = uint32_t__incoming;
+        if (uint32_t__incoming[3] != SIMPLE_LOG_NOTE_DAY_START) uint32_t__events++;
+    }
+    uint16_t uint16_t__skip = 0u;
+    if (uint32_t__events > SIMPLE_LOG_MAX_ROWS_PER_DAY)
+        uint16_t__skip = (uint16_t)(uint32_t__events - SIMPLE_LOG_MAX_ROWS_PER_DAY);
+    uint32_t uint32_t__encoded = 0u;
+    /* Measure successive suffixes; only the smallest fitting suffix is written once. */
+    while (true)
+    {
+        if (!func__SimpleLog_SuffixBytes(file__old, uint16_t__skip, uint32_t__incomingPtr, &uint32_t__encoded)) return false;
+        if (uint32_t__encoded <= SIMPLE_LOG_DAY_MAX_BYTES - uint32_t__reserve) break;
+        if (uint16_t__skip >= uint16_t__count) return false;
+        uint16_t__skip++;
+        yield();
+    }
     String string__temp = String(char__ptr_path) + ".tmp";
     if (LittleFS.exists(string__temp.c_str()) && !LittleFS.remove(string__temp.c_str())) return false;
     /* Compaction may borrow the reserve, never settings or the committed day. */
@@ -1166,8 +1244,15 @@ static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint
         size_t size_t__n = SimpleLogCodec::encode(codec__new, codec__old.value, uint8_t__frame);
         bool__ok = file__new.write(uint8_t__frame, size_t__n) == size_t__n;
     }
+    if (bool__ok && char__row != NULL)
+    {
+        uint8_t uint8_t__frame[SimpleLogCodec::MaxFrame];
+        size_t size_t__n = SimpleLogCodec::encode(codec__new, uint32_t__incoming, uint8_t__frame);
+        bool__ok = file__new.write(uint8_t__frame, size_t__n) == size_t__n;
+    }
     bool__ok = bool__ok && !codec__old.ioError && !codec__old.damaged && uint16_t__row == uint16_t__count &&
-        file__new.size() < SIMPLE_LOG_DAY_MAX_BYTES;
+        file__new.size() == uint32_t__encoded &&
+        file__new.size() <= SIMPLE_LOG_DAY_MAX_BYTES - uint32_t__reserve;
     file__new.close();
     if (bool__ok)
     {
@@ -1180,6 +1265,11 @@ static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint
             if (codec__old.value[3] != SIMPLE_LOG_NOTE_DAY_START && uint16_t__row++ < uint16_t__skip) continue;
             bool__ok = SimpleLogCodec::next(file__check, codec__new) &&
                 memcmp(codec__old.value, codec__new.value, sizeof(codec__old.value)) == 0;
+        }
+        if (bool__ok && char__row != NULL)
+        {
+            bool__ok = SimpleLogCodec::next(file__check, codec__new) &&
+                memcmp(codec__new.value, uint32_t__incoming, sizeof(uint32_t__incoming)) == 0;
         }
         bool__ok = bool__ok && uint16_t__row == uint16_t__count && !codec__old.ioError && !codec__old.damaged &&
             !SimpleLogCodec::next(file__check, codec__new) && !codec__new.ioError && !codec__new.damaged;
@@ -1198,6 +1288,14 @@ static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint
     BOOL__G__LogScanValid = false;
     return true;
 }
+/* ==================== Volume-only compaction ==================== */
+/** @brief Drop only enough oldest events to leave one maximum-sized frame free. */
+static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint32_t__dayCode)
+{
+    return func__SimpleLog_RewriteDay(char__ptr_path, uint32_t__dayCode, NULL, SimpleLogCodec::MaxFrame);
+}
+/* ==================== Bounded append ==================== */
+/** @brief Append an event, dropping only excess oldest events when the row cap is reached. */
 static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *char__row)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -1208,9 +1306,6 @@ static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *ch
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
     uint32_t uint32_t__daySize = func__Simple_StorageFileBytes(char__ptr_path);
     if (uint32_t__daySize == UINT32_MAX) return false;
-    if (uint32_t__daySize + SimpleLogCodec::MaxFrame > SIMPLE_LOG_DAY_MAX_BYTES &&
-        !func__SimpleLog_CompactDay(char__ptr_path, uint32_t__dayCode))
-    { func__SimpleLog_FaultRaise(); return false; }
     bool bool__within = false;
     for (uint8_t uint8_t__pass = 0u; uint8_t__pass <= SIMPLE_LOG_RECLAIM_MAX_PER_CALL; uint8_t__pass++)
     {
@@ -1223,6 +1318,17 @@ static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *ch
     }
     if (!bool__within) { func__SimpleLog_FaultRaise(); return false; }
     if (!func__Simple_StorageRoom(SimpleLogCodec::MaxFrame, uint32_t__dayCode)) return false;
+    uint32_t uint32_t__values[SimpleLogCodec::Fields];
+    if (!SimpleLogCodec::parse(char__row, uint32_t__values)) return false;
+    if (uint32_t__daySize + SimpleLogCodec::MaxFrame > SIMPLE_LOG_DAY_MAX_BYTES ||
+        (uint32_t__values[3] != SIMPLE_LOG_NOTE_DAY_START &&
+         func__SimpleLog_CountRows(char__ptr_path) >= SIMPLE_LOG_MAX_ROWS_PER_DAY))
+    {
+        /* The new event and removal commit together; failure keeps the old file and RAM row. */
+        if (func__SimpleLog_RewriteDay(char__ptr_path, uint32_t__dayCode, char__row)) return true;
+        func__SimpleLog_FaultRaise();
+        return false;
+    }
     return func__SimpleLog_CodecAppend(char__ptr_path, char__row);
 }
 /*
@@ -1275,6 +1381,12 @@ static void func__SimpleLog_DrainRam(void)
         uint8_t__oldest = (uint8_t)((UINT8_T__G__LogRamHead + SIMPLE_LOG_RAM_ROWS -
                                      UINT8_T__G__LogRamCount) % SIMPLE_LOG_RAM_ROWS);
         uint32_t__dayCode = func__SimpleLog_RowDayCode(CHAR__G__LogRamRow[uint8_t__oldest]);
+        /* Expired RAM history must not recreate files removed by calendar retention. */
+        if (func__SimpleLog_DayExpired(uint32_t__dayCode))
+        {
+            UINT8_T__G__LogRamCount--;
+            continue;
+        }
         if (func__SimpleLog_PrepareDayFile(uint32_t__dayCode) == false)
         {
             BOOL__G__LogDrainWait = true;
