@@ -1270,6 +1270,71 @@ function main() {
                     w.evtHttp = savedHttp2;
                     w.evtDays = savedDays2;
                 }
+                /* [EN] v1.140: actual file rows wire exact-name deletion and paging. */
+                {
+                    const saved = { http:w.evtHttp, days:w.evtDays, fetch:w.evtfetch, confirm:w.pmConfirm };
+                    const odd = '/a\"\'<img>.txt';
+                    const files = [{name:'/benchlog.csv',size:100,own:1},{name:odd,size:20,own:0}];
+                    const calls = [], prompts = [];
+                    let accept=false, success=true;
+                    w.evtDays=async()=>{}; w.evtfetch=async()=>{};
+                    w.pmConfirm=async text=>{prompts.push(text);return accept;};
+                    w.evtHttp=async (u,m)=>{
+                        calls.push([u,m]);
+                        if(u.startsWith('/evt/fs'))return {json:async()=>({fs:1,total:4096,used:120,files,more:30,offset:u.includes('offset=24')?24:0})};
+                        if(u==='/evt/pct')return {json:async()=>({p:100})};
+                        return {ok:success,json:async()=>({ok:success?1:0})};
+                    };
+                    await w.evtfs(0);
+                    const box=d.getElementById('evtfs');
+                    const buttons=[...box.querySelectorAll('button[data-file]')];
+                    check(buttons.length===2,'every file, including an owned bench file, has a delete button');
+                    check(buttons.every(b=>b.classList.contains('evttrash') && b.querySelector('svg') && !b.textContent.trim() && b.title==='حذف'),
+                          'file deletion is a red trash-icon-only button with a Persian tooltip');
+                    const trashColor=w.getComputedStyle(buttons[0]).backgroundColor;
+                    check(trashColor==='rgb(112, 35, 45)', 'delete buttons actually receive the red background',trashColor);
+                    const tools=d.querySelector('.evttools');
+                    const expectedTools=['به‌روزرسانی','حافظهٔ ESP','دانلود این روز','دانلود همهٔ روزها','پاک کردن تاریخچه'];
+                    const toolButtons=[...tools.querySelectorAll('button')];
+                    const actions=tools.querySelector('.evtactions');
+                    check(actions && actions.querySelectorAll(':scope > button').length===5 && actions.previousElementSibling.querySelector('#evtpct'),
+                          'all history actions form one group immediately after the memory-share selector');
+                    check(w.getComputedStyle(actions).display==='flex' && w.getComputedStyle(actions).flexWrap==='nowrap' && w.getComputedStyle(actions).flexShrink==='0' && w.getComputedStyle(tools).flexWrap==='wrap',
+                          'the icon group never splits or shrinks: outer toolbar wraps all five together');
+                    check(toolButtons.length===5 && toolButtons.every((b,i)=>b.title===expectedTools[i] && b.getAttribute('aria-label')===expectedTools[i] && b.querySelector('svg') && !b.textContent.trim()),
+                          'all five history controls use icons with their original text as tooltip and accessible label');
+                    check(w.getComputedStyle(tools).display==='flex' && toolButtons.every(b=>w.getComputedStyle(b).width==='40px'),
+                          'history icon controls remain compact instead of inheriting full-width grid cells',w.getComputedStyle(tools).display+'/'+toolButtons.map(b=>w.getComputedStyle(b).width).join(','));
+                    check(toolButtons[4].classList.contains('evttrash') && toolButtons[0].getAttribute('onclick')==='evtsnap()' && toolButtons[3].getAttribute('onclick')==='evtdlall()',
+                          'destructive history control is red and existing button actions are unchanged');
+                    check(buttons.some(b=>decodeURIComponent(b.dataset.file)===odd) && !box.querySelector('img'),
+                          'unusual filenames remain exact data and cannot inject HTML');
+                    const realDelete=w.evtdelete; let clicked=null;
+                    w.evtdelete=value=>{clicked=value;}; buttons[1].click(); w.evtdelete=realDelete;
+                    check(decodeURIComponent(clicked)===odd,'clicking a file delete button selects exactly its own filename');
+                    calls.length=0; await w.evtdelete(encodeURIComponent(odd));
+                    check(!calls.length,'cancelled confirmation sends no deletion request');
+                    check(prompts[0].includes(odd) && prompts[0].includes('دوباره ساخته'),
+                          'confirmation names the exact file and warns that active files may be recreated');
+                    accept=true; await w.evtdelete(encodeURIComponent(odd));
+                    check(calls.some(c=>c[0]==='/evt/clean?name='+encodeURIComponent(odd)&&c[1]==='POST'),
+                          'confirmed deletion posts the encoded exact name, never bulk cleanup');
+                    check(d.getElementById('evtst').textContent.includes('فایل حذف شد'),
+                          'successful file removal is reported in Persian');
+                    success=false; await w.evtdelete(encodeURIComponent('/benchlog.csv'));
+                    check(d.getElementById('evtst').textContent.includes('انجام نشد'),
+                          'a server refusal is not shown as successful deletion');
+                    await w.evtfs(0);
+                    const realFs=w.evtfs; let page=null;
+                    w.evtfs=(toggle,offset)=>{page=offset;};
+                    [...box.querySelectorAll('button')].find(b=>b.textContent.includes('فایل‌های بعدی')).click();
+                    w.evtfs=realFs;
+                    check(page===2,'next-file page uses the number actually returned by the bounded response');
+                    await w.evtfs(0,24);
+                    check(calls.some(c=>c[0]==='/evt/fs?offset=24') && box.textContent.includes('فایل‌های قبلی'),
+                          'later file pages are fetched and offer navigation back');
+                    w.evtHttp=saved.http; w.evtDays=saved.days; w.evtfetch=saved.fetch; w.pmConfirm=saved.confirm;
+                }
                 console.log("=".repeat(68));
                 if (failures === 0) {
                     console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

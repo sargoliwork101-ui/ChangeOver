@@ -595,6 +595,38 @@ static void func__Esp_HttpStatRead(void)
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
+#include "plink_bench_codec.h"
+/* [EN] Shared bounded workspace, not large HTTP-handler stack frames. No cached writer state:
+ * revalidate the capped file before append so delete/format/reboot cannot leave a stale dependency. */
+static EspBenchCodec::State BENCH__G__State;
+static uint8_t BENCH__G__Frame[EspBenchCodec::MaxFrame];
+/* [EN] Requests are synchronous; reuse the existing response workspace between sends.
+ * DrainSerial does not touch it. No extra 1.5 KiB text buffer or per-row heap is needed. */
+static_assert(ESP_JSON_BUFFER_SIZE>EspBenchCodec::MaxText,"bench decode workspace");
+static char *const BENCH__G__Text=CHAR__G__JsonBuffer;
+static int func__Esp_BenchScan(File &file)
+{
+    const int kind=EspBenchCodec::begin(file,BENCH__G__State);
+    if(kind!=1)return kind;
+    if(file.size()>ESP_BENCHLOG_MAX_BYTES){BENCH__G__State.damaged=true;return -1;}
+    while(EspBenchCodec::next(file,BENCH__G__State,BENCH__G__Frame,BENCH__G__Text)) {
+        func__Esp_DrainSerial();yield();
+    }
+    if(BENCH__G__State.ioError)return -2;
+    return BENCH__G__State.damaged?-1:1;
+}
+static void func__Esp_BenchError(int code,const char *reason)
+{
+    (void)snprintf(CHAR__G__JsonBuffer,ESP_JSON_BUFFER_SIZE,"{\"ok\":0,\"e\":\"%s\"}",reason);
+    ESP_WEB_SERVER_T__G__Server.send(code,"application/json",CHAR__G__JsonBuffer);
+}
+static void func__Esp_BenchFull(uint32_t size,uint32_t freed,const char *reason)
+{
+    (void)snprintf(CHAR__G__JsonBuffer,ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":0,\"full\":1,\"size\":%lu,\"freed\":%lu,\"e\":\"%s\"}",
+                   (unsigned long)size,(unsigned long)freed,reason);
+    ESP_WEB_SERVER_T__G__Server.send(507,"application/json",CHAR__G__JsonBuffer);
+}
 /**
  * @brief  [EN] Current size of the bench log file (0 when missing or no file system).
 * @return Size in bytes /
@@ -609,7 +641,7 @@ static uint32_t func__Esp_BenchLogSize(void)
         {
             uint32_t__size = (uint32_t)file__log.size();
             file__log.close();
-        }
+        } else return UINT32_MAX;
     }
     return uint32_t__size;
 }
@@ -622,14 +654,25 @@ static void func__Esp_HttpBenchLogGet(void)
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     if (ESP_WEB_SERVER_T__G__Server.hasArg("i"))
     {
-        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"fs\":%u,\"size\":%lu,\"max\":%lu}",
-                       BOOL__G__FsOk ? 1u : 0u, (unsigned long)func__Esp_BenchLogSize(),
-                       (unsigned long)ESP_BENCHLOG_MAX_BYTES);
+        const uint32_t size=func__Esp_BenchLogSize();
+        if(size==UINT32_MAX){func__Esp_BenchError(503,"read");return;}
+        const char *format="empty";
+        if(size) {
+            File file=LittleFS.open(ESP_BENCHLOG_PATH,"r");
+            if(!file){func__Esp_BenchError(503,"read");return;}
+            const int kind=func__Esp_BenchScan(file);file.close();
+            if(kind==-2){func__Esp_BenchError(503,"read");return;}
+            format=kind==1?"compact":kind==0?"legacy":"damaged";
+        }
+        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"fs\":%u,\"size\":%lu,\"max\":%lu,\"format\":\"%s\"}",
+                       BOOL__G__FsOk ? 1u : 0u, (unsigned long)size,
+                       (unsigned long)ESP_BENCHLOG_MAX_BYTES,format);
         ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
         return;
     }
     ESP_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition", "attachment; filename=benchlog.csv");
-    if (func__Esp_BenchLogSize() == 0u)
+    if(!BOOL__G__FsOk){func__Esp_BenchError(503,"fs");return;}
+    if (!LittleFS.exists(ESP_BENCHLOG_PATH))
     {
         ESP_WEB_SERVER_T__G__Server.send(200, "text/csv", ESP_BENCHLOG_HEADER);
         return;
@@ -640,7 +683,34 @@ static void func__Esp_HttpBenchLogGet(void)
         ESP_WEB_SERVER_T__G__Server.send(503, "text/plain", "fs");
         return;
     }
-    (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__log, "text/csv");
+    if(!file__log.size()){file__log.close();ESP_WEB_SERVER_T__G__Server.send(200,"text/csv",ESP_BENCHLOG_HEADER);return;}
+    const int kind=func__Esp_BenchScan(file__log);
+    if(kind==0) {
+        (void)file__log.seek(0u);
+        (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__log,"text/csv");
+        file__log.close();return;
+    }
+    if(kind!=1) {
+        file__log.close();func__Esp_BenchError(kind==-2?503:409,kind==-2?"read":"damaged");return;
+    }
+    const uint32_t bytes=BENCH__G__State.textBytes;
+    if(EspBenchCodec::begin(file__log,BENCH__G__State)!=1) {
+        file__log.close();func__Esp_BenchError(503,"read");return;
+    }
+    /* [EN] Validate before sending 200. A second-pass I/O error closes a known-length
+     * response early, so browser fetch/blob rejects it instead of downloading partial CSV. */
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Connection","close");
+    ESP_WEB_SERVER_T__G__Server.client().setTimeout(ESP_HTTP_SEND_TIMEOUT_MS);
+    ESP_WEB_SERVER_T__G__Server.setContentLength((size_t)bytes+sizeof(ESP_BENCHLOG_HEADER)-1u);
+    ESP_WEB_SERVER_T__G__Server.send(200,"text/csv","");
+    ESP_WEB_SERVER_T__G__Server.sendContent(ESP_BENCHLOG_HEADER);
+    while(EspBenchCodec::next(file__log,BENCH__G__State,BENCH__G__Frame,BENCH__G__Text)) {
+        ESP_WEB_SERVER_T__G__Server.sendContent(BENCH__G__Text);
+        func__Esp_DrainSerial();yield();
+        if(!ESP_WEB_SERVER_T__G__Server.client().connected())break;
+    }
+    if(BENCH__G__State.ioError||BENCH__G__State.damaged||BENCH__G__State.textBytes!=bytes)
+        ESP_WEB_SERVER_T__G__Server.client().stop();
     file__log.close();
 }
 /* ==================== v1.66 direct LUT push ==================== */
@@ -880,87 +950,61 @@ static void func__Esp_HttpLutReset(void)
  */
 static void func__Esp_HttpBenchLogAdd(void)
 {
-    const String string__body = ESP_WEB_SERVER_T__G__Server.arg("plain");
-    const uint32_t uint32_t__len = (uint32_t)string__body.length();
-    uint32_t uint32_t__index;
-    uint32_t uint32_t__size;
-    uint32_t uint32_t__extra;
-    if ((uint32_t__len == 0u) || (uint32_t__len > ESP_BENCHLOG_MAX_POST) || (string__body[uint32_t__len - 1u] != '\n'))
-    {
-        ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-        return;
+    const String body=ESP_WEB_SERVER_T__G__Server.arg("plain");
+    const size_t length=body.length();
+    if(!EspBenchCodec::text(body.c_str(),length)){func__Esp_BenchError(400,"body");return;}
+    if(!BOOL__G__FsOk){func__Esp_BenchError(503,"fs");return;}
+    uint32_t size=0u;
+    if(LittleFS.exists(ESP_BENCHLOG_PATH)) {
+        File file=LittleFS.open(ESP_BENCHLOG_PATH,"r");
+        if(!file){func__Esp_BenchError(503,"read");return;}
+        size=(uint32_t)file.size();
+        if(size) {
+            const int kind=func__Esp_BenchScan(file);file.close();
+            if(kind!=1){func__Esp_BenchError(kind==-2?503:409,kind==0?"legacy":kind==-2?"read":"damaged");return;}
+        } else {file.close();EspBenchCodec::reset(BENCH__G__State);}
+    } else EspBenchCodec::reset(BENCH__G__State);
+    const size_t encoded=EspBenchCodec::encode(BENCH__G__State,body.c_str(),length,BENCH__G__Frame);
+    if(!encoded){func__Esp_BenchError(400,"body");return;}
+    const uint32_t need=(uint32_t)encoded+(size?0u:(uint32_t)EspBenchCodec::HeaderSize);
+    if(size>ESP_BENCHLOG_MAX_BYTES||need>ESP_BENCHLOG_MAX_BYTES-size) {
+        func__Esp_BenchFull(size,0u,"cap");return;
     }
-    for (uint32_t__index = 0u; uint32_t__index < uint32_t__len; uint32_t__index++)
-    {
-        const char char__c = string__body[uint32_t__index];
-        if ((char__c != '\n') && ((char__c < ' ') || (char__c > '~')))
-        {
-            ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
-            return;
-        }
+    /* [EN] Bench first, oldest daily history second. Budget physical encoded bytes,
+     * including envelope/header overhead, not the larger reconstructed CSV size. */
+    const uint32_t freed=func__EspLog_FreeForBenchLog(need);
+    if(!func__EspLog_HasRoomFor(need)){func__Esp_BenchFull(size,freed,"space");return;}
+    File file=LittleFS.open(ESP_BENCHLOG_PATH,"a");
+    if(!file){func__Esp_BenchError(503,"write");return;}
+    bool ok=true;
+    if(!size)ok=file.write(EspBenchCodec::header(),EspBenchCodec::HeaderSize)==EspBenchCodec::HeaderSize;
+    if(ok)ok=file.write(BENCH__G__Frame,encoded)==encoded;
+    if(!ok) {
+        /* [EN] Never acknowledge partial writes or advance dependency state. If rollback
+         * itself fails, retain the damaged bytes and block subsequent appends/exports. */
+        (void)file.truncate(size);file.close();
+        if(!size)(void)LittleFS.remove(ESP_BENCHLOG_PATH);
+        func__Esp_BenchError(503,"write");return;
     }
-    if (!BOOL__G__FsOk)
-    {
-        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
-        return;
-    }
-    uint32_t__size = func__Esp_BenchLogSize();
-    uint32_t__extra = (uint32_t__size == 0u) ? (uint32_t)(sizeof(ESP_BENCHLOG_HEADER) - 1u) : 0u;
-    if ((uint32_t__size + uint32_t__extra + uint32_t__len) > ESP_BENCHLOG_MAX_BYTES)
-    {
-        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":0,\"full\":1,\"size\":%lu}", (unsigned long)uint32_t__size);
-        ESP_WEB_SERVER_T__G__Server.send(507, "application/json", CHAR__G__JsonBuffer);
-        return;
-    }
-    /*
-     * [EN] v1.133 (owner order 2026-11-06: "calibration matters a lot to me -
-     *      if it does not fit, let it delete the log so it can fit itself").
-     *      The cap above says nothing about free space: with the history filling
-     *      the flash, the old code opened the file and the append quietly failed.
-     *      The table now goes first and the oldest days are deleted for it; only
-     *      when even an empty history leaves no block is the row refused.
-     */
-    const uint32_t uint32_t__need = uint32_t__extra + uint32_t__len;
-    const uint32_t uint32_t__freed = func__EspLog_FreeForBenchLog(uint32_t__need);
-    if (func__EspLog_HasRoomFor(uint32_t__need) == false)
-    {
-        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":0,\"full\":1,\"freed\":%lu,\"size\":%lu}",
-                       (unsigned long)uint32_t__freed, (unsigned long)uint32_t__size);
-        ESP_WEB_SERVER_T__G__Server.send(507, "application/json", CHAR__G__JsonBuffer);
-        return;
-    }
-    File file__log = LittleFS.open(ESP_BENCHLOG_PATH, "a");
-    if (!file__log)
-    {
-        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
-        return;
-    }
-    if (uint32_t__extra != 0u)
-    {
-        (void)file__log.print(ESP_BENCHLOG_HEADER);
-    }
-    (void)file__log.print(string__body);
-    file__log.close();
-    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":1,\"freed\":%lu,\"size\":%lu}",
-                   (unsigned long)uint32_t__freed, (unsigned long)func__Esp_BenchLogSize());
-    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+    file.close();
+    File verify=LittleFS.open(ESP_BENCHLOG_PATH,"r");
+    if(!verify){func__Esp_BenchError(503,"read");return;}
+    ok=verify.size()==size+need&&func__Esp_BenchScan(verify)==1;verify.close();
+    if(!ok){func__Esp_BenchError(503,"verify");return;}
+    (void)snprintf(CHAR__G__JsonBuffer,ESP_JSON_BUFFER_SIZE,"{\"ok\":1,\"freed\":%lu,\"size\":%lu}",
+                   (unsigned long)freed,(unsigned long)(size+need));
+    ESP_WEB_SERVER_T__G__Server.send(200,"application/json",CHAR__G__JsonBuffer);
 }
 /**
- * @brief  [EN] POST /benchlog/clear : delete the CSV (the next append recreates it with the header).
-* @return None /
+ * @brief [EN] Explicitly clear the bench file; never report a failed remove as success.
  */
 static void func__Esp_HttpBenchLogClear(void)
 {
-    if (!BOOL__G__FsOk)
-    {
-        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
-        return;
+    if(!BOOL__G__FsOk){func__Esp_BenchError(503,"fs");return;}
+    if(LittleFS.exists(ESP_BENCHLOG_PATH)&&!LittleFS.remove(ESP_BENCHLOG_PATH)) {
+        func__Esp_BenchError(503,"remove");return;
     }
-    if (LittleFS.exists(ESP_BENCHLOG_PATH))
-    {
-        (void)LittleFS.remove(ESP_BENCHLOG_PATH);
-    }
-    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+    ESP_WEB_SERVER_T__G__Server.send(200,"application/json","{\"ok\":1}");
 }
 /* ==================== v1.93 state history ==================== */
 /*
@@ -1259,7 +1303,10 @@ static void func__Esp_HttpEventPct(void)
 static void func__Esp_HttpEventFsStatus(void)
 {
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    (void)func__EspLog_FsStatusJson(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE);
+    const String arg=ESP_WEB_SERVER_T__G__Server.arg("offset");
+    const long asked=arg.toInt();
+    const uint16_t offset=(uint16_t)(asked<0?0:(asked>65535L?65535L:asked));
+    (void)func__EspLog_FsStatusJson(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,offset);
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 /**
@@ -1269,6 +1316,15 @@ static void func__Esp_HttpEventFsStatus(void)
  */
 static void func__Esp_HttpEventClean(void)
 {
+    if (ESP_WEB_SERVER_T__G__Server.hasArg("name")) {
+        const String name=ESP_WEB_SERVER_T__G__Server.arg("name");
+        const int status=strlen(name.c_str())==name.length()?
+            func__EspLog_DeleteFile(name.c_str()):400;
+        ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control","no-store");
+        ESP_WEB_SERVER_T__G__Server.send(status,"application/json",status==200?
+            "{\"ok\":1,\"removed\":1}":"{\"ok\":0,\"removed\":0}");
+        return;
+    }
     uint32_t uint32_t__freed = 0u;
     uint16_t uint16_t__removed;
     uint16_t__removed = func__EspLog_CleanForeignFiles(&uint32_t__freed);

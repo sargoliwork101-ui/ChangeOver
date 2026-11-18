@@ -43,13 +43,7 @@ section{margin-top:12px}
    [FA] نمودار ویرایشگر است، جدول فقط گزارش؛ یک ویرایشگرِ شناور به هر چیز
    کلیک‌شده لنگر می‌اندازد. */
 .evs{cursor:pointer;text-decoration:underline dotted}
-/* [EN] Chips under the chart. The times and gains were drawn ON the plane
-   until the user said the picture had got too crowded; they are neither a
-   voltage nor a current, so they never had an honest position on an I-V
-   plane anyway. Same data-i, same editor - moved, not demoted.
-   [FA] تراشه‌های زیر نمودار. زمان‌ها و گین‌ها تا پیش از این روی خود صفحه رسم
-   می‌شدند تا کاربر گفت تصویر شلوغ شده؛ این‌ها نه ولتاژند نه جریان، پس اصلاً
-   روی صفحهٔ ‎I-V‎ جای صادقانه‌ای نداشتند. همان ‎data-i‎، همان ویرایشگر. */
+/* [EN] Supplemental chart controls. */
 .evcg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
 .qglg{display:flex;flex-wrap:wrap;gap:3px 13px;margin:3px 2px 7px;font-size:.86em}
 .qglg .qgit{white-space:nowrap}
@@ -63,11 +57,11 @@ section{margin-top:12px}
 .evc .evs{color:var(--ac2);font-weight:700;text-decoration:underline dotted}
 .evc .evs:hover{color:#cfe2ff}
 .evs:hover{fill:var(--ac2)}
-.evpop{position:absolute;z-index:70;background:var(--cd);border:1px solid var(--ac);
+.evpop{position:fixed;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);overflow:auto;z-index:70;background:var(--cd);border:1px solid var(--ac);
        border-radius:9px;padding:9px 11px;box-shadow:0 10px 30px #0009;direction:rtl}
-.evpt{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px;white-space:nowrap}
+.evpt{overflow-wrap:anywhere;font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px;white-space:normal}
 .evpr{display:flex;align-items:center;gap:6px;direction:ltr;justify-content:flex-end}
-.evph{font-size:10.5px;color:var(--mu);margin-top:6px;white-space:nowrap}
+.evph{font-size:10.5px;color:var(--mu);margin-top:6px;white-space:normal}
 .fl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
 .tg{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--rs);color:var(--mu);border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
 .tg::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
@@ -82,6 +76,10 @@ section{margin-top:12px}
 .jmp{animation:jmpk 1.1s ease-in-out 2}
 .ovjmp{display:inline-block;margin-top:4px;font-size:12px;color:var(--ac);cursor:pointer;text-decoration:underline}
 @keyframes jmpk{0%,100%{outline:2px solid transparent;outline-offset:3px}50%{outline:2px solid var(--er);outline-offset:3px}}
+[data-calissue]{--calflash:rgba(251,191,36,.27)}[data-calissue="error"]{--calflash:rgba(251,94,106,.28)}
+[data-calissue]:not(tr),tr[data-calissue]>td{animation:calpulse 2.4s ease-in-out infinite}
+@keyframes calpulse{0%,100%{background-color:var(--calflash)}50%{background-color:transparent}}
+@media(prefers-reduced-motion:reduce){[data-calissue]:not(tr),tr[data-calissue]>td{animation:none;background-color:var(--calflash)}}
 .ch{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .hd b{font-size:15px;display:flex;align-items:center;gap:8px}
@@ -360,7 +358,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6px 18px rgba(0,0,0,.45);font-size:13px}
 #sbar.on{display:flex}
 #sbar b{color:#ffb020}
-#sbst{color:#9fb0cc;direction:rtl;text-align:right}
+#sbst{color:#9fb0cc;direction:rtl;text-align:right;max-width:100%;max-height:25vh;overflow:auto;overflow-wrap:anywhere}
 /* v1.70: کارت نتیجهٔ ارسال — #sbar با خالی‌شدن صف پنهان می‌شد و پیام موفقیت
    همان لحظه گم می‌شد؛ این کارت تا بسته نشود می‌ماند. */
 #sres{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(5,8,14,.62)}
@@ -369,11 +367,12 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #sres.ok .rb{border-color:#1f7a5a}#sres.warn .rb{border-color:#8a6a12}#sres.bad .rb{border-color:#8a2a2d}
 #srst{display:block;font-size:15px;margin-bottom:8px}
 #sres.ok #srst{color:var(--ok)}#sres.warn #srst{color:#ffb020}#sres.bad #srst{color:#e5484d}
-#srsm{font-size:13px;color:#c7d3e6;line-height:1.9}#srsm ul{margin:6px 0;padding-inline-start:18px}#srsm code{direction:ltr;display:inline-block}
+#srsm{font-size:13px;color:#c7d3e6;line-height:1.9}#srsm ul{margin:6px 0;padding-inline-start:18px}#srsm code{direction:rtl;display:inline;white-space:normal;overflow-wrap:anywhere}
 #srsa{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 #pmod{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(5,8,14,.62)}
 #pmod.on{display:flex}
 #pmod .pmb{max-width:520px;width:calc(100% - 28px);max-height:80vh;overflow:auto;background:#121a2c;border:1px solid #35507f;border-radius:16px;padding:16px;direction:rtl;text-align:right;color:#c7d3e6;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#pmfilename{display:block;width:100%;box-sizing:border-box;margin-top:8px}
 #pmt{white-space:pre-line;font-size:14px;line-height:1.9;margin-bottom:12px}
 #pmbtn{display:flex;gap:8px;flex-wrap:wrap}
 /* [‎EN] v1.93 state history rows (bottom card) / [FA]‎ ردیف‌های تاریخچهٔ وضعیت */
@@ -415,6 +414,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .evttbl tbody tr.sel{outline:1px solid rgba(163,255,60,.55);outline-offset:-1px;background:rgba(163,255,60,.07)}
 .evttbl tbody td.chg{color:#a3ff3c;font-weight:700;background:rgba(163,255,60,.13);text-shadow:0 0 7px rgba(163,255,60,.55)}
 #evtpage{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin-top:8px}
+.bqr.evttools{display:flex;flex-wrap:wrap;align-items:end;gap:8px}.evttools>label{flex:1 1 140px}.evtactions{display:flex;flex-wrap:nowrap;gap:8px;flex:0 0 auto;align-self:end}.sb.evticon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;height:38px;min-width:40px;padding:0}.evticon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.sb.evttrash{background:#70232d;color:#ffe4e6;border-color:#e45f6c}
 #evtpage .sb{flex:0 0 auto;min-width:64px;text-align:center}
 #evtpage #evtpv,#evtpage #evtnx{font-weight:700;letter-spacing:2px}
 @media (max-width:520px){#evtpage .sb{flex:1 1 100%}}
@@ -427,126 +427,26 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 .ep+.ep:before{content:'·';margin:0 5px;color:var(--mu);opacity:.7}
 .evtt{color:var(--mu);font-family:Vazirmatn;white-space:nowrap;min-width:64px}
 .mok{color:#2f9e63;font-weight:700}.mbad{color:#e5484d;font-weight:700}
-</style><script>
-/* ============================================================================
-   [EN] OFFLINE SHIM - generated by tools/make_panel_preview.py, not part of the
-        firmware. It replaces fetch() so the panel below runs with no server,
-        answering /t and /m from a small simulation of one charge cycle:
-        BULK (constant current, voltage climbing) -> ABSORB (constant voltage,
-        current tapering) -> FLOAT (parked) -> reentry. That is exactly the
-        path the new current-voltage chart draws, so the live dots walk along
-        it. Writes (/s) are accepted and remembered, so the inputs behave.
-   [FA] شیم آفلاین - ساختهٔ اسکریپت تولید، جزو فرم‌ور نیست. fetch را جایگزین
-        می‌کند تا پنل بدون هیچ سروری کار کند و /t و /m را از شبیه‌سازی کوچکی از
-        یک چرخهٔ شارژ جواب دهد: Bulk، Absorb، Float، بازگشت - همان مسیری که
-        نمودار جریان-ولتاژ رسم می‌کند، پس نقطه‌های زنده روی آن راه می‌روند.
-   ========================================================================== */
-(function(){
-const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0, 14400, 14300, 14600, 13500, 12800, 650, 50, 14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 14850, 2000, 1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100, 40, 20, 10, 1, 60000, 20000, 10000, 10000, 1, 1000, 2000, 10000, 1, 2, 3, 100, 1000, 10, 1000, 150, 28000, 1000, 0, 0, 21000, 29000, 0, 100, 95, 5, 2, 2, 3, 12, 1600, 0, 1000, 1000, 50, 18000, 0, 10, 1000, 3600000, 100, 600000, 60000, 8, 700, 32, 14800, 100, 500, 10, 15000, 3000, 3000, 500, 300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20, 21000, 29000, 1000, 60000, 1000, 50, 86400000, 60000, 0, 600000, 120, 0, 50, 1, 0, 1, 0, 3, 3000, 200, 3, 100, 1000, 50, 1800000, 60000, 120000, 20, 1, 600000, 60000, 10000, 500, 50, 3000, 200, 3, 100, 1, 1, 1, 1, 1, 1, 1, 1, 25000, 600, 3600000, 600000, 500, 500];
-let T0 = Date.now();
-let seq = 0;
-let latchRep = 1, latchId = 0, latchVal = 0;
-
-/* one full cycle in ~75 s so the chart visibly walks the CC/CV path */
-function sim(){
-  const t = ((Date.now()-T0)/1000) % 75;
-  let st, v, i;
-  if(t < 30){                      /* BULK: current held, voltage climbing   */
-    st = 1; i = P[25]; v = 12400 + (14300-12400)*(t/30);
-  } else if(t < 55){               /* ABSORB: voltage held, current tapering */
-    const k = (t-30)/25;
-    st = 2; v = 14400; i = Math.max(P[26]*0.8, P[25]*Math.exp(-3.2*k));
-  } else if(t < 68){               /* FLOAT: parked                          */
-    st = 3; v = 13500; i = 0;
-  } else {                         /* sagging back toward reentry            */
-    st = 3; v = 13500 - (13500-12700)*((t-68)/7); i = 0;
-  }
-  return {st:st, v:Math.round(v), i:Math.round(i)};
+.bi{width:20px;height:20px;vertical-align:middle;flex:none;pointer-events:none}
+/* [EN] Shrink grid children and reflow wide reports instead of clipping horizontal data. */
+main,.pgx,.sgx,.cd,.ch>*,.bg2>*{min-width:0;max-width:100%}.tw table{table-layout:fixed}.tw td,.tw th{white-space:normal;overflow-wrap:anywhere}.bqr{grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))}
+@media(max-width:800px){
+header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{flex-wrap:wrap;flex:1 1 auto}.calsummaryrow{grid-template-columns:minmax(0,1fr)}
+.tw,.srvw{overflow:visible;max-height:none}table,.srv,.c4tb{min-width:0;width:100%}table,tbody{display:block}colgroup{display:none}tr{display:flex;flex-direction:column;border-bottom:1px solid var(--ln);padding:6px 0}thead{display:none}tr:has(>th){display:none}td,.srv td{display:block;white-space:normal!important;overflow-wrap:anywhere;max-width:100%;text-overflow:clip}td[data-h]::before{content:attr(data-h);display:block;color:var(--mu);font-size:11px}.srv .fx{white-space:normal}.srv td{overflow:visible}.calsummarybody,.calmodalbody{min-width:0}.bctl label{max-width:100%;white-space:normal;flex-wrap:wrap}.bctl label input.dl{max-width:100%}
 }
-
-function tlm(){
-  const a = sim();
-  /* the upper battery runs a little behind the lower one, so the two dots are
-     distinguishable on the chart instead of sitting on top of each other */
-  const b = sim(); b.v = Math.round(a.v*0.965); b.i = Math.round(a.i*0.88);
-  const v12 = a.v, vhigh = b.v, v24 = v12 + vhigh;
-  const t = new Array(31).fill(0);
-  t[3]  = b.i; t[4] = b.i; t[5] = 180; t[6]  = b.st;   /* channel 1 = Vhigh */
-  t[10] = a.i; t[11] = a.i; t[12] = 190; t[13] = a.st; /* channel 2 = Vlow  */
-  t[14] = 24160; t[15] = v24; t[16] = v12; t[17] = v12; t[18] = vhigh; t[19] = 0;
-  /* raw counts derived from the volts above, so count x scale == the mV shown
-     (t[20] used to be a hand-typed 2687, which claimed 23819 mV while t[14]
-     said 24160 - a 341 mV lie sitting on the calibration page) */
-  const cnt = (mv,sc) => Math.max(0, Math.min(4095, Math.round(mv/sc)));
-  t[20] = cnt(t[14], 8.8645); t[21] = cnt(v24, 8.8645);
-  t[22] = cnt(v12, 4.8823);   t[23] = 1489; t[24] = 3300;
-  /* v1.43 imbalance scenario 5 demo (mirrors tools/panel_preview_server.js) */
-  const imb=Math.abs(t[18]-t[17]); t[25]=imb;
-  const imbCyc=(Date.now()-T0)%120000; let fl2=0;
-  if(imbCyc<30000){t[26]=Math.round(imbCyc/30000*10);t[27]=0;fl2=(imb>P[108])?1:0;}
-  else if(imbCyc<75000){t[26]=10;t[27]=Math.round((imbCyc-30000)/1500);fl2=2|(P[117]?4:0)|1;}
-  else if(imbCyc<90000){t[26]=10;t[27]=20;fl2=2|4|8;}
-  else{t[26]=0;t[27]=0;fl2=0;}
-  const chgSec = (a.st===1||a.st===2) ? Math.floor(((Date.now()-T0)/1000)%75) : 0;
-  t[28] = 0; t[29] = chgSec; t[30] = chgSec;
-  seq = (seq+1) & 0xFFFF;
-  return {on:1, age:40, seq:seq, fl:0, fl2:fl2, n:seq, q:0, q2:0, q3:0, q4:0,
-          ka:120, vm:0, ce:0, t:t, p:P};
-}
-
-const origFetch = window.fetch;
-window.fetch = function(url, opt){
-  const u = String(url);
-  let body;
-  if(u.indexOf('/t') === 0){
-    body = tlm();
-  } else if(u.indexOf('/m') === 0){
-    const d = tlm();
-    body = {n:10, s:d.t.map(x=>x*10), lo:d.t, hi:d.t, la:d.t,
-            or:0, seq:d.seq, fl:0};
-  } else if(u.indexOf('/s') === 0){
-    const q = /[?&]id=(\d+)&v=(-?\d+)/.exec(u);
-    if(q){ const id=+q[1], val=+q[2]; if(id>=0 && id<P.length) P[id]=val; }
-    body = {ok:1};
-  } else if(u.indexOf('/latch/reset') === 0){
-    const q = /[?&]n=(\d+)/.exec(u);
-    const n = q ? +q[1] : 6;
-    T0 = Date.now();
-    latchId = (n === 5) ? 202 : 203;
-    latchVal = 0;
-    latchRep += (n === 5) ? 3 : 1;
-    body = {ok:1, n:n};
-  } else if(u.indexOf('/latch') === 0){
-    body = {q:0, id:latchId, val:latchVal, known:1, rep:latchRep, req:latchRep, nak:0, busy:0};
-  } else if(u.indexOf('/benchlog') === 0){
-    body = {fs:1, size:0, max:102400, ok:1};
-  } else {
-    body = {ok:1};
-  }
-  return Promise.resolve(new Response(JSON.stringify(body),
-    {status:200, headers:{'Content-Type':'application/json'}}));
-};
-
-window.addEventListener('DOMContentLoaded', function(){
-  const n = document.createElement('div');
-  n.style.cssText = 'margin:10px 0;padding:9px 12px;border-radius:12px;'+
-    'border:1px dashed var(--ln);background:var(--rs);color:var(--mu);font-size:12.5px';
-  n.innerHTML = '\u26A0 <b>پیش\u200cنمایش آفلاین</b> \u2014 این فایل از '+
-    '<code>plink_panel.h</code> تولید شده و داده\u200cهایش شبیه\u200cسازی است، نه از برد. '+
-    'یک چرخهٔ کامل شارژ هر ۷۵ ثانیه تکرار می\u200cشود تا نقطه\u200cهای باتری روی نمودار '+
-    'جریان\u200c\u2013ولتاژ حرکت کنند.';
-  document.body.insertBefore(n, document.body.firstChild);
-});
-})();
-</script>
-</head><body>
+/* [EN] Compact bench-only controls; retain readable units, safety labels and visible focus. */
+#p1 .ibtn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:6px;font-size:21px;line-height:1;vertical-align:middle}
+#p1 .bctl>.sb,#p1 .bqr2>.sb,#p1 #wReviewEnd{min-height:44px}#p1 .ibtn:focus-visible,#p1 summary:focus-visible{outline:2px solid var(--ok);outline-offset:3px}
+#p1 .bhelp{font-size:12px;color:var(--mu);margin:6px 0}#p1 .bhelp summary{cursor:pointer;width:fit-content;padding:5px 8px;border:1px solid var(--ln);border-radius:8px;user-select:none}
+#p1 .bhelp[open]{flex-basis:100%}#p1 .bhelp .ds{margin:8px 0;line-height:1.9}
+</style></head><body>
 <div id="pmod"><div class="pmb"><div id="pmt"></div><div id="pmbtn"><button class="sb" id="pmok">تأیید</button><button class="sb sb2" id="pmno">انصراف</button></div><div class="lb" style="margin-top:10px;font-size:11px;opacity:.8">Enter = تأیید · Esc = انصراف</div></div></div>
-<div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی</span>
+<div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی؛ با بستن صفحه کنار می‌رود</span>
 <button class="sb" onclick="sendall()" title="Ctrl+Enter">ارسال همهٔ تغییرات به برد (Ctrl+Enter)</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9f1ff2e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2c7ab4b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -574,14 +474,16 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="cd" style="margin-top:16px">
 <div class="hd"><b>تاریخچهٔ وضعیت (لاگ)</b><span class="lb" id="evtst"></span></div>
 <div class="sx" title="هر روز یک فایل تا ۳۰ روز · فقط با تغییر یک خط نوشته می‌شود · هر پلهٔ ۲۰۰mV یک خط · یک ساعت بی‌اتفاق = یک خط ضربان · ساعت از دستگاه شما">هر ردیف یک اتفاق و هر ستون یک کمیت — کلیدها را بالای جدول ببینید.</div>
-<div class="bqr">
+<div class="bqr evttools">
 <label>روز<select id="evtday" onchange="evtfetch(0)"><option value="">امروز</option></select></label>
 <label>سهم حافظه<select id="evtpct" onchange="evtPctSet()" title="چند درصد از حافظهٔ فایل‌ها به تاریخچهٔ وضعیت برسد؛ ۱۰۰٪ یعنی هر چه مانده. کد برنامه در این حافظه نیست، و یک بلوک همیشه برای نوشتن خالی می‌ماند"><option value="100">۱۰۰٪ (همه)</option></select></label>
-<button class="sb" type="button" onclick="evtsnap()">به‌روزرسانی</button>
-<button class="sb" type="button" onclick="evtfs(1)">حافظهٔ ESP</button>
-<button class="sb" type="button" onclick="evtdl()">دانلود این روز</button>
-<button class="sb" type="button" onclick="evtdlall()">دانلود همهٔ روزها</button>
-<button class="sb sb2" type="button" onclick="evtclr()">پاک کردن تاریخچه</button>
+<div class="evtactions" role="group" aria-label="عملیات تاریخچه">
+<button class="sb evticon" type="button" onclick="evtsnap()" title="به‌روزرسانی" aria-label="به‌روزرسانی"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-2l2 3M4 16l2 3a7 7 0 0 0 12-2"/></svg></button>
+<button class="sb evticon" type="button" onclick="evtfs(1)" title="حافظهٔ ESP" aria-label="حافظهٔ ESP"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 1v4m6-4v4M9 19v4m6-4v4M1 9h4m-4 6h4m14-6h4m-4 6h4M9 9h6v6H9z"/></svg></button>
+<button class="sb evticon" type="button" onclick="evtdl()" title="دانلود این روز" aria-label="دانلود این روز"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>
+<button class="sb evticon" type="button" onclick="evtdlall()" title="دانلود همهٔ روزها" aria-label="دانلود همهٔ روزها"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v11m-3-3 3 3 3-3m5-8v11m-3-3 3 3 3-3M4 17v4h16v-4"/></svg></button>
+<button class="sb evticon evttrash" type="button" onclick="evtclr()" title="پاک کردن تاریخچه" aria-label="پاک کردن تاریخچه"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>
+</div>
 </div>
 <div id="evtfs" style="display:none;margin:8px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font-size:12px;line-height:1.9"></div>
 <div class="evtsum" id="evtsum"></div>
@@ -1234,7 +1136,7 @@ const P={
 const V=[['ورودی',14,4,K24],['پک ۲۴ ولت',15,5,K24B],['نود ۱۲ ولت',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
 var D=null;/* var (نه let) تا در تست هاست هم قابل‌نوشتن باشد */
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
-function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
+function send(id,v){const a=$('a'+id);if(a)a.textContent='… ارسال '+pname(id);fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا در ارسال '+pname(id);});}
 
 /* ==================== صف ارسال سراسری / Global send queue ==================== */
 /* [EN] v1.52 (user order 2026-10-05): edits are staged locally and ONE
@@ -1243,8 +1145,8 @@ function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id
    [FA] تغییرات محلی صف می‌شوند و یک دکمه همه را می‌فرستد؛ پنل مقدار برگشتی برد
    را مقایسه می‌کند و می‌گوید «نشست» یا «برد گیره زد». */
 var PEND={};
-const PEND_KEY='changeover-panel-pending-v1';
-function pendSave(){try{localStorage.setItem(PEND_KEY,JSON.stringify(PEND));}catch(e){}}
+/* [EN] Unsent edits belong to this page only; explicit backup import can stage them. */
+try{localStorage.removeItem('changeover-panel-pending-v1');}catch(e){}
 function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
  b.className=n?'on':'';$('sbn').textContent=n;
  document.body.style.paddingBottom=n?'52px':'';}
@@ -1253,21 +1155,8 @@ function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
    [‎FA] q117/q127‎ واقعاً checkbox هستند نه ‎q-input‎؛ اما آن‌ها هم عضو همین صف
    معلق‌اند و باید همان نشانهٔ زرد را بگیرند. */
 function pctrl(id){const e=$('q'+id);if(e)return e;return id===117?$('ib117'):id===127?$('db127'):id===147?$('cb147'):id===157?$('cb157'):null;}
-function pendRestore(){
- try{
-  const saved=JSON.parse(localStorage.getItem(PEND_KEY)||'{}');
-  if(!saved||typeof saved!=='object'||Array.isArray(saved))return;
-  for(const id of Object.keys(saved)){
-   if(!/^\d+$/.test(id)||!Number.isFinite(+saved[id]))continue;
-   const n=+id;if(n<0||n>(PN-1)||n===70)continue;PEND[n]=saved[id];
-   const e=pctrl(n);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!saved[id];else e.value=saved[id];}
-   const a=$('a'+n);if(a)a.textContent='در صف';
-  }
- }catch(e){}
- pbar();
-}
 function qput(id,v){PEND[id]=v;const e=pctrl(id);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!v;else e.value=v;}
- const a=$('a'+id);if(a)a.textContent='در صف';pendSave();pbar();}
+ const a=$('a'+id);if(a)a.textContent='در صف';pbar();}
 /* [EN] Clear one pending value only after a board read-back. When an applied
    value is supplied, put that value back into the visible control as well;
    this is the rollback path for a firmware clamp/rejection and prevents the
@@ -1278,12 +1167,12 @@ function qput(id,v){PEND[id]=v;const e=pctrl(id);if(e){e.classList.add('pq');if(
 function pclr(id,applied){delete PEND[id];const e=pctrl(id);if(e){e.classList.remove('pq');
  const n=Number(applied);if(Number.isFinite(n)){if(e.type==='checkbox')e.checked=!!n;else e.value=n;}}
  if(typeof EVWANT!=='undefined'&&EVWANT[id]!=null){if(Number(applied)===Number(EVWANT[id]))delete EVWANT[id];}
- pendSave();pbar();}
+ pbar();}
 function pundo(){for(const id of Object.keys(PEND)){const e=pctrl(+id);
   if(e){e.classList.remove('pq');const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';if(e.type==='checkbox')e.checked=!!v;else e.value=v;}}
- PEND={};pendSave();pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
+ PEND={};pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();if(typeof qgraph==='function'){qgraph();}}
-pendRestore();
+
 
 /* ==================== قوانین بین‌فیلدی / Cross-field rules ==================== */
 /* [EN] Cross-field advice only: the browser never repairs or vetoes; the
@@ -1324,28 +1213,65 @@ const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[
 /* [FA] پیام‌ها و تأییدها در کادر همین پنل نمایش داده می‌شوند، نه کادر پیش‌فرض مرورگر.
    Enter = تأیید، Esc = انصراف؛ پیام‌ها یکی‌یکی نشان داده می‌شوند. */
 let PMQ=Promise.resolve();
-function pmShow(msg,withCancel){
+function pmShow(msg,withCancel,filename,importing){
  return new Promise(res=>{
   const m=$('pmod'),ok=$('pmok'),no=$('pmno');
   $('pmt').textContent=String(msg);
+  const naming=filename!==undefined,previous=document.activeElement;
+  let input,error;if(naming){input=document.createElement('input');input.id='pmfilename';input.className='dl';input.dir='auto';input.value=filename;input.maxLength=128;input.setAttribute('aria-label','نام فایل');error=document.createElement('div');error.className='erc';error.setAttribute('role','alert');$('pmt').append(input,error);}
+  let append;const oldOk=ok.textContent;
+  if(importing){ok.textContent='جایگزینی';append=document.createElement('button');append.id='pmappend';append.className='sb sb2';append.textContent='افزودن به نمونه‌های فعلی';no.before(append);append.onclick=()=>done('append');}
   no.style.display=withCancel?'':'none';
   m.classList.add('on');
-  const done=v=>{m.classList.remove('on');ok.onclick=null;no.onclick=null;document.removeEventListener('keydown',kd,true);res(v);};
-  const kd=e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();done(true);}
+  const done=v=>{if(naming&&v){let n=input.value.trim();const ext=filename.slice(filename.lastIndexOf('.'));
+   if(!n||n.length>128||/[\x00-\x1f\x7f\\/:*?"<>|]/.test(n)||/^\.+$/.test(n)){error.textContent='نام معتبر و بدون علامت مسیر وارد کنید.';input.focus();return;}
+   if(!n.toLowerCase().endsWith(ext.toLowerCase()))n+=ext;
+   if(n===ext||n.length>128){error.textContent='نام فایل خالی یا بیش از حد بلند است.';return;}v=n;
+  }else if(naming)v=null;
+  if(importing){v=v===true?'replace':v==='append'?'append':null;append.remove();ok.textContent=oldOk;}
+  m.classList.remove('on');if(naming){input.remove();error.remove();}ok.onclick=null;no.onclick=null;document.removeEventListener('keydown',kd,true);if(naming&&previous&&previous.isConnected)previous.focus();res(v);};
+  const kd=e=>{if(e.isComposing)return;if(e.key==='Enter'){e.preventDefault();e.stopPropagation();done(true);}
    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();done(!withCancel);}};
   ok.onclick=()=>done(true);no.onclick=()=>done(false);
   document.addEventListener('keydown',kd,true);
-  ok.focus();
+  (naming?input:ok).focus();if(naming)input.select();
  });
 }
 function pmAlert(msg){const p=PMQ.then(()=>pmShow(msg,false));PMQ=p.catch(()=>{});return p;}
 function pmConfirm(msg){const p=PMQ.then(()=>pmShow(msg,true));PMQ=p.catch(()=>{});return p;}
+function pmSampleImport(){const p=PMQ.then(()=>pmShow('نمونه‌های فایل جایگزین شوند یا به نمونه‌های فعلی اضافه شوند؟ انصراف چیزی را تغییر نمی‌دهد.',true,undefined,true));PMQ=p.catch(()=>{});return p;}
+function pmName(name){const p=PMQ.then(()=>pmShow('نام فایل را بررسی و تأیید کنید؛ پسوند حفظ می‌شود.',true,name));PMQ=p.catch(()=>{});return p;}
+async function filesave(name,source,type){
+ name=await pmName(name);if(!name)return false;
+ try{const value=typeof source==='function'?await source():source;let blob;
+ if(type)blob=new Blob([value],{type});else{const r=await fetch(value,{cache:'no-store'});if(!r.ok)throw new Error('خواندن فایل انجام نشد');blob=await r.blob();}
+ const u=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);return true;
+ }catch(e){await pmAlert('فایل آماده نشد: '+String(e.message||e));return false;}
+}
 function sdlgx(){const w=$('sres');if(w)w.className='';}
 function sdlg(kind,head,body,retry){const w=$('sres');if(!w)return;
  w.className='on '+kind;$('srst').textContent=head;$('srsm').innerHTML=body;
  $('srsa').innerHTML=(retry?'<button class="sb brun" onclick="sdlgx();sendall()">دوباره بفرست</button>':'')
   +'<button class="sb sb2" onclick="sdlgx()">باشه، بستن</button>';}
 const sdlgl=a=>'<ul>'+a.map(x=>'<li><code>'+esc(x)+'</code></li>').join('')+'</ul>';
+/* [EN] Names are display-only; protocol ids and values remain unchanged. */
+function pname(id){return (PX[id]&&PX[id][0])||xlabel(id)||'پارامتر ناشناخته';}
+const pnames=ids=>ids.map(pname).join('، ');
+function sendresult(batch,sent,echo,fix=[],sentReport=[],bad=[]){
+ let confirmed=0,review=bad.length>0;
+ const ids=Object.keys(batch),rows=ids.map(id=>{
+  const posted=Object.prototype.hasOwnProperty.call(sent,id),r=sentReport.find(r=>r.id===id),back=r?r.back:echo&&posted&&D&&D.p?D.p[id]:null;
+  let status=!posted?'ارسال تأیید نشد':back==null?'ارسال شد؛ تأیید برد نرسید':+back===+batch[id]?'به‌روزرسانی تأیید شد':'بازخورد متفاوت؛ مقدار درخواستی تأیید نشد';
+  if(posted&&back!=null&&+back===+batch[id])confirmed++;else review=true;
+  if(id in PEND)status+=PEND[id]!==batch[id]?'؛ ویرایش تازه در صف: '+PEND[id]:'؛ هنوز در صف';
+  return pname(id)+' — '+status+'؛ درخواست: '+batch[id]+(back!=null?'؛ مقدار برد: '+back:'');
+ });
+ Object.keys(PEND).filter(id=>!(id in batch)).forEach(id=>rows.push(pname(id)+' — هنوز ارسال نشده؛ در صف: '+PEND[id]));
+ const pending=Object.keys(PEND).length,prefix=confirmed===ids.length?'✅ همه نشست':!Object.keys(sent).length?'⛔ هیچ‌کدام ارسال نشد':Object.keys(sent).length<ids.length?'⚠ ارسال ناقص':'⚠ نیازمند بررسی',head=prefix+' · تأییدشده: '+confirmed+' از '+ids.length+' متغیر'+(pending?' · در صف: '+pending+' متغیر':'');
+ stxt('sbst',head+' · '+rows.join(' · '));
+ sdlg(review||pending?'warn':'ok',head,sdlgl(rows)+(fix.length?'<br>اصلاح پیش از ارسال:'+sdlgl(fix):''),pending?1:0);
+}
 /* [EN] Shared min/max contract for manual/import pending values; metadata
    only, never a board write. [FA] قرارداد مشترک ‎min/max‎ برای تغییر دستی و
    import صف‌شده؛ فقط شناسنامه، بدون نوشتن روی برد. */
@@ -1355,11 +1281,9 @@ function pmeta(id){
  if(e&&e.type==='checkbox'){lo=0;hi=1;unit='';}
  else if(e&&e.min!==''&&e.max!==''){lo=+e.min;hi=+e.max;}
  else if(schema&&Number.isFinite(+schema[2])&&Number.isFinite(+schema[3])){lo=+schema[2];hi=+schema[3];}
+ else if(EVB[n]){lo=EVB[n][0];hi=EVB[n][1];unit=EVU[EVB[n][3]];}
  if(!Number.isFinite(lo)||!Number.isFinite(hi))return null;
- let name='پارامتر '+n;
- if(typeof PX!=='undefined'&&PX[n])name=PX[n][0];
- else if(n===111)name='تأخیر شروع بررسی حین شارژ';
- else if(e&&e.closest){const l=e.closest('label');if(l)name=l.textContent.replace(/\s+/g,' ').trim().replace(/در صف$|…$|خطا$/,'').trim();}
+ const name=pname(n);
  if(!unit&&e&&e.closest){const l=e.closest('label'),m=l&&l.textContent.match(/\((ms|mV|mA|٪|‰)/);if(m)unit=m[1];}
  return {id:n,name,unit,lo,hi};}
 function prange(v){return (Number.isFinite(v.lo)?v.lo:'؟')+' تا '+(Number.isFinite(v.hi)?v.hi:'؟')+(v.unit?' '+v.unit:'');}
@@ -1369,7 +1293,7 @@ function pvalidate(ids){return ids.map(id=>{
  const m=pmeta(id),raw=PEND[id],n=Number(raw);
  if(!m)return null;
  if(!Number.isFinite(n)||n<m.lo||n>m.hi)
-  return 'شناسهٔ '+id+' — '+m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
+  return m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
  return null;}).filter(Boolean);}
 /* نگهبان سخت چشمک سبز: خاموشیِ شناسهٔ ۶۷ نباید از دورهٔ شناسهٔ ۶۶ بزرگ‌تر
    شود، وگرنه سبز روی برد ثابت می‌ماند؛ پنل چنین ترکیبی را نمی‌فرستد. فقط
@@ -1378,19 +1302,19 @@ function pgreenguard(ids){
  if(!ids.some(id=>+id===66||+id===67))return null;
  const a=ap();
  if(a.u67>a.u66)
-  return 'شناسهٔ ۶۷ — حداقل خاموشی سبز '+a.u67+' میلی‌ثانیه از دورهٔ چشمک (شناسهٔ ۶۶: '+a.u66+' میلی‌ثانیه) بزرگ‌تر است؛ یا خاموشی را کم کنید یا دوره را زیاد کنید.';
+  return 'حداقل خاموشی سبز '+a.u67+' میلی‌ثانیه از دورهٔ چشمک سبز ('+a.u66+' میلی‌ثانیه) بزرگ‌تر است؛ یا خاموشی را کم کنید یا دوره را زیاد کنید.';
  return null;}
 /* کلید ‎Ctrl+Enter (‎روی ‎Mac: Cmd+Enter)‎ همان دکمهٔ ارسال همهٔ تغییرات را اجرا می‌کند؛ کنترل‌های sendall همچنان اعمال می‌شوند. */
 document.addEventListener('keydown',ev=>{if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'&&!ev.altKey){ev.preventDefault();sendall();}});
 async function sendall(){
- if(CAL_BUSY){stxt('sbst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است؛ ارسال عمومی فعلاً متوقف شد.');return;}
+ if(W.run||W.opening||CAL_BUSY){stxt('sbst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است؛ ارسال عمومی فعلاً متوقف شد.');return;}
  if(!Object.keys(PEND).length)return;
  const queued=Object.keys(PEND);
  const rangeErrors=pvalidate(queued);
  if(rangeErrors.length){
   const head='⛔ ارسال متوقف شد — مقدار خارج از بازهٔ مجاز است';
   const body='هیچ POST /s برای این دسته ارسال نشد. مقدارهای زیر را اصلاح کنید؛ سپس همین دکمهٔ ارسال سراسری را بزنید.'+
-   sdlgl(rangeErrors)+'<br>تا اصلاح همهٔ موارد، کل صف دست‌نخورده می‌ماند و چیزی خودکار روی برد نوشته نمی‌شود.';
+   sdlgl(rangeErrors)+'<br>در صف: '+esc(pnames(queued))+'<br>تا اصلاح همهٔ موارد، کل صف دست‌نخورده می‌ماند و چیزی خودکار روی برد نوشته نمی‌شود.';
   stxt('sbst',head+' · '+rangeErrors.length+' مورد نیاز به اصلاح دارد');
   sdlg('bad',head,body,0);return;
  }
@@ -1398,82 +1322,43 @@ async function sendall(){
  if(greenError){
   const head='⛔ ارسال متوقف شد — ترکیب چشمک سبز نامعتبر است';
   stxt('sbst',head);
-  sdlg('bad',head,'هیچ درخواستی به برد ارسال نشد؛ مورد زیر را اصلاح و دوباره ارسال کنید.'+sdlgl([greenError])+'<br>کل صف دست‌نخورده ماند.',0);return;
+  sdlg('bad',head,'هیچ درخواستی به برد ارسال نشد؛ مورد زیر را اصلاح و دوباره ارسال کنید.'+sdlgl([greenError])+'<br>در صف: '+esc(pnames(queued))+'<br>کل صف دست‌نخورده ماند.',0);return;
  }
  /* v1.56: رابطه‌های مشترک فقط توصیه‌اند؛ هیچ repair پیش از POST انجام نمی‌شود.
     مقدار ارسال‌شده همان PEND است و ‎setter/readback‎ برد مرجع نهایی است. */
  const v=rsnap(),fixed=fixrules(v).filter(f=>rknown(f[0])),fixtxt=[];
  fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
-  fixtxt.push(id+': '+f[1]+'→'+f[2]);});
- const ids=Object.keys(PEND);
- const sent={},sentReport=[];let ok=0;
+  fixtxt.push(pname(id)+': '+f[1]+'→'+f[2]);});
+ const batch={...PEND},ids=Object.keys(batch);
+ const sent={};let ok=0;
  const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
- stxt('sbst','… در حال ارسال');
- for(const id of ids){const v=PEND[id];
+ CAL_BUSY=true;lupd();try{
+ for(const [i,id] of ids.entries()){const v=batch[id];
+  stxt('sbst','… در حال ارسال: '+pname(id)+(i?' · منتظر بازخورد: '+pnames(Object.keys(sent)):'')+(i+1<ids.length?' · نوبت بعد: '+pnames(ids.slice(i+1)):''));
   try{const r=await fetch('/s?id='+id+'&v='+v,{method:'POST'});if(r.ok){ok++;sent[id]=v;}}catch(e){}
   await sl(60);}
- if(ok===0){stxt('sbst','⛔ هیچ‌کدام ارسال نشد — ارتباط با برد برقرار نیست.');
-  sdlg('bad','⛔ هیچ‌کدام ارسال نشد',
-   'ارتباط با ESP/برد برقرار نیست، پس هیچ عددی روی برد ننشست.<br>'
-   +'هر '+ids.length+' تغییر دست‌نخورده در صف مانده و کادرها نارنجی‌اند — '
-   +'اتصال را چک کنید و دوباره بفرستید.',1);return;}
+ if(ok===0){sendresult(batch,sent,false,fixtxt);return;}
  /* [EN] Do not inspect the old telemetry frame: wait for a newer seq so a
     multi-parameter batch is judged against one real board echo.
     [FA] فریم قدیمی را بررسی نکن؛ تا seq تازه صبر کن تا کل دسته با یک echo
     واقعی برد سنجیده شود. */
- stxt('sbst','… ارسال شد، منتظر تأیید برد');
+ stxt('sbst','… منتظر تأیید برد: '+pnames(Object.keys(sent))+(ok<ids.length?' · ارسال تأییدنشده: '+pnames(ids.filter(id=>!(id in sent))):''));
  let fresh=false;
  for(let k=0;k<25;k++){await sl(200);if(D&&D.p&&(seqBefore==null||+D.seq!==seqBefore)){fresh=true;break;}}
- if(!fresh&&seqBefore!==null){
-  const noEcho=Object.keys(sent).map(id=>id+': بی‌پاسخ');
-  stxt('sbst','⚠ ارسال شد اما فریم تازهٔ تأیید از برد نرسید؛ همهٔ تغییرها در صف ماندند.');
-  sdlg('warn','⚠ تأیید برد نرسید',
-   'هیچ فریم تازه‌ای بعد از ارسال نرسید؛ هیچ تغییری از صف پاک نشد و باید دوباره ارسال کنید.'
-   +'<br>گزارش همهٔ مقدارهای فرستاده‌شده: '+sdlgl(noEcho),1);
-  return;
- }
+ if(!fresh&&seqBefore!==null){sendresult(batch,sent,false,fixtxt);return;}
  await sl(600);
- /* [EN] Keep one report row for EVERY sent id, not just the first clamp.
-    [FA] برای تک‌تک شناسه‌های فرستاده‌شده یک ردیف گزارش نگه می‌داریم، نه فقط اولی. */
- const bad=[];
+ const bad=[],sentReport=[];
  for(const id of Object.keys(sent)){
-  const back=(D&&D.p)?D.p[id]:null;
-  /* v1.70: بی‌پاسخ = مدرکی نداریم؛ در صف می‌ماند تا دوباره فرستاده شود. */
-  const report=id+': '+sent[id]+'→'+(back==null?'بی‌پاسخ':back);
+  const back=(D&&D.p)?D.p[id]:null,report={id,back};
   if(back==null){bad.push(report);sentReport.push(report);continue;}
-  const clamped=+back!==+sent[id];
-  if(clamped)bad.push(report);
-  sentReport.push(report+(clamped?' — گیره زد':' — پذیرفت'));
-  /* Always reconcile the visible editor with the applied board value. */
-  pclr(id,+back);}
+  if(+back!==+sent[id])bad.push(report);
+  sentReport.push(report);
+  /* [EN] An old acknowledgement cannot consume a newer unsent edit. */
+  if(back!=null&&(!(id in PEND)||PEND[id]===sent[id]))pclr(id,+back);}
  pbar();
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();if(typeof qgraph==='function'){qgraph();}
- if(ok<ids.length){const left=Object.keys(PEND);
-  stxt('sbst','⚠ '+ok+' از '+ids.length+' ارسال شد؛ بقیه در صف ماندند — دوباره بزنید.');
-  sdlg('warn','⚠ ارسال ناقص — '+ok+' از '+ids.length+' نشست',
-   'بقیه نرسیدند و هنوز در صف‌اند (کادرهای نارنجی). چیزی از دست نرفته؛ '
-   +'فقط باید دوباره فرستاده شوند.'
-   +(sentReport.length?'<br>گزارش همهٔ مقدارهای ارسال‌شده: '+sdlgl(sentReport):'')
-   +(left.length?'<br>در صف مانده: '+sdlgl(left):'')
-   +(bad.length?'<br>برد این‌ها را گیره زد: '+sdlgl(bad):''),1);return;}
- const pre=fixtxt.length?(' · پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+fixtxt.join(' · ')):'';
- if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.'
-  +(sentReport.length?' · '+sentReport.join(' · '):'')+pre);
-  sdlg('ok','✅ همه نشست — '+ok+' تنظیم',
-   'برد هر '+ok+' مقدار را عیناً پس‌فرستاد و در حافظهٔ ماندگار ذخیره کرد؛ '
-   +'نیازی به ارسال دوباره نیست.'
-   +(sentReport.length?'<br>گزارش همهٔ مقدارها: '+sdlgl(sentReport):'')
-   +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),0);
-  return;}
- stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '
-  +(sentReport.length?sentReport.join(' · '):bad.join(' · '))+pre);
- const mute=bad.filter(x=>x.indexOf('بی‌پاسخ')>=0).length;
- sdlg(mute?'warn':'ok',(mute?'⚠ ':'✅ ')+ok+' تنظیم ارسال شد',
-  (mute?'برای '+mute+' شناسه هیچ تأییدی از برد نیامد — آن‌ها در صف نگه داشته شدند تا دوباره بفرستید.<br>':'')
-  +'بقیه نشست. گزارش همهٔ مقدارهای ارسال‌شده:'
-  +sdlgl(sentReport)
-  +(bad.length?'<br>جزئیات مقدارهای گیره‌خورده یا بی‌پاسخ: '+sdlgl(bad):'')
-  +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);}
+ sendresult(batch,sent,true,fixtxt,sentReport,bad);
+ }finally{CAL_BUSY=false;lupd();}}
 /* ---------- ساخت صفحه: ولتاژها و وضعیت ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
 /* [EN] The top summary keeps only the three shared rail readings. Battery
@@ -1519,13 +1404,13 @@ async function vcal(k){
  const R=V[k],input=$('vm'+k),m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];
  if(!(m>0))return await pmAlert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');
  if(!Number.isFinite(Number(shown))||!Number.isFinite(Number(off))){stxt('calst','⛔ telemetry معتبر برای '+R[0]+' در دسترس نیست؛ مقدار را حدس نمی‌زنیم.');return;}
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(W&&(W.run||W.opening)){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
- if(Object.prototype.hasOwnProperty.call(PEND,R[2])){stxt('calst','⛔ شناسهٔ '+R[2]+' هنوز در صف تغییرات پنل است؛ ابتدا آن را ارسال یا لغو کنید.');return;}
+ if(Object.prototype.hasOwnProperty.call(PEND,R[2])){stxt('calst','⛔ '+pname(R[2])+' هنوز در صف تغییرات پنل است؛ ابتدا آن را ارسال یا لغو کنید.');return;}
  const no=Math.min(5000,Math.max(-5000,Number(off)+m-Number(shown)));
- if(!await pmConfirm(R[0]+': آفست '+off+' ← '+no+' میلی‌ولت\n(نمایش '+v2(shown)+' ولت، مولتی‌متر '+v2(m)+' ولت)'))return;
- CAL_BUSY=true;
- try{await setv(R[2],no);if(input)input.value='';stxt('calst','✅ '+R[0]+' روی برد نشست و با readback همان شناسه تأیید شد.');}
+ CAL_BUSY=true;lupd();
+ try{if(!await pmConfirm(R[0]+': آفست '+off+' ← '+no+' میلی‌ولت\n(نمایش '+v2(shown)+' ولت، مولتی‌متر '+v2(m)+' ولت)'))return;
+ await setv(R[2],no);if(input)input.value='';stxt('calst','✅ '+R[0]+' روی برد نشست و با بازخورد تأیید شد.');}
  catch(e){stxt('calst','⛔ '+R[0]+' readback نشد؛ مقدار روی برد موفق فرض نمی‌شود: '+e);}
  finally{CAL_BUSY=false;lupd();}
 }
@@ -2493,16 +2378,17 @@ function evcl(id){const v=evval(id);return (EVWANT[id]!=null&&v!=null&&EVWANT[id
    [FA] تراشهٔ ویرایش‌پذیر (HTML) و صفت‌هایی که متن SVG را ویرایش‌پذیر می‌کنند. */
 function evat(id){return 'class="evs" data-i="'+id+'"';}
 
+/* [EN] Keep responsive cell labels in sync with dynamically rendered table headers. */
+function fitlabels(t){const h=[...t.querySelectorAll('tr:first-child>th')].map(e=>e.textContent);if(h.length)t.querySelectorAll('td').forEach(e=>{e.dataset.h=h[e.cellIndex]||'';});}
+new MutationObserver(ms=>{const ts=new Set;ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1){const t=n.closest('table');(t?[t]:n.querySelectorAll('table')).forEach(t=>ts.add(t));}}));ts.forEach(fitlabels);}).observe(document.body,{childList:true,subtree:true});
+document.querySelectorAll('table').forEach(fitlabels);
 function evclose(){const e=$('evpop');if(e)e.remove();EVOPEN=null;}
 
-/* [EN] Floating editor anchored to the clicked label. It lives on <body>, not
-   inside the SVG, so a chart redraw cannot delete the field mid-typing - but
-   the redraw is suppressed anyway while it is open, because watching the
-   numbers move under an open editor is its own kind of wrong.
-   [FA] ویرایشگر Float که به برچسب کلیک‌شده لنگر می‌اندازد. روی body است نه
-   داخل SVG، پس بازرسم نمودار نمی‌تواند وسط تایپ فیلد را پاک کند - با این حال
-   تا باز است بازرسم متوقف می‌شود، چون تکان‌خوردن اعداد زیر ویرایشگرِ باز خودش
-   یک جور غلط است. */
+/* [EN] Position before focus, flip above low anchors; never extend document flow. */
+function evplace(pop,el){
+ const r=el.getBoundingClientRect(),v=window.visualViewport,x=v?v.offsetLeft:0,y=v?v.offsetTop:0,w=v?v.width:innerWidth,h=v?v.height:innerHeight,pw=pop.offsetWidth,ph=pop.offsetHeight;
+ pop.style.left=Math.max(x+8,Math.min(x+w-pw-8,r.left))+'px';
+ pop.style.top=Math.max(y+8,Math.min(y+h-ph-8,r.bottom+ph+14>y+h?r.top-ph-6:r.bottom+6))+'px';}
 function evedit(el){
  const id=+el.dataset.i,b=EVB[id];if(!b)return;
  evclose();
@@ -2514,32 +2400,24 @@ function evedit(el){
   '<span class="evu">'+(EVU[b[3]]||'')+'</span></div>'+
   '<div class="evph">مجاز: '+b[0]+' تا '+b[1]+' · Enter ثبت · Esc لغو</div>';
  document.body.appendChild(pop);
- const r=el.getBoundingClientRect(),pw=pop.offsetWidth||200;
- const sx=window.pageXOffset||0,sy=window.pageYOffset||0;
- pop.style.left=Math.max(8,Math.min((window.innerWidth||900)-pw-8,r.left+sx))+'px';
- pop.style.top=(r.bottom+sy+6)+'px';
- const inp=pop.querySelector('input');inp.value=(v==null?'':v);inp.focus();inp.select();
+ evplace(pop,el);
+ const inp=pop.querySelector('input');inp.value=(v==null?'':v);inp.focus({preventScroll:true});inp.select();
  let done=false;
- const close=save=>{if(done)return;done=true;
+ const close=save=>{if(done)return;done=true;let changed=false;
   if(save){const n=parseInt(inp.value,10);
-   if(!isNaN(n)&&n!==v){EVWANT[id]=n;
+   if(!isNaN(n)&&n!==v){changed=true;EVWANT[id]=n;
     /* [EN] Two representations of one number move together, or qv() fakes a
        pending "preview" that does not exist.
        [FA] دو نمایش از یک عدد باید با هم حرکت کنند، وگرنه qv() تغییرِ معلقِ
        ناموجود می‌سازد. */
     const qe=$('q'+id);if(qe)qe.value=n;
     qput(id,n);}}
-  evclose();qgraph();};
+  evclose();if(changed)qgraph();};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
                    else if(e.key==='Escape'){e.preventDefault();close(false);}};
  inp.onblur=()=>close(true);}
 
-/* [EN] The channel duty ceiling is edited from the large operating label.
-   It uses the same local pending queue as every other panel edit; clicking
-   never writes to the board by itself.
-   [FA] سقف duty هر کانال از روی برچسب بزرگ همان کارت ویرایش می‌شود. این
-   ویرایش هم مثل بقیه در صف محلی می‌نشیند و با کلیک به‌تنهایی روی برد نوشته
-   نمی‌شود. */
+/* [EN] Duty edits stage locally; only explicit send writes to the board. */
 function dutyedit(n){
  const id=12+n,anchor=$('dutyedit'+n);if(!anchor||!D||!D.p)return;
  evclose();
@@ -2549,11 +2427,8 @@ function dutyedit(n){
   '<div class="evpr"><input type="number" class="evi" min="0" max="50" step="0.1"> <span class="evu">٪</span></div>'+
   '<div class="evph">مجاز: ۰ تا ۵۰٪ · Enter ثبت · Esc لغو</div>';
  document.body.appendChild(pop);
- const r=anchor.getBoundingClientRect(),pw=pop.offsetWidth||210;
- const sx=window.pageXOffset||0,sy=window.pageYOffset||0;
- pop.style.left=Math.max(8,Math.min((window.innerWidth||900)-pw-8,r.left+sx))+'px';
- pop.style.top=(r.bottom+sy+6)+'px';
- const inp=pop.querySelector('input');inp.value=(current/10).toFixed(1);inp.focus();inp.select();
+ evplace(pop,anchor);
+ const inp=pop.querySelector('input');inp.value=(current/10).toFixed(1);inp.focus({preventScroll:true});inp.select();
  let done=false;
  const close=save=>{if(done)return;done=true;
   if(save){const typed=Number(inp.value);
@@ -2944,20 +2819,18 @@ function xdiff(schema){
  if(oldOrder!==newOrder)out.push('ترتیب/جای پارامترها در فهرست پشتیبان تغییر کرده است');
  return out;
 }
-function xpending(){const out={};for(const id in PEND)if(Number.isFinite(+PEND[id]))out[id]=+PEND[id];return out;}
+function xnumber(v){return typeof v==='number'&&Number.isFinite(v);}
+function xpending(){const out={};for(const id in PEND)if(xnumber(PEND[id]))out[id]=PEND[id];return out;}
 function xsamples(raw){return Array.isArray(raw)?raw.map(calnorm).filter(Boolean):[];}
 function xlutpack(r){const src=r&&r.ready?r:null;if(!src||!Array.isArray(src.T)||src.T.length!==2)return null;const T=src.T.map(t=>({X:t.X.slice(),Y:t.Y.slice()}));if(T.some(t=>t.X.length!==t.Y.length))return null;return {ready:1,T:T};}
-var LUT_BACKUP=null;
 async function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
 let lut=xlutpack(typeof LUT_LAST_AFTER!=='undefined'&&LUT_LAST_AFTER)||xlutpack(typeof LAT!=='undefined'&&LAT)||xlutpack(typeof LBT!=='undefined'&&LBT);
  if(!lut&&D.on==1&&!CAL_BUSY&&!(typeof W!='undefined'&&W.run)&&typeof lread==='function'){if(x)x.textContent='… جدول LUT فعلی برای پشتیبان خوانده می‌شود';try{lut=xlutpack(await lread());}catch(e){lut=null;}}
- const o={app:'ChangeOver-settings',v:4,ids:XIDS.length,saved:new Date().toISOString(),schema:xschema(),params:{},pending:xpending(),benchSamples:xsamples(typeof CALS!=='undefined'?CALS:[]),lut:lut};
+ const o={app:'ChangeOver-settings',v:4,ids:XIDS.length,saved:new Date().toISOString(),schema:xschema(),params:{},pending:xpending(),benchSamples:xsamples(typeof CALS!=='undefined'?CALS:[]),benchView:calview(),lut:lut,lutRole:'audit-only'};
+ if(!o.benchView){if(x)x.textContent='⚠ انتخاب نقطه‌ها معتبر نیست؛ فایل ساخته نشد.';return;}
  XIDS.forEach(id=>{o.params[id]=D.p[id];});
- const u=URL.createObjectURL(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}));
- const a=document.createElement('a');a.href=u;
- a.download='changeover-settings-'+o.saved.slice(0,10)+'.json';a.click();
- setTimeout(()=>URL.revokeObjectURL(u),2000);
- if(x)x.textContent='⬇ پشتیبان '+XIDS.filter(id=>D.p[id]!=null).length+'/'+Object.keys(o.pending).length+' pending/'+o.benchSamples.length+' نمونه · '+(lut?'LUT ذخیره شد':'LUT ندارد');}
+ if(!await filesave('changeover-settings-'+o.saved.slice(0,10)+'.json',JSON.stringify(o,null,1),'application/json'))return false;
+ if(x)x.textContent='⬇ پشتیبان '+XIDS.filter(id=>o.params[id]!=null).length+'/'+Object.keys(o.pending).length+' pending/'+o.benchSamples.length+' نمونه · '+(lut?'جدول فقط سندِ بازبینی است؛ بازیابی مستقیم ندارد':'بدون سند جدول');return true;}
 /* [EN] Clamp one imported number to that parameter's own range.
    [FA] محدودکردن یک عدد واردشده به بازهٔ خود همان پارامتر. */
 function xclamp(id,n){const e=$('q'+id);
@@ -2968,15 +2841,15 @@ function xclamp(id,n){const e=$('q'+id);
  const pr=(typeof P!=='undefined')?P[id]:null;
  if(!pr||!Number.isFinite(+pr[2])||!Number.isFinite(+pr[3]))return n;
  return Math.min(+pr[3],Math.max(+pr[2],n));}
-function xlutimport(raw){if(!raw||raw.ready!==1||!Array.isArray(raw.T)||raw.T.length!==2)return null;const lim=typeof LUTMAX!=='undefined'?LUTMAX:24;if(raw.T.some(t=>!t||!Array.isArray(t.X)||!Array.isArray(t.Y)||t.X.length!==t.Y.length||t.X.length>lim||!t.X.concat(t.Y).every(v=>Number.isSafeInteger(+v)&&+v>=0&&+v<=4294967295)))return null;return xlutpack(raw);}
 async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}catch(e){if(x)x.textContent='⚠ فایل JSON معتبر نیست';return;}
  if(!o||o.app!=='ChangeOver-settings'){if(x)x.textContent='⚠ این فایل پشتیبان پنل ChangeOver نیست';return;}
- if(typeof W!=='undefined'&&W&&W.run){if(x)x.textContent='⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.';return;}
- const ps=o.params?o.params:{};
- const fileSamples=xsamples(o.benchSamples);
- const importedLut=xlutimport(o.lut);
+ if(CAL_BUSY||(typeof W!=='undefined'&&W&&(W.run||W.opening))){if(x)x.textContent='⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.';return;}
+ const ps=o.params===undefined?{}:o.params;
+ if(!ps||typeof ps!=='object'||Array.isArray(ps)||(o.pending!==undefined&&(!o.pending||typeof o.pending!=='object'||Array.isArray(o.pending)))){if(x)x.textContent='⚠ ساختار تنظیمات فایل معتبر نیست؛ چیزی تغییر نکرد.';return;}
+ const fileSamples=xsamples(o.benchSamples),fileView=calview(o.benchView,fileSamples);
+ if(!fileView||(o.benchSamples!==undefined&&(!Array.isArray(o.benchSamples)||fileSamples.length!==o.benchSamples.length))){if(x)x.textContent='⚠ نمونه یا انتخاب نقطه‌های فایل نامعتبر است؛ چیزی تغییر نکرد.';return;}
  const rawPending=o.pending&&typeof o.pending==='object'?o.pending:{};
- const pendingKeys=Object.keys(rawPending),validPending=pendingKeys.filter(k=>XIDS.includes(+k)&&Number.isFinite(+rawPending[k]));
+ const pendingKeys=Object.keys(rawPending),validPending=pendingKeys.filter(k=>/^(0|[1-9][0-9]*)$/.test(k)&&XIDS.includes(+k)&&xnumber(rawPending[k]));
  /* --- شناسنامهٔ واقعی پارامترها: اختلاف دقیق را گزارش کن --- */
  const warn=[];
  const schemaWarnings=Array.isArray(o.schema)?xdiff(o.schema):[];
@@ -2990,11 +2863,12 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  if(outs.length)warn.push(outs.length+' پارامتر/شناسه در این پنل پشتیبانی نمی‌شود و نادیده گرفته می‌شود: '+outs.join('، '));
  const pout=pendingKeys.filter(k=>!XIDS.includes(+k));
  if(pout.length)warn.push(pout.length+' pending با شناسهٔ نامعتبر نادیده گرفته شد: '+pout.join('، '));
- if(o.lut!=null&&!importedLut)warn.push('LUT نامعتبر و نادیده گرفته شد');
- let jobs=XIDS.filter(id=>Number.isFinite(+ps[id])).map(id=>[id,xclamp(id,Math.round(+ps[id]))]);
+ if(o.lut!=null)warn.push('جدول آمادهٔ داخل فایل فقط سند است و بازیابی نمی‌شود؛ جدول را از نمونه‌ها بسازید.');
+ if(Object.keys(ps).some(k=>!xnumber(ps[k]))||pendingKeys.some(k=>!xnumber(rawPending[k])))warn.push('مقدار خالی یا غیرعددی به‌عنوان صفر بازیابی نمی‌شود.');
+ let jobs=XIDS.filter(id=>xnumber(ps[id])).map(id=>[id,xclamp(id,Math.round(+ps[id]))]);
  validPending.forEach(k=>{const id=+k,val=xclamp(id,Math.round(+rawPending[k])),found=jobs.find(j=>j[0]===id);if(found)found[1]=val;else jobs.push([id,val]);});
- if(!jobs.length&&!Array.isArray(o.benchSamples)&&!importedLut){if(x)x.textContent='⚠ فایل خالی است';return;}
- const outr=jobs.filter(j=>{const source=Number.isFinite(+rawPending[j[0]])?rawPending[j[0]]:ps[j[0]];return Math.round(+source)!==j[1];});
+ if(!jobs.length&&!Array.isArray(o.benchSamples)){if(x)x.textContent=o.lut!=null?'⚠ فایل فقط جدول آماده دارد؛ بازیابی مستقیم آن حذف شده است.':'⚠ مقدار یا نمونهٔ قابل بازیابی در فایل نیست';return;}
+ const outr=jobs.filter(j=>{const source=xnumber(rawPending[j[0]])?rawPending[j[0]]:ps[j[0]];return Math.round(+source)!==j[1];});
  /* --- همان قوانین مشترک کلید ارسال (v1.56) روی مقادیر فایل --- */
  const v=rsnap();jobs.forEach(j=>{if(j[0] in v)v[j[0]]=j[1];});
  const fixed=fixrules(v);
@@ -3002,37 +2876,34 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  const msg=jobs.length+' مقدار از فایل روی پنل مرحله‌بندی شود؟'+
   (validPending.length?'\n\n'+validPending.length+' pending بازیابی می‌شود.':'')+
   (fileSamples.length?'\n\n'+fileSamples.length+' نمونه در پنل ذخیره می‌شود.':'')+
-  (importedLut?'\n\nLUT معتبر؛ فقط بازبینی، بدون اعمال خودکار.':'')+
   (warn.length?'\n\n⚠ '+warn.join('\n⚠ '):'')+
   (outr.length?'\n\n'+outr.length+' عدد به بازهٔ مجاز خودش محدود شد.':'')+
   (fixed.length?'\n\n'+fixed.length+' عدد برای سازگاری با بقیه جور شد: '+fixed.map(z=>z[0]+': '+z[1]+'→'+z[2]).join(' · '):'');
  if(!await pmConfirm(msg.replace('روی برد نوشته شود؟','روی پنل آماده شود؟'))){if(x)x.textContent='بازخوانی لغو شد';return;}
  /* [EN] Stage locally; sendall is the only board-write path.
     [FA] فقط در صف محلی بگذار؛ تنها sendall روی برد می‌نویسد. */
+ if(CAL_BUSY||W.run||W.opening)return;
  const staged=jobs.filter(j=>!(D&&D.p&&D.p[j[0]]!=null&&+D.p[j[0]]===+j[1]));
- staged.forEach(j=>{
-  const id=j[0],value=j[1];
-  qput(id,value);
-  const e=$('q'+id);if(e)e.value=value;
-  if(typeof EVB!=='undefined'&&EVB[id])EVWANT[id]=value;
+ jobs.forEach(j=>{
+  const id=j[0],value=j[1],same=D&&D.p&&D.p[id]!=null&&+D.p[id]===value;
+  if(same){if(typeof EVWANT!=='undefined')delete EVWANT[id];pclr(id,value);const a=$('a'+id);if(a)a.textContent=String(value);}
+  else{qput(id,value);if(typeof EVB!=='undefined'&&EVB[id])EVWANT[id]=value;}
  });
- if(Array.isArray(o.benchSamples)){CALS=fileSamples;calsave();caln();calsmp();calchk();calinvalidate();}
- if(importedLut)LUT_BACKUP=importedLut;
+ if(Array.isArray(o.benchSamples)){calreplace(fileSamples);calinvalidate();calrestore(fileView);calsave();caln();calsmp();calrun();}
  qgraph();
  if(typeof afresh==='function')afresh();
  if(typeof pchk==='function')pchk();
  if(x){
   const same=jobs.length-staged.length;
   const extra=(validPending.length?' pendingها بازیابی شدند.':'')+
-   (Array.isArray(o.benchSamples)?' '+fileSamples.length+' نمونه بازیابی شد.':'')+
-   (importedLut?' LUT فقط برای بازبینی نگه داشته شد؛ روی برد اعمال نشد.':'');
+   (Array.isArray(o.benchSamples)?' '+fileSamples.length+' نمونه بازیابی شد.':'')+(o.lut!=null?' جدول آماده بازیابی نشد؛ فقط نمونه‌ها مبنای ساخت جدول‌اند.':'');
   x.textContent=staged.length?
    '✅ '+staged.length+' تغییر روی پنل آماده شد؛ زردها هنوز روی برد نیستند؛ «ارسال همه» را بزنید.'+
    (same?' '+same+' مقدار از قبل یکسان بود.':'')+extra:
    'ℹ مقدار جدیدی برای ارسال نیست.'+extra;
  }
  const xi=$('xim');if(xi)xi.value='';}
-$('xim').onchange=e=>{if(e.target.files[0])ximp(e.target.files[0]);};
+$('xim').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)ximp(f);};
 /* v1.27: سلامت لینک. تا پیش از این، اگر STM32 و ESP ناهماهنگ فلش می‌شدند پنل
    فقط خالی می‌ماند و هیچ توضیحی نبود — همان حالتی که عیناً شبیه کابل قطع است.
    حالا بایت نسخه در فریم هست و گیرنده ناهم‌نسخگی را می‌شمارد، پس می‌شود صریح گفت
@@ -3047,7 +2918,7 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
  let key='',kind='',body='';
  if(vm>0){key='version:'+vm;kind='bad';body='⛔ <b>نسخهٔ فرم‌ور و پنل یکی نیست</b> — '+vm+
   ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';}
- else if(nk>0){key='nak:'+nk;kind='warn';body='⚠ برد تنظیم شناسهٔ <b>'+nid+'</b> را <b>نپذیرفت</b> (کد '+nr+'). مقدار روی برد تغییری نکرد؛ دوباره ثبت کنید.';}
+ else if(nk>0){key='nak:'+nk;kind='warn';body='⚠ برد تنظیم <b>'+esc(pname(nid))+'</b> را <b>نپذیرفت</b> (کد '+nr+'). مقدار روی برد تغییری نکرد؛ دوباره ثبت کنید.';}
  else if(ce>0){key='crc:'+ce;kind='warn';body='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';}
  else{LINK_WARN_KEY='';LINK_WARN_DISMISS='';e.className='wbx';e.innerHTML='';return;}
  LINK_WARN_KEY=key;
@@ -3206,48 +3077,43 @@ async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2
  * Bench tools (spec 4): manual only; no coefficient is ever sent automatically. */
 const gv=id=>{const e=$(id);if(!e||e.value==='')return null;const v=+e.value;return isNaN(v)?null:v;};
 const fa=n=>n<3?'۱۲'[n-1]:n,r0=Math.round;
-/* ذخیرهٔ خودکار ورودی‌ها در همین مرورگر (با بستن صفحه پاک نمی‌شوند) */
+
 let BDS={};try{BDS=JSON.parse(localStorage.getItem('bd')||'{}');}catch(e){}
 function bsave(){document.querySelectorAll('[data-s]').forEach(e=>{if(e.value==='')delete BDS[e.id];else BDS[e.id]=e.value;});try{localStorage.setItem('bd',JSON.stringify(BDS));}catch(e){}}
 function bload(r){r.querySelectorAll('[data-s]').forEach(e=>{if(BDS[e.id]!=null)e.value=BDS[e.id];});}
-/* ----- داده‌برداری بنچ (بخش 4 نسخه ۲): همهٔ مرحله‌ها در یک جدول؛ جلو رفتن فقط با دکمهٔ کاربر -----
- * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۸۹ستونی در ESP.
- * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one CSV row only on submit. */
-/* [EN] v1.60 (user order: "SOLO means nothing - name them properly"): the
-   wire/CSV tags are now BAT1 / BAT2 / BOTH and every place the user reads
-   them shows the plain Persian name instead.
-   [FA] نام سناریوها به «فقط باتری ۱ / فقط باتری ۲ / هر دو باتری» تغییر کرد؛
-   برچسب داخل فایل CSV هم ‎BAT1/BAT2/BOTH‎ است. */
+
+
+/* [EN] Shared local outline paths; no icon font, remote asset or board-side simulator. */
+const BIC={"play":"m8 5 11 7-11 7Z","stop":"M6 6h12v12H6Z","download":"M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4","upload":"M12 16V4m-5 5 5-5 5 5M5 17v4h14v-4","save":"M5 3h12l4 4v14H3V3Zm2 0v6h10V3M7 21v-8h10v8","read":"M3 3h18v18H3ZM3 9h18M9 9v12","copy":"M9 9h12v12H9ZM15 9V3H3v12h6","calc":"M5 3h14v18H5ZM8 7h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 3h1m6 0h1","code":"m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18","repeat":"M20 11a8 8 0 1 0-2 7M20 4v7h-7","trash":"M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7","check":"m5 12 4 4L19 6","info":"M12 11v6m0-10h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0","close":"m6 6 12 12M6 18 18 6"};
+function bi(n){return '<svg class="bi" data-icon="'+n+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="'+BIC[n]+'"/></svg>';}
 const WSC={BAT1:[1],BAT2:[2],BOTH:[1,2]};
 const WSN={BAT1:'فقط باتری ۱',BAT2:'فقط باتری ۲',BOTH:'هر دو باتری'};let W={run:false,abort:false,act:null};
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
 async function req(u,m,body){const o={method:m||'GET',cache:'no-store'};if(body!=null){o.body=body;o.headers={'Content-Type':'text/plain'};}const r=await fetch(u,o);let j={};try{j=await r.json();}catch(e){}j._s=r.status;return j;}
 function wst(m,c){const e=$('wS0');e.innerHTML=m;e.className='cm '+(c||'lb');}
-/* ایمنی حین ثبت: لینک، Final fault، JIT، قطع ۱۵ ولت، خاموش شدن ناخواستهٔ مود دستی */
+
 function wchk(){if(W.abort)throw 'پایان توسط کاربر';const d=D;if(!d||d.on!=1)throw 'لینک STM32 قطع شد';
  (W.act||[]).forEach(n=>{const s=d.t[(n-1)*7+6];if(s==7)throw 'Final fault کانال '+fa(n);if(s==5)throw 'تریپ JIT کانال '+fa(n);if(d.t[n==1?18:17]>=15000)throw 'قطع ۱۵ ولت کانال '+fa(n);});
  if(W.man&&!(d.fl&32))throw 'مود دستی قطع شد (deadman یا محافظ پنل)';}
-/* نوشتن پارامتر و صبر تا گزارش تازهٔ همان مقدار از STM32 */
+
 async function setv(id,v){
  const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
  for(let k=0;k<3;k++){
   const j=await req('/s?id='+id+'&v='+v,'POST');
-  if(j._s!=200)throw 'پاسخ ESP: '+j._s;
+  if(j._s!=200)throw pname(id)+' — پاسخ ESP: '+j._s;
   const e=Date.now()+2500;
   while(Date.now()<e){
    await sl(150);
    const fresh=seqBefore==null||!D||!Number.isFinite(+D.seq)||+D.seq!==seqBefore;
    if(fresh&&D&&D.p&&Number(D.p[id])===Number(v)){
     pclr(id,Number(D.p[id]));
-    const a=$('a'+id);if(a)a.textContent=D.p[id];
+    const a=$('a'+id);if(a)a.textContent=pname(id)+' — بازخورد تأیید شد: '+D.p[id];
     return;
    }
   }
  }
- throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
-/* ریست دستی قفل‌ها: درخواست به صف جداگانهٔ ESP می‌رود (‎/latch/reset‎).
-   موفقیت فقط با پژواک تازهٔ شناسهٔ هدف، مقدار صفر و صف خالی است؛ سناریو ۵
-   سه پژواک می‌خواهد و قفل را پس از صفرشدن شمارنده‌ها پاک می‌کند. NAK هم رد را نشان می‌دهد. */
+ throw 'برد مقدار '+pname(id)+' = '+v+' را گزارش نکرد';}
+
 async function latchrst(n){
  const e=$('rst'+n),was=e?e.textContent:'';
  const q=n===5?'قفل عدم‌توازن پاک شود و شمارنده‌های رویداد و سیکل از صفر شمرده شوند؟'
@@ -3278,174 +3144,174 @@ async function latchrst(n){
   if(e)e.textContent='⚠ تأیید پژواک درستِ برد نرسید؛ سلامت لینک و کابل را ببین';
  }catch(err){if(e)e.textContent='⚠ '+(err&&err.message?err.message:err);}
  finally{setTimeout(()=>{const t2=$('rst'+n);if(t2&&was&&t2.textContent.indexOf('✅')!==0&&t2.textContent.indexOf('⚠')!==0)t2.textContent=was;},9000);}}
-async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){}}}
-async function wlog(txt){const j=await req('/benchlog/add','POST',txt);if(j._s==507)throw 'فایل پر است (حدود ۱۰۰KB). فایل را دانلود و پاک کنید.';if(j._s!=200)throw 'نوشتن در فایل انجام نشد (پاسخ '+j._s+')';wfs(j.size);return j;}
+async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const failed=[],L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){failed.push(i);}}return failed.length?'بازگردانی تنظیمات تأیید نشد: '+pnames([...new Set(failed)]):null;}
+
+async function wlog(txt){const j=await req('/benchlog/add','POST',txt);if(j._s==507)throw 'فایل پر است (حدود ۱۰۰KB). فایل را دانلود و پاک کنید.';if(j._s!=200)throw (j.e==='legacy'?'فایل قدیمی است؛ اول دانلود و سپس پاکش کنید.':j.e==='damaged'||j.e==='read'||j.e==='verify'?'فایل یا خواندن حافظه تأیید نشد؛ ثبت متوقف شد.':'نوشتن در فایل انجام نشد (پاسخ '+j._s+')');wfs(j.size);return j;}
 function wfs(sz){$('wF').innerHTML=sz==null?'':`<span class="n">${(sz/1024).toFixed(1)} / 100 KB</span>`;}
 async function winfo(){try{const j=await req('/benchlog?i=1');if(j._s!=200)return null;wfs(j.size);if(!j.fs)$('wF').innerHTML='<b class="erc">فایل‌سیستم ESP در دسترس نیست</b>';return j;}catch(e){return null;}}
-async function wclear(){if(W.run)return;if(!await pmConfirm('فایل ثبت بنچ کامل پاک شود؟ (اول آن را دانلود کنید)'))return;const j=await req('/benchlog/clear','POST');if(j._s==200){try{localStorage.removeItem('wrun');}catch(e){}wst('فایل پاک شد.','cm g');}else wst('پاک کردن انجام نشد.','cm r');winfo();}
+async function wclear(){if(W.run||W.opening||CAL_BUSY)return;if(!await pmConfirm('فایل ثبت بنچ کامل پاک شود؟ (اول آن را دانلود کنید)')||W.run||W.opening||CAL_BUSY)return;const j=await req('/benchlog/clear','POST');if(j._s==200){try{localStorage.removeItem('wrun');}catch(e){}wst('فایل پاک شد.','cm g');}else wst('پاک کردن انجام نشد.','cm r');winfo();}
 const asc=s=>String(s||'').replace(/[^ -~]/g,'').replace(/,/g,';').trim().slice(0,80);
 function wsweep(){const a=+($('wA').value),b=+($('wB').value),step=+($('wStep').value);
  if(!(Number.isFinite(a)&&Number.isFinite(b)&&Number.isFinite(step)&&a>=0&&a<=50&&b>=0&&b<=50&&a<=b&&step>=1&&step<=50))throw 'بازه یا گام sweep نامعتبر است (از/تا 0..50، از<=تا و گام 1..50)';
  const L=[];for(let d=a;d<=b;d+=step)L.push(d);return L;}
-function wdl(){const a=document.createElement('a');a.href='/benchlog';a.download='benchlog.csv';document.body.appendChild(a);a.click();a.remove();}
-function wexist(sz){return new Promise(res=>{const e=$('wEx'),kb=(sz/1024).toFixed(1);
+function wdl(){return filesave('benchlog.csv','/benchlog');}
+function wexist(sz,format){return new Promise(res=>{const e=$('wEx'),kb=(sz/1024).toFixed(1);
  $('wExB').innerHTML='<h3>فایل بنچ قبلی پیدا شد</h3><div class="lb">فایل داخل ESP از قبل <b class="n">'+kb+' KB</b> داده دارد. چه شود؟</div><button class="sb sb2 pbb" id="wExD">دانلود قبلی و ادامه همان فایل</button><button class="sb stp2 pbr" id="wExC">پاک کردن و شروع تازه</button><button class="sb stp2 pbr" id="wExX">انصراف</button>';
+ if(format==='legacy'){$('wExD').textContent='دانلود قبلی؛ بدون شروع آزمایش';$('wExB').querySelector('.lb').append(' فایل قدیمی است؛ برای ثبت جدید باید با تأیید شما پاک شود.');}
+ if(format==='damaged'){$('wExD').disabled=true;$('wExB').querySelector('.lb').append(' فایل آسیب دیده است؛ ادامه و دانلود عادی ممکن نیست. چیزی خودکار پاک نمی‌شود.');}
  e.style.display='flex';
  const done=v=>{e.style.display='none';res(v);};
- $('wExD').onclick=()=>done('append');$('wExC').onclick=()=>done('clear');$('wExX').onclick=()=>done('cancel');});}
+ $('wExD').onclick=()=>done(format==='legacy'?'download':'append');$('wExC').onclick=()=>done('clear');$('wExX').onclick=()=>done('cancel');});}
 function wlist(){const a=$('wL').value.split(/[,، ]+/).filter(x=>x!=='').map(Number);if(!a.length||a.some(x=>!(x>=0&&x<=50)))throw 'فهرست duty نامعتبر است (درصد بین ۰ و ۵۰، با کاما جدا؛ مثلاً 5,10,15,20)';return a;}
-/* پنجرهٔ /m: هر ۲۰ فیلد t[] با مجموع/کمینه/بیشینه/آخرین فریم، OR خطاها، seq و flags آخر.
- * باز شدن فرم مولتی‌متر پنجره را صفر می‌کند و همان لحظهٔ زدن «ثبت» خوانده می‌شود — آمار مال لحظهٔ عدد دادن شماست، نه قبلش (دستور کاربر ۲۰۲۶-۰۹-۲۵).
- * Opening the DMM form resets the window; the submit press reads it: the stats belong to the moment you press, not before. */
+
 async function wopen(){const j=await req('/m','POST');if(j._s!=200)throw 'پنجرهٔ آمار ESP پاسخ نداد';W.winMs=Date.now();}
 async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<25)throw 'در این بازه TLM نرسید';j.a=i=>j.s[i]/j.n;return j;}
-/* خانه‌های زندهٔ ردیف فعال از آخرین /t — فقط نمایش؛ ردیف فایل از /m لحظهٔ ثبت ساخته می‌شود */
-/* [EN] v1.65 (user order: "during the test show only the duty, the voltages
-   and currents the board reads, and the numbers I type"): the table shows
-   exactly those columns; the CSV behind it still keeps everything (raw
-   counts, filtered/estimated currents, min/max, flags, settings).
-   [FA] جدول فقط duty، ولتاژها و جریان‌های برد و عددهای واردشده را نشان می‌دهد؛
-   فایل CSV پشت صحنه همه‌چیز را ثبت می‌کند. */
+
+
 function wlive(act){
- if(!D||D.on!=1)return['-','-','-','-','-'];
+ if(!D||D.on!=1)return['-','-'];
  const cur=n=>act.includes(n)?D.t[n===1?3:10]:'قطع';
- return [v2(D.t[14]),v2(D.t[18]),v2(D.t[17]),cur(1),cur(2)];}
+ return [cur(1),cur(2)];}
 function wmeas(m,act){
  const cur=n=>act.includes(n)?r0(m.a(n===1?3:10)):'قطع';
  return [cur(1),cur(2)];}
 
-/* [EN] CSV row, exact 5.6 column order (DMM v4). v1.25 BUGFIX: the parameter
-   loop was stuck at 99 while the real count is 93, so every row wrote 6 extra
-   columns under shifted headings; the bound now comes from PN and cannot go
-   stale. +5 raw counters for calibration.
-   [FA] ردیف CSV با ترتیب دقیق ستون‌های بخش ۴ (مولتی‌متر نسخه ۴). رفع باگ v1.25:
-   شمارنده روی ۹۹ جا مانده بود و ستون‌ها جابه‌جا می‌شدند؛ حالا از تعداد واقعی می‌آید. */
-/* [EN] v1.87: must equal ESP_PARAM_COUNT; the CSV column count and every
-   ‎per-id array are sized from it. [FA]‎ باید برابر تعداد پارامتر باشد. */
+
+
 const PN=171;
-/* [EN] Bench CSV column contract. [FA] قرارداد ستون‌های CSV بنچ. */
+
 function wset(){const P=[];for(let k=0;k<PN;k++)P.push(D.p[k]==null?'-':D.p[k]);return P.join(',');}
 let WSIG=null;
-async function wsync(){const g=wset();if(g===WSIG)return;WSIG=g;
- await wlog('# settings: '+g+'\n');}
+async function wsync(){const g=wset();if(g===WSIG)return;
+ await wlog('# settings: '+g+'\n');WSIG=g;}
+/* [EN] Keep the legacy input-DMM CSV slot for column stability; new capture omits ii, yielding missing (-), never a fabricated zero. */
 function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x;
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
  return [sc,i+1,pm,se,sa,iso,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,...[20,21,22,23,24].map(k=>m.la[k]),q(v.ii),q(v.b1),q(v.b2),v.note||'-'].join(',')+'\n';}
-/* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
-const WH=['سناریو','#','duty ٪','جریان ۱ mA (برد)','جریان ۲ mA (برد)','جریان ۱ mA (شما)','جریان ۲ mA (شما)','جریان ورودی mA (شما)','وضعیت'];
-const WSTC=WH.length-1;   /* ستون وضعیت / status column */
+
+const WH=['سناریو','#','duty ٪','جریان ۱ mA (برد)','جریان ۲ mA (برد)','جریان ۱ mA (شما)','جریان ۲ mA (شما)','وضعیت','تکرار'];
+const WSTC=WH.length-2;
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));
- $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${WSN[k.sc]||k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(WH.length-4)}<td class="lb">در صف</td></tr>`).join('')}</table></div>`;}
+ $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${WSN[k.sc]||k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(WH.length-5)}<td class="lb">در صف</td><td><button class="sb" type="button" data-wretry="${x}" onclick="wrepeat(${x})" title="تکرار این مرحله" aria-label="تکرار مرحلهٔ ${k.i+1}" disabled>${bi('repeat')}</button></td></tr>`).join('')}</table></div>`;}
+
+function wbuttons(){document.querySelectorAll('[data-wretry]').forEach(b=>{const x=+b.dataset.wretry;b.disabled=W.saving||(!W.run&&W.opening)||(W.run&&!(W.K[x].done||W.current===x));});}
+function wrepeat(x){if(W.saving||CAL_BUSY||(!W.run&&W.opening)||!W.K[x])return;if(!W.run)return wStart(x);if(!(W.K[x].done||W.current===x))return;W.jump=x;if(W.choose)W.choose({a:'jump'});}
+function wpaint(x){const k=W.K[x];wcell(x,k.cells||Array(WSTC-3).fill('·'),k.issue?'⚠ '+k.issue:k.done?'ثبت شد':'در صف',k.issue?'erc':k.done?'okc':'lb');}
+async function wprepare(sc){
+ const act=WSC[sc];W.act=null;W.man=false;
+ for(const [id,v] of [[16,0],[18,0],[11,act.includes(1)?1:0],[12,act.includes(2)?1:0],[19,1]]){wchk();await setv(id,v);}
+ const end=Date.now()+3000;while(!(D.fl&32)){wchk();if(Date.now()>end)throw 'مود دستی روشن نشد';await sl(100);}
+ W.act=act;W.man=true;wchk();
+ let run=1;try{run=(+localStorage.getItem('wrun')||0)+1;localStorage.setItem('wrun',run);}catch(e){}
+ await wlog(`# run ${run} browser_ts=${new Date().toISOString()} scenario=${sc}\n`);WSIG=null;await wsync();
+}
+function wreview(){
+ wst('مرحله‌ها ثبت شدند؛ برای اندازه‌گیری دوباره ↻ همان ردیف را بزنید یا پایان را انتخاب کنید.','cm g');
+ const box=$('wF0');box.innerHTML='<button class="sb" id="wReviewEnd" aria-label="تأیید و پایان داده‌برداری" title="تأیید و پایان داده‌برداری">'+bi('check')+' پایان داده‌برداری</button>';
+ return new Promise(res=>{W.choose=res;$('wReviewEnd').onclick=()=>res({a:'done'});W.ft=setInterval(()=>{try{wchk();}catch(e){res({a:'err',e});}},200);
+ W.esc=e=>{if(e.key==='Escape'){e.preventDefault();res({a:'done'});}};document.addEventListener('keydown',W.esc);
+ }).finally(()=>{clearInterval(W.ft);document.removeEventListener('keydown',W.esc);W.esc=null;W.choose=null;box.innerHTML='';});
+}
 function wcell(x,A,st,cl){const r=$('wr'+x);if(!r)return;const c=r.children;A.forEach((v,i)=>{if(v!==undefined)c[3+i].innerHTML=v;});if(st!=null){c[WSTC].textContent=st;c[WSTC].className=cl||'lb';}}
-/* اسکرول خودکار فقط داخل کادر جدول (v1.17b: خود صفحه تکان نمی‌خورد) / ‎auto-scroll inside the table box only (the page never jumps)‎ */
+
 function wsee(x){const tw=$('wT').firstChild,r=$('wr'+x);if(!tw||!r||!tw.getBoundingClientRect)return;const rt=r.getBoundingClientRect(),tt=tw.getBoundingClientRect();if(rt.top<tt.top-2)tw.scrollTop-=(tt.top-rt.top);else if(rt.bottom>tt.bottom+2)tw.scrollTop+=(rt.bottom-tt.bottom);}
-/* فرم ورود عدد (v1.17b، مولتی‌متر نسخه ۴): بیرون جدول، بالای آن — ورود داده دیگر اسکرول افقی نمی‌خواهد و جدول فقط برای مرور می‌ماند
- * Entry form (v1.17b, DMM v4): outside/above the table - data entry needs no horizontal scroll; the table stays for review */
+
 async function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[x];
  wcell(x,wlive(act),'منتظر عدد شما','wr');
- const N=id=>`<input type="number" step="any" id="${id}">`;
- const L=(id,t,pre)=>`<label class="lb">${t} <input type="number" step="any" id="${id}"${pre!=null?' value="'+pre+'"':''}></label>`;
+ const N=id=>`<input type="number" step="any" id="${id}" value="${esc((k.draft||{})[id]||'')}">`;
  const F=n=>act.includes(n)?`<label class="lb">جریان باتری ${n} mA ${N('wB'+n)}</label>`:'';
  const box=$('wF0');
- box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b> <span class="lb">· Tab: خانهٔ بعدی · Enter: ثبت و رفتن به duty بعدی · Esc: بستن جدول و رفتن به ساخت جدول میکرو</span></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label><label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb brun pbg" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2 pby" id="wRe">تکرار همین مرحله</button><button class="sb stp2 pbr" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
+ box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b> <details class="bhelp"><summary>${bi('info')} راهنما</summary><div class="lb">Tab: خانهٔ بعدی · Enter: ثبت و مرحلهٔ بعد · Esc: پایان داده‌برداری</div></details></div><div class="bctl">${F(1)}${F(2)}<label class="lb">یادداشت <input type="text" id="wN" class="dl" value="${esc((k.draft||{}).wN||'')}" style="width:150px"></label><button class="sb pbg" id="wGo" aria-label="ثبت و مرحلهٔ بعد" title="ثبت و مرحلهٔ بعد">${bi('check')} ثبت</button><button class="sb sb2 pby ibtn" id="wRe" aria-label="تکرار همین مرحله" title="تکرار همین مرحله">${bi('repeat')}</button><button class="sb stp2 pbr" id="wEn" aria-label="پایان داده‌برداری" title="پایان داده‌برداری">${bi('stop')} پایان</button></div><div class="lb">فقط جریان هر باتری روشن اجباری است؛ عدد همان باتری را از مولتی‌متر وارد کنید. <b>منفی هم مجاز است</b> — یعنی تخلیهٔ باتری. یادداشت اختیاری است.</div></div>`;
  const f=$('wB'+act[0]);if(f)f.focus();
  const lv=setInterval(()=>wcell(x,wlive(act)),400);
- return new Promise(res=>{$('wGo').onclick=async()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
-   v.ii=ok('wIi');if(v.ii==null)return await pmAlert('جریان ورودی کل اجباری است.');
+ return new Promise(resolve=>{let settled=false;
+ const res=v=>{if(settled)return;settled=true;W.choose=null;
+ k.draft={};box.querySelectorAll('input').forEach(e=>k.draft[e.id]=e.value);
+ if(v.a==='repeat')k.draft=null;if(v.a==='next'){W.saving=true;wbuttons();}resolve(v);};W.choose=res;
+ $('wGo').onclick=async()=>{const v={},ok=id=>gv(id);
    for(const n of act){v['b'+n]=ok('wB'+n);if(v['b'+n]==null)return await pmAlert('جریان باتری '+n+' اجباری است (کانال '+n+' روشن است).');}
    v.note=asc($('wN').value);res({a:'next',v,iso:new Date().toISOString()});};
   $('wRe').onclick=()=>res({a:'repeat'});$('wEn').onclick=()=>res({a:'end'});
-   /* [EN] v1.65 (user order): Tab walks the boxes of the row being filled (the
-     browser already does that, the boxes are simply in reading order), Enter
-     submits and moves to the next duty step, Escape closes the table and
-     goes on to the "build the firmware table" step. The same sentence is
-     printed above the boxes so nobody has to be told twice.
-     [FA] Tab بین خانه‌های همین ردیف، Enter ثبت و رفتن به duty بعدی، Esc
-     بستن جدول و رفتن به مرحلهٔ ساخت جدول میکرو. همین راهنما بالای کادرها
-     هم نوشته شده است. */
+
   box.onkeydown=ev=>{
    if(ev.key=='Enter'&&ev.target.tagName=='INPUT'){ev.preventDefault();$('wGo').click();return;}
    if(ev.key=='Escape'){ev.preventDefault();$('wEn').click();}};
   W.esc=ev=>{if(ev.key=='Escape'){ev.preventDefault();$('wEn').click();}};
   document.addEventListener('keydown',W.esc);
-  W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);if(W.esc){document.removeEventListener('keydown',W.esc);W.esc=null;}box.innerHTML='';box.onkeydown=null;r.classList.remove('wa');});}
-async function wStart(){if(W.run)return;if(!D||D.on!=1)return await pmAlert('لینک STM32 برقرار نیست.');let L;
+  W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);if(W.esc){document.removeEventListener('keydown',W.esc);W.esc=null;}W.choose=null;box.innerHTML='';box.onkeydown=null;r.classList.remove('wa');});}
+async function wStart(retry){if(W.run||W.opening||CAL_BUSY)return;W.opening=true;wbuttons();try{return await wbegin(retry);}finally{W.opening=false;wbuttons();}}
+async function wbegin(retry){if(!D||D.on!=1)return await pmAlert('لینک STM32 برقرار نیست.');const K=Number.isInteger(retry)&&W.K&&W.K[retry]?W.K:null;let L,SC;
+ if(!K){
  try{try{localStorage.setItem('wsw',$('wSw').checked?'1':'0');}catch(e){}L=$('wSw').checked?wsweep():wlist();}catch(e){return await pmAlert(e);}
- const SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return await pmAlert('حداقل یک سناریو را انتخاب کنید.');
+ SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return await pmAlert('حداقل یک سناریو را انتخاب کنید.');}
  const o={};[11,12,16,18,19].forEach(i=>o[i]=D.p[i]);if(Object.values(o).some(v=>v==null))return await pmAlert('پارامترها هنوز از STM32 خوانده نشده‌اند.');
  if(D.p[15]===1||D.p[17]===1)return await pmAlert('مود duty فیکس (۱۵/۱۷) روشن است؛ اول خاموشش کنید.');
  const fi=await winfo();if(!fi||!fi.fs)return await pmAlert('فایل‌سیستم ESP در دسترس نیست؛ در Arduino IDE چیدمان فلش دارای FS را انتخاب و دوباره فلش کنید.');
- let wSkipC=false;if(fi.size>0){const wC=await wexist(fi.size);if(wC=='cancel')return;wSkipC=true;
- if(wC=='clear'){const wJ=await req('/benchlog/clear','POST');if(wJ._s!=200)return await pmAlert('پاک کردن فایل انجام نشد.');try{localStorage.removeItem('wrun');}catch(e){}await winfo();}else{wdl();}}
- if(!wSkipC&&!await pmConfirm('داده‌برداری شروع شود؟ '+SC.join('، ')+'\nپنل duty هر مرحله را می‌گذارد و منتظر عدد مولتی‌متر شما می‌ماند. آخر هر سناریو تنظیمات قبلی برمی‌گردد.'))return;
- W={run:true,abort:false,act:null,man:false};document.body.classList.add('br');wbuild(SC,L);$('wDone').classList.remove('v');let err=null,x=0;
- try{for(const sc of SC){const act=WSC[sc];
-   let run=1;try{run=(+localStorage.getItem('wrun')||0)+1;localStorage.setItem('wrun',run);}catch(e){}
-   wst(WSN[sc]+': آماده‌سازی (duty صفر، قطع/وصل کانال‌ها، مود دستی)…');W.act=null;W.man=false;
-   await setv(16,0);await setv(18,0);for(const n of [1,2])await setv(10+n,act.includes(n)?1:0);
-   await setv(19,1);{const e=Date.now()+3000;while(!(D.fl&32)){if(Date.now()>e)throw 'مود دستی روشن نشد';await sl(100);}}W.man=true;W.act=act;
-   await wlog(`# run ${run} browser_ts=${new Date().toISOString()} scenario=${sc} duty_list=${L.join(';')}\n`);
-   WSIG=null;await wsync();
-   try{for(let i=0;i<L.length;){const pm=r0(L[i]*10),lb=sc+' · مرحلهٔ '+(i+1)+' از '+L.length+' · duty '+L[i]+'% ('+Math.round((i+1)/L.length*100)+'%)';
-     wcell(x,[],'در حال اندازه‌گیری','wr');wsee(x);
-     for(const n of act){const c=D.p[12+n],v=Math.min(pm,c==null?500:c,500);await setv(14+2*n,v);}
-     await wopen();
-     wst(lb+': عددهای مولتی‌متر را در ردیف رنگی جدول بنویسید','cm wr');const f=await wform(x,act);
-     if(f.a=='err')throw f.e;if(f.a=='end'){W.abort=true;throw 'پایان توسط کاربر';}if(f.a=='repeat'){wcell(x,Array(WH.length-3).fill('·'),'تکرار');continue;}
-     const m=await wlatch();
-     await wsync();  /* اگر تنظیمی عوض شده، پیش از این ردیف ثبتش کن */
+ if(K&&(fi.format==='legacy'||fi.format==='damaged'))return await pmAlert('فایل بنچ برای تکرار مرحله آماده نیست؛ فایل قدیمی یا آسیب‌دیده است.');
+ let wSkipC=false;if(!K&&fi.size>0){const wC=await wexist(fi.size,fi.format);if(wC=='cancel')return;if(wC=='download'){await wdl();return;}wSkipC=true;
+ if(wC=='clear'){const wJ=await req('/benchlog/clear','POST');if(wJ._s!=200)return await pmAlert('پاک کردن فایل انجام نشد.');try{localStorage.removeItem('wrun');}catch(e){}await winfo();}else if(!await wdl())return;}
+ if(!wSkipC&&!await pmConfirm(K?'این مرحله دوباره اندازه‌گیری شود؟ تنظیمات فعلی پس از ثبت برمی‌گردد.':'داده‌برداری شروع شود؟ '+SC.join('، ')+'\nپنل duty هر مرحله را می‌گذارد و منتظر عدد مولتی‌متر شما می‌ماند. آخر هر سناریو تنظیمات قبلی برمی‌گردد.'))return;
+ if(CAL_BUSY||!D||D.on!=1||D.p[15]===1||D.p[17]===1||[11,12,16,18,19].some(i=>D.p[i]==null))return await pmAlert('وضعیت برد تغییر کرده؛ دوباره بررسی کنید.');
+ [11,12,16,18,19].forEach(i=>o[i]=D.p[i]);
+ W={run:true,abort:false,act:null,man:false,next:K?K.length:0,retry:K?retry:null,current:null,K};document.body.classList.add('br');if(!K)wbuild(SC,L);$('wDone').classList.remove('v');let err=null,active=null,restoreError=null;
+ const restore=async()=>{const e=await wrestore(o);if(e){restoreError=e;throw e;}};
+ try{while(true){wchk();
+   if(W.jump!=null){W.retry=W.jump===W.next?null:W.jump;W.jump=null;}
+   const x=W.retry==null?W.next:W.retry;
+   if(x>=W.K.length){if(active){await restore();active=null;}W.current=null;wbuttons();
+     const f=await wreview();if(f.a==='err')throw f.e;if(f.a==='done')break;continue;}
+   const k=W.K[x],{sc,i,d}=k,act=WSC[sc];W.current=x;wbuttons();
+   if(active!==sc){if(active)await restore();active=sc;await wprepare(sc);}
+   wchk();if(W.jump!=null)continue;
+   wcell(x,[],'در حال اندازه‌گیری','wr');wsee(x);
+   const pm=r0(d*10);for(const n of act){wchk();const c=D.p[12+n];await setv(14+2*n,Math.min(pm,c==null?500:c,500));}
+   wchk();if(W.jump!=null)continue;await wopen();wchk();if(W.jump!=null)continue;
+   wst(WSN[sc]+' · مرحلهٔ '+(i+1)+' · duty '+d+'٪: عددهای مولتی‌متر را وارد کنید','cm wr');
+   const f=await wform(x,act);
+   if(f.a==='err')throw f.e;if(f.a==='end'){W.abort=true;throw 'پایان توسط کاربر';}
+   if(f.a==='jump'||f.a==='repeat'){wpaint(x);continue;}
+   try{wchk();const m=await wlatch();wchk();await wsync();
+     if(k.done)await wlog(`# repeat scenario=${sc} step=${i+1} duty=${d} attempt=${(k.attempts||1)+1}\n`);
      await wlog(wrow(sc,i,pm,0,r0(Date.now()-W.winMs),m,f.v,f.iso));
-     calpush(m,f.v,act,sc,L[i]);
-          const A=wmeas(m,act).concat([f.v.b1??'-',f.v.b2??'-',f.v.ii??'-']);
-     wcell(x,A,'ثبت شد','okc');
-     i++;x++;}}
-   finally{await wrestore(o);}}}
- catch(e){err=e;}
- W.K.forEach((k,y)=>{const c=$('wr'+y);if(c&&c.children[WSTC].textContent!='ثبت شد')wcell(y,[],'ثبت نشد');});
- W.run=false;W.act=null;W.man=false;document.body.classList.remove('br');
- if(err&&err!=='پایان توسط کاربر')wst('متوقف شد: '+err+' · تنظیمات قبلی برگشت. ردیف‌های ثبت‌شده در فایل مانده‌اند.','cm r');else wst(err?'با دکمهٔ پایان تمام شد؛ تنظیمات قبلی برگشت.':'همهٔ مرحله‌ها ثبت شد؛ تنظیمات قبلی برگشت.','cm g');
+     k.sample=calpush(m,f.v,act,sc,d,CALS.indexOf(k.savedSample));k.savedSample=CALS[k.sample];delete k.issue;k.attempts=(k.attempts||0)+1;k.done=true;k.draft=null;
+     k.cells=wmeas(m,act).concat([f.v.b1??'-',f.v.b2??'-']);wpaint(x);calmark();
+   }finally{W.saving=false;}
+   if(W.retry==null)W.next++;else W.retry=null;W.current=null;wbuttons();
+ }}catch(e){err=e;if(W.current!=null){W.K[W.current].issue=String(e);calmark();}}
+ finally{if(active)restoreError=await wrestore(o)||restoreError;W.run=false;W.saving=false;W.current=null;W.act=null;W.man=false;wbuttons();document.body.classList.remove('br');}
+ W.K.forEach((k,y)=>{wpaint(y);if(!k.done)wcell(y,[],'ثبت نشد');});
+ if(restoreError)wst('⛔ '+restoreError+'؛ وضعیت برد را بررسی کنید. نتیجه‌های ثبت‌شده حفظ شدند.','cm r');else if(err&&err!=='پایان توسط کاربر')wst('متوقف شد: '+err+' · تنظیمات قبلی برگشت. ردیف‌های ثبت‌شده در فایل مانده‌اند.','cm r');else wst(err?'با دکمهٔ پایان تمام شد؛ تنظیمات قبلی برگشت.':'داده‌برداری تأیید و تمام شد؛ تنظیمات قبلی برگشت.','cm g');
  $('wDone').classList.add('v');winfo();
- /* [EN] v1.65: the table is finished, so put the next step in front of the
-    user instead of leaving him to find it. [FA] پس از پایان جدول، مرحلهٔ
-    بعد (ساخت جدول میکرو) جلوی چشم کاربر می‌آید. */
- caln();calsmp();calchk();
- /* [EN] No auto-scroll on purpose: a jumping page during bench work was a
-    reported bug (v1.17b), so the next step is announced in place.
-    [FA] عمداً صفحه را جابه‌جا نمی‌کنیم؛ پرش صفحه قبلاً باگ گزارش‌شده بود. */
- stxt('calst','جدول بسته شد. مرحلهٔ بعد پایین همین صفحه است: «محاسبه از نمونه‌ها» و بعد «ساخت کد برای میکرو».');}
 
-/* ==================== Bench Calibration / کالیبراسیون از جدول بنچ ====================
-   [EN] Fit checked bench samples into the seven board calibration parameters;
-   show the result and wait for explicit confirmation before any write.
-   [FA] نمونه‌های معتبر بنچ به هفت پارامتر کالیبراسیون برد برازش می‌شوند؛
-   نتیجه نمایش داده می‌شود و پیش از هر نوشتن تأیید صریح کاربر لازم است. */
+ caln();calsmp();calchk();
+
+ stxt('calst',restoreError?'⛔ '+restoreError+'؛ پیش از ادامه وضعیت برد را بررسی کنید.':'جدول بسته شد. مرحلهٔ بعد پایین همین صفحه است: «محاسبه از نمونه‌ها» و بعد «ساخت کد برای میکرو».');}
+
+
 var CALS=[];try{CALS=(JSON.parse(localStorage.getItem('calsmp')||'[]')||[]).map(calnorm).filter(Boolean);}catch(e){CALS=[];}
-/* [EN] Sanitize one bench sample from storage or a file. r1 must be finite; every
-    other numeric field must be null or finite; sc must be a known scenario or null.
-    Anything else is rejected, so NaN or text can never reach the fit or the board.
-   [FA] پاک‌سازی یک نمونهٔ بنچ از حافظه یا فایل. r1 باید عدد متناهی باشد؛ بقیهٔ
-    فیلدهای عددی باید null یا عدد متناهی باشند؛ sc باید سناریوی شناخته‌شده یا null باشد.
-    هر چیز دیگر رد می‌شود تا NaN یا متن به برازش یا برد نرسد. */
+
 function calnorm(z){
  if(!z||typeof z!=='object'||!Number.isFinite(z.r1))return null;
  const NUM=['r1','r2','b1','b2','d','ts'];
  const o={};
  for(const k of NUM){const v=z[k];if(v===null||v===undefined){o[k]=null;continue;}if(typeof v!=='number'||!Number.isFinite(v))return null;o[k]=v;}
- if(z.sc!=null&&(typeof z.sc!=='string'||!WSC[z.sc]))return null;
+ if(z.sc!=null&&(typeof z.sc!=='string'||!Object.keys(WSC).includes(z.sc)))return null;
  o.sc=z.sc==null?null:z.sc;
  o.use=z.use===0?0:1;
  return o;
 }
 function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS));}catch(e){}}
-function calpush(m,v,act,sc,duty){
- CALS.push({sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),
+function calpush(m,v,act,sc,duty,replace){
+ const sample={sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),
   b1:act.includes(1)?v.b1:null,b2:act.includes(2)?v.b2:null,
-  ts:Date.now()});
- calinvalidate();calsave();caln();calsmp();calchk();}
-async function calclr(){if(!(await pmConfirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟')))return;CALS=[];calinvalidate();calsave();caln();calsmp();
+  ts:Date.now()};
+ const i=Number.isInteger(replace)&&replace>=0&&replace<CALS.length?replace:CALS.length;
+ CALS[i]=sample;calinvalidate();calsave();caln();calsmp();calchk();return i;}
+async function calclr(){if(CAL_BUSY||W.run||W.opening)return;if(!(await pmConfirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))||CAL_BUSY||W.run||W.opening)return;CALS=[];calinvalidate();calsave();caln();calsmp();
  stxt('calst','نمونه‌ها پاک شدند.');}
 function caln(){stxt('caln',String(CALS.length));}
-/*Theil-Sen Huber IRLS*/
+
+/* [EN] Theil-Sen initialization with Huber IRLS refinement; no sample is deleted. */
 function calfit(xs,ys){
  const I=[];for(let i=0;i<xs.length;i++)if(Number.isFinite(xs[i])&&Number.isFinite(ys[i]))I.push(i);
  if(I.length<2)return null;
@@ -3463,28 +3329,67 @@ function calfit(xs,ys){
  const my=I.reduce((s,i)=>s+ys[i],0)/I.length;let ss=0,sr=0,mx=0;
  I.forEach(i=>{const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);if(Math.abs(e)>mx)mx=Math.abs(e);});
  return {a,b,r2:ss>0?(1-sr/ss):1,n:I.length,mx,span:Math.max(...I.map(i=>xs[i]))-Math.min(...I.map(i=>xs[i]))};}
-var CALP=[],CALR=[],CAL_BUSY=false;
-function calinvalidate(){
+var CALP=[],CALR=[],CAL_BUSY=false,CALCUT=[[],[]],CAL_AUTO=false;
+function calinvalidate(keep){
+ if(!keep)CALCUT=[[],[]];
  CALP=[];CALR=[];calmodalClose();
+ const pts=$('calpoints');if(pts)pts.innerHTML='';
+ const code=$('calcd');if(code){code.value='';code.style.display='none';}
+ if(LUT_PENDING){LUT_PENDING=null;LUTVIEW='';$('lutcmp').innerHTML='';}
  const e=$('calst');if(e)e.textContent='نمونه‌ها یا انتخاب آن‌ها تغییر کرده‌اند؛ نتیجهٔ قبلی دیگر معتبر نیست و باید دوباره محاسبه شود.';
 }
+/* [EN] Export explicit per-channel exclusions and scope, never rounded copies of samples. */
+function calview(v,S=CALS){
+ v=arguments.length?(v===undefined?{}:v):{cuts:CALCUT,scenarios:Object.keys(WSC).filter(k=>$('wc'+k).checked)};
+ if(!v||typeof v!=='object'||Array.isArray(v))return null;
+ const cuts=v.cuts===undefined?[[],[]]:v.cuts,sc=v.scenarios===undefined?null:v.scenarios;
+ if(!Array.isArray(cuts)||cuts.length!==2||cuts.some(a=>!Array.isArray(a)||a.length>4096))return null;
+ if(sc!==null&&(!Array.isArray(sc)||sc.length>3||sc.some(k=>typeof k!=='string'||!Object.keys(WSC).includes(k))))return null;
+ for(let k=0;k<2;k++)for(const c of cuts[k]){
+  const owns=z=>!z.sc||WSC[z.sc].includes(k+1),matches=z=>owns(z)&&Number.isFinite(z[k?'r2':'r1'])&&Math.round(z[k?'r2':'r1'])===c;
+  if(!Number.isInteger(c)||c<0||c>4095||!S.some(matches)||S.some(z=>z.use!==0&&matches(z)&&z.d===0))return null;
+ }
+ return {cuts:cuts.map(a=>[...new Set(a)]),scenarios:sc&&sc.slice()};
+}
+/* [EN] A different dataset cannot keep old bench-row object links. No session replay is implied. */
+function calreplace(samples){CALS=samples;W.K=[];$('wT').innerHTML='';$('wF0').innerHTML='';$('wDone').classList.remove('v');}
+function calrestore(v){CALCUT=v.cuts.map(a=>a.slice());if(v.scenarios)Object.keys(WSC).forEach(k=>$('wc'+k).checked=v.scenarios.includes(k));}
+/* [EN] Diagnostics identify candidates, never assert which of two conflicting DMM readings is wrong. */
+function calmark(){
+ const issues=new Map(),flag=(z,n,level,text)=>{if(!issues.has(z))issues.set(z,[]);issues.get(z).push({n,level,text:'باتری '+fa(n)+': '+text});};
+ caltargets().forEach(n=>{
+  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',S=calsel(n),valid=[];
+  S.forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))flag(z,n,'error','عدد اندازه‌گیری ناقص است');else if(Math.round(z[r])<0||Math.round(z[r])>4095)flag(z,n,'error','شمارش خام خارج از بازه است');else valid.push(z);});
+  const groups=[];valid.slice().sort((a,b)=>Math.round(a[r])-Math.round(b[r])).forEach(z=>{const c=Math.round(z[r]),g=groups[groups.length-1];if(g&&g.c===c){g.S.push(z);g.y=Math.max(g.y,z[b],0);}else groups.push({c,y:Math.max(z[b],0),S:[z]});});
+  for(let i=1;i<groups.length;i++)if(Math.ceil(groups[i].y*10-1e-9)<Math.ceil(groups[i-1].y*10-1e-9))for(const g of [groups[i-1],groups[i]])g.S.forEach(z=>flag(z,n,'warn','افت جریان بین دو نقطه؛ هر دو را بررسی یا تکرار کنید'));
+  const ds=new Map();S.forEach(z=>{if(z.d!=null){if(!ds.has(z.d))ds.set(z.d,[]);ds.get(z.d).push(z);}});
+  ds.forEach(a=>{if(a.length>1)a.forEach(z=>flag(z,n,'warn','duty تکراری؛ وزن نمونه‌ها را بررسی کنید'));});
+  const f=calfit(valid.map(z=>z[r]),valid.map(z=>z[b]));
+  if(f)valid.forEach(z=>{if(Math.abs(z[b]-(f.a*z[r]+f.b))>150)flag(z,n,'warn','بیش از ۱۵۰ میلی‌آمپر فاصله از روند؛ مشکوک، نه خطای قطعی');});
+ });
+ const mark=(el,a)=>{if(!el)return;const text=[...new Set(a.map(x=>x.text))].join(' · ');if(a.length){el.dataset.calissue=a.some(x=>x.level==='error')?'error':'warn';el.title=text;}else{delete el.dataset.calissue;el.removeAttribute('title');}const hint=el.querySelector('[data-calhint]');if(hint)hint.textContent=text;};
+ document.querySelectorAll('[data-csample]').forEach(el=>mark(el,issues.get(CALS[+el.dataset.csample])||[]));
+ document.querySelectorAll('[data-cpoint]').forEach(el=>{const [n,c]=el.dataset.cpoint.split(':').map(Number),a=[];issues.forEach((v,z)=>{if(Math.round(z[n===1?'r1':'r2'])===c)a.push(...v.filter(x=>x.n===n));});mark(el,a);});
+ (W.K||[]).forEach((k,x)=>mark($('wr'+x),(issues.get(k.savedSample)||[]).concat(k.issue?[{level:'error',text:'اندازه‌گیری ثبت نشد: '+k.issue}]:[])));
+ document.querySelectorAll('#calck .ckr').forEach(el=>{if(el.classList.contains('no'))el.dataset.calissue='error';else if(el.classList.contains('wa'))el.dataset.calissue='warn';else delete el.dataset.calissue;});
+}
 function calpending(ids){return (ids||[]).filter(id=>Object.prototype.hasOwnProperty.call(PEND,id));}
-function calpendingText(ids){return calpending(ids).map(id=>'شناسهٔ '+id).join('، ');}
+function calpendingText(ids){return pnames(calpending(ids));}
 function calrun(){
- calinvalidate();
+ if(CAL_BUSY)return;CAL_AUTO=true;
+ calinvalidate(true);
  const cur=id=>(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
- if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
- if(calsel(null).length<3){stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
+ if(!D||!D.p){calchk();stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
+ if(calsel(null).length<3){calchk();stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
  const rows=[],targets=caltargets(),hasTarget=n=>targets.indexOf(n)>=0,scope=calscope(targets);
- /* --- جریان واقعی هر باتری: مقدار signed مولتی‌متر مستقیم فیت می‌شود --- */
+
  [[1,'r1','b1',0,2],[2,'r2','b2',1,3]].filter(ch=>hasTarget(ch[0])).forEach(ch=>{
   const S=calsel(ch[0]).filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]]));
   const f=calfit(S.map(z=>z[ch[1]]),S.map(z=>z[ch[2]]));
   const ttl='کانال '+fa(ch[0]);
   if(!f||f.a<=0){const why='فیت جریان دادهٔ کافی/سالم ندارد';[ch[4],ch[3]].forEach(id=>{const old=cur(id);rows.push([CALREAD[id].name,id,old,old,why,0]);});return;}
-  let g=Math.round(f.a/K_MA*1000),o=0,gainFromTable=false; /* [EN] offset is fixed at 0 (user decision) */
-  /* [EN] Gain above the last anchor comes from the TWO highest table points (user decision).
-     [FA] گین بالای آخرین نقطه از دو نقطهٔ بالای جدول گرفته می‌شود (تصمیم کاربر). */
+  let g=Math.round(f.a/K_MA*1000),o=0,gainFromTable=false;
+
   const tb=calbuild(ch[0]);
   if(!tb.bad&&tb.X.length>=2){const k=tb.X.length-1;if(tb.X[k]!==tb.X[k-1]){g=Math.round((tb.Y[k]-tb.Y[k-1])/(tb.X[k]-tb.X[k-1])/K_MA*1000);gainFromTable=true;}}
   const gc=Math.min(3000,Math.max(100,g)),oc=Math.min(255,Math.max(0,o)),w=[];
@@ -3493,17 +3398,14 @@ function calrun(){
   if(f.r2<0.98)w.push('نقاط پراکنده‌اند (R²=<span dir="ltr">'+f.r2.toFixed(3)+'</span>)');
   if(f.mx>150)w.push('خطای باقیمانده تا <span dir="ltr">'+Math.round(f.mx)+'</span> میلی‌آمپر');
   if(g!==gc||o!==oc)w.push('عدد خام خارج از بازهٔ مجاز بود و محدود شد');
-  /* Four points is a quality recommendation, not a blocker: a direct
-     signed fit remains usable with any two distinct points. In particular,
-     duty=0 is never manufactured as a baseline just to reach a count. */
+
   const bad=f.r2<0.9;
   rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)'+(gainFromTable?' · گین از دو نقطهٔ بالای جدول':''),bad?0:1]);
   rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'آفست ثابت صفر (تصمیم کاربر)',bad?0:1]);});
- 
- /* [EN] Show one batch summary.
-    [FA] خلاصهٔ همهٔ تغییرها با یک تأیید نمایش داده می‌شود. */
+
+
  calchk();
- CALR=rows;
+ CALR=rows;calpoints();calmark();
  stxt('calst',calsummary(rows,null,'خلاصهٔ تغییرهای محاسبه‌شده')+
   '<div class="lb">برای نوشتن همهٔ مقدارهای معتبر روی برد، «اعمال همهٔ تغییرها روی برد» را بزنید.</div>');
 }
@@ -3517,7 +3419,7 @@ function calsummary(rows,status,heading){
   const id=Number(r[1]),known=String(r[1])!==''&&Number.isInteger(id)&&id>=0&&id<7,valid=known&&r[5]===1&&Number.isFinite(Number(r[3])),keep=known&&r[2]!=null&&Number.isFinite(Number(r[2])),why=r[4]?' · '+r[4]:'';
   const state=status&&status[id]?status[id]:(valid?(Number(r[2])===Number(r[3])?'بدون تغییر — مقدار روی برد همین است':'در انتظار تأیید کاربر'):(keep?'فیت معتبر نیست؛ مقدار فعلی تغییر نمی‌کند':'مقدار فعلی برد هم خوانده نشده؛ چیزی نوشته نمی‌شود')+why);
   const val=valid?calnumber(r[2])+' ← '+calnumber(r[3]):keep?calnumber(r[2])+' — حفظ می‌شود':calnumber(r[4]);
-  return '<div class="calsummaryrow"><span class="calname">'+r[0]+'</span><span class="calvalue">'+val+'</span><span class="calstate">'+state+'</span></div>';
+  return '<div class="calsummaryrow"'+(!valid||/⛔|⚠/.test(status&&status[id]||'')?' data-calissue="error"':/⚠/.test(r[4]||'')?' data-calissue="warn"':'')+'><span class="calname">'+r[0]+'</span><span class="calvalue">'+val+'</span><span class="calstate">'+state+'</span></div>';
  }).join('');
  return h+body+'</div></div>';
 }
@@ -3534,32 +3436,36 @@ function calmodalOpen(){
  e.classList.add('on');
  return true;
 }
-/* [EN] v1.59: settings backup keeps finished values; raw bench samples
-   have a separate file for refitting on another board.
-   [FA] v1.59: مقدارهای نهایی در پشتیبان و نمونه‌های خام در فایل جدا برای
-   محاسبهٔ دوباره روی برد دیگر نگه‌داری می‌شوند. */
-/* [EN] v1.60: each sample saves its scenario and duty; unticked rows
-   stay in the file but are excluded from the fit.
-   [FA] v1.60: سناریو و درصد هر نمونه ذخیره می‌شود؛ ردیف بی‌تیک پاک نمی‌شود،
-   فقط از محاسبه بیرون می‌ماند. */
+
+
 function calsmp(){const b=$('calsl');if(!b)return;
- if(!CALS.length){b.innerHTML='<span class="lb">هنوز نمونه‌ای ثبت نشده است.</span>';return;}
+ if(!CALS.length){b.innerHTML='<span class="lb">هنوز نمونه‌ای ثبت نشده است.</span>';calmark();return;}
  const selected=CALS.filter(z=>z.use!==0).length,all=selected===CALS.length;
  b.innerHTML='<div class="calselbar"><label><input type="checkbox" id="calall"'+(all?' checked':'')+' onchange="calpick(this.checked)">انتخاب همهٔ نمونه‌ها</label><span class="lb" id="calallCount">'+selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده</span></div><div class="tw"><table class="bt2 cals"><tr><th>استفاده</th><th>#</th><th>سناریو</th><th>duty ٪</th>'+
-  '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th></tr>'+
-  CALS.map((z,i)=>'<tr><td><input type="checkbox" id="calu'+i+'"'+(z.use===0?'':' checked')+' onchange="caluse('+i+',this.checked)"></td>'+
+  '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th><th>بررسی</th><th>حذف</th></tr>'+
+  CALS.map((z,i)=>'<tr data-csample="'+i+'" onclick="calrow(event,this)" style="cursor:pointer"><td><input type="checkbox" id="calu'+i+'" aria-label="استفاده از نمونهٔ '+(i+1)+'"'+(z.use===0?'':' checked')+' onchange="caluse(+this.closest(\'[data-csample]\').dataset.csample,this.checked)"></td>'+
    '<td>'+(i+1)+'</td><td>'+esc(WSN[z.sc]||z.sc||'')+'</td><td dir="ltr">'+(z.d==null?'':esc(z.d))+'</td>'+
    '<td dir="ltr">'+(z.r1==null?'':Math.round(z.r1))+'</td><td dir="ltr">'+(z.b1==null?'':Math.round(z.b1))+'</td>'+
-   '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td></tr>').join('')+'</table></div>';calallSync();}
+   '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td><td data-calhint></td><td><button type="button" class="sb pbr" aria-label="حذف نمونه" onclick="caldelete(+this.closest(\'[data-csample]\').dataset.csample)">'+bi('trash')+'</button></td></tr>').join('')+'</table></div>';calallSync();calmark();}
 function calallSync(){const e=$('calall');if(!e)return;const selected=CALS.filter(z=>z.use!==0).length;e.checked=selected===CALS.length;e.indeterminate=selected>0&&selected<CALS.length;const n=$('calallCount');if(n)n.textContent=selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده';}
-function caluse(i,on){if(CALS[i]){CALS[i].use=on?1:0;calinvalidate();calsave();calallSync();}}
-function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calinvalidate();calsave();calsmp();}
-/* [EN] Only ticked rows, and only rows whose scenario really drove that
-   channel. [FA] فقط ردیف‌های تیک‌خورده، و فقط ردیف‌هایی که همان کانال در
-   آن سناریو واقعاً کار می‌کرده. */
-function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0));}
-/* [FA] دامنهٔ ممیزی از سناریوهای انتخاب‌شده می‌آید؛ باتری خارج از دامنه
-   نباید برای نتیجهٔ باتری انتخاب‌شده هشدار بسازد. */
+/* [EN] Selection patches existing rows; only explicit capture/import rebuilds the sample list. */
+function calsync(){
+ document.querySelectorAll('#calsl [data-csample]').forEach((row,i)=>{row.dataset.csample=i;row.children[1].textContent=i+1;const box=row.querySelector('input');box.id='calu'+i;box.checked=CALS[i].use!==0;box.setAttribute('aria-label','استفاده از نمونهٔ '+(i+1));});
+ calallSync();
+}
+function calchanged(){calinvalidate(true);calsave();calsync();if(CAL_AUTO)calrun();else calchk();}
+function calrow(event,row){if(event.target.closest('input,button,a,label'))return;const i=+row.dataset.csample;if(CALS[i])caluse(i,CALS[i].use===0);}
+function caluse(i,on){if(CAL_BUSY||W.run||W.opening){calsync();return;}if(CALS[i]){CALS[i].use=on?1:0;calchanged();}}
+function calpick(on){if(CAL_BUSY||W.run||W.opening){calsync();return;}CALS.forEach(z=>z.use=on?1:0);calchanged();}
+function caldelete(i){
+ if(CAL_BUSY||W.run||W.opening||!Number.isInteger(i)||!CALS[i])return;
+ const sample=CALS[i],row=document.querySelector('#calsl [data-csample="'+i+'"]');
+ CALS.splice(i,1);if(row)row.remove();
+ (W.K||[]).forEach(k=>{if(k.savedSample===sample){delete k.savedSample;delete k.sample;}else if(k.savedSample)k.sample=CALS.indexOf(k.savedSample);});
+ caln();calchanged();
+}
+function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0)&&(!n||!CALCUT[n-1].includes(Math.round(z[n===1?'r1':'r2']))));}
+
 function caltargets(){
  const keys=Object.keys(WSC),chosen=keys.filter(k=>{const e=$('wc'+k);return !e||e.checked;});
  const out=[];chosen.forEach(k=>WSC[k].forEach(n=>{if(out.indexOf(n)<0)out.push(n);}));
@@ -3567,47 +3473,43 @@ function caltargets(){
 }
 function caltargetText(targets){return targets.length===1?'فقط باتری '+fa(targets[0]):'هر دو باتری';}
 function calscope(targets){return targets&&targets.length===1?calsel(targets[0]):calsel(null);}
-/* ==================== Voltage slope / شیب ولتاژ ====================
-   [EN] Measure divider slope separately; an offset cannot hide a scale error.
-   [FA] شیب مقسم جداگانه سنجیده می‌شود؛ آفست خطای مقیاس را پنهان نمی‌کند. */
+
 
 
 function calchk(){
  const box=$('calck');if(!box)return;
- /* [EN] Zero samples: one short line instead of a wall of red rows.
-    [FA] با صفر نمونه فقط یک خط کوتاه، نه دیوار سطرهای قرمز. */
+
  if(!CALS.length){box.innerHTML='<span class="lb">فهرست آماده‌سازی داده‌ها: بعد از اولین «ثبت مرحله» اینجا نشان می‌دهد چه چیزی کم است.</span>';return 0;}
- /* [EN] ok=green, wa=yellow (runs anyway), no=red blocker; RTL list.
-    [FA] سبز آماده، زرد هشدار (انجام می‌شود)، قرمز مانع؛ فهرست راست‌به‌چپ. */
+
  const R=[],ok=(t)=>R.push(['ok',t,'']),wn=(t,f)=>R.push(['wa',t,f||'']),no=(t,f)=>R.push(['no',t,f||'']);
  const targets=caltargets(),S=calscope(targets);
- /* ۱) لینک */
+
  if(D&&D.p)ok('ارتباط با برد برقرار است و عددهای فعلی خوانده شدند.');
  else no('ارتباط با برد برقرار نیست.','تا لینک وصل نشود نه مقدار فعلی دیده می‌شود نه چیزی نوشتنی است.');
- /* ۲) تعداد نمونه فقط برای باتری‌های انتخاب‌شده */
+
  targets.forEach(n=>{const k=n===1?'b1':'b2',r=n===1?'r1':'r2';
   const c=calsel(n).filter(z=>Number.isFinite(z[k])&&Number.isFinite(z[r]));
   if(c.length>=4)ok('باتری '+fa(n)+': '+c.length+' نمونهٔ کامل دارد (حداقل ۴ لازم است).');
   else no('باتری '+fa(n)+': فقط '+c.length+' نمونهٔ کامل دارد.',
    'حداقل ۴ مرحله با «فقط باتری '+fa(n)+'» یا «هر دو باتری» بگیرید و جریان مولتی‌متر همان باتری را وارد کنید.');
-  /* ۳) پخش‌بودن نقاط */
+
   if(c.length>1){const xs=c.map(z=>z[r]),sp=Math.max(...xs)-Math.min(...xs);
    if(sp>=20)ok('باتری '+fa(n)+': نقاط به اندازهٔ کافی پخش‌اند (بازهٔ raw برابر '+Math.round(sp)+').');
    else no('باتری '+fa(n)+': همهٔ نقاط تقریباً روی یک duty هستند (بازهٔ raw فقط '+Math.round(sp)+').',
     'از duty کم تا زیاد بروید (مثلاً ۰ تا ۲۰ درصد)؛ با نقاط چسبیده شیب قابل محاسبه نیست.');
-   /* ۴) تکراری نبودن duty */
+
    const ds=c.map(z=>z.d).filter(x=>x!=null),u=new Set(ds);
    if(ds.length&&u.size<ds.length)wn('باتری '+fa(n)+': '+(ds.length-u.size)+' مرحله با duty تکراری ثبت شده.',
     'تکراری‌ها را یا تیک بردارید یا نگه دارید؛ تکرار وزن آن نقطه را بی‌دلیل بالا می‌برد.');
    else ok('باتری '+fa(n)+': duty مرحله‌ها تکراری نیست.');}
  });
- /* ۶) قانونی‌بودن جدول فقط برای باتری‌های انتخاب‌شده */
+
  targets.forEach(n=>{const t=calbuild(n);
   if(t.bad)no('جدول باتری '+fa(n)+': '+t.bad+'.','جدول ساخته نمی‌شود تا چیز نادرستی وارد کد میکرو نشود.');
   else ok('جدول باتری '+fa(n)+': '+t.X.length+' نقطه، دو محور هم‌طول، زنجیرهٔ صعودی و جریان بدون افت.'+
    (t.note.length?' ('+t.note.join(' · ')+')':''));});
- 
- /* ۸) جریان مثبت واقعی باتری فقط در باتری‌های انتخاب‌شده */
+
+
  const currentKeys=targets.map(n=>n===1?'b1':'b2');
  if(currentKeys.some(k=>S.some(z=>Number.isFinite(z[k])&&z[k]>0)))
   ok('حداقل در بعضی مرحله‌های باتری‌های انتخاب‌شده جریان واقعی شارژ ثبت شده.');
@@ -3616,42 +3518,51 @@ function calchk(){
  box.innerHTML='<div class="ckscope"><b>دامنهٔ بررسی:</b> '+caltargetText(targets)+' — باتری‌های خارج از این دامنه در هشدارها و نتیجه وارد نمی‌شوند.</div>'+
   '<div class="cksum"><b class="okc">✔ '+fa(cO)+' آماده</b><b class="wak">⚠ '+fa(cW)+' هشدار</b><b class="erc">✕ '+fa(cN)+' مانده</b></div>'+
   '<div class="ckl">'+R.map(x=>'<div class="ckr '+x[0]+'"><i>'+(x[0]==='ok'?'✔':x[0]==='wa'?'!':'✕')+'</i><div>'+x[1]+(x[2]?'<span class="fx">'+x[2]+'</span>':'')+'</div></div>').join('')+'</div>';
- return cN+cW;}
+ calmark();return cN+cW;}
 
-/* ==================== Firmware snippet / خروجی برای کد میکرو ====================
-   [EN] Generate calibration.h from the current, validated fit.
-   [FA] calibration.h از برازش فعلی و اعتبارسنجی‌شده ساخته می‌شود. */
-/* [‎EN] Counts-axis table: X=round(raw mean counts), Y=mA. No gain/offset. [FA]‎ جدول روی شمارش خام. */
+
+
 function calbuild(n){
  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',note=[];
- /* [EN] Missing readings block, never skip. [FA] عدد ناقص جدول را می‌بندد، حذف نمی‌شود. */
+
  const kept=calsel(n),rows=kept.filter(z=>Number.isFinite(z[r])&&Number.isFinite(z[b]));
  const missing=kept.filter(z=>!(Number.isFinite(z[r])&&Number.isFinite(z[b])));
  if(missing.length)
   return {X:[],Y:[],note:[],bad:missing.length+' ردیف نگه‌داشته‌شده عدد ناقص دارد (مرحله '+missing.map(z=>z.d+'٪').join('، ')+') — آن‌ها را کامل کنید یا تیک بردارید'};
- /* [‎EN] Zero current row is mandatory - never manufactured. [FA]‎ نقطهٔ صفر الزامی است و ساخته نمی‌شود. */
+
  if(!rows.some(z=>Number.isFinite(z.d)&&z.d===0))
   return {X:[],Y:[],note:[],bad:'نقطهٔ صفر (duty ۰٪) با مولتی‌متر ثبت نشده است'};
- /* [‎EN] Negative (discharge) mA is clamped to 0 and reported - never blocks. [FA]‎ منفی (دشارژ) صفر می‌شود و گزارش می‌شود؛ جدول را نمی‌بندد. */
+
 const negN=rows.filter(z=>z[b]<0).length;
 if(negN)note.push(negN+' نمونهٔ منفی (دشارژ) صفر حساب شد');
- /* [EN] One rounding: raw mean counts. [FA] تنها رُند: میانگین خام شمارش. */
+
  const pts=rows.map(z=>({c:Math.round(z[r]),i:Math.max(0,z[b])}));
  if(pts.some(q=>q.c<0||q.c>4095))
   return {X:[],Y:[],note:[],bad:'شمارش خارج از بازهٔ ۰ تا ۴۰۹۵ است'};
  pts.sort((x,y)=>x.c-y.c);
- /* [EN] Equal count values keep the MAXIMUM measured current (never below the DMM), and the count is reported. [FA] جریان‌های تکراری: بیشترین مقدار نگه داشته و گزارش می‌شود. */
+
  const groups=[];
  pts.forEach(q=>{const g=groups.length?groups[groups.length-1]:null;
   if(g&&g.c===q.c){g.max=Math.max(g.max,q.i);g.n++;}else groups.push({c:q.c,max:q.i,n:1});});
  const dupGroups=groups.filter(g=>g.n>1).length;
  if(dupGroups)note.push(dupGroups+' جریان تکراری: بیشترین مقدار نگه داشته شد');
- /* [EN] Round ONCE, at the end. [FA] رند فقط یک بار، در پایان. */
+
  const X=groups.map(g=>g.c),Y=groups.map(g=>Math.ceil(g.max*10-1e-9)/10);
  let bad='';
  if(X.length<2)bad='کمتر از ۲ نقطهٔ متمایز ('+X.length+') — حداقل ۲ لازم است';
  else{for(let i=1;i<Y.length;i++){if(Y[i]<Y[i-1]){bad='جریان با افزایش شمارش پایین آمده (زنجیره '+X[i-1]+' ← '+Y[i-1]+' mA، بعد '+X[i]+' ← '+Y[i]+' mA). این نقطه را بررسی یا تکرار کنید؛ چیزی حذف نشده است';break;}}}
  return {X:X,Y:Y,note:note,bad:bad};}
+
+function caldrop(n,c){
+ if(CAL_BUSY||W.run||W.opening||![1,2].includes(n))return;
+ if(c==null)CALCUT[n-1]=[];
+ else{const t=calbuild(n);if(!t.X.includes(c)||t.X.length<=2||calsel(n).some(z=>z.d===0&&Math.round(z[n===1?'r1':'r2'])===c))return;CALCUT[n-1].push(c);}
+ calrun();
+}
+function calpoints(){
+ $('calpoints').innerHTML=caltargets().map(n=>{const t=calbuild(n),zero=calsel(n).filter(z=>z.d===0).map(z=>Math.round(z[n===1?'r1':'r2']));
+ return '<div class="hd">جدول تولیدشدهٔ باتری '+fa(n)+' · '+t.X.length+' نقطه · سقف ارسال '+LUTMAX+' · حذف‌شده: '+CALCUT[n-1].length+' <button class="sb" onclick="caldrop('+n+',null)">بازگردانی</button></div><div class="lb">حذف فقط از محاسبهٔ این باتری؛ نمونهٔ اصلی محفوظ است. با ذخیرهٔ نمونه‌ها، این انتخاب‌ها هم در فایل می‌مانند. نقطهٔ صفر الزامی است؛ حداقل دو نقطه باید بماند.</div>'+(t.bad?'<div class="erc">'+esc(t.bad)+'</div>':'')+'<div class="tw"><table class="bt2"><tr><th>شمارش خام</th><th>جریان mA</th><th>حذف</th></tr>'+t.X.map((x,i)=>'<tr data-cpoint="'+n+':'+x+'"><td>'+x+'</td><td>'+t.Y[i]+'</td><td><button class="sb pbr" aria-label="حذف نقطه" onclick="caldrop('+n+','+x+')"'+(t.X.length<=2||zero.includes(x)?' disabled':'')+'>'+bi('trash')+'</button></td></tr>').join('')+'</table></div>';
+ }).join('');}
 function calcode(){
  const calScope=calscope(caltargets()),samples=calScope.length;
  if(samples<2){
@@ -3688,49 +3599,44 @@ function calcode(){
   ' *   out = lastY + (BSPfull(c) - BSPfull(lastCounts)). */\n';
  const t=$('calcd');if(t){t.value=out;t.style.display='block';}
  stxt('calst',(msg.length?('⚠ '+msg.join(' · ')+' — '):'')+(out.indexOf('NOT GENERATED')>=0?'بعضی جدول‌ها ساخته نشدند؛ علت در همین پیام/کد مشخص است.':'کد آماده است؛ متن زیر را کپی یا دانلود کنید. هم‌طولی و صعودی‌بودن جدول‌ها بررسی شد.'));}
-function calcdl(){const t=$('calcd');if(!t||!t.value)return;
- const u=URL.createObjectURL(new Blob([t.value],{type:'text/plain'}));
- const a=document.createElement('a');a.href=u;a.download='calibration_generated.h';a.click();
- setTimeout(()=>URL.revokeObjectURL(u),2000);}
+function calcdl(){calcode();const t=$('calcd');if(!t||!t.value)return;return filesave('calibration_generated.h',t.value,'text/plain');}
 function calcopy(){const t=$('calcd');if(!t||!t.value)return;t.select();
  try{document.execCommand('copy');stxt('calst','کد در کلیپ‌بورد کپی شد.');}catch(e){}}
-function calexp(){if(!CALS.length){stxt('calst','نمونه‌ای برای ذخیره نیست.');return;}
- const o={app:'ChangeOver-bench-samples',v:1,build:xbuild(),n:CALS.length,
+async function calexp(){if(!CALS.length){stxt('calst','نمونه‌ای برای ذخیره نیست.');return;}
+ const o={app:'ChangeOver-bench-samples',v:2,build:xbuild(),n:CALS.length,view:calview(),
   saved:new Date().toISOString(),samples:CALS};
- const u=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));
- const a=document.createElement('a');a.href=u;
- a.download='changeover-bench-'+o.saved.slice(0,10)+'.json';a.click();
- setTimeout(()=>URL.revokeObjectURL(u),2000);
- stxt('calst','⬇ '+CALS.length+' نمونه در فایل ذخیره شد.');}
-async function calimp(f){let o;try{o=JSON.parse(await f.text());}catch(e){stxt('calst','⚠ فایل JSON معتبر نیست');return;}
- if(!o||o.app!=='ChangeOver-bench-samples'||!Array.isArray(o.samples)){stxt('calst','⚠ این فایل نمونه‌های بنچ نیست');return;}
- const add=o.samples.map(calnorm).filter(Boolean),bad=o.samples.length-add.length;
+ if(!o.view)return pmAlert('انتخاب نقطه‌ها معتبر نیست؛ فایل ساخته نشد.');
+ if(await filesave('changeover-bench-'+o.saved.slice(0,10)+'.json',JSON.stringify(o),'application/json'))stxt('calst','فایل نمونه‌ها و انتخاب‌های فعلی برای دانلود آماده شد.');}
+
+async function calimp(f){if(CAL_BUSY||W.run||W.opening)return;let o;try{o=JSON.parse(await f.text());}catch(e){stxt('calst','⚠ فایل JSON معتبر نیست');return;}
+ if(!o||o.app!=='ChangeOver-bench-samples'||!Array.isArray(o.samples)||(o.v!==undefined&&![1,2].includes(o.v))||(o.v===2&&o.view===undefined)){stxt('calst','⚠ این فایل نمونه‌های بنچ نیست');return;}
+ const add=o.samples.map(calnorm).filter(Boolean),bad=o.samples.length-add.length,view=calview(o.view,add);
+ if(!view||(o.v===2&&bad)){stxt('calst','⚠ نمونه یا انتخاب نقطه‌های فایل نامعتبر است؛ چیزی تغییر نکرد.');return;}
  if(!add.length){stxt('calst','⚠ نمونهٔ معتبری در فایل نیست');return;}
- const keep=CALS.length&&await pmConfirm('نمونه‌های فعلی ('+CALS.length+' تا) هم نگه داشته شوند؟\nلغو = فقط نمونه‌های فایل بماند.');
- CALS=keep?CALS.concat(add):add;calinvalidate();calsave();caln();calsmp();
+ const mode=CALS.length?await pmSampleImport():'replace';if(!mode||CAL_BUSY||W.run||W.opening)return;
+ const keep=mode==='append',combined=keep?CALS.concat(add):add;if(!calview(o.view,combined)){stxt('calst','⚠ انتخاب‌ها با نمونه‌های فعلی سازگار نیستند.');return;}
+ if(keep)CALS=combined;else calreplace(combined);calinvalidate();calrestore(view);calsave();caln();calsmp();
  stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد'+(bad?' ('+bad+' نمونهٔ نامعتبر کنار گذاشته شد)':'')+' (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
- const e=$('calf');if(e)e.value='';}
+ const e=$('calf');if(e)e.value='';calrun();}
 async function calapply(){
- /* [EN] One confirmation applies every valid fit.
-    [FA] یک تأیید، همهٔ برازش‌های معتبر را اعمال می‌کند. */
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
+
+ if(W&&(W.run||W.opening)){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  calmodalOpen();
 }
 async function calmodalApply(){
- if(W&&W.run){calmodalClose();stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
+ if(W&&(W.run||W.opening)){calmodalClose();stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
  if(CAL_BUSY){calmodalClose();stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  const jobs=caljobs();
  if(!jobs.length){calmodalClose();stxt('calst',calsummary(CALR,null,'خلاصهٔ تغییرهای محاسبه‌شده')+'<div class="lb">هیچ مقدار معتبر و قابل اعمالی وجود ندارد.</div>');return;}
  const conflicts=calpending(jobs.map(c=>c[0]));
  if(conflicts.length){calmodalClose();stxt('calst','⛔ '+calpendingText(conflicts)+' هنوز در صف تغییرات پنل است؛ ابتدا آن‌ها را ارسال یا لغو کنید.');return;}
  calmodalClose();
- CALP=jobs;
+ CALP=jobs;CAL_BUSY=true;
  try{
-  await xexp();
-  CAL_BUSY=true;
-  /* [EN] /s=200 only queues; setv() waits for the board's matching report.
-     [FA] ۲۰۰ ‎/s‎ فقط صف است؛ setv() تا گزارش دقیق همان مقدار صبر می‌کند. */
+  const backedUp=await xexp();if(!backedUp){CALP=[];stxt('calst','اعمال لغو شد؛ فایل پشتیبان برای دانلود تأیید نشد.');return;}
+
+  /* [EN] /s=200 only queues; setv() waits for matching board readback. */
   let ok=0,fail=0;
   const status=Object.create(null);
   for(const c of CALP){
@@ -3759,12 +3665,8 @@ async function calmodalApply(){
 }
 
 
-/* ---------- v1.66 (user order 2026-10-05): the bench table lands in its own flash
-   block (ping-pong, own CRC32); the code-export path stays. The push is
-   content-addressed: the commit is refused unless browser and board CRC32s
-   match, and only after the handshake the reset key unlocks.
-   [FA] جدول بنچ در بلوک فلش جدا (پینگ‌پنگ، CRC32 مخصوص) می‌نشیند؛ سه مرحله:
-   چیدن ← کامیت با CRC ← دست‌دادن؛ فقط بعد از دست‌دادن موفق، ریست فعال می‌شود. */
+
+/* ---------- v1.66 LUT push: independent flash block, CRC handshake before reset. */
 const LUTMAX=24;
 const LUTST={0:'موفق',1:'برد مرحلهٔ شروع را ندیده بود',2:'تعداد نقاط برای برد نامعتبر بود',
  3:'یکی از تکه‌های جدول به برد نرسید',4:'محور جریان روی برد صعودی نبود',
@@ -3784,7 +3686,7 @@ function lpack(target,base,selected){
  const boardSnapshot=lcalSnapshot(),boardOff=boardSnapshot.offset,boardGain=boardSnapshot.gain,boardVoltage=boardSnapshot.voltage,note=lcalnotice(ids,boardSnapshot);
  note.missing.forEach(id=>{chosen[id]=false;});
  if(note.absent.length)return {bad:'مقدار معتبر جریان از برد در دسترس نیست',msg:[note.text]};
- /* [EN] Keep every unavailable fit untouched; [FA] فیتِ ناموجود نوشته نشود. */
+
  const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)],proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
  const off=boardOff.slice(),gn=boardGain.slice(),voltage=boardVoltage.slice();
  const setIfSelected=(id,value,old)=>chosen[id]?value:old;
@@ -3819,8 +3721,7 @@ function lpack(target,base,selected){
  return {T:T,crc:crc,body:cs.join(','),msg:msg,target:targetId,
   cal:{offset:off,gain:gn,voltage:voltage,ids:ids,selected:chosen,editable:false},
   calBefore:boardSnapshot};}
-/* [EN] Keep the real-board view separate from transaction comparisons.
-   [FA] نمای واقعی برد را از پیشنهاد و ممیزی تراکنش جدا نگه دار. */
+
 function lrenderRead(r){
  const e=$('lutcmp');if(!e)return;
  if(!r||!r.ready){e.innerHTML='<div class="lutbox badread"><div class="luthead">جدول فعال روی برد</div><div class="lb">بازخوانی واقعی در دسترس نیست: '+((r&&r.error)||'پاسخی از برد نرسید')+'</div></div>';return;}
@@ -3841,9 +3742,7 @@ function lrenderRead(r){
  h+='<div class="luttag">بازخوانی بعدی یا ارسال جدید این نمایش را تازه می‌کند.</div></div>';
  e.innerHTML=h;
 }
-/* [EN] Gate each battery button, the both-batteries button and the read-only
-   ‎reader on link/bench state. [FA]‎ گیت هر دکمهٔ باتری، دکمهٔ هر دو باتری و
-   خواندن مستقل بر اساس وضعیت لینک/ویزارد. */
+
 let LSNT=0,LBT={ready:false,error:'هنوز خوانده نشده',T:[{X:[],Y:[]},{X:[],Y:[]}]},LAT=null,LUTVIEW='',LUTREADSEQ=0;
 function lnewread(ok,e,t){return {ready:!!ok,error:e||'',T:t||[{X:[],Y:[]},{X:[],Y:[]}],stamp:++LUTREADSEQ};}
 function lreadtable(a){
@@ -3865,8 +3764,7 @@ function lcalSnapshot(){
  const p=D&&D.p?D.p:{};
  return {offset:[p[0]!=null?Number(p[0]):null,p[1]!=null?Number(p[1]):null],gain:[p[2]!=null?Number(p[2]):null,p[3]!=null?Number(p[3]):null],voltage:[p[4]!=null?Number(p[4]):null,p[5]!=null?Number(p[5]):null,p[6]!=null?Number(p[6]):null],seq:D&&D.seq!=null?D.seq:null};
 }
-/* [EN] Missing fits may only reuse values actually read from the board.
-   [FA] فیتِ ناموجود فقط با مقدارِ واقعاً خوانده‌شده از برد جایگزین شود. */
+
 function lcalboard(s,id){return !s?null:id<2?s.offset[id]:id<4?s.gain[id-2]:s.voltage[id-4];}
 function lcalnames(ids){return ids.map(id=>CALREAD[id].name).join('، ');}
 function lcalnotice(ids,s){
@@ -3892,7 +3790,7 @@ function calParamTable(before,proposed,after,title,source,ids,selection,editable
  h+='<div class="calreadmeta"><span><b>منبع:</b> '+source+'</span><span><b>فریم تازه:</b> '+(seq==null?'—':seq)+'</span><span><b>ملاک:</b> تطبیق عددی همان شناسه</span>'+(pick?'<span><b>انتخاب:</b> برداشتن تیک یعنی حفظ مقدار قبلی و نرفتن این شناسه در payload</span>':'')+'</div>';
  if(proposed){
   h+='<div class="tw"><table class="lutt calparamtable"><tr>'+(pick?'<th>اعمال</th>':'')+'<th>پارامتر / شناسه</th><th>واحد</th><th>روی برد<br>قبل از ارسال</th><th>پیشنهاد پنل</th><th>روی برد<br>بعد از اعمال</th><th>نتیجه</th></tr>';
-  rows.forEach(m=>{const b=calpval(before,m),p=calpval(proposed,m),a=calpval(after,m),skip=pick&&selection[m.id]===false,unavailable=pick&&lcalvalue(m.id)==null,s=skip?{c:'same',t:after==null?'حفظ می‌شود — ارسال نمی‌شود':'حفظ شد — ارسال نشد'}:calpstate(b,p,a),check=(!skip?' checked':'')+(editable&&!unavailable?'':' disabled');h+='<tr class="'+(skip?'calskip':'')+'">'+(pick?'<td class="calpick"><label><input class="lutcalcheck" type="checkbox" data-cal-id="'+m.id+'"'+check+' onchange="lcaltoggle(this)"><span>اعمال</span></label></td>':'')+'<td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(b)+'</td><td>'+calpnum(p)+'</td><td>'+calpnum(a)+'</td><td><span class="lutst '+s.c+'">'+s.t+'</span></td></tr>';});
+  rows.forEach(m=>{const b=calpval(before,m),p=calpval(proposed,m),a=calpval(after,m),skip=pick&&selection[m.id]===false,unavailable=pick&&lcalvalue(m.id)==null,s=skip?{c:'same',t:after==null?'حفظ می‌شود — ارسال نمی‌شود':'حفظ شد — ارسال نشد'}:calpstate(b,p,a),check=(!skip?' checked':'')+(editable&&!unavailable?'':' disabled');h+='<tr class="'+(skip?'calskip':'')+'"'+(s.c==='bad'&&after?' data-calissue="error"':'')+'>'+ (pick?'<td class="calpick"><label><input class="lutcalcheck" type="checkbox" data-cal-id="'+m.id+'"'+check+' onchange="lcaltoggle(this)"><span>اعمال</span></label></td>':'')+'<td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(b)+'</td><td>'+calpnum(p)+'</td><td>'+calpnum(a)+'</td><td><span class="lutst '+s.c+'">'+s.t+'</span></td></tr>';});
   h+='</table></div>';
  }else{
   h+='<div class="tw"><table class="lutt calparamtable"><tr><th>پارامتر / شناسه</th><th>واحد</th><th>مقدار واقعی روی برد</th></tr>';
@@ -3903,10 +3801,7 @@ function calParamTable(before,proposed,after,title,source,ids,selection,editable
 }
 function lpost(b,p,a,br,ar,ae){
  if(!ar)return {c:'bad',t:ae?'بازخوانی ناموفق':'در انتظار بازخوانی بعد'};
- /* [EN] Zero points remove the flash override and restore the compiled
-    table; removing old points is therefore a confirmed change.
-    [FA] صفرنقطه‌ای override فلش را حذف و جدول کامپایل‌شده را برمی‌گرداند؛
-    پس حذف نقطهٔ قبلی «تغییر کرد» است، نه «بدون تغییر». */
+
  if(!p){
   if(a)return {c:'bad',t:'نقطهٔ اضافه روی برد'};
   if(br&&b)return {c:'changed',t:'تغییر کرد و تأیید شد'};
@@ -3937,7 +3832,7 @@ function lrender(p,b,a){
   for(let i=0;i<m;i++){
    const old=lpair(b0,i),want=lpair(p0,i),now=lpair(a0,i),pre=!br?{c:'bad',t:'فعلی نامعلوم'}:(!old&&want?{c:'changed',t:'نقطهٔ جدید'}:(!want&&old?{c:'bad',t:'نقطهٔ فعلی اضافه'}:{c:leq(old,want)?'same':'diff',t:leq(old,want)?'بدون اختلاف':'اختلاف'}));
    const post=lpost(old,want,now,br,ar,a&&a.error);
-   h+='<tr><td>'+(i+1)+'</td><td>'+lval(old)+'</td><td>'+lval(want)+'</td><td>'+lval(now)+'</td><td><span class="lutst '+post.c+'">'+post.t+'</span>'+(br&&pre.c==='diff'?' <span class="luttag">(قبل: اختلاف)</span>':'')+'</td></tr>';
+   h+='<tr'+(post.c==='bad'&&(ar||(a&&a.error))?' data-calissue="error"':'')+'><td>'+(i+1)+'</td><td>'+lval(old)+'</td><td>'+lval(want)+'</td><td>'+lval(now)+'</td><td><span class="lutst '+post.c+'">'+post.t+'</span>'+(br&&pre.c==='diff'?' <span class="luttag">(قبل: اختلاف)</span>':'')+'</td></tr>';
   }
   h+='</table></div>';
  });
@@ -3965,7 +3860,7 @@ async function lread(){
 }
 function lmatch(a,p,target){if(!a||!a.ready)return false;const targetId=target===1||target===2?target:(p&&p.target===1||p&&p.target===2?p.target:0),rows=targetId===0?[0,1]:[targetId-1];for(const n of rows){const x=a.T[n],y=p.T[n];if(x.X.length!==y.X.length)return false;for(let i=0;i<x.X.length;i++){if(x.X[i]!==y.X[i]||x.Y[i]!==y.Y[i])return false;}}return true;}
 async function lreadnow(){
- if(LREAD_IN_PROGRESS||CAL_BUSY)return;
+ if(W.run||W.opening||LREAD_IN_PROGRESS||CAL_BUSY)return;
  CAL_BUSY=true;
  try{
   LSNT=0;LUT_LAST_PROPOSAL=null;LREAD_IN_PROGRESS=true;lupd();
@@ -3974,8 +3869,7 @@ async function lreadnow(){
   stxt('calst',r.ready?'✅ جدول فعال واقعی هر دو باتری در بالا نمایش داده شد.':'⚠ '+r.error+'؛ جدول فعلی قابل اتکا نیست.');
  }finally{LREAD_IN_PROGRESS=false;CAL_BUSY=false;lupd();}
 }
-/* [EN] Verify every calibration value from fresh telemetry after reset.
-   [FA] پس از ریست، همهٔ پارامترها با تله‌متری تازه دوباره تأیید شوند. */
+
 async function lcalread(p){
  const all=Array.isArray(p&&p.cal&&p.cal.ids)&&p.cal.ids.length?p.cal.ids:lcalids(p&&p.target),sel=p&&p.cal&&p.cal.selected||{},before=p&&p.calBefore,ids=all.filter(id=>sel[id]!==false||Number.isFinite(lcalboard(before,id))),want=id=>sel[id]===false?lcalboard(before,id):id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:id===3?p.cal.gain[1]:p.cal.voltage[id-4];
  for(let i=0;i<10;i++){
@@ -3995,13 +3889,13 @@ function lupd(){
  const b1=$('lbtnS1'),b2=$('lbtnS2'),ba=$('lbtnSA'),rr=$('lbtnR'),rd=$('lbtnRead');
  if(!b1&&!b2&&!ba)return;
  let why='';
- if(W&&W.run)why='داده‌برداری بنچ در جریان است';
+ if(W&&(W.run||W.opening))why='داده‌برداری بنچ در جریان است';
  else if(CAL_BUSY)why='یک تراکنش کالیبراسیون یا جدول در جریان است';
  else if(LUT_PENDING)why='یک جدول تغییر در انتظار انتخاب شماست؛ ابتدا اعمال یا لغو کنید';
  else if(!D||D.on!=1)why='لینک STM32 برقرار نیست';
  const disabled=!!why||LREAD_IN_PROGRESS;
  [b1,b2,ba,rd].forEach(b=>{if(b){b.disabled=disabled;b.title=why||'ابتدا جدول واقعی هر دو باتری خوانده می‌شود';}});
- if(rr){const off=!LSNT||LREAD_IN_PROGRESS;rr.disabled=off;rr.title=off?'بعد از commit و readback دقیق فعال می‌شود':'ریست و بررسی ماندگاری جدول';}}
+ if(rr){const off=!!why||!LSNT||LREAD_IN_PROGRESS;rr.disabled=off;rr.title=off?'بعد از commit و readback دقیق فعال می‌شود':'ریست و بررسی ماندگاری جدول';}}
 async function lapplycal(target,p){
  const ids=Array.isArray(p&&p.cal&&p.cal.ids)?p.cal.ids:lcalids(target);
  for(const id of ids){
@@ -4045,15 +3939,12 @@ async function lcommit(targetId,before,p){
  try{await lapplycal(targetId,p);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ پارامترهای کالیبراسیون '+targetText+' تأیید نشد؛ جدول LUT ارسال نشد: '+e);return;}
  stxt('calst','… جدول '+targetText+' در حال ارسال به برد است');
  let r;try{r=await req('/lut','POST',p.body);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⚠ ارسال جدول به ESP نرسید؛ پارامترهای کالیبراسیون ممکن است اعمال شده باشند، اما LUT تأیید نشده است.');return;}
- /* [EN] The sketch's own reason codes (plink_http.h), in Persian.
-    [FA] کدهای دلیل خود اسکچ، به فارسی. */
+
  const LE={len:'بدنهٔ ارسال خراب/بزرگ',n:'تعداد نقاط نامجاز',
   empty:'هر دو کانال خالی‌اند',pt:'بدنهٔ نقاط ناقص رسید',
   mono:'نقاط یک کانال صعودی نیستند',crc:'CRC بدنه پیدا نشد'};
  if(!r||r.ok!==1){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ ESP جدول را نپذیرفت — دلیل: '+((r&&r.e&&LE[r.e])||('کد ناشناختهٔ '+((r&&r.e)||'?')))+' · پارامترهای کالیبراسیون تأیید شده‌اند، اما جدول قبلی حفظ نشد/وضعیت جدول باید دوباره خوانده شود.');return;}
- /* [EN] Staged send: ESP releases one frame per ACK (no RX-ring overrun),
-    so wait up to 10 s and show the stage. [FA] ارسال گام‌به‌گام با تأیید هر
-    فریم؛ تا ۱۰ ثانیه صبر و نمایش مرحله. */
+
  const LSTG=['','شروع','نقاط باتری ۱','نقاط باتری ۲','ثبت در فلش'];
  let a=null;
  for(let i=0;i<40;i++){await sl(250);
@@ -4075,11 +3966,11 @@ async function lcommit(targetId,before,p){
  if(!lmatch(after,p,targetId)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/جریان بازخوانی‌شده از باتری انتخاب‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
  LUT_LAST_PROPOSAL=p;LSNT=1;lupd();
   stxt('calst','✅ '+targetText+'، پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
-  if(await pmConfirm('پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();
+  if(await pmConfirm('پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lreset();
 }
 async function lapplypending(){
  const tx=LUT_PENDING;
- if(!tx||CAL_BUSY)return;
+ if(!tx||W.run||W.opening||CAL_BUSY)return;
  LUT_PENDING=null;tx.p.cal.editable=false;LUTVIEW='';lview(tx.p,tx.before,null);
  CAL_BUSY=true;
  try{await lcommit(tx.target,tx.before,tx.p);}
@@ -4087,7 +3978,7 @@ async function lapplypending(){
 }
 async function lsend(target){
  const targetId=(target===1||target===2)?target:0;
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(W&&(W.run||W.opening)){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  if(LUT_PENDING){stxt('calst','⛔ ابتدا تغییرهای جدول پایین را اعمال یا لغو کنید.');return;}
  if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست.');return;}
@@ -4108,6 +3999,11 @@ async function lsend(target){
  }finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}
 }
 async function lrst(){
+ if(W.run||W.opening||CAL_BUSY||LREAD_IN_PROGRESS)return;
+ CAL_BUSY=true;LREAD_IN_PROGRESS=true;lupd();
+ try{await lreset();}finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}}
+/* [EN] Caller owns CAL_BUSY, including the automatic post-commit reset path. */
+async function lreset(){
  const p=LUT_LAST_PROPOSAL;
  if(!LSNT||!p){stxt('calst','⛔ اول یک ارسال و بازخوانی موفق لازم است.');return;}
  let r;try{r=await req('/lut/reset','POST');}catch(e){stxt('calst','⚠ درخواست ریست به ESP نرسید');return;}
@@ -4120,17 +4016,17 @@ async function lrst(){
  if(!lmatch(after,p,p.target)){stxt('calst','⛔ پس از ریست mismatch: جدول فعال باتری انتخاب‌شده با پیشنهاد یکی نیست؛ مقدارهای واقعی بالا دیده می‌شوند.');return;}
  LSNT=1;lupd();stxt('calst','✅ پس از ریست هم پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+(p.target===0?'هر دو باتری':'فقط باتری '+fa(p.target))+' با readback عددبه‌عدد تأیید شدند.');}
 
-/* ---------- ساخت تب‌ها ---------- */
-/* تب ۱: داده‌برداری بنچ */
-$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد، جدول همان ردیف را نشان می‌دهد و عدد مولتی‌متر را در فرم بالای جدول بنویس و <b>ثبت</b> کن — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
+
+
+$('p1').innerHTML=`<div class="cd"><div class="hd"><b>۱) داده‌برداری</b><details class="bhelp"><summary>${bi('info')} راهنما</summary><div class="ds">در هر مرحله جریان باتری روشن را ثبت کنید. تکرار هر ردیف حتی پس از پایان ممکن است. هیچ عددی بدون تأیید روی برد نوشته نمی‌شود.</div></details></div>
 <div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> SWEEP خودکار</label><label class="lb wmode-manual" id="wManual"><span class="t">فهرست duty دستی (%)</span><input type="text" id="wL" data-s class="dl" value="0,2,4,6,8,10,12,14,16,18,20"></label><span class="wmode-sweep" id="wSweep"><label class="lb"><span class="t">از</span><input type="number" id="wA" data-s value="0" min="0" max="50"></label><label class="lb"><span class="t">تا</span><input type="number" id="wB" data-s value="50" min="0" max="50"></label><label class="lb"><span class="t">گام</span><input type="number" id="wStep" data-s value="1" min="1" max="50"></label></span>${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
 <div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
-<div class="bctl"><button class="sb brun pbg" onclick="wStart()">شروع</button><button class="sb stp2 pbr wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF"></b></span><a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div>
+<div class="bctl"><button class="sb brun pbg" onclick="wStart()" aria-label="شروع داده‌برداری" title="شروع">${bi('play')} شروع</button><button class="sb stp2 pbr wstop" onclick="W.abort=true" aria-label="پایان داده‌برداری" title="پایان">${bi('stop')} پایان</button><span class="lb">فایل: <b id="wF"></b></span><button class="sb sb2 pbb ibtn" onclick="wdl()" aria-label="دانلود فایل بنچ" title="دانلود فایل">${bi('download')}</button><button class="sb stp2 pbr" onclick="wclear()" aria-label="پاک کردن فایل بنچ" title="پاک کردن فایل">${bi('trash')} پاک‌کردن</button></div>
 <div class="cm lb" id="wS0"></div><div id="wF0"></div><div id="wT"></div>
-<div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
-<div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» جریان signed واقعی همان باتری را مستقیم فیت می‌کند؛ جریان منفی یعنی باتری بار برد را تغذیه می‌کند و برای ناحیهٔ بدون شارژ صفر می‌شود، نه اینکه از همهٔ نقاط کم شود. مقدار فعلی برد و کیفیت برازش هم نمایش داده می‌شود. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۰ تا ۲۰٪) بگیرید.</div>
-<div class="lgrp">نمونه‌ها و محاسبه</div><div class="bqr2"><button class="sb sb2 pbg" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb sb2 pbb" onclick="calexp()">📥 ذخیرهٔ نمونه‌ها</button><label class="sb sb2 pbb" style="cursor:pointer">📤 بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2 pbr" type="button" onclick="calclr()" aria-label="پاک کردن نمونه‌ها" title="پاک کردن نمونه‌ها">🗑️ پاک کردن نمونه‌ها</button><button class="sb brun pbg" onclick="calapply()">اعمال فقط پارامترهای کالیبراسیون</button></div>
-<div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ «به‌روزرسانی» ابتدا گین/آفست‌های لازم را با readback همان شناسه تأیید می‌کند و سپس LUT همان تراکنش را می‌فرستد؛ جدول و تنظیمات باتری دیگر از readback واقعی حفظ می‌شود. «به‌روزرسانی هر دو» هر دو زنجیره را در یک تراکنش انجام می‌دهد. برای این مسیر دکمهٔ عمومی «اعمال همهٔ تغییرات» لازم نیست؛ دکمهٔ مستقل بالا فقط برای اعمال پارامترهای کالیبراسیون بدون ارسال جدول است.</div><div class="bqr2"><button class="sb sb2 pbb" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2 pbv" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb sb2 pbv" onclick="calcopy()">کپی کد</button><button class="sb sb2 pbv" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
+<div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <button class="sb sb2 pbb ibtn" onclick="wdl()" aria-label="دانلود فایل بنچ" title="دانلود benchlog.csv">${bi('download')}</button> <button class="sb stp2 pbr" onclick="wclear()" aria-label="پاک کردن فایل بنچ" title="پاک کردن فایل">${bi('trash')} پاک‌کردن</button></div></div><div class="cd"><div class="hd"><b>۲) محاسبه و جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
+<details class="bhelp"><summary>${bi('info')} راهنما</summary><div class="ds">جریان منفی یعنی تخلیهٔ باتری و در ناحیهٔ بدون شارژ صفر حساب می‌شود. حداقل ۴ مرحله با duty پخش‌شده بگیرید؛ کیفیت و مقدار فعلی برد هم نمایش داده می‌شود.</div></details>
+<div class="lgrp">نمونه‌ها و محاسبه</div><details class="bhelp" id="benchIconHelp"><summary>${bi('info')} معنی آیکون‌ها</summary><div class="ds">${bi('calc')} محاسبه · ${bi('save')} ذخیره · ${bi('upload')} بازخوانی · ${bi('read')} خواندن برد · ${bi('code')} ساخت کد · ${bi('copy')} کپی · ${bi('download')} دانلود</div></details><div class="bqr2"><button class="sb sb2 pbg ibtn" onclick="calrun()" aria-label="محاسبه از نمونه‌ها" title="محاسبه از نمونه‌ها">${bi('calc')}</button><button class="sb sb2 pbb ibtn" onclick="calexp()" aria-label="ذخیرهٔ نمونه‌ها" title="📥 ذخیرهٔ نمونه‌ها">${bi('save')}</button><label class="sb sb2 pbb ibtn" role="button" tabindex="0" aria-label="بازخوانی نمونه‌ها" title="📤 بازخوانی نمونه‌ها" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.querySelector('input').click();}">${bi('upload')}<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="const f=this.files[0];this.value='';if(f)calimp(f)"></label><button class="sb stp2 pbr" type="button" onclick="calclr()" aria-label="پاک کردن نمونه‌ها" title="🗑️ پاک کردن نمونه‌ها">${bi('trash')} حذف</button><button class="sb brun pbg" onclick="calapply()" aria-label="اعمال فقط پارامترهای کالیبراسیون روی برد" title="اعمال فقط پارامترهای کالیبراسیون">${bi('check')} اعمال پارامترها</button></div>
+<div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">ارسال جدول به برد · سقف ۲۴ نقطه</div><details class="bhelp"><summary>${bi('info')} راهنما</summary><div class="ds">ابتدا جدول واقعی برد را بخوانید. ارسال هر باتری با تأیید گین/آفست و بازخوانی عددبه‌عدد انجام می‌شود؛ باتری دیگر حفظ می‌شود. «هر دو» هر دو جدول را می‌فرستد. «اعمال پارامترها» جدول را ارسال نمی‌کند.</div></details><div class="bqr2"><button class="sb sb2 pbb ibtn" id="lbtnRead" onclick="lreadnow()" disabled aria-label="خواندن جدول فعلی از برد" title="↻ خواندن جدول فعلی از برد">${bi('read')}</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled aria-label="به‌روزرسانی جدول باتری ۱ روی برد" title="⇪ به‌روزرسانی باتری ۱">${bi('upload')} باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled aria-label="به‌روزرسانی جدول باتری ۲ روی برد" title="⇪ به‌روزرسانی باتری ۲">${bi('upload')} باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled aria-label="به‌روزرسانی جدول هر دو باتری روی برد" title="⇪ به‌روزرسانی هر دو">${bi('upload')} هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled aria-label="ریست برد و بازخوانی دوباره" title="↻ ریست و بازخوانی دوباره">${bi('repeat')} ریست</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="calpoints"></div><div id="lutcmp"></div><div class="lgrp">کد میکرو · calibration.h</div><div class="bqr2"><button class="sb sb2 pbv ibtn" onclick="calcode()" aria-label="ساخت کد برای میکرو" title="ساخت کد برای میکرو">${bi('code')}</button><button class="sb sb2 pbv ibtn" onclick="calcopy()" aria-label="کپی کد" title="کپی کد">${bi('copy')}</button><button class="sb sb2 pbv ibtn" onclick="calcdl()" aria-label="دانلود کد calibration_generated.h" title="دانلود calibration_generated.h">${bi('download')}</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">${bi('close')}</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
 `;
 function wmode(){const s=$('wSw')&&$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB'),S=$('wStep'),manual=$('wManual'),sweep=$('wSweep');
  if(L)L.disabled=!!s;if(A)A.disabled=!s;if(B)B.disabled=!s;if(S)S.disabled=!s;
@@ -4737,12 +4633,12 @@ async function evtsnap(){
   const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
 }
 function evtKb(b){return evtFa(Math.max(0,Math.round((+b||0)/102.4)/10))+' KB';}
-async function evtfs(toggle){
+async function evtfs(toggle,offset=0){
   const box=$('evtfs');if(!box)return;
   if(toggle&&box.style.display!=='none'){box.style.display='none';return;}
   box.style.display='block';box.innerHTML='<span class="lb">در حال خواندن حافظهٔ ESP…</span>';
   try{
-    const r=await evtHttp('/evt/fs','GET',4000);const j=await r.json();
+    const r=await evtHttp('/evt/fs?offset='+Math.max(0,Math.floor(offset||0)),'GET',4000);const j=await r.json();
     const files=Array.isArray(j.files)?j.files:[];
     const oldCnt=files.filter(f=>!f.own).length;
     const tot=+j.total||0,used=+j.used||+j.fileBytes||0,free=Math.max(0,tot-used);
@@ -4753,20 +4649,32 @@ async function evtfs(toggle){
     if(!j.fs){
       h+='<div class="lb" style="color:#ffb4b4;margin-top:4px">'+(j.mountFail?'فایل‌سیستم سوار نشد (احتمالاً دادهٔ ناسازگار از برنامه‌های قبلی روی ESP است) — با زدن «فرمت کامل حافظهٔ ESP» حافظه پاک و آماده می‌شود.':'فایل‌سیستم فلش غیرفعال است.')+'</div>';
     }else{
-      h+='<div class="lb" style="margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFa(files.length+(+j.more||0))+'</b></div>';
+      h+='<div class="lb" style="margin-top:4px">کل حافظه: <b>'+evtKb(tot)+'</b> · پرشده: <b>'+evtKb(used)+'</b> · آزاد: <b>'+evtKb(free)+'</b> · تعداد فایل‌ها: <b>'+evtFa((+j.offset||0)+files.length+(+j.more||0))+'</b></div>';
       if(!files.length)h+='<div class="lb" style="margin-top:4px">هیچ فایلی روی حافظهٔ فلش نیست.</div>';
       else{
         h+='<div style="margin-top:6px;max-height:160px;overflow:auto;border-top:1px solid var(--ln);padding-top:4px">';
         files.forEach(f=>{
           const tag=f.own?'<span class="lb" style="color:#9ff0c0">فایل همین برنامه</span>':'<b style="color:#ffe08a">جامانده از برنامهٔ قبلی</b>';
-          h+='<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed rgba(255,255,255,.06);padding:2px 0"><span dir="ltr">'+esc(f.name)+'</span><span>'+evtKb(f.size)+' · '+tag+'</span></div>';
+          h+='<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed rgba(255,255,255,.06);padding:2px 0"><span dir="ltr">'+esc(f.name)+'</span><span>'+evtKb(f.size)+' · '+tag+' <button class="sb evticon evttrash" type="button" title="حذف" aria-label="حذف فایل" data-file="'+esc(encodeURIComponent(f.name))+'" onclick="evtdelete(this.dataset.file)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button></span></div>';
         });
-        if(+j.more>0)h+='<div class="lb">+ '+evtFa(j.more)+' فایل دیگر</div>';
+        const at=+j.offset||0;
+        if(at>0)h+='<button class="sb" type="button" onclick="evtfs(0,'+Math.max(0,at-24)+')">فایل‌های قبلی</button> ';
+        if(+j.more>0)h+='<button class="sb" type="button" onclick="evtfs(0,'+(at+files.length)+')">فایل‌های بعدی ('+evtFa(j.more)+')</button>';
         h+='</div>';
       }
     }
     box.innerHTML=h;
   }catch(e){box.innerHTML='<span class="lb" style="color:#ffb4b4">خواندن وضعیت حافظهٔ ESP ناموفق بود.</span>';}
+}
+async function evtdelete(encoded){
+  const name=decodeURIComponent(encoded);
+  if(!await pmConfirm('فایل «'+name+'» برای همیشه پاک شود؟ اگر فایل فعال برنامه باشد ممکن است هنگام کار دوباره ساخته شود. حذف فایل سهم حافظه، سهم را به ۱۰۰٪ برمی‌گرداند.'))return;
+  try{
+    const r=await evtHttp('/evt/clean?name='+encodeURIComponent(name),'POST',5000);
+    const j=await r.json();
+    if($('evtst'))$('evtst').textContent=(r.ok&&j.ok)?('فایل حذف شد: '+name):('حذف فایل انجام نشد: '+name);
+  }catch(e){if($('evtst'))$('evtst').textContent='حذف فایل ناموفق بود';}
+  await evtfs(0);await evtDays();await evtfetch(1);await evtPctLoad();
 }
 async function evtclean(){
   if(!confirm('فقط فایل‌های جامانده از برنامه‌های قبلی پاک شوند؟ تاریخچه و فایل‌های برنامهٔ فعلی دست‌نخورده می‌مانند.'))return;
@@ -4828,23 +4736,12 @@ async function evtDays(){
     return days;
   }catch(e){return [];}
 }
-function evtdl(){
-  const raw=($('evtday')&&$('evtday').value.trim())||'';
-  const a=document.createElement('a');
-  a.href='/evt/dl'+(raw?'?day='+encodeURIComponent(raw):'');
-  a.download='تاریخچه-'+evtDaySh(raw||evtToday())+'.csv';a.click();
-}
+function evtdl(){const raw=($('evtday')&&$('evtday').value.trim())||'';return filesave('تاریخچه-'+evtDaySh(raw||evtToday())+'.csv','/evt/dl'+(raw?'?day='+encodeURIComponent(raw):''));}
 async function evtdlall(){
-  const days=await evtDays();
-  if(!days.length){alert('تاریخچه‌ای برای دانلود نیست.');return;}
-  let out='';
-  for(const d of days){
-    const r=await evtHttp('/evt/dl?day='+d,'GET',5000);
-    out+='# '+evtDayFa(d)+'\n'+(await r.text());
-  }
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([out],{type:'text/csv;charset=utf-8'}));
-  a.download='تاریخچه-کامل.csv';a.click();URL.revokeObjectURL(a.href);
+ return filesave('تاریخچه-کامل.csv',async()=>{
+ const days=await evtDays();if(!days.length)throw new Error('تاریخچه‌ای برای دانلود نیست.');let out='';
+ for(const d of days){const r=await evtHttp('/evt/dl?day='+d,'GET',5000);if(!r.ok)throw new Error('دانلود تاریخچه کامل نشد.');out+='# '+evtDayFa(d)+'\n'+await r.text();}return out;
+ },'text/csv;charset=utf-8').catch(e=>pmAlert(String(e.message||e)));
 }
 async function evtclr(){
   if(!confirm('همهٔ تاریخچهٔ ذخیره‌شده روی پنل پاک شود؟ این کار برگشت‌پذیر نیست.'))return;
