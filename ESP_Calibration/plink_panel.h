@@ -450,7 +450,7 @@ header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 6d540fb</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2c7ab4b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -3446,15 +3446,28 @@ function calsmp(){const b=$('calsl');if(!b)return;
  if(!CALS.length){b.innerHTML='<span class="lb">هنوز نمونه‌ای ثبت نشده است.</span>';calmark();return;}
  const selected=CALS.filter(z=>z.use!==0).length,all=selected===CALS.length;
  b.innerHTML='<div class="calselbar"><label><input type="checkbox" id="calall"'+(all?' checked':'')+' onchange="calpick(this.checked)">انتخاب همهٔ نمونه‌ها</label><span class="lb" id="calallCount">'+selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده</span></div><div class="tw"><table class="bt2 cals"><tr><th>استفاده</th><th>#</th><th>سناریو</th><th>duty ٪</th>'+
-  '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th><th>بررسی</th></tr>'+
-  CALS.map((z,i)=>'<tr data-csample="'+i+'"><td><input type="checkbox" id="calu'+i+'"'+(z.use===0?'':' checked')+' onchange="caluse('+i+',this.checked)"></td>'+
+  '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th><th>بررسی</th><th>حذف</th></tr>'+
+  CALS.map((z,i)=>'<tr data-csample="'+i+'" onclick="calrow(event,this)" style="cursor:pointer"><td><input type="checkbox" id="calu'+i+'" aria-label="استفاده از نمونهٔ '+(i+1)+'"'+(z.use===0?'':' checked')+' onchange="caluse(+this.closest(\'[data-csample]\').dataset.csample,this.checked)"></td>'+
    '<td>'+(i+1)+'</td><td>'+esc(WSN[z.sc]||z.sc||'')+'</td><td dir="ltr">'+(z.d==null?'':esc(z.d))+'</td>'+
    '<td dir="ltr">'+(z.r1==null?'':Math.round(z.r1))+'</td><td dir="ltr">'+(z.b1==null?'':Math.round(z.b1))+'</td>'+
-   '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td><td data-calhint></td></tr>').join('')+'</table></div>';calallSync();calmark();}
+   '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td><td data-calhint></td><td><button type="button" class="sb pbr" aria-label="حذف نمونه" onclick="caldelete(+this.closest(\'[data-csample]\').dataset.csample)">'+bi('trash')+'</button></td></tr>').join('')+'</table></div>';calallSync();calmark();}
 function calallSync(){const e=$('calall');if(!e)return;const selected=CALS.filter(z=>z.use!==0).length;e.checked=selected===CALS.length;e.indeterminate=selected>0&&selected<CALS.length;const n=$('calallCount');if(n)n.textContent=selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده';}
-function calchanged(){calinvalidate(true);calsave();calsmp();if(CAL_AUTO)calrun();else calchk();}
-function caluse(i,on){if(CAL_BUSY||W.run||W.opening){calsmp();return;}if(CALS[i]){CALS[i].use=on?1:0;calchanged();}}
-function calpick(on){if(CAL_BUSY||W.run||W.opening){calsmp();return;}CALS.forEach(z=>z.use=on?1:0);calchanged();}
+/* [EN] Selection patches existing rows; only explicit capture/import rebuilds the sample list. */
+function calsync(){
+ document.querySelectorAll('#calsl [data-csample]').forEach((row,i)=>{row.dataset.csample=i;row.children[1].textContent=i+1;const box=row.querySelector('input');box.id='calu'+i;box.checked=CALS[i].use!==0;box.setAttribute('aria-label','استفاده از نمونهٔ '+(i+1));});
+ calallSync();
+}
+function calchanged(){calinvalidate(true);calsave();calsync();if(CAL_AUTO)calrun();else calchk();}
+function calrow(event,row){if(event.target.closest('input,button,a,label'))return;const i=+row.dataset.csample;if(CALS[i])caluse(i,CALS[i].use===0);}
+function caluse(i,on){if(CAL_BUSY||W.run||W.opening){calsync();return;}if(CALS[i]){CALS[i].use=on?1:0;calchanged();}}
+function calpick(on){if(CAL_BUSY||W.run||W.opening){calsync();return;}CALS.forEach(z=>z.use=on?1:0);calchanged();}
+function caldelete(i){
+ if(CAL_BUSY||W.run||W.opening||!Number.isInteger(i)||!CALS[i])return;
+ const sample=CALS[i],row=document.querySelector('#calsl [data-csample="'+i+'"]');
+ CALS.splice(i,1);if(row)row.remove();
+ (W.K||[]).forEach(k=>{if(k.savedSample===sample){delete k.savedSample;delete k.sample;}else if(k.savedSample)k.sample=CALS.indexOf(k.savedSample);});
+ caln();calchanged();
+}
 function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0)&&(!n||!CALCUT[n-1].includes(Math.round(z[n===1?'r1':'r2']))));}
 
 function caltargets(){

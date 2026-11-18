@@ -45,6 +45,7 @@ if command -v node >/dev/null 2>&1; then
     node "${SCRIPT_DIRECTORY}/host_test_panel_click.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_bench_repeat.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_cal_point_edit.js" || exit 1
+    node "${SCRIPT_DIRECTORY}/host_test_sample_rows.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_bench_storage.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_cal_revision.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_restore_audit.js" || exit 1

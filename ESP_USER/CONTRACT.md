@@ -27,7 +27,6 @@
     "POST /latch/reset",
     "POST /login",
     "POST /logout",
-    "POST /setpass",
     "POST /setwifi",
     "POST /time",
     "POST /wifi"
@@ -72,7 +71,6 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/time` | POST | Admin session; `ts`, optional `tz` | JSON result |
 | `/login` | POST | `user`, `pass` | JSON result with session `token`, plus HttpOnly session cookie |
 | `/logout` | POST | Session cookie or `X-Admin-Token` | JSON result; invalidates session and expires cookie |
-| `/setpass` | POST | Admin session; `old`, `new`, optional `new2` | JSON action result for admin password |
 | `/wifi` | GET / POST | GET public; POST admin session with `ssid`, `pass` | GET only escaped `ssid` and `passSet`, never password; POST action result |
 | `/setwifi` | POST | Admin session; `ssid`, `pass` | JSON action result |
 | `/clear` | POST | Admin session; optional `type`: `charge`, `charts`, `diag`, or all | JSON action result |
@@ -103,7 +101,7 @@ the default admin account on the next reboot. This requires explicit UI confirma
 The application's storage is flat (root files); directories and traversal paths
 are not accepted. Listing never returns file contents or Wi-Fi passwords.
 
-Credential updates (`/setpass`, `/wifi`, `/setwifi`) stage encrypted data in
+Wi-Fi updates (`/wifi`, `/setwifi`) and retained account saves stage encrypted data in
 `/users.json.tmp` or `/wifi.json.tmp`, verify the closed file by reading it, then
 replace the committed file with LittleFS rename. A failed update keeps previous
 RAM credentials and the committed file, responds with `ok:0, e:"storage"` (500;
@@ -112,7 +110,7 @@ Successful save does not invalidate the admin session. An incomplete temporary
 file is not a boot credential source. Crypto nonces use the full unsigned 32-bit
 range, not Arduino's signed `String::toInt` range.
 
-LittleFS files: `/wifi.json`, `/charts.bin`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
+LittleFS files: `/wifi.json`, `/charts.bin`, `/charts.jrn`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
 The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
 
@@ -123,3 +121,155 @@ bash ESP_USER/Tester/run_simple_tests.sh
 ```
 
 Browser time synchronization is automatic on page load, resume/focus, reconnect and every minute; failed requests retry after five seconds. Only time sync is public; other mutations remain admin-only. Browser time is sent to the board and stale diagnostics cannot replace it while awaiting a matching board clock.
+
+## Verified clock, battery recovery and missing-time incident
+
+`/time.json` stores `ts`, `tz`, the matched `bw`/`bu` wall/STM32-uptime pair,
+`rk` (known reset identity), `rc` (existing STM32 reset counter), `fw` and `beat`.
+Disk time is unconfirmed after every boot. There is no eight-second fallback.
+An existing DIAG chunk-zero reply must confirm the saved reset count and a
+non-decreased uptime before the pair can reconstruct ESP-off time. HELLO alone
+cannot confirm reset identity; once confirmed, HELLO/DIAG can advance the clock.
+Changed reset counters or decreased uptime reject the old pair, including a
+plausible retained board epoch belonging to the old uptime base. A currently
+running, trusted ESP clock can re-anchor across a board reset. Phone time received
+before the first reply does not invent an uptime; the next diagnostic pairs it.
+Legacy pairs without reset identity require a fresh sync. No STM32 code, packet
+length, message, telemetry field or byte offset is added or changed.
+
+The real loop continues existing HELLO (2 s) and DIAG requests (10 s) indefinitely,
+without a browser. A delayed valid reply corrects the clock immediately. While
+waiting, no chart sample, dated log or ESP-derived fault/power/charge-history
+record uses disk time. Live values and previously stored records remain visible;
+aggregate counters may still be saved. `/t` reports `timeOk=0, bt=0, boardTime=0`;
+`/diag` reports `timeOk=0, panelTime=0` while keeping the raw board response.
+Unconfirmed disk time is never sent to STM32 or advanced by periodic saves. The
+firmware-stamp writer preserves the committed disk timestamp while unconfirmed.
+No historical sample is synthesized to fill the gap. Existing change masks can
+coalesce while waiting and describe observed state on recovery, not every event
+in the missing interval. Hourly/500-mV triggers and shared summaries are unchanged.
+
+At 40,000 boot milliseconds without a trusted clock, retain one unresolved incident
+in `/clock_gap.json` (`note=7, reason=clock_unavailable`). The fixed small record is
+written to `.tmp`, read back and atomically renamed. Failed attempts retry at most
+once per five seconds; a committed marker is not continually rewritten. RAM holds
+it when storage is unavailable, with no claim of surviving power loss in that case.
+A committed marker survives ESP resets. The current `/evt` view and all-days CSV
+include a synthetic `epoch=0, note=7` warning while unresolved, not a dated sample;
+explicit unrelated historical-day views remain unchanged. The panel renders only
+the short Persian warning, not extra technical detail or a new card.
+
+After clock recovery, append and read back one dated `note=7` row on the correct
+day, then remove the pending marker. This row timestamps the recovery report,
+not an invented loss start/end time. It may bypass the normal day cap like a
+manual snapshot; normal capacity and retention constants are unchanged. A write
+failure retains the marker and does not repeatedly fill the fallback RAM ring.
+A failed marker removal retries without another append during that process;
+a power cut between append and removal can repeat the report after reboot
+(at-least-once reporting). Explicit log clear/full format clear pending warning
+state too. Existing account, session and Wi-Fi preservation is unchanged.
+
+Clock writes retain their five-minute/zone-change throttle and immediate newly
+acquired-pair exception, using verified temporary replacement. A restored history
+suppresses quiet boot rows, not real changes, snapshots or updates. Heartbeats use
+wall time and the newest actual row, searching past empty files. The 540-wake,
+97,258-board-second fixture still has exactly 28 rows across three dates.
+
+Limits: neither total power-off time nor a missing initial clock can be inferred.
+The existing STM32 reset counter is not a guaranteed unique boot nonce; if a reset
+reuses the same persisted counter and its new uptime has overtaken the saved pair,
+the existing protocol cannot always distinguish it from uninterrupted operation.
+No changes to that firmware are made here. A simulator restart also restarts its
+board model; persistence tests separately feed a continuing board. Host/simulator
+checks are not a physical ESP flash/power-cycle or target-RAM validation.
+
+## Immediate chart persistence (supersedes daily snapshot scheduling)
+
+Fresh observations are considered on the existing 5-second chart tick only after
+the boot-clock gate. Accept the first observation, otherwise elapsed wall time
+>=3600 s OR absolute input/pack change >=500 mV from the last committed sample.
+No independent percentage trigger, per-boot trigger or timer reset is used.
+A failed write retains one pending observation and retries before accepting more;
+it never advances the committed trigger baseline or invents a successful sample.
+Stale/no-board data remain zero in the transient live ring, not in persisted ranges.
+
+A shared accepted source feeds a 288-point/24-hour bounded daily ring; voltage
+event bursts may reach capacity before a full day. The 28 six-hour UTC buckets,
+30 daily UTC buckets and 90 daily UTC buckets hold sample-weighted averages of
+that same source, including the in-progress bucket. These are neither additional
+measurements nor time-weighted averages/minimum-maximum envelopes. Bucket sums
+and counts persist so reboot cannot reset the average. Old summaries survive
+expiration of source points. Persistent ring indices/counts and HTTP serialization
+are 16-bit; public chart JSON shape remains unchanged.
+
+`/charts.jrn` has CRC16-protected full/delta records: A6 C4, one-byte payload size,
+one-byte delta flag, five unsigned/zig-zag varints (sequence, epoch, pct, vin,
+vpack), little-endian CRC over size/flag/payload. Full frames restart the delta
+chain at least every 16 records. Each append is closed and read-verified before
+RAM publication. Torn tails are discarded to the verified prefix; replay stops
+at the first invalid frame and never decodes a delta against a missing base.
+
+The journal is bounded at 1024 bytes. Before exhaustion, version-2 CHTD snapshots
+store sequence, four delta-varint rings and three active sum/count buckets, with
+CRC16. Snapshot size is bounded at 9216 bytes. A second validation pass publishes
+all ranges together. Only a complete staged/read-verified snapshot may atomically
+replace `/charts.bin`; only then may the old journal be removed. Sequence numbers
+skip already-compacted frames after a crash between rename and journal removal.
+The temporary snapshot is never a boot source. Version-1 snapshots are not imported.
+
+Flash-space failures retain committed files and the pending observation. The
+current pending observation itself is volatile until a write succeeds; physically
+unpowered intervals cannot be measured. Clearing charts/format resets rings,
+active buckets, journal cursors and pending samples. Ordinary accepted samples
+append rather than rewrite all history; temporary space for the snapshot is
+required during compaction. Log retention and STM32 firmware are unchanged.
+
+## Retained administrator credential
+
+The existing valid encrypted administrator credential is loaded unchanged.
+No password setter or `/setpass` route is compiled; direct requests return 404,
+including authenticated requests. The settings page has no password-edit form;
+the hidden login and its current-password input remain. Login, logout, lockout,
+single-session ownership, idle renewal and Wi-Fi password editing are unchanged.
+There is no delayed no-login recovery, recovery-marker write or boot-time reset.
+A legacy `/boot_no_login.json` is inert and never consulted for authentication.
+The telemetry `recovery` key remains a constant zero for response compatibility.
+Format persists the current account and keeps the current session. Empty-storage
+initial credentials and existing missing/corrupt-user-file fallback behavior are
+unchanged; explicit deletion of the account file is still an admin-only operation.
+There is no panel password reset/change workflow in this version.
+
+## Shared 64 KiB storage policy (supersedes earlier retention budgets)
+The physical envelope is min(reported partition capacity, 65536 bytes), not a
+new flash partition or a RAM allocation. Committed payload ceilings are 28672
+log bytes, 10240 chart bytes, 6144 charge/diagnostic bytes and 4096 settings bytes;
+16384 bytes are budgeted for filesystem overhead and temporary/COW writes.
+These ceilings are not guaranteed reservations: actual LittleFS allocation wins
+and may reclaim logs before their payload ceiling is reached. Space admission
+checks allocated bytes, rounded staging space and a spare erase block before
+all snapshot writers and chart appends. Only oldest log days are auto-deleted;
+credentials, Wi-Fi, clock and other settings are never reclaim candidates.
+A writer protects its destination day, but a sole previous day can be reclaimed
+before creating a new day. Reclaim is bounded to four days per call; a failed
+reclaim/write returns failure and keeps dirty/pending state for retry.
+Daily log files are bounded at 4096 bytes. Before overflow, an atomic verified
+rewrite keeps the newest half of the day's rows, restarting a full codec chain.
+Verification compares every decoded field against the original suffix before
+rename. Old committed data survive short writes, readback or rename failures.
+This is retention deletion, not a promise that every old event remains.
+Parameters, charge and diagnostic snapshots now use the same staged byte-verified
+rename path as clock and credentials. Dirty flags clear only on success.
+History clear returns success only after an empty snapshot is committed; chart
+clear advances a checkpoint past the old journal so a failed journal deletion
+cannot resurrect data. New samples resume from a new chain after reboot.
+Clear-all is per-class, not a cross-file atomic transaction; partial success
+returns an error and may be retried. Unknown selectors return 400. Log clear
+rescans remaining files and reports failed deletion rather than unconditional ok.
+Successful physical format still clears RAM even if the following remount fails.
+The 3600-second OR 500-mV chart trigger, capacities, verified clock recovery,
+40-second warning, authentication policy and STM32 protocol are unchanged.
+Normal 90-day virtual-NOR tests exercise allocation, eviction and continued new
+writes; they do not imply 90 retained days. Fixed per-day files remain separate.
+Read-only/corrupt storage or unreclaimable non-log occupancy can still prevent
+progress; failure is visible and committed snapshots are not destroyed.
+See STORAGE_64K.md for the measured workloads and test commands.

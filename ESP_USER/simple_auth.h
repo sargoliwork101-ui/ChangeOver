@@ -418,22 +418,7 @@ static bool func__Simple_AuthHasOldHash(const String &string__content)
  */
 static bool func__Simple_CredentialWrite(const char *char__ptr_path, const String &string__data)
 {
-    if (!BOOL__G__FsOk || string__data.length() == 0u) return false;
-    String string__temp = String(char__ptr_path) + ".tmp";
-    File file__out = LittleFS.open(string__temp.c_str(), "w");
-    if (!file__out) return false;
-    bool bool__ok = (file__out.print(string__data) == string__data.length());
-    file__out.close();
-    if (bool__ok)
-    {
-        File file__check = LittleFS.open(string__temp.c_str(), "r");
-        bool__ok = file__check && (file__check.readString() == string__data);
-        file__check.close();
-    }
-    /* Never unlink the committed file: LittleFS rename replaces it atomically. */
-    if (bool__ok) bool__ok = LittleFS.rename(string__temp.c_str(), char__ptr_path);
-    if (!bool__ok) (void)LittleFS.remove(string__temp.c_str());
-    return bool__ok;
+    return func__Simple_StorageWrite(char__ptr_path, string__data);
 }
 static bool func__Simple_AuthSave(void)
 {
@@ -477,92 +462,9 @@ static bool func__Simple_VerifyUserPass(const char *char__ptr_name, const char *
     char char__hash[65];
     if (int32_t__index < 0) return false;
     if (char__ptr_pass == NULL) return false;
-    /* The old 32-bit hash is gone: a file from the old firmware never matches,
-       the owner resets the password through the recovery flow instead. */
+    /* Stored credentials are verified without providing a password mutation path. */
     func__Simple_HashPass(char__ptr_pass, char__hash);
     return (strcmp(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__hash) == 0);
-}
-static bool func__Simple_SetUserPass(const char *char__ptr_name, const char *char__ptr_newPass)
-{
-    int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
-    char char__hash[65];
-    if (int32_t__index < 0 || !BOOL__G__FsOk) return false;
-    if (char__ptr_newPass == NULL) return false;
-    if (strlen(char__ptr_newPass) < SIMPLE_USER_PASS_MIN) return false;
-    if (strlen(char__ptr_newPass) > SIMPLE_USER_PASS_MAX) return false;
-    if (func__Simple_VerifyUserPass(char__ptr_name, char__ptr_newPass)) return true;
-    char char__oldHash[65];
-    (void)memcpy(char__oldHash, SIMPLE_USER_T__G__Users[int32_t__index].passHash, sizeof(char__oldHash));
-    func__Simple_HashPass(char__ptr_newPass, char__hash);
-    (void)strncpy(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__hash, 64);
-    SIMPLE_USER_T__G__Users[int32_t__index].passHash[64] = '\0';
-    if (!func__Simple_AuthSave())
-    {
-        (void)memcpy(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__oldHash, sizeof(char__oldHash));
-        return false;
-    }
-    return true;
-}
-static bool func__Simple_AuthIsDefault(void)
-{
-    uint8_t uint8_t__i;
-    uint8_t uint8_t__activeCount = 0u;
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
-    {
-        if (SIMPLE_USER_T__G__Users[uint8_t__i].active)
-        {
-            uint8_t__activeCount++;
-        }
-    }
-    if (uint8_t__activeCount != 1u) return false;
-    if (SIMPLE_USER_T__G__Users[0].role != 1u) return false;
-    return func__Simple_VerifyUserPass("admin", "admin");
-}
-static bool func__Simple_RecoveryFlagExists(void)
-{
-    if (!BOOL__G__FsOk) return false;
-    return LittleFS.exists(SIMPLE_RECOVERY_FILE);
-}
-static void func__Simple_RecoveryArm(void)
-{
-    if (!BOOL__G__FsOk) return;
-    if (BOOL__G__RecoveryArmed) return;
-    if (func__Simple_AuthIsDefault())
-    {
-        BOOL__G__RecoveryArmed = true;
-        return;
-    }
-    if (func__Simple_RecoveryFlagExists())
-    {
-        BOOL__G__RecoveryArmed = true;
-        return;
-    }
-    if ((uint32_t)millis() - UINT32_T__G__LastRecoveryTryMs < SIMPLE_RECOVERY_RETRY_MS) return;
-    UINT32_T__G__LastRecoveryTryMs = (uint32_t)millis();
-    File file__f = LittleFS.open(SIMPLE_RECOVERY_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"noLogin\":1,\"up\":");
-    file__f.print((uint32_t)(millis() / 1000u));
-    file__f.print("}");
-    file__f.close();
-    BOOL__G__RecoveryArmed = true;
-}
-static void func__Simple_RecoveryDisarm(void)
-{
-    if (!BOOL__G__FsOk) return;
-    if (!func__Simple_RecoveryFlagExists()) return;
-    LittleFS.remove(SIMPLE_RECOVERY_FILE);
-}
-static void func__Simple_RecoveryApply(void)
-{
-    if (!func__Simple_RecoveryFlagExists()) return;
-    LittleFS.remove(SIMPLE_RECOVERY_FILE);
-    if (!func__Simple_AuthIsDefault())
-    {
-        func__Simple_AuthDefaults();
-        func__Simple_AuthSave();
-        BOOL__G__RecoveryHappened = true;
-    }
 }
 static void func__Simple_AuthLoad(void)
 {
@@ -784,8 +686,6 @@ static int32_t func__Simple_AuthLogin(const char *char__ptr_name, const char *ch
     UINT8_T__G__CurrentRole = uint8_t__newRole;
     UINT32_T__G__SessionStartMs = (uint32_t)millis();
     func__Simple_SessionTokenMake(CHAR__G__SessionToken);
-    BOOL__G__SessionHadLogin = true;
-    func__Simple_RecoveryDisarm();
     return 1;
 }
 static bool func__Simple_IsAdmin(void)

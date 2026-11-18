@@ -64,31 +64,15 @@ int main(void)
                          (got == want) ? "ok" : "WRONG");
         }
     }
-    /* 3) Power cycle without login resets every account. */
-    LittleFS.format();
-    BOOL__G__FsOk = LittleFS.begin();
-    func__Simple_CryptoKeyInit();
+    /* 3) An obsolete recovery marker cannot reset retained credentials. */
+    LittleFS.format();BOOL__G__FsOk=LittleFS.begin();func__Simple_CryptoKeyInit();func__Simple_AuthDefaults();
+    func__Simple_HashPass("MyStrongPass1", SIMPLE_USER_T__G__Users[0].passHash);func__Simple_AuthSave();
+    {File legacy=LittleFS.open("/boot_no_login.json","w");legacy.print("1");legacy.close();}
     func__Simple_AuthLoad();
-    (void)printf("[3] fresh flash: admin/admin valid = %d\n",
-                 func__Simple_VerifyUserPass("admin", "admin") ? 1 : 0);
-    (void)func__Simple_SetUserPass("admin", "MyStrongPass1");
-    (void)printf("[3] owner sets MyStrongPass1, valid = %d\n",
-                 func__Simple_VerifyUserPass("admin", "MyStrongPass1") ? 1 : 0);
-    UINT32_T__G__LastRecoveryTryMs = (uint32_t)millis() - 1000000u;
-    func__Simple_RecoveryArm();
-    (void)printf("[3] boot with no login for 10 s -> recovery flag = %d\n",
-                 func__Simple_RecoveryFlagExists() ? 1 : 0);
-    func__Simple_AuthLoad();
-    func__Simple_RecoveryApply();
-    {
-        int adminAgain = func__Simple_VerifyUserPass("admin", "admin") ? 1 : 0;
-        int strongStill = func__Simple_VerifyUserPass("admin", "MyStrongPass1") ? 1 : 0;
-        (void)printf("[3] next boot: admin/admin = %d, MyStrongPass1 = %d, recovery flag = %d, users = %u\n",
-                     adminAgain, strongStill, BOOL__G__RecoveryHappened ? 1 : 0,
-                     (unsigned)UINT8_T__G__UserCount);
-    }
+    (void)printf("[3] recovery removed: retained password = %d, factory password = %d\n",
+        func__Simple_VerifyUserPass("admin","MyStrongPass1"),func__Simple_VerifyUserPass("admin","admin"));
     /* 4) A damaged users file silently restores the factory account. */
-    (void)func__Simple_SetUserPass("admin", "AnotherGoodPass");
+    func__Simple_HashPass("AnotherGoodPass", SIMPLE_USER_T__G__Users[0].passHash);func__Simple_AuthSave();
     {
         File file__f = LittleFS.open(SIMPLE_USERS_FILE, "w");
         file__f.print("{\"e\":1,\"n\":1,\"c\":\"00\",\"m\":\"00\"}");

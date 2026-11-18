@@ -73,6 +73,20 @@ function check(ok,msg,detail){++checks;if(ok)console.log('  ok   '+msg);else{++f
   await page.locator('nav [data-t="1"]').click();
   await page.evaluate(()=>{CALS=[];for(let i=0;i<6;i++)CALS.push({sc:'BOTH',d:i*5,use:1,r1:80+i*20,r2:90+i*20,b1:i*30,b2:i*31,ts:100+i});wbuild(['BAT1','BAT2','BOTH'],[0,5]);calsmp();calrun();});
   await fit(width+' populated capture and sample tables');
+  await page.evaluate(()=>{CALS=[];for(let i=0;i<40;i++)CALS.push({sc:'BOTH',d:i,use:1,r1:80+i*20,r2:90+i*20,b1:i*30,b2:i*31,ts:i});calsmp();calrun();window.sampleNodes=[...document.querySelectorAll('#calsl [data-csample]')];});
+  const sampleRow=page.locator('#calsl [data-csample="15"]');
+  await sampleRow.evaluate(e=>e.scrollIntoView({block:'center'}));await page.waitForTimeout(180);
+  const samplePosition=()=>page.evaluate(()=>({y:scrollY,top:document.querySelector('#calsl [data-csample="15"]').getBoundingClientRect().top}));
+  const sampleBefore=await samplePosition();
+  await sampleRow.locator('td').nth(2).click();await page.waitForTimeout(180);
+  const rowAfter=await samplePosition();
+  check(rowAfter.y===sampleBefore.y&&Math.abs(rowAfter.top-sampleBefore.top)<1,width+' sample row click leaves page and row position unchanged',{sampleBefore,rowAfter});
+  check(await page.evaluate(()=>CALS[15].use===0&&sampleNodes.every((r,i)=>r===document.querySelectorAll('#calsl [data-csample]')[i])&&CALS.every((z,i)=>z.ts===i)),width+' selection preserves row nodes and sample order');
+  await sampleRow.locator('input').click();await page.waitForTimeout(180);const boxAfter=await samplePosition();
+  check(boxAfter.y===sampleBefore.y&&Math.abs(boxAfter.top-sampleBefore.top)<1&&await page.evaluate(()=>CALS[15].use===1),width+' direct checkbox toggles once without jumping',{sampleBefore,boxAfter});
+  await sampleRow.locator('button').click();
+  check(await page.evaluate(()=>CALS.length===39&&CALS[15].ts===16&&document.querySelectorAll('#calsl [data-csample]')[15]===sampleNodes[16]),width+' delete keeps surviving samples in their original order');
+
   await page.evaluate(()=>calmodalOpen());await fit(width+' calibration confirmation');await page.evaluate(()=>calmodalClose());
   if(width<=760){check(await page.evaluate(()=>[...document.querySelectorAll('#wT td,#calsl td')].every(e=>e.dataset.h)),width+' stacked dynamic tables retain every column heading');}
   await page.evaluate(()=>{wform(0,[1,2]);});

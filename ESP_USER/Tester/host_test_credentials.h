@@ -1,4 +1,4 @@
-// Credential durability regressions run against the real HTTP and persistence code.
+// Retained administrator credentials and mutable Wi-Fi persistence regressions.
 static std::string func__T_ReadCredentialFile(const char *path)
 {
     File file = LittleFS.open(path, "r");
@@ -10,25 +10,17 @@ static void func__T_TestCredentialDurability(void)
     func__Simple_CryptoKeyInit();
     func__Simple_AuthDefaults();
     func__Simple_AuthSave();
-    (void)func__Simple_SetUserPass("admin", "stable-password");
+    (void)func__T_SeedAdminPassword("stable-password");
     std::string saved = func__T_ReadCredentialFile(SIMPLE_USERS_FILE);
     SIM_BOOL__G__RefuseWrites = true;
-    bool changed = func__Simple_SetUserPass("admin", "lost-password");
+    bool stored = func__Simple_AuthSave();
     SIM_BOOL__G__RefuseWrites = false;
-    func__T_Check(!changed && func__Simple_VerifyUserPass("admin", "stable-password"), "شکست نوشتن رمز مدیر، موفقیت نمی‌دهد و رمز رم را عوض نمی‌کند");
-    func__T_Check(func__T_ReadCredentialFile(SIMPLE_USERS_FILE) == saved, "شکست نوشتن رمز فایل معتبر قبلی را خراب نمی‌کند");
+    func__T_Check(!stored && func__T_ReadCredentialFile(SIMPLE_USERS_FILE)==saved, "شکست ذخیره حساب، فایل معتبر قبلی را خراب نمی‌کند");
     func__Simple_AuthLoad();
-    func__T_Check(func__Simple_VerifyUserPass("admin", "stable-password") && !func__Simple_VerifyUserPass("admin", "admin"), "پس از شکست ذخیره و بوت، رمز مدیر قبلی حفظ می‌شود و پیش‌فرض فعال نمی‌شود");
-    // Reset the fixture even when the pre-fix implementation corrupted it.
-    func__Simple_AuthDefaults();
-    (void)func__Simple_SetUserPass("admin", "stable-password");
+    func__T_Check(func__Simple_VerifyUserPass("admin", "stable-password") && !func__Simple_VerifyUserPass("admin", "admin"), "رمز ذخیره‌شده سفارشی بعد از بازخوانی حفظ می‌شود");
     func__Simple_AuthLogout();func__Simple_LoginClear();func__T_ClearCookie();
     SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
     (void)func__Simple_AuthLogin("admin", "stable-password");func__T_UseTokenCookie();
-    SIM_BOOL__G__RefuseWrites = true;
-    SIMPLE_WEB_SERVER_T__G__Server.simCall("/setpass", HTTP_POST, "old=stable-password&new=unsaved-password&new2=unsaved-password");
-    SIM_BOOL__G__RefuseWrites = false;
-    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() >= 500 && func__Simple_VerifyUserPass("admin", "stable-password"), "HTTP تغییر رمز در خطای فلش پاسخ خطا می‌دهد و رمز قبلی معتبر می‌ماند");
     (void)strcpy(CHAR__G__WifiSsid, "stable-network");(void)strcpy(CHAR__G__WifiPass, "stable-wifi-password");func__Simple_WifiSave();
     saved = func__T_ReadCredentialFile(SIMPLE_WIFI_FILE);
     BOOL__G__WifiRebootPending = false;
@@ -43,7 +35,6 @@ static void func__T_TestCredentialDurability(void)
     BOOL__G__FsOk = false;BOOL__G__WifiRebootPending = false;
     SIMPLE_WEB_SERVER_T__G__Server.simCall("/wifi", HTTP_POST, "ssid=unmounted&pass=unmounted-password");
     func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() >= 500 && !BOOL__G__WifiRebootPending, "حافظه بازنشده اجازه تغییر وای‌فای و ریستارت با تنظیمات موقت نمی‌دهد");
-    func__T_Check(!func__Simple_SetUserPass("admin", "unmounted-password"), "تغییر رمز فقط در رم به عنوان ذخیره موفق پذیرفته نمی‌شود");
     BOOL__G__FsOk = true;func__Simple_AuthDefaults();func__Simple_AuthSave();
     func__Simple_AuthLogout();func__T_ClearCookie();SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
     BOOL__G__WifiRebootPending = false;
@@ -75,7 +66,7 @@ static void func__T_TestUnsignedCredentialNonce(void)
 static void func__T_TestCredentialCommitFailures(void)
 {
     BOOL__G__FsOk = true;func__Simple_AuthDefaults();
-    (void)func__Simple_SetUserPass("admin", "stable-password");
+    (void)func__T_SeedAdminPassword("stable-password");
     (void)strcpy(CHAR__G__WifiSsid, "stable-network");(void)strcpy(CHAR__G__WifiPass, "stable-wifi-password");
     func__Simple_WifiSave();func__Simple_AuthLogout();func__Simple_LoginClear();func__T_ClearCookie();
     (void)func__Simple_AuthLogin("admin", "stable-password");func__T_UseTokenCookie();
@@ -84,8 +75,8 @@ static void func__T_TestCredentialCommitFailures(void)
     for (bool *failure : failures)
     {
         *failure = true;
-        SIMPLE_WEB_SERVER_T__G__Server.simCall("/setpass", HTTP_POST, "old=stable-password&new=unsaved-password&new2=unsaved-password");
-        func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && func__Simple_VerifyUserPass("admin", "stable-password") && func__T_ReadCredentialFile(SIMPLE_USERS_FILE) == savedUsers, "نوشتن نیمه، بازکردن، خواندن یا rename ناموفق حساب قبلی را حفظ و HTTP خطا می‌دهد");
+        bool stored = func__Simple_AuthSave();
+        func__T_Check(!stored && func__T_ReadCredentialFile(SIMPLE_USERS_FILE)==savedUsers, "نوشتن نیمه، بازکردن، بازخوانی یا rename ناموفق فایل حساب قبلی را حفظ می‌کند");
         BOOL__G__WifiRebootPending = false;
         SIMPLE_WEB_SERVER_T__G__Server.simCall("/wifi", HTTP_POST, "ssid=unsaved-network&pass=unsaved-wifi-password");
         func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 500 && !BOOL__G__WifiRebootPending && strcmp(CHAR__G__WifiSsid, "stable-network") == 0 && func__T_ReadCredentialFile(SIMPLE_WIFI_FILE) == savedWifi, "خطای هر مرحله ذخیره وای‌فای، فایل قبلی و شبکه فعال را حفظ می‌کند");
@@ -97,13 +88,12 @@ static void func__T_TestCredentialCommitFailures(void)
         func__Simple_AuthLoad();
         func__T_Check(func__Simple_VerifyUserPass("admin", "stable-password"), "بوت پیش از ثبت نهایی، فایل موقت نیمه را نادیده می‌گیرد");
     }
-    SIMPLE_WEB_SERVER_T__G__Server.simCall("/setpass", HTTP_POST, "old=stable-password&new=committed-password&new2=committed-password");
-    func__Simple_AuthLoad();
-    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && func__Simple_VerifyUserPass("admin", "committed-password") && !LittleFS.exists(SIMPLE_USERS_FILE ".tmp"), "ذخیره موفق رمز پس از خطا و فایل نیمه، در بوت بعد معتبر است و فایل موقت نمی‌ماند");
+    bool stored = func__Simple_AuthSave();func__Simple_AuthLoad();
+    func__T_Check(stored && func__Simple_VerifyUserPass("admin", "stable-password") && !LittleFS.exists(SIMPLE_USERS_FILE ".tmp"), "ذخیره دوباره همان حساب پس از خطا، رمز موجود را در بوت حفظ می‌کند");
     SIMPLE_WEB_SERVER_T__G__Server.simCall("/wifi", HTTP_POST, "ssid=committed-network&pass=committed-wifi-password");
     func__Simple_WifiLoad();
     func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus() == 200 && BOOL__G__WifiRebootPending && strcmp(CHAR__G__WifiSsid, "committed-network") == 0 && strcmp(CHAR__G__WifiPass, "committed-wifi-password") == 0, "وای‌فای فقط پس از ذخیره موفق ریستارت می‌کند و در بوت بعد باقی می‌ماند");
-    func__T_Check(func__T_ReadCredentialFile(SIMPLE_USERS_FILE).find("committed-password") == std::string::npos && func__T_ReadCredentialFile(SIMPLE_WIFI_FILE).find("committed-wifi-password") == std::string::npos, "فایل‌های رمز و وای‌فای همچنان رمزنگاری‌شده‌اند");
+    func__T_Check(func__T_ReadCredentialFile(SIMPLE_USERS_FILE).find("stable-password") == std::string::npos && func__T_ReadCredentialFile(SIMPLE_WIFI_FILE).find("committed-wifi-password") == std::string::npos, "فایل‌های رمز و وای‌فای همچنان رمزنگاری‌شده‌اند");
     FILE *capture = tmpfile();
     int savedStdout = dup(STDOUT_FILENO);
     if (capture != NULL && savedStdout >= 0)
@@ -125,4 +115,37 @@ static void func__T_TestCredentialCommitFailures(void)
     for (const char *text : invalid) func__T_Check(!func__Simple_CryptoNonceRead(String(text), &nonce), "nonce خراب، علامت‌دار یا سرریز رد می‌شود");
     func__Simple_AuthDefaults();func__Simple_AuthSave();func__Simple_AuthLogout();func__T_ClearCookie();
     BOOL__G__WifiRebootPending = false;
+}
+
+static void func__T_TestRetainedAdminPassword(void)
+{
+    BOOL__G__FsOk=true;LittleFS.format();func__Simple_CryptoKeyInit();
+    (void)func__T_SeedAdminPassword("retained &+ password");
+    const std::string committed=func__T_ReadCredentialFile(SIMPLE_USERS_FILE);
+    {File legacy=LittleFS.open("/boot_no_login.json","w");legacy.print("{\"noLogin\":1}");legacy.close();}
+    bool kept=true;
+    for(unsigned wake=0u;wake<540u;wake++)
+    {
+        func__Simple_AuthLogout();func__Simple_LoginClear();func__T_ClearCookie();
+        func__Simple_AuthLoad();
+        kept=kept && func__Simple_VerifyUserPass("admin","retained &+ password") &&
+            !func__Simple_VerifyUserPass("admin","admin") && func__T_ReadCredentialFile(SIMPLE_USERS_FILE)==committed;
+    }
+    func__T_Check(kept,"۵۴۰ بار بارگذاری در بیداری باتری و پرچم قدیمی، رمز سفارشی را به پیش‌فرض برنمی‌گرداند و فایل را بازنویسی نمی‌کند");
+    const std::string sketch=func__T_ReadEspUserSource("ESP_USER.ino"), auth=func__T_ReadEspUserSource("simple_auth.h");
+    func__T_Check(!sketch.empty() && sketch.find("Recovery")==std::string::npos && sketch.find("/setpass")==std::string::npos &&
+                  auth.find("func__Simple_SetUserPass")==std::string::npos && auth.find("func__Simple_Recovery")==std::string::npos,
+                  "مسیر واقعی راه‌اندازی و حلقه، بازیابی زمان‌دار و تغییر رمز ندارد");
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token", "");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/setpass",HTTP_POST,"old=retained+%26%2B+password&new=changed-password");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==404,"تغییر رمز مستقیم برای مهمان هم مسیر ندارد");
+    func__T_Check(func__Simple_AuthLogin("admin","retained &+ password")==1,"ورود مدیر با رمز سفارشی ذخیره‌شده همچنان کار می‌کند");
+    func__T_UseTokenCookie();
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/setpass",HTTP_POST,"old=retained+%26%2B+password&new=changed-password");
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==404 && func__T_ReadCredentialFile(SIMPLE_USERS_FILE)==committed && func__Simple_IsAdmin(),
+                  "حتی درخواست مدیر هم رمز را تغییر نمی‌دهد و نشست موجود حفظ می‌شود");
+    SIMPLE_WEB_SERVER_T__G__Server.simClear();func__Simple_HttpEventFormat();func__Simple_AuthLoad();
+    func__T_Check(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==200 && func__Simple_VerifyUserPass("admin","retained &+ password") && func__Simple_IsAdmin(),
+                  "فرمت کامل هم رمز نگه‌داشته‌شده و نشست مدیر را حفظ می‌کند");
+    func__Simple_AuthLogout();func__T_ClearCookie();func__Simple_AuthDefaults();func__Simple_AuthSave();
 }

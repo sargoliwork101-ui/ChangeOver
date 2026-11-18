@@ -136,7 +136,7 @@ static void func__Simple_HttpTelemetry(void)
 {
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     uint32_t uint32_t__ageMs = uint32_t__nowMs - UINT32_T__G__LastTlmMs;
-    uint32_t uint32_t__panelTimeSec = func__Simple_NowSec();
+    uint32_t uint32_t__panelTimeSec = func__Simple_TimeBootReady() ? func__Simple_NowSec() : 0u;
     bool bool__online = BOOL__G__TlmSeen && (uint32_t__ageMs <= SIMPLE_LINK_TIMEOUT_MS);
     bool bool__authed = func__Simple_SessionValid();
     const char *char__ptr_user = bool__authed ? CHAR__G__CurrentUser : "";
@@ -167,9 +167,9 @@ static void func__Simple_HttpTelemetry(void)
             (unsigned int)UINT8_T__G__Theme,
             (unsigned long)uint32_t__panelTimeSec,
             (unsigned long)uint32_t__panelTimeSec,
-            BOOL__G__TimeValid ? 1u : 0u,
+            func__Simple_TimeBootReady() ? 1u : 0u,
             BOOL__G__BoardParamSeen ? 1u : 0u,
-            BOOL__G__RecoveryHappened ? 1u : 0u,
+            0u,
             BOOL__G__HelloSeen ? 1u : 0u,
             (unsigned int)UINT8_T__G__BoardProtoVersion,
             (unsigned int)UINT8_T__G__BoardFwVersion,
@@ -234,23 +234,23 @@ static void func__Simple_HttpTelemetry(void)
  * instead of one, so a 3-month chart costs ~20 sends, not 360. */
 static void func__Simple_SendChartArray(const char *char__ptr_head,
                                         const uint32_t *uint32_t__ptr_values,
-                                        uint8_t uint8_t__size, uint8_t uint8_t__count,
-                                        uint8_t uint8_t__index)
+                                        uint16_t uint16_t__size, uint16_t uint16_t__count,
+                                        uint16_t uint16_t__index)
 {
     char char__buf[96];
     size_t size_t__used = 0u;
-    uint8_t uint8_t__i;
+    uint16_t uint16_t__i;
     SIMPLE_WEB_SERVER_T__G__Server.sendContent(char__ptr_head);
-    for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+    for (uint16_t__i = 0u; uint16_t__i < uint16_t__count; uint16_t__i++)
     {
-        int int__slot = (int)uint8_t__index + (int)uint8_t__size - (int)uint8_t__count + (int)uint8_t__i;
+        int int__slot = (int)uint16_t__index + (int)uint16_t__size - (int)uint16_t__count + (int)uint16_t__i;
         int int__written;
-        while (int__slot >= (int)uint8_t__size)
+        while (int__slot >= (int)uint16_t__size)
         {
-            int__slot -= (int)uint8_t__size;
+            int__slot -= (int)uint16_t__size;
         }
         int__written = snprintf(&char__buf[size_t__used], sizeof(char__buf) - size_t__used,
-                                (uint8_t__i == 0u) ? "%lu" : ",%lu",
+                                (uint16_t__i == 0u) ? "%lu" : ",%lu",
                                 (unsigned long)uint32_t__ptr_values[int__slot]);
         if ((int__written < 0) || ((size_t)int__written >= (sizeof(char__buf) - size_t__used)))
         {
@@ -274,9 +274,9 @@ static void func__Simple_HttpCharts(void)
 {
     String string__range = SIMPLE_WEB_SERVER_T__G__Server.hasArg("range") ? SIMPLE_WEB_SERVER_T__G__Server.arg("range") : "1d";
     const char *char__ptr_tag = "1d";
-    uint8_t uint8_t__size = (uint8_t)SIMPLE_CHART_1D_SIZE;
-    uint8_t uint8_t__count = UINT8_T__G__Chart1D_Count;
-    uint8_t uint8_t__index = UINT8_T__G__Chart1D_Index;
+    uint16_t uint16_t__size = (uint16_t)SIMPLE_CHART_1D_SIZE;
+    uint16_t uint16_t__count = UINT16_T__G__Chart1D_Count;
+    uint16_t uint16_t__index = UINT16_T__G__Chart1D_Index;
     const uint32_t *uint32_t__ptrPct = UINT32_T__G__Chart1D_Pct;
     const uint32_t *uint32_t__ptrVin = UINT32_T__G__Chart1D_Vin;
     const uint32_t *uint32_t__ptrVpack = UINT32_T__G__Chart1D_Vpack;
@@ -286,9 +286,9 @@ static void func__Simple_HttpCharts(void)
     if (string__range == "7d")
     {
         char__ptr_tag = "7d";
-        uint8_t__size = (uint8_t)SIMPLE_CHART_7D_SIZE;
-        uint8_t__count = UINT8_T__G__Chart7D_Count;
-        uint8_t__index = UINT8_T__G__Chart7D_Index;
+        uint16_t__size = (uint16_t)SIMPLE_CHART_7D_SIZE;
+        uint16_t__count = UINT16_T__G__Chart7D_Count;
+        uint16_t__index = UINT16_T__G__Chart7D_Index;
         uint32_t__ptrPct = UINT32_T__G__Chart7D_Pct;
         uint32_t__ptrVin = UINT32_T__G__Chart7D_Vin;
         uint32_t__ptrVpack = UINT32_T__G__Chart7D_Vpack;
@@ -297,9 +297,9 @@ static void func__Simple_HttpCharts(void)
     else if (string__range == "1m")
     {
         char__ptr_tag = "1m";
-        uint8_t__size = (uint8_t)SIMPLE_CHART_1M_SIZE;
-        uint8_t__count = UINT8_T__G__Chart1M_Count;
-        uint8_t__index = UINT8_T__G__Chart1M_Index;
+        uint16_t__size = (uint16_t)SIMPLE_CHART_1M_SIZE;
+        uint16_t__count = UINT16_T__G__Chart1M_Count;
+        uint16_t__index = UINT16_T__G__Chart1M_Index;
         uint32_t__ptrPct = UINT32_T__G__Chart1M_Pct;
         uint32_t__ptrVin = UINT32_T__G__Chart1M_Vin;
         uint32_t__ptrVpack = UINT32_T__G__Chart1M_Vpack;
@@ -308,9 +308,9 @@ static void func__Simple_HttpCharts(void)
     else if (string__range == "3m")
     {
         char__ptr_tag = "3m";
-        uint8_t__size = (uint8_t)SIMPLE_CHART_3M_SIZE;
-        uint8_t__count = UINT8_T__G__Chart3M_Count;
-        uint8_t__index = UINT8_T__G__Chart3M_Index;
+        uint16_t__size = (uint16_t)SIMPLE_CHART_3M_SIZE;
+        uint16_t__count = UINT16_T__G__Chart3M_Count;
+        uint16_t__index = UINT16_T__G__Chart3M_Index;
         uint32_t__ptrPct = UINT32_T__G__Chart3M_Pct;
         uint32_t__ptrVin = UINT32_T__G__Chart3M_Vin;
         uint32_t__ptrVpack = UINT32_T__G__Chart3M_Vpack;
@@ -319,11 +319,11 @@ static void func__Simple_HttpCharts(void)
     SIMPLE_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "");
     (void)snprintf(char__head, sizeof(char__head), "{\"range\":\"%s\",\"count\":%u,\"pct\":[",
-                   char__ptr_tag, (unsigned int)uint8_t__count);
-    func__Simple_SendChartArray(char__head, uint32_t__ptrPct, uint8_t__size, uint8_t__count, uint8_t__index);
-    func__Simple_SendChartArray("],\"vin\":[", uint32_t__ptrVin, uint8_t__size, uint8_t__count, uint8_t__index);
-    func__Simple_SendChartArray("],\"vpack\":[", uint32_t__ptrVpack, uint8_t__size, uint8_t__count, uint8_t__index);
-    func__Simple_SendChartArray("],\"time\":[", uint32_t__ptrTime, uint8_t__size, uint8_t__count, uint8_t__index);
+                   char__ptr_tag, (unsigned int)uint16_t__count);
+    func__Simple_SendChartArray(char__head, uint32_t__ptrPct, uint16_t__size, uint16_t__count, uint16_t__index);
+    func__Simple_SendChartArray("],\"vin\":[", uint32_t__ptrVin, uint16_t__size, uint16_t__count, uint16_t__index);
+    func__Simple_SendChartArray("],\"vpack\":[", uint32_t__ptrVpack, uint16_t__size, uint16_t__count, uint16_t__index);
+    func__Simple_SendChartArray("],\"time\":[", uint32_t__ptrTime, uint16_t__size, uint16_t__count, uint16_t__index);
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
 }
 static void func__Simple_HttpDiag(void)
@@ -347,8 +347,8 @@ static void func__Simple_HttpDiag(void)
     s += ",\"uptimeSec\":"; s += String(UINT32_T__G__UptimeSec);
     s += ",\"resetCount\":"; s += String(UINT32_T__G__ResetCount);
     s += ",\"boardTime\":"; s += String(UINT32_T__G__BoardTimeSec);
-    s += ",\"panelTime\":"; s += String(func__Simple_NowSec());
-    s += ",\"timeOk\":"; s += String(BOOL__G__TimeValid ? 1u : 0u);
+    s += ",\"panelTime\":"; s += String(func__Simple_TimeBootReady() ? func__Simple_NowSec() : 0u);
+    s += ",\"timeOk\":"; s += String(func__Simple_TimeBootReady() ? 1u : 0u);
     s += ",\"errCount\":"; s += String(UINT8_T__G__DiagErrorCount);
     s += ",\"powerCount\":"; s += String(UINT8_T__G__PowerEventCount);
     s += ",\"errors\":[";
@@ -539,48 +539,6 @@ static void func__Simple_HttpSetWifi(void)
     UINT32_T__G__WifiRebootMs = (uint32_t)millis();
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"reboot\":1}");
 }
-/*
- * ==================== - /setpass ====================
- */
-static void func__Simple_HttpSetPass(void)
-{
-    String string__oldPass;
-    String string__newPass;
-    String string__newPass2;
-    if (!func__Simple_IsAdmin())
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
-        return;
-    }
-    if (!func__Simple_GetArg("new", string__newPass))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"new\"}");
-        return;
-    }
-    (void)func__Simple_GetArg("old", string__oldPass);
-    (void)func__Simple_GetArg("new2", string__newPass2);
-    if (string__newPass.length() < SIMPLE_USER_PASS_MIN || string__newPass.length() > SIMPLE_USER_PASS_MAX)
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pass 4-32\"}");
-        return;
-    }
-    if (string__newPass2.length() > 0u && string__newPass2 != string__newPass)
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mismatch\"}");
-        return;
-    }
-    if (!func__Simple_VerifyUserPass("admin", string__oldPass.c_str()))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"old\"}");
-        return;
-    }
-    if (!func__Simple_SetUserPass("admin", string__newPass.c_str()))
-    {
-        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"storage\"}");
-        return;
-    }
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
-}
 static void func__Simple_HttpClearHistory(void)
 {
     if (!func__Simple_IsAdmin())
@@ -593,25 +551,24 @@ static void func__Simple_HttpClearHistory(void)
     {
         string__type = "all";
     }
-    if (string__type == "charge")
+    bool bool__ok = false;
+    if (string__type == "charge") bool__ok = func__Simple_ChargeHistoryClear();
+    else if (string__type == "charts") bool__ok = func__Simple_ChartsClear();
+    else if (string__type == "diag") bool__ok = func__Simple_DiagClear();
+    else if (string__type == "all")
     {
-        func__Simple_ChargeHistoryClear();
-    }
-    else if (string__type == "charts")
-    {
-        func__Simple_ChartsClear();
-    }
-    else if (string__type == "diag")
-    {
-        func__Simple_DiagClear();
+        bool bool__charge = func__Simple_ChargeHistoryClear();
+        bool bool__charts = func__Simple_ChartsClear();
+        bool bool__diag = func__Simple_DiagClear();
+        bool__ok = bool__charge && bool__charts && bool__diag;
     }
     else
     {
-        func__Simple_ChargeHistoryClear();
-        func__Simple_ChartsClear();
-        func__Simple_DiagClear();
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"type\"}");
+        return;
     }
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+    SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 500, "application/json",
+        bool__ok ? "{\"ok\":1}" : "{\"ok\":0,\"e\":\"storage\"}");
 }
 /**
 * @return JSON ok → e=1 → e=2
@@ -792,10 +749,10 @@ static void func__Simple_HttpEventFormat(void)
         return;
     }
     func__SimpleLog_ResetStateAfterFormat();
-    /* Clear RAM before remount too: the files are already gone after format. */
-    func__Simple_ChargeHistoryClear();
-    func__Simple_ChartsClear();
-    func__Simple_DiagClear();
+    /* Clear RAM after successful format even when remount subsequently fails. */
+    (void)func__Simple_ChargeHistoryClear(false);
+    (void)func__Simple_ChartsClear(false);
+    (void)func__Simple_DiagClear(false);
 #if defined(ESP8266)
     (void)LittleFS.setConfig(LittleFSConfig(false));
     BOOL__G__FsOk = LittleFS.begin();
@@ -861,6 +818,13 @@ static void func__Simple_HttpEventLog(void)
     }
     (void)func__SimpleLog_Tail(CHAR__G__LogTailBuffer, sizeof(CHAR__G__LogTailBuffer),
                                uint32_t__day, SIMPLE_LOG_TAIL_LINES);
+    if (BOOL__G__LogClockGap && !BOOL__G__LogClockGapEmitted &&
+        (!bool__hasDay || uint32_t__day == SIMPLE_LOG_DAY_ZERO))
+    {
+        size_t size_t__used = strlen(CHAR__G__LogTailBuffer);
+        if (size_t__used + strlen(SIMPLE_LOG_CLOCK_GAP_ROW) < sizeof(CHAR__G__LogTailBuffer))
+            (void)strcpy(CHAR__G__LogTailBuffer + size_t__used, SIMPLE_LOG_CLOCK_GAP_ROW);
+    }
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", CHAR__G__LogTailBuffer);
 }
 static void func__Simple_HttpEventDays(void)
@@ -917,6 +881,8 @@ static void func__Simple_HttpDownloadAllDays(void)
         }
         file__day.close();
     }
+    if (BOOL__G__LogClockGap && !BOOL__G__LogClockGapEmitted)
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent(SIMPLE_LOG_CLOCK_GAP_ROW);
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("");
 }
 static void func__Simple_HttpEventDownload(void)
@@ -1044,10 +1010,16 @@ static void func__Simple_HttpEventClear(void)
         SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
         return;
     }
+    if (!BOOL__G__FsOk)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0,\"e\":\"storage\"}");
+        return;
+    }
     uint8_t__removed = func__SimpleLog_Clear();
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json",
-                                        String("{\"ok\":1,\"removed\":") +
-                                        String((unsigned int)uint8_t__removed) + "}");
+    bool bool__ok = func__SimpleLog_ScanDays(true) == 0u && !LittleFS.exists(SIMPLE_TIME_GAP_FILE);
+    SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 500, "application/json",
+        String(bool__ok ? "{\"ok\":1,\"removed\":" : "{\"ok\":0,\"e\":\"storage\",\"removed\":") +
+        String((unsigned int)uint8_t__removed) + "}");
 }
 static void func__Simple_HttpEventSnap(void)
 {

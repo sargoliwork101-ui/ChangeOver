@@ -1,3 +1,14 @@
+## Stable sample-row editing
+`node ESP_Calibration/Tester/host_test_sample_rows.js` runs 22 real-panel DOM
+checks for whole-row and checkbox clicks, retained row/table nodes and focus,
+unchanged sample order, select-all, source deletion (including zero/last),
+updated event indices and bench-repeat references, local persistence, stale
+payload/code invalidation, missing-zero rejection and all three edit guards.
+The full runner includes it; missing jsdom is SKIP, not PASS.
+The Chromium layout suite also clicks populated sample rows at five widths,
+checking actual scroll/row coordinates, node identity, order and deletion.
+Current dedicated run: 178 checks, zero failures. No hardware tests implied.
+
 ## Named send feedback
 
 `node ESP_Calibration/Tester/host_test_send_feedback.js` checks real-panel named

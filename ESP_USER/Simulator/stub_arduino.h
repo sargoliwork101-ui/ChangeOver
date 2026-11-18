@@ -241,6 +241,7 @@ extern SimSerialLink Serial;
 /* ==================== File LittleFS: ==================== */
 static bool SIM_BOOL__G__RefuseWrites = false;
 static bool SIM_BOOL__G__ShortPrint = false;
+static size_t SIM_SIZE_T__G__WriteLimit = (size_t)-1;
 class File
 {
 public:
@@ -340,7 +341,8 @@ public:
         if ((handle == NULL) || (uint8_t__ptr_bytes == NULL)) { return 0u; }
         /* [EN] A full flash refuses the write, exactly like the text path. */
         if (SIM_BOOL__G__RefuseWrites) { return 0u; }
-        return fwrite(uint8_t__ptr_bytes, 1u, size_t__count, handle);
+        const size_t limit = (size_t__count < SIM_SIZE_T__G__WriteLimit) ? size_t__count : SIM_SIZE_T__G__WriteLimit;
+        return fwrite(uint8_t__ptr_bytes, 1u, limit, handle);
     }
     size_t readBytes(char *char__ptr_buffer, size_t size_t__length)
     {

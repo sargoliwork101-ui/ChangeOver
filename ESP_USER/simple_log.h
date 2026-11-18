@@ -39,6 +39,7 @@ static bool     BOOL__G__LogMarkerDone = false;
  */
 static bool     BOOL__G__LogDayFileReady = false;
 static bool     BOOL__G__LogHasPrev = false;
+static bool     BOOL__G__LogRestoredPrev = false;
 static uint8_t  UINT8_T__G__LogPrevMains = 0u;
 static uint8_t  UINT8_T__G__LogPrevFl = 0u;
 static uint32_t UINT32_T__G__LogPrevDead = 0u;
@@ -101,6 +102,13 @@ static uint32_t UINT32_T__G__LogLastDrainMs = 0u;
 #define SIMPLE_LOG_NOTE_DAY_FULL  4u
 #define SIMPLE_LOG_NOTE_HEARTBEAT  5u
 #define SIMPLE_LOG_NOTE_MANUAL     6u
+#define SIMPLE_LOG_NOTE_CLOCK_GAP  7u
+#define SIMPLE_LOG_CLOCK_GAP_ROW "0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n"
+static bool BOOL__G__LogClockGap = false;
+static bool BOOL__G__LogClockGapStored = false;
+static bool BOOL__G__LogClockGapEmitted = false;
+static bool BOOL__G__LogClockRetryArmed = false;
+static uint32_t UINT32_T__G__LogClockRetryMs = 0u;
 #define SIMPLE_LOG_PATH_MAX       24u
 static bool BOOL__G__LogCodecCached = false;
 static char CHAR__G__LogCodecPath[SIMPLE_LOG_PATH_MAX];
@@ -426,114 +434,15 @@ static uint32_t func__SimpleLog_FwStampRead(void)
         return (uint32_t)string__value.toInt();
     }
 }
+/* ==================== Firmware stamp replacement ==================== */
 /**
- * @brief  [EN] Write the running firmware version into the clock file next to
- *              ts/tz. The old values are read back first, so this never erases
- *              the clock; with no file at all it writes zero time (which the
- *              loader ignores) and just the stamp.
-* @param uint32_t uint32_t__version version /
-* @return None /
+ * @brief Persist the firmware stamp through the shared atomic clock writer.
+ * @param uint32_t__version Running firmware version; clock and board pair stay intact.
  */
 static void func__SimpleLog_FwStampWrite(uint32_t uint32_t__version)
 {
-    uint32_t uint32_t__savedSec = 0u;
-    int32_t  int32_t__savedTz = 0;
-    String string__content;
-    int32_t int32_t__pos;
-    int32_t int32_t__end;
-    bool bool__ok;
-    if (BOOL__G__FsOk == false)
-    {
-        return;
-    }
-    if (LittleFS.exists(SIMPLE_TIME_FILE) != false)
-    {
-        File file__read = LittleFS.open(SIMPLE_TIME_FILE, "r");
-        if (file__read)
-        {
-            string__content = file__read.readString();
-            file__read.close();
-            int32_t__pos = string__content.indexOf("\"ts\":");
-            if (int32_t__pos >= 0)
-            {
-                int32_t__pos += 5;
-                int32_t__end = string__content.indexOf(",", int32_t__pos);
-                if (int32_t__end < 0)
-                {
-                    int32_t__end = string__content.indexOf("}", int32_t__pos);
-                }
-                if (int32_t__end > int32_t__pos)
-                {
-                    String string__value =
-                        string__content.substring(int32_t__pos, int32_t__end);
-                    string__value.trim();
-                    uint32_t__savedSec = (uint32_t)string__value.toInt();
-                }
-            }
-            int32_t__pos = string__content.indexOf("\"tz\":");
-            if (int32_t__pos >= 0)
-            {
-                int32_t__pos += 5;
-                int32_t__end = string__content.indexOf(",", int32_t__pos);
-                if (int32_t__end < 0)
-                {
-                    int32_t__end = string__content.indexOf("}", int32_t__pos);
-                }
-                if (int32_t__end > int32_t__pos)
-                {
-                    String string__value =
-                        string__content.substring(int32_t__pos, int32_t__end);
-                    string__value.trim();
-                    int32_t__savedTz = (int32_t)string__value.toInt();
-                }
-            }
-        }
-    }
-    File file__write = LittleFS.open(SIMPLE_TIME_FILE, "w");
-    if (!file__write)
-    {
-        func__SimpleLog_FaultRaise();
-        return;
-    }
-    bool__ok = func__SimpleLog_FileText(file__write, "{\"ts\":");
-    if (bool__ok != false)
-    {
-        char char__num[24];
-        (void)snprintf(char__num, sizeof(char__num), "%lu", (unsigned long)uint32_t__savedSec);
-        bool__ok = func__SimpleLog_FileText(file__write, char__num);
-    }
-    if (bool__ok != false)
-    {
-        bool__ok = func__SimpleLog_FileText(file__write, ",\"tz\":");
-    }
-    if (bool__ok != false)
-    {
-        char char__num[24];
-        (void)snprintf(char__num, sizeof(char__num), "%ld", (long)int32_t__savedTz);
-        bool__ok = func__SimpleLog_FileText(file__write, char__num);
-    }
-    if (bool__ok != false)
-    {
-        bool__ok = func__SimpleLog_FileText(file__write, ",\"fw\":");
-    }
-    if (bool__ok != false)
-    {
-        char char__num[24];
-        (void)snprintf(char__num, sizeof(char__num), "%lu", (unsigned long)uint32_t__version);
-        bool__ok = func__SimpleLog_FileText(file__write, char__num);
-    }
-    if (bool__ok != false)
-    {
-        bool__ok = func__SimpleLog_FileText(file__write, "}");
-    }
-    file__write.close();
-    if (bool__ok == false)
-    {
-        func__SimpleLog_FaultRaise();
-        return;
-    }
-    UINT32_T__G__LastSavedTimeSec = uint32_t__savedSec;
-    INT32_T__G__LastSavedTzSec = int32_t__savedTz;
+    UINT32_T__G__TimeFwVersion = uint32_t__version;
+    if (!func__Simple_TimeStore()) func__SimpleLog_FaultRaise();
 }
 /**
  * @brief  [EN] Is this boot the first one of a new firmware? The remembered
@@ -570,38 +479,10 @@ static uint32_t func__SimpleLog_DayBytes(uint32_t uint32_t__dayCode)
     file__day.close();
     return uint32_t__bytes;
 }
-/* [EN] How much the day files may use.  The constant is a ceiling; on a small
- * file system the room left after the other files wins, so the flash never
- * fills up and the trim really runs before a write fails. */
+/* Payload ceiling; shared admission independently checks actual flash allocation. */
 static size_t func__SimpleLog_BudgetBytes(void)
 {
-    size_t size_t__budget = (size_t)SIMPLE_LOG_TOTAL_BUDGET_BYTES;
-    uint32_t uint32_t__total = 0u;
-    if (BOOL__G__FsOk != false)
-    {
-#if defined(ESP32)
-        uint32_t__total = (uint32_t)LittleFS.totalBytes();
-#else
-        FSInfo fsInfo__stat;
-        if (LittleFS.info(fsInfo__stat))
-        {
-            uint32_t__total = (uint32_t)fsInfo__stat.totalBytes;
-        }
-#endif
-    }
-    if (uint32_t__total > (uint32_t)SIMPLE_LOG_RESERVE_BYTES)
-    {
-        uint32_t uint32_t__room = uint32_t__total - (uint32_t)SIMPLE_LOG_RESERVE_BYTES;
-        if (uint32_t__room < (uint32_t)size_t__budget)
-        {
-            size_t__budget = (size_t)uint32_t__room;
-        }
-    }
-    if (size_t__budget < (size_t)SIMPLE_LOG_MIN_BUDGET_BYTES)
-    {
-        size_t__budget = (size_t)SIMPLE_LOG_MIN_BUDGET_BYTES;
-    }
-    return size_t__budget;
+    return SIMPLE_LOG_TOTAL_BUDGET_BYTES;
 }
 static void func__SimpleLog_TrimDays(void)
 {
@@ -610,7 +491,7 @@ static void func__SimpleLog_TrimDays(void)
     while (UINT8_T__G__LogIndexCount > SIMPLE_LOG_MAX_DAYS)
     {
         func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[0]);
-        (void)LittleFS.remove(char__ptr_path);
+        if (!LittleFS.remove(char__ptr_path)) { func__SimpleLog_FaultRaise(); break; }
         for (uint8_t__slot = 1u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
         {
             UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] =
@@ -630,7 +511,7 @@ static void func__SimpleLog_TrimDays(void)
             break;
         }
         func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[0]);
-        (void)LittleFS.remove(char__ptr_path);
+        if (!LittleFS.remove(char__ptr_path)) { func__SimpleLog_FaultRaise(); break; }
         for (uint8_t__slot = 1u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
         {
             UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] =
@@ -661,11 +542,12 @@ static uint32_t func__SimpleLog_FreeBytes(void)
     uint32_t__total = (uint32_t)fsInfo__stat.totalBytes;
     uint32_t__used = (uint32_t)fsInfo__stat.usedBytes;
 #endif
+    if (uint32_t__total > SIMPLE_STORAGE_TOTAL_BYTES) uint32_t__total = SIMPLE_STORAGE_TOTAL_BYTES;
     return (uint32_t__used < uint32_t__total) ? (uint32_t__total - uint32_t__used) : 0u;
 }
 /*
- * [EN] Make room by deleting the OLDEST day file.  The day being written and the
- * last remaining day are never touched, so history shrinks from the far end
+ * [EN] Delete the oldest day other than the explicitly protected writer's day.
+ * A sole older day may be reclaimed before creating today's file
  * instead of the whole logging stopping (owner order 2026-11-04).
  */
 static bool func__SimpleLog_ReclaimOldest(uint32_t uint32_t__keepDay)
@@ -681,10 +563,7 @@ static bool func__SimpleLog_ReclaimOldest(uint32_t uint32_t__keepDay)
     {
         (void)func__SimpleLog_ScanDays(true);
     }
-    if (UINT8_T__G__LogIndexCount <= 1u)
-    {
-        return false;   /* the last day stays, even when the flash is full */
-    }
+    if (UINT8_T__G__LogIndexCount == 0u) return false;
     for (uint8_t__slot = 0u; uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
     {
         if (UINT32_T__G__LogIndexDay[uint8_t__slot] != uint32_t__keepDay)
@@ -728,6 +607,108 @@ static uint8_t func__SimpleLog_ReclaimForRoom(uint32_t uint32_t__keepDay)
         uint8_t__freed++;
     }
     return uint8_t__freed;
+}
+/* ==================== Shared 64 KiB storage policy ==================== */
+/** @brief Return a committed file length, UINT32_MAX on unreadable existing files. */
+static uint32_t func__Simple_StorageFileBytes(const char *char__ptr_path)
+{
+    if (!LittleFS.exists(char__ptr_path)) return 0u;
+    File file__read = LittleFS.open(char__ptr_path, "r");
+    if (!file__read) return UINT32_MAX;
+    uint32_t uint32_t__size = (uint32_t)file__read.size();
+    file__read.close();
+    return uint32_t__size;
+}
+/** @brief Enforce per-class committed payload ceilings, excluding the replaced file. */
+static bool func__Simple_StorageQuota(const char *char__ptr_path, size_t size_t__length)
+{
+    const char *char__paths[] = {SIMPLE_USERS_FILE, SIMPLE_WIFI_FILE, SIMPLE_PARAMS_FILE,
+        SIMPLE_TIME_FILE, SIMPLE_THEME_FILE, SIMPLE_TIME_GAP_FILE, SIMPLE_CHARGE_HISTORY_FILE,
+        SIMPLE_DIAG_FILE, SIMPLE_CHARTS_FILE, SIMPLE_CHART_JOURNAL_FILE};
+    uint8_t uint8_t__first = 0u, uint8_t__last = 6u;
+    uint32_t uint32_t__limit = SIMPLE_STORAGE_SETTINGS_BYTES;
+    if (!strcmp(char__ptr_path, SIMPLE_CHARGE_HISTORY_FILE) || !strcmp(char__ptr_path, SIMPLE_DIAG_FILE))
+    { uint8_t__first = 6u; uint8_t__last = 8u; uint32_t__limit = SIMPLE_STORAGE_HISTORY_BYTES; }
+    else if (!strcmp(char__ptr_path, SIMPLE_CHARTS_FILE) || !strcmp(char__ptr_path, SIMPLE_CHART_JOURNAL_FILE))
+    { uint8_t__first = 8u; uint8_t__last = 10u; uint32_t__limit = SIMPLE_STORAGE_CHART_BYTES; }
+    if (size_t__length > uint32_t__limit) return false;
+    for (uint8_t uint8_t__i = uint8_t__first; uint8_t__i < uint8_t__last; uint8_t__i++)
+    {
+        if (!strcmp(char__ptr_path, char__paths[uint8_t__i])) continue;
+        uint32_t uint32_t__size = func__Simple_StorageFileBytes(char__paths[uint8_t__i]);
+        if (uint32_t__size > uint32_t__limit - size_t__length) return false;
+        size_t__length += uint32_t__size;
+    }
+    return true;
+}
+/** @brief Reclaim oldest days before any writer; reserve covers staging plus one COW block. */
+static bool func__Simple_StorageRoom(size_t size_t__bytes, uint32_t uint32_t__keepDay)
+{
+    if (!BOOL__G__FsOk || size_t__bytes > SIMPLE_STORAGE_TOTAL_BYTES) return false;
+    uint32_t uint32_t__block = 4096u;
+#if !defined(ESP32)
+    FSInfo fsInfo__stat;
+    if (!LittleFS.info(fsInfo__stat)) return false;
+    if (fsInfo__stat.blockSize > 0u) uint32_t__block = (uint32_t)fsInfo__stat.blockSize;
+#endif
+    if (uint32_t__block > SIMPLE_STORAGE_TOTAL_BYTES) return false;
+    uint32_t uint32_t__need = (uint32_t)((size_t__bytes + uint32_t__block - 1u) / uint32_t__block) * uint32_t__block + uint32_t__block;
+    if (uint32_t__need < SIMPLE_LOG_RESERVE_BYTES) uint32_t__need = SIMPLE_LOG_RESERVE_BYTES;
+    for (uint8_t uint8_t__i = 0u; uint8_t__i < SIMPLE_LOG_RECLAIM_MAX_PER_CALL; uint8_t__i++)
+    {
+        if (func__SimpleLog_FreeBytes() >= uint32_t__need) return true;
+        if (!func__SimpleLog_ReclaimOldest(uint32_t__keepDay)) break;
+        yield();
+    }
+    if (func__SimpleLog_FreeBytes() >= uint32_t__need) return true;
+    func__SimpleLog_FaultRaise();
+    return false;
+}
+/** @brief Verify closed staged bytes before replacing a snapshot; never truncate committed data. */
+static bool func__Simple_StorageCommit(const char *char__ptr_path, const uint8_t *uint8_t__ptr_data,
+    size_t size_t__length, bool bool__text)
+{
+    if (!BOOL__G__FsOk || !uint8_t__ptr_data || !size_t__length) return false;
+    if (!func__Simple_StorageQuota(char__ptr_path, size_t__length))
+    { func__SimpleLog_FaultRaise(); return false; }
+    String string__temp = String(char__ptr_path) + ".tmp";
+    if (LittleFS.exists(string__temp.c_str()) && !LittleFS.remove(string__temp.c_str()))
+    { func__SimpleLog_FaultRaise(); return false; }
+    if (!func__Simple_StorageRoom(size_t__length, UINT32_T__G__LogDayCode)) return false;
+    File file__out = LittleFS.open(string__temp.c_str(), "w");
+    if (!file__out) { func__SimpleLog_FaultRaise(); return false; }
+    size_t size_t__written = bool__text ? file__out.print((const char *)uint8_t__ptr_data)
+        : file__out.write(uint8_t__ptr_data, size_t__length);
+    bool bool__ok = size_t__written == size_t__length;
+    file__out.close();
+    if (bool__ok)
+    {
+        File file__check = LittleFS.open(string__temp.c_str(), "r");
+        bool__ok = file__check && file__check.size() == size_t__length;
+        for (size_t size_t__i = 0u; bool__ok && size_t__i < size_t__length; size_t__i++)
+        {
+            if (size_t__i % 64u == 0u) yield();
+            bool__ok = file__check.read() == uint8_t__ptr_data[size_t__i];
+        }
+        file__check.close();
+    }
+    if (bool__ok) bool__ok = LittleFS.rename(string__temp.c_str(), char__ptr_path);
+    if (!bool__ok) { (void)LittleFS.remove(string__temp.c_str()); func__SimpleLog_FaultRaise(); }
+    return bool__ok;
+}
+/** @brief Commit a complete JSON string through shared quota, reclaim and read-back checks. */
+static bool func__Simple_StorageWrite(const char *char__ptr_path, const String &string__data)
+{
+    return func__Simple_StorageCommit(char__ptr_path, (const uint8_t *)string__data.c_str(), string__data.length(), true);
+}
+/** @brief Detect failed String allocations while assembling bounded JSON snapshots. */
+static bool func__Simple_StorageTextAppend(String &string__data, const String &string__part)
+{
+    size_t size_t__old = string__data.length(), size_t__part = string__part.length();
+    if (!size_t__part || size_t__old > SIMPLE_STORAGE_HISTORY_BYTES ||
+        size_t__part > SIMPLE_STORAGE_HISTORY_BYTES - size_t__old) return false;
+    string__data += string__part;
+    return string__data.length() == size_t__old + size_t__part;
 }
 static uint16_t func__SimpleLog_CountRows(const char *char__ptr_path)
 {
@@ -888,6 +869,8 @@ static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
         return false;
     }
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
+    if (!LittleFS.exists(char__ptr_path) &&
+        !func__Simple_StorageRoom(SimpleLogCodec::HeaderSize, uint32_t__dayCode)) return false;
     {
         File file__day = LittleFS.open(char__ptr_path, "a");
         if (!file__day)
@@ -905,6 +888,7 @@ static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
                                         (size_t)SimpleLogCodec::HeaderSize) ==
                         (size_t)SimpleLogCodec::HeaderSize);
             BOOL__G__LogCodecCached = false;
+            BOOL__G__LogScanValid = false;
         }
         file__day.close();
     }
@@ -1176,6 +1160,66 @@ static bool func__SimpleLog_CodecAppend(const char *char__ptr_path, const char *
     }
     return bool__ok;
 }
+/* ==================== Bounded current-day history ==================== */
+/** @brief Keep the newest half of a full day; verify every decoded value before atomic replacement. */
+static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint32_t__dayCode)
+{
+    File file__old = LittleFS.open(char__ptr_path, "r");
+    SimpleLogCodec::State codec__old;
+    if (!file__old || SimpleLogCodec::begin(file__old, codec__old) != 1) return false;
+    uint16_t uint16_t__count = 0u;
+    while (SimpleLogCodec::next(file__old, codec__old)) uint16_t__count++;
+    if (codec__old.ioError || codec__old.damaged || uint16_t__count < 2u) return false;
+    uint16_t uint16_t__skip = (uint16_t)(uint16_t__count / 2u);
+    String string__temp = String(char__ptr_path) + ".tmp";
+    if (LittleFS.exists(string__temp.c_str()) && !LittleFS.remove(string__temp.c_str())) return false;
+    /* Compaction may borrow the reserve, never settings or the committed day. */
+    if (func__SimpleLog_FreeBytes() < SIMPLE_LOG_DAY_MAX_BYTES * 2u) return false;
+    if (SimpleLogCodec::begin(file__old, codec__old) != 1) return false;
+    File file__new = LittleFS.open(string__temp.c_str(), "w");
+    if (!file__new) return false;
+    bool bool__ok = file__new.write(SimpleLogCodec::header(), SimpleLogCodec::HeaderSize) == SimpleLogCodec::HeaderSize;
+    SimpleLogCodec::State codec__new;
+    uint16_t uint16_t__row = 0u;
+    while (bool__ok && SimpleLogCodec::next(file__old, codec__old))
+    {
+        if (uint16_t__row++ < uint16_t__skip) continue;
+        uint8_t uint8_t__frame[SimpleLogCodec::MaxFrame];
+        size_t size_t__n = SimpleLogCodec::encode(codec__new, codec__old.value, uint8_t__frame);
+        bool__ok = file__new.write(uint8_t__frame, size_t__n) == size_t__n;
+    }
+    bool__ok = bool__ok && !codec__old.ioError && !codec__old.damaged && uint16_t__row == uint16_t__count &&
+        file__new.size() < SIMPLE_LOG_DAY_MAX_BYTES;
+    file__new.close();
+    if (bool__ok)
+    {
+        File file__check = LittleFS.open(string__temp.c_str(), "r");
+        bool__ok = file__check && SimpleLogCodec::begin(file__check, codec__new) == 1 &&
+            SimpleLogCodec::begin(file__old, codec__old) == 1;
+        uint16_t__row = 0u;
+        while (bool__ok && SimpleLogCodec::next(file__old, codec__old))
+        {
+            if (uint16_t__row++ < uint16_t__skip) continue;
+            bool__ok = SimpleLogCodec::next(file__check, codec__new) &&
+                memcmp(codec__old.value, codec__new.value, sizeof(codec__old.value)) == 0;
+        }
+        bool__ok = bool__ok && uint16_t__row == uint16_t__count && !codec__old.ioError && !codec__old.damaged &&
+            !SimpleLogCodec::next(file__check, codec__new) && !codec__new.ioError && !codec__new.damaged;
+        file__check.close();
+    }
+    file__old.close();
+    if (bool__ok) bool__ok = LittleFS.rename(string__temp.c_str(), char__ptr_path);
+    if (!bool__ok) { (void)LittleFS.remove(string__temp.c_str()); return false; }
+    BOOL__G__LogCodecCached = false;
+    if (uint32_t__dayCode == UINT32_T__G__LogDayCode)
+    {
+        UINT16_T__G__LogRowsToday = (uint16_t)(uint16_t__count - uint16_t__skip);
+        BOOL__G__LogDayFull = false;
+        BOOL__G__LogMarkerDone = false;
+    }
+    BOOL__G__LogScanValid = false;
+    return true;
+}
 static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *char__row)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -1184,10 +1228,23 @@ static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *ch
         return false;
     }
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
-    if (func__SimpleLog_FreeBytes() < (uint32_t)SIMPLE_LOG_RESERVE_BYTES)
+    uint32_t uint32_t__daySize = func__Simple_StorageFileBytes(char__ptr_path);
+    if (uint32_t__daySize == UINT32_MAX) return false;
+    if (uint32_t__daySize + SimpleLogCodec::MaxFrame > SIMPLE_LOG_DAY_MAX_BYTES &&
+        !func__SimpleLog_CompactDay(char__ptr_path, uint32_t__dayCode))
+    { func__SimpleLog_FaultRaise(); return false; }
+    bool bool__within = false;
+    for (uint8_t uint8_t__pass = 0u; uint8_t__pass <= SIMPLE_LOG_RECLAIM_MAX_PER_CALL; uint8_t__pass++)
     {
-        (void)func__SimpleLog_ReclaimForRoom(uint32_t__dayCode);
+        uint64_t uint64_t__sum = SimpleLogCodec::MaxFrame;
+        (void)func__SimpleLog_ScanDays(false);
+        for (uint8_t uint8_t__i = 0u; uint8_t__i < UINT8_T__G__LogIndexCount; uint8_t__i++)
+            uint64_t__sum += func__SimpleLog_DayBytes(UINT32_T__G__LogIndexDay[uint8_t__i]);
+        if (uint64_t__sum <= SIMPLE_LOG_TOTAL_BUDGET_BYTES) { bool__within = true; break; }
+        if (uint8_t__pass == SIMPLE_LOG_RECLAIM_MAX_PER_CALL || !func__SimpleLog_ReclaimOldest(uint32_t__dayCode)) break;
     }
+    if (!bool__within) { func__SimpleLog_FaultRaise(); return false; }
+    if (!func__Simple_StorageRoom(SimpleLogCodec::MaxFrame, uint32_t__dayCode)) return false;
     return func__SimpleLog_CodecAppend(char__ptr_path, char__row);
 }
 /*
@@ -1309,8 +1366,7 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     bool bool__force;
     /*
  * [EN] After a power cut the clock comes back from the flash and may be hours
- * behind. The board kept counting, so the first rows wait for its time (or for
- * the grace window) instead of being stamped onto a stale day.
+ * behind. Dated rows wait for a verified clock; a timeout never trusts disk time.
  */
     if (func__Simple_TimeBootReady() == false)
     {
@@ -1395,6 +1451,8 @@ static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint
     UINT32_T__G__LogPrevV24 = UINT32_T__G__TlmField[15];
     UINT32_T__G__LogLastRowMs = (uint32_t)millis();
     BOOL__G__LogLastRowValid = true;
+    UINT32_T__G__LogLastBeatSec = func__Simple_NowSec();
+    if (bool__stored) func__Simple_TimeSave();
     UINT16_T__G__LogPendingMask = 0u;
     UINT8_T__G__LogPendingNote = 0u;
     BOOL__G__LogMainsQueuedValid = false;
@@ -1599,18 +1657,30 @@ static void func__SimpleLog_RestoreFromLastRow(void)
     static char CHAR__LogLastRow[400];
     char char__path[32];
     uint32_t uint32_t__day;
+    BOOL__G__LogRestoredPrev = false;
     if ((BOOL__G__FsOk == false) || (UINT8_T__G__LogIndexCount == 0u))
     {
         return;
     }
-    uint32_t__day = UINT32_T__G__LogIndexDay[UINT8_T__G__LogIndexCount - 1u];
-    func__SimpleLog_PathOf(char__path, uint32_t__day);
-    if (func__SimpleLog_LastRowOf(char__path, CHAR__LogLastRow, sizeof(CHAR__LogLastRow)) == false)
+    bool bool__found = false;
+    for (uint8_t uint8_t__slot = UINT8_T__G__LogIndexCount; uint8_t__slot > 0u; uint8_t__slot--)
     {
-        return;
+        uint32_t__day = UINT32_T__G__LogIndexDay[uint8_t__slot - 1u];
+        func__SimpleLog_PathOf(char__path, uint32_t__day);
+        if (func__SimpleLog_LastRowOf(char__path, CHAR__LogLastRow, sizeof(CHAR__LogLastRow)))
+        {
+            bool__found = true;
+            break;
+        }
+    }
+    if (!bool__found) return;
+    uint32_t uint32_t__lastSec = func__SimpleLog_RowField(CHAR__LogLastRow, 0u);
+    if (uint32_t__lastSec >= SIMPLE_TIME_VALID_MIN)
+    {
+        UINT32_T__G__LogLastBeatSec = uint32_t__lastSec;
     }
     UINT8_T__G__LogPrevMains = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 4u);
-    UINT8_T__G__LogPrevFl = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 5u);
+    UINT8_T__G__LogPrevFl = (uint8_t)(func__SimpleLog_RowField(CHAR__LogLastRow, 5u) & 0x3Du);
     UINT8_T__G__LogPrevChg1 = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 6u);
     UINT8_T__G__LogPrevChg2 = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 7u);
     UINT32_T__G__LogPrevFault = func__SimpleLog_RowField(CHAR__LogLastRow, 8u);
@@ -1621,6 +1691,7 @@ static void func__SimpleLog_RestoreFromLastRow(void)
     UINT8_T__G__LogPrevNote = (UINT8_T__G__LogPrevBand != 0u) ?
                               SIMPLE_LOG_NOTE_LOW_STOP : SIMPLE_LOG_NOTE_NONE;
     BOOL__G__LogHasPrev = true;
+    BOOL__G__LogRestoredPrev = true;
 }
 /**
  * @brief  [EN] Absolute difference of two unsigned readings.
@@ -1661,7 +1732,8 @@ static void func__SimpleLog_Queue(uint16_t uint16_t__mask, uint8_t uint8_t__note
 static void func__SimpleLog_FlushPending(void)
 {
     uint32_t uint32_t__nowMs;
-    if (UINT16_T__G__LogPendingMask == 0u)
+    if ((UINT16_T__G__LogPendingMask == 0u) &&
+        (UINT8_T__G__LogPendingNote == SIMPLE_LOG_NOTE_NONE))
     {
         return;
     }
@@ -1790,44 +1862,105 @@ static void func__SimpleLog_OnFrame(void)
     }
     func__SimpleLog_DetectChanges();
 }
+/* ==================== Undated clock warning persistence ==================== */
+/** @brief Atomically retain one missing-clock incident without inventing a timestamp. */
+static bool func__SimpleLog_ClockGapStore(void)
+{
+    return func__Simple_StorageWrite(SIMPLE_TIME_GAP_FILE,
+        String("{\"note\":7,\"reason\":\"clock_unavailable\"}"));
+}
+/* ==================== Clock warning and recovery ==================== */
+/** @brief Warn once after 40 boot seconds; retain the incident until a durable dated row exists. */
+static void func__SimpleLog_ClockGapTick(void)
+{
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+    bool bool__ready = func__Simple_TimeBootReady();
+    if (!bool__ready && (uint32_t)(uint32_t__nowMs - UINT32_T__G__TimeBootMs) >= SIMPLE_TIME_WARN_MS)
+        BOOL__G__LogClockGap = true;
+    if (!BOOL__G__LogClockGap) return;
+    if (BOOL__G__LogClockRetryArmed &&
+        (uint32_t)(uint32_t__nowMs - UINT32_T__G__LogClockRetryMs) < SIMPLE_TIME_WARN_RETRY_MS) return;
+    BOOL__G__LogClockRetryArmed = true;
+    UINT32_T__G__LogClockRetryMs = uint32_t__nowMs;
+    if (!BOOL__G__LogClockGapStored)
+    {
+        BOOL__G__LogClockGapStored = func__SimpleLog_ClockGapStore();
+        if (!BOOL__G__LogClockGapStored) func__SimpleLog_FaultRaise();
+    }
+    if (!bool__ready || !BOOL__G__FsOk) return;
+    if (!BOOL__G__LogClockGapEmitted)
+    {
+        /* Do not put repeated warning copies in the volatile fallback ring. */
+        func__SimpleLog_DrainRam();
+        if (UINT8_T__G__LogRamCount != 0u || !func__SimpleLog_ResolveDay(true)) return;
+        char char__row[SIMPLE_LOG_RAM_ROW_MAX];
+        func__SimpleLog_BuildRow(char__row, sizeof(char__row), 0u, SIMPLE_LOG_NOTE_CLOCK_GAP);
+        if (!func__SimpleLog_AppendRow(UINT32_T__G__LogDayCode, char__row)) return;
+        char char__path[SIMPLE_LOG_PATH_MAX];
+        func__SimpleLog_PathOf(char__path, UINT32_T__G__LogDayCode);
+        File file__check = LittleFS.open(char__path, "r");
+        SimpleLogCodec::State codec;
+        bool bool__verified = file__check && SimpleLogCodec::begin(file__check, codec) == 1;
+        if (bool__verified)
+        {
+            while (SimpleLogCodec::next(file__check, codec)) { }
+            bool__verified = !codec.ioError && codec.valid &&
+                codec.value[0] == func__SimpleLog_RowEpoch(char__row) && codec.value[3] == SIMPLE_LOG_NOTE_CLOCK_GAP;
+        }
+        file__check.close();
+        if (!bool__verified) return;
+        if (UINT16_T__G__LogRowsToday < 0xFFFFu) UINT16_T__G__LogRowsToday++;
+        BOOL__G__LogClockGapEmitted = true;
+    }
+    if (LittleFS.exists(SIMPLE_TIME_GAP_FILE) && !LittleFS.remove(SIMPLE_TIME_GAP_FILE))
+    {
+        func__SimpleLog_FaultRaise();
+        return;
+    }
+    BOOL__G__LogClockGap = false;
+    BOOL__G__LogClockGapStored = false;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
+}
 static void func__SimpleLog_Tick(void)
 {
     uint32_t uint32_t__nowMs;
-    /*
- * [EN] The calendar day is resolved on every tick, before the boot row and
- * before any cap. At midnight this creates the new day file even if no
- * event has arrived yet; on battery or with Wi-Fi off it is the same.
- */
+    func__SimpleLog_ClockGapTick();
+    /* Do not open a stale day's file or consume events before clock recovery. */
+    if (!func__Simple_TimeBootReady()) return;
     (void)func__SimpleLog_ResolveDay(false);
-    /*
- * [EN] Boot row FIRST and with no board at all: the panel log is the
- * witness of the panel itself.
- */
-    if (BOOL__G__LogBootRowPending != false)
+    if (BOOL__G__LogBootRowPending)
     {
-        uint16_t uint16_t__mask = SIMPLE_LOG_CHG_BOOT;
-        BOOL__G__LogBootRowPending = false;
         UINT32_T__G__LogSessionStartMs = (uint32_t)millis();
-        /*
- * [EN] v1.113: the update joins the boot row, so one switch-on gives one
- * row. Only log timers are zeroed just before it.
- */
-        if (BOOL__G__LogUpdatePending != false)
+        /* A restored history already witnesses this device; quiet battery wakes are silent. */
+        if (BOOL__G__LogHasPrev && BOOL__G__LogRestoredPrev && !BOOL__G__LogUpdatePending)
         {
-            BOOL__G__LogUpdatePending = false;
-            uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_UPDATE);
-            UINT32_T__G__LogLastRowMs = 0u;
-            BOOL__G__LogLastRowValid = false;
-            UINT32_T__G__LogLastStepMs = 0u;
-            BOOL__G__LogLastStepValid = false;
-            UINT16_T__G__LogPendingMask = 0u;
-            UINT8_T__G__LogPendingNote = SIMPLE_LOG_NOTE_NONE;
-            BOOL__G__LogMainsQueuedValid = false;
-            BOOL__A__LogForceRow = true;
+            BOOL__G__LogBootRowPending = false;
         }
-        (void)func__SimpleLog_WriteRow(uint16_t__mask,
-                                       (UINT8_T__G__LogPrevNote != 0u) ?
-                                       SIMPLE_LOG_NOTE_LOW_STOP : SIMPLE_LOG_NOTE_NONE);
+        else
+        {
+            uint16_t uint16_t__mask = (uint16_t)(SIMPLE_LOG_CHG_BOOT | UINT16_T__G__LogPendingMask);
+            if (BOOL__G__LogUpdatePending)
+            {
+                uint16_t__mask = (uint16_t)(uint16_t__mask | SIMPLE_LOG_CHG_UPDATE);
+                UINT32_T__G__LogLastRowMs = 0u;
+                BOOL__G__LogLastRowValid = false;
+                UINT32_T__G__LogLastStepMs = 0u;
+                BOOL__G__LogLastStepValid = false;
+                BOOL__A__LogForceRow = true;
+            }
+            uint8_t uint8_t__note = UINT8_T__G__LogPendingNote;
+            if ((uint8_t__note == SIMPLE_LOG_NOTE_NONE) && (UINT8_T__G__LogPrevNote != 0u))
+            {
+                uint8_t__note = SIMPLE_LOG_NOTE_LOW_STOP;
+            }
+            if (func__SimpleLog_WriteRow(uint16_t__mask, uint8_t__note))
+            {
+                BOOL__G__LogBootRowPending = false;
+                BOOL__G__LogUpdatePending = false;
+            }
+            BOOL__A__LogForceRow = false;
+        }
     }
     func__SimpleLog_FlushPending();
     uint32_t__nowMs = (uint32_t)millis();
@@ -1854,7 +1987,7 @@ static void func__SimpleLog_Tick(void)
         }
         else
         {
-            bool__silent = (BOOL__G__LogLastRowValid != false) &&
+            bool__silent = (BOOL__G__LogBootRowPending == false) &&
                            ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogSessionStartMs) >
                             SIMPLE_LOG_LINK_TIMEOUT_MS);
         }
@@ -1864,17 +1997,32 @@ static void func__SimpleLog_Tick(void)
             func__SimpleLog_Queue(SIMPLE_LOG_CHG_LINK, SIMPLE_LOG_NOTE_LINK_LOST);
         }
     }
-    if (BOOL__G__LogLastRowValid != false)
+    if (BOOL__G__TimeValid)
     {
-        if ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >=
-            SIMPLE_LOG_HEARTBEAT_MS)
+        uint32_t uint32_t__nowSec = func__Simple_NowSec();
+        if ((UINT32_T__G__LogLastBeatSec < SIMPLE_TIME_VALID_MIN) ||
+            (UINT32_T__G__LogLastBeatSec > uint32_t__nowSec))
+        {
+            UINT32_T__G__LogLastBeatSec = uint32_t__nowSec;
+        }
+        uint32_t uint32_t__silentSec = uint32_t__nowSec - UINT32_T__G__LogLastBeatSec;
+        if (uint32_t__silentSec >= (SIMPLE_LOG_HEARTBEAT_MS / 1000u))
         {
             func__SimpleLog_Queue(0u, SIMPLE_LOG_NOTE_HEARTBEAT);
         }
     }
+    else if (BOOL__G__LogLastRowValid &&
+             ((uint32_t)(uint32_t__nowMs - UINT32_T__G__LogLastRowMs) >= SIMPLE_LOG_HEARTBEAT_MS))
+    {
+        func__SimpleLog_Queue(0u, SIMPLE_LOG_NOTE_HEARTBEAT);
+    }
 }
 static void func__SimpleLog_Begin(void)
 {
+    BOOL__G__LogClockGapStored = BOOL__G__FsOk && LittleFS.exists(SIMPLE_TIME_GAP_FILE);
+    BOOL__G__LogClockGap = BOOL__G__LogClockGapStored;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
     UINT8_T__G__LogWriteFault = 0u;
     UINT16_T__G__LogDroppedRows = 0u;
     BOOL__G__LogDayFileReady = false;
@@ -2262,12 +2410,16 @@ static size_t func__SimpleLog_Tail(char *char__ptr_out, size_t size_t__outSize,
 }
 static uint8_t func__SimpleLog_Clear(void)
 {
+    if (BOOL__G__FsOk && LittleFS.exists(SIMPLE_TIME_GAP_FILE) && !LittleFS.remove(SIMPLE_TIME_GAP_FILE))
+    { func__SimpleLog_FaultRaise(); return 0u; }
+    BOOL__G__LogClockGap = false;
+    BOOL__G__LogClockGapStored = false;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     uint8_t uint8_t__slot;
     uint8_t uint8_t__removed = 0u;
     uint8_t uint8_t__pass;
-    UINT8_T__G__LogRamHead = 0u;
-    UINT8_T__G__LogRamCount = 0u;
     if (BOOL__G__FsOk == false)
     {
         UINT16_T__G__LogRowsToday = 0u;
@@ -2303,6 +2455,9 @@ static uint8_t func__SimpleLog_Clear(void)
             break;
         }
     }
+    if (func__SimpleLog_ScanDays(true) != 0u) { func__SimpleLog_FaultRaise(); return uint8_t__removed; }
+    UINT8_T__G__LogRamHead = 0u;
+    UINT8_T__G__LogRamCount = 0u;
     (void)LittleFS.remove(SIMPLE_LOG_INDEX_PATH);
     (void)LittleFS.remove(SIMPLE_LOG_LAST_PATH);
     UINT8_T__G__LogIndexCount = 0u;
@@ -2485,6 +2640,10 @@ static size_t func__SimpleLog_FsStatusJson(char *char__ptr_out, size_t size_t__o
 }
 static void func__SimpleLog_ResetStateAfterFormat(void)
 {
+    BOOL__G__LogClockGap = false;
+    BOOL__G__LogClockGapStored = false;
+    BOOL__G__LogClockGapEmitted = false;
+    BOOL__G__LogClockRetryArmed = false;
     UINT8_T__G__LogIndexCount = 0u;
     BOOL__G__LogScanValid = false;
     UINT32_T__G__LogDayCode = 0xFFFFFFFFu;

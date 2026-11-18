@@ -87,7 +87,7 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(['cCharge','cVolt'].every(id=>d.getElementById(id).closest('.chart-card')),'both remaining charts use dedicated flat-color cards');
     const canvasRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='canvas');
     const cardRule=[...d.styleSheets[0].cssRules].find(r=>r.selectorText==='.cd.chart-card');
-    check(canvasRule.style.getPropertyValue('background-image')==='none' && ['rgb(18, 24, 38)','#121826'].includes(cardRule.style.getPropertyValue('background')) && cardRule.style.getPropertyValue('backdrop-filter')==='none','chart surfaces use solid CSS colors without an image or glass blur');
+    check(canvasRule.style.getPropertyValue('background-image')==='none' && cardRule.style.getPropertyValue('background')==='rgb(18, 24, 38)' && cardRule.style.getPropertyValue('backdrop-filter')==='none','chart surfaces use solid CSS colors without an image or glass blur');
     let strokes=0,fills=0;
     const ctx=new Proxy({}, {get:(target,key)=>key in target?target[key]:key==='createLinearGradient'||key==='drawImage'?()=>{throw Error('chart attempted gradient/image');}:key==='stroke'?()=>strokes++:key==='fill'?()=>fills++:()=>{},set:(target,key,value)=>{target[key]=value;return true;}});
     for(const id of ['cCharge','cVolt']){const c=d.getElementById(id);c.getContext=()=>ctx;Object.defineProperty(c,'clientWidth',{get:()=>700});Object.defineProperty(c,'clientHeight',{get:()=>180});}

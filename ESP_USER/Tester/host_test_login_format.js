@@ -60,14 +60,10 @@ async function login(password){
     check(d.getElementById('adminCard').hidden && !format.disabled,'expired session locks admin without losing button state');
     w.fetch=originalFetch;
     await w.admLogout();await login('admin');
-    d.getElementById('admOld').value='admin';d.getElementById('admNew').value='new &+ رمز';d.getElementById('admNew2').value='new &+ رمز';
-    const change=[...d.querySelectorAll('#adminCard button')].find(b=>b.textContent==='تغییر');
-    change.click();await flush();
-    check(d.getElementById('admCardMsg').textContent.includes('عوض شد'),'form adapter also handles password change');
+    check(!d.querySelector('#admOld,#admNew,#admNew2,#admPassBtn'),'password editing is absent from the generated panel');
+    check((await originalFetch('/setpass',{method:'POST',body:'old=admin&new=changed-password'})).status===404,'direct offline password mutation is unavailable even to admin');
     await w.admLogout();await login('admin');
-    check(!d.getElementById('admGate').hidden,'old password refused after change and logout');
-    await login('new &+ رمز');
-    check(d.getElementById('admGate').hidden,'changed password survives logout; encoded characters preserved');
+    check(d.getElementById('admGate').hidden,'original password still works after rejected mutation and logout');
     check(errors.length===0,'no script or stylesheet errors during native clicks');
     console.log(`ALL ${checks} LOGIN / FORMAT CHECKS PASSED`);
 })().then(()=>w.close()).catch(e=>{console.error(e);w.close();process.exitCode=1;});
