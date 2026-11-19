@@ -98,7 +98,7 @@ function panel(){
  check(fullButton.nextElementSibling.textContent.includes('Vin')&&fullButton.nextElementSibling.nextElementSibling.textContent.includes('Vpack'),'voltage legends sit beside the full-view icon');
  check(d.getElementById('segVolt').closest('.volt-ranges').parentElement===fullButton.closest('.volt-tools').parentElement,'range buttons and legends share the toolbar directly above the plot');
  check([...d.querySelectorAll('#segVolt button')].every(b=>!b.querySelector('br')&&/^.[ ](?:روز|ماه)$/.test(b.textContent)),'range number and unit remain adjacent, without a second row');
- check(d.getElementById('voltMinMax').tagName==='STRONG'&&!d.getElementById('voltAxisInfo'),'voltage min/max is emphasized and the unwanted axis description is removed');
+ check(d.getElementById('voltMinMax').tagName==='SPAN'&&!source.includes('#voltMinMax{')&&!d.getElementById('voltAxisInfo'),'voltage min/max returns to plain compact text without a bold card or axis description');
  check(fullButton.closest('.volt-tools')&&fullButton.closest('.chart-card')===vc.closest('.chart-card')&&fullButton.querySelector('svg path')&&!fullButton.textContent.trim()&&fullButton.getAttribute('aria-label')==='نمایش کامل','full view is an accessible line icon inside the chart wrapper');
  w.chartViewSet('volt',.4,.2,.2,.05);w.setChartRange('volt','1d');
  check(w.eval('voltYForTest().start===0&&voltYForTest().span===1'),'range changes reset vertical zoom');

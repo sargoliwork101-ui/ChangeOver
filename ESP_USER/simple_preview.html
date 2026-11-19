@@ -300,7 +300,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
  .stat-grid{grid-template-columns:1fr 1fr}
  .theme-grid{grid-template-columns:1fr 1fr !important}
 }
-.volt-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 12px}.volt-ranges{flex:1 1 210px;max-width:360px;min-width:0}.volt-ranges .segmented{width:100%;box-sizing:border-box}.volt-ranges button{flex:1;white-space:nowrap;padding:7px 5px}.volt-ranges .seg-indicator{display:none}.volt-ranges button.a{background:var(--cd2);box-shadow:inset 0 0 0 1px var(--ln2)}.volt-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;direction:ltr;margin-right:auto}.volt-tools .chart-full{position:static;display:flex;align-items:center}.volt-tools .bdg{white-space:nowrap}#voltMinMax{display:block;text-align:center;font-size:clamp(12px,2.6vw,15px);font-weight:800;line-height:1.9;letter-spacing:.2px;background:var(--acbg);border:1px solid var(--ln2);border-radius:9px;padding:7px 12px;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}#voltMinMax:empty{display:none}
+.volt-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 12px}.volt-ranges{flex:1 1 210px;max-width:360px;min-width:0}.volt-ranges .segmented{width:100%;box-sizing:border-box}.volt-ranges button{flex:1;white-space:nowrap;padding:7px 5px}.volt-ranges .seg-indicator{display:none}.volt-ranges button.a{background:var(--cd2);box-shadow:inset 0 0 0 1px var(--ln2)}.volt-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;direction:ltr;margin-right:auto}.volt-tools .chart-full{position:static;display:flex;align-items:center}.volt-tools .bdg{white-space:nowrap}
 /* Canvas responsive container */
 .chart-full{position:absolute;left:4px;top:4px;z-index:2;padding:5px;color:var(--mu);background:var(--cd);border:1px solid var(--ln);border-radius:7px;cursor:pointer}
 .chart-full+canvas{margin-top:42px}
@@ -767,7 +767,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     var path = routeName(url);
     var method = ((options && options.method) || 'GET').toUpperCase();
 
-    if (path === 'about') return jsonResponse("\n{\n  \"companyName\": \"\",\n  \"description\": \"\",\n  \"phone\": \"09367969890\",\n  \"website\": \"\",\n  \"address\": \"تهران-تهران\",\n  \"email\": \"\",\n  \"whatsapp\": \"\",\n  \"hours\": \"\",\n  \"social\": \"\"\n}\n");
+    if (path === 'about') return jsonResponse("\n{\n  \"companyName\": \"\",\n  \"description\": \"\",\n  \"phone\": \"09367969890\",\n  \"phone2\": \"\",\n  \"website\": \"\",\n  \"address\": \"تهران-تهران\",\n  \"email\": \"\",\n  \"whatsapp\": \"\",\n  \"hours\": \"\",\n  \"social\": \"\"\n}\n");
     if (path === 't') { return jsonResponse(telemetryJson()); }
     if (path === 'charts') { return jsonResponse(chartJson(query(url, 'range') || '1d')); }
     if (path === 'diag') { return jsonResponse(diagJson()); }
@@ -963,7 +963,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
      دادهٔ واقعی سرور را نمی‌گیرد (برای سنجش دقیق مسیر واقعی) */
   var noMock = (window.__CO_NO_MOCK__ === true);
   window.fetch = function (url, options) {
-    if (routeName(String(url)) === 'about' && location.protocol === 'file:') return Promise.resolve(jsonResponse("\n{\n  \"companyName\": \"\",\n  \"description\": \"\",\n  \"phone\": \"09367969890\",\n  \"website\": \"\",\n  \"address\": \"تهران-تهران\",\n  \"email\": \"\",\n  \"whatsapp\": \"\",\n  \"hours\": \"\",\n  \"social\": \"\"\n}\n"));
+    if (routeName(String(url)) === 'about' && location.protocol === 'file:') return Promise.resolve(jsonResponse("\n{\n  \"companyName\": \"\",\n  \"description\": \"\",\n  \"phone\": \"09367969890\",\n  \"phone2\": \"\",\n  \"website\": \"\",\n  \"address\": \"تهران-تهران\",\n  \"email\": \"\",\n  \"whatsapp\": \"\",\n  \"hours\": \"\",\n  \"social\": \"\"\n}\n"));
     if (mockActive && !noMock) {
       return Promise.resolve(mockFetch(String(url), options));
     }
@@ -1303,12 +1303,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
   document.getElementById('chargeCap').parentElement.hidden = true;
   document.getElementById('chargeHistoryList').hidden = true;
   const intro = card.querySelector('.ti').nextElementSibling;
-  intro.textContent = 'یک روز را انتخاب کن تا وضعیت، ساعت شروع، پایان و مدت شارژ هر باتری را ببینی.';
+  intro.textContent = '۳۰ روز اخیر؛ بر اساس سوابق ثبت‌شدهٔ پنل. یک روز را انتخاب کن تا وضعیت، ساعت شروع، پایان و مدت شارژ هر باتری را ببینی.';
   const root = document.createElement('section');
   root.id = 'chargeCalendar';
   root.setAttribute('aria-label', 'تقویم تاریخچهٔ شارژ');
   root.innerHTML = `
-   <p class="cal-preview-note">۳۰ روز اخیر؛ بر اساس سوابق ثبت‌شدهٔ پنل.</p>
    <div class="cal-toolbar"><div class="cal-navigation"><button type="button" id="calPrev" aria-label="ماه قبل">ماه قبل</button><strong id="calMonth" aria-live="polite"></strong><button type="button" id="calNext" aria-label="ماه بعد">ماه بعد</button><button type="button" id="calToday">این ماه</button></div></div>
    <div class="cal-legend"><span class="cal-blue">● باتری بالا</span><span class="cal-green">● باتری پایین</span><span>عدد رنگی = همهٔ نوبت‌های شارژ ثبت‌شده</span></div>
    <div class="cal-week" aria-hidden="true"><span>شنبه</span><span>یکشنبه</span><span>دوشنبه</span><span>سه‌شنبه</span><span>چهارشنبه</span><span>پنجشنبه</span><span>جمعه</span></div>
@@ -1539,23 +1538,24 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
   }
   const contacts=document.createElement('div');contacts.className='company-contacts';
   const status=document.createElement('p');status.id='aboutStatus';status.className='company-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
-  const labels={phone:'تماس با ما',website:'وب‌سایت',address:'دفتر نمایندگی',email:'ایمیل',whatsapp:'واتس‌اپ',hours:'ساعات پاسخ‌گویی',social:'شبکهٔ اجتماعی'};
+  const labels={phone:'تماس با ما',phone2:'تماس دوم',website:'وب‌سایت',address:'دفتر نمایندگی',email:'ایمیل',whatsapp:'واتس‌اپ',hours:'ساعات پاسخ‌گویی',social:'شبکهٔ اجتماعی'};
   for(const [key,label] of Object.entries(labels)) {
    const value=text(data,key);if(!value)continue;
-   let href='';const number=key==='phone'||key==='whatsapp'?phoneNumber(value):'';
-   if(key==='phone'&&number)href='tel:'+number;
+   const isPhone=key==='phone'||key==='phone2';
+   let href='';const number=isPhone||key==='whatsapp'?phoneNumber(value):'';
+   if(isPhone&&number)href='tel:'+number;
    if(key==='website'||key==='social')href=webLink(value);
    if(key==='email'&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value)&&!/[\u0000-\u001f\u007f]/.test(value))href='mailto:'+value;
    if(key==='whatsapp'&&number){const digits=number.replace(/^\+|^00/,'');if(/^[1-9]\d{7,14}$/.test(digits))href='https://wa.me/'+digits;}
    const row=document.createElement('div');row.className='company-contact';row.dataset.about=key;
-   row.appendChild(icon(key));
+   row.appendChild(icon(isPhone?'phone':key));
    const title=document.createElement('span');title.className='company-label';title.textContent=label+':';row.appendChild(title);
    const content=document.createElement(href?'a':'span');
    if(href){content.href=href;if(/^https?:/.test(href)){content.target='_blank';content.rel='noopener noreferrer';}}
    const valueNode=document.createElement('bdi');valueNode.dir=['address','hours'].includes(key)?'auto':'ltr';valueNode.textContent=value;content.appendChild(valueNode);row.appendChild(content);
-   if(key==='phone') {
+   if(isPhone) {
     const copy=document.createElement('button');copy.type='button';copy.className='company-copy';copy.setAttribute('aria-label','کپی شماره تماس');copy.title='کپی شماره تماس';
-    copy.append(icon('copy'),document.createTextNode('کپی'));
+    copy.appendChild(icon('copy'));
     copy.addEventListener('click',()=>copyPhone(number||value,status));row.appendChild(copy);
    }
    contacts.appendChild(row);
@@ -1765,7 +1765,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 <div class="canvas-wrap"><canvas id="cVolt" width="700" height="200"></canvas></div>
 <div id="cVoltLabels" class="axl"></div>
 <div class="action-row" style="margin-top:12px"><span class="mu">زوم: کنترل + اسکرول یا دو انگشت؛ جابه‌جایی: کشیدن نمودار</span></div>
-<div style="display:grid;gap:8px;margin-top:12px"><span id="voltRangeInfo" class="mu">--</span><strong id="voltMinMax" dir="ltr">--</strong><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
+<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap;gap:8px"><span id="voltRangeInfo">--</span><span id="voltMinMax" dir="ltr">--</span><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
 </div>
 </div>
 <div id="pg2" class="pgx"><div id="settingsContent">
@@ -1791,10 +1791,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 <div id="evtSt" style="font-size:11px;color:var(--mu);min-height:16px"></div>
 <div id="evtList" style="max-height:300px;overflow:auto;font-size:12px;line-height:1.9;border-top:1px solid var(--ln);margin-top:6px">در حال خواندن…</div>
 </div></details>
-<details class="cd setting-panel" id="technicalInfo"><summary><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg><span>اطلاعات فنی</span><span class="summary-note">برد و ارتباط</span></summary><div class="setting-body settings-grid">
-<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-settings"/></svg>اطلاعات برد</h3><div id="boardInfo" class="log">--</div></div>
-<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg>ارتباط زنده</h3><div lang="en" dir="ltr" style="text-align:left;font-size:11px;line-height:1.9;overflow-wrap:anywhere"><div id="linkState">Link: --</div><div id="seqInfo">Frames: -- | Last update: -- ms ago</div></div></div>
-</div></details>
 <section class="cd" id="adminCard" hidden><div class="admin-head"><h2><svg class="glyph" aria-hidden="true"><use href="#i-lock"/></svg> مدیریت</h2><span id="admWho"></span><button class="btn action" type="button" title="خروج" aria-label="خروج"  onclick="uiAction(this,()=>admLogout(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-logout"/></svg><span>خروج</span></button></div><details class="setting-panel admin-section" open><summary><svg class="glyph" aria-hidden="true"><use href="#i-key"/></svg><span>امنیت و شبکه</span></summary>
 <div class="setting-body"><h3 class="ti">وای‌فای</h3>
 <div class="settings-form"><label class="field" for="admSsid"><span>نام شبکه</span><input id="admSsid" placeholder="نام شبکه"></label>
@@ -1805,6 +1801,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 <div class="setting-body action-row"><button class="btn action" type="button" title="ریست قفل خطا" aria-label="ریست قفل خطا"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:5},'قفل خطا ریست شد','ریست قفل بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست قفل</span></button><button class="btn action" type="button" title="پاک‌کردن ماسک باتری مرده" aria-label="پاک‌کردن ماسک باتری مرده"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:6},'ماسک باتری مرده پاک شد','ماسک باتری مرده پاک شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست خرابی</span></button><button class="btn action" type="button" title="ریست قفل باتری ضعیف" aria-label="ریست قفل باتری ضعیف"  onclick="uiAction(this,()=>admConfirm('/latch/reset',{n:8},'ریست ضعیف انجام شد','قفل باتری ضعیف بازنشانی شود؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>ریست ضعف</span></button></div></details>
 <details class="setting-panel admin-section"><summary><svg class="glyph" aria-hidden="true"><use href="#i-file"/></svg><span>ثبت و دانلود</span></summary>
 <div class="setting-body action-row"><button class="btn action" type="button" title="ثبت لحظه" aria-label="ثبت لحظه"  onclick="uiAction(this,()=>admPost('/evt/snap',{},'عکس لحظه ثبت شد'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-camera"/></svg><span>ثبت لحظه</span></button><button class="btn action" type="button" title="دانلود روز" aria-label="دانلود روز"  onclick="uiAction(this,()=>admDl())"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span>دانلود روز</span></button></div></details>
+<details class="setting-panel admin-section" id="technicalInfo"><summary><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg><span>اطلاعات فنی</span><span class="summary-note">برد و ارتباط</span></summary><div class="setting-body settings-grid">
+<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-settings"/></svg>اطلاعات برد</h3><div id="boardInfo" class="log">--</div></div>
+<div class="setting-block"><h3><svg class="glyph" aria-hidden="true"><use href="#i-activity"/></svg>ارتباط زنده</h3><div lang="en" dir="ltr" style="text-align:left;font-size:11px;line-height:1.9;overflow-wrap:anywhere"><div id="linkState">Link: --</div><div id="seqInfo">Frames: -- | Last update: -- ms ago</div></div></div>
+</div></details>
 <details class="setting-panel admin-section danger-zone"><summary><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌سازی</span></summary>
 <div class="setting-body"><div class="settings-form"><label class="field" for="admClearType"><span>نوع تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">دیاگ</option></select></label>
 <div class="form-actions"><button class="btn action danger" type="button" title="پاک‌کردن تاریخچهٔ انتخاب‌شده" aria-label="پاک‌کردن تاریخچهٔ انتخاب‌شده"  onclick="uiAction(this,()=>admClear(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌کردن</span></button><button class="btn action danger" type="button" title="حذف لاگ" aria-label="حذف لاگ"  onclick="uiAction(this,()=>admConfirm('/evt/clr',{},'همهٔ لاگ‌ها پاک شد','همهٔ روزهای لاگ حذف شوند؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>حذف لاگ</span></button><button class="btn action danger" type="button" title="فرمت حافظه و حذف همهٔ تاریخچه‌ها" aria-label="فرمت حافظه و حذف همهٔ تاریخچه‌ها" id="admFormat" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>فرمت</span></button></div></div><p class="setting-note">حذف تاریخچه برگشت‌پذیر نیست؛ فرمت همهٔ تاریخچه‌ها را پاک می‌کند. رمزها حفظ می‌شوند.</p></div></details>

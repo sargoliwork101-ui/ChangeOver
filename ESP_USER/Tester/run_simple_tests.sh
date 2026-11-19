@@ -93,6 +93,7 @@ if command -v node >/dev/null 2>&1 && [ -f "${DIRECTORY}/../simple_preview.html"
     node "${DIRECTORY}/host_test_login_format.js"
     node "${DIRECTORY}/host_test_charge_calendar.js"
     node "${DIRECTORY}/host_test_about.js"
+    node "${DIRECTORY}/host_test_battery_wear_preview.js"
 else
     echo "  SKIP: node یا jsdom یا پیش‌نمایش موجود نیست"
 fi

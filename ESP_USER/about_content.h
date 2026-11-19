@@ -10,6 +10,7 @@ static const char SIMPLE_ABOUT_JSON[] PROGMEM = R"about(
   "companyName": "",
   "description": "",
   "phone": "09367969890",
+  "phone2": "",
   "website": "",
   "address": "تهران-تهران",
   "email": "",

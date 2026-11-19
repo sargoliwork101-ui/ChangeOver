@@ -16,13 +16,13 @@ const assert=require('assert/strict');
    await page.setViewportSize({width,height:900});await page.waitForTimeout(400);
    for(const selector of ['#connectionSettings','#evtCard','#technicalInfo'])await page.locator(selector).evaluate(e=>e.open=true);
    await page.evaluate(()=>evtFs(0));
-   let state=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,admin:getComputedStyle(document.getElementById('adminCard')).display}));
-   assert(state.scroll<=width,'public overflow at '+width);assert.equal(state.admin,'none');
+   let state=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,admin:getComputedStyle(document.getElementById('adminCard')).display,technical:document.getElementById('technicalInfo').getBoundingClientRect().height}));
+   assert(state.scroll<=width,'public overflow at '+width);assert.equal(state.admin,'none');assert.equal(state.technical,0);
    // Layout only: authentication and exact mutation routes have separate native-click tests.
    await page.evaluate(()=>{admTokenSet('a'.repeat(64));admUnlock('admin');document.querySelectorAll('#adminCard details').forEach(e=>e.open=true);});
    await page.evaluate(()=>evtFs(0));
    state=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,buttons:[...document.querySelectorAll('#adminCard button')].map(b=>({h:b.getBoundingClientRect().height,w:b.getBoundingClientRect().width}))}));
-   assert(state.scroll<=width,'admin overflow at '+width);
+   assert(state.scroll<=width,'admin overflow at '+width);assert(await page.locator('#adminCard #technicalInfo').isVisible());
    assert(state.buttons.every(b=>b.h>=38&&b.w>=38),'undersized action at '+width);
    if(process.env.SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'settings-'+width+'.png'),fullPage:true});
    console.log('PASS: public/admin settings at '+width+'px; no horizontal overflow; usable targets');

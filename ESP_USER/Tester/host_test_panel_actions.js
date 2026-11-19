@@ -47,7 +47,7 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(['exportCsv','chargeCsvData','voltCsvData','csvRowsFromColumns','csvText','csvCell','csvFileStamp','jLatinDate'].every(name=>!html.includes('function '+name+'(')),'chart-only CSV builders and unused date helper are removed');
     check(typeof w.downloadCsvText==='function' && d.querySelector('#pg2 #evtCard [onclick*="evtDlAll"]'),'stored history downloads remain available in settings');
     const tech=d.getElementById('technicalInfo');
-    check(tech.closest('#settingsContent') && !tech.closest('#adminCard') && d.querySelectorAll('#linkState,#seqInfo').length===2,'technical status exists once, in public settings only');
+    check(tech.closest('#settingsContent') && tech.closest('#adminCard') && d.querySelectorAll('#linkState,#seqInfo').length===2,'technical status exists once, inside the admin panel only');
     check(d.getElementById('linkState').closest('[lang="en"][dir="ltr"]')===d.getElementById('seqInfo').closest('[lang="en"][dir="ltr"]'),'English technical values have an explicit left-to-right layout');
     check(!d.querySelector('.footer #linkState,.footer #seqInfo') && d.querySelector('.footer').children.length===1 && d.querySelector('.footer #fwTap[onclick="admTap()"]'),'footer retains only version and its hidden admin entry');
     for(const tab of [0,1,2,0]){

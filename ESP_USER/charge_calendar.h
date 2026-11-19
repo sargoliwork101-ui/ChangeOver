@@ -57,12 +57,11 @@ static const char SIMPLE_CHARGE_CALENDAR_JS[] PROGMEM = R"calendar(
   document.getElementById('chargeCap').parentElement.hidden = true;
   document.getElementById('chargeHistoryList').hidden = true;
   const intro = card.querySelector('.ti').nextElementSibling;
-  intro.textContent = 'یک روز را انتخاب کن تا وضعیت، ساعت شروع، پایان و مدت شارژ هر باتری را ببینی.';
+  intro.textContent = '۳۰ روز اخیر؛ بر اساس سوابق ثبت‌شدهٔ پنل. یک روز را انتخاب کن تا وضعیت، ساعت شروع، پایان و مدت شارژ هر باتری را ببینی.';
   const root = document.createElement('section');
   root.id = 'chargeCalendar';
   root.setAttribute('aria-label', 'تقویم تاریخچهٔ شارژ');
   root.innerHTML = `
-   <p class="cal-preview-note">۳۰ روز اخیر؛ بر اساس سوابق ثبت‌شدهٔ پنل.</p>
    <div class="cal-toolbar"><div class="cal-navigation"><button type="button" id="calPrev" aria-label="ماه قبل">ماه قبل</button><strong id="calMonth" aria-live="polite"></strong><button type="button" id="calNext" aria-label="ماه بعد">ماه بعد</button><button type="button" id="calToday">این ماه</button></div></div>
    <div class="cal-legend"><span class="cal-blue">● باتری بالا</span><span class="cal-green">● باتری پایین</span><span>عدد رنگی = همهٔ نوبت‌های شارژ ثبت‌شده</span></div>
    <div class="cal-week" aria-hidden="true"><span>شنبه</span><span>یکشنبه</span><span>دوشنبه</span><span>سه‌شنبه</span><span>چهارشنبه</span><span>پنجشنبه</span><span>جمعه</span></div>

@@ -30,7 +30,7 @@ class LogPolicy(unittest.TestCase):
         about = lab.json.loads(lab.load_about_json())
         self.assertEqual(about["phone"], "09367969890")
         self.assertEqual(about["address"], "تهران-تهران")
-        self.assertTrue(all(about[key] == "" for key in ("companyName", "description", "website", "email", "whatsapp", "hours", "social")))
+        self.assertTrue(all(about[key] == "" for key in ("companyName", "description", "phone2", "website", "email", "whatsapp", "hours", "social")))
         self.assertIn("function render(data)", lab.load_about_script())
         self.assertNotIn("09367969890", lab.load_panel_html())
     def test_simulated_charge_start_and_completion(self):

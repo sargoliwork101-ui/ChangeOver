@@ -26,6 +26,8 @@ async function session(date){
  const p=await session('2026-11-04T12:00:00'),{w,d}=p;
  check(d.getElementById('chargeCalendar')&&d.getElementById('calMonth').textContent==='آبان ۱۴۰۵','preview installs a Jalali calendar in the charge card');
  check(d.querySelectorAll('.cal-day').length===30,'Aban contains exactly 30 days');
+ const intro=d.getElementById('cCharge').closest('.chart-card').querySelector('.ti').nextElementSibling;
+ check(intro.textContent==='۳۰ روز اخیر؛ بر اساس سوابق ثبت‌شدهٔ پنل. یک روز را انتخاب کن تا وضعیت، ساعت شروع، پایان و مدت شارژ هر باتری را ببینی.'&&!d.getElementById('chargeCalendar').textContent.includes('۳۰ روز اخیر؛ بر اساس'),'calendar range precedes the day-selection instruction in the same paragraph, without duplicate text');
  const first=d.querySelector('.cal-day');
  check([...d.getElementById('calGrid').children].indexOf(first)===(new w.Date(2026,9,23).getDay()+1)%7,'month begins in the correct Saturday-first column');
  check(d.getElementById('calNext').disabled,'future-month navigation is disabled');

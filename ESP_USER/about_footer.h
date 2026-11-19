@@ -70,23 +70,24 @@ static const char SIMPLE_ABOUT_FOOTER_JS[] PROGMEM = R"footer(
   }
   const contacts=document.createElement('div');contacts.className='company-contacts';
   const status=document.createElement('p');status.id='aboutStatus';status.className='company-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
-  const labels={phone:'تماس با ما',website:'وب‌سایت',address:'دفتر نمایندگی',email:'ایمیل',whatsapp:'واتس‌اپ',hours:'ساعات پاسخ‌گویی',social:'شبکهٔ اجتماعی'};
+  const labels={phone:'تماس با ما',phone2:'تماس دوم',website:'وب‌سایت',address:'دفتر نمایندگی',email:'ایمیل',whatsapp:'واتس‌اپ',hours:'ساعات پاسخ‌گویی',social:'شبکهٔ اجتماعی'};
   for(const [key,label] of Object.entries(labels)) {
    const value=text(data,key);if(!value)continue;
-   let href='';const number=key==='phone'||key==='whatsapp'?phoneNumber(value):'';
-   if(key==='phone'&&number)href='tel:'+number;
+   const isPhone=key==='phone'||key==='phone2';
+   let href='';const number=isPhone||key==='whatsapp'?phoneNumber(value):'';
+   if(isPhone&&number)href='tel:'+number;
    if(key==='website'||key==='social')href=webLink(value);
    if(key==='email'&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value)&&!/[\u0000-\u001f\u007f]/.test(value))href='mailto:'+value;
    if(key==='whatsapp'&&number){const digits=number.replace(/^\+|^00/,'');if(/^[1-9]\d{7,14}$/.test(digits))href='https://wa.me/'+digits;}
    const row=document.createElement('div');row.className='company-contact';row.dataset.about=key;
-   row.appendChild(icon(key));
+   row.appendChild(icon(isPhone?'phone':key));
    const title=document.createElement('span');title.className='company-label';title.textContent=label+':';row.appendChild(title);
    const content=document.createElement(href?'a':'span');
    if(href){content.href=href;if(/^https?:/.test(href)){content.target='_blank';content.rel='noopener noreferrer';}}
    const valueNode=document.createElement('bdi');valueNode.dir=['address','hours'].includes(key)?'auto':'ltr';valueNode.textContent=value;content.appendChild(valueNode);row.appendChild(content);
-   if(key==='phone') {
+   if(isPhone) {
     const copy=document.createElement('button');copy.type='button';copy.className='company-copy';copy.setAttribute('aria-label','کپی شماره تماس');copy.title='کپی شماره تماس';
-    copy.append(icon('copy'),document.createTextNode('کپی'));
+    copy.appendChild(icon('copy'));
     copy.addEventListener('click',()=>copyPhone(number||value,status));row.appendChild(copy);
    }
    contacts.appendChild(row);
