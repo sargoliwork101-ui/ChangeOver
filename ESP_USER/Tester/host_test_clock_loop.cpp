@@ -32,9 +32,12 @@ int main()
     // Public contact content is compiled separately and never sends board commands.
     SIMPLE_WEB_SERVER_T__G__Server.simCall("/about",HTTP_GET);
     assert(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==200);
-    assert(SIMPLE_WEB_SERVER_T__G__Server.simBody()==SIMPLE_ABOUT_HTML);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simBody()==SIMPLE_ABOUT_JSON);
     assert(SIMPLE_WEB_SERVER_T__G__Server.simHeader("Cache-Control")=="no-store");
-    printf("REAL ABOUT ROUTE PASS: exact separate compiled HTML, public GET, no-store\n");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/about.js",HTTP_GET);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==200);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simBody()==SIMPLE_ABOUT_FOOTER_JS);
+    printf("REAL ABOUT ROUTE PASS: exact separate compiled JSON, public GET, no-store\n");
     unsigned requests=0u;
     for(unsigned seconds=1u;seconds<=40u;seconds++)
     {

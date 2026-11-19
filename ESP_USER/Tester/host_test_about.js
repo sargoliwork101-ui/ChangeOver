@@ -1,39 +1,67 @@
 'use strict';
-// Check the compiled About source, shared footer, retry behavior and offline preview.
+// Exercise the actual compiled footer renderer and the independent editable values.
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const root=path.join(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'simple_panel.h'),'utf8');
 const html=source.split('R"rawliteral(')[1].split(')rawliteral"')[0];
-const about=fs.readFileSync(path.join(root,'about_content.h'),'utf8').split('R"about(')[1].split(')about"')[0];
-const tick=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setImmediate(r));};
+const raw=fs.readFileSync(path.join(root,'about_content.h'),'utf8').split('R"about(')[1].split(')about"')[0];
+const configured=JSON.parse(raw);
+const asset=fs.readFileSync(path.join(root,'about_footer.h'),'utf8').split('R"footer(')[1].split(')footer"')[0];
+const tick=async()=>{for(let i=0;i<6;i++)await new Promise(r=>setImmediate(r));};
+const reply=(data,ok=true)=>({ok,json:async()=>data});
 let checks=0;
 function check(ok,label){assert.ok(ok,label);checks++;console.log('PASS: '+label);}
-(async()=>{
+async function session(fetchAbout=async()=>reply(configured)){
  const dom=new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true,url:'http://panel.test'}),w=dom.window,d=w.document;
- w.setInterval=()=>0;w.addEventListener=()=>{};w.fetch=async()=>{throw Error('offline');};w.HTMLCanvasElement.prototype.getContext=()=>null;
- w.eval(html.match(/<script>([\s\S]*?)<\/script>/)[1]);await tick();
- const el=d.getElementById('about');
- check(d.querySelectorAll('#about').length===1&&!el.closest('.pgx')&&el.nextElementSibling.classList.contains('footer'),'one About menu sits below all tabs, above the version footer');
- check(el.querySelector('summary').textContent==='درباره ما'&&el.getAttribute('ontoggle')==='loadAbout(this)','native keyboard-accessible disclosure invokes the real loader');
- let calls=0;w.fetch=async url=>{if(url!=='/about')throw Error('offline');calls++;return {ok:true,text:async()=>about};};
- await w.loadAbout(el);check(calls===0,'closed menu makes no request');
- el.open=true;await w.loadAbout(el);
- check(d.getElementById('aboutBody').innerHTML===about&&el.dataset.loaded==='1','About HTML comes from the independent compiled content file');
- const rows=el.querySelectorAll('p');
- check(rows.length===3&&rows[0].querySelector('bdi').textContent==='09367969890'&&rows[1].querySelector('bdi').textContent===''&&rows[2].querySelector('span').textContent==='تهران-تهران','requested phone, empty website and office address are exact');
- check(!source.includes('09367969890')&&!source.includes('تهران-تهران'),'contact values are not duplicated in the application page');
- for(const tab of [0,1,2]){w.showTab(tab);check(!el.closest('.pgx')&&!el.hidden,'About remains available on tab '+tab);}
- await w.loadAbout(el);el.open=false;await w.loadAbout(el);el.open=true;await w.loadAbout(el);check(calls===1,'reopening an already-loaded menu does not refetch');
- delete el.dataset.loaded;w.fetch=async()=>({ok:false});await w.loadAbout(el);
- check(!el.dataset.loaded&&!el.dataset.busy&&d.getElementById('aboutBody').textContent.includes('ناموفق'),'failed response allows retry and shows an understandable error');
- w.fetch=async()=>({ok:true,text:async()=>about});await w.loadAbout(el);check(el.dataset.loaded==='1','retry replaces the error with the contact content');
- delete el.dataset.loaded;let resolve;calls=0;w.fetch=()=>{calls++;return new Promise(r=>resolve=r);};const pending=w.loadAbout(el);await w.loadAbout(el);
- check(calls===1&&el.dataset.busy==='1','rapid toggles cannot duplicate an in-flight request');resolve({ok:true,text:async()=>about});await pending;w.close();
+ w.setInterval=()=>0;w.addEventListener=()=>{};w.HTMLCanvasElement.prototype.getContext=()=>null;
+ let calls=0;w.fetch=async(url,options)=>{if(url!=='/about')throw Error('offline');calls++;return fetchAbout(options);};
+ await tick();w.eval(html.match(/<script>([\s\S]*?)<\/script>/)[1]);w.eval(asset);await tick();
+ return {w,d,dom,calls:()=>calls};
+}
+(async()=>{
+ const p=await session(),{w,d}=p,footer=d.getElementById('about');
+ check(footer.tagName==='FOOTER'&&!footer.closest('.pgx')&&!footer.querySelector('summary,details'),'About is a permanent semantic footer, not an icon menu or disclosure');
+ check(d.querySelectorAll('#about').length===1&&footer.querySelector('#fwTap[onclick="admTap()"]'),'all tabs share one footer and preserve the version/admin entry');
+ check(source.includes('<script src="/about.js" defer></script>'),'production loads the same flash footer asset');
+ check(p.calls()===1&&d.querySelectorAll('.company-contact').length===2,'contact data loads automatically once and shows only the two provided fields');
+ check(d.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:09367969890'&&d.querySelector('[data-about="phone"] bdi').textContent==='09367969890','phone is a real dial link, without changing the configured number');
+ check(d.querySelector('[data-about="address"] bdi').textContent==='تهران-تهران','office address comes from the independent content file');
+ check(['companyName','description','website','email','whatsapp','hours','social'].every(key=>configured[key]===''&&!d.querySelector('[data-about="'+key+'"]')),'empty company, description and optional values produce no title, row, link or icon');
+ check(!source.includes('09367969890')&&!source.includes('تهران-تهران'),'editable contact values are not duplicated in the application page');
+ check(d.getElementById('companyFooterStyle').textContent.includes('text-align:center')&&!footer.classList.contains('cd'),'footer is centered, muted and not a raised card');
+ check(d.querySelector('.company-contact svg path')&&d.querySelector('.company-contact svg').getAttribute('aria-hidden')==='true','local line icons decorate contact rows without becoming keyboard controls');
+ for(const tab of [0,1,2]){w.showTab(tab);check(!footer.closest('.pgx')&&!footer.hidden,'footer remains available on tab '+tab);}
+ await w.loadAbout();await w.loadAbout();check(p.calls()===1,'tab changes and repeated loads cannot refetch already-loaded values');
+ let copied='';Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+ d.querySelector('.company-copy').click();await tick();check(copied==='09367969890'&&d.getElementById('aboutStatus').textContent==='شماره کپی شد.','secure clipboard copy confirms only a successful write');
+ Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:undefined});let fallback='';
+ d.execCommand=command=>{fallback=command+':'+d.querySelector('textarea').value;return true;};const copy=d.querySelector('.company-copy');copy.focus();copy.click();await tick();
+ check(fallback==='copy:09367969890'&&!d.querySelector('textarea')&&d.activeElement===copy,'HTTP clipboard fallback copies the number, removes scratch markup and restores focus');
+ Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('denied');}}});d.execCommand=()=>false;copy.click();await tick();
+ check(d.getElementById('aboutStatus').textContent.includes('کپی انجام نشد'),'denied clipboard and failed fallback never falsely report success');
+ w.renderCompanyFooter({companyName:'',description:'  ',phone:' ',website:'',address:'',email:null,whatsapp:42,hours:'\n',social:{}});
+ check(!d.querySelector('[data-about],.company-contact svg,.company-copy')&&footer.querySelector('#fwTap'),'all-empty or invalid field types leave only the existing version footer');
+ const complete={companyName:'نام آزمایشی برای تست',description:'خط اول\nخط دوم',phone:'+۹۸ (۹۳۶) ۷۹۶-۹۸۹۰',website:'example.com',address:'نشانی آزمایشی',email:'support@example.com',whatsapp:'+989367969890',hours:'زمان آزمایشی',social:'https://example.com/social'};
+ w.renderCompanyFooter(complete);
+ check(d.querySelector('[data-about="companyName"]').textContent===complete.companyName&&d.querySelector('[data-about="description"]').textContent===complete.description,'company name and multi-line introduction appear only when supplied');
+ check(d.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:+989367969890','Persian digits and phone punctuation normalize for dialing');
+ check(d.querySelector('[data-about="website"] a').href==='https://example.com/'&&d.querySelector('[data-about="social"] a').rel==='noopener noreferrer','web and social links use safe schemes and isolate external tabs');
+ check(d.querySelector('[data-about="email"] a').getAttribute('href')==='mailto:support@example.com'&&d.querySelector('[data-about="whatsapp"] a').href==='https://wa.me/989367969890','optional email and international WhatsApp values become working links');
+ check(d.querySelector('[data-about="hours"] bdi').textContent===complete.hours,'optional response hours are displayed verbatim');
+ w.renderCompanyFooter({phone:'٠٩٣٦٧٩٦٩٨٩٠'});check(d.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:09367969890','Arabic digits also normalize correctly');
+ w.renderCompanyFooter({companyName:'<img src=x onerror=alert(1)>',description:'<script>alert(1)</script>',website:'javascript:alert(1)',social:'data:text/html,hello',email:'x@y.z\r\nBcc:bad@x.z',whatsapp:'javascript:alert(1)'});
+ check(!footer.querySelector('img,script,a')&&footer.textContent.includes('<img'),'configuration is plain text, not executable HTML or unsafe links');
+ w.close();
+ const failed=await session(async()=>reply({},false));check(failed.d.querySelector('.company-retry')&&!failed.d.querySelector('.company-contact'),'failed fetch offers an unobtrusive retry instead of empty contact headings');
+ let resolve,calls=0;failed.w.fetch=()=>{calls++;return new Promise(r=>resolve=r);};failed.d.querySelector('.company-retry').click();await failed.w.loadAbout();
+ check(calls===1,'rapid retries cannot duplicate an in-flight contact request');resolve(reply(configured));await tick();
+ check(failed.d.querySelector('[data-about="phone"] a')&&!failed.d.querySelector('.company-retry'),'retry restores supplied contacts after a failed response');failed.w.close();
+ const malformed=await session(async()=>reply(null));check(malformed.d.querySelector('.company-retry'),'malformed configuration stays safe and retryable');malformed.w.close();
  const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
  const offline=new JSDOM(fs.readFileSync(path.join(root,'simple_preview.html'),'utf8'),{runScripts:'dangerously',pretendToBeVisual:true,url:'file:///panel.html',virtualConsole:vc,beforeParse(win){win.setInterval=()=>0;win.HTMLCanvasElement.prototype.getContext=()=>null;}});
- await tick();const menu=offline.window.document.getElementById('about');menu.open=true;await offline.window.loadAbout(menu);
- check(menu.querySelector('#aboutBody').innerHTML===about,'offline simulator uses the same separate contact source');
- check(!errors.length,'About preview produces no script errors');offline.window.close();
+ await tick();const body=offline.window.document.getElementById('aboutBody');
+ check(body.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:09367969890'&&!body.querySelector('[data-about="website"]'),'offline preview uses the same renderer and hides unfilled values automatically');
+ check(!errors.length,'shared footer preview has no script errors');offline.window.close();
  console.log(`ALL ${checks} ABOUT CHECKS PASSED`);
 })().catch(e=>{console.error(e);process.exit(1);});

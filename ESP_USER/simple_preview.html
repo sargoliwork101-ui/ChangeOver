@@ -396,6 +396,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 @media(max-width:480px){.setting-panel>summary .summary-note{display:none}.setting-body{padding:0 12px 12px}.btn.action{min-height:40px}.action-row{gap:6px}.icog .btn.ico{width:40px;padding:0}.icog .btn.ico .lbl{display:none}.icog .btn.ico.danger{width:auto;padding:0 9px}.icog .btn.ico.danger .lbl{display:inline}}
 </style>
 
+
 <!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فایل تولیدشده، دستی ویرایش نشود -->
 <style>
 #pg3 .simbox{background:var(--cd);border:1px solid var(--ln);border-radius:var(--r);padding:12px}
@@ -766,7 +767,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     var path = routeName(url);
     var method = ((options && options.method) || 'GET').toUpperCase();
 
-    if (path === 'about') return jsonResponse("\n<p>تماس با ما: <bdi>09367969890</bdi></p>\n<p>آدرس سایت: <bdi></bdi></p>\n<p>آدرس دفتر نمایندگی: <span>تهران-تهران</span></p>\n");
+    if (path === 'about') return jsonResponse("\n{\n  \"companyName\": \"\",\n  \"description\": \"\",\n  \"phone\": \"09367969890\",\n  \"website\": \"\",\n  \"address\": \"تهران-تهران\",\n  \"email\": \"\",\n  \"whatsapp\": \"\",\n  \"hours\": \"\",\n  \"social\": \"\"\n}\n");
     if (path === 't') { return jsonResponse(telemetryJson()); }
     if (path === 'charts') { return jsonResponse(chartJson(query(url, 'range') || '1d')); }
     if (path === 'diag') { return jsonResponse(diagJson()); }
@@ -962,7 +963,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
      دادهٔ واقعی سرور را نمی‌گیرد (برای سنجش دقیق مسیر واقعی) */
   var noMock = (window.__CO_NO_MOCK__ === true);
   window.fetch = function (url, options) {
-    if (routeName(String(url)) === 'about' && location.protocol === 'file:') return Promise.resolve(jsonResponse("\n<p>تماس با ما: <bdi>09367969890</bdi></p>\n<p>آدرس سایت: <bdi></bdi></p>\n<p>آدرس دفتر نمایندگی: <span>تهران-تهران</span></p>\n"));
+    if (routeName(String(url)) === 'about' && location.protocol === 'file:') return Promise.resolve(jsonResponse("\n{\n  \"companyName\": \"\",\n  \"description\": \"\",\n  \"phone\": \"09367969890\",\n  \"website\": \"\",\n  \"address\": \"تهران-تهران\",\n  \"email\": \"\",\n  \"whatsapp\": \"\",\n  \"hours\": \"\",\n  \"social\": \"\"\n}\n"));
     if (mockActive && !noMock) {
       return Promise.resolve(mockFetch(String(url), options));
     }
@@ -1470,6 +1471,141 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 })();
 
 </script>
+<script data-company-footer>
+
+(function () {
+ 'use strict';
+ const icons = {
+  phone:'M5 3h4l2 5-3 2a14 14 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2C10 21 3 14 3 5a2 2 0 0 1 2-2Z',
+  website:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3c4 5 4 13 0 18-4-5-4-13 0-18Z',
+  address:'M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0ZM15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
+  email:'M3 5h18v14H3ZM3 6l9 7 9-7',
+  whatsapp:'M21 11.5a9 9 0 0 1-13 8L3 21l1.5-5A9 9 0 1 1 21 11.5ZM8 8c0 4 4 8 8 8',
+  hours:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM12 7v5l3 2',
+  social:'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
+  copy:'M8 8h13v13H8ZM16 8V3H3v13h5'
+ };
+ // Build only local line icons; never load third-party imagery or fonts.
+ function icon(key) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  for (const [name,value] of Object.entries({viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':'1.5','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'})) svg.setAttribute(name,value);
+  const path = document.createElementNS(svg.namespaceURI, 'path');path.setAttribute('d',icons[key]);svg.appendChild(path);
+  return svg;
+ }
+ // Treat missing, non-string, and whitespace-only configuration values as absent.
+ function text(data,key) {return typeof data[key] === 'string' ? data[key].trim() : '';}
+ // Accept ordinary web links only; malformed or executable schemes stay plain text.
+ function webLink(value) {
+  if (/[\u0000-\u0020\u007f]/.test(value)) return '';
+  try {
+   const url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(value) ? value : 'https://' + value);
+   return ['http:','https:'].includes(url.protocol) && url.hostname && !url.username && !url.password ? url.href : '';
+  } catch (e) {return '';}
+ }
+ // Normalize Persian/Arabic digits and common telephone punctuation, not arbitrary text.
+ function phoneNumber(value) {
+  const latin=value.replace(/[۰-۹٠-٩]/g,ch=>String(ch.charCodeAt(0)-(ch.charCodeAt(0)>=1776?1776:1632)));
+  if (!/^[+\d\s()-]+$/.test(latin)) return '';
+  const number=latin.replace(/[\s()-]/g,'');
+  return /^\+?\d{5,15}$/.test(number) ? number : '';
+ }
+ // Try the secure clipboard first, then the user-gesture fallback used on ESP HTTP.
+ async function copyPhone(value,status) {
+  let copied=false;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+   try {await navigator.clipboard.writeText(value);copied=true;} catch(e) {}
+  }
+  if (!copied) {
+   const focused=document.activeElement,selection=window.getSelection(),ranges=[];
+   if(selection)for(let i=0;i<selection.rangeCount;i++)ranges.push(selection.getRangeAt(i).cloneRange());
+   const area=document.createElement('textarea');area.value=value;area.readOnly=true;area.dir='ltr';
+   area.style.cssText='position:fixed;left:-9999px;top:0;opacity:0;font-size:16px';
+   area.setAttribute('aria-label','شماره تماس برای کپی');document.body.appendChild(area);
+   try {area.select();copied=typeof document.execCommand==='function' && document.execCommand('copy');} catch(e) {}
+   finally {
+    area.remove();if(focused && focused.focus)focused.focus({preventScroll:true});
+    if(selection){selection.removeAllRanges();ranges.forEach(range=>selection.addRange(range));}
+   }
+  }
+  status.textContent=copied ? 'شماره کپی شد.' : 'کپی انجام نشد؛ شماره را نگه دارید و دستی کپی کنید.';
+ }
+ // Render values with textContent so configuration can never become active markup.
+ function render(data) {
+  const body=document.getElementById('aboutBody');if(!body)return;
+  const fragment=document.createDocumentFragment();
+  for (const [key,tag] of [['companyName','h2'],['description','p']]) {
+   const value=text(data,key);if(!value)continue;
+   const el=document.createElement(tag);el.dataset.about=key;el.textContent=value;el.className='company-'+key;fragment.appendChild(el);
+  }
+  const contacts=document.createElement('div');contacts.className='company-contacts';
+  const status=document.createElement('p');status.id='aboutStatus';status.className='company-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+  const labels={phone:'تماس با ما',website:'وب‌سایت',address:'دفتر نمایندگی',email:'ایمیل',whatsapp:'واتس‌اپ',hours:'ساعات پاسخ‌گویی',social:'شبکهٔ اجتماعی'};
+  for(const [key,label] of Object.entries(labels)) {
+   const value=text(data,key);if(!value)continue;
+   let href='';const number=key==='phone'||key==='whatsapp'?phoneNumber(value):'';
+   if(key==='phone'&&number)href='tel:'+number;
+   if(key==='website'||key==='social')href=webLink(value);
+   if(key==='email'&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value)&&!/[\u0000-\u001f\u007f]/.test(value))href='mailto:'+value;
+   if(key==='whatsapp'&&number){const digits=number.replace(/^\+|^00/,'');if(/^[1-9]\d{7,14}$/.test(digits))href='https://wa.me/'+digits;}
+   const row=document.createElement('div');row.className='company-contact';row.dataset.about=key;
+   row.appendChild(icon(key));
+   const title=document.createElement('span');title.className='company-label';title.textContent=label+':';row.appendChild(title);
+   const content=document.createElement(href?'a':'span');
+   if(href){content.href=href;if(/^https?:/.test(href)){content.target='_blank';content.rel='noopener noreferrer';}}
+   const valueNode=document.createElement('bdi');valueNode.dir=['address','hours'].includes(key)?'auto':'ltr';valueNode.textContent=value;content.appendChild(valueNode);row.appendChild(content);
+   if(key==='phone') {
+    const copy=document.createElement('button');copy.type='button';copy.className='company-copy';copy.setAttribute('aria-label','کپی شماره تماس');copy.title='کپی شماره تماس';
+    copy.append(icon('copy'),document.createTextNode('کپی'));
+    copy.addEventListener('click',()=>copyPhone(number||value,status));row.appendChild(copy);
+   }
+   contacts.appendChild(row);
+  }
+  if(contacts.childElementCount)fragment.appendChild(contacts);
+  fragment.appendChild(status);body.replaceChildren(fragment);
+ }
+ let busy=false,loaded=false;
+ // Fetch the compiled values once, with a bounded wait and an explicit retry on failure.
+ async function load() {
+  const body=document.getElementById('aboutBody');if(!body||busy||loaded)return;
+  busy=true;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+  try {
+   const response=await fetch('/about',{cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error('about');
+   const data=await response.json();if(!data||Array.isArray(data)||typeof data!=='object')throw Error('about');
+   render(data);loaded=true;
+  } catch(e) {
+   const retry=document.createElement('button');retry.type='button';retry.className='company-retry';retry.textContent='دریافت اطلاعات تماس؛ تلاش دوباره';retry.addEventListener('click',load);body.replaceChildren(retry);
+  } finally {clearTimeout(timer);busy=false;}
+ }
+ // Install a single shared footer, leaving the version/admin entry untouched.
+ function install() {
+  if(!document.getElementById('about')||document.getElementById('companyFooterStyle'))return;
+  const style=document.createElement('style');style.id='companyFooterStyle';
+  style.textContent=`
+   .company-footer{margin-top:14px;padding:26px 8px 8px;border-top:1px solid var(--ln);color:var(--mu);text-align:center;font-size:12px;line-height:1.9}
+   .company-footer .footer{justify-content:center;border:0;margin-top:16px;padding:4px;opacity:.65}
+   .company-companyName{font-size:15px;font-weight:700;color:var(--mu2);margin:0 0 8px}
+   .company-description{max-width:620px;margin:0 auto 17px;white-space:pre-line;overflow-wrap:anywhere}
+   .company-contacts{display:flex;justify-content:center;align-items:center;gap:10px 24px;flex-wrap:wrap;max-width:850px;margin:auto}
+   .company-contact{display:flex;justify-content:center;align-items:center;gap:7px;flex-wrap:wrap;min-width:0;max-width:100%;overflow-wrap:anywhere}
+   .company-contact svg{width:16px;height:16px;flex:none;opacity:.75}
+   .company-label{font-size:11px;opacity:.85}
+   .company-contact a,.company-contact bdi{color:inherit;max-width:100%;overflow-wrap:anywhere;user-select:text}
+   .company-contact a{text-decoration:none;text-underline-offset:4px;min-width:0}
+   .company-contact a:hover{color:var(--tx);text-decoration:underline}
+   .company-copy,.company-retry{font:inherit;color:inherit;background:none;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:32px;padding:3px 7px;border-radius:6px}
+   .company-copy{font-size:10px}.company-copy svg{width:13px;height:13px}
+   .company-copy:hover,.company-retry:hover{background:var(--cd2);color:var(--tx)}
+   .company-footer :focus-visible{outline:2px solid var(--ac);outline-offset:3px;border-radius:4px}
+   .company-status{font-size:11px;margin:8px 0 0}.company-status:empty{display:none}
+   @media(max-width:520px){.company-contacts{flex-direction:column;gap:10px}.company-footer{padding:22px 4px 6px}}
+  `;
+  document.head.appendChild(style);window.loadAbout=load;window.renderCompanyFooter=render;load();
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+})();
+
+</script>
 </head>
 <body data-theme="0"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-memory" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M20 12a8 8 0 0 0-14-5M4 12a8 8 0 0 0 14 5"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></symbol><symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3M4 10h16v11H4ZM12 14v3"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM11 11v10m0-4h4m-4 3h3"/></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2ZM7 3v6h10V3M7 21v-8h10v8"/></symbol><symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H4V3h5m5 4 5 5-5 5m-6-5h13"/></symbol><symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 8M3 4v6h6"/></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M14 4h-4L8 7H3v14h18V7h-5ZM16 14a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol><symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h5v18h-5M9 7l5 5-5 5M3 12h11"/></symbol><symbol id="i-next" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol><symbol id="i-first" viewBox="0 0 24 24"><path d="M17 6 11 12l6 6M6 6v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H4v20h16V8ZM14 2v6h6"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-5 4 3 5-7"/></symbol></defs></svg>
 <header>
@@ -1677,7 +1813,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 <div class="gmsg" id="admCardMsg"></div></section>
 </div></div>
 <div id="chartTooltip" class="chart-tooltip"></div>
-<div id="toastMsg" role="status" aria-live="polite" aria-atomic="true" class="toast" style="display:none"></div><details class="cd" id="about" ontoggle="loadAbout(this)"><summary>درباره ما</summary><div id="aboutBody"></div></details><div class="footer"><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div>
+<div id="toastMsg" role="status" aria-live="polite" aria-atomic="true" class="toast" style="display:none"></div><footer class="company-footer" id="about" aria-label="اطلاعات شرکت"><div id="aboutBody"></div><div class="footer"><span id="fwTap" class="fwtap" onclick="admTap()">نسخهٔ ۱۱۸</span></div></footer>
 <div id="admGate" class="gate" hidden><div class="gatebox">
 <div class="ti" style="margin:0">دسترسی مدیر</div>
 <input id="admPass" aria-label="رمز مدیر" type="password" autocomplete="current-password" placeholder="رمز مدیر" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('admLoginBtn').click();}">
@@ -1686,14 +1822,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 </div></div>
 </main>
 <script>
-// Load compiled contact content on demand; retry after a failed request.
-async function loadAbout(el){
-if(!el.open||el.dataset.loaded||el.dataset.busy)return;
-el.dataset.busy='1';
-try{const r=await fetch('/about',{cache:'no-store'});if(!r.ok)throw Error();document.getElementById('aboutBody').innerHTML=await r.text();el.dataset.loaded='1';}
-catch(e){document.getElementById('aboutBody').textContent='دریافت اطلاعات ناموفق بود؛ دوباره باز کنید.';}
-finally{delete el.dataset.busy;}
-}
 const WP=2; /* نسخهٔ سیم (SIMPLE_LINK_PROTOCOL_VERSION) - برای تطبیق دست‌دادن */
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;

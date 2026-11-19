@@ -55,6 +55,7 @@ void setup(void)
 #endif
     BOOL__G__WifiHighPower = true;
     SIMPLE_WEB_SERVER_T__G__Server.on("/calendar.js", HTTP_GET, func__Simple_HttpCalendar);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/about.js", HTTP_GET, func__Simple_HttpAboutScript);
     SIMPLE_WEB_SERVER_T__G__Server.on("/about", HTTP_GET, func__Simple_HttpAbout);
     SIMPLE_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Simple_HttpRoot);
     SIMPLE_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Simple_HttpTelemetry);

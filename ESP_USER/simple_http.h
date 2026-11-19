@@ -1,4 +1,5 @@
 #include "about_content.h"
+#include "about_footer.h"
 #include "charge_calendar.h"
 static bool func__Simple_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr_value)
 {
@@ -99,13 +100,28 @@ static bool func__Simple_JsonPut(char *char__ptr_buf, size_t size_t__cap,
     return true;
 }
 /* ==================== Compiled About content ==================== */
-/** @brief Serve editable contact HTML from program memory; no board commands. */
+/** @brief Serve editable company JSON from program memory; no board commands. */
 static void func__Simple_HttpAbout(void)
 {
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_ABOUT_HTML) - 1u);
-    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/html; charset=utf-8", "");
-    SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_ABOUT_HTML, sizeof(SIMPLE_ABOUT_HTML) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_ABOUT_JSON) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json; charset=utf-8", "");
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_ABOUT_JSON, sizeof(SIMPLE_ABOUT_JSON) - 1u);
+}
+/* ==================== Company footer browser asset ==================== */
+/** @brief Stream the footer asset directly from flash without a large RAM allocation. */
+static void func__Simple_HttpAboutScript(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_ABOUT_FOOTER_JS) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/javascript; charset=utf-8", "");
+    for (size_t offset = 0u; offset < sizeof(SIMPLE_ABOUT_FOOTER_JS) - 1u; offset += 1024u)
+    {
+        size_t remaining = sizeof(SIMPLE_ABOUT_FOOTER_JS) - 1u - offset;
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_ABOUT_FOOTER_JS + offset, remaining < 1024u ? remaining : 1024u);
+        func__Simple_DrainSerial();
+        yield();
+    }
 }
 /* ==================== Calendar browser asset ==================== */
 /** @brief Stream the shared browser asset from flash without a large RAM copy. */

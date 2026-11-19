@@ -27,10 +27,11 @@ class LogPolicy(unittest.TestCase):
         expected = script.split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
         self.assertEqual(lab.load_calendar_js(), expected)
     def test_about_uses_shared_compiled_content(self):
-        about = lab.load_about_html()
-        self.assertIn("09367969890", about)
-        self.assertIn("تهران-تهران", about)
-        self.assertIn("<bdi></bdi>", about)
+        about = lab.json.loads(lab.load_about_json())
+        self.assertEqual(about["phone"], "09367969890")
+        self.assertEqual(about["address"], "تهران-تهران")
+        self.assertTrue(all(about[key] == "" for key in ("companyName", "description", "website", "email", "whatsapp", "hours", "social")))
+        self.assertIn("function render(data)", lab.load_about_script())
         self.assertNotIn("09367969890", lab.load_panel_html())
     def test_simulated_charge_start_and_completion(self):
         events = self.board.make_charges(NOW)

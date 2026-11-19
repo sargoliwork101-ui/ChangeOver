@@ -66,10 +66,14 @@ def load_panel_html():
     start = text.index('R"rawliteral(') + len('R"rawliteral(')
     end = text.rindex(')rawliteral"')
     return text[start:end]
-def load_about_html():
-    """Serve the same editable contact literal as the firmware."""
+def load_about_json():
+    """Serve the same editable company JSON literal as the firmware."""
     with open(os.path.join(SIM_DIR, "..", "about_content.h"), encoding="utf-8") as handle:
         return handle.read().split('R"about(', 1)[1].split(')about"', 1)[0]
+def load_about_script():
+    """Read the company footer renderer compiled by the ESP sketch."""
+    with open(os.path.join(SIM_DIR, "..", "about_footer.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"footer(', 1)[1].split(')footer"', 1)[0]
 def load_calendar_js():
     """Read the flash asset shared with the ESP sketch."""
     with open(os.path.join(SIM_DIR, "..", "charge_calendar.h"), encoding="utf-8") as handle:
@@ -743,8 +747,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(text_bytes(html, mime="text/html; charset=utf-8"))
         if path == "/calendar.js" and method == "GET":
             return self.send(text_bytes(load_calendar_js(), mime="application/javascript; charset=utf-8"))
+        if path == "/about.js" and method == "GET":
+            return self.send(text_bytes(load_about_script(), mime="application/javascript; charset=utf-8"))
         if path == "/about" and method == "GET":
-            return self.send(text_bytes(load_about_html(), mime="text/html; charset=utf-8"))
+            return self.send(text_bytes(load_about_json(), mime="application/json; charset=utf-8"))
         if path == "/lab":
             return self.send(text_bytes(render_lab_page(), mime="text/html; charset=utf-8"))
         if path == "/lab/api/single":

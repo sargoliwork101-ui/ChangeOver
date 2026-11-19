@@ -74,10 +74,14 @@ def panel_html():
     if "</html>" not in html:
         die("simple_panel.h does not look like a complete page")
     return html
-def about_html():
+def about_json():
     """Read the same editable raw literal that the ESP compiles."""
     text = (HERE / "about_content.h").read_text(encoding="utf-8")
-    return text.split('R"about(', 1)[1].split(')about"', 1)[0]
+    raw = text.split('R"about(', 1)[1].split(')about"', 1)[0]
+    values = json.loads(raw)
+    if not isinstance(values, dict) or any(not isinstance(value, str) for value in values.values()):
+        die("about_content.h must contain a JSON object with string values")
+    return raw
 def panel_number_constants():
     """[FA] ثابت‌های عددی پنل که در خطوط `const NAME=12, NAME2=34` هستند.
 
@@ -1078,12 +1082,13 @@ def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
             ("__MA_PER_COUNT__", "%.6f" % MA_PER_COUNT),
             ("__UV_PER_COUNT__", "%.3f" % UV_PER_COUNT)):
         shim = shim.replace(token, value)
-    shim = shim.replace("__ABOUT__", json.dumps(about_html(), ensure_ascii=False))
+    shim = shim.replace("__ABOUT__", json.dumps(about_json(), ensure_ascii=False))
     for token in PLACEHOLDERS:
         if token in shim:
             die("placeholder %s was not replaced" % token)
     calendar = (HERE / "charge_calendar.h").read_text(encoding="utf-8").split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
-    return shim + '<script data-charge-calendar>\n' + calendar + '\n</script>\n'
+    footer = (HERE / "about_footer.h").read_text(encoding="utf-8").split('R"footer(', 1)[1].split(')footer"', 1)[0]
+    return shim + '<script data-charge-calendar>\n' + calendar + '\n</script>\n<script data-company-footer>\n' + footer + '\n</script>\n'
 def main():
     html = panel_html()
     panel = panel_number_constants()
@@ -1110,7 +1115,7 @@ def main():
             die("simple_panel.h does not define %s" % needed)
     shim = build_shim(field_map, tlm_n, bits, states, chart_ranges(), bsp_volt_scales(),
                       panel, BOOT_VOLTAGES)
-    generated = html.replace('<script src="/calendar.js" defer></script>', '').replace("</head>", shim + "</head>", 1)
+    generated = html.replace('<script src="/calendar.js" defer></script>', '').replace('<script src="/about.js" defer></script>', '').replace("</head>", shim + "</head>", 1)
     if generated == html:
         die("could not inject the shim: </head> not found")
     OUT.write_text(generated, encoding="utf-8")
