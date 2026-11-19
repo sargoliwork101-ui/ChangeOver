@@ -3,6 +3,7 @@
 #
 set -euo pipefail
 DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export NODE_PATH="${DIRECTORY}/node_modules${NODE_PATH:+:${NODE_PATH}}"
 BUILD_DIRECTORY="${SIMPLE_TEST_BUILD:-/tmp/changeover_simple_tests}"
 BINARY="${BUILD_DIRECTORY}/host_test_latch"
 mkdir -p "${BUILD_DIRECTORY}"
@@ -56,6 +57,10 @@ g++ -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable
     -fsanitize=address,undefined -fno-omit-frame-pointer -g \
     -I "${DIRECTORY}/../Simulator/stubinc" -I "${DIRECTORY}/../Simulator" \
     -o "${BUILD_DIRECTORY}/host_test_pack_review" "${DIRECTORY}/host_test_pack_review.cpp"
+g++ -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable \
+    -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+    -I "${DIRECTORY}/../Simulator/stubinc" -I "${DIRECTORY}/../Simulator" \
+    -o "${BUILD_DIRECTORY}/host_test_pack_edges" "${DIRECTORY}/host_test_pack_edges.cpp"
 echo "[3/8] اجرا"
 export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 export ASAN_OPTIONS="detect_leaks=0"
@@ -63,6 +68,7 @@ export ASAN_OPTIONS="detect_leaks=0"
 "${BUILD_DIRECTORY}/host_test_clock_loop"
 "${BUILD_DIRECTORY}/host_test_charge_sessions"
 "${BUILD_DIRECTORY}/host_test_pack_review"
+"${BUILD_DIRECTORY}/host_test_pack_edges"
 echo "[4/8] تست رفتاری آلارم اضافه‌ولتاژ (DOM)"
 # [EN] Optional: needs node + jsdom + the generated preview. SKIP when absent.
 if command -v node >/dev/null 2>&1 && [ -f "${DIRECTORY}/../simple_preview.html" ]; then
@@ -100,6 +106,7 @@ if command -v node >/dev/null 2>&1 && [ -f "${DIRECTORY}/../simple_preview.html"
     node "${DIRECTORY}/host_test_about.js"
     node "${DIRECTORY}/host_test_battery_wear_preview.js"
     node "${DIRECTORY}/host_test_pack_review.js"
+    node "${DIRECTORY}/host_test_pack_races.js"
 else
     echo "  SKIP: node یا jsdom یا پیش‌نمایش موجود نیست"
 fi

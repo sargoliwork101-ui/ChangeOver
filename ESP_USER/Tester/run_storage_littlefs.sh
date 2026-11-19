@@ -12,3 +12,8 @@ g++ -std=gnu++17 -O1 -g -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-v
  "$DIR/host_test_storage_littlefs.cpp" "$BUILD/lfs.o" "$BUILD/lfs_util.o" \
  -Wl,--wrap=fopen,--wrap=fileno,--wrap=ftruncate -o "$BUILD/storage_littlefs"
 for profile in 0 1 2; do "$BUILD/storage_littlefs" "$profile"; done
+g++ -std=gnu++17 -O1 -g -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable \
+ -I "$DIR/../Simulator" -I "$DIR/../Simulator/stubinc" -I "$SRC" \
+ "$DIR/host_test_pack_powercut.cpp" "$BUILD/lfs.o" "$BUILD/lfs_util.o" \
+ -Wl,--wrap=fopen,--wrap=fileno,--wrap=ftruncate -o "$BUILD/pack_powercut"
+"$BUILD/pack_powercut"
