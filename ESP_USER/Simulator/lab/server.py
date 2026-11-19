@@ -49,9 +49,8 @@ SESSION_TIMEOUT_S = 1800
 def panel_literal_bytes():
     """Return the byte length of the panel HTML that the firmware really compiles.
 
-    The preview copy (index.html) carries the JS shim, so it is about 13 KB
-    bigger than the raw string inside simple_panel.h. Size checks must use the
-    literal, otherwise the panel looks over its cap while it is not.
+    The offline simple_preview.html includes a simulator shim and shared assets.
+    Size checks must use the production literal, not that generated preview.
     """
     text = open(PANEL_SOURCE, encoding="utf-8").read()
     start = text.index('R"rawliteral(') + len('R"rawliteral(')

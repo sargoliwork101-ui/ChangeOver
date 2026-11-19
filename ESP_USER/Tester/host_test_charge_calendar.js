@@ -20,7 +20,7 @@ async function session(date){
 (async()=>{
  const compiled=fs.readFileSync(path.join(root,'charge_calendar.h'),'utf8').split('R"calendar(')[1].split(')calendar"')[0];
  check(production.includes('<script src="/calendar.js" defer></script>'),'production loads the compiled calendar asset');
- check(['index.html','simple_panel_clean.html'].every(file=>fs.readFileSync(path.join(root,file),'utf8').includes('/calendar.js')),'production HTML copies load the same calendar');
+ check(production.split('<script src="/calendar.js" defer></script>').length===2,'production source loads the shared calendar exactly once');
  check(preview.includes(compiled)&&preview.includes('data-charge-calendar'),'offline preview embeds the exact production calendar asset');
  check(!compiled.includes('فقط در سیمولاتور')&&!compiled.includes('داده‌ها شبیه‌سازی‌شده'),'production calendar has no fake-data or simulator-only notices');
  const p=await session('2026-11-04T12:00:00'),{w,d}=p;

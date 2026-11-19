@@ -1147,9 +1147,5 @@ def main():
     OUT.write_text(generated, encoding="utf-8")
     print("wrote %s (%d bytes, %d TLM fields, %d fault bits)"
           % (OUT.name, len(generated), tlm_n, len(bits)))
-    synced = html[1:] if html.startswith("\n") else html
-    for extra in (HERE / "index.html", HERE / "simple_panel_clean.html"):
-        extra.write_text(synced, encoding="utf-8", newline="")
-        print("synced %s (%d bytes)" % (extra.name, len(synced.encode("utf-8"))))
 if __name__ == "__main__":
     main()

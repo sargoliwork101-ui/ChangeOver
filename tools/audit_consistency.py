@@ -1950,8 +1950,7 @@ def sec_charge_csv():
     removed = ("function exportCsv(", "function chargeCsvData(",
                "function voltCsvData(", "function csvRowsFromColumns(",
                "function csvText(", "function csvCell(", "function csvFileStamp(")
-    for rel in ("ESP_USER/simple_panel.h", "ESP_USER/simple_preview.html",
-                "ESP_USER/index.html", "ESP_USER/simple_panel_clean.html"):
+    for rel in ("ESP_USER/simple_panel.h", "ESP_USER/simple_preview.html"):
         body = read(rel)
         ok(all(marker not in body for marker in removed),
            f"{rel} still contains removed chart CSV export code")

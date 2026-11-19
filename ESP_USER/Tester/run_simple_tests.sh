@@ -7,6 +7,7 @@ export NODE_PATH="${DIRECTORY}/node_modules${NODE_PATH:+:${NODE_PATH}}"
 BUILD_DIRECTORY="${SIMPLE_TEST_BUILD:-/tmp/changeover_simple_tests}"
 BINARY="${BUILD_DIRECTORY}/host_test_latch"
 mkdir -p "${BUILD_DIRECTORY}"
+python3 "${DIRECTORY}/host_test_preview_generation.py"
 echo "[1/8] پارس اسکریپت خود پنل (نگهبان صفحهٔ سفید)"
 if command -v node >/dev/null 2>&1; then
     python3 - "${DIRECTORY}/../simple_panel.h" <<'PYJS'
