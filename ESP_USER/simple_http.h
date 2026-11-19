@@ -793,6 +793,70 @@ static void func__Simple_HttpEventFormat(void)
     UINT32_T__G__SessionStartMs = (uint32_t)millis();
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", "ok");
 }
+/* ==================== Panel-only factory reset ==================== */
+/** @brief Erase ESP data only after administrator authentication and explicit destructive confirmation. */
+static void func__Simple_HttpFactoryReset(void)
+{
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
+    String string__confirm;
+    if (!func__Simple_GetArg("confirm", string__confirm) || string__confirm != "ERASE_ESP")
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"confirm\"}");
+        return;
+    }
+    LittleFS.end();
+    BOOL__G__FsOk = false;
+    bool bool__erased = LittleFS.format();
+#if defined(ESP8266)
+    (void)LittleFS.setConfig(LittleFSConfig(false));
+    BOOL__G__FsOk = LittleFS.begin();
+#else
+    BOOL__G__FsOk = LittleFS.begin(false);
+#endif
+    BOOL__G__FsMountFailed = !BOOL__G__FsOk;
+    if (!bool__erased)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"format\"}");
+        return;
+    }
+    /* No old RAM value may be saved after the erase, even if verification fails. */
+    BOOL__G__FactoryResetPending = true;
+    UINT32_T__G__FactoryResetMs = (uint32_t)millis();
+    bool bool__verified = false;
+    if (BOOL__G__FsOk)
+    {
+        File file__probe = LittleFS.open("/fs-check", "w");
+        bool__verified = file__probe && (file__probe.print("fs-ok") == 5u);
+        file__probe.close();
+        if (bool__verified)
+        {
+            File file__read = LittleFS.open("/fs-check", "r");
+            bool__verified = file__read && (file__read.readString() == "fs-ok");
+            file__read.close();
+        }
+        bool__verified = LittleFS.remove("/fs-check") && bool__verified;
+    }
+    func__Simple_AuthLogout();
+    func__Simple_LoginClear();
+    BOOL__G__FsOk = false;
+    BOOL__G__WifiRebootPending = false;
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.send(bool__verified ? 200 : 500, "application/json",
+        bool__verified ? "{\"ok\":1,\"erased\":1,\"restart\":1}" : "{\"ok\":0,\"e\":\"verify\",\"erased\":1,\"restart\":1}");
+}
+/* ==================== Erased-panel reboot barrier ==================== */
+/** @brief Stop UART processing and all persistence until the wiped ESP restarts; never command STM32. */
+static bool func__Simple_FactoryResetTick(void)
+{
+    if (!BOOL__G__FactoryResetPending) return false;
+    if ((uint32_t)((uint32_t)millis() - UINT32_T__G__FactoryResetMs) >= 1500u) ESP.restart();
+    delay(1u);
+    return true;
+}
 static void func__Simple_HttpEventLog(void)
 {
     bool bool__hasDay = false;

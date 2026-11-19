@@ -216,3 +216,21 @@ verified-clock gating, 29/30/60-day age boundaries, local midnight/leap/year
 transitions, expiration failure/retry and protection of account/Wi-Fi/chart files.
 High-entropy byte-pressure rows verify the exact newest suffix, that one more
 old event would not fit after re-encoding, and atomic failure preservation.
+
+Audited retry regressions also check calendar cleanup/recount after failed day
+initialization; cached and uncached 9-byte appends into a 4082-byte day without
+staging/rename; exact full/delta size previews; and a stable clock-warning intent
+before append. Warning delivery is tested across staging failure, append failure,
+marker-removal failure, reboot, local-day/timezone changes and a later distinct
+incident. The pending file remains in place on unreadable intent data. The
+owner explicitly left the previous-day RAM start-marker behavior unchanged.
+
+Factory reset coverage: admin plus explicit erase token; format/mount failures;
+all ESP files removed without credential re-save; session revocation; default
+admin/Wi-Fi/theme on reload; zero outgoing board commands and unchanged board
+counters. The real setup/loop harness checks the post-erase barrier with dirty
+RAM and the deferred ESP restart. Offline native clicks and Python lab checks
+mirror the destructive route independently of ordinary credential-preserving format.
+Chart DOM coverage includes untouched normal wheel, Ctrl-wheel, two-pointer
+pinch, horizontal drag, bounds, full-view/range reset, polling/resize retention,
+visible-sample tooltips, original-array preservation, and empty/single samples.

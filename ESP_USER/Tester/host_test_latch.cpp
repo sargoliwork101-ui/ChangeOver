@@ -3068,6 +3068,7 @@ static void func__T_TestFormatClearsAllHistory(void)
 #include "host_test_log_policy.h"
 #include "host_test_log_row_cap.h"
 #include "host_test_log_recovery_retention.h"
+#include "host_test_log_retry_delivery.h"
 #include "host_test_reset_validation.h"
 /* ==================== Independent board voltage maps ==================== */
 /** @brief Exercise real bulk-parameter parsing, HTTP publication and chart discharge percentages. */
@@ -3112,6 +3113,7 @@ static void func__T_TestIndependentVoltageMaps(void)
     func__T_Check(UINT32_T__G__ChartPct[slot] == 100u,
         "out-of-range telemetry saturates before percent multiplication can overflow");
 }
+#include "host_test_factory_reset.h"
 int main(void)
 {
     LittleFS.format();
@@ -3162,6 +3164,8 @@ int main(void)
     func__T_TestLogPolicy();
     func__T_TestLogRowCap();
     func__T_TestLogRecoveryRetention();
+    func__T_TestLogRetryDelivery();
+    func__T_TestFactoryReset();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

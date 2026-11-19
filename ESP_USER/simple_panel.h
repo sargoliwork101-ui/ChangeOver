@@ -490,7 +490,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
      <div class="half-pct" id="batHighPct">76<small>%</small></div>
      <div class="half-status" id="batHighStatus">نرمال</div>
      <div class="half-stats" style="grid-template-columns:1fr">
-      <div class="half-stat"><b id="batHighChargeCount">0</b><span>تعداد شارژ</span></div>
+      <div class="half-stat"><b id="batHighChargeCount">0</b><span>تعداد شارژ کامل</span></div>
      </div>
     </div>
     <div class="half">
@@ -518,7 +518,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
      <div class="half-pct" id="batLowPct">74<small>%</small></div>
      <div class="half-status" id="batLowStatus">نرمال</div>
      <div class="half-stats" style="grid-template-columns:1fr">
-      <div class="half-stat"><b id="batLowChargeCount">0</b><span>تعداد شارژ</span></div>
+      <div class="half-stat"><b id="batLowChargeCount">0</b><span>تعداد شارژ کامل</span></div>
      </div>
     </div>
    </div>
@@ -550,9 +550,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    <div class="ti">آمار کار - محور زمان واقعی</div>
    <div class="stat-grid">
     <div class="stat"><b id="stChargeTime">--</b><span>زمان کل شارژ</span></div>
-    <div class="stat"><b id="stChargeCount">--</b><span>تعداد شارژ کامل</span></div>
     <div class="stat"><b id="stUptime">--</b><span>کارکرد برد</span></div>
-    <div class="stat"><b id="stResets">--</b><span>تعداد ریست</span></div>
    </div>
   </div>
 
@@ -571,6 +569,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
    <div style="font-size:10.5px;color:var(--mu);margin-bottom:10px;line-height:1.6">نمودار نشان می‌دهد هر باتری در چه روز و ساعتی شارژ کامل شده</div>
    <div class="canvas-wrap"><canvas id="cCharge" width="700" height="200"></canvas></div>
    <div id="cChargeLabels" class="axl"></div>
+   <div class="action-row" style="margin-top:12px"><button class="btn" type="button" id="chargeFull" onclick="chartFull('charge')">نمایش کامل</button><span class="mu">زوم: کنترل + اسکرول یا دو انگشت؛ جابه‌جایی: کشیدن افقی</span></div>
    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
     <span id="chargeCap" style="font-size:11px;color:var(--mu)">شارژهای اخیر</span>
    </div>
@@ -595,6 +594,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
     <canvas id="cVolt" width="700" height="200"></canvas>
    </div>
    <div id="cVoltLabels" class="axl"></div>
+   <div class="action-row" style="margin-top:12px"><button class="btn" type="button" id="voltFull" onclick="chartFull('volt')">نمایش کامل</button><span class="mu">زوم: کنترل + اسکرول یا دو انگشت؛ جابه‌جایی: کشیدن افقی</span></div>
    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap;gap:8px"><span id="voltRangeInfo">--</span><span id="voltMinMax">--</span><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
   </div>
  </div>
@@ -639,6 +639,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ac2);outline-offset
 <details class="setting-panel admin-section danger-zone"><summary><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌سازی</span></summary>
 <div class="setting-body"><div class="settings-form"><label class="field" for="admClearType"><span>نوع تاریخچه</span><select id="admClearType"><option value="all">همه</option><option value="charge">شارژ</option><option value="charts">نمودارها</option><option value="diag">دیاگ</option></select></label>
 <div class="form-actions"><button class="btn action danger" type="button" title="پاک‌کردن تاریخچهٔ انتخاب‌شده" aria-label="پاک‌کردن تاریخچهٔ انتخاب‌شده"  onclick="uiAction(this,()=>admClear(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>پاک‌کردن</span></button><button class="btn action danger" type="button" title="حذف لاگ" aria-label="حذف لاگ"  onclick="uiAction(this,()=>admConfirm('/evt/clr',{},'همهٔ لاگ‌ها پاک شد','همهٔ روزهای لاگ حذف شوند؟'),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>حذف لاگ</span></button><button class="btn action danger" type="button" title="فرمت حافظه و حذف همهٔ تاریخچه‌ها" aria-label="فرمت حافظه و حذف همهٔ تاریخچه‌ها" id="admFormat" onclick="uiAction(this,()=>evtfmt(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>فرمت</span></button></div></div><p class="setting-note">حذف تاریخچه برگشت‌پذیر نیست؛ فرمت همهٔ تاریخچه‌ها را پاک می‌کند. رمزها حفظ می‌شوند.</p></div></details>
+<details class="setting-panel admin-section danger-zone"><summary><svg class="glyph" aria-hidden="true"><use href="#i-reset"/></svg><span>بازگشت کارخانهٔ پنل</span></summary>
+<div class="setting-body"><p class="setting-note">همهٔ داده‌ها و رمزهای پنل پاک می‌شوند؛ وای‌فای قطع می‌شود. برد اصلی و کالیبراسیون دست‌نخورده می‌مانند. پیش از اجرا تأیید لازم است.</p><button class="btn action danger" type="button" id="admFactoryReset" title="خام‌کردن پنل" aria-label="خام‌کردن پنل" onclick="uiAction(this,()=>factoryResetPanel(),true)"><svg class="glyph" aria-hidden="true"><use href="#i-trash"/></svg><span>خام‌کردن کامل پنل</span></button></div></details>
 <div class="gmsg" id="admCardMsg"></div></section>
 </div></div>
 
@@ -699,8 +701,7 @@ function vToPctHalf(v){ return vToPctMap(v, brd.halfMin, brd.halfMax); }
 function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
 function vToPctHalfChg(v){ return vToPctMap(v, Math.floor(brd.cvmin/2), Math.floor(brd.cvmax/2)); }
 
-/* زمان زنده با ثانیه - برای «زمان کل شارژ» و «کارکرد برد» که کاربر باید
-   ببیند همین حالا دارد می‌شمارد (قبلاً فقط ساعت و دقیقه بود و ثابت به نظر می‌رسید) */
+/* Show live durations in seconds. */
 function fmtSecLive(s){
  if(s===undefined || s===null || isNaN(s)) return '--';
  s=Math.max(0, Math.floor(Number(s)));
@@ -760,7 +761,7 @@ function fmtJalaliRange(a,b){ if(!a||!b||a<1000000000||b<1000000000) return '';
  else if(ja[0]===jb[0]) t=ja[2]+' '+ma+' تا '+jb[2]+' '+mb+' '+jb[0];
  else t=ja[2]+' '+ma+' '+ja[0]+' تا '+jb[2]+' '+mb+' '+jb[0];
  return faDigits(t); }
-/* عنوان محور زمان نمودار: ۱ روزه ساعت، ۷ روزه روز هفته + ساعت، بلندتر روز + ماه */
+/* Format labels for the selected range. */
 function fmtJalaliAxis(ts, range){
  if(!ts || ts<1000000000) return '';
  let d=new Date(ts*1000); let j=jFromDate(d);
@@ -851,8 +852,7 @@ function updInputState(vIn, gpioFlag){
   if(vIn<=ovClr) g_inputOV=false;
  }
  if(vIn>0){
-  /* همان اشمیت مشترک فرم‌ور: بیرون پنجرهٔ خام فوراً قطع؛ برگشت فقط با
-     حاشیه‌های پایین/بالای خوانده‌شده از برد (هر کدام حداکثر یک‌چهارم فاصله). */
+  /* Apply board-defined input hysteresis. */
   const cap=Math.max(0,Math.floor((brd.imax-brd.imin)/4));
   const hl=Math.min(brd.ihl,cap),hh=Math.min(brd.ihh,cap);
   if(vIn<brd.imin || vIn>brd.imax){
@@ -959,7 +959,7 @@ function updateChargingAnim(){
   else if(current<=bounds.base){ current=bounds.base; dir=1; }
   return {current, dir};
  }
- /* پک ۲۴ ولتی عمداً انیمیشن بالا/پایین ندارد (درخواست کاربر: این لرزش لازم نیست) */
+ /* Keep pack fill free of animation. */
  let highBounds=getChargingBounds(g_highPct);
  let rH=animStep(g_highAnim, g_highDir, highBounds);
  g_highAnim=rH.current; g_highDir=rH.dir;
@@ -1025,11 +1025,65 @@ function renderLeds(){
 }
 
 let chartRanges={charge:'1d',volt:'1d'};
+const chartViews={volt:{start:0,end:1},charge:{start:0,end:1}};
+/* ===== Local chart viewport ===== */
+// Clamp the local viewport.
+function chartViewSet(kind,start,span){
+ span=Math.max(0.01,Math.min(1,span));
+ start=Math.max(0,Math.min(1-span,start));
+ chartViews[kind]={start:start,end:start+span};
+ const tip=document.getElementById('chartTooltip');if(tip)tip.classList.remove('show');
+ redrawCharts();
+}
+/* ===== Full chart view ===== */
+// Restore the cached range.
+function chartFull(kind){chartViewSet(kind,0,1);}
+/* ===== Chart gestures ===== */
+// Bind wheel, pinch and pan.
+function bindChartGestures(kind,id){
+ const c=document.getElementById(id),points=new Map();let previous=null;
+ c.style.touchAction='none';c.style.cursor='grab';
+ function geometry(){
+  const a=Array.from(points.values());
+  return {x:a.reduce((sum,p)=>sum+p.x,0)/a.length,d:a.length>1?Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y):0};
+ }
+ c.addEventListener('wheel',function(e){
+  if(!e.ctrlKey)return;
+  e.preventDefault();
+  const rect=c.getBoundingClientRect();if(!(rect.width>0))return;
+  const v=chartViews[kind],span=v.end-v.start;
+  const anchor=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+  const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?rect.height:1);
+  const next=Math.max(0.01,Math.min(1,span*Math.exp(Math.max(-2,Math.min(2,delta*0.002)))));
+  chartViewSet(kind,v.start+anchor*(span-next),next);
+ },{passive:false});
+ c.addEventListener('pointerdown',function(e){
+  if(e.pointerType==='mouse' && e.button!==0)return;
+  points.set(e.pointerId,{x:e.clientX,y:e.clientY});previous=geometry();
+  if(c.setPointerCapture)c.setPointerCapture(e.pointerId);
+  c.style.cursor='grabbing';
+ });
+ c.addEventListener('pointermove',function(e){
+  if(!points.has(e.pointerId))return;
+  points.set(e.pointerId,{x:e.clientX,y:e.clientY});const current=geometry();
+  const rect=c.getBoundingClientRect(),v=chartViews[kind],span=v.end-v.start;
+  if(previous && rect.width>0){
+   const next=previous.d>0 && current.d>0?Math.max(0.01,Math.min(1,span*previous.d/current.d)):span;
+   const anchor=(previous.x-rect.left)/rect.width;
+   chartViewSet(kind,v.start+anchor*span-(current.x-rect.left)/rect.width*next,next);
+  }
+  previous=current;
+ });
+ function release(e){points.delete(e.pointerId);previous=points.size?geometry():null;if(!points.size)c.style.cursor='grab';}
+ c.addEventListener('pointerup',release);c.addEventListener('pointercancel',release);c.addEventListener('lostpointercapture',release);
+}
+bindChartGestures('volt','cVolt');bindChartGestures('charge','cCharge');
 function setChartRange(chart, r){
  if(chart!=='volt' && chart!=='charge') return;
  const order=['1d','7d','1m','3m'];
  if(!order.includes(r)) return;
  chartRanges[chart]=r;
+ chartViews[chart]={start:0,end:1};
  let segId=chart==='volt'?'segVolt':'segCharge';
  let seg=document.getElementById(segId), ind=document.getElementById(segId+'Indicator');
  if(seg && ind){ let idx=order.indexOf(r), btnW=(seg.clientWidth-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; }
@@ -1045,9 +1099,7 @@ function fmtTimeLabel(ts, range){
  return fmtJalaliAxis(ts, range);
 }
 
-/* ==================== آماده‌سازی بوم نمودار ====================
-   بوم به اندازهٔ واقعی خودش و با تراکم پیکسل دستگاه ساخته می‌شود تا عددهای
-   محور تیز و خوانا باشند. */
+/* Prepare a CSS-sized, high-DPI canvas. */
 function chartMetrics(c){
  const page=c.closest('.pgx');
  if(document.hidden || (page && !page.classList.contains('a')) || c.clientWidth<=0 || c.clientHeight<=0) return null;
@@ -1093,7 +1145,7 @@ function drawAxisY(ctx, ticks, min, max, w, h, styles, format){
  ctx.textAlign='left';
  ctx.textBaseline='alphabetic';
 }
-/* برچسب‌های محور زمان: هرکدام با درصد موقعیت، پس با نقطه‌اش هم‌تراز است */
+/* Align time labels with samples. */
 function drawTimeLabels(labelId, timeData, range, w){
  let div=document.getElementById(labelId); if(!div) return;
  let n=timeData?timeData.length:0;
@@ -1114,7 +1166,7 @@ function drawTimeLabels(labelId, timeData, range, w){
  div.style.height='16px';
  if(div.innerHTML!==html) div.innerHTML=html;
 }
-/* پیام روی نمودار بی‌داده (نمودار پاک نمی‌شود، فقط پیام می‌آید) */
+/* Render an empty-state notice. */
 function drawChartNotice(ctx, w, h, styles, text){
  ctx.fillStyle=styles.getPropertyValue('--mu').trim()||'#64748b';
  ctx.font='12px Vazirmatn';
@@ -1122,9 +1174,7 @@ function drawChartNotice(ctx, w, h, styles, text){
  ctx.fillText(text, w/2, h/2);
  ctx.textAlign='left';
 }
-/* ==================== بازهٔ خودکار محور ====================
-   بازه از خود داده می‌آید (کمینه/بیشینهٔ واقعی با گام خوش‌عدد) و تعداد خط
-   محور از ارتفاع بوم؛ پیش‌تر ۰..۱۰۰ و ۱۸..۳۰ ولت در کد ثابت بود. */
+/* Choose readable ticks from actual data. */
 function niceStep(span, count){
  if(!(span>0) || !(count>0)) return 1;
  let raw=span/count, mag=Math.pow(10, Math.floor(Math.log10(raw))), n=raw/mag;
@@ -1157,7 +1207,7 @@ function fmtVolt(v){
  let t=(Math.abs(k-Math.round(k))<0.05) ? Math.round(k) : Math.round(k*10)/10;
  return faNum(t)+'V';
 }
-/* گام نمونه‌برداری از فاصلهٔ خود زمان‌ها درمی‌آید، نه از یک متن ثابت */
+/* Infer sampling step from timestamps. */
 function sampleStep(timeData){
  if(!timeData || timeData.length<2) return '';
  let d=[]; for(let i=1;i<timeData.length;i++){ let x=timeData[i]-timeData[i-1]; if(x>0) d.push(x); }
@@ -1169,9 +1219,16 @@ function sampleStep(timeData){
  return faNum(Math.round(m/86400))+' روز';
 }
 
-/* نمودار ترکیبی ولتاژ - دو خط روی هم + محور عمودی */
+/* Draw voltage traces on a shared axis. */
 function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
+ c._rawVolt={vin:vinData,vpack:vpackData,time:timeData,range:range};
+ const view=chartViews.volt,total=(vinData||[]).length;
+ if(total>1 && (view.start>0 || view.end<1)){
+  const first=Math.min(total-2,Math.floor(view.start*(total-1)));
+  const last=Math.min(total,Math.max(first+2,Math.ceil(view.end*(total-1))+1));
+  vinData=vinData.slice(first,last);vpackData=vpackData.slice(first,last);timeData=timeData.slice(first,last);
+ }
  let n=(vinData&&vinData.length)?vinData.length:0;
  c._chartData=vinData; c._chartData2=vpackData; c._chartTime=timeData; c._chartRange=range;
  const metrics=chartMetrics(c); if(!metrics) return;
@@ -1211,6 +1268,7 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
 
  if(!c._hasTooltip){
   c.addEventListener('mousemove', function(e){
+   if(e.buttons)return;
    let list=(c._chartData&&c._chartData.length)?c._chartData:null; if(!list) return;
    let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=c._plotWidth/rect.width;
    let plotX=(mx*scaleX)-CHART_PAD_L;
@@ -1278,7 +1336,7 @@ function drawChargeHistory(events, range){
  window._lastChargeHistory=events;
  let c=document.getElementById('cCharge'); if(!c) return;
  const metrics=chartMetrics(c);if(!metrics)return;
- const sig=JSON.stringify([events,range,metrics,Math.floor(Date.now()/60000)]);
+ const sig=JSON.stringify([events,range,metrics,Math.floor(Date.now()/60000),chartViews.charge]);
  if(c._sig===sig && c._drawn)return;
  let prep=prepCanvas(c,metrics); if(!prep) return; let ctx=prep.ctx, w=prep.w, h=prep.h;
  ctx.clearRect(0,0,w,h);
@@ -1305,7 +1363,11 @@ function drawChargeHistory(events, range){
  filtered.sort((a,b)=>a.ts-b.ts);
  let minTs=Math.min(...filtered.map(e=>e.ts));
  let maxTs=Math.max(...filtered.map(e=>e.ts));
- let span=(maxTs-minTs)||3600;
+ const fullSpan=(maxTs-minTs)||3600,view=chartViews.charge;
+ minTs+=fullSpan*view.start;
+ let span=fullSpan*(view.end-view.start);
+ maxTs=minTs+span;
+ filtered=filtered.filter(ev=>ev.ts>=minTs && ev.ts<=maxTs);
  filtered.forEach((ev, idx)=>{
   let x=((ev.ts - minTs)/span)*w;
   let y=ev.ch===1 ? h*0.35 : h*0.70;
@@ -1327,7 +1389,7 @@ function drawChargeHistory(events, range){
     if(i===last) continue;
     last=i;
     let lbl=fmtJalaliSpan(filtered[i].ts, span);
-    let pctX=(filtered.length<2)?50:((filtered[i].ts-minTs)/span)*100;
+    let pctX=((filtered[i].ts-minTs)/span)*100;
     html+='<span style="position:absolute;left:'+pctX.toFixed(2)+'%;transform:translateX(-50%);white-space:nowrap">'+lbl+'</span>';
    }
   }
@@ -1360,8 +1422,7 @@ function renderChargeHistoryList(events){
 }
 
 function getBatStatus(pct){
- /* آستانه‌ها درصدی از «درصد پرِ خود برد» هستند (brd.hEnt که از /t می‌آید)؛
-    اگر کاربر روی برد آن را عوض کند، برچسب عالی/خوب/متوسط هم جابه‌جا می‌شود. */
+ /* Use the board-defined full-charge threshold. */
  let full=(brd && brd.hEnt>0) ? brd.hEnt : 100;
  let hi=full*0.8, mid=full*0.5, low=full*0.2;
  if(pct>=hi) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'عالی',cls:'high'};
@@ -1396,9 +1457,7 @@ function setAttr(el, name, value){
  if(el.getAttribute(name)!==val) el.setAttribute(name, val);
 }
 
-/* پک ۲۴ ولتی (batMainFill) همیشه از همین‌جا با مقدار پایدار شارژ پر می‌شود؛
-   دیگر هیچ انیمیشن بالا/پایین روی آن نیست تا چشمک/لرزش نداشته باشد.
-   گرادیان در حال شارژ زرد است، ولی خودِ ارتفاع فقط با درصد واقعی عوض می‌شود. */
+/* Keep pack fill stable; charging changes color only. */
 function setBatFill(id, pct, status, gradOverride){
  let el=document.getElementById(id); if(!el) return;
  let totalH=79; let fillH=Math.max(0, Math.min(totalH, (pct/100)*totalH)); let y=18+(totalH-fillH);
@@ -1444,9 +1503,7 @@ function render(data){
   chgStablePack=chgPackState.stable;
  }
  let pctPack=stablePack, pctLow=stableLow, pctHigh=stableHigh;
- /* درصد نمایش = درصد پایدار همان نردبان ولتاژ V24 که برد چشمک سبز را از آن
-    می‌سازد؛ هرگز از روی زمانِ چشمک حساب نمی‌شود (کف خاموشی ۱۰ms باعث می‌شد پک
-    کامل ۹۹٪ نشان داده شود) */
+ /* Use stable voltage percentage, never blink timing. */
  let fillPct=pctPack;
  let isCharging=(s1==1||s1==2||s2==1||s2==2);
  let isThermalRest=(s1==10||s2==10);
@@ -1475,14 +1532,12 @@ function render(data){
  let mainSt=getBatStatus(pctPack);
  /* پر شدن پک ۲۴ ولتی، بدون پمپ و بدون چشمک - فقط مقدار پایدار خودش */
  setBatFill('batMainFill', fillPct, mainSt, isCharging?'url(#gMainM)':null);
- /* در حال شارژ، عدد درصد زیر آیکون باتری‌ها نشان داده نمی‌شود (به‌جایش متن
-    وضعیت در همان کارت هست) و به‌محض خاموش‌شدن شارژر عدد برمی‌گردد */
+ /* Hide numeric percentage while charging. */
  setShow('batPct', !isCharging);
  if(!isCharging) setHtml('batPct', fillPct+'<small>%</small>');
  setTxt('batMainSvgPct', isCharging?'':(fillPct+'%'));
  let boardTs = data.boardTime || data.bt || 0;
- /* تا وقتی ساعت یک‌بار تنظیم نشده یادآوری می‌شود؛ بعد از آن ساعت ذخیره‌شده
-    خودش برمی‌گردد و هیچ پیامی پرسیده نمی‌شود */
+ /* Only remind until the clock is initialized. */
  if(boardTs && boardTs>1000000000){ setTxt('boardTime', 'ساعت پنل: '+fmtTime(boardTs)); }
  else { setTxt('boardTime', 'در حال همگام‌سازی خودکار ساعت'); }
  let highSt=getBatStatus(pctHigh), lowSt=getBatStatus(pctLow);
@@ -1502,9 +1557,7 @@ function render(data){
   else if(!inputPresent){ setHtml('bdgInput','<i></i>برق ورودی: قطع'); setCls(bIn,'bdg warn'); }
   else { setHtml('bdgInput','<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg ok'); }
  }
- /* ارتباط دوطرفه (v1.111): تله‌متری آمدن با «برد جواب ما را می‌دهد» یکی نیست.
-    برد در پاسخ دست‌دادن می‌گوید چند فریم سالم از ما شنیده و چند خطای CRC/نسخه
-    داشته. اگر تعداد پارامترهای برد با پنل یکی نباشد، فرم‌ورها هم‌خوان نیستند. */
+ /* Validate bidirectional handshake and parameter count. */
  let bLk=document.getElementById('bdgLink');
  if(bLk){
   let lko=(data.lko===1);
@@ -1559,8 +1612,7 @@ function render(data){
  setShow('statusSub', ssTxt!=='');
  setCls(heroCard, heroCls);
  if(heroFault){
-  /* اگر پیام برای این حالت خالی است، کامل پنهان می‌شود (متن و کلاس هم پاک
-     می‌شود تا پیام حالت قبلی نماند) */
+  /* Hide empty status text and clear stale classes. */
   setCls(heroFault, heroFaultCls);
   if(heroFaultTxt===''){ if(heroFault.innerHTML!=='') heroFault.innerHTML=''; setShow('heroFault', false); }
   else { if(heroFaultHtml) setHtml('heroFault', heroFaultTxt); else setTxt('heroFault', heroFaultTxt); setShow('heroFault', true); }
@@ -1607,8 +1659,6 @@ function renderDiag(j){
   g_diagChargeTickAt=now;
   tickDiagClocks();
  }
- let elCount=document.getElementById('stChargeCount'); if(elCount) elCount.textContent=j.chargeCount||'--';
- let elRes=document.getElementById('stResets'); if(elRes) elRes.textContent=j.resetCount||'--';
  let panelTxt=(j.panelTime && j.panelTime>1000000000) ? fmtTime(j.panelTime) : 'نامعلوم';
  let boardTxt=(j.boardTime && j.boardTime>1000000000) ? fmtTime(j.boardTime) : 'نامعلوم';
  setTxt('boardTimeSet', 'پنل: '+panelTxt+' | برد: '+boardTxt);
@@ -1622,7 +1672,7 @@ function renderDiag(j){
   else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span class="mu">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span class="mu">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
  }
  let info=document.getElementById('boardInfo');
- if(info){ info.innerHTML='زمان کل شارژ: '+fmtSecLive(j.totalChargeSec)+'<br>تعداد شارژ: '+(j.chargeCount||0)+'<br>کارکرد: '+fmtSecLive(j.uptimeSec)+'<br>ریست: '+(j.resetCount||0)+'<br>ساعت برد: '+(j.boardTime?fmtTime(j.boardTime):'--'); }
+ if(info){ info.innerHTML='زمان کل شارژ: '+fmtSecLive(j.totalChargeSec)+'<br>کارکرد: '+fmtSecLive(j.uptimeSec)+'<br>ساعت برد: '+(j.boardTime?fmtTime(j.boardTime):'--'); }
  if(j.chargeHistory){
   window._lastChargeHistory=j.chargeHistory;
   drawChargeHistory(j.chargeHistory, chartRanges.charge);
@@ -1746,8 +1796,9 @@ function admTokenSet(t){
  try{if(admToken)sessionStorage.setItem('co_admin',admToken);else sessionStorage.removeItem('co_admin');}catch(e){}
 }
 function admHeaders(h){h=h||{};if(admToken)h['X-Admin-Token']=admToken;return h;}
-async function evtHttp(u,m,ms){
+async function evtHttp(u,m,ms,body){
  const o={method:m||'GET',cache:'no-store',credentials:'same-origin',headers:admHeaders()};
+ if(body!==undefined){o.body=body;o.headers['Content-Type']='application/x-www-form-urlencoded';}
  let ac=null,tm=0;
  if(typeof AbortController!=='undefined'){ac=new AbortController();o.signal=ac.signal;tm=setTimeout(()=>ac.abort(),ms||3500);}
  try{
@@ -1872,6 +1923,25 @@ async function evtDelete(name){
   if(x.status!==200||x.body.ok!==1){showToast(({missing:'فایل دیگر وجود ندارد',fs:'حافظه در دسترس نیست',path:'نام فایل نامعتبر است',remove:'حذف فایل انجام نشد'})[x.body.e]||'حذف فایل انجام نشد');return;}
   await evtFs(0);await evtDays();await evtFetch(0);showToast('فایل حذف شد');
  }catch(e){showToast('پاسخ حذف نرسید؛ فهرست حافظه را تازه کن');}
+}
+/* ===== ESP-only reset ===== */
+// Confirm erasure and explain reconnection.
+async function factoryResetPanel(){
+ if(!admReady){admOpen();return;}
+ const warning='بازگشت کارخانه فقط برای پنل ESP است. همهٔ فایل‌ها، تاریخچه‌ها، نمودارها، تنظیمات و رمزهای پنل برای همیشه پاک می‌شوند. وای‌فای قطع و پنل دوباره روشن می‌شود. سپس به شبکهٔ changeover_userpannel با رمز 123456789 وصل شو؛ نام و رمز مدیر هر دو admin هستند. برنامه، برد اصلی، شمارنده‌های برد و کالیبراسیون دست‌نخورده می‌مانند؛ دادهٔ زنده دوباره می‌آید. مطمئنی پنل کاملاً خام شود؟';
+ if(!confirm(warning))return;
+ admSay('admCardMsg','در حال خام‌کردن پنل؛ تا رسیدن پاسخ صبر کن…',true);
+ try{
+  const response=await evtHttp('/factory/reset','POST',60000,'confirm=ERASE_ESP');
+  const j=await response.json();
+  if(response.status===403){admLock();showToast('نشست مدیر تمام شد؛ دوباره وارد شو');return;}
+  if(j.erased===1){
+   resetHistoryView();admLock();
+   alert((response.ok && j.ok===1?'پنل پاک شد و دوباره روشن می‌شود.':'پاک‌سازی انجام شد، ولی آماده‌بودن حافظه تأیید نشد؛ پنل دوباره روشن می‌شود. اگر مشکل ماند، حافظه را بررسی کن.')+' به شبکهٔ changeover_userpannel با رمز 123456789 وصل شو. نام و رمز مدیر: admin. برد اصلی و کالیبراسیون تغییر نکرده‌اند.');
+   return;
+  }
+  admSay('admCardMsg','خام‌کردن پنل تأیید نشد؛ موفقیت گزارش نشده است.',false);
+ }catch(e){admSay('admCardMsg','پاسخ نرسید؛ نتیجه نامشخص است. اگر وای‌فای قطع شد، شبکهٔ پیش‌فرض پنل را بررسی کن؛ پیش از تلاش دوباره وضعیت را ببین.',false);}
 }
 async function evtfmt(){
  if(!admReady){admOpen();return;}
@@ -2072,10 +2142,11 @@ function admClear(){
 
 function redrawCharts(){
  for(const id of ['cVolt','cCharge']){const c=document.getElementById(id);c._sig=null;c._drawn=false;}
- const data=chartCache[chartRanges.volt];if(data)renderVoltFromServer(data);
+ const data=chartCache[chartRanges.volt]||document.getElementById('cVolt')._rawVolt;if(data)drawVoltChart('cVolt',data.vin,data.vpack,data.time,data.range);
  if(window._lastChargeHistory)drawChargeHistory(window._lastChargeHistory,chartRanges.charge);
 }
 function resetHistoryView(){
+ chartViews.volt={start:0,end:1};chartViews.charge={start:0,end:1};
  historyEpoch++;chartRequestId++;if(chartAbort)chartAbort.abort();chartRequest=null;chartAbort=null;
  chartCache={};chartDataVolt={vin:[],vpack:[],time:[],range:chartRanges.volt};
  window._lastChargeHistory=[];

@@ -616,6 +616,16 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       return jsonResponse('{"ok":1,"removed":0,"freed":0}', 200);
     }
+    if (path === 'factory/reset') {
+      if(method!=='POST')return jsonResponse('{"ok":0}',405);
+      if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      if(bodyJson(options).confirm!=='ERASE_ESP')return jsonResponse('{"ok":0,"e":"confirm"}',400);
+      mock.deletedFiles=[];mock.historyClearedAt=counters.boardTime+1;
+      evtRows=[];evtHasPrev=false;evtLastRowOk=false;evtBooted=false;evtPersist();
+      mock.user='';mock.role=0;mock.token='';mock.userPass='admin';mock.users=[{name:'admin',role:1}];
+      mock.ssid=WIFI_SSID;mock.pass=WIFI_PASS;mock.theme=0;
+      return jsonResponse('{"ok":1,"erased":1,"restart":1}',200);
+    }
     if (path === 'evt/format') {
       if (mock.role !== 1) { return jsonResponse('admin', 403); }
       mock.deletedFiles=[];mock.historyClearedAt=counters.boardTime+1;

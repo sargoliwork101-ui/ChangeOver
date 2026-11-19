@@ -22,6 +22,7 @@
     "POST /clock",
     "POST /evt/clr",
     "POST /evt/format",
+    "POST /factory/reset",
     "POST /evt/file",
     "POST /evt/snap",
     "POST /latch/reset",
@@ -83,6 +84,7 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/evt/clr` | POST | Admin session | JSON clear result |
 | `/evt/snap` | POST | Admin session | JSON log/filesystem snapshot |
 | `/evt/format` | POST | Admin session | 200 `ok` only after remount, write/read probe and saved credential verification; 500 `fail`, `mount`, or `write`; 403 `admin` |
+| `/factory/reset` | POST | Admin session + exact `confirm=ERASE_ESP` | Erases ESP LittleFS only, revokes session and restarts ESP; no UART commands. 200 JSON `ok:1,erased:1,restart:1` after write/read verification; 400 missing confirmation; 403 unsigned; 500 format failure or verification failure (latter includes `erased:1,restart:1`). Old RAM must not be persisted after erase. |
 | `/evt/fs` | GET | Optional `offset` (0–65535) | JSON status; public log filenames only, admin all root files; `count`, `more`, `next` (-1 at end) |
 | `/evt/file` | POST | Admin session; exact absolute root `name` | JSON `ok`; 400 invalid path, 403 unauthorized, 404 missing, 500 remove failed, 503 unmounted |
 
@@ -112,7 +114,7 @@ range, not Arduino's signed `String::toInt` range.
 
 LittleFS files: `/wifi.json`, `/charts.bin`, `/charts.jrn`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
-Daily logs retain today and the preceding 29 local calendar days only after clock verification, subject to the unchanged 28-KiB log budget and 4-KiB day limit. A partial initial header/marker is repaired before ordinary rows. Byte pressure removes the minimum oldest-event prefix whose re-encoded suffix plus the incoming row fits; count pressure from RAM drain likewise retains at most 200 newest ordinary rows. The single day-start marker is preserved outside that count. Replacement is staged, decoded/verified and renamed atomically; failure preserves the old committed day and queued incoming row. Ordinary day-full writes still stop at 200.
+Daily logs retain today and the preceding 29 local calendar days only after clock verification, subject to the unchanged 28-KiB log budget and 4-KiB day limit. A partial initial header/marker is repaired before ordinary rows. Byte pressure removes the minimum oldest-event prefix whose re-encoded suffix plus the incoming row fits; count pressure from RAM drain likewise retains at most 200 newest ordinary rows. The single day-start marker is preserved outside that count. Replacement is staged, decoded/verified and renamed atomically; failure preserves the old committed day and queued incoming row. Ordinary day-full writes still stop at 200. Successful retries finish day recount/expiration as well. Near the byte limit, the actual encoded next-frame size controls append versus replacement. The existing `/clock_gap.json` marker stages the exact intended warning row and target day before append; reboot retries recognize that exact row rather than recording the same pending incident twice. An unreadable intent is retained, not guessed. No log schema or file-count change is introduced.
 
 The day files keep their `.csv` name for the existing day-list API, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 18 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. The previous 22-column history is cleared by the owner before deployment. Format: `ESP_USER/simple_log_codec.h`.
 

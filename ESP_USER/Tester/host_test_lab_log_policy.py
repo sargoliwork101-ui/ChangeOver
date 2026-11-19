@@ -78,5 +78,39 @@ class LogPolicy(unittest.TestCase):
                         self.assertEqual(body, {"ok": 1, "n": int(n)})
                     else:
                         self.assertEqual(lab.BOARD.latch, before)
+    def test_factory_panel_only(self):
+        class Request(lab.Handler):
+            def __init__(self, args, admin):
+                self.path, self.args, self.admin = "/factory/reset", args, admin
+            def body_args(self):
+                return self.args
+            def session_ok(self):
+                return self.admin
+            def send(self, result):
+                self.result = result
+        old = lab.BOARD
+        self.addCleanup(setattr, lab, "BOARD", old)
+        lab.BOARD = self.board
+        before = (self.board.charge_counts[:], self.board.board_uptime, dict(self.board.latch))
+        for args, admin, expected in (({}, False, 403), ({}, True, 400), ({"confirm": "wrong"}, True, 400)):
+            req = Request(args, admin)
+            req.route("POST")
+            self.assertEqual(req.result[0], expected)
+            self.assertTrue(self.board.rows)
+        self.board.wifi = {"ssid": "custom", "pass": "custom-pass"}
+        self.board.users = [{"name": "admin", "role": 1, "pass": "custom-admin"}]
+        self.board.session = {"user": "admin", "role": 1}
+        req = Request({"confirm": "ERASE_ESP"}, True)
+        req.route("POST")
+        self.assertEqual(req.result[0], 200)
+        self.assertEqual(lab.json.loads(req.result[2]), {"ok": 1, "erased": 1, "restart": 1})
+        self.assertFalse(self.board.rows or self.board.charge_history or self.board.chart_buckets)
+        self.assertFalse(any(self.board.chart.values()))
+        self.assertIsNone(self.board.session)
+        self.assertEqual(self.board.wifi, {"ssid": "changeover_userpannel", "pass": "123456789"})
+        self.assertEqual(self.board.users[0]["pass"], "admin")
+        self.assertEqual(before[0], self.board.charge_counts)
+        self.assertGreaterEqual(self.board.board_uptime, before[1])
+        self.assertEqual(before[2], self.board.latch)
 if __name__ == "__main__":
     unittest.main()

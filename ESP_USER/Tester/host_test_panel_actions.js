@@ -117,8 +117,12 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
         await tick();
         check(d.getElementById('volt'+range).classList.contains('a') && d.getElementById('charge'+range).classList.contains('a') && chartCalls.at(-1)==='/charts?range='+range,'both remaining chart ranges work: '+range);
     }
-    w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:2,power:[{off:1700000000,on:1700000100,dur:100}],chargeHistory:[{ts:Math.floor(Date.now()/1000),ch:2}]});
-    check(d.getElementById('stChargeCount').textContent==='2' && d.querySelector('#chargeHistoryList .row') && !d.getElementById('powerLog'),'diagnostics still render statistics and charge history with stored power events present');
+    w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:8,chargeCountCh1:3,chargeCountCh2:5,resetCount:9,power:[{off:1700000000,on:1700000100,dur:100}],chargeHistory:[{ts:Math.floor(Date.now()/1000),ch:2}]});
+    check(d.getElementById('batHighChargeCount').textContent==='3' && d.getElementById('batLowChargeCount').textContent==='5' && d.querySelector('#chargeHistoryList .row') && !d.getElementById('powerLog'),'per-battery completed-charge counts and charge history still render independently');
+    check(!d.querySelector('#stChargeCount,#stResets') && !/ریست|تعداد شارژ/.test(d.getElementById('boardInfo').textContent),'reset count and combined charge count are removed from statistics and board details');
+    check(['batHighChargeCount','batLowChargeCount'].every(id=>d.getElementById(id).closest('#pg0') && d.getElementById(id).nextElementSibling.textContent==='تعداد شارژ کامل'),'completed-charge counters exist only on the two main battery cards with explicit labels');
+    w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:0,chargeCountCh1:0,chargeCountCh2:0,resetCount:0});
+    check(d.getElementById('batHighChargeCount').textContent==='0' && d.getElementById('batLowChargeCount').textContent==='0','zero completed charges remain a visible number rather than a dash');
     const clockDom=new JSDOM(html,{runScripts:'outside-only',url:'http://clock.test/'});
     const cw=clockDom.window, hooks={},docHooks={},intervals=[],timeouts=new Map();let timerId=0,clockRequests=[],clockFailure=false,clockHold=null;
     cw.addEventListener=(name,fn)=>{hooks[name]=fn;};

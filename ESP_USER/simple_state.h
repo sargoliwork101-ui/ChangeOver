@@ -490,6 +490,8 @@ static uint32_t UINT32_T__G__LocalPowerOffTime = 0u;
 static bool BOOL__G__LocalPowerOffActive = false;
 static char CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX + 1] = SIMPLE_WIFI_AP_SSID;
 static char CHAR__G__WifiPass[SIMPLE_WIFI_PASS_MAX + 1] = SIMPLE_WIFI_AP_PASS;
+static bool BOOL__G__FactoryResetPending = false;
+static uint32_t UINT32_T__G__FactoryResetMs = 0u;
 static bool BOOL__G__WifiRebootPending = false;
 static uint32_t UINT32_T__G__WifiRebootMs = 0u;
 /* ==================== prev ==================== */

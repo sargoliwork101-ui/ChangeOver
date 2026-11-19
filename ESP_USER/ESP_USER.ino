@@ -74,6 +74,7 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr", HTTP_POST, func__Simple_HttpEventClear);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/snap", HTTP_POST, func__Simple_HttpEventSnap);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/format", HTTP_POST, func__Simple_HttpEventFormat);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/factory/reset", HTTP_POST, func__Simple_HttpFactoryReset);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/file", HTTP_POST, func__Simple_HttpFileDelete);
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/fs", HTTP_GET, func__Simple_HttpEventFsStatus);
     {
@@ -84,9 +85,11 @@ void setup(void)
 }
 void loop(void)
 {
+    if (func__Simple_FactoryResetTick()) return;
     func__Simple_DrainSerial();
     func__Simple_DnsTick();
     SIMPLE_WEB_SERVER_T__G__Server.handleClient();
+    if (func__Simple_FactoryResetTick()) return;
     func__Simple_WifiPowerSaveTick((uint32_t)millis());
     func__Simple_ChartTick();
     func__Simple_SlotTick();

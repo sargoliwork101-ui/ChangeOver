@@ -18,7 +18,7 @@ function panel(){
  for(const id of ['cVolt','cCharge']){
   const c=d.getElementById(id);Object.defineProperty(c,'clientWidth',{get:()=>width});Object.defineProperty(c,'clientHeight',{get:()=>height});c.getContext=()=>context?ctx:null;
  }
- w.eval(script);
+ w.eval(script+'\nwindow.chartViewsForTest=chartViews;');
  return {w,d,dom,setSize:(v,h=180)=>{width=v;height=h;},setContext:v=>context=v,strokes:()=>strokes};
 }
 (async()=>{
@@ -51,6 +51,45 @@ function panel(){
  let oldChart;w.fetch=()=>new Promise(resolve=>oldChart=resolve);const chart=w.pollChartsVolt();w.resetHistoryView();oldChart(reply(sample('7d')));await chart;
  check(d.getElementById('voltCountInfo').textContent==='۰ نمونه' && !d.getElementById('voltMinMax').textContent,'chart replies started before format cannot resurrect cleared history');
  d.getElementById('pg1').classList.remove('a');let hiddenRequests=0;w.fetch=async()=>{hiddenRequests++;return reply(sample());};await w.pollCharts();check(hiddenRequests===0,'periodic chart polling is paused outside the chart tab');
+ // Exercise native input events against both real chart viewports.
+ w.fetch=async()=>reply(sample());w.setChartRange('volt','1d');await w.pollChartsVolt();
+ const dense={range:'1d',vin:[],vpack:[],time:[]};
+ const now=Math.floor(Date.now()/1000);
+ for(let i=0;i<101;i++){dense.vin.push(24000+i);dense.vpack.push(25000+i);dense.time.push(now-6000+i*60);}
+ w.renderVoltFromServer(dense);w.drawChargeHistory(dense.time.map((ts,i)=>({ts,ch:i%2+1})),'1d');
+ d.getElementById('pg1').classList.add('a');p.setSize(600);
+ function pointer(c,type,id,x,y=40){const e=new w.Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:id,clientX:x,clientY:y,pointerType:'touch',button:0});c.dispatchEvent(e);}
+ for(const [kind,id] of [['volt','cVolt'],['charge','cCharge']]){
+  const c=d.getElementById(id);c.getBoundingClientRect=()=>({left:0,top:0,width:600,height:180});
+  const wheel=new w.WheelEvent('wheel',{deltaY:-600,clientX:300,cancelable:true});c.dispatchEvent(wheel);
+  check(!wheel.defaultPrevented && w.eval('chartViewsForTest.'+kind+'.end-chartViewsForTest.'+kind+'.start')===1,'ordinary wheel scroll remains untouched: '+kind);
+  const zoom=new w.WheelEvent('wheel',{deltaY:-600,ctrlKey:true,clientX:300,cancelable:true});c.dispatchEvent(zoom);
+  const span=w.eval('chartViewsForTest.'+kind+'.end-chartViewsForTest.'+kind+'.start');
+  check(zoom.defaultPrevented && span<0.4 && span>0,'Ctrl-wheel zooms the existing data: '+kind);
+  const start=w.eval('chartViewsForTest.'+kind+'.start');
+  pointer(c,'pointerdown',1,300);pointer(c,'pointermove',1,420);pointer(c,'pointerup',1,420);
+  check(w.eval('chartViewsForTest.'+kind+'.start')<start,'horizontal drag pans the zoomed view: '+kind);
+  pointer(c,'pointerdown',1,200);pointer(c,'pointerdown',2,400);pointer(c,'pointermove',2,500);
+  check(w.eval('chartViewsForTest.'+kind+'.end-chartViewsForTest.'+kind+'.start')<span,'two-finger pinch zooms: '+kind);
+  pointer(c,'pointercancel',1,200);pointer(c,'pointerup',2,500);
+  const state=w.eval('JSON.stringify(chartViewsForTest.'+kind+')');
+  w.redrawCharts();w.renderVoltFromServer(dense);w.drawChargeHistory(w._lastChargeHistory,'1d');
+  check(w.eval('JSON.stringify(chartViewsForTest.'+kind+')')===state,'resize and polling preserve zoom: '+kind);
+  for(let i=0;i<10;i++)c.dispatchEvent(new w.WheelEvent('wheel',{deltaY:10000,ctrlKey:true,clientX:300,cancelable:true}));
+  check(w.eval('chartViewsForTest.'+kind+'.start===0 && chartViewsForTest.'+kind+'.end===1'),'zoom out clamps at the complete range: '+kind);
+  w.chartViewSet(kind,0.2,0.3);w.eval('(function(){'+d.getElementById(kind+'Full').getAttribute('onclick')+'})')();
+  check(w.eval('chartViewsForTest.'+kind+'.start===0 && chartViewsForTest.'+kind+'.end===1'),'full-view button restores all data: '+kind);
+  w.chartViewSet(kind,0.2,0.3);w.setChartRange(kind,'7d');await tick();
+  check(w.eval('chartViewsForTest.'+kind+'.start===0 && chartViewsForTest.'+kind+'.end===1'),'range switch resets only its viewport: '+kind);
+ }
+ w.setChartRange('volt','1d');await w.pollChartsVolt();w.renderVoltFromServer(dense);w.chartViewSet('volt',0.4,0.2);
+ const vc=d.getElementById('cVolt');check(vc._chartData.length<101 && vc._chartTime.length===vc._chartData.length && vc._rawVolt.vin.length===101,'voltage zoom slices display data without changing original samples');
+ vc.dispatchEvent(new w.MouseEvent('mousemove',{clientX:55,clientY:60}));
+ check(d.getElementById('chartTooltip').innerHTML.includes((vc._chartData[0]/1000).toFixed(2)),'tooltip uses the visible zoomed samples');
+ w.resetHistoryView();w.chartViewSet('volt',0.4,0.01);w.chartViewSet('charge',0.4,0.01);
+ check(!vc._chartData.length && !d.getElementById('cChargeLabels').textContent,'zoom is safe on empty histories');
+ w.renderVoltFromServer({range:'1d',vin:[24000],vpack:[25000],time:[now]});w.drawChargeHistory([{ts:now,ch:1}],'1d');
+ check(vc._chartData.length===1,'single-sample histories are safe at maximum zoom');
  p.dom.window.close();
  const fresh=panel();await tick();fresh.w.fetch=async()=>reply(sample());await fresh.w.pollChartsVolt();check(fresh.d.getElementById('voltCountInfo').textContent==='۳ نمونه','a fresh browser page restores counts from the ESP response');
  fresh.setSize(550);fresh.w.showTab(1);await tick();check(fresh.strokes()>0 && fresh.d.getElementById('cVoltLabels').textContent.length>0 && fresh.d.getElementById('voltAxisInfo').textContent.includes('V'),'opening charts after refresh restores axes, time labels and lines');

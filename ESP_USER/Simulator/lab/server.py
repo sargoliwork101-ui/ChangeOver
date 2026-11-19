@@ -886,6 +886,25 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 return self.send(json_bytes({"ok": 0, "e": "missing"}, 404))
             return self.send(json_bytes({"ok": 1}))
+        if path == "/factory/reset" and method == "POST":
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
+            if args.get("confirm") != "ERASE_ESP":
+                return self.send(json_bytes({"ok": 0, "e": "confirm"}, 400))
+            # Erase panel state only; live board values and calibration stay untouched.
+            BOARD.rows = {}
+            BOARD.deleted_files.clear()
+            BOARD.errors = []
+            BOARD.power = []
+            BOARD.charge_history = []
+            BOARD.chart = {key: [] for key in BOARD.chart}
+            BOARD.chart_buckets = []
+            BOARD.users = [{"name": "admin", "role": 1, "pass": "admin"}]
+            BOARD.wifi = {"ssid": "changeover_userpannel", "pass": "123456789"}
+            BOARD.theme = 0
+            BOARD.session = None
+            BOARD.session_start = 0.0
+            return self.send(json_bytes({"ok": 1, "erased": 1, "restart": 1}))
         if path in ("/evt/clr", "/evt/format") and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
