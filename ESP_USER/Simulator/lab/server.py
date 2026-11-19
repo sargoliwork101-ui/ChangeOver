@@ -78,6 +78,10 @@ def load_calendar_js():
     """Read the flash asset shared with the ESP sketch."""
     with open(os.path.join(SIM_DIR, "..", "charge_calendar.h"), encoding="utf-8") as handle:
         return handle.read().split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
+def load_pack_js():
+    """Read the same maintenance asset compiled into the ESP."""
+    with open(os.path.join(ESP_USER_DIR, "pack_review_panel.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"packjs(', 1)[1].split(')packjs"', 1)[0]
 def load_preview_html():
     """Serve the unmodified production page, including its calendar asset URL."""
     return load_panel_html()
@@ -102,6 +106,7 @@ class Board:
         self.board_uptime = 9 * 3600
         self.board_time = int(time.time())
         self.rows = {}
+        self.pack_review = dict(limit=0, upper=0, lower=0, at=0, revision=0)
         self.deleted_files = set()
         self.chart = {"1d": [], "7d": [], "1m": [], "3m": []}
         self.errors = []
@@ -745,6 +750,37 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/":
             html = load_preview_html()
             return self.send(text_bytes(html, mime="text/html; charset=utf-8"))
+        if path == "/pack.js" and method == "GET":
+            return self.send(text_bytes(load_pack_js(), mime="application/javascript; charset=utf-8"))
+        if path == "/pack" and method == "GET":
+            record = BOARD.pack_review
+            upper = BOARD.charge_counts[0] - record["upper"]
+            lower = BOARD.charge_counts[1] - record["lower"]
+            valid = upper >= 0 and lower >= 0
+            count = max(upper, lower) if valid else 0
+            progress = min(1000, count * 1000 // record["limit"]) if record["limit"] else 0
+            state = 1 if not valid else 2 if not record["limit"] else 5 if progress >= 1000 else 4 if progress >= 800 else 3
+            return self.send(json_bytes(dict(valid=int(valid), state=state, count=count, progress=progress, replaced=int(bool(record["at"])))))
+        if path in ("/pack/settings", "/pack/replace"):
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
+            record = BOARD.pack_review
+            if method == "POST":
+                if args.get("revision") != str(record["revision"]):
+                    return self.send(json_bytes({"ok": 0, "e": "revision"}, 409))
+                if path == "/pack/replace":
+                    if args.get("confirm") != "REPLACE_PACK":
+                        return self.send(json_bytes({"ok": 0, "e": "confirm"}, 400))
+                    record.update(upper=BOARD.charge_counts[0], lower=BOARD.charge_counts[1], at=BOARD.board_time + BOARD.tick, revision=record["revision"] + 1)
+                else:
+                    value = args.get("limit", "")
+                    if not re.fullmatch(r"0|[1-9][0-9]{0,5}", value) or int(value) > 100000:
+                        return self.send(json_bytes({"ok": 0, "e": "limit"}, 400))
+                    if record["limit"] != int(value):
+                        record.update(limit=int(value), revision=record["revision"] + 1)
+            elif method != "GET" or path != "/pack/settings":
+                return self.send(json_bytes({"ok": 0}, 405))
+            return self.send(json_bytes(dict(ok=1, invalid=0, limit=record["limit"], at=record["at"], revision=record["revision"])))
         if path == "/calendar.js" and method == "GET":
             return self.send(text_bytes(load_calendar_js(), mime="application/javascript; charset=utf-8"))
         if path == "/about.js" and method == "GET":
@@ -902,6 +938,8 @@ class Handler(BaseHTTPRequestHandler):
             if not self.session_ok() or BOARD.session.get("role") != 1:
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             name = args.get("name", "")
+            if name in {"/pack_review.txt", "/pack_review.txt.tmp"}:
+                return self.send(json_bytes({"ok": 0, "e": "protected"}, 409))
             if (len(name.encode()) > 255 or not re.fullmatch(r"/[^/\\\x00-\x1f]+", name)
                     or name in ("/.", "/..")):
                 return self.send(json_bytes({"ok": 0, "e": "path"}, 400))
@@ -921,6 +959,7 @@ class Handler(BaseHTTPRequestHandler):
             # Erase panel state only; live board values and calibration stay untouched.
             BOARD.rows = {}
             BOARD.deleted_files.clear()
+            BOARD.pack_review = dict(limit=0, upper=0, lower=0, at=0, revision=0)
             BOARD.errors = []
             BOARD.power = []
             BOARD.charge_history = []

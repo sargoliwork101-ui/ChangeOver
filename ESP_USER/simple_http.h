@@ -1,3 +1,4 @@
+#include "simple_pack_review.h"
 #include "about_content.h"
 #include "about_footer.h"
 #include "charge_calendar.h"
@@ -138,6 +139,7 @@ static void func__Simple_HttpCalendar(void)
         yield();
     }
 }
+#include "simple_pack_http.h"
 static void func__Simple_HttpRoot(void)
 {
     uint32_t uint32_t__startMs = (uint32_t)millis();
@@ -781,6 +783,8 @@ static void func__Simple_HttpEventFormat(void)
         return;
     }
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    String packBackup = func__Simple_PackEncode(SIMPLE_PACK__G__Review);
+    if (BOOL__G__PackReviewInvalid) packBackup = "invalid";
     LittleFS.end();
     BOOL__G__FsOk = false;
     BOOL__G__FsMountFailed = true;
@@ -823,11 +827,13 @@ static void func__Simple_HttpEventFormat(void)
         file__probe.close();
     }
     (void)LittleFS.remove("/fs-check");
+    bool packSaved = func__Simple_StorageWrite(SIMPLE_PACK_REVIEW_FILE, packBackup);
+    if (!packSaved) BOOL__G__PackReviewInvalid = true;
     func__Simple_AuthSave();
     func__Simple_WifiSave();
     UINT32_T__G__LastSavedTimeSec = 0u;
     func__Simple_TimeSave();
-    if (!bool__writable || !func__Simple_FormatSettingsValid(SIMPLE_USERS_FILE) ||
+    if (!packSaved || !bool__writable || !func__Simple_FormatSettingsValid(SIMPLE_USERS_FILE) ||
         !func__Simple_FormatSettingsValid(SIMPLE_WIFI_FILE))
     {
         UINT8_T__G__LogWriteFault = 1u;
@@ -1169,6 +1175,11 @@ static void func__Simple_HttpFileDelete(void)
             SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
             return;
         }
+    }
+    if (string__name == SIMPLE_PACK_REVIEW_FILE || string__name == String(SIMPLE_PACK_REVIEW_FILE) + ".tmp")
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(409, "application/json", "{\"ok\":0,\"e\":\"protected\"}");
+        return;
     }
     if (!BOOL__G__FsOk)
     {

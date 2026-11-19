@@ -213,8 +213,12 @@ static void func__Simple_HandleFrame(void)
                 UINT8_T__G__PowerEventCount = uint8_t__newPwr;
             }
             BOOL__G__DiagValid = true;
+            BOOL__G__PackCountersSeen = false;
             if (UINT16_T__G__RxLen >= 39u)
             {
+                BOOL__G__PackCountersSeen = true;
+                UINT32_T__G__PackCountersMs = (uint32_t)millis();
+                UINT32_T__G__PackCounterReset = UINT32_T__G__ResetCount;
                 UINT32_T__G__ChargeCountCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 23u);
                 UINT32_T__G__ChargeCountCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 27u);
                 UINT32_T__G__ChargeSecCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 31u);

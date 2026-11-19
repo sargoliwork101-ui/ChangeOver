@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build a standalone, preview-only battery review mockup; never alter firmware."""
 import argparse
+import re
 from pathlib import Path
 # ==================== Preview generator ====================
 def main():
@@ -10,6 +11,7 @@ def main():
     parser.add_argument("--output", type=Path, default=here.parents[1] / "deliverables" / "battery-wear-preview.html")
     output = parser.parse_args().output
     panel = (here.parent / "simple_preview.html").read_text(encoding="utf-8")
+    panel = re.sub(r'<script data-pack-review>.*?</script>', "", panel, flags=re.S)
     script = (here / "battery_wear_preview.js").read_text(encoding="utf-8")
     mock_anchor = "var mockActive = (location.protocol === 'file:');"
     assert panel.count(mock_anchor) == 1

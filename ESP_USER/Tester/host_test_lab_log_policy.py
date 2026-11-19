@@ -26,6 +26,40 @@ class LogPolicy(unittest.TestCase):
         script = (SOURCE.parent.parent.parent / "charge_calendar.h").read_text(encoding="utf-8")
         expected = script.split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
         self.assertEqual(lab.load_calendar_js(), expected)
+    def test_pack_shared_asset_and_routes(self):
+        self.assertIn('/pack.js', lab.load_panel_html())
+        self.assertIn("/pack/replace", lab.load_pack_js())
+        self.assertNotIn("localStorage", lab.load_pack_js())
+        class Request(lab.Handler):
+            def __init__(self, path, args=None, admin=True):
+                self.path, self.args, self.admin = path, args or {}, admin
+            def body_args(self):
+                return self.args
+            def session_ok(self):
+                return self.admin
+            def send(self, result):
+                self.result = result
+        old = lab.BOARD
+        self.addCleanup(setattr, lab, "BOARD", old)
+        lab.BOARD = self.board
+        self.board.session = {"role": 1}
+        def request(path, args=None, admin=True, method="POST"):
+            req = Request(path, args, admin)
+            req.route(method)
+            return req.result[0], lab.json.loads(req.result[2])
+        self.assertEqual(request('/pack/settings', admin=False, method="GET")[0], 403)
+        self.assertEqual(request('/pack/replace', {}, False)[0], 403)
+        self.assertEqual(request('/pack/settings', dict(limit="300", revision="0"))[0], 200)
+        before = self.board.charge_counts[:], self.board.charge_history[:]
+        self.assertEqual(request('/pack/replace', dict(revision="1"))[0], 400)
+        self.assertEqual(request('/pack/replace', dict(revision="1", confirm="REPLACE_PACK"))[0], 200)
+        self.assertEqual(request('/pack', method="GET")[1]["count"], 0)
+        self.board.charge_counts[0] += 1
+        self.assertEqual(request('/pack', method="GET")[1]["count"], 1)
+        self.assertEqual(request('/pack/replace', dict(revision="1", confirm="REPLACE_PACK"))[0], 409)
+        self.assertEqual(self.board.charge_history, before[1])
+        self.assertEqual(self.board.pack_review["limit"], 300)
+        self.assertEqual(request('/evt/file', dict(name="/pack_review.txt"))[0], 409)
     def test_about_uses_shared_compiled_content(self):
         about = lab.json.loads(lab.load_about_json())
         self.assertEqual(about["phone"], "09367969890")

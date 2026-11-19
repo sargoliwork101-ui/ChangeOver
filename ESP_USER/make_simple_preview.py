@@ -573,10 +573,33 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     return found ? found[1] : '';
   }
 
+  var packReview={limit:0,upper:0,lower:0,at:0,revision:0};
   function mockFetch(url, options) {
     var path = routeName(url);
     var method = ((options && options.method) || 'GET').toUpperCase();
 
+    if (path === 'pack') {
+      var up=counters.chargeCountCh1-packReview.upper,down=counters.chargeCountCh2-packReview.lower;
+      var valid=sim.linkUp&&up>=0&&down>=0,count=valid?Math.max(up,down):0;
+      var progress=packReview.limit?Math.min(1000,Math.floor(count*1000/packReview.limit)):0;
+      return jsonResponse(JSON.stringify({valid:valid?1:0,state:!sim.linkUp?0:!valid?1:!packReview.limit?2:progress>=1000?5:progress>=800?4:3,count:count,progress:progress,replaced:packReview.at?1:0}));
+    }
+    if(path==='pack/settings'||path==='pack/replace'){
+      if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var edit=bodyJson(options);
+      if(method==='POST'){
+        if(String(edit.revision)!==String(packReview.revision))return jsonResponse('{"ok":0,"e":"revision"}',409);
+        if(path==='pack/replace'){
+          if(edit.confirm!=='REPLACE_PACK')return jsonResponse('{"ok":0,"e":"confirm"}',400);
+          if(!sim.linkUp)return jsonResponse('{"ok":0,"e":"data"}',409);
+          packReview.upper=counters.chargeCountCh1;packReview.lower=counters.chargeCountCh2;packReview.at=counters.boardTime;packReview.revision++;
+        }else{
+          if(!/^\d+$/.test(String(edit.limit))||Number(edit.limit)>100000)return jsonResponse('{"ok":0,"e":"limit"}',400);
+          if(packReview.limit!==Number(edit.limit)){packReview.limit=Number(edit.limit);packReview.revision++;}
+        }
+      }
+      return jsonResponse(JSON.stringify({ok:1,invalid:0,limit:packReview.limit,at:packReview.at,revision:packReview.revision}));
+    }
     if (path === 'about') return jsonResponse(__ABOUT__);
     if (path === 't') { return jsonResponse(telemetryJson()); }
     if (path === 'charts') { return jsonResponse(chartJson(query(url, 'range') || '1d')); }
@@ -614,6 +637,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     if (path === 'evt/file') {
       if(method!=='POST')return jsonResponse('{"ok":0}',405);
       if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      if(['/pack_review.txt','/pack_review.txt.tmp'].includes(bodyJson(options).name))return jsonResponse('{"ok":0,"e":"protected"}',409);
       var name=bodyJson(options).name||'',match=/^\/evt-(\d{8})\.csv$/.exec(name);
       if(!/^\/[^/\\\x00-\x1f]+$/.test(name)||name==='/.'||name==='/..')return jsonResponse('{"ok":0,"e":"path"}',400);
       var exists=match?evtDaysList().indexOf(match[1])>=0:(['/users.json','/wifi.json'].indexOf(name)>=0&&mock.deletedFiles.indexOf(name)<0);
@@ -630,6 +654,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       if(method!=='POST')return jsonResponse('{"ok":0}',405);
       if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
       if(bodyJson(options).confirm!=='ERASE_ESP')return jsonResponse('{"ok":0,"e":"confirm"}',400);
+      packReview={limit:0,upper:0,lower:0,at:0,revision:0};
       mock.deletedFiles=[];mock.historyClearedAt=counters.boardTime+1;
       evtRows=[];evtHasPrev=false;evtLastRowOk=false;evtBooted=false;evtPersist();
       mock.user='';mock.role=0;mock.token='';mock.userPass='admin';mock.users=[{name:'admin',role:1}];
@@ -1088,7 +1113,8 @@ def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
             die("placeholder %s was not replaced" % token)
     calendar = (HERE / "charge_calendar.h").read_text(encoding="utf-8").split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
     footer = (HERE / "about_footer.h").read_text(encoding="utf-8").split('R"footer(', 1)[1].split(')footer"', 1)[0]
-    return shim + '<script data-charge-calendar>\n' + calendar + '\n</script>\n<script data-company-footer>\n' + footer + '\n</script>\n'
+    pack = (HERE / "pack_review_panel.h").read_text(encoding="utf-8").split('R"packjs(', 1)[1].split(')packjs"', 1)[0]
+    return shim + '<script data-pack-review>\n' + pack + '\n</script>\n' + '<script data-charge-calendar>\n' + calendar + '\n</script>\n<script data-company-footer>\n' + footer + '\n</script>\n'
 def main():
     html = panel_html()
     panel = panel_number_constants()
@@ -1115,7 +1141,7 @@ def main():
             die("simple_panel.h does not define %s" % needed)
     shim = build_shim(field_map, tlm_n, bits, states, chart_ranges(), bsp_volt_scales(),
                       panel, BOOT_VOLTAGES)
-    generated = html.replace('<script src="/calendar.js" defer></script>', '').replace('<script src="/about.js" defer></script>', '').replace("</head>", shim + "</head>", 1)
+    generated = html.replace('<script src="/calendar.js" defer></script>', '').replace('<script src="/about.js" defer></script>', '').replace('<script src="/pack.js" defer></script>', '').replace("</head>", shim + "</head>", 1)
     if generated == html:
         die("could not inject the shim: </head> not found")
     OUT.write_text(generated, encoding="utf-8")

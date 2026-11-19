@@ -46,6 +46,7 @@ void setup(void)
     func__Simple_ChargeHistoryLoad();
     func__Simple_ChartsLoad();
     func__Simple_DiagLoad();
+    func__Simple_PackLoad();
     func__SimpleLog_Begin();
     UINT32_T__G__ChargeCountCh1 = UINT32_T__G__PrevChargeCountCh1;
     UINT32_T__G__ChargeCountCh2 = UINT32_T__G__PrevChargeCountCh2;
@@ -54,6 +55,11 @@ void setup(void)
     WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
 #endif
     BOOL__G__WifiHighPower = true;
+    SIMPLE_WEB_SERVER_T__G__Server.on("/pack.js", HTTP_GET, func__Simple_HttpPackScript);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/pack", HTTP_GET, func__Simple_HttpPack);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/pack/settings", HTTP_GET, func__Simple_HttpPackSettings);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/pack/settings", HTTP_POST, func__Simple_HttpPackSet);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/pack/replace", HTTP_POST, func__Simple_HttpPackReplace);
     SIMPLE_WEB_SERVER_T__G__Server.on("/calendar.js", HTTP_GET, func__Simple_HttpCalendar);
     SIMPLE_WEB_SERVER_T__G__Server.on("/about.js", HTTP_GET, func__Simple_HttpAboutScript);
     SIMPLE_WEB_SERVER_T__G__Server.on("/about", HTTP_GET, func__Simple_HttpAbout);

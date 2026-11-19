@@ -196,4 +196,5 @@ typedef enum
     SIMPLE_RX_WAIT_CRC_LO,
     SIMPLE_RX_WAIT_CRC_HI
 } simple_rx_state_t;
+#define SIMPLE_PACK_REVIEW_FILE "/pack_review.txt"
 #endif

@@ -652,14 +652,14 @@ static uint32_t func__Simple_StorageFileBytes(const char *char__ptr_path)
 static bool func__Simple_StorageQuota(const char *char__ptr_path, size_t size_t__length)
 {
     const char *char__paths[] = {SIMPLE_USERS_FILE, SIMPLE_WIFI_FILE, SIMPLE_PARAMS_FILE,
-        SIMPLE_TIME_FILE, SIMPLE_THEME_FILE, SIMPLE_TIME_GAP_FILE, SIMPLE_CHARGE_HISTORY_FILE,
+        SIMPLE_TIME_FILE, SIMPLE_THEME_FILE, SIMPLE_TIME_GAP_FILE, SIMPLE_PACK_REVIEW_FILE, SIMPLE_CHARGE_HISTORY_FILE,
         SIMPLE_DIAG_FILE, SIMPLE_CHARTS_FILE, SIMPLE_CHART_JOURNAL_FILE};
-    uint8_t uint8_t__first = 0u, uint8_t__last = 6u;
+    uint8_t uint8_t__first = 0u, uint8_t__last = 7u;
     uint32_t uint32_t__limit = SIMPLE_STORAGE_SETTINGS_BYTES;
     if (!strcmp(char__ptr_path, SIMPLE_CHARGE_HISTORY_FILE) || !strcmp(char__ptr_path, SIMPLE_DIAG_FILE))
-    { uint8_t__first = 6u; uint8_t__last = 8u; uint32_t__limit = SIMPLE_STORAGE_HISTORY_BYTES; }
+    { uint8_t__first = 7u; uint8_t__last = 9u; uint32_t__limit = SIMPLE_STORAGE_HISTORY_BYTES; }
     else if (!strcmp(char__ptr_path, SIMPLE_CHARTS_FILE) || !strcmp(char__ptr_path, SIMPLE_CHART_JOURNAL_FILE))
-    { uint8_t__first = 8u; uint8_t__last = 10u; uint32_t__limit = SIMPLE_STORAGE_CHART_BYTES; }
+    { uint8_t__first = 9u; uint8_t__last = 11u; uint32_t__limit = SIMPLE_STORAGE_CHART_BYTES; }
     if (size_t__length > uint32_t__limit) return false;
     for (uint8_t uint8_t__i = uint8_t__first; uint8_t__i < uint8_t__last; uint8_t__i++)
     {
