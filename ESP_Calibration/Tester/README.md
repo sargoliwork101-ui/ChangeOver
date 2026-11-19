@@ -1,3 +1,10 @@
+## Text-field color regression
+The Chromium suite checks resolved foreground/background contrast (at least
+4.5:1) for the filename dialog, manual duty list, capture note and visible
+calibration controls at five widths. Filename focus, editing and extension
+preservation are covered. Current run: 208 checks, zero failures. Production
+changes are limited to text-field colors; download behavior is unchanged.
+
 ## Stable sample-row editing
 `node ESP_Calibration/Tester/host_test_sample_rows.js` runs 22 real-panel DOM
 checks for whole-row and checkbox clicks, retained row/table nodes and focus,

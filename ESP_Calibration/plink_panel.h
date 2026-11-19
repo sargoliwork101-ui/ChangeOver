@@ -9,6 +9,7 @@ static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="f
 ::selection{background:rgba(99,162,255,.38)}
 body{background:radial-gradient(1200px 300px at 50% -80px,rgba(99,162,255,.09),transparent),var(--bg);color:var(--tx);font:clamp(13px,.28vw + 12.1px,15.3px)/1.65 Vazirmatn;max-width:1480px;margin:auto;padding:0 14px 28px;scrollbar-color:#3a4767 transparent}
 button,input,select,textarea,code,pre{font-family:Vazirmatn;font-size:inherit;color:inherit}
+input:not([type]),input[type=text]{background-color:var(--in);color:var(--tx)}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
 .n{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
@@ -450,7 +451,7 @@ header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2c7ab4b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build da869f4</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
