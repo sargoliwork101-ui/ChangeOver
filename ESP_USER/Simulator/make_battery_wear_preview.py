@@ -11,6 +11,9 @@ def main():
     output = parser.parse_args().output
     panel = (here.parent / "simple_preview.html").read_text(encoding="utf-8")
     script = (here / "battery_wear_preview.js").read_text(encoding="utf-8")
+    mock_anchor = "var mockActive = (location.protocol === 'file:');"
+    assert panel.count(mock_anchor) == 1
+    panel = panel.replace(mock_anchor, "var mockActive = true; /* Standalone preview: never send device commands. */")
     assert panel.count("</body>") == 1
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(panel.replace("</body>", '<script data-battery-wear-demo>\n' + script + '\n</script></body>'), encoding="utf-8")
