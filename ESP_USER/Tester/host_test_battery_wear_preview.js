@@ -13,12 +13,17 @@ function check(ok,label){assert.ok(ok,label);checks++;console.log('PASS: '+label
  await new Promise(r=>setImmediate(r));w.eval(script);
  check(tab===1&&d.getElementById('pg1').firstElementChild.id==='wearDemo','demo indicator precedes the existing charts and opens charts tab');
  check(d.querySelector('.wear-badge').textContent.includes('دادهٔ آزمایشی')&&d.getElementById('wearDemo').textContent.includes('درصد سلامت یا تعداد چرخهٔ کامل'),'mock data and the difference from health/full cycles are explicitly labeled');
+ check(d.querySelectorAll('article.wear-card').length===2&&[...d.querySelectorAll('.wear-number')].map(el=>el.textContent).join(',')==='۲۷۰,۳۳۰','two independently labeled battery cards display prominent actual demo counts, not percentages');
+ check(!d.querySelector('.wear-demo-controls').open&&d.querySelector('.wear-demo-controls>summary'),'demo controls start inside a collapsed native keyboard-accessible disclosure');
+ const styles=d.querySelector('style').textContent;
+ check(styles.includes('--wear-spectrum:linear-gradient')&&styles.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&styles.includes('@media(max-width:640px)'),'spectrum tracks and responsive two-column cards are part of the prototype only');
+ check(styles.includes('@media(prefers-reduced-motion:reduce)')&&styles.includes('#wearDemo [hidden]{display:none!important}'),'reduced motion is respected and unknown dots remain hidden');
  const statuses=()=>[...d.querySelectorAll('.wear-state')].map(el=>el.textContent);
  check(statuses()[0]==='نزدیک حد فرضی بررسی'&&statuses()[1]==='نیاز به بررسی باتری','independent battery inputs produce different review statuses');
  for(const [preset,message] of [['low','زیر حد فرضی بررسی'],['near','نزدیک حد فرضی بررسی'],['over','نیاز به بررسی باتری'],['unknown','شمارنده موجود نیست']]){
   d.querySelector('[data-wear-preset='+preset+']').click();check(statuses().every(value=>value===message),'preset '+preset+' renders the expected state for both rows');
  }
- check([...d.querySelectorAll('.wear-dot')].every(el=>el.hidden)&&[...d.querySelectorAll('.wear-count')].every(el=>el.textContent==='تعداد نامعلوم'),'missing counters show unknown rather than zero or a healthy verdict');
+ check([...d.querySelectorAll('.wear-dot')].every(el=>el.hidden)&&[...d.querySelectorAll('.wear-unit')].every(el=>el.textContent==='تعداد نامعلوم')&&[...d.querySelectorAll('.wear-number')].every(el=>el.textContent==='—'),'missing counters show unknown rather than zero or a healthy verdict');
  d.querySelector('[data-wear-preset=near]').click();const upper=d.getElementById('wearUpper'),limit=d.getElementById('wearLimit');
  for(const [value,message] of [[239,'زیر حد فرضی بررسی'],[240,'نزدیک حد فرضی بررسی'],[299,'نزدیک حد فرضی بررسی'],[300,'نیاز به بررسی باتری'],[900,'نیاز به بررسی باتری']]){
   upper.value=value;upper.dispatchEvent(new w.Event('input'));check(statuses()[0]===message,'exact illustrative threshold at '+value);
@@ -27,6 +32,7 @@ function check(ok,label){assert.ok(ok,label);checks++;console.log('PASS: '+label
  for(const value of ['',0,-1,1.5,100001]){
   limit.value=value;limit.dispatchEvent(new w.Event('input'));check(statuses().every(value=>value==='حد بررسی مشخص نشده'),'invalid illustrative limit does not produce a verdict: '+value);
  }
+ check(!d.querySelector('[data-wear-preset][aria-pressed=true]'),'manual input clears a previously selected preset');
  limit.value=300;const known=d.getElementById('wearHasLimit');known.checked=false;known.dispatchEvent(new w.Event('input'));
  check(statuses().every(value=>value==='حد بررسی مشخص نشده'),'unknown threshold preserves counts without assigning a wear status');
  check([...d.querySelectorAll('.wear-track')].every(el=>el.getAttribute('aria-label').includes('بدون حد بررسی')),'nonvisual labels convey missing limits and counters');
