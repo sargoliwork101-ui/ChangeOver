@@ -2,6 +2,7 @@
 // Simulator-only pack indicator and settings proposal; never compiled into ESP firmware.
 (function () {
  const STORAGE_KEY='changeover_preview_pack_review_v1';
+ const REPLACEMENT_KEY='changeover_preview_pack_replacement_v1';
  // Build a local line icon using the panel sprite, without network assets.
  function icon(name) {return '<svg class="glyph" aria-hidden="true"><use href="#i-'+name+'"/></svg>';}
  // Find the existing action section without rebuilding its controls or handlers.
@@ -44,19 +45,25 @@
    @media(max-width:640px){.preview-admin-grid{grid-template-columns:1fr}#adminCard.preview-admin{padding:14px}#wearDemo{padding:17px}.wear-number{font-size:35px}.pack-context{max-width:100%}}
   `;document.head.appendChild(style);
   const banner=document.createElement('aside');banner.id='packPreviewBanner';banner.className='preview-banner';
-  banner.innerHTML='<strong>پیش‌نمایش — داده‌های آزمایشی</strong><span>تغییرها فقط در همین مرورگر ذخیره می‌شوند؛ دستگاه تغییر نمی‌کند.</span><button type="button" id="packPreviewLogin">ورود مدیر</button>';
+  banner.innerHTML='<strong>پیش‌نمایش</strong><button type="button" id="packPreviewLogin">ورود مدیر</button>';
   document.querySelector('main').prepend(banner);
   banner.querySelector('button').addEventListener('click',()=>{if(isAdmin()){showTab(2);}else{admOpen();}});
   const card=document.createElement('section');card.id='wearDemo';card.className='cd';card.setAttribute('aria-label','کارکرد پک باتری');
   card.innerHTML='<div class="pack-top">'+icon('activity')+'<h2>کارکرد پک باتری</h2><span class="pack-tag">بررسی دوره‌ای</span></div><div class="pack-metric" aria-live="polite" aria-atomic="true"><strong class="wear-number"></strong><span class="wear-unit">شاخص کارکرد پک</span></div><div class="wear-track" role="img"><div class="wear-fill"></div><span class="wear-tick" aria-hidden="true"></span><span class="wear-dot" aria-hidden="true"></span></div><div class="wear-scale"><span>شروع کارکرد</span><span>زمان بررسی</span></div><div class="pack-bottom"><span class="wear-state" role="status"></span><span class="pack-context">یادآور بررسی بر اساس تعداد شارژ کامل</span></div>';
   stats.after(card);
+  stats.querySelector('.ti').textContent='آمار کار';
+  const diagnostics=document.getElementById('diagErrors');if(diagnostics)diagnostics.previousElementSibling.textContent='۱۰ خطای آخر';
+  const simulationIntro=document.querySelector('#pg3>.simbox:first-child .simhint');if(simulationIntro)simulationIntro.textContent='تنظیم داده‌ها';
+  const controlTitles={'پارامترهای خود برد (درصد فول/خالی باتری - همان‌هایی که چراغ سبز با آن‌ها چشمک می‌زند)':'بازهٔ ولتاژ باتری','حالت شارژر (همان ۰..۹ برد)':'حالت شارژر','ماسک خطا (بیت‌های برد)':'خطاها','لینک UART و سناریوهای آماده':'ارتباط و وضعیت‌ها','خوانش مشتق (با فرمول خود پنل)':'وضعیت فعلی'};
+  document.querySelectorAll('#pg3 .simhint').forEach(el=>{if(controlTitles[el.textContent])el.textContent=controlTitles[el.textContent];});
+  document.querySelectorAll('#pg3 label').forEach(el=>{if(!el.children.length)el.textContent=el.textContent.replace(/\s*\(پارامتر [۰-۹]+\)/g,'');});
   const network=sectionFor(admin,'#admSsid'),reset=sectionFor(admin,'#resetHelp'),technical=admin.querySelector('#technicalInfo'),cleanup=sectionFor(admin,'#admClearType'),factory=sectionFor(admin,'#admFactoryReset');
   const snap=admin.querySelector('[onclick*="/evt/snap"]'),downloads=snap?snap.closest('details'):null;
   if(snap){snap.id='previewLogSnapshot';snap.className='btn ico';snap.dataset.admin='';snap.hidden=true;snap.querySelector('span').className='lbl';document.querySelector('#evtCard .icog').appendChild(snap);}
   if(downloads)downloads.remove();
   const duplicateFormat=document.getElementById('evtFormat');if(duplicateFormat)duplicateFormat.remove();
   const settings=document.createElement('details');settings.id='packPreviewSettings';settings.className='setting-panel admin-section';settings.open=true;
-  settings.innerHTML='<summary>'+icon('activity')+'<span>بررسی دوره‌ای پک</span></summary><div class="setting-body"><div class="pack-saved"><span>حد بررسی فعلی</span><b id="previewSavedLimit"></b></div><form id="previewLimitForm" novalidate><div class="settings-form"><label class="field" for="wearLimit"><span>حد بررسی (تعداد شارژ کامل)</span><input id="wearLimit" type="number" min="1" max="100000" step="1" inputmode="numeric" placeholder="تعداد را وارد کنید" aria-describedby="previewLimitHelp previewLimitStatus"></label><div class="form-actions"><button type="submit" class="btn action" id="previewLimitSave" title="ذخیره حد بررسی" aria-label="ذخیره حد بررسی">'+icon('save')+'<span>ذخیره حد بررسی</span></button><button type="button" class="btn action" id="previewLimitClear" title="غیرفعال‌کردن یادآور" aria-label="غیرفعال‌کردن یادآور">'+icon('x')+'<span>غیرفعال‌کردن یادآور</span></button></div></div></form><p class="setting-note" id="previewLimitHelp">مدیر، حد بررسی را مطابق برنامهٔ نگهداری باتری تعیین می‌کند. شاخص پک برابر بیشترین تعداد شارژ کامل دو باتری است؛ این عدد، درصد سلامت یا تعداد چرخهٔ کامل پک نیست. پیام نزدیک‌شدن از ۸۰٪ حد تنظیم‌شده فعال می‌شود.</p><p class="gmsg" id="previewLimitStatus" role="status"></p><details class="preview-admin-demo"><summary>داده‌های نمایشی این پیش‌نمایش</summary><div class="preview-demo-presets"><button type="button" data-wear-preset="low">کارکرد کمتر</button><button type="button" data-wear-preset="near">نزدیک بررسی</button><button type="button" data-wear-preset="over">زمان بررسی</button><button type="button" data-wear-preset="unknown">قطع داده</button></div><div class="preview-demo-inputs"><label for="wearUpper">شمارندهٔ نمایشی باتری بالا<input id="wearUpper" type="range" min="0" max="900" value="270"></label><label for="wearLower">شمارندهٔ نمایشی باتری پایین<input id="wearLower" type="range" min="0" max="900" value="330"></label></div><label class="preview-demo-options"><input id="wearHasData" type="checkbox" checked>دریافت داده فعال است</label><p class="setting-note">این شمارنده‌ها نمونه‌اند و فقط کادر پک را در همین پیش‌نمایش تغییر می‌دهند. دکمه‌های نمونه، حد ذخیره‌شده را تغییر نمی‌دهند.</p></details></div>';
+  settings.innerHTML='<summary>'+icon('activity')+'<span>بررسی دوره‌ای پک</span></summary><div class="setting-body"><div class="pack-saved"><span>حد بررسی فعلی</span><b id="previewSavedLimit"></b></div><form id="previewLimitForm" novalidate><div class="settings-form"><label class="field" for="wearLimit"><span>حد بررسی (تعداد شارژ کامل)</span><input id="wearLimit" type="number" min="1" max="100000" step="1" inputmode="numeric" placeholder="تعداد را وارد کنید" aria-describedby="previewLimitStatus"></label><div class="form-actions"><button type="submit" class="btn action" id="previewLimitSave" title="ذخیره حد بررسی" aria-label="ذخیره حد بررسی">'+icon('save')+'<span>ذخیره حد بررسی</span></button><button type="button" class="btn action" id="previewLimitClear" title="غیرفعال‌کردن یادآور" aria-label="غیرفعال‌کردن یادآور">'+icon('x')+'<span>غیرفعال‌کردن یادآور</span></button></div></div></form><div class="pack-saved"><span>آخرین تعویض باتری</span><b id="previewReplacedAt">ثبت نشده</b></div><button type="button" class="btn action" id="previewReplaceBattery" title="ثبت تعویض باتری" aria-label="ثبت تعویض باتری">'+icon('reset')+'<span>باتری تعویض شد</span></button><p class="gmsg" id="previewLimitStatus" role="status"></p><details class="preview-admin-demo"><summary>آزمایش نمایش</summary><div class="preview-demo-presets"><button type="button" data-wear-preset="low">کارکرد کمتر</button><button type="button" data-wear-preset="near">نزدیک بررسی</button><button type="button" data-wear-preset="over">زمان بررسی</button><button type="button" data-wear-preset="unknown">قطع داده</button></div><div class="preview-demo-inputs"><label for="wearUpper">باتری بالا<input id="wearUpper" type="range" min="0" max="900" value="270"></label><label for="wearLower">باتری پایین<input id="wearLower" type="range" min="0" max="900" value="330"></label></div><label class="preview-demo-options"><input id="wearHasData" type="checkbox" checked>دریافت داده فعال است</label></details></div>';
   admin.classList.add('preview-admin');
   // Group existing DOM nodes so original confirmations, handlers and admin locking stay intact.
   for(const [name,glyph,items] of [['تنظیمات دستگاه','settings',[network,settings]],['بررسی و رفع خطا','activity',[technical,reset]],['پاک‌سازی و بازیابی','trash',[cleanup,factory]]]){
@@ -66,24 +73,40 @@
   }
   const input=document.getElementById('wearLimit'),saved=document.getElementById('previewSavedLimit'),status=document.getElementById('previewLimitStatus');
   const upper=document.getElementById('wearUpper'),lower=document.getElementById('wearLower'),hasData=document.getElementById('wearHasData');
-  let threshold=0,storageFailed=false;
+  let threshold=0,storageFailed=false,replacement=null,replacementUnreadable=false,replacing=false;
   // A missing setting disables the reminder; never choose a battery service limit automatically.
   try {const raw=localStorage.getItem(STORAGE_KEY);if(raw!==null&&/^\d+$/.test(raw)&&Number(raw)<=100000)threshold=Number(raw);}catch(e){storageFailed=true;}
+  // Restore replacement separately so editing a service limit never erases its baseline or date.
+  try{
+   const raw=localStorage.getItem(REPLACEMENT_KEY);
+   if(raw!==null){
+    const data=JSON.parse(raw);
+    if(data&&data.v===1&&[data.upper,data.lower].every(value=>Number.isInteger(value)&&value>=0&&value<=4294967295)&&Number.isSafeInteger(data.at)&&data.at>0&&data.at<=8640000000000000)replacement=data;
+    else replacementUnreadable=true;
+   }
+  }catch(e){replacementUnreadable=true;}
   const fa=value=>Number(value).toLocaleString('fa-IR');
+  const dateFormatter=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
   // Match the preview's actual admin state; hiding the form alone is not a device security mechanism.
   function isAdmin(){return typeof admReady!=='undefined'&&admReady&&!admin.hidden;}
   // Keep the public card read-only and leave unknown input neutral, not healthy or worn.
   function render(){
-   const count=Math.max(Number(upper.value),Number(lower.value)),known=hasData.checked&&threshold>0;
+   const upperCount=Number(upper.value),lowerCount=Number(lower.value);
+   const regressed=replacement&&(upperCount<replacement.upper||lowerCount<replacement.lower);
+   const available=hasData.checked&&!replacementUnreadable&&!regressed;
+   const upperDelta=upperCount-(replacement?replacement.upper:0),lowerDelta=lowerCount-(replacement?replacement.lower:0);
+   const count=available?Math.max(upperDelta,lowerDelta):0,known=available&&threshold>0;
    const ratio=known?count/threshold:0;
-   const message=!hasData.checked?'در انتظار دریافت اطلاعات':!threshold?'یادآور بررسی تنظیم نشده':ratio>=1?'زمان بررسی پک رسیده است':ratio>=.8?'نزدیک زمان بررسی':'در محدودهٔ کارکرد تنظیم‌شده';
+   const message=!hasData.checked?'در انتظار دریافت اطلاعات':!available?'اطلاعات کارکرد نیاز به بررسی دارد':!threshold?'یادآور بررسی تنظیم نشده':ratio>=1?'زمان بررسی پک رسیده است':ratio>=.8?'نزدیک زمان بررسی':'در محدودهٔ کارکرد تنظیم‌شده';
    const color=!known?'var(--mu)':ratio>=1?'#f28b82':ratio>=.8?'#f3c76b':'#38d9b0';
    const halo=!known?'transparent':ratio>=1?'rgba(242,139,130,.12)':ratio>=.8?'rgba(243,199,107,.12)':'rgba(56,217,176,.12)';
    card.style.setProperty('--wear-progress',(Math.min(1,ratio)*100)+'%');card.style.setProperty('--wear-color',color);card.style.setProperty('--wear-halo',halo);
-   card.querySelector('.wear-number').textContent=hasData.checked?fa(count):'—';card.querySelector('.wear-state').textContent=message;
-   card.querySelector('.wear-track').setAttribute('aria-label','شاخص کارکرد پک: '+(hasData.checked?fa(count):'در انتظار داده')+'؛ '+message);
+   card.querySelector('.wear-number').textContent=available?fa(count):'—';card.querySelector('.wear-state').textContent=message;
+   card.querySelector('.wear-unit').textContent=replacement?'شارژ پس از تعویض':'شاخص کارکرد پک';
+   card.querySelector('.wear-track').setAttribute('aria-label','شاخص کارکرد پک: '+(available?fa(count):'در انتظار داده')+'؛ '+message);
    card.querySelector('.wear-dot').hidden=!known;card.querySelector('.wear-tick').hidden=!known;
    saved.textContent=threshold?fa(threshold)+' شارژ کامل':'تنظیم نشده';
+   document.getElementById('previewReplacedAt').textContent=replacement?dateFormatter.format(new Date(replacement.at)):replacementUnreadable?'نیاز به بررسی':'ثبت نشده';
   }
   // Save only this simulator's namespaced setting; failed writes never alter the active threshold.
   function save(value){
@@ -92,9 +115,27 @@
    if(!/^\d+$/.test(raw)||Number(raw)>100000||(Number(raw)<1&&raw!=='0')){status.textContent='تعداد صحیح بین ۱ تا ۱۰۰٬۰۰۰ وارد کنید.';return;}
    const next=Number(raw);
    try{localStorage.setItem(STORAGE_KEY,String(next));if(localStorage.getItem(STORAGE_KEY)!==String(next))throw Error('verify');}
-   catch(e){status.textContent='ذخیره در مرورگر انجام نشد؛ تنظیم قبلی حفظ شد.';return;}
-   threshold=next;input.value=threshold?String(threshold):'';status.textContent=threshold?'حد بررسی در این مرورگر ذخیره شد.':'یادآور بررسی غیرفعال شد.';render();
+   catch(e){status.textContent='ذخیره انجام نشد؛ تنظیم قبلی حفظ شد.';return;}
+   threshold=next;input.value=threshold?String(threshold):'';status.textContent=threshold?'تنظیمات ذخیره شد.':'یادآور بررسی غیرفعال شد.';render();
   }
+  // Register a new pack baseline only after confirmation and verified persistence; never clear board counters.
+  function registerReplacement(){
+   if(!isAdmin()){status.textContent='برای ثبت تعویض وارد مدیریت شوید.';return;}
+   if(replacing)return;
+   if(!hasData.checked){status.textContent='پس از دریافت اطلاعات، تعویض باتری را ثبت کنید.';return;}
+   const data={v:1,upper:Number(upper.value),lower:Number(lower.value),at:Date.now()};
+   if(![data.upper,data.lower].every(value=>Number.isInteger(value)&&value>=0&&value<=4294967295)||!Number.isSafeInteger(data.at)||data.at<=0){status.textContent='ثبت تعویض انجام نشد؛ اطلاعات را دوباره دریافت کنید.';return;}
+   replacing=true;
+   try{
+    if(!confirm('تعویض پک باتری ثبت شود؟ کارکرد پک از صفر آغاز می‌شود؛ سوابق قبلی و حد بررسی حفظ می‌شوند.'))return;
+    if(!isAdmin())return;
+    const raw=JSON.stringify(data);localStorage.setItem(REPLACEMENT_KEY,raw);
+    if(localStorage.getItem(REPLACEMENT_KEY)!==raw)throw Error('verify');
+    replacement=data;replacementUnreadable=false;status.textContent='تعویض باتری ثبت شد؛ کارکرد پک از صفر آغاز شد.';render();
+   }catch(e){status.textContent='ثبت تعویض انجام نشد؛ کارکرد قبلی حفظ شد.';}
+   finally{queueMicrotask(()=>{replacing=false;});}
+  }
+  document.getElementById('previewReplaceBattery').addEventListener('click',registerReplacement);
   document.getElementById('previewLimitForm').addEventListener('submit',event=>{event.preventDefault();if(input.value.trim()==='0'){status.textContent='برای غیرفعال‌کردن، دکمهٔ مربوط را بزنید.';return;}save(input.value);});
   document.getElementById('previewLimitClear').addEventListener('click',()=>save('0'));
   settings.querySelectorAll('.preview-admin-demo input').forEach(el=>el.addEventListener('input',()=>{if(isAdmin())render();}));
@@ -103,7 +144,7 @@
    upper.value=values[0];lower.value=values[1];hasData.checked=preset!=='unknown';render();
   }));
   // Reset unsaved input and disclosure state on logout; retain only the saved preview threshold.
-  function syncAdmin(){input.value=threshold?String(threshold):'';status.textContent=storageFailed?'ذخیره‌سازی مرورگر در دسترس نیست؛ تنظیم حد تا رفع آن ذخیره نمی‌شود.':'';if(!isAdmin())settings.querySelector('.preview-admin-demo').open=false;banner.querySelector('button').textContent=isAdmin()?'تنظیمات مدیر':'ورود مدیر';}
+  function syncAdmin(){input.value=threshold?String(threshold):'';status.textContent=storageFailed?'تنظیمات خوانده نشد؛ دوباره تلاش کنید.':'';if(!isAdmin())settings.querySelector('.preview-admin-demo').open=false;banner.querySelector('button').textContent=isAdmin()?'تنظیمات مدیر':'ورود مدیر';}
   for(const name of ['admUnlock','admLock']){const original=window[name];window[name]=function(...args){const result=original.apply(this,args);syncAdmin();return result;};}
   render();syncAdmin();showTab(1);
  }

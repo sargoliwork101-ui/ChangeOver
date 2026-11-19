@@ -6,7 +6,7 @@ const root=path.join(__dirname,'..'),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'p
 const output=path.join(tmp,'preview.html');
 cp.execFileSync('python3',[path.join(root,'Simulator','make_battery_wear_preview.py'),'--output',output]);
 const html=fs.readFileSync(output,'utf8'),script=fs.readFileSync(path.join(root,'Simulator','battery_wear_preview.js'),'utf8');
-const KEY='changeover_preview_pack_review_v1';let checks=0;
+const KEY='changeover_preview_pack_review_v1',REPLACEMENT='changeover_preview_pack_replacement_v1';let checks=0;
 function check(ok,label){assert.ok(ok,label);checks++;console.log('PASS: '+label);}
 const tick=async()=>{for(let i=0;i<8;i++)await new Promise(r=>setImmediate(r));};
 async function session(map=new Map(),deny=false){
@@ -25,7 +25,10 @@ function submit(p,value){p.d.getElementById('wearLimit').value=value;p.d.getElem
  check(card&&card.previousElementSibling.contains(d.getElementById('stUptime'))&&card.nextElementSibling.querySelector('#cCharge'),'exactly one pack card sits between work statistics and calendar');
  check(d.querySelectorAll('#wearDemo').length===1&&card.querySelectorAll('.wear-number').length===1&&card.querySelector('.wear-number').textContent==='۳۳۰','pack uses maximum of both sample counters, not their sum or a full-cycle claim');
  check(!card.querySelector('input,button,details,.wear-limit')&&!/فرضی|حدسی|گمانی/.test(card.textContent),'public card has no settings, demo controls, limit values or speculative wording');
- check(d.getElementById('packPreviewBanner').textContent.includes('داده‌های آزمایشی'),'simulator data is clearly labeled outside the customer card');
+ check(d.querySelector('#packPreviewBanner strong').textContent==='پیش‌نمایش'&&!d.getElementById('packPreviewBanner').textContent.includes('مرورگر'),'preview retains a compact truthful label without developer prose');
+ check(!/مرورگر|درصد سلامت|چرخهٔ کامل|۸۰٪|فرمول|شمارنده‌ها نمونه/.test(d.getElementById('packPreviewSettings').textContent)&&!d.getElementById('previewLimitHelp'),'programmer explanations are removed from manager settings');
+ check(d.querySelector('#pg3>.simbox:first-child .simhint').textContent==='تنظیم داده‌ها','old developer introduction is replaced by a short control title');
+ check(d.getElementById('chargeCalendar').textContent.includes('فقط سوابق موجود نمایش داده می‌شوند؛ شروع و مدت شارژ فقط در صورت وجود داده نمایش داده می‌شوند؛ این اطلاعات میتواند معیار سلامت باتری باشد.'),'approved calendar guidance is preserved verbatim');
  check(card.querySelector('.wear-state').textContent==='یادآور بررسی تنظیم نشده'&&card.querySelector('.wear-dot').hidden&&!p.map.has(KEY),'new preview starts with no invented service threshold or wear verdict');
  check(d.getElementById('packPreviewSettings').closest('#adminCard[hidden]')&&d.getElementById('previewLogSnapshot').hidden,'threshold and snapshot are hidden from visitors');
  submit(p,'300');check(!p.map.has(KEY),'programmatic submit while logged out cannot save even a simulator setting');
@@ -65,6 +68,39 @@ function submit(p,value){p.d.getElementById('wearLimit').value=value;p.d.getElem
  const blocked=await session(new Map(),true);await login(blocked);submit(blocked,'300');check(blocked.d.getElementById('previewLimitStatus').textContent.includes('انجام نشد')&&blocked.d.querySelector('.wear-dot').hidden,'blocked browser storage reports failure and retains the active setting');blocked.w.close();
  const corrupt=await session(new Map([[KEY,'bad']]));check(corrupt.d.querySelector('.wear-dot').hidden,'corrupt stored setting never invents a service limit');corrupt.w.close();
  for(const file of ['simple_panel.h','simple_preview.html','index.html','simple_panel_clean.html','ESP_USER.ino']){const content=fs.readFileSync(path.join(root,file),'utf8');check(!content.includes('wearDemo')&&!content.includes('packPreviewSettings'),'proposal stays out of production '+file);}
+ const replaced=await session(new Map([[KEY,'300']])),rw=replaced.w,rd=replaced.d,replace=rd.getElementById('previewReplaceBattery');
+ let confirmations=0;rw.confirm=()=>{confirmations++;return false;};replace.click();await tick();
+ check(confirmations===0&&!replaced.map.has(REPLACEMENT),'logged-out clicks cannot register a replacement or open confirmation');
+ await login(replaced);
+ const boardBefore=await (await rw.fetch('/diag')).json(),historyBefore=await (await rw.fetch('/evt')).text();
+ replace.click();await tick();check(confirmations===1&&!replaced.map.has(REPLACEMENT)&&rd.querySelector('.wear-number').textContent==='۳۳۰','cancel preserves count, date and stored replacement state');
+ rw.confirm=()=>{confirmations++;return true;};replace.click();replace.click();await tick();
+ const record=JSON.parse(replaced.map.get(REPLACEMENT)),savedDate=rd.getElementById('previewReplacedAt').textContent;
+ check(confirmations===2&&record.upper===270&&record.lower===330&&record.at>0,'confirmed replacement records both baselines and date once, including duplicate-click protection');
+ check(rd.querySelector('.wear-number').textContent==='۰'&&rd.querySelector('.wear-unit').textContent==='شارژ پس از تعویض'&&savedDate!=='ثبت نشده','confirmed replacement starts the new pack at zero and shows its date');
+ check(replaced.map.get(KEY)==='300','replacement preserves the configured review threshold');
+ const boardAfter=await (await rw.fetch('/diag')).json(),historyAfter=await (await rw.fetch('/evt')).text();
+ check(boardAfter.chargeCountCh1===boardBefore.chargeCountCh1&&boardAfter.chargeCountCh2===boardBefore.chargeCountCh2&&JSON.stringify(boardAfter.chargeHistory)===JSON.stringify(boardBefore.chargeHistory)&&historyBefore===historyAfter,'replacement never resets board counters or deletes existing charge/log history');
+ rd.getElementById('wearUpper').value=271;rd.getElementById('wearUpper').dispatchEvent(new rw.Event('input'));
+ check(rd.querySelector('.wear-number').textContent==='۱','a charge on either battery counts after replacement, even when it is not the larger absolute counter');
+ rd.getElementById('wearUpper').value=275;rd.getElementById('wearLower').value=332;rd.getElementById('wearLower').dispatchEvent(new rw.Event('input'));
+ check(rd.querySelector('.wear-number').textContent==='۵','pack work uses maximum of per-battery deltas, not summed charges or delta of absolute maxima');
+ submit(replaced,'500');check(JSON.parse(replaced.map.get(REPLACEMENT)).at===record.at&&rd.getElementById('previewReplacedAt').textContent===savedDate&&rd.querySelector('.wear-number').textContent==='۵','changing the review threshold preserves replacement baseline, date and current work');
+ rd.getElementById('wearUpper').value=269;rd.getElementById('wearUpper').dispatchEvent(new rw.Event('input'));
+ check(rd.querySelector('.wear-number').textContent==='—'&&rd.querySelector('.wear-dot').hidden&&rd.querySelector('.wear-state').textContent==='اطلاعات کارکرد نیاز به بررسی دارد','counter rollback never becomes a negative value or a false fresh battery');
+ const known=rd.getElementById('wearHasData');known.checked=false;known.dispatchEvent(new rw.Event('input'));const storedBefore=replaced.map.get(REPLACEMENT);replace.click();await tick();
+ check(replaced.map.get(REPLACEMENT)===storedBefore&&rd.getElementById('previewLimitStatus').textContent.includes('پس از دریافت اطلاعات'),'replacement cannot be registered without current counter data');
+ check(!/مرورگر|در برد ذخیره/.test(rd.getElementById('packPreviewSettings').textContent),'user messages contain no storage implementation detail or false board-save claim');
+ const replacementMap=new Map(replaced.map);rw.close();
+ const replacementReload=await session(replacementMap);
+ check(replacementReload.d.querySelector('.wear-number').textContent==='۰'&&replacementReload.d.getElementById('previewReplacedAt').textContent===savedDate&&replacementReload.d.getElementById('adminCard').hidden,'replacement date and baseline survive reload without unlocking the manager');replacementReload.w.close();
+ const replaceBlocked=await session(new Map([[KEY,'300'],[REPLACEMENT,storedBefore]]),true);await login(replaceBlocked);replaceBlocked.w.confirm=()=>true;
+ replaceBlocked.d.getElementById('wearUpper').value=280;replaceBlocked.d.getElementById('wearUpper').dispatchEvent(new replaceBlocked.w.Event('input'));
+ replaceBlocked.d.getElementById('previewReplaceBattery').click();await tick();
+ check(replaceBlocked.map.get(REPLACEMENT)===storedBefore&&replaceBlocked.d.querySelector('.wear-number').textContent==='۱۰'&&replaceBlocked.d.getElementById('previewLimitStatus').textContent.includes('انجام نشد'),'failed replacement persistence retains the prior date/baseline and active count');replaceBlocked.w.close();
+ for(const raw of ['bad','null',JSON.stringify({v:1,upper:-1,lower:0,at:Date.now()}),JSON.stringify({v:1,upper:270,lower:330,at:0})]){
+  const bad=await session(new Map([[KEY,'300'],[REPLACEMENT,raw]]));check(bad.d.querySelector('.wear-number').textContent==='—'&&bad.d.querySelector('.wear-dot').hidden,'corrupt replacement record is not interpreted as an unused battery');bad.w.close();
+ }
  check(!/fetch\(/.test(script)&&script.includes('@media(prefers-reduced-motion:reduce)'),'proposal adds no device calls and respects reduced motion');
  console.log(`ALL ${checks} BATTERY WEAR PREVIEW CHECKS PASSED`);
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>fs.rmSync(tmp,{recursive:true,force:true}));
