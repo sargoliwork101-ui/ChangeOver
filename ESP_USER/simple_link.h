@@ -1,4 +1,5 @@
 #include "simple_log.h"
+#include "simple_charge.h"
 static uint32_t func__Simple_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint16_t uint16_t__offset)
 {
     uint32_t uint32_t__byte0 = (uint32_t)uint8_t__ptr_buffer[uint16_t__offset];
@@ -133,6 +134,7 @@ static void func__Simple_HandleFrame(void)
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;
+        func__Simple_ChargeOnFrame();
         func__SimpleLog_OnFrame();
     }
     else if (UINT8_T__G__RxType == SIMPLE_MSG_HELLO_ACK)
@@ -145,8 +147,8 @@ static void func__Simple_HandleFrame(void)
         uint8_t uint8_t__chunk = uint8_t__ptr_payload[0];
         if (uint8_t__chunk == 0u && UINT16_T__G__RxLen >= 23u)
         {
-            uint32_t uint32_t__prevCh1 = UINT32_T__G__PrevChargeCountCh1;
-            uint32_t uint32_t__prevCh2 = UINT32_T__G__PrevChargeCountCh2;
+            if (BOOL__G__TimeBoardResetKnown && UINT32_T__G__TimeBoardResetCount != func__Simple_ReadU32(uint8_t__ptr_payload, 13u))
+                func__Simple_ChargeGap();
             UINT32_T__G__TotalChargeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 1u);
             UINT32_T__G__ChargeCount = func__Simple_ReadU32(uint8_t__ptr_payload, 5u);
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
@@ -217,85 +219,9 @@ static void func__Simple_HandleFrame(void)
                 UINT32_T__G__ChargeCountCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 27u);
                 UINT32_T__G__ChargeSecCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 31u);
                 UINT32_T__G__ChargeSecCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 35u);
-                if (!BOOL__G__ChargeCountBaselineReady || !func__Simple_TimeBootReady())
-                {
-                    UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
-                    UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
-                    BOOL__G__ChargeCountBaselineReady = true;
-                    BOOL__G__ChargeHistDirty = true;
-                }
-                else
-                {
-                    uint32_t uint32_t__stampSec = func__Simple_NowSec();
-                    if (UINT32_T__G__ChargeCountCh1 < uint32_t__prevCh1)
-                    {
-                        UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
-                        BOOL__G__ChargeHistDirty = true;
-                    }
-                    else if ((UINT32_T__G__ChargeCountCh1 > uint32_t__prevCh1) && (uint32_t__stampSec != 0u))
-                    {
-                        BOOL__G__ChargeHistDirty = true;
-                        uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh1 - uint32_t__prevCh1;
-                        if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
-                        uint32_t uint32_t__k;
-                        for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
-                        {
-                            if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
-                            {
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 1u;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
-                                UINT8_T__G__ChargeHistoryCount++;
-                            }
-                            else
-                            {
-                                uint8_t uint8_t__s;
-                                for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
-                                {
-                                    SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
-                                }
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 1u;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
-                            }
-                        }
-                        UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
-                    }
-                    if (UINT32_T__G__ChargeCountCh2 < uint32_t__prevCh2)
-                    {
-                        UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
-                        BOOL__G__ChargeHistDirty = true;
-                    }
-                    else if ((UINT32_T__G__ChargeCountCh2 > uint32_t__prevCh2) && (uint32_t__stampSec != 0u))
-                    {
-                        BOOL__G__ChargeHistDirty = true;
-                        uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh2 - uint32_t__prevCh2;
-                        if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
-                        uint32_t uint32_t__k;
-                        for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
-                        {
-                            if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
-                            {
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 2u;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
-                                UINT8_T__G__ChargeHistoryCount++;
-                            }
-                            else
-                            {
-                                uint8_t uint8_t__s;
-                                for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
-                                {
-                                    SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
-                                }
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 2u;
-                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
-                            }
-                        }
-                        UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
-                    }
-                }
+                UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
+                UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
+                BOOL__G__ChargeCountBaselineReady = true;
             }
         }
         else if ((uint8_t__chunk == 1u || uint8_t__chunk == 2u) && UINT16_T__G__RxLen >= 3u && !BOOL__G__DiagClearPending)

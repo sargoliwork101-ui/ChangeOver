@@ -54,6 +54,8 @@ void setup(void)
     WiFi.setOutputPower(SIMPLE_WIFI_TX_MAX_DBM);
 #endif
     BOOL__G__WifiHighPower = true;
+    SIMPLE_WEB_SERVER_T__G__Server.on("/calendar.js", HTTP_GET, func__Simple_HttpCalendar);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/about", HTTP_GET, func__Simple_HttpAbout);
     SIMPLE_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Simple_HttpRoot);
     SIMPLE_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Simple_HttpTelemetry);
     SIMPLE_WEB_SERVER_T__G__Server.on("/charts", HTTP_GET, func__Simple_HttpCharts);
@@ -91,6 +93,7 @@ void loop(void)
     SIMPLE_WEB_SERVER_T__G__Server.handleClient();
     if (func__Simple_FactoryResetTick()) return;
     func__Simple_WifiPowerSaveTick((uint32_t)millis());
+    func__Simple_ChargeTick();
     func__Simple_ChartTick();
     func__Simple_SlotTick();
     func__Simple_HandshakeTick((uint32_t)millis());

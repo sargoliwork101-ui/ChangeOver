@@ -61,10 +61,22 @@ def panel_literal_bytes():
 
 def load_panel_html():
     """Return the exact HTML string compiled into the firmware."""
-    text = open(PANEL_SOURCE, encoding="utf-8").read()
+    with open(PANEL_SOURCE, encoding="utf-8") as handle:
+        text = handle.read()
     start = text.index('R"rawliteral(') + len('R"rawliteral(')
     end = text.rindex(')rawliteral"')
     return text[start:end]
+def load_about_html():
+    """Serve the same editable contact literal as the firmware."""
+    with open(os.path.join(SIM_DIR, "..", "about_content.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"about(', 1)[1].split(')about"', 1)[0]
+def load_calendar_js():
+    """Read the flash asset shared with the ESP sketch."""
+    with open(os.path.join(SIM_DIR, "..", "charge_calendar.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
+def load_preview_html():
+    """Serve the unmodified production page, including its calendar asset URL."""
+    return load_panel_html()
 # ==================== board model ====================
 class Board:
     """Just enough of the board to feed every field the panel reads."""
@@ -256,10 +268,15 @@ class Board:
         while hour <= end_hour:
             if hour % self.CYCLE_HOURS == 0:
                 stamp = hour * 3600
+                partial = (hour // self.CYCLE_HOURS) % 3 == 0
+                duration = 2400 if partial else self.CHARGE_HOURS * 3600
+                complete = stamp + duration
                 for channel in (1, 2):
-                    events.append({"ts": stamp, "ch": channel,
-                                   "dur": self.CHARGE_HOURS * 3600,
-                                   "from": 30, "to": 100})
+                    active = complete > now
+                    end = now if active else complete
+                    events.append({"ts": end, "start": stamp, "ch": channel,
+                                   "dur": end - stamp, "status": "charging" if active else "partial" if partial else "complete",
+                                   "from": 30, "to": None if active else 45 if partial else 100})
             hour += 1
         return events
 
@@ -273,8 +290,8 @@ class Board:
             self.rows[key] = self.make_day_rows(midnight, day_index)
         self.seed_charts(now)
         self.charge_history = self.make_charges(now)
-        self.charge_count = len(self.charge_history)
-        per_channel = [sum(1 for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
+        self.charge_count = sum(e["status"] == "complete" for e in self.charge_history)
+        per_channel = [sum(1 for e in self.charge_history if e["ch"] == n and e["status"] == "complete") for n in (1, 2)]
         self.charge_counts = per_channel
         self.charge_secs = [sum(e["dur"] for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
         self.total_charge_s = sum(e["dur"] for e in self.charge_history)
@@ -722,8 +739,12 @@ class Handler(BaseHTTPRequestHandler):
         self.extra_headers = []
         BOARD.advance()
         if path == "/":
-            html = load_panel_html()
+            html = load_preview_html()
             return self.send(text_bytes(html, mime="text/html; charset=utf-8"))
+        if path == "/calendar.js" and method == "GET":
+            return self.send(text_bytes(load_calendar_js(), mime="application/javascript; charset=utf-8"))
+        if path == "/about" and method == "GET":
+            return self.send(text_bytes(load_about_html(), mime="text/html; charset=utf-8"))
         if path == "/lab":
             return self.send(text_bytes(render_lab_page(), mime="text/html; charset=utf-8"))
         if path == "/lab/api/single":

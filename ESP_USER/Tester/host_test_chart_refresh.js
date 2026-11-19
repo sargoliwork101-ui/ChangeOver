@@ -18,7 +18,7 @@ function panel(){
  for(const id of ['cVolt','cCharge']){
   const c=d.getElementById(id);Object.defineProperty(c,'clientWidth',{get:()=>width});Object.defineProperty(c,'clientHeight',{get:()=>height});c.getContext=()=>context?ctx:null;
  }
- w.eval(script+'\nwindow.chartViewsForTest=chartViews;');
+ w.eval(script+'\nwindow.chartViewsForTest=chartViews;window.voltYForTest=()=>chartVoltY;');
  return {w,d,dom,setSize:(v,h=180)=>{width=v;height=h;},setContext:v=>context=v,strokes:()=>strokes};
 }
 (async()=>{
@@ -64,6 +64,7 @@ function panel(){
   const wheel=new w.WheelEvent('wheel',{deltaY:-600,clientX:300,cancelable:true});c.dispatchEvent(wheel);
   check(!wheel.defaultPrevented && w.eval('chartViewsForTest.'+kind+'.end-chartViewsForTest.'+kind+'.start')===1,'ordinary wheel scroll remains untouched: '+kind);
   const zoom=new w.WheelEvent('wheel',{deltaY:-600,ctrlKey:true,clientX:300,cancelable:true});c.dispatchEvent(zoom);
+  if(kind==='volt')check(w.eval('voltYForTest().span')<.4,'Ctrl-wheel narrows the voltage axis as well as time');
   const span=w.eval('chartViewsForTest.'+kind+'.end-chartViewsForTest.'+kind+'.start');
   check(zoom.defaultPrevented && span<0.4 && span>0,'Ctrl-wheel zooms the existing data: '+kind);
   const start=w.eval('chartViewsForTest.'+kind+'.start');
@@ -84,6 +85,24 @@ function panel(){
  }
  w.setChartRange('volt','1d');await w.pollChartsVolt();w.renderVoltFromServer(dense);w.chartViewSet('volt',0.4,0.2);
  const vc=d.getElementById('cVolt');check(vc._chartData.length<101 && vc._chartTime.length===vc._chartData.length && vc._rawVolt.vin.length===101,'voltage zoom slices display data without changing original samples');
+ const fullScale={...vc._voltScale};
+ w.chartViewSet('volt',.4,.2,.45,.1);
+ check(vc._voltScale.max-vc._voltScale.min<(fullScale.max-fullScale.min)*.11,'vertical zoom actually narrows rendered voltage limits');
+ check(new Set(vc._voltScale.ticks.map(w.fmtVolt)).size===vc._voltScale.ticks.length,'fine voltage ticks have distinct readable labels');
+ const beforeY=w.eval('voltYForTest().start');pointer(vc,'pointerdown',7,300,80);pointer(vc,'pointermove',7,300,110);pointer(vc,'pointerup',7,300,110);
+ check(w.eval('voltYForTest().start')>beforeY,'vertical dragging moves the voltage viewport');
+ const scaleState=JSON.stringify(vc._voltScale);w.redrawCharts();w.renderVoltFromServer(dense);
+ check(JSON.stringify(vc._voltScale)===scaleState,'vertical scale survives polling and redraw');
+ w.chartFull('volt');check(w.eval('voltYForTest().start===0&&voltYForTest().span===1'),'full-view resets the vertical axis');
+ const fullButton=d.getElementById('voltFull');
+ check(fullButton.nextElementSibling.textContent.includes('Vin')&&fullButton.nextElementSibling.nextElementSibling.textContent.includes('Vpack'),'voltage legends sit beside the full-view icon');
+ check(d.getElementById('segVolt').closest('.volt-ranges').parentElement===fullButton.closest('.volt-tools').parentElement,'range buttons and legends share the toolbar directly above the plot');
+ check([...d.querySelectorAll('#segVolt button')].every(b=>!b.querySelector('br')&&/^.[ ](?:روز|ماه)$/.test(b.textContent)),'range number and unit remain adjacent, without a second row');
+ check(d.getElementById('voltMinMax').tagName==='STRONG'&&!d.getElementById('voltAxisInfo'),'voltage min/max is emphasized and the unwanted axis description is removed');
+ check(fullButton.closest('.volt-tools')&&fullButton.closest('.chart-card')===vc.closest('.chart-card')&&fullButton.querySelector('svg path')&&!fullButton.textContent.trim()&&fullButton.getAttribute('aria-label')==='نمایش کامل','full view is an accessible line icon inside the chart wrapper');
+ w.chartViewSet('volt',.4,.2,.2,.05);w.setChartRange('volt','1d');
+ check(w.eval('voltYForTest().start===0&&voltYForTest().span===1'),'range changes reset vertical zoom');
+ w.renderVoltFromServer(dense);w.chartViewSet('volt',.4,.2);
  vc.dispatchEvent(new w.MouseEvent('mousemove',{clientX:55,clientY:60}));
  check(d.getElementById('chartTooltip').innerHTML.includes((vc._chartData[0]/1000).toFixed(2)),'tooltip uses the visible zoomed samples');
  w.resetHistoryView();w.chartViewSet('volt',0.4,0.01);w.chartViewSet('charge',0.4,0.01);
@@ -92,6 +111,6 @@ function panel(){
  check(vc._chartData.length===1,'single-sample histories are safe at maximum zoom');
  p.dom.window.close();
  const fresh=panel();await tick();fresh.w.fetch=async()=>reply(sample());await fresh.w.pollChartsVolt();check(fresh.d.getElementById('voltCountInfo').textContent==='۳ نمونه','a fresh browser page restores counts from the ESP response');
- fresh.setSize(550);fresh.w.showTab(1);await tick();check(fresh.strokes()>0 && fresh.d.getElementById('cVoltLabels').textContent.length>0 && fresh.d.getElementById('voltAxisInfo').textContent.includes('V'),'opening charts after refresh restores axes, time labels and lines');
+ fresh.setSize(550);fresh.w.showTab(1);await tick();check(fresh.strokes()>0 && fresh.d.getElementById('cVoltLabels').textContent.length>0 && !fresh.d.getElementById('voltAxisInfo'),'opening charts after refresh restores axes, time labels and lines');
  fresh.dom.window.close();console.log(`ALL ${checks} CHART REFRESH CHECKS PASSED`);
 })().catch(e=>{console.error(e);process.exit(1);});

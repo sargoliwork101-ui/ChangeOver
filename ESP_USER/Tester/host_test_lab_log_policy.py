@@ -18,6 +18,35 @@ class LogPolicy(unittest.TestCase):
         self.board = lab.Board()
         self.day = self.board.today()
         self.marker = self.board.row(NOW, 0, 7)
+    def test_preview_calendar_isolation(self):
+        raw = lab.load_panel_html()
+        preview = lab.load_preview_html()
+        self.assertEqual(preview, raw)
+        self.assertIn('/calendar.js', raw)
+        script = (SOURCE.parent.parent.parent / "charge_calendar.h").read_text(encoding="utf-8")
+        expected = script.split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
+        self.assertEqual(lab.load_calendar_js(), expected)
+    def test_about_uses_shared_compiled_content(self):
+        about = lab.load_about_html()
+        self.assertIn("09367969890", about)
+        self.assertIn("تهران-تهران", about)
+        self.assertIn("<bdi></bdi>", about)
+        self.assertNotIn("09367969890", lab.load_panel_html())
+    def test_simulated_charge_start_and_completion(self):
+        events = self.board.make_charges(NOW)
+        self.assertTrue(events)
+        for event in events:
+            self.assertEqual(event["ts"] - event["start"], event["dur"])
+            self.assertLessEqual(event["ts"], NOW)
+            self.assertEqual((event["start"] // 3600) % self.board.CYCLE_HOURS, 0)
+        # An in-progress charging window is not a completed charge yet.
+        start = events[-1]["start"] + self.board.CYCLE_HOURS * 3600
+        later = self.board.make_charges(start + 3600)
+        self.assertFalse(any(event["start"] == start and event["status"] == "complete" for event in later))
+        self.assertTrue({"complete", "partial"} <= {event["status"] for event in events})
+        self.assertEqual(self.board.charge_count, sum(e["status"] == "complete" for e in self.board.charge_history))
+        active = self.board.make_charges(start + 60)
+        self.assertTrue(any(event["start"] == start and event["status"] == "charging" for event in active))
     def test_calendar_retention(self):
         def day(age):
             return (datetime.date.fromtimestamp(NOW) - datetime.timedelta(days=age)).strftime("%Y%m%d")

@@ -113,9 +113,8 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(chartCalls.length===1 && chartCalls[0]==='/charts?range=1d','chart polling sends just one request for voltage');
     for(const range of ['1d','7d','1m','3m']){
         click(d.getElementById('volt'+range));
-        click(d.getElementById('charge'+range));
         await tick();
-        check(d.getElementById('volt'+range).classList.contains('a') && d.getElementById('charge'+range).classList.contains('a') && chartCalls.at(-1)==='/charts?range='+range,'both remaining chart ranges work: '+range);
+        check(d.getElementById('volt'+range).classList.contains('a') && chartCalls.at(-1)==='/charts?range='+range,'voltage ranges work beside the fixed thirty-day calendar: '+range);
     }
     w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:8,chargeCountCh1:3,chargeCountCh2:5,resetCount:9,power:[{off:1700000000,on:1700000100,dur:100}],chargeHistory:[{ts:Math.floor(Date.now()/1000),ch:2}]});
     check(d.getElementById('batHighChargeCount').textContent==='3' && d.getElementById('batLowChargeCount').textContent==='5' && d.querySelector('#chargeHistoryList .row') && !d.getElementById('powerLog'),'per-battery completed-charge counts and charge history still render independently');

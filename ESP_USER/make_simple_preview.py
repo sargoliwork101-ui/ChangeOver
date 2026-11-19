@@ -35,6 +35,7 @@ make_simple_preview.py - ساخت فایل مستقل سیمولاتور پنل 
 
 اجرا:  python3 ESP_USER/make_simple_preview.py
 خروجی: ESP_USER/simple_preview.html
+تقویم از همان charge_calendar.h نسخهٔ ESP خوانده و برای اجرای آفلاین جاسازی می‌شود.
 """
 import json
 import re
@@ -73,6 +74,10 @@ def panel_html():
     if "</html>" not in html:
         die("simple_panel.h does not look like a complete page")
     return html
+def about_html():
+    """Read the same editable raw literal that the ESP compiles."""
+    text = (HERE / "about_content.h").read_text(encoding="utf-8")
+    return text.split('R"about(', 1)[1].split(')about"', 1)[0]
 def panel_number_constants():
     """[FA] ثابت‌های عددی پنل که در خطوط `const NAME=12, NAME2=34` هستند.
 
@@ -530,7 +535,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       ],
       power: mock.historyClearedAt?[]:[{ off: now - 3600, on: now - 3000, dur: 600 },
               { off: now - 172800, on: now - 171000, dur: 1800 }],
-      chargeHistory: mock.historyClearedAt?[]:[{ ts: now - 5400, ch: 1, dur: 3120 }, { ts: now - 12600, ch: 2, dur: 2880 }]
+      chargeHistory: mock.historyClearedAt?[]:[{ ts: now - 5400, start: now - 5400 - 3120, ch: 1, dur: 3120 }, { ts: now - 12600, start: now - 12600 - 2400, ch: 2, dur: 2400, status: 'partial' }, { ts: now, start: now - 1200, ch: 2, dur: 1200, status: 'charging' }]
     });
   }
 
@@ -568,6 +573,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var path = routeName(url);
     var method = ((options && options.method) || 'GET').toUpperCase();
 
+    if (path === 'about') return jsonResponse(__ABOUT__);
     if (path === 't') { return jsonResponse(telemetryJson()); }
     if (path === 'charts') { return jsonResponse(chartJson(query(url, 'range') || '1d')); }
     if (path === 'diag') { return jsonResponse(diagJson()); }
@@ -763,6 +769,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
      دادهٔ واقعی سرور را نمی‌گیرد (برای سنجش دقیق مسیر واقعی) */
   var noMock = (window.__CO_NO_MOCK__ === true);
   window.fetch = function (url, options) {
+    if (routeName(String(url)) === 'about' && location.protocol === 'file:') return Promise.resolve(jsonResponse(__ABOUT__));
     if (mockActive && !noMock) {
       return Promise.resolve(mockFetch(String(url), options));
     }
@@ -775,14 +782,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
          مثلِ بی‌جواب‌ماندن، چند ثانیه شبیه‌ساز جواب می‌دهد تا صفحه زنده بماند. */
       var path = routeName(String(url));
       if (!noMock && response && response.status === 404 &&
-          (path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0)) {
+          (path === 'about' || path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0)) {
         mockUntil = Date.now() + 10000;
         return mockFetch(String(url), options);
       }
       return response;
     }).catch(function (error) {
       var path = routeName(String(url));
-      if (path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0) {
+      if (path === 'about' || path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0) {
         /* یک بار جواب نداد - فقط چند ثانیه حالت شبیه‌ساز تا داده جعلی
            جای داده واقعی را برای همیشه نگیرد؛ دفعه بعد دوباره سرور امتحان می‌شود */
         mockUntil = Date.now() + 10000;
@@ -1048,7 +1055,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
 })();
 </script>
 """
-PLACEHOLDERS = ("__FIELD_INDEX__", "__TLM_N__", "__FAULT_BITS__", "__STATES__", "__RANGES__",
+PLACEHOLDERS = ("__ABOUT__", "__FIELD_INDEX__", "__TLM_N__", "__FAULT_BITS__", "__STATES__", "__RANGES__",
                 "__SCALES__", "__WIFI_SSID__", "__WIFI_PASS__", "__PANEL__", "__BOOT__",
                 "__MA_PER_COUNT__", "__UV_PER_COUNT__", "__LOG_VSTEP_MV__", "__LOG_MAX_ROWS__", "__LOG_MAX_DAYS__")
 def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
@@ -1071,10 +1078,12 @@ def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
             ("__MA_PER_COUNT__", "%.6f" % MA_PER_COUNT),
             ("__UV_PER_COUNT__", "%.3f" % UV_PER_COUNT)):
         shim = shim.replace(token, value)
+    shim = shim.replace("__ABOUT__", json.dumps(about_html(), ensure_ascii=False))
     for token in PLACEHOLDERS:
         if token in shim:
             die("placeholder %s was not replaced" % token)
-    return shim
+    calendar = (HERE / "charge_calendar.h").read_text(encoding="utf-8").split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
+    return shim + '<script data-charge-calendar>\n' + calendar + '\n</script>\n'
 def main():
     html = panel_html()
     panel = panel_number_constants()
@@ -1101,7 +1110,7 @@ def main():
             die("simple_panel.h does not define %s" % needed)
     shim = build_shim(field_map, tlm_n, bits, states, chart_ranges(), bsp_volt_scales(),
                       panel, BOOT_VOLTAGES)
-    generated = html.replace("</head>", shim + "</head>", 1)
+    generated = html.replace('<script src="/calendar.js" defer></script>', '').replace("</head>", shim + "</head>", 1)
     if generated == html:
         die("could not inject the shim: </head> not found")
     OUT.write_text(generated, encoding="utf-8")

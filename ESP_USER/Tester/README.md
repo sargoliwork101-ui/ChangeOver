@@ -234,3 +234,34 @@ mirror the destructive route independently of ordinary credential-preserving for
 Chart DOM coverage includes untouched normal wheel, Ctrl-wheel, two-pointer
 pinch, horizontal drag, bounds, full-view/range reset, polling/resize retention,
 visible-sample tooltips, original-array preservation, and empty/single samples.
+
+The simulator-only calendar test covers experiment isolation from firmware and
+production HTML, Jalali month/leap lengths and Saturday-first placement, native
+day/month controls, per-channel recorded counts, chronological daily detail,
+unknown days, polling/focus retention, erase invalidation and malformed records.
+The Python test verifies that the lab serves the exact production page and the
+same calendar flash asset. No proposed status cards are implemented.
+
+Calendar duration checks cover supplied seconds in Persian hours/minutes/seconds,
+unknown zero/missing/invalid/out-of-range values, duration-only poll updates,
+completion-time stability, original-data preservation and erase invalidation.
+No duration is inferred from adjacent completions or cumulative board counters.
+
+Start-time tests cover explicit source timestamps, prior-day date labels,
+start-only polling changes, invalid/missing values without duration-based guesses,
+input preservation and erase invalidation. Python fixtures expose separate start
+and completion timestamps and never report an in-progress cycle as completed.
+
+## زوم دو‌محوره و بازهٔ تقویم
+- زوم ولتاژ با Ctrl+اسکرول یا دو انگشت، هر دو محور را تغییر می‌دهد؛ کشیدن نمودار در هر دو راستا کار می‌کند. محور عمودی از مقیاس کامل همان داده‌ها ساخته می‌شود و با پاسخ تکراری سرور جابه‌جا نمی‌شود. برچسب‌های ولتاژ تا میلی‌ولت دقیق‌اند و خطوط بیرون بازه بریده می‌شوند، نه اینکه به لبه بچسبند.
+- آیکون خطی «نمایش کامل» در بالا چپ نمودار، هر دو محور را برمی‌گرداند؛ تغییر بازه و پاک‌کردن تاریخچه نیز زوم را بازنشانی می‌کنند.
+- تقویم فقط امروز و ۲۹ روز قبل را قابل انتخاب می‌کند؛ ماه‌های خارج بازه بسته‌اند و داده‌های قدیمی‌تر یا روزهای آینده در شمارش نمی‌آیند. تست‌ها مرز نیمه‌شب، ماه‌های کبیسه، حفظ انتخاب و غیرفعال‌بودن روزهای خارج بازه را می‌سنجند. سوابق منقضی روی ESP نیز فقط پس از تأیید ساعت حذف می‌شوند؛ سهم حافظه ثابت است و نگهداری همهٔ نوبت‌های ۳۰ روز تضمین نیست.
+
+## درباره ما و وضعیت نوبت‌های شارژ
+- `host_test_about.js`: یک بخش عمومی مشترک در پایین همهٔ تب‌ها، شماره و آدرس دقیق و سایت خالی، منبع مستقل، دریافت تنبل، جلوگیری از درخواست تکراری، خطا و تلاش دوباره و منبع یکسان در پیش‌نمایش آفلاین.
+- `host_test_clock_loop.cpp`: مسیر واقعی و عمومی `/about` دقیقاً محتوای `about_content.h` را با `no-store` برمی‌گرداند.
+- تقویم: وضعیت‌های کامل، نیمه‌تمام و جاری جدا هستند؛ زمان پایانِ نیمه‌تمام، آخرین ثبتِ جاری، مدتِ گذشته، شمارش همهٔ نوبت‌ها، تغییر وضعیت بدون ردیف تکراری، حفظ دادهٔ ورودی و متن تأییدشده بررسی می‌شوند. تولید سابقهٔ روی ESP از تله‌متری مشاهده‌شده است؛ تست مستقل C++ همین مسیر را می‌سنجد.
+
+## ثبت واقعی نوبت شارژ در ESP
+- `host_test_charge_sessions.cpp` همان کد برنامه را با ASan/UBSan اجرا می‌کند: شروع دو کانال، تغییر BULK/ABSORB بدون ردیف تکراری، تکمیل و نیمه‌تمام، توقف حرارتی/تلاش دوباره بدون احتساب مدت توقف، شروع مشاهده از وسط شارژ، وقفهٔ UART، تغییر ساعت، نبود ساعت، ریست/بازخوانی نوبت زنده، نوشتن ناموفق و تلاش دوباره، پاک‌کردن ماندگار، قالب ناقص/قدیمی/سرریز، سقف حافظه بدون حذف نوبت زندهٔ دیگر، مرز نیمه‌شب محلی و منع حذف با ساعت تأییدنشده، استقلال شمارنده‌های برد، خروجی HTTP و دریافت قاب CRC-درست از UART.
+- مرورگر باید صفحه و دارایی تولیدی را در دو سرور، چیدمان ۳۲۰/۳۹۰/۶۴۰/۱۲۸۰، هم‌جواری راهنمای ولتاژ و آیکون، عدد/واحد یک‌خطی، خلاصهٔ بولد و حذف متن محور بررسی کند. تست روی میزبان جایگزین کامپایل هدف و آزمایش ESP فیزیکی نیست.

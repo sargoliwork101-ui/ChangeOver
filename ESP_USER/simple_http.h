@@ -1,3 +1,5 @@
+#include "about_content.h"
+#include "charge_calendar.h"
 static bool func__Simple_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr_value)
 {
     bool bool__negative = (char__ptr_text[0] == '-');
@@ -95,6 +97,30 @@ static bool func__Simple_JsonPut(char *char__ptr_buf, size_t size_t__cap,
     }
     *size_t__ptrUsed += (size_t)int__written;
     return true;
+}
+/* ==================== Compiled About content ==================== */
+/** @brief Serve editable contact HTML from program memory; no board commands. */
+static void func__Simple_HttpAbout(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_ABOUT_HTML) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/html; charset=utf-8", "");
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_ABOUT_HTML, sizeof(SIMPLE_ABOUT_HTML) - 1u);
+}
+/* ==================== Calendar browser asset ==================== */
+/** @brief Stream the shared browser asset from flash without a large RAM copy. */
+static void func__Simple_HttpCalendar(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_CHARGE_CALENDAR_JS) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/javascript; charset=utf-8", "");
+    for (size_t offset = 0u; offset < sizeof(SIMPLE_CHARGE_CALENDAR_JS) - 1u; offset += 1024u)
+    {
+        size_t remaining = sizeof(SIMPLE_CHARGE_CALENDAR_JS) - 1u - offset;
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_CHARGE_CALENDAR_JS + offset, remaining < 1024u ? remaining : 1024u);
+        func__Simple_DrainSerial();
+        yield();
+    }
 }
 static void func__Simple_HttpRoot(void)
 {
@@ -388,7 +414,11 @@ static void func__Simple_HttpDiag(void)
         ch = "{\"ts\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].timestamp);
         ch += ",\"ch\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].channel);
         ch += ",\"dur\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].durationSec);
-        ch += "}";
+        ch += ",\"start\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].startSec);
+        uint8_t status = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].status;
+        ch += ",\"status\":\"";
+        ch += status == 1u ? "complete" : status == 2u ? "partial" : status == 3u ? "charging" : "unknown";
+        ch += "\"}";
         SIMPLE_WEB_SERVER_T__G__Server.sendContent(ch);
     }
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");

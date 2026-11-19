@@ -91,6 +91,8 @@ typedef struct
     uint32_t timestamp;
     uint8_t channel;
     uint32_t durationSec;
+    uint32_t startSec;
+    uint8_t status; /* 0 unknown, 1 complete, 2 interrupted, 3 ongoing. */
 } simple_charge_event_t;
 static simple_diag_error_t SIMPLE_DIAG_ERROR_T__G__Errors[SIMPLE_DIAG_MAX_ERRORS];
 static uint8_t UINT8_T__G__DiagErrorCount = 0u;

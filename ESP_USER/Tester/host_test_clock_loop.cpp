@@ -29,6 +29,12 @@ int main()
     func__Simple_TimeSet(base,true);func__Simple_TimeNoteBoard(100u,true,3u);func__Simple_TimeSave();
     setup();
     assert(!func__Simple_TimeBootReady());
+    // Public contact content is compiled separately and never sends board commands.
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/about",HTTP_GET);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==200);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simBody()==SIMPLE_ABOUT_HTML);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simHeader("Cache-Control")=="no-store");
+    printf("REAL ABOUT ROUTE PASS: exact separate compiled HTML, public GET, no-store\n");
     unsigned requests=0u;
     for(unsigned seconds=1u;seconds<=40u;seconds++)
     {
