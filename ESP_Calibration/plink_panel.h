@@ -450,7 +450,7 @@ header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8917aa9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2a3b081</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -1096,7 +1096,7 @@ header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{
 <label class="sb pby" style="cursor:pointer" aria-label="بازگردانی پشتیبان" title="بازگردانی پشتیبان">📤 بازگردانی پشتیبان<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
 <span class="lb" id="xst"></span>
 </div>
-<div class="sx">پشتیبان تنظیمات اعمال‌شده، تغییرهای در صف و نمونه‌های خام calibration است. LUT یعنی جدول تبدیل جریان زنجیره و توان باتری از readback برد. بازگردانی فقط روی پنل آماده می‌کند؛ ارسال به برد با «ارسال همه» است و LUT خودکار اعمال نمی‌شود.</div>
+<div class="sx">بستهٔ ZIP: فایل‌های قابل‌بازیابی در restore و جدول‌ها و لاگ‌های مخصوص رایانه در archive هستند. ZIP را روی رایانه باز کنید؛ تنظیمات از اینجا و نمونه‌ها از بخش کالیبراسیون بازخوانی می‌شوند. بازخوانی چیزی به برد نمی‌فرستد.</div>
 
 </div>
 </div>
@@ -1587,14 +1587,8 @@ function qchk(){const w=[],a=qv(20).v,e=qv(21).v,o=qv(22).v,f=qv(23).v,r=qv(24).
  if(bad(im,100,2950))w.push({ids:[25],msg:'جریان Bulk باید ۱۰۰..۲۹۵۰ باشد (۵۰ کمتر از سقف Hard fault)'});
  if(bad(tp,10,Math.min(1475,im)))w.push({ids:[26,25],msg:'Taper باید ۱۰..Bulk max باشد (≤ '+Math.min(1475,im)+')'});
  return w.map(x=>Object.assign({advisory:x.ids.length>1},x));}
-/* ===== v1.25 (دستور کاربر ۲۰۲۶-۰۹-۲۹): در «!» هر بخش، خودِ پارامترها هم
-   توضیح داده شوند — هرکدام چیست و چه کار می‌کند.
-   یک جدول و یک پاس، نه ۸ بلوک HTML دستی: بلوک‌های دستی همان چیزی‌اند که در این
-   پروژه بارها کهنه شده‌اند، پس متن از یک جا می‌آید و دکمه‌ها فقط شناسه‌هایشان را
-   با ‎data-p‎ اعلام می‌کنند.
-   v1.25: explain each PARAMETER inside its section's "!" bubble. One table and
-   one pass rather than eight hand-written HTML blobs - hand-written copies are
-   exactly what has gone stale here before. */
+
+
 const PX={
  9:['بازده کانال ۱','بازده مبدل بر حسب پرمیل برای تخمین جریان ورودی از توان باتری؛ صفر یعنی بدون تصحیح.'],
  10:['بازده کانال ۲','همان محاسبه برای کانال دوم؛ فقط روی عدد تخمینی جریان ورودی اثر دارد، نه روی شارژ.'],
@@ -2799,15 +2793,74 @@ function xdiff(schema){
 function xnumber(v){return typeof v==='number'&&Number.isFinite(v);}
 function xpending(){const out={};for(const id in PEND)if(xnumber(PEND[id]))out[id]=PEND[id];return out;}
 function xsamples(raw){return Array.isArray(raw)?raw.map(calnorm).filter(Boolean):[];}
-function xlutpack(r){const src=r&&r.ready?r:null;if(!src||!Array.isArray(src.T)||src.T.length!==2)return null;const T=src.T.map(t=>({X:t.X.slice(),Y:t.Y.slice()}));if(T.some(t=>t.X.length!==t.Y.length))return null;return {ready:1,T:T};}
-async function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
-let lut=xlutpack(typeof LUT_LAST_AFTER!=='undefined'&&LUT_LAST_AFTER)||xlutpack(typeof LAT!=='undefined'&&LAT)||xlutpack(typeof LBT!=='undefined'&&LBT);
- if(!lut&&D.on==1&&!CAL_BUSY&&!(typeof W!='undefined'&&W.run)&&typeof lread==='function'){if(x)x.textContent='… جدول LUT فعلی برای پشتیبان خوانده می‌شود';try{lut=xlutpack(await lread());}catch(e){lut=null;}}
- const o={app:'ChangeOver-settings',v:4,ids:XIDS.length,saved:new Date().toISOString(),schema:xschema(),params:{},pending:xpending(),benchSamples:xsamples(typeof CALS!=='undefined'?CALS:[]),benchView:calview(),lut:lut,lutRole:'audit-only'};
- if(!o.benchView){if(x)x.textContent='⚠ انتخاب نقطه‌ها معتبر نیست؛ فایل ساخته نشد.';return;}
- XIDS.forEach(id=>{o.params[id]=D.p[id];});
- if(!await filesave('changeover-settings-'+o.saved.slice(0,10)+'.json',JSON.stringify(o,null,1),'application/json'))return false;
- if(x)x.textContent='⬇ پشتیبان '+XIDS.filter(id=>o.params[id]!=null).length+'/'+Object.keys(o.pending).length+' pending/'+o.benchSamples.length+' نمونه · '+(lut?'جدول فقط سندِ بازبینی است؛ بازیابی مستقیم ندارد':'بدون سند جدول');return true;}
+/* [EN] Browser-side ZIP STORE; no library, temporary flash file or restore commands. */
+function xutf(s){return Uint8Array.from(unescape(encodeURIComponent(s)),c=>c.charCodeAt(0));}
+function xzip(files){
+ const parts=[],central=[];let offset=0,size=0;
+ const head=n=>new Uint8Array(n),put=(b,p,v,n=4)=>{for(let i=0;i<n;i++)b[p+i]=(v>>>i*8)&255;};
+ for(const f of files){const name=xutf(f.name),data=xutf(f.text),crc=lcrc(data),h=head(30),c=head(46);
+ put(h,0,0x04034b50);put(h,4,20,2);put(h,6,2048,2);put(h,12,33,2);put(h,14,crc);put(h,18,data.length);put(h,22,data.length);put(h,26,name.length,2);
+ put(c,0,0x02014b50);put(c,4,20,2);put(c,6,20,2);put(c,8,2048,2);put(c,14,33,2);put(c,16,crc);put(c,20,data.length);put(c,24,data.length);put(c,28,name.length,2);put(c,42,offset);
+ parts.push(h,name,data);central.push(c,name);offset+=h.length+name.length+data.length;size+=c.length+name.length;
+ }
+ const end=head(22);put(end,0,0x06054b50);put(end,8,files.length,2);put(end,10,files.length,2);put(end,12,size);put(end,16,offset);
+ const out=head(offset+size+22);let p=0;for(const b of [...parts,...central,end]){out.set(b,p);p+=b.length;}return out;
+}
+/* [EN] Timeout covers response body consumption, unlike the shared history helper. */
+async function xread(url,json=false,method='GET'){
+ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),5000);
+ try{const r=await fetch(url,{method,cache:'no-store',signal:ac.signal});if(!r.ok)throw Error(url+' · '+r.status);
+ const text=await r.text(),src=r.headers&&r.headers.get('X-Log-Fs');
+ if(src&&src!=='1')throw Error(url+' · حافظهٔ تاریخچه سالم نیست');
+ return json?JSON.parse(text):text;
+ }finally{clearTimeout(tm);}
+}
+let XBACKUP=false;
+async function xexp(safety=false){
+ const x=$('xst');if(XBACKUP||W.run||W.opening||(CAL_BUSY&&!safety))return false;
+ if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return false;}
+ const own=!CAL_BUSY;XBACKUP=true;CAL_BUSY=true;lupd();let complete=false;
+ try{
+ const saved=new Date().toISOString(),tag=evtDaySh(evtToday()).replace(/[۰-۹]/g,c=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(c))+'_'+saved.slice(11,19).replace(/:/g,'');
+ const settings={app:'ChangeOver-settings',v:5,saved,schema:xschema(),params:{},pending:xpending()};XIDS.forEach(id=>settings.params[id]=D.p[id]??null);
+ const samples={app:'ChangeOver-bench-samples',v:2,saved,build:xbuild(),view:calview(),samples:xsamples(CALS)};
+ if(!samples.view||samples.samples.length!==CALS.length)throw Error('نمونه‌ها یا انتخاب نقطه‌ها معتبر نیستند');
+ const copy=o=>JSON.parse(JSON.stringify(o)),state=copy({telemetry:D,benchRows:W.K||[],controls:[...document.querySelectorAll('input,select')].filter(e=>e.id&&e.type!=='file').map(e=>({id:e.id,value:e.value,checked:e.checked}))});
+ const tables=[calbuild(1),calbuild(2)],cached=copy({before:LBT,after:LAT,lastBefore:LUT_LAST_BEFORE,lastAfter:LUT_LAST_AFTER,proposal:LUT_LAST_PROPOSAL,pending:LUT_PENDING});
+ let code='';if(CALR.length){calcode();code=$('calcd').value;}
+ const files=[],errors=[],absent=[],add=(folder,prefix,text)=>files.push({name:folder+'/'+prefix.replace(/(\.[^.]+)$/,'_'+tag+'$1'),text:typeof text==='string'?text:JSON.stringify(text,null,1)});
+ add('restore','settings.json',settings);add('restore','samples.json',samples);add('archive','session.json',state);add('archive','tables_cached.json',cached);
+ const csv=T=>'battery,counts,current_mA\n'+T.map((t,n)=>t.X.map((v,i)=>[n+1,v,t.Y[i]].join(',')).join('\n')).filter(Boolean).join('\n')+'\n';
+ if(samples.samples.length){add('archive','tables_generated.json',tables);add('archive','tables_generated.csv',csv(tables));if(code)add('archive','tables_generated.h',code);
+ tables.forEach((t,i)=>{if(t.bad)(calsel(i+1).length?errors:absent).push('جدول محاسبه‌شدهٔ باتری '+(i+1)+': '+t.bad);});if(!code)absent.push('خروجی کد آماده نیست؛ نمونه‌ها برای محاسبهٔ بعدی محفوظ‌اند');
+ }else absent.push('نمونه و جدول محاسبه‌شده‌ای در این مرورگر نیست');
+ if(XIDS.some(id=>settings.params[id]===null))errors.push('بعضی تنظیم‌ها هنوز از برد خوانده نشده‌اند');
+ if(D.on!==1)errors.push('برد آفلاین است؛ تنظیمات از آخرین گزارش‌اند');
+ const ok=await filesave('changeover-package-'+tag+'.zip',async()=>{
+ if(x)x.textContent='در حال جمع‌آوری فایل‌های بسته…';
+ const collect=async(label,fn)=>{try{await fn();}catch(e){errors.push(label+': '+String(e.message||e));}};
+ await collect('جدول برد',async()=>{
+ if(state.telemetry.on!==1)throw Error('برد آفلاین است؛ فقط جدول‌های قبلاً خوانده‌شده در آرشیو هستند');
+ const q=await xread('/lut/read',true,'POST');if(q.ok!==1)throw Error('درخواست بازخوانی پذیرفته نشد');
+ for(let i=0;i<30;i++){await sl(150);const j=await xread('/lut',true);if(j.read&&j.read.error)throw Error('بازخوانی ناقص');if(j.read&&j.read.ready===1){const r=j.read;if([1,2].some(n=>!Array.isArray(r['r'+n])||r['r'+n].length!==r['n'+n]||r['n'+n]>24||r['n'+n]===1||r['r'+n].some(q=>!Array.isArray(q)||q.length!==2||q.some(v=>!Number.isInteger(v)||v<0||v>4294967295))))throw Error('ساختار جدول نامعتبر');const t=ldecode(j);add('archive','tables_board.json',j.read);add('archive','tables_board.csv',csv(t.T));return;}}
+ throw Error('مهلت بازخوانی تمام شد');});
+ await collect('بنچ',async()=>{const j=await xread('/benchlog?i=1',true);if(j.fs!==1)throw Error('حافظه در دسترس نیست');add('archive','bench_info.json',j);const t=await xread('/benchlog');if(!t.startsWith('# cols:'))throw Error('قالب بنچ نامعتبر');add('archive','bench.csv',t);});
+ await collect('سهم حافظه',async()=>{const j=await xread('/evt/pct',true);if(!Number.isInteger(j.p)||j.p<40||j.p>100)throw Error('پاسخ نامعتبر');add('archive','history_share.json',j);});
+ await collect('تاریخچه',async()=>{const text=await xread('/evt/days'),days=text.trim()?text.trim().split(/\s+/):[];
+ if(days.length>32||days.some(d=>!/^\d{8}$/.test(d))||new Set(days).size!==days.length)throw Error('فهرست روزها نامعتبر است');
+ if(!days.length)absent.push('فایل تاریخچهٔ روزانه‌ای موجود نیست');
+ for(const d of days)await collect('روز '+d,async()=>{const t=await xread('/evt/dl?day='+d);if(!t.startsWith('# epoch,'))throw Error('قالب تاریخچه نامعتبر');add('archive','history_'+d+'.csv',t);if(/^# WARNING:/m.test(t))throw Error('دانلود هشدار خرابی یا خواندن ناقص دارد');});});
+ await collect('آخرین ردیف‌ها',async()=>{const t=await xread('/evt');add('archive','history_tail.txt',t);});
+ complete=!errors.length;
+ if(!complete&&!await pmConfirm('بسته ناقص است:\n'+errors.join('\n')+'\n\nفایل‌های در دسترس با برچسب ناقص ذخیره شوند؟'))throw Error('ذخیرهٔ بستهٔ ناقص لغو شد');
+ const manifest={app:'ChangeOver-package',v:1,saved,finished:new Date().toISOString(),build:xbuild(),complete,errors,absent,unknownSettings:XIDS.filter(id=>settings.params[id]===null),files:files.map(f=>({path:f.name,bytes:xutf(f.text).length,crc32:lcrc(xutf(f.text)).toString(16).padStart(8,'0')}))};
+ files.push({name:'manifest.json',text:JSON.stringify(manifest,null,1)});return xzip(files);
+ },'application/zip');
+ if(x)x.textContent=ok?(complete?'بسته برای دانلود آماده شد.':'بستهٔ ناقص برای دانلود آماده شد؛ جزئیات در manifest.json است.'):'بسته ذخیره نشد.';
+ return !!ok&&(!safety||complete);
+ }catch(e){if(x)x.textContent='بسته ساخته نشد: '+String(e.message||e);return false;}
+ finally{XBACKUP=false;if(own)CAL_BUSY=false;lupd();}
+}
 function xclamp(id,n){const e=$('q'+id);
  if(e){const lo=+e.min,hi=+e.max;
   if(e.min!==''&&Number.isFinite(lo))n=Math.max(lo,n);
@@ -2875,12 +2928,8 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  }
  const xi=$('xim');if(xi)xi.value='';}
 $('xim').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)ximp(f);};
-/* v1.27: سلامت لینک. تا پیش از این، اگر STM32 و ESP ناهماهنگ فلش می‌شدند پنل
-   فقط خالی می‌ماند و هیچ توضیحی نبود — همان حالتی که عیناً شبیه کابل قطع است.
-   حالا بایت نسخه در فریم هست و گیرنده ناهم‌نسخگی را می‌شمارد، پس می‌شود صریح گفت
-   چه اتفاقی افتاده. خطاهای CRC هم نمایش داده می‌شوند تا هارنس نویزی دیده شود.
-   v1.27: link health. A version-mismatched flash used to show an empty panel
-   with no explanation - identical in appearance to an unplugged cable. */
+
+
 let LINK_WARN_KEY='';
 let LINK_WARN_DISMISS='';
 function lnkDismiss(){const e=$('lnkw');if(!e)return;LINK_WARN_DISMISS=LINK_WARN_KEY;e.className='wbx';e.innerHTML='';}
@@ -3605,7 +3654,7 @@ async function calmodalApply(){
  calmodalClose();
  CALP=jobs;CAL_BUSY=true;
  try{
-  const backedUp=await xexp();if(!backedUp){CALP=[];stxt('calst','اعمال لغو شد؛ فایل پشتیبان برای دانلود تأیید نشد.');return;}
+  const backedUp=await xexp(true);if(!backedUp){CALP=[];stxt('calst','اعمال لغو شد؛ فایل پشتیبان برای دانلود تأیید نشد.');return;}
 
   /* [EN] /s=200 only queues; setv() waits for matching board readback. */
   let ok=0,fail=0;
@@ -4206,16 +4255,8 @@ function evtCols(r){
         still drawn red.
    [FA] هر ردیف به یک خط فارسی و یک شدت تبدیل می‌شود: ۳ خطا، ۲ هشدار،
         ۱ برگشت به سلامتی، ۰ تغییر ساده. بالاترین شدت همان ردیف برنده است. */
-/*
- * [EN] v1.123 (user order: "replace every event state with one or two English
- *      words that mean the same thing"). The event column of the table is a tag
- *      list now, not a Persian sentence: one glance says WHAT happened, the
- *      columns next to it say HOW MUCH, and the severity - and with it the row
- *      colour - is unchanged from v1.95.
- * [FA] نسخهٔ ۱٫۱۲۳ (دستور کاربر): ستون «اتفاق» حالا فهرست تگ است، نه جملهٔ
- *      فارسی: یک نگاه می‌گوید چه شد و ستون‌های کنارش می‌گویند چقدر؛ شدت - و
- *      در نتیجه رنگ ردیف - همان نسخهٔ ۱٫۹۵ است.
- */
+
+
 function evtRowText(r){
   const chg=r.chg|0,mains=r.mains|0,c1=r.c1|0,c2=r.c2|0,fault=r.fault|0,f2=r.flags2|0,fl=r.fl|0;
   const parts=[];let lv=0;
@@ -4296,18 +4337,8 @@ function evtParse(line){
 const xiso=s=>String(s).replace(/[0-9A-Za-z][0-9A-Za-z.:%-]*/g,x=>'<span class="lt">'+x+'</span>');
 const xspr=(s,c,tip)=>s.split(' · ').map(x=>'<span class="'+c+'" title="'+
   esc(tip?tip(x):evtTip(x))+'">'+xiso(x)+'</span>').join('');
-/*
- * [EN] v1.121 (user report: "the morning rows are gone"). The board answers
- *      /evt with a TAIL of 30 rows, so a busy day looked as if its morning had
- *      been deleted. "Older" fetches the whole day file through the same
- *      /evt/dl the download key saves and pages it 30 rows at a time; "all"
- *      draws the day in one go. Nothing changed on the board side: its tail
- *      buffer stays 3600 bytes, all of this runs in the browser.
- * [FA] نسخهٔ ۱٫۱۲۱ (گزارش کاربر): برد همیشه فقط ۳۰ ردیف آخر را می‌دهد، پس
- *      صبحِ یک روز شلوغ دیده نمی‌شد. «قدیمی‌تر» کل فایل آن روز را از همان
- *      /evt/dl می‌گیرد و ۳۰ ردیف‌۳۰ ردیف نشان می‌دهد؛ «همهٔ ردیف‌ها» کل روز
- *      را یک‌جا. سمت برد هیچ‌چیز عوض نشد؛ بافرش همان ۳۶۰۰ بایت است.
- */
+
+
 let evtRows=[],evtFrom=0,evtWhole=false,evtAll=false,evtPicked=false;
 /* [EN] v1.127: the answer currently drawn (see evtRender).
    [FA] نسخهٔ ۱٫۱۲۷: پاسخی که همین حالا روی صفحه است. */
@@ -4329,24 +4360,8 @@ const EVT_COLS=[['ساعت','ساعت رویداد — از گوشی یا کام
  ['D۱ ٪','درصد فرمان PWM کانال ۱'],
  ['D۲ ٪','درصد فرمان PWM کانال ۲'],
 ];
-/* [EN] v1.129 (owner: "do what the industry does"). Keyed reconciliation, the
-        way React and every list-diff library do it:
-          1. a row is identified by the DATA it shows - the raw line - so two
-             rows that share a second are still two different rows;
-          2. an element that is still on screen is REUSED, not rebuilt, so the
-             selection, the phosphor cells and the reader's scroll all survive an
-             update by construction, with no re-finding and no key hunting;
-          3. only the difference is touched: a new row is inserted, the row that
-             fell off the window is removed, everything else is left alone.
-     [FA] نسخهٔ ۱٫۱۲۹ (دستور کاربر: «کار روز دنیا را بکن»). تطبیق کلیددار، همان
-        کاری که React و هر کتابخانهٔ diff فهرست می‌کند:
-          ۱. ردیف با دادهٔ خودش شناخته می‌شود - خط خام - پس دو ردیف هم‌ثانیه
-             هنوز دو ردیف متفاوت‌اند؛
-          ۲. عنصری که روی صفحه مانده بازاستفاده می‌شود نه بازساخته، پس انتخاب،
-             خانه‌های فسفری و اسکرول کاربر به‌خودی خود می‌مانند: نه جست‌وجوی
-             دوباره، نه شکار کلید؛
-          ۳. فقط تفاوت دست می‌خورد: ردیف تازه درج می‌شود، ردیفی که از پنجره
-             افتاده حذف می‌شود، بقیه دست‌نخورده می‌مانند. */
+
+
 const evtRowKey=r=>r.id||'';
 function evtRowEl(r){
   const t=evtRowText(r);
@@ -4394,20 +4409,8 @@ function evtPager(){
   if(nx)nx.disabled=(!evtWhole||evtRows.length<=EVT_PAGE);
   if(al)al.disabled=(!evtRows.length||evtAll);
 }
-/*
- * [EN] v1.125 (user order: "when I click a record, show me in phosphor what is
- *      different from the step below it"). The table is newest first, so the row
- *      BELOW a step is the one before it. Each numeric cell that differs gets the
- *      phosphor class, the old value in its tooltip and an arrow in the text, so
- *      the change is readable on a phone where a tooltip cannot be hovered. The
- *      comparison uses the parsed numbers, not the printed text: "24.00" and
- *      "24000" are the same reading.
- * [FA] نسخهٔ ۱٫۱۲۵ (دستور کاربر): ردیف‌ها از جدید به قدیم‌اند، پس ردیف پایین‌تر
- *      همان پلهٔ قبلی است. هر خانهٔ عددی که فرق داشته باشد کلاس فسفری می‌گیرد،
- *      مقدار قبلی‌اش در tooltip می‌آید و جهت تغییر با فلش در خودِ عدد نوشته
- *      می‌شود تا روی گوشی هم - که tooltip ندارد - خوانده شود. مقایسه با عدد
- *      انجام می‌شود نه با متنِ چاپ‌شده.
- */
+
+
 function evtPick(tr){
   if(!tr||!tr.parentNode)return 0;
   const body=tr.parentNode;
@@ -4506,18 +4509,8 @@ function evtDayLoad(text,day){
   evtPaint();
   return evtRows.length;
 }
-/*
- * [EN] v1.129 audit: decide first, then commit. The old pair changed evtAll and
- *      only afterwards asked whether the view could move at all, so a press that
- *      did nothing still left the state saying "a page" while the screen showed
- *      the whole day. From the whole-day view one press now lands on the last
- *      page, which is the page the reader was on before show-all.
- * [FA] ممیزی ۱٫۱۲۹: اول تصمیم، بعد تغییر. جفت قدیمی اول evtAll را عوض می‌کرد و
- *      بعد می‌پرسید آیا نما می‌تواند تکان بخورد؛ پس فشاری که کاری نمی‌کرد، وضعیت
- *      را «یک صفحه» می‌گذاشت در حالی که صفحه کل روز را نشان می‌داد. حالا از نمای
- *      همهٔ ردیف‌ها، یک فشار به صفحهٔ آخر می‌رسد - همان صفحه‌ای که پیش از
- *      «همهٔ ردیف‌ها» روی آن بود.
- */
+
+
 function evtPageOlder(){
   if(!evtWhole)return false;
   if(evtAll){
@@ -4737,19 +4730,8 @@ async function evtclr(){
     const box=$('evtfs');if(box&&box.style.display!=='none')await evtfs(0);
   }catch(e){if(st)st.textContent='پاک نشد: ارتباط با پنل قطع شد';}
 }
-/* [EN] v1.127 (user report: "I click a row or page back, and every few seconds
-        it jumps away"). The tick asked for /evt - a 30-row tail - and repainted
-        the card, so the turned page, the picked row and its phosphor cells were
-        lost every 10 s. v1.128 finishes the job: only a DAY FILE being browsed
-        makes the tick step back (the tail cannot describe that window at all),
-        and a picked row no longer freezes anything - evtPaint puts it back by
-        name, so the rows keep arriving AND the selection stays.
-   [FA] نسخهٔ ۱٫۱۲۷ (گزارش کاربر): تیک، /evt را می‌گرفت که ۳۰ ردیف آخر است و
-        کارت را از نو می‌ساخت؛ پس صفحهٔ ورق‌خورده، ردیف انتخاب‌شده و خانه‌های
-        فسفری هر ۱۰ ثانیه می‌رفت. نسخهٔ ۱٫۱۲۸ کار را تمام می‌کند: فقط وقتی
-        فایل یک روز ورق می‌خورد تیک کنار می‌کشد (تیل آن پنجره را نمی‌تواند
-        توصیف کند) و ردیف انتخاب‌شده دیگر چیزی را قفل نمی‌کند - evtPaint آن را با
-        نامش برمی‌گرداند؛ هم ردیف‌ها می‌رسند، هم انتخاب می‌ماند. */
+
+
 function evtBrowsing(){return evtWhole||evtAll;}
 async function evtTick(){
   if(document.hidden||evtBusy)return;

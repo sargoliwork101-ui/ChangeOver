@@ -43,10 +43,14 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  const legacy={app:'ChangeOver-bench-samples',v:1,samples:archive.samples};await w.calimp({text:async()=>JSON.stringify(legacy)});
  check(w.eval('CALCUT[0].length')===0&&w.CALS[1].use===0,'legacy sample files remain readable with explicit empty point exclusions');
  seed();w.caldrop(1,140);w.eval('LBT={ready:true,T:[{X:[1,2],Y:[1,2]},{X:[3,4],Y:[3,4]}]}');
- const backupOp=w.xexp();await names('تنظیمات-جدید');await backupOp;
- const backup=JSON.parse(contents(downloads.at(-1)));check(backup.benchView.cuts[0][0]===140,'settings backup also retains the current calibration point choices');
- w.calinvalidate();w.pmConfirm=async()=>true;await w.ximp({text:async()=>JSON.stringify(backup)});
- check(w.eval('CALCUT[0][0]')===140&&w.eval('CALR.length')>0&&!w.calbuild(1).X.includes(140)&&d.querySelector('#calpoints table'),'settings backup import regenerates the edited calibration tables without writing to the board');
+ const read=w.xread,delay=w.sl;w.sl=async()=>{};w.xread=async u=>u==='/lut/read'?{ok:1}:u==='/lut'?{read:{ready:1,n1:0,n2:0,r1:[],r2:[]}}:u==='/benchlog?i=1'?{fs:1}:u==='/benchlog'?'# cols:\n':u==='/evt/pct'?{p:100}:'';
+ const backupOp=w.xexp();await names('بسته-جدید');await backupOp;w.xread=read;w.sl=delay;
+ const packed=Buffer.from(downloads.at(-1).blob.parts[0]),entries={};let at=0;
+ while(packed.readUInt32LE(at)===0x04034b50){const len=packed.readUInt32LE(at+18),n=packed.readUInt16LE(at+26),e=packed.readUInt16LE(at+28),start=at+30+n+e;entries[packed.subarray(at+30,at+30+n).toString()]=packed.subarray(start,start+len).toString();at=start+len;}
+ const backup=JSON.parse(entries[Object.keys(entries).find(n=>n.startsWith('restore/settings_'))]),bench=JSON.parse(entries[Object.keys(entries).find(n=>n.startsWith('restore/samples_'))]);
+ check(bench.view.cuts[0][0]===140&&downloads.at(-1).name==='بسته-جدید.zip','package retains current point choices in its independent sample file and keeps the ZIP extension');
+ w.calinvalidate();w.pmConfirm=async()=>true;await w.ximp({text:async()=>JSON.stringify(backup)});await w.calimp({text:async()=>JSON.stringify(bench)});
+ check(w.eval('CALCUT[0][0]')===140&&w.eval('CALR.length')>0&&!w.calbuild(1).X.includes(140)&&d.querySelector('#calpoints table'),'separate package restore files regenerate the edited calibration tables without writing to the board');
  const beforeCancel=downloads.length,requestCount=requests.filter(u=>u==='/benchlog').length;
  const canceled=w.wdl();await names(undefined,false);check(await canceled===false&&downloads.length===beforeCancel&&requests.filter(u=>u==='/benchlog').length===requestCount,'canceling a download name performs no fetch, blob allocation or download');
  const remote=w.wdl();await names('بنچ-آزمایش.csv');await remote;

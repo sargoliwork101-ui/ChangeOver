@@ -54,6 +54,7 @@ counts below belong to prior runs and must not be added to these totals.
 | `host_test_bench_storage.js` | 15 public CSV/precision/signature and storage-preflight checks |
 | `host_test_cal_revision.js` | 47 sample/selection round-trip, filename and diagnostic checks |
 | `host_test_restore_audit.js` | 32 numeric import, staging/equality, cancellation, restore and transaction checks |
+| `host_test_backup_package.js` | 39 checks: ZIP structure/CRC with independent Python extraction, split restoration, full/partial/absent data, body timeout, snapshots and lock ownership |
 | `host_test_bench_icons.js` | 28 icons, visible action labels, keyboard and accessibility checks |
 | `host_test_transaction_audit.js` | 53 immutable-batch, newer-edit and ownership checks |
 | `host_test_send_feedback.js` | 58 named-result, filters, read-only recheck and selective-retry checks |
@@ -87,12 +88,38 @@ C++ host suite, not independent runners. The frozen input CSV is in
   contrast and visible result actions. jsdom is not used as a pixel/layout
   engine. Installed browser tooling is required for this part to run.
 
-## Documentation-sync validation
+## ZIP-package validation
+
+The full Calibration runner passed after the package change: exit 0, zero
+failures and no SKIP, including the separate String regression and all 288
+Chromium layout checks. The new package suite independently opens the actual
+ZIP bytes using Python's standard `zipfile` reader, checks every member CRC,
+and restores the extracted settings/sample JSON through production importers.
+The previous export assertions now verify independent archive/settings/sample
+members instead of expecting an embedded audit-only LUT in settings JSON.
+
+The HTML ceiling remains 491520 bytes. Eight long historical JavaScript comment
+blocks were compacted to make room; Acorn token streams before/after that
+comment-only compaction were identical. No CSS, markup controls or numerical
+fit/build/transport/storage logic was removed for size. The Persian user guide
+is [repository-only](../BACKUP_GUIDE.md), not inside the archive or device image.
+An additional real-Chromium smoke run used the actual filename dialog and Blob
+ZIP download with explicitly routed test responses; Python independently opened
+the resulting downloaded ZIP and verified CRCs and `complete:true`. This was a
+browser test, not a download from a physical ESP.
+The read-only global project-contract checker still reports the pre-existing
+ESP_USER HTTP-route mismatch; Calibration's 27 method/routes match its unchanged
+contract. That other module was not changed.
+Native ESP8266 compilation, physical ZIP download and physical-board tests were
+not performed. A host/Chromium pass is not evidence for those tasks.
+
+## Earlier documentation-sync validation
 
 The full runner was executed against runtime baseline
 `ad79f5197c8e602f73c208938f49c20399768fdf` during this documentation-only sync:
-**exit 0, zero failures, no SKIP**. All suite counts in the table above were
+**exit 0, zero failures, no SKIP**. The then-existing suite counts were
 confirmed by that run, including the separate 1536-length String regression.
+The ZIP package suite was added later.
 Dependencies were jsdom 26, playwright-core and @sparticuz/chromium, installed
 outside the repository. Production code, tests and the generated preview were
 not changed. Native ESP8266 compilation and physical-board tests were not run.

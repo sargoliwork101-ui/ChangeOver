@@ -39,9 +39,13 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  for(const raw of [null,[],false,'bad']){await w.ximp(file(settings({params:raw})));check(snapshot()===unchanged,'invalid settings structure cannot mutate the current session');}
  await w.ximp(file(settings({lut:{ready:1,T:[{X:[1,2],Y:[0,20]},{X:[1,2],Y:[0,20]}]}})));
  check(typeof w.LUT_BACKUP==='undefined'&&typeof w.xlutimport==='undefined'&&d.getElementById('xst').textContent.includes('بازیابی مستقیم'),'dead imported-LUT storage is gone and LUT-only files are explicitly reported as unsupported');
- let exported;const save=w.filesave;w.filesave=async(name,data)=>{exported=JSON.parse(data);return true;};w.eval('LBT={ready:true,T:[{X:[80,100],Y:[0,20]},{X:[],Y:[]}]}');
- await w.xexp();w.filesave=save;
- check(exported.lutRole==='audit-only'&&exported.lut.T[0].X[0]===80,'exported LUT snapshot is explicitly an audit record, not a false restore promise');
+ let exported;const save=w.filesave,zip=w.xzip,read=w.xread,delay=w.sl;
+ w.filesave=async(name,data)=>{await data();return true;};w.xzip=files=>{exported=files;return new Uint8Array();};w.sl=async()=>{};
+ w.xread=async u=>u==='/lut/read'?{ok:1}:u==='/lut'?{read:{ready:1,n1:0,n2:0,r1:[],r2:[]}}:u==='/benchlog?i=1'?{fs:1}:u==='/benchlog'?'# cols:\n':u==='/evt/pct'?{p:100}:'';
+ w.eval('LBT={ready:true,T:[{X:[80,100],Y:[0,20]},{X:[],Y:[]}]}');
+ await w.xexp();w.filesave=save;w.xzip=zip;w.xread=read;w.sl=delay;
+ const settingsExport=JSON.parse(exported.find(f=>f.name.startsWith('restore/settings_')).text),cachedExport=JSON.parse(exported.find(f=>f.name.startsWith('archive/tables_cached_')).text);
+ check(!('lut' in settingsExport)&&cachedExport.before.T[0].X[0]===80,'tables are isolated in the PC archive and absent from the restorable settings file');
  const seed=()=>{w.eval('CALS=[];W={run:false};');for(let i=0;i<4;i++)w.CALS.push({sc:'BOTH',d:i*5,use:1,r1:80+i*20,r2:90+i*20,b1:i?i*30:-20,b2:i?i*31:-15,ts:100+i});w.calinvalidate();w.calsmp();w.calrun();};
  seed();const archive={app:'ChangeOver-bench-samples',v:2,view:{cuts:[[120],[]],scenarios:['BOTH']},samples:JSON.parse(JSON.stringify(w.CALS))};archive.samples[3].b1=91.125;
  const before=snapshot();w.eval('W.K=[]');w.wbuild(['BOTH'],[0]);w.eval('W.K[0].done=true');const rowBefore=w.eval('W.K');

@@ -214,11 +214,10 @@ its own temporal-dead-zone failure, so it never replayed a nonempty valid queue.
 Unsent edits now live only in the current page. Explicit JSON backup export/import
 still retains/stages them; raw calibration sample persistence is unchanged.
 
-Imported `lut` had only a dead `LUT_BACKUP` assignment and no viewer or apply
-consumer. That restore branch/validator/storage is removed. Exported LUT snapshots
-remain available as explicitly `lutRole: 'audit-only'` evidence; imports explain
-that they are not restored. LUT-only imports report no supported restore rather
-than success. Usable calibration tables are regenerated from full-precision samples.
+Legacy settings JSON may contain `lut`, but imports do not restore or apply it.
+LUT-only legacy imports report no supported restore rather than success.
+New settings files contain no tables or sample objects; the ZIP separates them
+as documented below. There is no imported-LUT storage or automatic apply path.
 
 Settings import requires finite JSON numbers, validates container/sample structure
 before mutation, ignores malformed pending IDs and reconciles included board-equal
@@ -336,3 +335,50 @@ rejected proposals/pending parameter edits are not consumed. Emergency channel-o
 and manual-mode exit commands remain usable. These are per-page ownership rules,
 not cross-client HTTP authentication or a server-wide transaction mutex.
 Evidence and owner decisions: `AUDIT_TRANSACTIONS.md`.
+
+## Browser ZIP backup package
+
+`xexp` now exports a ZIP STORE archive entirely in browser memory. No library,
+new HTTP route or temporary on-ESP file is added. `xzip` writes little-endian
+local headers, CRC32, UTF-8 flags, central directory and EOCD. Member names
+have a common Jalali-date/UTC-time suffix; ZIP header dates use the portable
+1980-01-01 baseline, not a claimed measurement timestamp.
+
+`restore/settings_*.json` uses `ChangeOver-settings` v5 with finite cached
+parameter values/null for unknowns, existing `schema` and `pending` semantics.
+`restore/samples_*.json` uses the existing `ChangeOver-bench-samples` v2 schema,
+full precision and `view`. They are imported separately through the existing
+JSON controls after extracting ZIP on PC. Direct ZIP import is not implemented.
+Old settings JSON imports remain supported. Archive members are never passed
+to these importers or applied automatically.
+
+`archive/` contains generated tables (JSON/CSV and C header when available),
+cached before/after/proposal evidence, board readback (raw JSON in deci-mA and
+CSV in mA), expanded bench CSV and metadata, one CSV per listed history day,
+current history tail, ESP history-share metadata, and the page's cached
+telemetry/session/control values. The share has documented manual recovery,
+not an automatic write on import. Session evidence is not session replay.
+The long Persian guide is **repository-only**: [BACKUP_GUIDE.md](BACKUP_GUIDE.md).
+Only machine-readable `manifest.json` is included in the ZIP.
+
+Snapshots are frozen before asynchronous collection. `CAL_BUSY` and `XBACKUP`
+prevent same-page capture/import/calibration overlap and duplicate exports;
+the nested pre-apply caller retains ownership of its existing lock.
+Filename cancellation performs no package network collection. `xread` has a
+five-second abort covering the full response body. Collection only reads HTTP
+resources except `POST /lut/read`, a readback request; it sends no parameter,
+table-upload, reset, clear or format commands. Cross-client exclusion and an
+atomic all-files snapshot are not provided. Logging can continue while files
+are read sequentially; manifest start/end times bound the collection interval.
+
+Each manifest entry records its path, UTF-8 bytes and CRC32. Unknown parameters,
+offline state, invalid generated data, failed/unavailable readbacks, HTTP/storage
+errors, malformed day lists and CSV codec WARNING lines are explicitly reported.
+A failed day does not stop later days. A partial download needs explicit approval,
+sets `complete:false`, preserves available files and names failures; it does not
+replace failed files with empty successful entries. True absence (no samples/day
+files, no prepared code) is recorded separately. Complete means this defined
+collection had no detected failure, not that all physical flash or unsaved internal
+queues were imaged or that old data never went missing.
+The mandatory pre-apply `xexp(true)` returns false for cancellation/failure or a
+partial package, even when the user retained that partial archive.
