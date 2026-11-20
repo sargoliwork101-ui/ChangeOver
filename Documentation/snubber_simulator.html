@@ -1085,6 +1085,18 @@
               </div>
             </div>
 
+            <!-- Air Gap: lg (mm) -->
+            <div class="form-item">
+              <div class="form-label-row">
+                <span>فاصله هوایی گپ هسته (Air Gap - lg)</span>
+                <span class="val-badge" id="lbl_gap" style="color:var(--warm-red);">2.00 mm (شار حاشیه‌ای زیاد)</span>
+              </div>
+              <div class="input-control">
+                <input type="range" id="gap" min="0.1" max="3.0" step="0.05" value="2.0" oninput="syncVal('gap', this.value, this); updateGapEffects();" onchange="syncVal('gap', this.value, this); updateGapEffects();">
+                <input type="number" id="gap_num" value="2.00" step="0.05" min="0.05" max="5.0" oninput="syncVal('gap', this.value, this); updateGapEffects();" onchange="syncVal('gap', this.value, this); updateGapEffects();">
+              </div>
+            </div>
+
             <!-- Lp: Primary Inductance -->
             <div class="form-item">
               <div class="form-label-row">
@@ -1352,6 +1364,32 @@ function updateTransformerTurns() {
   runSimulation();
 }
 
+function updateGapEffects() {
+  const gapVal = parseFloat(document.getElementById('gap').value) || 2.0;
+  const lblGap = document.getElementById('lbl_gap');
+  if (lblGap) {
+    if (gapVal >= 1.5) {
+      lblGap.innerText = gapVal.toFixed(2) + ' mm (شار حاشیه‌ای شدید)';
+      lblGap.style.color = 'var(--warm-red)';
+    } else if (gapVal >= 0.8) {
+      lblGap.innerText = gapVal.toFixed(2) + ' mm (گپ نسبتاً زیاد)';
+      lblGap.style.color = 'var(--amber)';
+    } else {
+      lblGap.innerText = gapVal.toFixed(2) + ' mm (گپ بهینه و استاندارد)';
+      lblGap.style.color = 'var(--mint)';
+    }
+  }
+
+  const wType = document.getElementById('winding_type').value;
+  if (wType === 'standard') {
+    const lpVal = parseFloat(document.getElementById('lp').value) || 15;
+    const leakRatio = Math.min(0.25, 0.05 + (gapVal / 2.0) * 0.11);
+    const lkVal = lpVal * leakRatio;
+    setVal('lleak', lkVal.toFixed(3));
+  }
+  runSimulation();
+}
+
 function updateWindingType() {
   const wType = document.getElementById('winding_type').value;
   const lpVal = parseFloat(document.getElementById('lp').value) || 15;
@@ -1482,7 +1520,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
-    setVal('np', 15); setVal('ns', 10); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
+    setVal('np', 15); setVal('ns', 10); setVal('gap', 2.0); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1501,7 +1539,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = 'none';
     document.getElementById('rth_num').value = '62.0';
     document.getElementById('snubber_type').value = 'RCD';
-    setVal('np', 15); setVal('ns', 10); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
+    setVal('np', 15); setVal('ns', 10); setVal('gap', 2.0); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1520,7 +1558,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
-    setVal('np', 15); setVal('ns', 10); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
+    setVal('np', 15); setVal('ns', 10); setVal('gap', 2.0); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1539,7 +1577,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
-    setVal('np', 15); setVal('ns', 10); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
+    setVal('np', 15); setVal('ns', 10); setVal('gap', 2.0); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1558,7 +1596,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
-    setVal('np', 15); setVal('ns', 10); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
+    setVal('np', 15); setVal('ns', 10); setVal('gap', 2.0); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1577,7 +1615,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCDZ';
-    setVal('np', 15); setVal('ns', 10); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
+    setVal('np', 15); setVal('ns', 10); setVal('gap', 2.0); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
@@ -1598,7 +1636,7 @@ function setPreset(p) {
     document.getElementById('heatsink_type').value = '14.0';
     document.getElementById('rth_num').value = '14.0';
     document.getElementById('snubber_type').value = 'RCD';
-    setVal('np', 15); setVal('ns', 10); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
+    setVal('np', 15); setVal('ns', 10); setVal('gap', 2.0); if (document.getElementById('winding_type')) document.getElementById('winding_type').value = 'standard';
     setVal('vin', 28);
     setVal('vout', 14.4);
     setVal('iout', 2.5);
