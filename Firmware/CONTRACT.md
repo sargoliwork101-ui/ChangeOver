@@ -4,7 +4,7 @@
 {
   "version": 1,
   "project": "STM32",
-  "roots": ["Firmware", "CubeIDE", "CubeMX", "Circuit", "Programmer"],
+  "roots": ["Firmware", "CubeIDE", "CubeMX", "Circuit"],
   "connected_boards": ["ESP_USER", "ESP_Calibration"],
   "connection_rule": "Connect one ESP board at a time; ESP_USER and ESP_Calibration are not connected simultaneously"
 }
