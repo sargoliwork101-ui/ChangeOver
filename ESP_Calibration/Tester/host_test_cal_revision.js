@@ -44,6 +44,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  check(w.eval('CALCUT[0].length')===0&&w.CALS[1].use===0,'legacy sample files remain readable with explicit empty point exclusions');
  seed();w.caldrop(1,140);w.eval('LBT={ready:true,T:[{X:[1,2],Y:[1,2]},{X:[3,4],Y:[3,4]}]}');
  const read=w.xread,delay=w.sl;w.sl=async()=>{};w.xread=async u=>u==='/lut/read'?{ok:1}:u==='/lut'?{read:{ready:1,n1:0,n2:0,r1:[],r2:[]}}:u==='/benchlog?i=1'?{fs:1}:u==='/benchlog'?'# cols:\n':u==='/evt/pct'?{p:100}:'';
+ w.pmConfirm=async()=>true; // Explicitly approve absent optional history in this fixture.
  const backupOp=w.xexp();await names('بسته-جدید');await backupOp;w.xread=read;w.sl=delay;
  const packed=Buffer.from(downloads.at(-1).blob.parts[0]),entries={};let at=0;
  while(packed.readUInt32LE(at)===0x04034b50){const len=packed.readUInt32LE(at+18),n=packed.readUInt16LE(at+26),e=packed.readUInt16LE(at+28),start=at+30+n+e;entries[packed.subarray(at+30,at+30+n).toString()]=packed.subarray(start,start+len).toString();at=start+len;}

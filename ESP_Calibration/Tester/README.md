@@ -90,6 +90,30 @@ C++ host suite, not independent runners. The frozen input CSV is in
   contrast and visible result actions. jsdom is not used as a pixel/layout
   engine. Installed browser tooling is required for this part to run.
 
+## Missing-data confirmation validation
+
+Current panel build `fe4f9c9` asks for approval before ZIP download whenever
+`absent` is nonempty, including empty bench storage and an empty history tail.
+Absence and read errors have separate sections in one prompt. Cancellation
+produces no download; pre-apply cancellation also prevents calibration writes.
+The manifest's complete/error semantics and ZIP membership remain unchanged.
+
+The full Calibration runner passed: exit 0, no failed checks and no SKIP,
+including 50 package checks, 38 real-Chromium backup checks, 78 real-sketch host
+backup checks and all 288 layout checks. Empty browser sources are explicit
+fixture variations, not responses captured from a physical ESP. The revision
+fixture now explicitly approves its absent optional history. HTML including NUL
+is 488659 bytes, below the unchanged 491520-byte ceiling. Scoped comment and
+Git whitespace checks passed. Native ESP8266 and physical-board tests were not run.
+
+The two broader repository gates were also run, but **did not pass**:
+`check_ai_rules.sh` stops its cross-file audit at missing `ESP_USER/index.html`;
+`check_firmware_syntax.sh` reaches a Charger tester assertion expecting obsolete
+send-result strings. The missing file and the identical Charger assertion were
+verified at baseline `7523b15` too (the latter using the baseline Calibration
+source supplied read-only to that test). These unrelated files were not changed.
+The earlier completed safety review below remains historical evidence.
+
 ## Post-package safety review
 
 The permanent C++/Chromium safety testers are registered in the full runner.

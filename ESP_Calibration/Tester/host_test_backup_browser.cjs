@@ -27,6 +27,14 @@ const server=http.createServer(async(req,res)=>{
  if(mode==='dayDamaged'&&key==='/evt/dl?day=20261101')key='dayDamaged';
  if(mode==='historyUnmounted'&&key==='/evt/days')key='historyUnmounted';
  if(mode==='lutBusy'&&key==='/lut/read')key='lutBusy';
+ // [EN] Derive empty-source responses without changing the real-handler fixtures.
+ if(mode==='empty'){
+  const base=fixtures[key];let body;
+  if(key==='/evt/days'||key==='/evt')body='';
+  if(key==='/benchlog?i=1')body=JSON.stringify({...JSON.parse(base.body),size:0,format:'empty'});
+  if(key==='/benchlog')body=base.body.split('\n')[0]+'\n';
+  if(body!==undefined){res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8',...base.headers});return res.end(body);}
+ }
  const fixture=fixtures[key];
  if(!fixture){res.writeHead(404);return res.end('unknown test route');}
  res.writeHead(fixture.status,{'Content-Type':'text/plain; charset=utf-8',...fixture.headers});res.end(fixture.body);
@@ -108,10 +116,26 @@ print(json.dumps({'manifest':m,'names':z.namelist(),'settings':member('restore/s
  mode='benchDamaged';await start();await name();await page.waitForFunction(()=>document.querySelector('#pmod').classList.contains('on')&&document.querySelector('#pmt').textContent.includes('بسته ناقص'));
  const beforeReject=downloaded;await page.locator('#pmno').click();await page.waitForFunction(()=>document.querySelector('#pmt').textContent.includes('فایل آماده نشد')&&document.querySelector('#pmod').classList.contains('on'));await page.locator('#pmok').click();await page.waitForFunction(()=>!XBACKUP);
  check(downloaded===beforeReject&&!await page.evaluate(()=>CAL_BUSY),'declining the real partial-package dialog produces no download and releases the lock after its error acknowledgment');
+ mode='empty';const missingCount=downloaded,missingState=await state();
+ await start();await name();
+ const waitMissing=()=>page.waitForFunction(()=>document.querySelector('#pmod').classList.contains('on')&&document.querySelector('#pmt').textContent.includes('اطلاعات ناموجود'));
+ await waitMissing();
+ let warning=await page.locator('#pmt').textContent();
+ check(downloaded===missingCount&&['بنچ','روزانه','آخرین ردیف'].every(t=>warning.includes(t))&&!warning.includes('بسته ناقص'),'actual missing-data dialog names all empty sources before any download without calling them read errors');
+ check(await page.evaluate(()=>CAL_BUSY&&XBACKUP),'missing-data confirmation retains transaction ownership');
+ await page.locator('#pmno').click();await page.waitForFunction(()=>document.querySelector('#pmod').classList.contains('on')&&document.querySelector('#pmt').textContent.includes('فایل آماده نشد'));await page.locator('#pmok').click();await page.waitForFunction(()=>!XBACKUP);
+ check(downloaded===missingCount&&await state()===missingState&&!await page.evaluate(()=>CAL_BUSY),'canceling actual missing-data dialog downloads nothing, preserves edits and releases locks');
+ await start();const missingDownload=page.waitForEvent('download');await name();await waitMissing();await page.locator('#pmok').click();zip=await save('backup-browser-missing.zip',missingDownload);
+ check(zip.manifest.complete&&zip.manifest.errors.length===0&&zip.manifest.absent.length===3,'approving actual missing-data dialog downloads remaining files with honest absence manifest');
+ check(!!zip.settings&&!!zip.samples&&zip.bench===fixtures['/benchlog'].body.split('\n')[0]+'\n'&&!zip.names.some(n=>/^archive\/history_\d{8}_/.test(n)),'approved ZIP retains restorable data and header-only bench without inventing daily files');
+ mode='benchDamaged';
  // [EN] Exercise actual pre-apply control flow, not a mocked xexp result.
  await page.evaluate(()=>{window.__safetyWrites=[];window.__realSetv=setv;setv=async(id,value)=>{window.__safetyWrites.push({id,value,backup:XBACKUP,lock:CAL_BUSY});D.p[id]=value;};void calmodalApply();});
  await page.locator('#pmfilename').waitFor();const safetyDownload=page.waitForEvent('download');await name();await page.waitForFunction(()=>document.querySelector('#pmt').textContent.includes('بسته ناقص')&&document.querySelector('#pmod').classList.contains('on'));await page.locator('#pmok').click();await save('backup-browser-safety-partial.zip',safetyDownload);await page.waitForFunction(()=>!CAL_BUSY);
  check(await page.evaluate(()=>window.__safetyWrites.length===0),'retaining a partial safety archive never applies any calibration parameter');
+ mode='empty';await page.evaluate(()=>{calrun();void calmodalApply();});await page.locator('#pmfilename').waitFor();await name();await waitMissing();
+ const safetyMissingCount=downloaded;await page.locator('#pmno').click();await page.waitForFunction(()=>document.querySelector('#pmod').classList.contains('on')&&document.querySelector('#pmt').textContent.includes('فایل آماده نشد'));await page.locator('#pmok').click();await page.waitForFunction(()=>!CAL_BUSY&&!XBACKUP);
+ check(downloaded===safetyMissingCount&&await page.evaluate(()=>window.__safetyWrites.length===0),'canceling missing-data warning in real pre-apply flow prevents both download and calibration writes');
  mode='healthy';
  await page.evaluate(()=>{calrun();void calmodalApply();});await page.locator('#pmfilename').waitFor();
  check(await page.evaluate(()=>CAL_BUSY&&XBACKUP&&window.__safetyWrites.length===0),'pre-apply calibration retains ownership and writes nothing before backup filename confirmation');

@@ -446,7 +446,7 @@ header{flex-wrap:wrap}.hd b{min-width:0}.evpop input{font-size:16px}.evtactions{
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2a3b081</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fe4f9c9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main>
@@ -2840,15 +2840,16 @@ async function xexp(safety=false){
  const q=await xread('/lut/read',true,'POST');if(q.ok!==1)throw Error('درخواست بازخوانی پذیرفته نشد');
  for(let i=0;i<30;i++){await sl(150);const j=await xread('/lut',true);if(j.read&&j.read.error)throw Error('بازخوانی ناقص');if(j.read&&j.read.ready===1){const r=j.read;if([1,2].some(n=>!Array.isArray(r['r'+n])||r['r'+n].length!==r['n'+n]||r['n'+n]>24||r['n'+n]===1||r['r'+n].some(q=>!Array.isArray(q)||q.length!==2||q.some(v=>!Number.isInteger(v)||v<0||v>4294967295))))throw Error('ساختار جدول نامعتبر');const t=ldecode(j);add('archive','tables_board.json',j.read);add('archive','tables_board.csv',csv(t.T));return;}}
  throw Error('مهلت بازخوانی تمام شد');});
- await collect('بنچ',async()=>{const j=await xread('/benchlog?i=1',true);if(j.fs!==1)throw Error('حافظه در دسترس نیست');add('archive','bench_info.json',j);const t=await xread('/benchlog');if(!t.startsWith('# cols:'))throw Error('قالب بنچ نامعتبر');add('archive','bench.csv',t);});
+ await collect('بنچ',async()=>{const j=await xread('/benchlog?i=1',true);if(j.fs!==1)throw Error('حافظه در دسترس نیست');add('archive','bench_info.json',j);if(j.size===0)absent.push('لاگ بنچ خالی است؛ فایل آن فقط سرستون دارد');const t=await xread('/benchlog');if(!t.startsWith('# cols:'))throw Error('قالب بنچ نامعتبر');add('archive','bench.csv',t);});
  await collect('سهم حافظه',async()=>{const j=await xread('/evt/pct',true);if(!Number.isInteger(j.p)||j.p<40||j.p>100)throw Error('پاسخ نامعتبر');add('archive','history_share.json',j);});
  await collect('تاریخچه',async()=>{const text=await xread('/evt/days'),days=text.trim()?text.trim().split(/\s+/):[];
  if(days.length>32||days.some(d=>!/^\d{8}$/.test(d))||new Set(days).size!==days.length)throw Error('فهرست روزها نامعتبر است');
  if(!days.length)absent.push('فایل تاریخچهٔ روزانه‌ای موجود نیست');
  for(const d of days)await collect('روز '+d,async()=>{const t=await xread('/evt/dl?day='+d);if(!t.startsWith('# epoch,'))throw Error('قالب تاریخچه نامعتبر');add('archive','history_'+d+'.csv',t);if(/^# WARNING:/m.test(t))throw Error('دانلود هشدار خرابی یا خواندن ناقص دارد');});});
- await collect('آخرین ردیف‌ها',async()=>{const t=await xread('/evt');add('archive','history_tail.txt',t);});
+ await collect('آخرین ردیف‌ها',async()=>{const t=await xread('/evt');if(!t.trim())absent.push('آخرین ردیف‌های تاریخچه موجود نیست');add('archive','history_tail.txt',t);});
  complete=!errors.length;
- if(!complete&&!await pmConfirm('بسته ناقص است:\n'+errors.join('\n')+'\n\nفایل‌های در دسترس با برچسب ناقص ذخیره شوند؟'))throw Error('ذخیرهٔ بستهٔ ناقص لغو شد');
+ const notice=[!complete?'بسته ناقص است:\nخطاهای خواندن یا دادهٔ نامعتبر:\n'+errors.join('\n'):'',absent.length?'اطلاعات ناموجود یا خالی:\n'+absent.join('\n'):''].filter(Boolean).join('\n\n');
+ if(notice&&!await pmConfirm(notice+'\n\n'+(!complete?'فایل‌های در دسترس با برچسب ناقص ذخیره شوند؟':'بقیهٔ اطلاعات ذخیره شوند؟')))throw Error('ذخیرهٔ بسته لغو شد');
  const manifest={app:'ChangeOver-package',v:1,saved,finished:new Date().toISOString(),build:xbuild(),complete,errors,absent,unknownSettings:XIDS.filter(id=>settings.params[id]===null),files:files.map(f=>({path:f.name,bytes:xutf(f.text).length,crc32:lcrc(xutf(f.text)).toString(16).padStart(8,'0')}))};
  files.push({name:'manifest.json',text:JSON.stringify(manifest,null,1)});return xzip(files);
  },'application/zip');

@@ -16,12 +16,13 @@ const unpack=bytes=>{const result={},b=Buffer.from(bytes);let p=0;while(b.readUI
  w.calinvalidate();w.calsmp();w.calrun();w.caldrop(1,120);w.qput(5,123);
  const rows={ready:1,pending:0,error:0,n1:2,n2:0,r1:[[80,0],[100,205]],r2:[]};
  const dayHeader='# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille\n';
- const requests=[],downloads=[];let bad='',bodyWarning=false,refuse=false,hold=null,bodyHold=false,daysText=null,sourceFlag='';
- w.sl=async()=>{};w.pmName=async name=>name;w.pmConfirm=async()=>!refuse;w.pmAlert=async()=>{};
+ const requests=[],downloads=[];let bad='',bodyWarning=false,refuse=false,hold=null,bodyHold=false,daysText=null,sourceFlag='',emptyBench=false,emptyTail=false;
+ const notices=[];
+ w.sl=async()=>{};w.pmName=async name=>name;w.pmConfirm=async text=>{notices.push({text,downloads:downloads.length,locked:w.eval('CAL_BUSY&&XBACKUP')});return !refuse;};w.pmAlert=async()=>{};
  w.fetch=async(url,opt={})=>{requests.push([url,opt.method||'GET']);if(hold)await hold;
   if(bodyHold&&url==='/slow')return {ok:true,text:()=>new Promise((resolve,reject)=>opt.signal.addEventListener('abort',()=>reject(Error('aborted body'))))};
   if(url===bad)return {ok:false,status:503,text:async()=>''};
-  let v=url==='/lut/read'?{ok:1}:url==='/lut'?{read:rows}:url==='/benchlog?i=1'?{fs:1,size:42,format:'compact',max:102400}:url==='/evt/pct'?{ok:1,p:85}:url==='/evt/days'?(daysText??'00000000\n20261101'):url==='/benchlog'?'# cols:\nBOTH,1,-0.125,یادداشت\n':url.startsWith('/evt/dl?day=')?dayHeader+url+'\n'+(bodyWarning?'# WARNING: read error; export incomplete\n':''):url==='/evt'?'آخرین ردیف‌ها\n':'';
+  let v=url==='/lut/read'?{ok:1}:url==='/lut'?{read:rows}:url==='/benchlog?i=1'?{fs:1,size:emptyBench?0:42,format:emptyBench?'empty':'compact',max:102400}:url==='/evt/pct'?{ok:1,p:85}:url==='/evt/days'?(daysText??'00000000\n20261101'):url==='/benchlog'?(emptyBench?'# cols:\n':'# cols:\nBOTH,1,-0.125,یادداشت\n'):url.startsWith('/evt/dl?day=')?dayHeader+url+'\n'+(bodyWarning?'# WARNING: read error; export incomplete\n':''):url==='/evt'?(emptyTail?'':'آخرین ردیف‌ها\n'):'';
   return {ok:true,status:200,headers:{get:k=>k==='X-Log-Fs'&&url==='/evt/days'?sourceFlag:null},text:async()=>typeof v==='string'?v:JSON.stringify(v)};
  };
  class TestBlob extends w.Blob{constructor(parts,o){super(parts,o);this.parts=parts;}}
@@ -31,6 +32,7 @@ const unpack=bytes=>{const result={},b=Buffer.from(bytes);let p=0;while(b.readUI
  const realSamples=JSON.stringify(w.CALS),originalPending=w.eval('JSON.stringify(PEND)'),view=w.eval('JSON.stringify(calview())');
  check(await w.xexp()===true,'full export succeeds without external libraries or server ZIP support');
  const first=downloads.at(-1),files=unpack(first.bytes),manifest=JSON.parse(files['manifest.json']);
+ check(notices.length===0,'fully available export does not add an unnecessary confirmation');
  check(first.name.endsWith('.zip')&&manifest.app==='ChangeOver-package'&&manifest.complete,'single ZIP download has explicit complete status');
  check(Object.keys(files).every(n=>n==='manifest.json'||n.startsWith('restore/')||n.startsWith('archive/')),'restore and PC-only archives have separate top-level folders');
  check(Object.keys(files).filter(n=>n.startsWith('restore/')).length===2,'only settings and sample JSON belong in restore');
@@ -86,6 +88,21 @@ print(len(z.infolist()))`],{input:first.bytes});
  bodyHold=true;const timeout=w.setTimeout;w.setTimeout=(fn,ms)=>timeout(fn,ms===5000?15:ms);let aborted=false;try{await w.xread('/slow');}catch(e){aborted=true;}w.setTimeout=timeout;check(aborted,'five-second abort covers a stalled response body, not only response headers');
  bodyHold=false;const invalidRequests=requests.length;w.CALS.push({sc:'BOTH',r1:null});check(await w.xexp()===false&&requests.length===invalidRequests&&!w.eval('CAL_BUSY||XBACKUP'),'invalid local samples abort before network reads and release the export lock');
  w.eval('CALS=[];CALR=[];CALCUT=[[],[]]');await w.xexp();pm=JSON.parse(unpack(downloads.at(-1).bytes)['manifest.json']);check(pm.complete&&pm.absent.some(e=>e.includes('نمونه')),'true absence of local samples is recorded separately from a collection failure');
+ const missingStart=downloads.length;notices.length=0;daysText='';emptyBench=true;emptyTail=true;refuse=true;
+ check(await w.xexp()===false&&downloads.length===missingStart,'declining missing-data confirmation produces no download');
+ const missing=notices.at(-1);
+ check(missing.locked&&missing.downloads===missingStart,'missing-data list is shown before download while both locks remain held');
+ check(['نمونه','روزانه','بنچ','آخرین ردیف'].every(t=>missing.text.includes(t))&&!missing.text.includes('بسته ناقص'),'missing samples, days, bench and tail are named separately from read failures');
+ check(!w.eval('CAL_BUSY||XBACKUP'),'missing-data cancellation releases owned locks');
+ w.eval('CAL_BUSY=true');check(await w.xexp(true)===false&&w.eval('CAL_BUSY&&!XBACKUP')&&downloads.length===missingStart,'canceling missing-data safety backup preserves caller lock and denies apply');w.eval('CAL_BUSY=false');
+ refuse=false;check(await w.xexp()===true,'user can explicitly approve remaining data when optional data is absent');
+ pm=JSON.parse(unpack(downloads.at(-1).bytes)['manifest.json']);
+ check(pm.complete&&pm.errors.length===0&&pm.absent.length===4,'absence stays distinct from errors in the saved manifest');
+ const available=unpack(downloads.at(-1).bytes);
+ check(!!find(available,'restore/settings_')&&JSON.parse(available[find(available,'restore/samples_')]).samples.length===0,'approved missing-data package retains settings and honest empty samples');
+ bad='/lut/read';notices.length=0;await w.xexp();
+ check(notices.length===1&&notices[0].text.includes('خطاهای خواندن')&&notices[0].text.includes('اطلاعات ناموجود')&&notices[0].text.includes('جدول برد')&&notices[0].text.includes('روزانه'),'mixed read errors and absence use one confirmation with separate labeled sections');
+ pm=JSON.parse(unpack(downloads.at(-1).bytes)['manifest.json']);check(!pm.complete&&pm.errors.length>0&&pm.absent.length===4,'combined warning never upgrades an incomplete package');
  console.log('ALL '+checks+' BACKUP PACKAGE TESTS PASSED');
  }finally{dom.window.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
