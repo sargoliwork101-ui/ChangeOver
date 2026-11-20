@@ -1,5 +1,8 @@
 # ESP_Calibration contract
 
+Current interface reference for this folder only. Runtime code is authoritative.
+Historical measurements and prior audits are indexed separately in [README.md](README.md).
+
 ```contract json
 {
   "version": 1,
@@ -29,23 +32,23 @@
 | STM32 → ESP_Calibration | `PARAM_NAK` (`0x15`) | Rejected parameter id `u8` + reason `u8` |
 | STM32 → ESP_Calibration | `PARAMS_BULK` (`0x12`) | Count `u8` followed by id `u8` + value `u32 LE` items; may span frames |
 | STM32 → ESP_Calibration | `LUT_ACK` (`0x13`) | Stage, status, channel point counts and CRC32 |
-| STM32 → ESP_Calibration | `LUT_DATA` (`0x14`) | Channel, first point, count, then `(counts:u32 LE, battery_mA:u32 LE)` pairs |
+| STM32 → ESP_Calibration | `LUT_DATA` (`0x14`) | Channel, first point, count, then `(counts:u32 LE, battery_deci_mA:u32 LE)` pairs |
 | ESP_Calibration → STM32 | `HELLO` (`0x40`) | Every 2 s: protocol version, firmware version, role `2`, flags and uptime |
 | ESP_Calibration → STM32 | `SET_PARAM` (`0x01`) | Normal parameter writes: id `u8` 0–170 + value `u32 LE`; latch-reset actions also use ids 200–204 with value 0 (n=5 → 200–202, n=6 → 203, n=8 → 204); board returns applied value or NAK |
 | ESP_Calibration → STM32 | `GET_PARAMS` (`0x02`) | Empty request for current parameter values |
 | ESP_Calibration → STM32 | `LUT_BEGIN` (`0x04`) | Point counts for channels 1 and 2 (`u8`, `u8`) |
-| ESP_Calibration → STM32 | `LUT_CHUNK` (`0x05`) | Channel `u8`, first index `u8`, count `u8`, then count pairs `(counts:u32 LE, battery_mA:u32 LE)` |
+| ESP_Calibration → STM32 | `LUT_CHUNK` (`0x05`) | Channel `u8`, first index `u8`, count `u8`, then count pairs `(counts:u32 LE, battery_deci_mA:u32 LE)` |
 | ESP_Calibration → STM32 | `LUT_COMMIT` (`0x06`) | CRC32 `u32 LE` of staged table contents |
 | ESP_Calibration → STM32 | `LUT_RESET` (`0x07`) | Four bytes `RST!`; sent only after successful commit and point-by-point readback |
 | ESP_Calibration → STM32 | `LUT_READ` (`0x08`) | Empty request for active table points |
 | ESP_Calibration → STM32 | `WIFI_CLIENT_STATE` (`0x33`) | One byte: connected `1`, disconnected `0` |
 | Either direction | UART frame | `AA 55`, version `2`, type, length `u16 LE`, payload, CRC-16/CCITT-FALSE `u16 LE`; payload maximum 512 bytes |
-| Browser → ESP_Calibration | `POST /s?id=&v=` | Parameter id 0–170 and integer value; board-side range clamp; JSON `{ok}` |
+| Browser → ESP_Calibration | `POST /s?id=&v=` | Parameter id 0–170 and signed-int32 value; ESP-side clamp and coalesced queue, then board-side handling; JSON `{ok}` is queue acceptance, not board confirmation |
 | Browser → ESP_Calibration | `POST /m` / `GET /m` | POST resets the sample window and queues `GET_PARAMS`; GET returns JSON `n`, `s[31]`, `lo[31]`, `hi[31]`, `la[31]`, `or`, `seq`, `fl` |
-| Browser → ESP_Calibration | `POST /lut` | Plain CSV: `n1,n2`, then `n1` pairs `(counts,mA)`, `n2` pairs `(counts,mA)`, final CRC32; 0–24 points per channel |
+| Browser → ESP_Calibration | `POST /lut` | Plain CSV: `n1,n2`, then `n1` pairs `(counts,deci_mA)`, `n2` pairs `(counts,deci_mA)`, final CRC32; each count is 0 or 2–24, not both zero |
 | Browser → ESP_Calibration | `GET /lut` | JSON transfer status and, when ready, readback point pairs `r1`, `r2` |
 | Browser → ESP_Calibration | `POST /lut/read` | Empty body; starts active-table readback; JSON pending result |
-| Browser → ESP_Calibration | `POST /lut/reset` | Empty body; JSON result; refused unless commit CRC and point-by-point readback match |
+| Browser → ESP_Calibration | `POST /lut/reset` | Empty body; requests board reboot (not an unconditional table erase); JSON result; refused unless commit CRC and point-by-point readback match |
 | Browser → ESP_Calibration | `POST /latch/reset?n=` | `n=5` queues zero for ids 200–202; `n=6` id 203; `n=8` id 204; JSON result |
 | Browser → ESP_Calibration | `GET /latch` | JSON last slot echo, counts, NAK and queue status |
 | Browser → ESP_Calibration | `GET /benchlog?i=1` | JSON filesystem status, physical encoded size, maximum size and format (empty/compact/legacy/damaged); 503 on read/open failure |
@@ -53,7 +56,7 @@
 | Browser → ESP_Calibration | `POST /benchlog/add` | Printable ASCII CSV body, newline-terminated, maximum 1536 bytes; JSON result; HTTP 507 at 102400-byte physical cap; 409 for legacy/damaged append, 503 on storage failure |
 | Browser → ESP_Calibration | `POST /benchlog/clear` | Empty body; JSON result |
 | Browser → ESP_Calibration | `POST /clock?sec=&tz=` | Unix seconds and timezone offset; JSON result and current seconds |
-| Browser → ESP_Calibration | `GET /t` | JSON live telemetry, parameter values and link/handshake status |
+| Browser → ESP_Calibration | `GET /t` | JSON live telemetry `t[31]`, cached reported parameters `p[171]` (null when unknown), pending masks `q`..`q6` and link/handshake status |
 | Browser → ESP_Calibration | `GET /ping` | Plain-text ESP/filesystem/log status |
 | Browser → ESP_Calibration | `GET /` / `GET /f.css` | Panel HTML / font CSS |
 | Browser ↔ ESP_Calibration | `/evt`, `/evt/days`, `/evt/dl`, `/evt/clr`, `/evt/snap`, `/evt/format`, `/evt/fs`, `/evt/clean`, `/evt/pct` | Event-log text/CSV, day list, filesystem JSON and log-management results; `day` selects a date for `/evt` and `/evt/dl`; `p` sets the history share (40..100 percent) on `/evt/pct` |
@@ -69,6 +72,48 @@ restores the default share (100%). Deleting a day removes its matching RAM rows
 only and invalidates its cached state; unrelated pending rows remain intact.
 
 There is no application login/session check in this firmware: HTTP routes, including destructive operations such as `/evt/format`, `/evt/clr`, `/evt/clean`, `/benchlog/clear`, `/lut`, and `/lut/reset`, are reachable by any station that can join the AP. Current AP key is hard-coded as `123456789`. These are verified current behaviors, not recommendations; changing authentication or credentials requires owner approval and device-side changes.
+
+## Parameter reports, browser batches and retry
+
+`func__Esp_HttpSetParam` accepts in-range ids and parsed signed-int32 values,
+clamps to `INT32_T__G__ParamMin/Max`, and records the latest value in the ESP
+queue. The HTTP handler does not wait for UART or flash. Reserved/derived ids
+are not proven writable merely because `/s` queued them; board-side acceptance
+and any dependent clamps remain separate. The queue has one pending value per
+ordinary id; `UINT8_T__G__TxOrder` in `plink_state.h` sets send priority and
+`ESP_LINK_TX_INTERVAL_MS` is 120 ms. LUT transfer can defer parameter sends.
+
+`func__Esp_HttpTelemetry` exposes the last known parameter reports held in ESP.
+A changed telemetry sequence is not a fresh per-parameter acknowledgment, nor
+proof of STM32 flash persistence. The browser's report compares requested
+values with these reports, not with HTTP success counts.
+
+`sendall` validates ranges and freezes a batch before its first POST. The report
+separates equal, different, unknown and unrelated unsent settings, with named
+cards and count-based filters. Only an equal readback can consume the same
+unchanged pending edit. A newer edit is retained.
+
+The visible actions are «بررسی دوبارهٔ نتیجه» and
+«ارسال دوبارهٔ موارد تأییدنشده». `sendRecheck` reads `/t` with a five-second
+abort, requires online data and a different `seq`, and preserves the prior
+report on failure. `sendRetryIds` selects only unresolved original values
+still identical in `PEND`; `sendRetry` passes that subset to the normal validated
+send path. Confirmed, cancelled, newer and unrelated edits are not retried.
+POST requests in that path also have a five-second abort; timeout is an unknown
+outcome, not proof that a write did not happen. Both actions respect the same
+capture/transaction locks. No automatic retry, per-parameter freshness marker
+or flash-persistence acknowledgment is added.
+
+LUT values use different presentation and wire units: browser table `Y` is mA,
+`lpack` sends `round(Y * 10)` as unsigned integer deci-mA, and `lreadtable`
+divides readback by 10. Both `/lut` bodies and `r1`/`r2` raw pairs carry those
+wire units. See `lpack`/`lreadtable` in `plink_panel.h` and the raw staging arrays
+in `plink_link.h`; do not interpret a transmitted value of 6500 as 6500 mA.
+
+Both GET and POST `/evt/pct` register the same handler. With no `p` it reports
+the setting. As currently written, a valid nonempty `p` on either method can
+set the share and trim history. This documents existing behavior; it does not
+add authentication or change HTTP methods.
 
 ## Bench per-step repeat (current panel)
 
@@ -156,10 +201,9 @@ marked as suspects; before-commit differences are not mislabeled as failures.
 Visible reasons and static reduced-motion presentation accompany color. Masks
 and markers never change source values or automatically delete a measurement.
 
-To retain the existing HTML transfer ceiling, non-executable old bench/calibration
-source comments were compacted. No CSS/markup was removed for this size cleanup.
-Token comparisons of calfit/calbuild/lpack and the frozen storage tester confirm
-their numerical/storage cores are unchanged. Firmware and ESP_USER are untouched.
+The panel literal has an unchanged 491520-byte compile-time ceiling, including
+its NUL terminator. Its current size is recorded in README.md, not used as a
+claim about total binary size or runtime memory.
 
 
 ## Restore audit and deliberately removed dead paths
