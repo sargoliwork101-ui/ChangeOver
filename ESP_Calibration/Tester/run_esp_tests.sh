@@ -34,6 +34,14 @@ echo "[2/2] running / اجرا"
 export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 export ASAN_OPTIONS="detect_leaks=0"
 "${BINARY}"
+# [EN] Core-style String overloads must not capture codec buffer arithmetic.
+echo "[bench codec] compiling and running String-overload regression"
+g++ -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-parameter \
+    -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+    -I "${SCRIPT_DIRECTORY}" \
+    "${SCRIPT_DIRECTORY}/host_test_bench_codec_string.cpp" \
+    -o "${BUILD_DIRECTORY}/host_test_bench_codec_string"
+"${BUILD_DIRECTORY}/host_test_bench_codec_string"
 # [EN] Optional behavioural tests in a real DOM. They need node and jsdom, which
 #      are not dependencies of this project, so a missing tool SKIPS instead of
 #      failing. When the tools exist they are part of the gate: a panel that

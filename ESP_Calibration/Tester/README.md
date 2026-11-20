@@ -1,3 +1,18 @@
+## Bench codec String-overload compile regression
+`host_test_bench_codec_string.cpp` compiles the production codec with two
+core-style free addition overload candidates and implicit character-pointer
+conversion. The stand-in deliberately omits the shared host String stub's
+extra implicit numeric conversions. It is not a complete ESP8266 core build.
+Before the fix, `-Werror` rejects the original line 155 with the two ambiguous
+addition diagnostics. Addressing `frame[FrameHead]` before casting to `char*`
+removes the ambiguous expression without changing offsets, lengths or format.
+The runner builds this regression with ASan/UBSan and warnings as errors.
+All 1536 legal payload lengths round-trip byte-exactly with buffer canaries;
+a short payload read still sets ioError without advancing the sequence.
+Full runner: PASS, no SKIP (619 host, 53 transaction, 32 restore, 58 feedback,
+288 Chromium layout checks, plus the new compile/runtime regression).
+Actual ESP8266 3.1.2 compiler and physical-board validation were not run.
+
 ## Grouped restore/send report
 Current feedback coverage: 58 checks. Only matching readback consumes an
 unchanged pending edit; mismatch-only batches retain retry. Recheck is read-only,
