@@ -81,7 +81,7 @@
       ]
     },
     "STM32": {
-      "roots": ["Firmware", "CubeIDE", "CubeMX", "Circuit", "Programmer"],
+      "roots": ["Firmware", "CubeIDE", "CubeMX", "Circuit"],
       "contract": "Firmware/CONTRACT.md",
       "locked_symbols": [
         {

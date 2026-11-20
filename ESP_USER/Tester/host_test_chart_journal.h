@@ -237,15 +237,15 @@ static void func__T_TestChartNinetyDayBudget(void)
     size_t chartBytes=func__T_ChartBytes(SIMPLE_CHARTS_FILE).size()+func__T_ChartBytes(SIMPLE_CHART_JOURNAL_FILE).size();
     const size_t oldTotal=SIM_SIZE_T__G__FsTotalBytes;SIM_SIZE_T__G__FsTotalBytes=64000u;
     const uint32_t today=func__Simple_NowSec()/86400u;
-    for(uint32_t day=0u;day<90u;day++)
+    for(uint32_t day=0u;day<30u;day++)
     {
         char path[SIMPLE_LOG_PATH_MAX];func__SimpleLog_PathOf(path,func__SimpleLog_DateCode(today-day));
         func__T_ChartWrite(path,std::string(285u,'x'));
     }
     func__T_ChartWrite("/chart-budget-other",std::string(8000u,'x'));
     func__SimpleLog_ScanDays(true);func__SimpleLog_TrimDays();FSInfo info;LittleFS.info(info);
-    printf("CHART 90 DAYS: chart files=%zu bytes; combined with 90 log days and 8000 other bytes=%zu / %zu\n",chartBytes,info.usedBytes,info.totalBytes);
-    func__T_Check(chartBytes<6000u && info.usedBytes<64000u && UINT8_T__G__LogIndexCount==90u,
+    printf("CHART 90 DAYS: chart files=%zu bytes; combined with 30 log days and 8000 other bytes=%zu / %zu\n",chartBytes,info.usedBytes,info.totalBytes);
+    func__T_Check(chartBytes<6000u && info.usedBytes<64000u && UINT8_T__G__LogIndexCount==30u,
                   "سقف محتوای فایل‌ها جدا از تخصیص واقعی فلش است؛ تست LittleFS آن تخصیص را می‌سنجد");
     SIM_SIZE_T__G__FsTotalBytes=oldTotal;LittleFS.format();func__Simple_ChartsClear(false);
 }

@@ -218,18 +218,19 @@ static void func__Simple_ChartTick(void)
         uint32_t__imb = UINT32_T__G__TlmField[25];
         uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
         uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
-        uint32_t uint32_t__vMaxChgMv = func__Simple_BoardParam(SIMPLE_PARAM_CHG_PCT_VMAX_MV);
-        uint32_t uint32_t__vpackClamped = uint32_t__vpack;
-        if (uint32_t__vpackClamped > uint32_t__vMaxChgMv)
+        /* Stored chart percentages retain the discharge scale, independent of charge bounds. */
+        if ((uint32_t__vMaxMv > uint32_t__vMinMv) && (uint32_t__vpack >= uint32_t__vMinMv))
         {
-            uint32_t__vpackClamped = uint32_t__vMaxChgMv;
-        }
-        if ((uint32_t__vMaxMv > uint32_t__vMinMv) && (uint32_t__vpackClamped >= uint32_t__vMinMv))
-        {
-            uint32_t__pct = ((uint32_t__vpackClamped - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
-            if (uint32_t__pct > 100u)
+            uint32_t uint32_t__voltageAboveMinMv = uint32_t__vpack - uint32_t__vMinMv;
+            uint32_t uint32_t__voltageRangeMv = uint32_t__vMaxMv - uint32_t__vMinMv;
+            if (uint32_t__voltageAboveMinMv >= uint32_t__voltageRangeMv)
             {
                 uint32_t__pct = 100u;
+            }
+            else
+            {
+                uint32_t uint32_t__scaledPercent = uint32_t__voltageAboveMinMv * 100u;
+                uint32_t__pct = uint32_t__scaledPercent / uint32_t__voltageRangeMv;
             }
         }
     }
@@ -332,102 +333,80 @@ static void func__Simple_SendGetParams(void)
 #ifndef SIMPLE_CHARGE_HISTORY_FILE
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
 #endif
+/* ==================== Charge snapshot write ==================== */
+/** @brief Commit bounded version-two session rows through the shared atomic writer. */
 static void func__Simple_ChargeHistorySave(void)
 {
     if (!BOOL__G__FsOk) return;
     String string__data;
-    if (!func__Simple_StorageTextAppend(string__data, String("{\"count\":"))) return;
-    if (!func__Simple_StorageTextAppend(string__data, String(UINT8_T__G__ChargeHistoryCount))) return;
-    if (!func__Simple_StorageTextAppend(string__data, String(",\"prevCh1\":"))) return;
-    if (!func__Simple_StorageTextAppend(string__data, String(UINT32_T__G__PrevChargeCountCh1))) return;
-    if (!func__Simple_StorageTextAppend(string__data, String(",\"prevCh2\":"))) return;
-    if (!func__Simple_StorageTextAppend(string__data, String(UINT32_T__G__PrevChargeCountCh2))) return;
-    if (!func__Simple_StorageTextAppend(string__data, String(",\"hist\":["))) return;
-    uint8_t uint8_t__i;
-    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__ChargeHistoryCount; uint8_t__i++)
+    if (!func__Simple_StorageTextAppend(string__data, String("{\"v\":2,\"hist\":["))) return;
+    for (uint8_t uint8_t__i = 0u; uint8_t__i < UINT8_T__G__ChargeHistoryCount; uint8_t__i++)
     {
-        if (uint8_t__i != 0u) if (!func__Simple_StorageTextAppend(string__data, String(","))) return;
-        if (!func__Simple_StorageTextAppend(string__data, String("{\"ts\":"))) return;
-        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].timestamp))) return;
-        if (!func__Simple_StorageTextAppend(string__data, String(",\"ch\":"))) return;
-        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].channel))) return;
-        if (!func__Simple_StorageTextAppend(string__data, String(",\"dur\":"))) return;
-        if (!func__Simple_StorageTextAppend(string__data, String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].durationSec))) return;
-        if (!func__Simple_StorageTextAppend(string__data, String("}"))) return;
+        const simple_charge_event_t &event = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i];
+        char char__row[96];
+        int int__n = snprintf(char__row, sizeof(char__row), "%s[%lu,%u,%lu,%lu,%u]",
+            uint8_t__i ? "," : "", (unsigned long)event.timestamp, event.channel,
+            (unsigned long)event.durationSec, (unsigned long)event.startSec, event.status);
+        if (int__n <= 0 || (size_t)int__n >= sizeof(char__row)) return;
+        if (!func__Simple_StorageTextAppend(string__data, String(char__row))) return;
     }
     if (!func__Simple_StorageTextAppend(string__data, String("]}"))) return;
     if (func__Simple_StorageWrite(SIMPLE_CHARGE_HISTORY_FILE, string__data)) BOOL__G__ChargeHistDirty = false;
 }
+/* ==================== Strict snapshot numbers ==================== */
+/** @brief Read one unsigned decimal and required delimiter; reject overflow and junk. */
+static bool func__Simple_ChargeNumber(const String &text, int &pos, uint32_t &value, char delimiter)
+{
+    value = 0u;
+    int int__digits = 0;
+    while (pos < (int)text.length())
+    {
+        char ch = text.charAt((unsigned)pos);
+        if (ch < '0' || ch > '9') break;
+        uint32_t digit = (uint32_t)(ch - '0');
+        if (value > (UINT32_MAX - digit) / 10u) return false;
+        value = value * 10u + digit;
+        pos++;
+        int__digits++;
+    }
+    if (!int__digits || text.charAt((unsigned)pos) != delimiter) return false;
+    pos++;
+    return true;
+}
+/* ==================== Charge snapshot read ==================== */
+/** @brief Load only complete version-two snapshots; interrupted observation stays unknown. */
 static void func__Simple_ChargeHistoryLoad(void)
 {
     UINT8_T__G__ChargeHistoryCount = 0u;
-    UINT32_T__G__PrevChargeCountCh1 = 0u;
-    UINT32_T__G__PrevChargeCountCh2 = 0u;
-    if (!BOOL__G__FsOk) return;
-    if (!LittleFS.exists(SIMPLE_CHARGE_HISTORY_FILE)) return;
-    File file__f = LittleFS.open(SIMPLE_CHARGE_HISTORY_FILE, "r");
-    if (!file__f) return;
-    String string__content = file__f.readString();
-    file__f.close();
-    int32_t int32_t__prev1Pos = string__content.indexOf("\"prevCh1\":");
-    if (int32_t__prev1Pos >= 0)
+    func__Simple_ChargeReset();
+    if (!BOOL__G__FsOk || !LittleFS.exists(SIMPLE_CHARGE_HISTORY_FILE)) return;
+    File file = LittleFS.open(SIMPLE_CHARGE_HISTORY_FILE, "r");
+    if (!file || file.size() > SIMPLE_STORAGE_HISTORY_BYTES) return;
+    String text = file.readString();
+    file.close();
+    const String prefix("{\"v\":2,\"hist\":[");
+    if (text.substring(0, prefix.length()) != prefix) return;
+    int pos = (int)prefix.length();
+    uint8_t count = 0u;
+    bool recovered = false;
+    while (text.charAt((unsigned)pos) == '[' && count < SIMPLE_DIAG_MAX_POWER_EVENTS)
     {
-        int32_t__prev1Pos += 10;
-        int32_t int32_t__prev1End = string__content.indexOf(",", int32_t__prev1Pos);
-        if (int32_t__prev1End > int32_t__prev1Pos)
-        {
-            String string__p1 = string__content.substring(int32_t__prev1Pos, int32_t__prev1End);
-            UINT32_T__G__PrevChargeCountCh1 = (uint32_t)string__p1.toInt();
-            UINT32_T__G__ChargeCountCh1 = UINT32_T__G__PrevChargeCountCh1;
-            BOOL__G__ChargeCountBaselineReady = true;
-        }
+        pos++;
+        uint32_t value[5];
+        for (uint8_t i = 0u; i < 5u; i++)
+            if (!func__Simple_ChargeNumber(text, pos, value[i], i < 4u ? ',' : ']')) return;
+        if (value[0] < SIMPLE_TIME_VALID_MIN || value[1] < 1u || value[1] > 2u || value[4] > 3u ||
+            (value[3] && (value[3] < SIMPLE_TIME_VALID_MIN || value[3] > value[0]))) return;
+        if (value[4] == 3u) { value[4] = 0u; value[2] = 0u; recovered = true; }
+        if (!value[3] || value[4] == 0u) value[2] = 0u;
+        SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[count++] = {value[0], (uint8_t)value[1], value[2], value[3], (uint8_t)value[4]};
+        if (text.charAt((unsigned)pos) != ',') break;
+        pos++;
+        if (text.charAt((unsigned)pos) != '[') return;
     }
-    int32_t int32_t__prev2Pos = string__content.indexOf("\"prevCh2\":");
-    if (int32_t__prev2Pos >= 0)
-    {
-        int32_t__prev2Pos += 10;
-        int32_t int32_t__prev2End = string__content.indexOf(",", int32_t__prev2Pos);
-        if (int32_t__prev2End > int32_t__prev2Pos)
-        {
-            String string__p2 = string__content.substring(int32_t__prev2Pos, int32_t__prev2End);
-            UINT32_T__G__PrevChargeCountCh2 = (uint32_t)string__p2.toInt();
-            UINT32_T__G__ChargeCountCh2 = UINT32_T__G__PrevChargeCountCh2;
-            BOOL__G__ChargeCountBaselineReady = true;
-        }
-    }
-    int32_t int32_t__pos = 0;
-    uint8_t uint8_t__found = 0u;
-    while (uint8_t__found < SIMPLE_DIAG_MAX_POWER_EVENTS)
-    {
-        int32_t int32_t__tsPos = string__content.indexOf("\"ts\":", int32_t__pos);
-        if (int32_t__tsPos < 0) break;
-        int32_t__tsPos += 5;
-        int32_t int32_t__tsEnd = string__content.indexOf(",", int32_t__tsPos);
-        if (int32_t__tsEnd < 0) break;
-        int32_t int32_t__objEnd = string__content.indexOf("}", int32_t__tsEnd);
-        if (int32_t__objEnd < 0) int32_t__objEnd = string__content.length();
-        String string__ts = string__content.substring(int32_t__tsPos, int32_t__tsEnd);
-        int32_t int32_t__chPos = string__content.indexOf("\"ch\":", int32_t__tsEnd);
-        if (int32_t__chPos < 0) break;
-        int32_t__chPos += 5;
-        int32_t int32_t__chEnd = string__content.indexOf(",", int32_t__chPos);
-        if (int32_t__chEnd < 0 || int32_t__chEnd > int32_t__objEnd) int32_t__chEnd = int32_t__objEnd;
-        String string__ch = string__content.substring(int32_t__chPos, int32_t__chEnd);
-        uint32_t uint32_t__duration = 0u;
-        int32_t int32_t__durPos = string__content.indexOf("\"dur\":", int32_t__chEnd);
-        if (int32_t__durPos >= 0 && int32_t__durPos < int32_t__objEnd)
-        {
-            int32_t__durPos += 6;
-            uint32_t__duration = (uint32_t)string__content.substring(int32_t__durPos, int32_t__objEnd).toInt();
-        }
-        int32_t__pos = int32_t__objEnd;
-        if ((uint32_t)string__ts.toInt() < SIMPLE_TIME_VALID_MIN) continue;
-        SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__found].timestamp = (uint32_t)string__ts.toInt();
-        SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__found].channel = (uint8_t)string__ch.toInt();
-        SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__found].durationSec = uint32_t__duration;
-        uint8_t__found++;
-    }
-    UINT8_T__G__ChargeHistoryCount = uint8_t__found;
+    if (text.substring(pos) != "]}") return;
+    UINT8_T__G__ChargeHistoryCount = count;
+    if (recovered) BOOL__G__ChargeHistDirty = true;
 }
 #ifndef SIMPLE_DIAG_FILE
 #define SIMPLE_DIAG_FILE            "/diag.json"
@@ -605,14 +584,10 @@ static void func__Simple_DiagLoad(void)
 }
 static bool func__Simple_ChargeHistoryClear(bool bool__persist = true)
 {
-    String string__empty;
-    if (!func__Simple_StorageTextAppend(string__empty, String("{\"count\":0,\"prevCh1\":")) ||
-        !func__Simple_StorageTextAppend(string__empty, String(UINT32_T__G__ChargeCountCh1)) ||
-        !func__Simple_StorageTextAppend(string__empty, String(",\"prevCh2\":")) ||
-        !func__Simple_StorageTextAppend(string__empty, String(UINT32_T__G__ChargeCountCh2)) ||
-        !func__Simple_StorageTextAppend(string__empty, String(",\"hist\":[]}"))) return false;
+    String string__empty("{\"v\":2,\"hist\":[]}");
     if (bool__persist && !func__Simple_StorageWrite(SIMPLE_CHARGE_HISTORY_FILE, string__empty)) return false;
     UINT8_T__G__ChargeHistoryCount = 0u;
+    func__Simple_ChargeReset();
     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
     UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
     BOOL__G__ChargeCountBaselineReady = BOOL__G__DiagValid;

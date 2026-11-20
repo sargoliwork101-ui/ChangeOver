@@ -1,0 +1,74 @@
+'use strict';
+// Exercise the actual compiled footer renderer and the independent editable values.
+const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const {JSDOM,VirtualConsole}=require('jsdom');
+const root=path.join(__dirname,'..');
+const source=fs.readFileSync(path.join(root,'simple_panel.h'),'utf8');
+const html=source.split('R"rawliteral(')[1].split(')rawliteral"')[0];
+const raw=fs.readFileSync(path.join(root,'about_content.h'),'utf8').split('R"about(')[1].split(')about"')[0];
+const configured=JSON.parse(raw);
+const asset=fs.readFileSync(path.join(root,'about_footer.h'),'utf8').split('R"footer(')[1].split(')footer"')[0];
+const tick=async()=>{for(let i=0;i<6;i++)await new Promise(r=>setImmediate(r));};
+const reply=(data,ok=true)=>({ok,json:async()=>data});
+let checks=0;
+function check(ok,label){assert.ok(ok,label);checks++;console.log('PASS: '+label);}
+async function session(fetchAbout=async()=>reply(configured)){
+ const dom=new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true,url:'http://panel.test'}),w=dom.window,d=w.document;
+ w.setInterval=()=>0;w.addEventListener=()=>{};w.HTMLCanvasElement.prototype.getContext=()=>null;
+ let calls=0;w.fetch=async(url,options)=>{if(url!=='/about')throw Error('offline');calls++;return fetchAbout(options);};
+ await tick();w.eval(html.match(/<script>([\s\S]*?)<\/script>/)[1]);w.eval(asset);await tick();
+ return {w,d,dom,calls:()=>calls};
+}
+(async()=>{
+ const p=await session(),{w,d}=p,footer=d.getElementById('about');
+ check(footer.tagName==='FOOTER'&&!footer.closest('.pgx')&&!footer.querySelector('summary,details'),'About is a permanent semantic footer, not an icon menu or disclosure');
+ check(d.querySelectorAll('#about').length===1&&footer.querySelector('#fwTap[onclick="admTap()"]'),'all tabs share one footer and preserve the version/admin entry');
+ check(source.includes('<script src="/about.js" defer></script>'),'production loads the same flash footer asset');
+ check(p.calls()===1&&d.querySelectorAll('.company-contact').length===2,'contact data loads automatically once and shows only the two provided fields');
+ check(d.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:09367969890'&&d.querySelector('[data-about="phone"] bdi').textContent==='09367969890','phone is a real dial link, without changing the configured number');
+ check(d.querySelector('[data-about="address"] bdi').textContent==='تهران-تهران','office address comes from the independent content file');
+ check(['companyName','description','phone2','website','email','whatsapp','hours','social'].every(key=>configured[key]===''&&!d.querySelector('[data-about="'+key+'"]')),'empty company, description and optional values produce no title, row, link or icon');
+ check(!source.includes('09367969890')&&!source.includes('تهران-تهران'),'editable contact values are not duplicated in the application page');
+ check(d.getElementById('companyFooterStyle').textContent.includes('text-align:center')&&!footer.classList.contains('cd'),'footer is centered, muted and not a raised card');
+ check(d.querySelector('.company-contact svg path')&&d.querySelector('.company-contact svg').getAttribute('aria-hidden')==='true','local line icons decorate contact rows without becoming keyboard controls');
+ for(const tab of [0,1,2]){w.showTab(tab);check(!footer.closest('.pgx')&&!footer.hidden,'footer remains available on tab '+tab);}
+ await w.loadAbout();await w.loadAbout();check(p.calls()===1,'tab changes and repeated loads cannot refetch already-loaded values');
+ check([...d.querySelectorAll('.company-copy')].every(b=>!b.textContent.trim()&&b.querySelector('svg')&&b.getAttribute('aria-label')==='کپی شماره تماس'),'copy is an accessible icon only, without a visible word');
+ let copied='';Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+ d.querySelector('.company-copy').click();await tick();check(copied==='09367969890'&&d.getElementById('aboutStatus').textContent==='شماره کپی شد.','secure clipboard copy confirms only a successful write');
+ Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:undefined});let fallback='';
+ d.execCommand=command=>{fallback=command+':'+d.querySelector('textarea').value;return true;};const copy=d.querySelector('.company-copy');copy.focus();copy.click();await tick();
+ check(fallback==='copy:09367969890'&&!d.querySelector('textarea')&&d.activeElement===copy,'HTTP clipboard fallback copies the number, removes scratch markup and restores focus');
+ Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('denied');}}});d.execCommand=()=>false;copy.click();await tick();
+ check(d.getElementById('aboutStatus').textContent.includes('کپی انجام نشد'),'denied clipboard and failed fallback never falsely report success');
+ w.renderCompanyFooter({companyName:'',description:'  ',phone:' ',website:'',address:'',email:null,whatsapp:42,hours:'\n',social:{}});
+ check(!d.querySelector('[data-about],.company-contact svg,.company-copy')&&footer.querySelector('#fwTap'),'all-empty or invalid field types leave only the existing version footer');
+ w.renderCompanyFooter({phone:'09367969890',phone2:'+۹۸ (۲۱) ۱۲۳۴۵۶۷۸'});
+ check(d.querySelectorAll('.company-copy').length===2&&d.querySelector('[data-about=phone2] a').getAttribute('href')==='tel:+982112345678','second editable number has an independent normalized dial link and copy icon');
+ d.execCommand=()=>true;Object.defineProperty(w.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+ d.querySelector('[data-about=phone2] .company-copy').click();await tick();check(copied==='+982112345678','second phone copies its own number, not the first');
+ w.renderCompanyFooter({phone:'',phone2:'02112345678'});
+ check(!d.querySelector('[data-about=phone]')&&d.querySelectorAll('.company-contact').length===1,'second number works alone and empty first phone has no label or icon');
+ const complete={companyName:'نام آزمایشی برای تست',description:'خط اول\nخط دوم',phone:'+۹۸ (۹۳۶) ۷۹۶-۹۸۹۰',website:'example.com',address:'نشانی آزمایشی',email:'support@example.com',whatsapp:'+989367969890',hours:'زمان آزمایشی',social:'https://example.com/social'};
+ w.renderCompanyFooter(complete);
+ check(d.querySelector('[data-about="companyName"]').textContent===complete.companyName&&d.querySelector('[data-about="description"]').textContent===complete.description,'company name and multi-line introduction appear only when supplied');
+ check(d.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:+989367969890','Persian digits and phone punctuation normalize for dialing');
+ check(d.querySelector('[data-about="website"] a').href==='https://example.com/'&&d.querySelector('[data-about="social"] a').rel==='noopener noreferrer','web and social links use safe schemes and isolate external tabs');
+ check(d.querySelector('[data-about="email"] a').getAttribute('href')==='mailto:support@example.com'&&d.querySelector('[data-about="whatsapp"] a').href==='https://wa.me/989367969890','optional email and international WhatsApp values become working links');
+ check(d.querySelector('[data-about="hours"] bdi').textContent===complete.hours,'optional response hours are displayed verbatim');
+ w.renderCompanyFooter({phone:'٠٩٣٦٧٩٦٩٨٩٠'});check(d.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:09367969890','Arabic digits also normalize correctly');
+ w.renderCompanyFooter({companyName:'<img src=x onerror=alert(1)>',description:'<script>alert(1)</script>',website:'javascript:alert(1)',social:'data:text/html,hello',email:'x@y.z\r\nBcc:bad@x.z',whatsapp:'javascript:alert(1)'});
+ check(!footer.querySelector('img,script,a')&&footer.textContent.includes('<img'),'configuration is plain text, not executable HTML or unsafe links');
+ w.close();
+ const failed=await session(async()=>reply({},false));check(failed.d.querySelector('.company-retry')&&!failed.d.querySelector('.company-contact'),'failed fetch offers an unobtrusive retry instead of empty contact headings');
+ let resolve,calls=0;failed.w.fetch=()=>{calls++;return new Promise(r=>resolve=r);};failed.d.querySelector('.company-retry').click();await failed.w.loadAbout();
+ check(calls===1,'rapid retries cannot duplicate an in-flight contact request');resolve(reply(configured));await tick();
+ check(failed.d.querySelector('[data-about="phone"] a')&&!failed.d.querySelector('.company-retry'),'retry restores supplied contacts after a failed response');failed.w.close();
+ const malformed=await session(async()=>reply(null));check(malformed.d.querySelector('.company-retry'),'malformed configuration stays safe and retryable');malformed.w.close();
+ const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ const offline=new JSDOM(fs.readFileSync(path.join(root,'simple_preview.html'),'utf8'),{runScripts:'dangerously',pretendToBeVisual:true,url:'file:///panel.html',virtualConsole:vc,beforeParse(win){win.setInterval=()=>0;win.HTMLCanvasElement.prototype.getContext=()=>null;}});
+ await tick();const body=offline.window.document.getElementById('aboutBody');
+ check(body.querySelector('[data-about="phone"] a').getAttribute('href')==='tel:09367969890'&&!body.querySelector('[data-about="website"]'),'offline preview uses the same renderer and hides unfilled values automatically');
+ check(!errors.length,'shared footer preview has no script errors');offline.window.close();
+ console.log(`ALL ${checks} ABOUT CHECKS PASSED`);
+})().catch(e=>{console.error(e);process.exit(1);});

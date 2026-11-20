@@ -22,6 +22,7 @@ Usage
     python3 ESP_USER/Simulator/lab/server.py --port 8090
     python3 ESP_USER/Simulator/lab/server.py --export   # write FINDINGS.md
 """
+import datetime
 import json
 import os
 import re
@@ -48,9 +49,8 @@ SESSION_TIMEOUT_S = 1800
 def panel_literal_bytes():
     """Return the byte length of the panel HTML that the firmware really compiles.
 
-    The preview copy (index.html) carries the JS shim, so it is about 13 KB
-    bigger than the raw string inside simple_panel.h. Size checks must use the
-    literal, otherwise the panel looks over its cap while it is not.
+    The offline simple_preview.html includes a simulator shim and shared assets.
+    Size checks must use the production literal, not that generated preview.
     """
     text = open(PANEL_SOURCE, encoding="utf-8").read()
     start = text.index('R"rawliteral(') + len('R"rawliteral(')
@@ -60,10 +60,30 @@ def panel_literal_bytes():
 
 def load_panel_html():
     """Return the exact HTML string compiled into the firmware."""
-    text = open(PANEL_SOURCE, encoding="utf-8").read()
+    with open(PANEL_SOURCE, encoding="utf-8") as handle:
+        text = handle.read()
     start = text.index('R"rawliteral(') + len('R"rawliteral(')
     end = text.rindex(')rawliteral"')
     return text[start:end]
+def load_about_json():
+    """Serve the same editable company JSON literal as the firmware."""
+    with open(os.path.join(SIM_DIR, "..", "about_content.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"about(', 1)[1].split(')about"', 1)[0]
+def load_about_script():
+    """Read the company footer renderer compiled by the ESP sketch."""
+    with open(os.path.join(SIM_DIR, "..", "about_footer.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"footer(', 1)[1].split(')footer"', 1)[0]
+def load_calendar_js():
+    """Read the flash asset shared with the ESP sketch."""
+    with open(os.path.join(SIM_DIR, "..", "charge_calendar.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
+def load_pack_js():
+    """Read the same maintenance asset compiled into the ESP."""
+    with open(os.path.join(ESP_USER_DIR, "pack_review_panel.h"), encoding="utf-8") as handle:
+        return handle.read().split('R"packjs(', 1)[1].split(')packjs"', 1)[0]
+def load_preview_html():
+    """Serve the unmodified production page, including its calendar asset URL."""
+    return load_panel_html()
 # ==================== board model ====================
 class Board:
     """Just enough of the board to feed every field the panel reads."""
@@ -85,6 +105,7 @@ class Board:
         self.board_uptime = 9 * 3600
         self.board_time = int(time.time())
         self.rows = {}
+        self.pack_review = dict(limit=0, upper=0, lower=0, at=0, revision=0)
         self.deleted_files = set()
         self.chart = {"1d": [], "7d": [], "1m": [], "3m": []}
         self.errors = []
@@ -104,7 +125,7 @@ class Board:
     # The owner asked to see the panel with a long series of data. Everything
     # below is deterministic: the same day always shows the same numbers, so a
     # screenshot today matches a screenshot tomorrow.
-    MAX_DAYS = 90             # mirrors SIMPLE_LOG_MAX_DAYS in simple_config.h
+    MAX_DAYS = 30             # mirrors SIMPLE_LOG_MAX_DAYS in simple_config.h
     CYCLE_HOURS = 48          # 8 h charging, 40 h running on the battery
     CHARGE_HOURS = 8
     SEED_DAYS = 90
@@ -123,7 +144,7 @@ class Board:
         return pct, vin, 21000 + pct * 80
 
     def row_at(self, stamp, uptime_s, chg, note, fault, pct, vin, vpack):
-        """One CSV row with the same 22 columns the firmware writes."""
+        """One CSV row with the same 18 columns the firmware writes."""
         # both packs hang on the same charger, so they always charge together:
         # one stage for both channels and both currents non-zero at the same time
         stage = 0 if vin == 0 else 1 + min(8, max(0, pct - 30) * 8 // 70)
@@ -131,14 +152,15 @@ class Board:
         i2 = 0 if stage == 0 else 1120 + (pct % 5) * 10
         return ",".join(str(v) for v in [
             stamp, uptime_s, chg, note, 1 if vin else 0,
-            3 if vin else 2, stage, stage,
-            fault, 0, vpack, 12600, 12900, self.imbalance, self.dead,
-            vin, 12000, i1, i2, 500, 500, pct,
+            1 if vin else 0, stage, stage,
+            fault, 0, (vpack-self.imbalance)//2, vpack-(vpack-self.imbalance)//2, self.dead,
+            vin, i1, i2, 500, 500,
         ])
 
     def make_day_rows(self, midnight, day_index):
         """A believable day: boot, mains in/out, charge stages, a few notes."""
-        rows = []
+        pct, vin, vpack = self.state_at(midnight)
+        rows = [self.row_at(midnight, 0, 0, 7, 0, pct, vin, vpack)]
         for hour in range(24):
             stamp = midnight + hour * 3600
             pct, vin, vpack = self.state_at(stamp)
@@ -166,7 +188,7 @@ class Board:
                 bits |= 0x0080
                 note = 3                            # link back
             # the firmware also writes a row whenever the pack voltage moves
-            # by 200 mV, which on this 48 h cycle is roughly every two hours
+            # by 500 mV; these illustrative fixtures are not a firmware timing test
             if (bits or note) or (hour % 2 == 0):
                 rows.append(self.row_at(stamp, (day_index + 1) * 3600 + hour * 60,
                                         bits, note, fault, pct, vin, vpack))
@@ -254,25 +276,30 @@ class Board:
         while hour <= end_hour:
             if hour % self.CYCLE_HOURS == 0:
                 stamp = hour * 3600
+                partial = (hour // self.CYCLE_HOURS) % 3 == 0
+                duration = 2400 if partial else self.CHARGE_HOURS * 3600
+                complete = stamp + duration
                 for channel in (1, 2):
-                    events.append({"ts": stamp, "ch": channel,
-                                   "dur": self.CHARGE_HOURS * 3600,
-                                   "from": 30, "to": 100})
+                    active = complete > now
+                    end = now if active else complete
+                    events.append({"ts": end, "start": stamp, "ch": channel,
+                                   "dur": end - stamp, "status": "charging" if active else "partial" if partial else "complete",
+                                   "from": 30, "to": None if active else 45 if partial else 100})
             hour += 1
         return events
 
     def seed(self):
         """Three months of rows, charts, charge events and a few recorded errors."""
         now = int(time.time())
-        for day_index in range(self.SEED_DAYS - 1, -1, -1):
+        for day_index in range(self.MAX_DAYS - 1, -1, -1):
             day_start = now - day_index * 86400
             midnight = int(day_start // 86400) * 86400
             key = time.strftime("%Y%m%d", time.localtime(midnight))
             self.rows[key] = self.make_day_rows(midnight, day_index)
         self.seed_charts(now)
         self.charge_history = self.make_charges(now)
-        self.charge_count = len(self.charge_history)
-        per_channel = [sum(1 for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
+        self.charge_count = sum(e["status"] == "complete" for e in self.charge_history)
+        per_channel = [sum(1 for e in self.charge_history if e["ch"] == n and e["status"] == "complete") for n in (1, 2)]
         self.charge_counts = per_channel
         self.charge_secs = [sum(e["dur"] for e in self.charge_history if e["ch"] == n) for n in (1, 2)]
         self.total_charge_s = sum(e["dur"] for e in self.charge_history)
@@ -302,24 +329,48 @@ class Board:
                         "vpack": 21000 + pct * 80, "time": stamp})
         return out
     def row(self, stamp, chg, note, fault=0):
-        """One CSV row, same 22 columns the firmware writes."""
-        pct = max(0, min(100, (self.vpack - 21000) * 100 // 8000))
+        """One CSV row, same 18 columns the firmware writes."""
         return ",".join(str(v) for v in [
             stamp, 3600 + (self.tick % 600), chg, note, 1 if self.mains else 0,
-            3 if self.mains else 2, self.stage1, self.stage2, fault, 0,
-            self.vpack, 12600, 12900, self.imbalance, self.dead,
-            24100, 12000, 1200, 900, 500, 500, pct,
+            1 if self.mains else 0, self.stage1, self.stage2, fault, 0,
+            (self.vpack-self.imbalance)//2, self.vpack-(self.vpack-self.imbalance)//2, self.dead,
+            24100, 1200, 900, 500, 500,
         ])
+    def trim_logs(self):
+        """Mirror calendar age and minimum oldest-event eviction; this is not a flash model."""
+        first = (datetime.date.fromtimestamp(time.time()) -
+                 datetime.timedelta(days=self.MAX_DAYS - 1)).strftime("%Y%m%d")
+        for day in list(self.rows):
+            if day != "00000000" and day < first:
+                del self.rows[day]
+                continue
+            rows = self.rows[day]
+            events = sum(row.split(",")[3] != "7" for row in rows)
+            while events > 200 or self.encoded_day_bytes(rows) > 4096:
+                oldest = next((i for i, row in enumerate(rows) if row.split(",")[3] != "7"), None)
+                if oldest is None:
+                    break
+                rows.pop(oldest)
+                events -= 1
+    def append_log(self, change, note):
+        """Keep the ordinary day-full stop and create one start marker for a new day."""
+        now = int(time.time())
+        rows = self.rows.setdefault(self.today(), [])
+        if not rows:
+            rows.append(self.row(now, 0, 7))
+        if sum(row.split(",")[3] != "7" for row in rows) < 200:
+            rows.append(self.row(now, change, note))
+        self.trim_logs()
     def advance(self):
         """Move the simulated board forward by roughly one second."""
         with self.lock:
             self.tick += 1
             self.board_uptime += 1
+            self.trim_logs()
             cycle = self.tick % 120
             if cycle == 0:
                 self.mains = not self.mains
-                self.rows.setdefault(self.today(), []).append(
-                    self.row(int(time.time()), 2, 0))
+                self.append_log(2, 0)
                 if self.mains:
                     self.power.insert(0, {"off": int(time.time()) - 90,
                                           "on": int(time.time()), "dur": 90})
@@ -338,8 +389,7 @@ class Board:
                 self.fault_until = time.time() + 20
             elif self.fault and time.time() > self.fault_until:
                 self.fault = 0
-                self.rows.setdefault(self.today(), []).append(
-                    self.row(int(time.time()), 16, 0))
+                self.append_log(16, 0)
     def today(self):
         return time.strftime("%Y%m%d", time.localtime(time.time() + 0))
     def telemetry(self):
@@ -697,8 +747,45 @@ class Handler(BaseHTTPRequestHandler):
         self.extra_headers = []
         BOARD.advance()
         if path == "/":
-            html = load_panel_html()
+            html = load_preview_html()
             return self.send(text_bytes(html, mime="text/html; charset=utf-8"))
+        if path == "/pack.js" and method == "GET":
+            return self.send(text_bytes(load_pack_js(), mime="application/javascript; charset=utf-8"))
+        if path == "/pack" and method == "GET":
+            record = BOARD.pack_review
+            upper = BOARD.charge_counts[0] - record["upper"]
+            lower = BOARD.charge_counts[1] - record["lower"]
+            valid = upper >= 0 and lower >= 0
+            count = max(upper, lower) if valid else 0
+            progress = min(1000, count * 1000 // record["limit"]) if record["limit"] else 0
+            state = 1 if not valid else 2 if not record["limit"] else 5 if progress >= 1000 else 4 if progress >= 800 else 3
+            return self.send(json_bytes(dict(valid=int(valid), state=state, count=count, progress=progress, replaced=int(bool(record["at"])))))
+        if path in ("/pack/settings", "/pack/replace"):
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
+            record = BOARD.pack_review
+            if method == "POST":
+                if args.get("revision") != str(record["revision"]):
+                    return self.send(json_bytes({"ok": 0, "e": "revision"}, 409))
+                if path == "/pack/replace":
+                    if args.get("confirm") != "REPLACE_PACK":
+                        return self.send(json_bytes({"ok": 0, "e": "confirm"}, 400))
+                    record.update(upper=BOARD.charge_counts[0], lower=BOARD.charge_counts[1], at=BOARD.board_time + BOARD.tick, revision=record["revision"] + 1)
+                else:
+                    value = args.get("limit", "")
+                    if not re.fullmatch(r"0|[1-9][0-9]{0,5}", value) or int(value) > 100000:
+                        return self.send(json_bytes({"ok": 0, "e": "limit"}, 400))
+                    if record["limit"] != int(value):
+                        record.update(limit=int(value), revision=record["revision"] + 1)
+            elif method != "GET" or path != "/pack/settings":
+                return self.send(json_bytes({"ok": 0}, 405))
+            return self.send(json_bytes(dict(ok=1, invalid=0, limit=record["limit"], at=record["at"], revision=record["revision"])))
+        if path == "/calendar.js" and method == "GET":
+            return self.send(text_bytes(load_calendar_js(), mime="application/javascript; charset=utf-8"))
+        if path == "/about.js" and method == "GET":
+            return self.send(text_bytes(load_about_script(), mime="application/javascript; charset=utf-8"))
+        if path == "/about" and method == "GET":
+            return self.send(text_bytes(load_about_json(), mime="application/json; charset=utf-8"))
         if path == "/lab":
             return self.send(text_bytes(render_lab_page(), mime="text/html; charset=utf-8"))
         if path == "/lab/api/single":
@@ -776,14 +863,14 @@ class Handler(BaseHTTPRequestHandler):
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             # مثل خود برد: بدون n (یا n بیرون از ۵/۶/۸) درخواست رد می‌شود.
-            n = str(args.get("n", "")).strip()
+            n = str(args.get("n", ""))
             if n not in ("5", "6", "8"):
-                return self.send(json_bytes({"ok": 0, "e": 2}, 400))
+                return self.send(json_bytes({"ok": 0, "e": "reset", "allowed": [5, 6, 8]}, 400))
             if n == "5":
                 BOARD.latch["rep"] += 1
                 BOARD.latch["val"] = 0
                 BOARD.latch["known"] = 1
-            return self.send(json_bytes({"ok": 1, "n": n}))
+            return self.send(json_bytes({"ok": 1, "n": int(n)}))
         if path == "/clock" and method == "POST":
             has_sec = "sec" in args
             if not has_sec and not self.session_ok():
@@ -850,6 +937,8 @@ class Handler(BaseHTTPRequestHandler):
             if not self.session_ok() or BOARD.session.get("role") != 1:
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
             name = args.get("name", "")
+            if name in {"/pack_review.txt", "/pack_review.txt.tmp"}:
+                return self.send(json_bytes({"ok": 0, "e": "protected"}, 409))
             if (len(name.encode()) > 255 or not re.fullmatch(r"/[^/\\\x00-\x1f]+", name)
                     or name in ("/.", "/..")):
                 return self.send(json_bytes({"ok": 0, "e": "path"}, 400))
@@ -861,6 +950,26 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 return self.send(json_bytes({"ok": 0, "e": "missing"}, 404))
             return self.send(json_bytes({"ok": 1}))
+        if path == "/factory/reset" and method == "POST":
+            if not self.session_ok():
+                return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
+            if args.get("confirm") != "ERASE_ESP":
+                return self.send(json_bytes({"ok": 0, "e": "confirm"}, 400))
+            # Erase panel state only; live board values and calibration stay untouched.
+            BOARD.rows = {}
+            BOARD.deleted_files.clear()
+            BOARD.pack_review = dict(limit=0, upper=0, lower=0, at=0, revision=0)
+            BOARD.errors = []
+            BOARD.power = []
+            BOARD.charge_history = []
+            BOARD.chart = {key: [] for key in BOARD.chart}
+            BOARD.chart_buckets = []
+            BOARD.users = [{"name": "admin", "role": 1, "pass": "admin"}]
+            BOARD.wifi = {"ssid": "changeover_userpannel", "pass": "123456789"}
+            BOARD.theme = 0
+            BOARD.session = None
+            BOARD.session_start = 0.0
+            return self.send(json_bytes({"ok": 1, "erased": 1, "restart": 1}))
         if path in ("/evt/clr", "/evt/format") and method == "POST":
             if not self.session_ok():
                 return self.send(json_bytes({"ok": 0, "e": "admin"}, 403))
@@ -892,9 +1001,9 @@ class Handler(BaseHTTPRequestHandler):
     def event_text(self, day):
         header = (
             "# \u062a\u0627\u0631\u06cc\u062e\u0686\u0647\u0654 \u0648\u0636\u0639\u06cc\u062a / state history\n"
-            "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,"
-            "vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,"
-            "duty1_permille,duty2_permille,batt_pct\n")
+            "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,"
+            "vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,"
+            "duty1_permille,duty2_permille\n")
         chosen = day if day and day in BOARD.rows else BOARD.today()
         rows = BOARD.rows.get(chosen) or []
         return header + "\n".join(rows[-40:]) + "\n"

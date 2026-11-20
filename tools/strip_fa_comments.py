@@ -28,7 +28,6 @@ DEFAULT_TARGETS = [
     'ESP_USER',
     'ESP_Calibration',
     'tools',
-    'Programmer',
 ]
 SKIP_DIRS = {
     'node_modules', '__pycache__', 'build', 'Drivers', 'Middlewares',

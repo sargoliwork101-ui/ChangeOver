@@ -53,7 +53,7 @@ echo "  English header scan done"
 echo ""
 echo "[3b] No Persian comment and no blank line (rule 2026-11-01)"
 if OUT=$(cd "$ROOT" && python3 tools/strip_fa_comments.py --check Firmware \
-         CubeIDE/Core ESP_USER ESP_Calibration Programmer tools 2>&1) && \
+         CubeIDE/Core ESP_USER ESP_Calibration tools 2>&1) && \
    echo "$OUT" | grep -q "^files: 0,"; then
   echo "  OK: no Persian comment and no blank line left"
 else

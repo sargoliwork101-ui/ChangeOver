@@ -1,3 +1,26 @@
+## Grouped restore/send report
+Current feedback coverage: 58 checks. Only matching readback consumes an
+unchanged pending edit; mismatch-only batches retain retry. Recheck is read-only,
+requires online telemetry and a different sequence, refreshes delayed results,
+and preserves failed reads and newer edits. Retry excludes confirmed entries,
+unrelated or newer edits and cancelled entries; both actions honor capture locks.
+The full calibration runner passes, including 53 transaction and 32 restore
+checks. Chromium: 288 checks at five widths, including a full-sized report,
+internal scrolling with visible footer actions, isolated no-wrap numeric groups,
+and count-based filters with accurate totals and accessible pressed states. No physical-board or flash-persistence proof.
+Plain-language help distinguishes cached equality from persistence, absent feedback
+from failure, and retry from sending unrelated pending edits. A 3-per-category
+fixture exercises real selective retry (six writes) and leaves three unsent edits.
+The HTML including NUL stays below the existing 491520-byte budget; it was not
+raised. Older counts below describe earlier runs.
+
+## Text-field color regression
+The Chromium suite checks resolved foreground/background contrast (at least
+4.5:1) for the filename dialog, manual duty list, capture note and visible
+calibration controls at five widths. Filename focus, editing and extension
+preservation are covered. Current run: 208 checks, zero failures. Production
+changes are limited to text-field colors; download behavior is unchanged.
+
 ## Stable sample-row editing
 `node ESP_Calibration/Tester/host_test_sample_rows.js` runs 22 real-panel DOM
 checks for whole-row and checkbox clicks, retained row/table nodes and focus,

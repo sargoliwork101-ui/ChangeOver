@@ -102,8 +102,9 @@ static uint32_t UINT32_T__G__LogLastDrainMs = 0u;
 #define SIMPLE_LOG_NOTE_DAY_FULL  4u
 #define SIMPLE_LOG_NOTE_HEARTBEAT  5u
 #define SIMPLE_LOG_NOTE_MANUAL     6u
-#define SIMPLE_LOG_NOTE_CLOCK_GAP  7u
-#define SIMPLE_LOG_CLOCK_GAP_ROW "0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n"
+#define SIMPLE_LOG_NOTE_DAY_START  7u
+#define SIMPLE_LOG_NOTE_CLOCK_GAP  8u
+#define SIMPLE_LOG_CLOCK_GAP_ROW "0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n"
 static bool BOOL__G__LogClockGap = false;
 static bool BOOL__G__LogClockGapStored = false;
 static bool BOOL__G__LogClockGapEmitted = false;
@@ -484,10 +485,38 @@ static size_t func__SimpleLog_BudgetBytes(void)
 {
     return SIMPLE_LOG_TOTAL_BUDGET_BYTES;
 }
+/* ==================== Calendar retention ==================== */
+/** @brief Test whether a day precedes the verified local 30-day window, including today. */
+static bool func__SimpleLog_DayExpired(uint32_t uint32_t__dayCode)
+{
+    if (uint32_t__dayCode == 0u || !func__Simple_TimeBootReady()) return false;
+    int64_t int64_t__local = (int64_t)func__Simple_NowSec() + INT32_T__G__LogTzSec;
+    if (int64_t__local < 0) return false;
+    uint32_t uint32_t__today = (uint32_t)(int64_t__local / 86400);
+    if (uint32_t__today < SIMPLE_LOG_MAX_DAYS - 1u) return false;
+    uint32_t uint32_t__first = func__SimpleLog_DateCode(uint32_t__today - (SIMPLE_LOG_MAX_DAYS - 1u));
+    return uint32_t__dayCode < uint32_t__first;
+}
+/* ==================== Retained day files ==================== */
+/** @brief Remove expired days first, then enforce file-count and shared payload limits. */
 static void func__SimpleLog_TrimDays(void)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
     uint8_t uint8_t__slot;
+    uint8_t uint8_t__expired = 0u;
+    while (uint8_t__expired < UINT8_T__G__LogIndexCount)
+    {
+        if (!func__SimpleLog_DayExpired(UINT32_T__G__LogIndexDay[uint8_t__expired]))
+        {
+            uint8_t__expired++;
+            continue;
+        }
+        func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[uint8_t__expired]);
+        if (!LittleFS.remove(char__ptr_path)) { func__SimpleLog_FaultRaise(); break; }
+        for (uint8_t__slot = (uint8_t)(uint8_t__expired + 1u); uint8_t__slot < UINT8_T__G__LogIndexCount; uint8_t__slot++)
+            UINT32_T__G__LogIndexDay[uint8_t__slot - 1u] = UINT32_T__G__LogIndexDay[uint8_t__slot];
+        UINT8_T__G__LogIndexCount--;
+    }
     while (UINT8_T__G__LogIndexCount > SIMPLE_LOG_MAX_DAYS)
     {
         func__SimpleLog_PathOf(char__ptr_path, UINT32_T__G__LogIndexDay[0]);
@@ -623,14 +652,14 @@ static uint32_t func__Simple_StorageFileBytes(const char *char__ptr_path)
 static bool func__Simple_StorageQuota(const char *char__ptr_path, size_t size_t__length)
 {
     const char *char__paths[] = {SIMPLE_USERS_FILE, SIMPLE_WIFI_FILE, SIMPLE_PARAMS_FILE,
-        SIMPLE_TIME_FILE, SIMPLE_THEME_FILE, SIMPLE_TIME_GAP_FILE, SIMPLE_CHARGE_HISTORY_FILE,
+        SIMPLE_TIME_FILE, SIMPLE_THEME_FILE, SIMPLE_TIME_GAP_FILE, SIMPLE_PACK_REVIEW_FILE, SIMPLE_CHARGE_HISTORY_FILE,
         SIMPLE_DIAG_FILE, SIMPLE_CHARTS_FILE, SIMPLE_CHART_JOURNAL_FILE};
-    uint8_t uint8_t__first = 0u, uint8_t__last = 6u;
+    uint8_t uint8_t__first = 0u, uint8_t__last = 7u;
     uint32_t uint32_t__limit = SIMPLE_STORAGE_SETTINGS_BYTES;
     if (!strcmp(char__ptr_path, SIMPLE_CHARGE_HISTORY_FILE) || !strcmp(char__ptr_path, SIMPLE_DIAG_FILE))
-    { uint8_t__first = 6u; uint8_t__last = 8u; uint32_t__limit = SIMPLE_STORAGE_HISTORY_BYTES; }
+    { uint8_t__first = 7u; uint8_t__last = 9u; uint32_t__limit = SIMPLE_STORAGE_HISTORY_BYTES; }
     else if (!strcmp(char__ptr_path, SIMPLE_CHARTS_FILE) || !strcmp(char__ptr_path, SIMPLE_CHART_JOURNAL_FILE))
-    { uint8_t__first = 8u; uint8_t__last = 10u; uint32_t__limit = SIMPLE_STORAGE_CHART_BYTES; }
+    { uint8_t__first = 9u; uint8_t__last = 11u; uint32_t__limit = SIMPLE_STORAGE_CHART_BYTES; }
     if (size_t__length > uint32_t__limit) return false;
     for (uint8_t uint8_t__i = uint8_t__first; uint8_t__i < uint8_t__last; uint8_t__i++)
     {
@@ -727,7 +756,7 @@ static uint16_t func__SimpleLog_CountRows(const char *char__ptr_path)
             {
                 while (SimpleLogCodec::next(file__day, codec))
                 {
-                    if (uint16_t__rows < 0xFFFFu)
+                    if ((codec.value[3] != SIMPLE_LOG_NOTE_DAY_START) && (uint16_t__rows < 0xFFFFu))
                     {
                         uint16_t__rows++;
                     }
@@ -859,6 +888,9 @@ static bool func__SimpleLog_RepairTail(const char *char__ptr_path)
  * counters, so the RAM drain can prepare an older day without resetting
  * today.
  */
+static void func__SimpleLog_BuildRow(char *char__ptr_out, size_t size_t__outSize,
+                                    uint16_t uint16_t__changeMask, uint8_t uint8_t__note);
+static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *char__row);
 static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -871,6 +903,8 @@ static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
     if (!LittleFS.exists(char__ptr_path) &&
         !func__Simple_StorageRoom(SimpleLogCodec::HeaderSize, uint32_t__dayCode)) return false;
+    /* Repair first: an interrupted header may become empty and must be rebuilt below. */
+    if (LittleFS.exists(char__ptr_path) && !func__SimpleLog_RepairTail(char__ptr_path)) return false;
     {
         File file__day = LittleFS.open(char__ptr_path, "a");
         if (!file__day)
@@ -897,9 +931,14 @@ static bool func__SimpleLog_PrepareDayFile(uint32_t uint32_t__dayCode)
         func__SimpleLog_FaultRaise();
         return false;
     }
-    if (uint32_t__size > 0u)
+    /* A header-only current day needs one durable marker; retries cannot duplicate it. */
+    if (bool__ok && uint32_t__dayCode == func__SimpleLog_TodayCode() &&
+        func__Simple_TimeBootReady() &&
+        func__Simple_StorageFileBytes(char__ptr_path) == SimpleLogCodec::HeaderSize)
     {
-        bool__ok = func__SimpleLog_RepairTail(char__ptr_path);
+        char char__startRow[SIMPLE_LOG_RAM_ROW_MAX];
+        func__SimpleLog_BuildRow(char__startRow, sizeof(char__startRow), 0u, SIMPLE_LOG_NOTE_DAY_START);
+        bool__ok = func__SimpleLog_AppendRow(uint32_t__dayCode, char__startRow);
     }
     return bool__ok;
 }
@@ -950,7 +989,7 @@ static bool func__SimpleLog_ResolveDay(bool bool__forcePrepare)
         UINT32_T__G__LogLastDrainMs = (uint32_t)millis();
         return false;
     }
-    if (bool__newDay != false)
+    /* Every successful preparation, including a retry, must finish day initialization. */
     {
         func__SimpleLog_PathOf(char__ptr_path, uint32_t__today);
         UINT16_T__G__LogRowsToday = func__SimpleLog_CountRows(char__ptr_path);
@@ -966,42 +1005,6 @@ static bool func__SimpleLog_ResolveDay(bool bool__forcePrepare)
 static bool func__SimpleLog_OpenDay(void)
 {
     return func__SimpleLog_ResolveDay(true);
-}
-/**
- * @brief  [EN] Battery percent from the DISCHARGE map (param 74/75, factory
- *              21,000..29,000 mV), stored with every row so later analysis
- *              keeps the same scale even if the map is retuned. Unknown params
- *              fall back to the factory map.
-* @param uint32_t__batteryMv Pack voltage in mV /
-* @return uint8_t Percent 0..100 /
- */
-static uint8_t func__SimpleLog_Pct(uint32_t uint32_t__batteryMv)
-{
-    uint32_t uint32_t__vminMv = 21000u;
-    uint32_t uint32_t__vmaxMv = 29000u;
-    uint32_t uint32_t__rangeMv;
-    if (BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMIN_MV] != false)
-    {
-        uint32_t__vminMv = UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMIN_MV];
-    }
-    if (BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMAX_MV] != false)
-    {
-        uint32_t__vmaxMv = UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMAX_MV];
-    }
-    if (uint32_t__batteryMv <= uint32_t__vminMv)
-    {
-        return 0u;
-    }
-    if (uint32_t__batteryMv >= uint32_t__vmaxMv)
-    {
-        return 100u;
-    }
-    uint32_t__rangeMv = uint32_t__vmaxMv - uint32_t__vminMv;
-    if (uint32_t__rangeMv == 0u)
-    {
-        return 0u;
-    }
-    return (uint8_t)(((uint32_t__batteryMv - uint32_t__vminMv) * 100u) / uint32_t__rangeMv);
 }
 /*
  * [EN] A refused write is not a lost row: it goes to the RAM ring.
@@ -1160,17 +1163,70 @@ static bool func__SimpleLog_CodecAppend(const char *char__ptr_path, const char *
     }
     return bool__ok;
 }
+/* ==================== Encoded suffix sizing ==================== */
+/**
+ * @brief Measure a freshly encoded suffix and optional incoming row without writing flash.
+ * @param uint16_t__skip Number of oldest events to omit; day-start markers are retained.
+ * @return true when the source decoded without damage or I/O failure.
+ */
+static bool func__SimpleLog_SuffixBytes(File &file__old, uint16_t uint16_t__skip,
+                                       const uint32_t *uint32_t__incoming, uint32_t *uint32_t__bytes)
+{
+    SimpleLogCodec::State codec__old, codec__new;
+    if (SimpleLogCodec::begin(file__old, codec__old) != 1) return false;
+    uint32_t uint32_t__size = SimpleLogCodec::HeaderSize;
+    uint16_t uint16_t__row = 0u;
+    uint8_t uint8_t__frame[SimpleLogCodec::MaxFrame];
+    while (SimpleLogCodec::next(file__old, codec__old))
+    {
+        if (codec__old.value[3] != SIMPLE_LOG_NOTE_DAY_START && uint16_t__row++ < uint16_t__skip) continue;
+        uint32_t__size += (uint32_t)SimpleLogCodec::encode(codec__new, codec__old.value, uint8_t__frame);
+    }
+    if (codec__old.ioError || codec__old.damaged) return false;
+    if (uint32_t__incoming != NULL)
+        uint32_t__size += (uint32_t)SimpleLogCodec::encode(codec__new, uint32_t__incoming, uint8_t__frame);
+    *uint32_t__bytes = uint32_t__size;
+    return true;
+}
 /* ==================== Bounded current-day history ==================== */
-/** @brief Keep the newest half of a full day; verify every decoded value before atomic replacement. */
-static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint32_t__dayCode)
+/**
+ * @brief Atomically rewrite a day, retaining its start marker and verified newest rows.
+ * @param char__row Optional incoming row, committed together with the retained suffix.
+ * @param uint32_t__reserve Encoded bytes to leave free after replacement (zero for an incoming row).
+ * @return true after the replacement and every retained/incoming value are verified.
+ */
+static bool func__SimpleLog_RewriteDay(const char *char__ptr_path, uint32_t uint32_t__dayCode,
+                                      const char *char__row, uint32_t uint32_t__reserve = 0u)
 {
     File file__old = LittleFS.open(char__ptr_path, "r");
     SimpleLogCodec::State codec__old;
     if (!file__old || SimpleLogCodec::begin(file__old, codec__old) != 1) return false;
     uint16_t uint16_t__count = 0u;
-    while (SimpleLogCodec::next(file__old, codec__old)) uint16_t__count++;
-    if (codec__old.ioError || codec__old.damaged || uint16_t__count < 2u) return false;
-    uint16_t uint16_t__skip = (uint16_t)(uint16_t__count / 2u);
+    while (SimpleLogCodec::next(file__old, codec__old))
+        if (codec__old.value[3] != SIMPLE_LOG_NOTE_DAY_START) uint16_t__count++;
+    if (codec__old.ioError || codec__old.damaged || uint32_t__reserve > SIMPLE_LOG_DAY_MAX_BYTES) return false;
+    uint32_t uint32_t__incoming[SimpleLogCodec::Fields];
+    const uint32_t *uint32_t__incomingPtr = NULL;
+    uint32_t uint32_t__events = uint16_t__count;
+    if (char__row != NULL)
+    {
+        if (!SimpleLogCodec::parse(char__row, uint32_t__incoming)) return false;
+        uint32_t__incomingPtr = uint32_t__incoming;
+        if (uint32_t__incoming[3] != SIMPLE_LOG_NOTE_DAY_START) uint32_t__events++;
+    }
+    uint16_t uint16_t__skip = 0u;
+    if (uint32_t__events > SIMPLE_LOG_MAX_ROWS_PER_DAY)
+        uint16_t__skip = (uint16_t)(uint32_t__events - SIMPLE_LOG_MAX_ROWS_PER_DAY);
+    uint32_t uint32_t__encoded = 0u;
+    /* Measure successive suffixes; only the smallest fitting suffix is written once. */
+    while (true)
+    {
+        if (!func__SimpleLog_SuffixBytes(file__old, uint16_t__skip, uint32_t__incomingPtr, &uint32_t__encoded)) return false;
+        if (uint32_t__encoded <= SIMPLE_LOG_DAY_MAX_BYTES - uint32_t__reserve) break;
+        if (uint16_t__skip >= uint16_t__count) return false;
+        uint16_t__skip++;
+        yield();
+    }
     String string__temp = String(char__ptr_path) + ".tmp";
     if (LittleFS.exists(string__temp.c_str()) && !LittleFS.remove(string__temp.c_str())) return false;
     /* Compaction may borrow the reserve, never settings or the committed day. */
@@ -1183,13 +1239,20 @@ static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint
     uint16_t uint16_t__row = 0u;
     while (bool__ok && SimpleLogCodec::next(file__old, codec__old))
     {
-        if (uint16_t__row++ < uint16_t__skip) continue;
+        if (codec__old.value[3] != SIMPLE_LOG_NOTE_DAY_START && uint16_t__row++ < uint16_t__skip) continue;
         uint8_t uint8_t__frame[SimpleLogCodec::MaxFrame];
         size_t size_t__n = SimpleLogCodec::encode(codec__new, codec__old.value, uint8_t__frame);
         bool__ok = file__new.write(uint8_t__frame, size_t__n) == size_t__n;
     }
+    if (bool__ok && char__row != NULL)
+    {
+        uint8_t uint8_t__frame[SimpleLogCodec::MaxFrame];
+        size_t size_t__n = SimpleLogCodec::encode(codec__new, uint32_t__incoming, uint8_t__frame);
+        bool__ok = file__new.write(uint8_t__frame, size_t__n) == size_t__n;
+    }
     bool__ok = bool__ok && !codec__old.ioError && !codec__old.damaged && uint16_t__row == uint16_t__count &&
-        file__new.size() < SIMPLE_LOG_DAY_MAX_BYTES;
+        file__new.size() == uint32_t__encoded &&
+        file__new.size() <= SIMPLE_LOG_DAY_MAX_BYTES - uint32_t__reserve;
     file__new.close();
     if (bool__ok)
     {
@@ -1199,9 +1262,14 @@ static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint
         uint16_t__row = 0u;
         while (bool__ok && SimpleLogCodec::next(file__old, codec__old))
         {
-            if (uint16_t__row++ < uint16_t__skip) continue;
+            if (codec__old.value[3] != SIMPLE_LOG_NOTE_DAY_START && uint16_t__row++ < uint16_t__skip) continue;
             bool__ok = SimpleLogCodec::next(file__check, codec__new) &&
                 memcmp(codec__old.value, codec__new.value, sizeof(codec__old.value)) == 0;
+        }
+        if (bool__ok && char__row != NULL)
+        {
+            bool__ok = SimpleLogCodec::next(file__check, codec__new) &&
+                memcmp(codec__new.value, uint32_t__incoming, sizeof(uint32_t__incoming)) == 0;
         }
         bool__ok = bool__ok && uint16_t__row == uint16_t__count && !codec__old.ioError && !codec__old.damaged &&
             !SimpleLogCodec::next(file__check, codec__new) && !codec__new.ioError && !codec__new.damaged;
@@ -1220,6 +1288,43 @@ static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint
     BOOL__G__LogScanValid = false;
     return true;
 }
+/* ==================== Volume-only compaction ==================== */
+/** @brief Drop only enough oldest events to leave one maximum-sized frame free. */
+static bool func__SimpleLog_CompactDay(const char *char__ptr_path, uint32_t uint32_t__dayCode)
+{
+    return func__SimpleLog_RewriteDay(char__ptr_path, uint32_t__dayCode, NULL, SimpleLogCodec::MaxFrame);
+}
+/* ==================== Exact encoded append size ==================== */
+/**
+ * @brief Measure the real next frame against the current codec state without changing flash.
+ * @param uint32_t__values Parsed incoming fields; uint32_t__bytes receives the resulting file size.
+ * @return false on unknown format, damaged source or I/O failure.
+ */
+static bool func__SimpleLog_AppendBytes(const char *char__path, const uint32_t *uint32_t__values,
+                                       uint32_t *uint32_t__bytes)
+{
+    File file__in = LittleFS.open(char__path, "r");
+    if (!file__in) return false;
+    SimpleLogCodec::State codec;
+    if (BOOL__G__LogCodecCached && strcmp(char__path, CHAR__G__LogCodecPath) == 0 &&
+        file__in.size() == UINT32_T__G__LogCodecSize)
+    {
+        codec = SIMPLE_LOG_CODEC_WRITE_STATE;
+    }
+    else
+    {
+        int int__kind = SimpleLogCodec::begin(file__in, codec);
+        if (int__kind != 1 && int__kind != 2) return false;
+        if (int__kind == 1) while (SimpleLogCodec::next(file__in, codec)) { }
+        if (codec.ioError || codec.damaged) return false;
+    }
+    uint8_t uint8_t__frame[SimpleLogCodec::MaxFrame];
+    size_t size_t__frame = SimpleLogCodec::encode(codec, uint32_t__values, uint8_t__frame);
+    *uint32_t__bytes = codec.lastEnd + (uint32_t)size_t__frame;
+    return true;
+}
+/* ==================== Bounded append ==================== */
+/** @brief Append an event, dropping only excess oldest events when the row cap is reached. */
 static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *char__row)
 {
     char char__ptr_path[SIMPLE_LOG_PATH_MAX];
@@ -1230,9 +1335,6 @@ static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *ch
     func__SimpleLog_PathOf(char__ptr_path, uint32_t__dayCode);
     uint32_t uint32_t__daySize = func__Simple_StorageFileBytes(char__ptr_path);
     if (uint32_t__daySize == UINT32_MAX) return false;
-    if (uint32_t__daySize + SimpleLogCodec::MaxFrame > SIMPLE_LOG_DAY_MAX_BYTES &&
-        !func__SimpleLog_CompactDay(char__ptr_path, uint32_t__dayCode))
-    { func__SimpleLog_FaultRaise(); return false; }
     bool bool__within = false;
     for (uint8_t uint8_t__pass = 0u; uint8_t__pass <= SIMPLE_LOG_RECLAIM_MAX_PER_CALL; uint8_t__pass++)
     {
@@ -1245,6 +1347,24 @@ static bool func__SimpleLog_AppendRow(uint32_t uint32_t__dayCode, const char *ch
     }
     if (!bool__within) { func__SimpleLog_FaultRaise(); return false; }
     if (!func__Simple_StorageRoom(SimpleLogCodec::MaxFrame, uint32_t__dayCode)) return false;
+    uint32_t uint32_t__values[SimpleLogCodec::Fields];
+    if (!SimpleLogCodec::parse(char__row, uint32_t__values)) return false;
+    bool bool__rewrite = uint32_t__values[3] != SIMPLE_LOG_NOTE_DAY_START &&
+        func__SimpleLog_CountRows(char__ptr_path) >= SIMPLE_LOG_MAX_ROWS_PER_DAY;
+    if (!bool__rewrite && uint32_t__daySize + SimpleLogCodec::MaxFrame > SIMPLE_LOG_DAY_MAX_BYTES)
+    {
+        uint32_t uint32_t__nextSize = 0u;
+        if (!func__SimpleLog_AppendBytes(char__ptr_path, uint32_t__values, &uint32_t__nextSize))
+        { func__SimpleLog_FaultRaise(); return false; }
+        bool__rewrite = uint32_t__nextSize > SIMPLE_LOG_DAY_MAX_BYTES;
+    }
+    if (bool__rewrite)
+    {
+        /* The new event and removal commit together; failure keeps the old file and RAM row. */
+        if (func__SimpleLog_RewriteDay(char__ptr_path, uint32_t__dayCode, char__row)) return true;
+        func__SimpleLog_FaultRaise();
+        return false;
+    }
     return func__SimpleLog_CodecAppend(char__ptr_path, char__row);
 }
 /*
@@ -1297,6 +1417,12 @@ static void func__SimpleLog_DrainRam(void)
         uint8_t__oldest = (uint8_t)((UINT8_T__G__LogRamHead + SIMPLE_LOG_RAM_ROWS -
                                      UINT8_T__G__LogRamCount) % SIMPLE_LOG_RAM_ROWS);
         uint32_t__dayCode = func__SimpleLog_RowDayCode(CHAR__G__LogRamRow[uint8_t__oldest]);
+        /* Expired RAM history must not recreate files removed by calendar retention. */
+        if (func__SimpleLog_DayExpired(uint32_t__dayCode))
+        {
+            UINT8_T__G__LogRamCount--;
+            continue;
+        }
         if (func__SimpleLog_PrepareDayFile(uint32_t__dayCode) == false)
         {
             BOOL__G__LogDrainWait = true;
@@ -1335,29 +1461,25 @@ static void func__SimpleLog_BuildRow(char *char__ptr_out, size_t size_t__outSize
     uint32_t uint32_t__uptimeSec = (uint32_t)(millis() / 1000u);
     uint8_t uint8_t__mains = ((UINT8_T__G__TlmFlags & 0x02u) != 0u) ? 1u : 0u;
     (void)snprintf(char__ptr_out, size_t__outSize,
-                   "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
+                   "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
                    (unsigned long)uint32_t__nowSec,
                    (unsigned long)uint32_t__uptimeSec,
                    (unsigned int)uint16_t__changeMask,
                    (unsigned int)uint8_t__note,
                    (unsigned int)uint8_t__mains,
-                   (unsigned int)UINT8_T__G__TlmFlags,
+                   (unsigned int)(UINT8_T__G__TlmFlags & 0x3Du),
                    (unsigned long)UINT32_T__G__TlmField[6],
                    (unsigned long)UINT32_T__G__TlmField[13],
                    (unsigned long)UINT32_T__G__TlmField[19],
                    (unsigned int)UINT8_T__G__TlmFlags2,
-                   (unsigned long)UINT32_T__G__TlmField[15],
                    (unsigned long)UINT32_T__G__TlmField[17],
                    (unsigned long)UINT32_T__G__TlmField[18],
-                   (unsigned long)UINT32_T__G__TlmField[25],
                    (unsigned long)UINT32_T__G__TlmField[28],
                    (unsigned long)UINT32_T__G__TlmField[14],
-                   (unsigned long)UINT32_T__G__TlmField[16],
                    (unsigned long)UINT32_T__G__TlmField[3],
                    (unsigned long)UINT32_T__G__TlmField[10],
                    (unsigned long)UINT32_T__G__TlmField[5],
-                   (unsigned long)UINT32_T__G__TlmField[12],
-                   (unsigned long)func__SimpleLog_Pct(UINT32_T__G__TlmField[15]));
+                   (unsigned long)UINT32_T__G__TlmField[12]);
 }
 static bool func__SimpleLog_WriteRow(uint16_t uint16_t__changeMask, uint8_t uint8_t__note)
 {
@@ -1526,7 +1648,7 @@ static uint32_t func__SimpleLog_RowField(const char *char__ptr_row, uint8_t uint
 /**
  * @brief  [EN] Copy the LAST data row of a day file into a buffer.
  *              It walks backward from the end of the file in one bounded
- *              window, so a 400 row day file costs no RAM and no full read.
+ *              window, so a 200 row day file costs no RAM and no full read.
  * @param  char__ptr_path   day file path / text
  * @param  char__ptr_out    destination / buffer, at least 4 bytes
  * @param  size_t__outSize  destination size / bytes
@@ -1548,10 +1670,14 @@ static bool func__SimpleLog_LastRowOf(const char *char__ptr_path,
             const int int__kind = SimpleLogCodec::begin(file__codec, codec);
             if (int__kind == 1)
             {
+                SimpleLogCodec::State lastEvent;
                 while (SimpleLogCodec::next(file__codec, codec))
                 {
+                    if (codec.value[3] != SIMPLE_LOG_NOTE_DAY_START) lastEvent = codec;
                 }
                 file__codec.close();
+                if (codec.ioError) return false;
+                codec = lastEvent;
                 if ((codec.valid == false) || (codec.ioError != false))
                 {
                     return false;
@@ -1685,8 +1811,9 @@ static void func__SimpleLog_RestoreFromLastRow(void)
     UINT8_T__G__LogPrevChg2 = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 7u);
     UINT32_T__G__LogPrevFault = func__SimpleLog_RowField(CHAR__LogLastRow, 8u);
     UINT8_T__G__LogPrevFlags2 = (uint8_t)func__SimpleLog_RowField(CHAR__LogLastRow, 9u);
-    UINT32_T__G__LogPrevV24 = func__SimpleLog_RowField(CHAR__LogLastRow, 10u);
-    UINT32_T__G__LogPrevDead = func__SimpleLog_RowField(CHAR__LogLastRow, 14u);
+    UINT32_T__G__LogPrevV24 = func__SimpleLog_RowField(CHAR__LogLastRow, 10u) +
+                                  func__SimpleLog_RowField(CHAR__LogLastRow, 11u);
+    UINT32_T__G__LogPrevDead = func__SimpleLog_RowField(CHAR__LogLastRow, 12u);
     UINT8_T__G__LogPrevBand = (UINT32_T__G__LogPrevV24 < SIMPLE_LOG_CUT_BAND_MV) ? 1u : 0u;
     UINT8_T__G__LogPrevNote = (UINT8_T__G__LogPrevBand != 0u) ?
                               SIMPLE_LOG_NOTE_LOW_STOP : SIMPLE_LOG_NOTE_NONE;
@@ -1867,7 +1994,90 @@ static void func__SimpleLog_OnFrame(void)
 static bool func__SimpleLog_ClockGapStore(void)
 {
     return func__Simple_StorageWrite(SIMPLE_TIME_GAP_FILE,
-        String("{\"note\":7,\"reason\":\"clock_unavailable\"}"));
+        String("{\"note\":8,\"reason\":\"clock_unavailable\"}"));
+}
+/* ==================== Durable clock-warning intent ==================== */
+/**
+ * @brief Load the exact warning row staged before its first append.
+ * @param char__row Output CSV row, uint32_t__day output target day independent of later timezone changes.
+ * @return 1 for a staged row, 0 for the original undated marker, -1 for read/format failure.
+ */
+static int func__SimpleLog_ClockGapIntent(char *char__row, uint32_t *uint32_t__day)
+{
+    File file__in = LittleFS.open(SIMPLE_TIME_GAP_FILE, "r");
+    if (!file__in || file__in.size() > SIMPLE_LOG_RAM_ROW_MAX + 96u) return -1;
+    size_t size_t__size = file__in.size();
+    String string__intent = file__in.readString();
+    if (string__intent.length() != size_t__size) return -1;
+    if (string__intent == "{\"note\":8,\"reason\":\"clock_unavailable\"}") return 0;
+    const char *char__prefix = "{\"note\":8,\"reason\":\"clock_unavailable\",\"day\":";
+    size_t size_t__pos = strlen(char__prefix);
+    if (strncmp(string__intent.c_str(), char__prefix, size_t__pos) != 0 || size_t__size < size_t__pos + 20u) return -1;
+    uint32_t uint32_t__code = 0u;
+    for (uint8_t uint8_t__i = 0u; uint8_t__i < 8u; uint8_t__i++)
+    {
+        char char__digit = string__intent[size_t__pos++];
+        if (char__digit < '0' || char__digit > '9') return -1;
+        uint32_t__code = uint32_t__code * 10u + (uint32_t)(char__digit - '0');
+    }
+    const char *char__key = ",\"row\":\"";
+    if (strncmp(string__intent.c_str() + size_t__pos, char__key, strlen(char__key)) != 0) return -1;
+    size_t__pos += strlen(char__key);
+    if (size_t__size < size_t__pos + 2u || strcmp(string__intent.c_str() + size_t__size - 2u, "\"}") != 0) return -1;
+    size_t size_t__row = size_t__size - size_t__pos - 2u;
+    if (size_t__row == 0u || size_t__row >= SIMPLE_LOG_RAM_ROW_MAX) return -1;
+    memcpy(char__row, string__intent.c_str() + size_t__pos, size_t__row);
+    char__row[size_t__row] = '\0';
+    uint32_t uint32_t__values[SimpleLogCodec::Fields];
+    if (!SimpleLogCodec::parse(char__row, uint32_t__values) ||
+        uint32_t__values[0] < SIMPLE_TIME_VALID_MIN || uint32_t__values[3] != SIMPLE_LOG_NOTE_CLOCK_GAP) return -1;
+    *uint32_t__day = uint32_t__code;
+    return 1;
+}
+/* ==================== Warning-row lookup ==================== */
+/** @brief Return 1 for an exact durable row, 0 when absent, -1 on unreadable/damaged history. */
+static int func__SimpleLog_ClockGapFind(uint32_t uint32_t__day, const char *char__row)
+{
+    char char__path[SIMPLE_LOG_PATH_MAX];func__SimpleLog_PathOf(char__path, uint32_t__day);
+    if (!LittleFS.exists(char__path)) return 0;
+    File file__in = LittleFS.open(char__path, "r");
+    SimpleLogCodec::State codec;
+    uint32_t uint32_t__values[SimpleLogCodec::Fields];
+    if (!file__in || !SimpleLogCodec::parse(char__row, uint32_t__values) ||
+        SimpleLogCodec::begin(file__in, codec) != 1) return -1;
+    bool bool__found = false;
+    while (SimpleLogCodec::next(file__in, codec))
+        if (memcmp(codec.value, uint32_t__values, sizeof(uint32_t__values)) == 0) bool__found = true;
+    if (codec.ioError || codec.damaged) return -1;
+    return bool__found ? 1 : 0;
+}
+/* ==================== Clock-warning delivery ==================== */
+/** @brief Stage a stable warning row, then recognize or append it exactly once across reboot retries. */
+static bool func__SimpleLog_ClockGapDeliver(void)
+{
+    char char__row[SIMPLE_LOG_RAM_ROW_MAX];uint32_t uint32_t__day = 0u;
+    int int__intent = func__SimpleLog_ClockGapIntent(char__row, &uint32_t__day);
+    if (int__intent < 0) return false;
+    if (int__intent == 0 || func__SimpleLog_DayExpired(uint32_t__day))
+    {
+        uint32_t__day = UINT32_T__G__LogDayCode;
+        func__SimpleLog_BuildRow(char__row, sizeof(char__row), 0u, SIMPLE_LOG_NOTE_CLOCK_GAP);
+        /* A distinct incident must not adopt an identical earlier row: retry with a later clock tick. */
+        if (func__SimpleLog_ClockGapFind(uint32_t__day, char__row) != 0) return false;
+        char char__intent[SIMPLE_LOG_RAM_ROW_MAX + 96u];
+        int int__n = snprintf(char__intent, sizeof(char__intent),
+            "{\"note\":8,\"reason\":\"clock_unavailable\",\"day\":%08lu,\"row\":\"%s\"}",
+            (unsigned long)uint32_t__day, char__row);
+        if (int__n <= 0 || (size_t)int__n >= sizeof(char__intent) ||
+            !func__Simple_StorageWrite(SIMPLE_TIME_GAP_FILE, String(char__intent))) return false;
+    }
+    int int__found = func__SimpleLog_ClockGapFind(uint32_t__day, char__row);
+    if (int__found != 0) return int__found == 1;
+    if (!func__SimpleLog_PrepareDayFile(uint32_t__day) ||
+        !func__SimpleLog_AppendRow(uint32_t__day, char__row)) return false;
+    if (uint32_t__day == UINT32_T__G__LogDayCode && UINT16_T__G__LogRowsToday < 0xFFFFu)
+        UINT16_T__G__LogRowsToday++;
+    return func__SimpleLog_ClockGapFind(uint32_t__day, char__row) == 1;
 }
 /* ==================== Clock warning and recovery ==================== */
 /** @brief Warn once after 40 boot seconds; retain the incident until a durable dated row exists. */
@@ -1893,23 +2103,7 @@ static void func__SimpleLog_ClockGapTick(void)
         /* Do not put repeated warning copies in the volatile fallback ring. */
         func__SimpleLog_DrainRam();
         if (UINT8_T__G__LogRamCount != 0u || !func__SimpleLog_ResolveDay(true)) return;
-        char char__row[SIMPLE_LOG_RAM_ROW_MAX];
-        func__SimpleLog_BuildRow(char__row, sizeof(char__row), 0u, SIMPLE_LOG_NOTE_CLOCK_GAP);
-        if (!func__SimpleLog_AppendRow(UINT32_T__G__LogDayCode, char__row)) return;
-        char char__path[SIMPLE_LOG_PATH_MAX];
-        func__SimpleLog_PathOf(char__path, UINT32_T__G__LogDayCode);
-        File file__check = LittleFS.open(char__path, "r");
-        SimpleLogCodec::State codec;
-        bool bool__verified = file__check && SimpleLogCodec::begin(file__check, codec) == 1;
-        if (bool__verified)
-        {
-            while (SimpleLogCodec::next(file__check, codec)) { }
-            bool__verified = !codec.ioError && codec.valid &&
-                codec.value[0] == func__SimpleLog_RowEpoch(char__row) && codec.value[3] == SIMPLE_LOG_NOTE_CLOCK_GAP;
-        }
-        file__check.close();
-        if (!bool__verified) return;
-        if (UINT16_T__G__LogRowsToday < 0xFFFFu) UINT16_T__G__LogRowsToday++;
+        if (!BOOL__G__LogClockGapStored || !func__SimpleLog_ClockGapDeliver()) return;
         BOOL__G__LogClockGapEmitted = true;
     }
     if (LittleFS.exists(SIMPLE_TIME_GAP_FILE) && !LittleFS.remove(SIMPLE_TIME_GAP_FILE))

@@ -28,9 +28,23 @@ function check(ok,msg,detail){++checks;if(ok)console.log('  ok   '+msg);else{++f
   const d=await page.evaluate(()=>({w:innerWidth,sw:document.documentElement.scrollWidth,ports:[...document.querySelectorAll('.srvw,.tw,.qgm,.evtlist,.calmodalbody,#sres .rb,#sbst')].filter(e=>e.clientWidth&&e.scrollWidth>e.clientWidth+1).map(e=>({cl:e.className,cw:e.clientWidth,sw:e.scrollWidth}))}));
   check(d.sw<=d.w+1&&!d.ports.length,label+' fits width without a horizontal scrollport',d);
  };
+ // Check resolved browser colors, including dynamically created text fields.
+ const fieldColors=async(label,selector)=>{
+  const result=await page.locator(selector).evaluateAll(es=>{
+   const lum=c=>{const rgb=c.match(/[\d.]+/g).slice(0,3).map(Number).map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];};
+   return es.filter(e=>e.getClientRects().length&&!e.disabled&&e.type!=='hidden'&&e.type!=='checkbox'&&e.type!=='file').map(e=>{const s=getComputedStyle(e),fg=lum(s.color),bg=lum(s.backgroundColor);return {id:e.id,fg:s.color,bg:s.backgroundColor,ratio:(Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05)};});
+  });
+  check(result.length>0&&result.every(x=>x.ratio>=4.5&&!/rgba/.test(x.bg)),label+' uses opaque readable field colors',result);
+ };
  for(const width of [320,375,760,1024,1440]){
   await page.setViewportSize({width,height:720});await page.goto(base);await page.waitForFunction(()=>window.D&&D.p);await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
   await page.locator('nav [data-t="0"]').click();await fit(width+' status');
+  await page.evaluate(()=>{window.nameResult=undefined;pmName('benchlog.csv').then(n=>window.nameResult=n);});
+  await page.locator('#pmfilename').waitFor();await fieldColors(width+' filename focused','#pmfilename');
+  await page.locator('#pmfilename').fill('گزارش آزمایش');await page.locator('#pmok').focus();
+  await fieldColors(width+' filename unfocused','#pmfilename');await page.locator('#pmok').click();
+  check(await page.evaluate(()=>window.nameResult==='گزارش آزمایش.csv'),width+' filename stays editable and keeps its extension');
+
   for(const n of [1,2]){
    const label=page.locator('#dutyedit'+n);await label.evaluate(e=>scrollTo(0,e.getBoundingClientRect().top+scrollY-650));await page.waitForTimeout(30);
    const before=await page.evaluate(()=>scrollY);await clickLabel(label);
@@ -73,6 +87,10 @@ function check(ok,msg,detail){++checks;if(ok)console.log('  ok   '+msg);else{++f
   await page.locator('nav [data-t="1"]').click();
   await page.evaluate(()=>{CALS=[];for(let i=0;i<6;i++)CALS.push({sc:'BOTH',d:i*5,use:1,r1:80+i*20,r2:90+i*20,b1:i*30,b2:i*31,ts:100+i});wbuild(['BAT1','BAT2','BOTH'],[0,5]);calsmp();calrun();});
   await fit(width+' populated capture and sample tables');
+  await page.evaluate(()=>{$('wSw').checked=false;wmode();});
+  await fieldColors(width+' manual duty text','#wL');
+  await fieldColors(width+' calibration controls','input,select,textarea');
+
   await page.evaluate(()=>{CALS=[];for(let i=0;i<40;i++)CALS.push({sc:'BOTH',d:i,use:1,r1:80+i*20,r2:90+i*20,b1:i*30,b2:i*31,ts:i});calsmp();calrun();window.sampleNodes=[...document.querySelectorAll('#calsl [data-csample]')];});
   const sampleRow=page.locator('#calsl [data-csample="15"]');
   await sampleRow.evaluate(e=>e.scrollIntoView({block:'center'}));await page.waitForTimeout(180);
@@ -91,10 +109,32 @@ function check(ok,msg,detail){++checks;if(ok)console.log('  ok   '+msg);else{++f
   if(width<=760){check(await page.evaluate(()=>[...document.querySelectorAll('#wT td,#calsl td')].every(e=>e.dataset.h)),width+' stacked dynamic tables retain every column heading');}
   await page.evaluate(()=>{wform(0,[1,2]);});
   await fit(width+' active two-battery capture form');
+  await fieldColors(width+' capture note','#wN');
   // Resolve the form to clean up its keyboard/timer state before navigating.
   await page.evaluate(()=>{W.choose&&W.choose({a:'end'});});await pause(10);
   await page.evaluate(()=>{PEND={20:14500,25:700};D.p[20]=14400;sendresult({20:14400,21:14300},{20:14400,21:14300},true);});
   await fit(width+' named per-variable feedback');
+  await page.evaluate(()=>{sdlgx();PEND={};const batch={},sent={};XIDS.forEach((id,i)=>{batch[id]=pdflt(id)??0;sent[id]=batch[id];if(i<12){D.p[id]=batch[id]+1;qput(id,batch[id]);}else D.p[id]=batch[id];});sendresult(batch,sent,true);});
+  await fit(width+' large grouped restore report');
+  const reportLayout=await page.evaluate(()=>{
+   const box=document.querySelector('#sres .rb').getBoundingClientRect(),body=document.querySelector('#srsm'),actions=document.querySelector('#srsa').getBoundingClientRect();
+   const values=[...document.querySelectorAll('.srvalues>span')].filter(e=>e.getClientRects().length);
+   return {box:box.toJSON(),actions:actions.toJSON(),scrolls:body.scrollHeight>body.clientHeight,valuesFit:values.every(e=>e.scrollWidth<=e.clientWidth+1&&getComputedStyle(e).whiteSpace==='nowrap'),isolated:[...document.querySelectorAll('.srvalues bdi')].every(e=>getComputedStyle(e).direction==='ltr')};
+  });
+  check(reportLayout.box.top>=0&&reportLayout.box.bottom<=720&&reportLayout.actions.bottom<=720&&reportLayout.scrolls,width+' long report scrolls internally and keeps actions visible',reportLayout);
+  check(reportLayout.valuesFit&&reportLayout.isolated,width+' report numbers and labels remain unbroken and directionally isolated',reportLayout);
+  check(await page.locator('[data-group="different"]:visible').count()===1&&await page.locator('[data-group="confirmed"]:visible').count()===0,width+' restore report opens on unresolved settings only');
+  await page.locator('[data-filter="confirmed"]').click();await fit(width+' filtered successful settings');
+  check(await page.locator('[data-group="confirmed"]:visible .sritem').count()>0&&await page.locator('[data-group="different"]:visible').count()===0,width+' success filter shows matching settings without mixed unresolved rows');
+  await page.locator('[data-filter="unknown"]').click();await fit(width+' empty unknown filter');
+
+
+  await page.evaluate(()=>{PEND={30:7000,31:1000,32:1000};const batch={20:14400,21:14300,23:13500,24:12800,25:650,26:100,27:14800,28:150,29:6000};const rows=Object.entries(batch).map(([id,v],i)=>{if(i>=3)PEND[id]=v;return {id,back:i<3?v:i<6?v+1:null};});sendresult(batch,batch,true,[],rows);});
+  for(const kind of ['different','unknown','queued','confirmed']){
+   await page.locator('[data-filter="'+kind+'"]').click();await fit(width+' explained '+kind+' group');
+   check(await page.locator('[data-group="'+kind+'"]:visible .sritem').count()===3,width+' '+kind+' shows three settings with plain-language help');
+  }
+  check(await page.locator('#srsa [onclick="sendRetry()"]').isVisible()&&await page.locator('#srsa [onclick="sendRecheck()"]').isVisible(),width+' real retry and recheck remain visible with longer explanations');
   await page.evaluate(()=>{sdlgx();PEND={};pbar();});
 
  }

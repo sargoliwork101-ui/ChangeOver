@@ -29,6 +29,15 @@ int main()
     func__Simple_TimeSet(base,true);func__Simple_TimeNoteBoard(100u,true,3u);func__Simple_TimeSave();
     setup();
     assert(!func__Simple_TimeBootReady());
+    // Public contact content is compiled separately and never sends board commands.
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/about",HTTP_GET);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==200);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simBody()==SIMPLE_ABOUT_JSON);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simHeader("Cache-Control")=="no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/about.js",HTTP_GET);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==200);
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simBody()==SIMPLE_ABOUT_FOOTER_JS);
+    printf("REAL ABOUT ROUTE PASS: exact separate compiled JSON, public GET, no-store\n");
     unsigned requests=0u;
     for(unsigned seconds=1u;seconds<=40u;seconds++)
     {
@@ -55,5 +64,19 @@ int main()
     while(SimpleLogCodec::next(file,state))if(state.value[3]==SIMPLE_LOG_NOTE_CLOCK_GAP)warnings++;
     assert(!state.ioError && warnings==1u);
     printf("REAL SETUP/LOOP CLOCK PASS: %u repeated DIAG requests, no stale TIME_SYNC, 40-second durable warning, late UART recovery without browser\n",requests);
+    // Exercise the real loop barrier with dirty RAM and queued serial work.
+    func__Simple_AuthDefaults();func__Simple_AuthLogout();func__Simple_LoginClear();
+    assert(func__Simple_AuthLogin("admin","admin")==1);
+    SIMPLE_WEB_SERVER_T__G__Server.simSetHeader("X-Admin-Token",CHAR__G__SessionToken);
+    while(Serial.takeEspByte(payload)){}
+    SIMPLE_WEB_SERVER_T__G__Server.simCall("/factory/reset",HTTP_POST,"confirm=ERASE_ESP");
+    assert(SIMPLE_WEB_SERVER_T__G__Server.simStatus()==200 && BOOL__G__FactoryResetPending);
+    BOOL__G__ChartsDirty=true;BOOL__G__DiagDirty=true;BOOL__G__BoardParamsDirty=true;BOOL__G__ChargeHistDirty=true;
+    loop();assert(!Serial.takeEspByte(payload));
+    assert(!LittleFS.exists(SIMPLE_CHARTS_FILE) && !LittleFS.exists(SIMPLE_USERS_FILE) && !LittleFS.exists(SIMPLE_WIFI_FILE));
+    UNSIGNED_LONG__G__MillisStart-=2000u;
+    bool restarted=false;try{loop();}catch(const SimRestartRequest &){restarted=true;}
+    assert(restarted && !Serial.takeEspByte(payload) && !LittleFS.exists(SIMPLE_DIAG_FILE));
+    printf("REAL LOOP FACTORY RESET PASS: dirty RAM never re-saved, zero board commands, deferred ESP restart\n");
     return 0;
 }

@@ -16,16 +16,17 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve
 (async()=>{
  await tick();
  check(d.querySelector('#connectionSettings[open]')&&d.querySelector('#evtCard:not([open])')&&d.querySelector('#technicalInfo:not([open])'),'common settings open; history and technical details collapsed');
- check(d.getElementById('adminCard').hidden,'management remains invisible to ordinary visitors');
+ check(d.getElementById('adminCard').hidden&&d.querySelector('#adminCard #technicalInfo'),'management and technical information remain invisible to ordinary visitors');
  const ids=[...d.querySelectorAll('[id]')].map(e=>e.id);
  check(new Set(ids).size===ids.length,'no duplicate IDs after regrouping');
  check([...d.querySelectorAll('use')].every(e=>d.querySelector(e.getAttribute('href'))),'every line icon resolves locally');
  check([...d.querySelectorAll('#adminCard input')].every(e=>d.querySelector('label[for="'+e.id+'"]')),'admin fields keep permanent accessible labels');
  check([...d.querySelectorAll('#adminCard button')].every(e=>e.querySelector('svg')&&e.getAttribute('aria-label')&&e.title),'compact admin actions keep icons, names and guidance');
  w.admTokenSet('a'.repeat(64));w.admUnlock('admin');
+ check(!d.getElementById('adminCard').hidden&&d.getElementById('technicalInfo').closest('#adminCard'),'technical information becomes available inside the unlocked admin panel');
  const secrets=['admPass','admWpass'];
  secrets.forEach(id=>d.getElementById(id).value='do-not-retain');w.admLock();
- check(secrets.every(id=>!d.getElementById(id).value),'locking removes all password values, not just the visible session');
+ check(secrets.every(id=>!d.getElementById(id).value)&&d.getElementById('technicalInfo').closest('[hidden]'),'locking discards passwords and hides technical information again');
  d.getElementById('admPass').value='cancelled-password';w.admClose();
  check(!d.getElementById('admPass').value,'closing login discards the entered password');
  w.admTokenSet('a'.repeat(64));w.admUnlock('admin');

@@ -5,7 +5,7 @@ static void func__T_TestStorage64(void)
     BOOL__G__FsOk=true;LittleFS.format();func__T_BatteryResetRam();
     func__Simple_ChartsClear(false);func__Simple_TimeSet(1793836800u,true);
     UINT8_T__G__ChargeHistoryCount=1u;
-    SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[0]={1793836800u,1u,900u};
+    SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[0]={1793836800u,1u,900u,1793835900u,1u};
     UINT8_T__G__DiagErrorCount=1u;
     SIMPLE_DIAG_ERROR_T__G__Errors[0]={1793836800u,4u,28000u,25000u,12490u,12510u,1u,3u};
     UINT8_T__G__PowerEventCount=0u;
@@ -83,9 +83,10 @@ static void func__T_TestStorage64(void)
         *fault=true;bool ok=func__SimpleLog_CompactDay(path,day);*fault=false;
         func__T_Check(!ok&&func__T_ChartBytes(path)==before,"failed day compaction preserves original committed rows");
     }
-    func__T_Check(func__SimpleLog_CompactDay(path,day)&&func__SimpleLog_CountRows(path)==110u,"day compaction keeps newest half in independently decodable records");
+    func__T_Check(func__SimpleLog_CompactDay(path,day)&&func__SimpleLog_CountRows(path)==200u,"compaction removes only the 20 excess oldest events when all 200 fit");
     std::string newest=func__T_DayText(path);
-    func__T_Check(newest.find("1793843400,")==0u&&newest.find("1793849940,")!=std::string::npos,"compaction drops oldest rows, never newest rows");
+    func__T_Check(newest.find("1793838000,")!=std::string::npos&&newest.find("1793837940,")==std::string::npos&&newest.find("1793849940,")!=std::string::npos,"compaction drops oldest rows, never newest rows");
+    func__T_Check(func__T_DayText(path).find(",0,7,")!=std::string::npos,"day compaction preserves the original day-start marker");
     // No manual delete success on a failed filesystem remove.
     SIMPLE_WEB_SERVER_T__G__Server.on("/evt/clr",HTTP_POST,func__Simple_HttpEventClear);
     BOOL__T__RemoveFail=true;SIMPLE_WEB_SERVER_T__G__Server.simCall("/evt/clr",HTTP_POST);

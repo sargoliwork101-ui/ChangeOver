@@ -127,15 +127,15 @@
 #define SIMPLE_TIME_WARN_MS             40000u
 #define SIMPLE_TIME_WARN_RETRY_MS       5000u
 #define SIMPLE_TIME_GAP_FILE            "/clock_gap.json"
-#define SIMPLE_LOG_MAX_DAYS             90u
+#define SIMPLE_LOG_MAX_DAYS             30u
 /* Retention is bounded by age, payload quotas and actual flash allocation. */
-#define SIMPLE_LOG_MAX_ROWS_PER_DAY     400u
+#define SIMPLE_LOG_MAX_ROWS_PER_DAY     200u
 #define SIMPLE_LOG_DAY_MAX_BYTES        4096u
 #define SIMPLE_LOG_TAIL_LINES           30u
 #define SIMPLE_LOG_DAY_AUTO             0xFFFFFFFFu
 #define SIMPLE_LOG_DAY_ZERO             0xFFFFFFFEu
 #define SIMPLE_LOG_RAM_ROWS             16u
-#define SIMPLE_LOG_RAM_ROW_MAX          160u
+#define SIMPLE_LOG_RAM_ROW_MAX          256u
 #define SIMPLE_LOG_INDEX_PATH           "/evt-days.txt"
 #define SIMPLE_LOG_SCAN_MIN_MS          2000u
 #define SIMPLE_LOG_LAST_PATH            "/evt-last.txt"
@@ -143,7 +143,7 @@
 #define SIMPLE_LOG_CUT_BAND_MV          21200u
 #define SIMPLE_LOG_BAND_OFF_MV          21400u
 #define SIMPLE_LOG_VSTEP_MIN_MS         60000u
-#define SIMPLE_LOG_VSTEP_MV             200u
+#define SIMPLE_LOG_VSTEP_MV             500u
 #define SIMPLE_LOG_HEARTBEAT_MS         3600000u
 #define SIMPLE_LOG_DRAIN_RETRY_MS       30000u
 #define SIMPLE_HTTP_SEND_TIMEOUT_MS     1000u
@@ -174,10 +174,9 @@ static_assert(SIMPLE_LOG_TOTAL_BUDGET_BYTES + SIMPLE_STORAGE_CHART_BYTES +
 #define SIMPLE_LOG_LINK_TIMEOUT_MS      5000u
 #define SIMPLE_LOG_HEADER \
     "# تاریخچهٔ وضعیت / state history\n" \
-    "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,v24_mv,vlow_mv,vhigh_mv,imbal_mv,dead_mask,vin_mv,v12_mv,i1_ma,i2_ma,duty1_permille,duty2_permille,batt_pct\n" \
-    "# batt_pct: درصد باتری از نگاشت دشارژ (پارامتر ۷۴/۷۵، کارخانه ۲۱۰۰۰..۲۹۰۰۰ میلی‌ولت) / battery percent from the discharge map\n" \
+    "# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille\n" \
     "# change_bits: 1=boot 2=mains 4=chg1 8=chg2 16=fault 32=flags 64=band 128=link 256=mode 512=dead 1024=voltage_step\n" \
-    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual 7=clock unavailable; dated warning marks recovery, not the missing interval\n" \
+    "# note: 0=none 1=low-battery restart 2=link lost 3=link back 4=day full 5=heartbeat 6=manual 7=day start 8=clock unavailable; dated warning marks recovery, not the missing interval\n" \
     "# chg states: 0 off 1 bulk 2 absorb 3 float 4 bringup 5 jit_retry 6 input_wait 7 final_fault 8 bat_lost 9 manual 10 thermal_rest\n"
 #define SIMPLE_PARAMS_FILE              "/params.json"
 #define SIMPLE_THEME_FILE               "/theme.json"
@@ -197,4 +196,5 @@ typedef enum
     SIMPLE_RX_WAIT_CRC_LO,
     SIMPLE_RX_WAIT_CRC_HI
 } simple_rx_state_t;
+#define SIMPLE_PACK_REVIEW_FILE "/pack_review.txt"
 #endif
