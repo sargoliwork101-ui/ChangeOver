@@ -1822,13 +1822,14 @@ function runSimulation() {
   if (mathEl) {
     mathEl.innerHTML = `
       1. ولتاژ بازتابی ثانویه به اولیه: <b>Vor = n × (Vout + VF) = ${n.toFixed(2)} × (${Vout.toFixed(1)} + 0.55) = <span class="val">${Vor.toFixed(2)} V</span></b> | سطح پلاتو: <b>Vin + Vor = <span class="res">${(Vin+Vor).toFixed(2)} V</span></b><br>
-      2. زمان روشنایی و جریان پیک اولیه: <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> ➔ <b>Ipk = <span class="val">${Ipk.toFixed(2)} A</span></b> | توان سلف نشتی: <b>Pleak = <span class="val">${Pleak_raw.toFixed(2)} W</span></b><br>
-      3. تلفات ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)}W</b> + <b>Psw = ${Psw.toFixed(2)}W</b> ➔ <b>Pmos = <span class="${Tj_mos > 90 ? 'bad' : 'res'}">${P_mos_total.toFixed(2)} W</span></b> (دمای پیوند ${hsStatusText})<br>
-      4. مقاومت اسنابر: <b>PR = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)}°C</span></b>) | ولتاژ پیک نهایی درین: <b>Vdrain_pk = <span class="${Vdrain_pk > Vdss * 0.85 ? 'bad' : 'res'}">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه شکست: <b><span class="${marginPct < 15 ? 'bad' : 'res'}">${marginVolts.toFixed(1)} V</span></b>)${tvsMath}
+      2. جریان پیک اولیه و زمان روشنایی: <b>Ipk = √(2·Pin / (Lp·fsw)) = <span class="val">${Ipk.toFixed(2)} A</span></b> | <b>Ton = ${(Ton_time*1e6).toFixed(2)} µs (D = ${(Don*100).toFixed(1)}%)</b> | توان سلف نشتی: <b>Pleak = ½·Llk·Ipk²·fsw = <span class="val">${Pleak_raw.toFixed(2)} W</span></b><br>
+      3. معادله تعادل توان اسنابر RCD (استاندارد Fairchild AN-4147): <b>Vsn = [Vor + √(Vor² + 4·Pleak·Rsn)] / 2 = <span class="val">${Vsn_avg.toFixed(1)} V</span></b> ➔ ولتاژ پیک درین: <b>Vdrain_pk = Vin + Vsn = <span class="val">${Vdrain_pk.toFixed(1)} V</span></b> (حاشیه امن تا شکست Vdss: <b>${marginVolts.toFixed(1)} V</b>)<br>
+      4. توان تلفاتی و دمای مقاومت اسنابر: <b>PR = Vsn² / Rsn = (${Vsn_avg.toFixed(1)})² / ${Rsn.toFixed(0)} = <span class="${prPct > 100 ? 'bad' : 'res'}">${PR.toFixed(2)} W</span></b> (${prPct.toFixed(0)}% از پکیج ${Prated.toFixed(0)}W ➔ دمای بدنه <b><span class="${TR > 100 ? 'bad' : 'res'}">${TR.toFixed(0)} °C</span></b>)<br>
+      5. تحلیل حرارتی ماسفت قدرت (${mosfetModel}): <b>Pcond = ${Pcond.toFixed(2)} W</b> (با Irms = ${Irms.toFixed(2)}A) + <b>Psw = ${Psw.toFixed(2)} W</b> ➔ <b>Pmos = <span class="val">${P_mos_total.toFixed(2)} W</span></b> | دمای پیوند Tj: ${hsStatusText}
+      ${tvsMath}
     `;
   }
 
-  // Store data for scope re-rendering
   lastSimData = {
     Vin, Vor, Vsn_avg, DeltaV, Vdrain_pk, Ipk, fsw, Ts,
     Ton_time, Treset_time, Tclamp_time,
