@@ -13,31 +13,38 @@
 
 <style>
   :root {
-    /* Warm Executive Engineering Palette */
-    --bg-base: #0a0c12;
-    --bg-gradient: radial-gradient(circle at 50% 0%, #1a1724 0%, #0c0e16 50%, #06070a 100%);
+    /* High-Tech Dark Emerald Engineering Glassmorphism Palette */
+    --bg-base: #030807;
+    --bg-gradient: radial-gradient(circle at 50% -10%, #0c2d22 0%, #061713 45%, #020706 100%);
     
-    --card-bg: rgba(20, 22, 32, 0.90);
-    --card-bg-subtle: rgba(14, 16, 24, 0.75);
-    --card-border: rgba(226, 183, 116, 0.18);
-    --card-border-hover: rgba(226, 183, 116, 0.45);
-    --card-inner-border: rgba(255, 255, 255, 0.07);
+    --card-bg: rgba(8, 22, 18, 0.76);
+    --card-bg-subtle: rgba(5, 16, 13, 0.82);
+    --card-border: rgba(52, 211, 153, 0.20);
+    --card-border-hover: rgba(52, 211, 153, 0.48);
+    --card-inner-border: rgba(52, 211, 153, 0.10);
     
-    /* Warm Gold, Bronze, Copper Accents */
-    --gold: #e2b774;
-    --gold-bright: #fcd34d;
-    --copper: #c28854;
+    /* Emerald, Mint, Cyan, Signal Colors */
+    --emerald-primary: #10b981;
+    --emerald-bright: #34d399;
+    --mint: #6ee7b7;
+    --teal: #14b8a6;
+    --cyan: #06b6d4;
+    --cyan-bright: #38bdf8;
+    
+    --gold: #34d399; /* Primary accent is now precision Emerald */
+    --gold-bright: #6ee7b7;
+    --copper: #22d3ee;
     --amber: #f59e0b;
-    --warm-red: #ef4444;
-    --warm-green: #22c55e;
-    --warm-blue: #60a5fa;
-    --warm-violet: #c084fc;
+    --warm-red: #f43f5e;
+    --warm-green: #10b981;
+    --warm-blue: #38bdf8;
+    --warm-violet: #a78bfa;
     
-    /* Typography Colors */
-    --text-primary: #f8fafc;
+    /* Precision Technical Typography */
+    --text-primary: #f0fdf4;
     --text-secondary: #cbd5e1;
-    --text-muted: #848e9f;
-    --text-dim: #5a6475;
+    --text-muted: #829a92;
+    --text-dim: #4d665f;
   }
 
   * {
@@ -67,18 +74,19 @@
     gap: 18px;
   }
 
-  /* Formal Glass Component */
+  /* Frosted Glass Component */
   .glass-card {
     background: var(--card-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--card-border);
-    border-radius: 16px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    border-radius: 14px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 0 20px rgba(16, 185, 129, 0.03);
+    transition: border-color 0.22s ease, box-shadow 0.22s ease;
   }
   .glass-card:hover {
     border-color: var(--card-border-hover);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 18px rgba(16, 185, 129, 0.12);
   }
 
   /* Executive Header */
@@ -89,12 +97,13 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 14px;
-    border-top: 2px solid var(--gold);
+    border-top: 2px solid var(--emerald-bright);
   }
   .header-content h1 {
     font-size: clamp(1.1rem, 2vw, 1.38rem);
     font-weight: 800;
-    color: var(--gold);
+    color: var(--emerald-bright);
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -113,24 +122,25 @@
   }
 
   .btn-download {
-    background: linear-gradient(135deg, rgba(226, 183, 116, 0.15) 0%, rgba(194, 136, 84, 0.25) 100%);
-    border: 1px solid var(--gold);
-    color: var(--gold-bright);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(6, 182, 212, 0.22) 100%);
+    border: 1px solid var(--emerald-bright);
+    color: var(--mint);
     padding: 8px 18px;
-    border-radius: 10px;
+    border-radius: 9px;
     cursor: pointer;
     font-size: 0.84rem;
     font-weight: 700;
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.25s ease;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
   }
   .btn-download:hover {
-    background: linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%);
-    color: #0b0d13;
+    background: linear-gradient(135deg, var(--emerald-primary) 0%, var(--teal) 100%);
+    color: #020c08;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(226, 183, 116, 0.35);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
   }
 
   /* Preset Bar */
@@ -143,12 +153,12 @@
   }
   .preset-label {
     font-size: 0.84rem;
-    font-weight: 700;
-    color: var(--gold);
+    font-weight: 800;
+    color: var(--emerald-bright);
     margin-left: 4px;
   }
   .preset-btn {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--card-inner-border);
     color: var(--text-secondary);
     padding: 6px 13px;
@@ -160,22 +170,22 @@
     white-space: nowrap;
   }
   .preset-btn:hover {
-    background: rgba(226, 183, 116, 0.12);
-    color: var(--gold-bright);
-    border-color: rgba(226, 183, 116, 0.3);
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--mint);
+    border-color: rgba(52, 211, 153, 0.35);
   }
   .preset-btn.active {
-    background: var(--gold);
-    color: #0b0d13;
-    border-color: var(--gold);
-    font-weight: 700;
-    box-shadow: 0 2px 12px rgba(226, 183, 116, 0.25);
+    background: linear-gradient(135deg, var(--emerald-primary) 0%, #059669 100%);
+    color: #020c08;
+    border-color: var(--emerald-bright);
+    font-weight: 800;
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
   }
 
-  /* 2-COLUMN MAIN DASHBOARD LAYOUT (راست: کارت‌ها | چپ: نمودار) */
+  /* 2-COLUMN MAIN DASHBOARD LAYOUT */
   .dashboard-layout {
     display: grid;
-    grid-template-columns: minmax(480px, 530px) 1fr;
+    grid-template-columns: minmax(480px, 540px) 1fr;
     gap: 20px;
     align-items: start;
   }
@@ -217,9 +227,9 @@
     height: 2px;
     opacity: 0.85;
   }
-  .category-box.mosfet-box .box-top-line { background: linear-gradient(90deg, transparent 0%, var(--warm-violet) 50%, transparent 100%); }
-  .category-box.snubber-box .box-top-line { background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%); }
-  .category-box.power-box .box-top-line { background: linear-gradient(90deg, transparent 0%, var(--copper) 50%, transparent 100%); }
+  .category-box.mosfet-box .box-top-line { background: linear-gradient(90deg, transparent 0%, #38bdf8 50%, transparent 100%); }
+  .category-box.snubber-box .box-top-line { background: linear-gradient(90deg, transparent 0%, var(--emerald-bright) 50%, transparent 100%); }
+  .category-box.power-box .box-top-line { background: linear-gradient(90deg, transparent 0%, #2dd4bf 50%, transparent 100%); }
 
   .cat-header {
     display: flex;
@@ -233,7 +243,7 @@
   .cat-title {
     font-size: 0.98rem;
     font-weight: 800;
-    color: var(--gold);
+    color: var(--emerald-bright);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -260,7 +270,7 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(52, 211, 153, 0.08);
   }
 
   /* Form Elements */
@@ -283,7 +293,7 @@
   .val-badge {
     font-weight: 700;
     font-size: 0.85rem;
-    color: var(--gold);
+    color: var(--emerald-bright);
   }
   .input-control {
     display: flex;
@@ -293,15 +303,15 @@
   input[type="range"] {
     flex: 1;
     height: 6px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(52, 211, 153, 0.12);
     border-radius: 3px;
     outline: none;
-    accent-color: var(--gold);
+    accent-color: var(--emerald-bright);
     cursor: pointer;
   }
   input[type="number"], select {
-    background: rgba(11, 13, 19, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(4, 14, 11, 0.88);
+    border: 1px solid rgba(52, 211, 153, 0.22);
     color: var(--text-primary);
     padding: 6px 9px;
     border-radius: 8px;
@@ -312,8 +322,8 @@
     transition: all 0.2s ease;
   }
   input[type="number"]:focus, select:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 10px rgba(226, 183, 116, 0.25);
+    border-color: var(--emerald-bright);
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
   }
   select {
     width: 100%;
@@ -323,7 +333,7 @@
 
   /* Sleek Group Container */
   .group-box {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(52, 211, 153, 0.03);
     border: 1px solid var(--card-inner-border);
     border-radius: 10px;
     padding: 10px 12px;
@@ -353,7 +363,7 @@
   .checkbox-label input[type="checkbox"] {
     width: 15px;
     height: 15px;
-    accent-color: var(--warm-green);
+    accent-color: var(--emerald-bright);
     cursor: pointer;
   }
 
@@ -366,16 +376,17 @@
   .metric-card {
     background: var(--card-bg-subtle);
     border: 1px solid var(--card-inner-border);
-    border-radius: 12px;
+    border-radius: 11px;
     padding: 12px 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
   .metric-card:hover {
-    border-color: rgba(226, 183, 116, 0.25);
+    border-color: rgba(52, 211, 153, 0.35);
     transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
   }
   .metric-card-top {
     display: flex;
@@ -388,7 +399,7 @@
   .metric-val {
     font-size: 1.35rem;
     font-weight: 900;
-    color: #fff;
+    color: #f0fdf4;
     display: flex;
     align-items: baseline;
     gap: 3px;
@@ -404,7 +415,7 @@
     margin-top: 4px;
   }
   .metric-sub b {
-    color: var(--gold);
+    color: var(--emerald-bright);
   }
 
   /* Status Pills */
@@ -415,9 +426,9 @@
     border-radius: 5px;
     transition: all 0.2s ease;
   }
-  .pill.safe { background: rgba(34, 197, 94, 0.12); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-  .pill.warn { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-  .pill.danger { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .pill.safe { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.35); }
+  .pill.warn { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.35); }
+  .pill.danger { background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.35); }
 
   /* Scope Card */
   .scope-card {
@@ -436,7 +447,7 @@
   .scope-title {
     font-size: 1.02rem;
     font-weight: 800;
-    color: var(--gold);
+    color: var(--emerald-bright);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -453,8 +464,8 @@
     display: flex;
     gap: 4px;
     align-items: center;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(226, 183, 116, 0.2);
+    background: rgba(52, 211, 153, 0.05);
+    border: 1px solid rgba(52, 211, 153, 0.25);
     border-radius: 8px;
     padding: 2px 4px;
   }
@@ -470,18 +481,18 @@
     transition: all 0.15s ease;
   }
   .btn-zoom:hover {
-    background: rgba(226, 183, 116, 0.2);
-    color: var(--gold-bright);
+    background: rgba(52, 211, 153, 0.2);
+    color: var(--mint);
   }
   .btn-zoom-reset {
-    background: rgba(226, 183, 116, 0.12);
-    color: var(--gold-bright);
+    background: rgba(52, 211, 153, 0.12);
+    color: var(--mint);
   }
 
   .btn-live {
-    background: rgba(34, 197, 94, 0.15);
-    border: 1px solid #4ade80;
-    color: #4ade80;
+    background: rgba(16, 185, 129, 0.18);
+    border: 1px solid var(--emerald-bright);
+    color: var(--mint);
     padding: 5px 12px;
     border-radius: 6px;
     font-size: 0.78rem;
@@ -493,8 +504,8 @@
     transition: all 0.2s ease;
   }
   .btn-live:hover {
-    background: #22c55e;
-    color: #0b0d13;
+    background: var(--emerald-primary);
+    color: #020c08;
   }
   .btn-live.paused {
     background: rgba(245, 158, 11, 0.15);
@@ -516,7 +527,7 @@
     cursor: pointer;
     user-select: none;
   }
-  .ch-option input { accent-color: var(--gold); cursor: pointer; }
+  .ch-option input { accent-color: var(--emerald-bright); cursor: pointer; }
 
   .scope-hint-bar {
     font-size: 0.74rem;
@@ -527,15 +538,14 @@
     padding: 0 4px;
   }
 
-  
   .ctrl-scroll-toast {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(10, 12, 18, 0.92);
-    border: 1px solid rgba(226, 183, 116, 0.45);
-    color: var(--gold-bright);
+    background: rgba(4, 16, 12, 0.94);
+    border: 1px solid rgba(52, 211, 153, 0.45);
+    color: var(--mint);
     font-size: 0.82rem;
     font-weight: 700;
     padding: 9px 18px;
@@ -546,7 +556,7 @@
     transition: opacity 0.22s ease;
     z-index: 20;
     white-space: nowrap;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
   }
   .ctrl-scroll-toast.visible {
     opacity: 1;
@@ -556,9 +566,9 @@
     position: relative;
     border-radius: 12px;
     overflow: hidden;
-    background: #06070a;
-    border: 1px solid rgba(226, 183, 116, 0.15);
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.85);
+    background: #020705;
+    border: 1px solid rgba(52, 211, 153, 0.22);
+    box-shadow: inset 0 2px 14px rgba(0,0,0,0.92);
     width: 100%;
     height: 430px;
     min-height: 430px;
@@ -580,19 +590,19 @@
     position: absolute;
     top: 14px;
     left: 14px;
-    background: rgba(11, 13, 19, 0.92);
-    border: 1px solid rgba(226, 183, 116, 0.25);
+    background: rgba(3, 12, 9, 0.94);
+    border: 1px solid rgba(52, 211, 153, 0.35);
     border-radius: 8px;
     padding: 8px 14px;
     font-size: 0.76rem;
     color: var(--text-secondary);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
     pointer-events: none;
     z-index: 10;
     line-height: 1.7;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
   }
-  .scope-hud b { color: var(--gold-bright); }
+  .scope-hud b { color: var(--mint); }
 
   /* Math & Formal Analysis Box */
   .math-card {
@@ -601,10 +611,10 @@
     color: var(--text-secondary);
     line-height: 1.85;
   }
-  .math-card b { color: var(--gold); }
-  .math-card .val { color: var(--gold-bright); font-weight: 700; }
-  .math-card .res { color: #4ade80; font-weight: 700; }
-  .math-card .bad { color: #f87171; font-weight: 700; }
+  .math-card b { color: var(--emerald-bright); }
+  .math-card .val { color: var(--mint); font-weight: 700; }
+  .math-card .res { color: #34d399; font-weight: 700; }
+  .math-card .bad { color: #f43f5e; font-weight: 700; }
 
   /* Actionable Engineering Fixes Box */
   .fixes-box {
@@ -614,7 +624,7 @@
     margin-top: 14px;
   }
   .fix-card {
-    background: rgba(0, 0, 0, 0.25);
+    background: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--card-inner-border);
     border-radius: 10px;
     padding: 12px 14px;
@@ -622,7 +632,7 @@
   .fix-title {
     font-size: 0.84rem;
     font-weight: 800;
-    color: var(--gold);
+    color: var(--emerald-bright);
     margin-bottom: 6px;
     display: flex;
     align-items: center;
@@ -1956,7 +1966,7 @@ function redrawScope(phaseShift = 0) {
   const toY_I = (i) => mTop + plotH - (i / maxI) * plotH;
 
   // Background Grid with Warm Tone
-  ctx.strokeStyle = 'rgba(212, 175, 55, 0.08)';
+  ctx.strokeStyle = 'rgba(52, 211, 153, 0.08)';
   ctx.lineWidth = 1;
   ctx.fillStyle = '#848e9f';
   ctx.font = '11px Vazirmatn, sans-serif';
@@ -2173,7 +2183,7 @@ function redrawScope(phaseShift = 0) {
     const peakY = toY(Vdrain_pk);
 
     if (peakX >= mLeft + 25 && peakX <= W - mRight - 25) {
-      ctx.fillStyle = '#e2b774';
+      ctx.fillStyle = '#10b981';
       ctx.beginPath();
       ctx.arc(peakX, peakY, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -2182,11 +2192,11 @@ function redrawScope(phaseShift = 0) {
       ctx.font = 'bold 11px Vazirmatn, sans-serif';
       const textWidth = ctx.measureText(badgeText).width;
       ctx.fillStyle = 'rgba(11, 13, 19, 0.95)';
-      ctx.strokeStyle = '#e2b774';
+      ctx.strokeStyle = '#34d399';
       ctx.lineWidth = 1;
       ctx.fillRect(peakX - textWidth/2 - 6, peakY - 24, textWidth + 12, 17);
       ctx.strokeRect(peakX - textWidth/2 - 6, peakY - 24, textWidth + 12, 17);
-      ctx.fillStyle = '#fcd34d';
+      ctx.fillStyle = '#6ee7b7';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(badgeText, peakX, peakY - 15);
@@ -2195,7 +2205,7 @@ function redrawScope(phaseShift = 0) {
 
   // Mouse HUD & Crosshair
   if (mouseX >= mLeft && mouseX <= W - mRight) {
-    ctx.strokeStyle = 'rgba(226, 183, 116, 0.45)';
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.45)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(mouseX, mTop); ctx.lineTo(mouseX, H - mBottom); ctx.stroke();
