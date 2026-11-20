@@ -19,9 +19,9 @@
     
     --card-bg: rgba(8, 22, 18, 0.76);
     --card-bg-subtle: rgba(5, 16, 13, 0.82);
-    --card-border: rgba(52, 211, 153, 0.20);
-    --card-border-hover: rgba(52, 211, 153, 0.48);
-    --card-inner-border: rgba(52, 211, 153, 0.10);
+    --card-border: rgba(52, 211, 153, 0.18);
+    --card-border-hover: rgba(52, 211, 153, 0.45);
+    --card-inner-border: rgba(52, 211, 153, 0.08);
     
     /* Emerald, Mint, Cyan, Signal Colors */
     --emerald-primary: #10b981;
@@ -31,7 +31,7 @@
     --cyan: #06b6d4;
     --cyan-bright: #38bdf8;
     
-    --gold: #34d399; /* Primary accent is now precision Emerald */
+    --gold: #34d399;
     --gold-bright: #6ee7b7;
     --copper: #22d3ee;
     --amber: #f59e0b;
@@ -40,10 +40,10 @@
     --warm-blue: #38bdf8;
     --warm-violet: #a78bfa;
     
-    /* Precision Technical Typography */
+    /* Technical Typography */
     --text-primary: #f0fdf4;
     --text-secondary: #cbd5e1;
-    --text-muted: #829a92;
+    --text-muted: #7e968e;
     --text-dim: #4d665f;
   }
 
@@ -72,6 +72,16 @@
     display: flex;
     flex-direction: column;
     gap: 18px;
+  }
+
+  /* SVG Line Icon Styling */
+  .icon-svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--emerald-bright);
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
   }
 
   /* Frosted Glass Component */
@@ -155,13 +165,16 @@
     font-size: 0.84rem;
     font-weight: 800;
     color: var(--emerald-bright);
-    margin-left: 4px;
+    margin-left: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .preset-btn {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--card-inner-border);
     color: var(--text-secondary);
-    padding: 6px 13px;
+    padding: 6px 14px;
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.8rem;
@@ -636,7 +649,21 @@
     margin-bottom: 6px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+  }
+  .fix-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    color: var(--mint);
+    font-size: 0.72rem;
+    font-weight: 800;
+    margin-left: 6px;
   }
   .fix-desc {
     font-size: 0.78rem;
@@ -652,26 +679,26 @@
   <!-- Executive Header -->
   <header class="glass-card">
     <div class="header-content">
-      <h1>⚡ سیستم مهندسی تحلیل جامع اسنابر، ماسفت و ترانس فلای‌بک (ChangeOver 24V)</h1>
-      <p>محاسبه‌گر دقیق مداری بر اساس استاندارد بین‌المللی Fairchild AN-4147 و ST AN-1048، مجهز به زوم اسکرول اسیلوسکوپ</p>
+      <h1><svg class="icon-svg" style="width:22px;height:22px;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> سیستم مهندسی تحلیل جامع اسنابر، ماسفت و ترانس فلای‌بک (ChangeOver 24V)</h1>
+      <p>محاسبه‌گر دقیق مداری بر اساس استاندارد بین‌المللی Fairchild AN-4147 و ST AN-1048</p>
     </div>
     <div class="header-actions">
       <button class="btn-download" onclick="downloadCurrentHtml()">
-        <span>📥</span> دریافت فایل کامل شبیه‌ساز (HTML)
+        <svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> دریافت فایل کامل شبیه‌ساز (HTML)
       </button>
     </div>
   </header>
 
   <!-- Preset Bar -->
   <div class="preset-bar glass-card">
-    <span class="preset-label">🎯 حالات کاری پیش‌فرض برد:</span>
-    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">🔴 مدار استاندارد شماتیک برد (3.3kΩ / 10nF / 40:24)</button>
-    <button class="preset-btn" id="btn_no_hs" onclick="setPreset('no_hs')">🔥 مدار فعلی بدون هیت‌سینک (IRF640 داغ ۲۸۴°C)</button>
-    <button class="preset-btn" id="btn_mod_1k" onclick="setPreset('mod_1k')">⚠️ مدار با مقاومت ۱kΩ (Rsn=1kΩ / Csn=470nF)</button>
-    <button class="preset-btn" id="btn_small_c" onclick="setPreset('small_c')">⚠️ خازن خیلی کوچک (Rsn=3.3kΩ / Csn=1nF)</button>
-    <button class="preset-btn" id="btn_opt_rcd" onclick="setPreset('opt_rcd')">🟢 RCD بهینه با ۵ وات (Rsn=4.7kΩ / 22nF / 5W)</button>
-    <button class="preset-btn" id="btn_rcdz" onclick="setPreset('rcdz')">🔵 ساختار هیبرید RCDZ با TVS (10kΩ + P6KE51A)</button>
-    <button class="preset-btn" id="btn_sandwich" onclick="setPreset('sandwich')">⭐ ترانسفورمر ساندویچی بهینه (Llk=0.2µH)</button>
+    <span class="preset-label"><svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="12 8 8 12 12 16 12 8"/></svg> حالات کاری پیش‌فرض:</span>
+    <button class="preset-btn" id="btn_current" onclick="setPreset('current')">مدار استاندارد (3.3kΩ / 10nF / 15:10)</button>
+    <button class="preset-btn" id="btn_no_hs" onclick="setPreset('no_hs')">بدون هیت‌سینک (IRF640 داغ)</button>
+    <button class="preset-btn" id="btn_mod_1k" onclick="setPreset('mod_1k')">مقاومت ۱kΩ (Rsn=1kΩ)</button>
+    <button class="preset-btn" id="btn_small_c" onclick="setPreset('small_c')">خازن ۱nF (ریپل بالا)</button>
+    <button class="preset-btn" id="btn_opt_rcd" onclick="setPreset('opt_rcd')">RCD بهینه با ۵ وات (پکیج 5W)</button>
+    <button class="preset-btn" id="btn_rcdz" onclick="setPreset('rcdz')">هیبرید RCDZ با TVS (مدل P6KE51A)</button>
+    <button class="preset-btn" id="btn_sandwich" onclick="setPreset('sandwich')">سیم‌پیچی ساندویچی کم‌نشتی</button>
   </div>
 
   <!-- 2-COLUMN MAIN DASHBOARD: RIGHT (CARDS) | LEFT (CHART / SCOPE) -->
@@ -685,8 +712,9 @@
         <div class="box-top-line"></div>
         
         <div class="cat-header">
-          <div class="cat-title" style="color:var(--warm-violet);">
-            <span>❄️ ۱. ماسفت قدرت و تحلیل حرارتی (Power MOSFET)</span>
+          <div class="cat-title" style="color:var(--cyan-bright);">
+            <svg class="icon-svg" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+            <span>۱. ماسفت قدرت و تحلیل حرارتی (Power MOSFET)</span>
           </div>
           <span class="cat-badge pill" id="pill_mosfet_top">وضعیت: استاندارد</span>
         </div>
@@ -800,8 +828,9 @@
         <div class="box-top-line"></div>
         
         <div class="cat-header">
-          <div class="cat-title" style="color:var(--gold);">
-            <span>🔧 ۲. اسنابر، کلمپ، مقاومت و دیود TVS</span>
+          <div class="cat-title" style="color:var(--emerald-bright);">
+            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M2 12h4l2-4 4 8 4-8 2 4h4"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>
+            <span>۲. اسنابر، کلمپ، مقاومت و دیود TVS</span>
           </div>
           <span class="cat-badge pill" id="pill_snubber_top">وضعیت: استاندارد</span>
         </div>
@@ -950,8 +979,9 @@
         <div class="box-top-line"></div>
         
         <div class="cat-header">
-          <div class="cat-title" style="color:var(--copper);">
-            <span>⚡ ۳. تغذیه، بار و ترانسفورمر (Power & Trans)</span>
+          <div class="cat-title" style="color:var(--mint);">
+            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M2 12h3a3 3 0 0 1 6 0 3 3 0 0 1 6 0 3 3 0 0 1 6 0h3"/><line x1="2" y1="7" x2="22" y2="7"/><line x1="2" y1="17" x2="22" y2="17"/></svg>
+            <span>۳. تغذیه، بار و ترانسفورمر (Power & Trans)</span>
           </div>
           <span class="cat-badge pill" id="pill_power_top">مد DCM/BCM</span>
         </div>
@@ -1027,7 +1057,7 @@
           <!-- Dedicated Transformer Specification Box -->
           <div class="group-box" style="border-color: rgba(226, 183, 116, 0.28); background: rgba(226, 183, 116, 0.03);">
             <div class="group-box-header">
-              <span style="font-weight: 800; color: var(--gold-bright); font-size: 0.85rem;">🧲 مشخصات سیم‌پیچی و دورهای ترانسفورماتور فلای‌بک</span>
+              <span style="font-weight: 800; color: var(--mint); font-size: 0.85rem; display:flex; align-items:center; gap:6px;"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M2 12h3a3 3 0 0 1 6 0 3 3 0 0 1 6 0 3 3 0 0 1 6 0h3"/><line x1="2" y1="7" x2="22" y2="7"/><line x1="2" y1="17" x2="22" y2="17"/></svg> مشخصات سیم‌پیچی و دورهای ترانسفورماتور فلای‌بک</span>
               <span class="val-badge" id="lbl_turns_calc" style="color:var(--copper);">15:10 (n = 1.50)</span>
             </div>
 
@@ -1141,7 +1171,8 @@
       <div class="scope-card glass-card">
         <div class="scope-toolbar">
           <div class="scope-title">
-            <span>📈 اسیلوسکوپ دیجیتال شبیه‌سازی ۴ فاز سوئیچینگ (Digital Scope)</span>
+            <svg class="icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 10l2.5-3 3 6 3-6 2.5 3"/></svg>
+            <span>اسیلوسکوپ دیجیتال ۴ فاز سوئیچینگ (Digital Scope)</span>
           </div>
           <div class="scope-actions">
             <!-- Zoom Controls -->
@@ -1153,7 +1184,7 @@
             </div>
 
             <button class="btn-live" id="btn_live_toggle" onclick="toggleLiveAnimation()">
-              <span id="live_icon">▶️</span> <span id="live_text">حرکت (Live)</span>
+              <span id="live_text">حرکت زنده (Live)</span>
             </button>
             <div class="ch-selectors">
               <label class="ch-option" style="color:#60a5fa;">
@@ -1170,7 +1201,7 @@
         </div>
 
         <div class="scope-hint-bar">
-          <span>💡 <b>کنترل زوم:</b> از دکمه‌های <b>🔍+ / 🔍−</b> یا <b>Ctrl + اسکرول ماوس</b> استفاده کنید. با کشیدن (Drag) روی نمودار جابه‌جا شوید. دوبار کلیک = بازنشانی</span>
+          <span><b>کنترل زوم:</b> از دکمه‌های <b>🔍+ / 🔍−</b> یا <b>Ctrl + اسکرول ماوس</b> استفاده کنید. با کشیدن (Drag) روی نمودار جابه‌جا شوید. دوبار کلیک = بازنشانی</span>
           <span>پریود تناوب: <b id="lbl_ts_info" style="color:var(--gold);">20.0 µs (50 kHz)</b></span>
         </div>
 
@@ -1186,23 +1217,24 @@
 
       <!-- Math Proof & Actionable Engineering Fixes Card -->
       <div class="math-card glass-card">
-        <div style="font-size:1.02rem; font-weight:800; color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-          <span>📐 تحلیل گام‌به‌گام معادلات فیزیکی و راهکارهای ریشه‌ای اصلاح برد</span>
+        <div style="font-size:1.02rem; font-weight:800; color:var(--emerald-bright); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+          <svg class="icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+          <span>تحلیل گام‌به‌گام معادلات فیزیکی و راهکارهای مهندسی اصلاح برد</span>
         </div>
         
         <div id="math_output">در حال تحلیل مهندسی روابط حاکم بر مدار...</div>
 
         <div class="fixes-box">
           <div class="fix-card">
-            <div class="fix-title">🛠️ راهکار ۱: ارتقای مقاومت به ۵ وات سرامیکی</div>
+            <div class="fix-title"><span class="fix-badge">01</span> راهکار اول: ارتقای مقاومت به ۵ وات سرامیکی</div>
             <div class="fix-desc">مقاومت ۲ وات فعلی برای تلفات مدار (۳.۰۹W) کم است. با نصب مقاومت ۳.۳kΩ با پکیج ۵ وات آجری (سفید)، دمای بدنه از ۱۳۳ درجه به کمتر از ۶۰ درجه کاهش می‌یابد.</div>
           </div>
           <div class="fix-card">
-            <div class="fix-title">🛠️ راهکار ۲: افزودن دیود TVS (مدار هیبرید RCDZ)</div>
+            <div class="fix-title"><span class="fix-badge">02</span> راهکار دوم: افزودن دیود TVS (مدار هیبرید RCDZ)</div>
             <div class="fix-desc">با قرار دادن دیود TVS مدل P6KE51A موازی با خازن اسنابر، مقاومت Rsn را تا ۱۰kΩ افزایش داده و بخش عمده انرژی لحظه‌ای توسط TVS مهار شده و مقاومت در ۳۴ درجه کاملاً خنک می‌ماند.</div>
           </div>
           <div class="fix-card">
-            <div class="fix-title">🛠️ راهکار ۳: اصلاح سیم‌پیچی ترانس (ساندویچی)</div>
+            <div class="fix-title"><span class="fix-badge">03</span> راهکار سوم: سیم‌پیچی ساندویچی ترانسفورمر</div>
             <div class="fix-desc">با پیچیدن ثانویه مابین دولایه اولیه (Sandwich Winding)، سلف نشتی از ۰.۸۲µH به ۰.۲µH می‌رسد و توان نشتی از ۲.۳۳W به ۰.۵۷W تقلیل یافته و مدار با مقاومت ۲W خنک می‌ماند.</div>
           </div>
         </div>
