@@ -1,3 +1,7 @@
+#include "simple_pack_review.h"
+#include "about_content.h"
+#include "about_footer.h"
+#include "charge_calendar.h"
 static bool func__Simple_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr_value)
 {
     bool bool__negative = (char__ptr_text[0] == '-');
@@ -96,6 +100,46 @@ static bool func__Simple_JsonPut(char *char__ptr_buf, size_t size_t__cap,
     *size_t__ptrUsed += (size_t)int__written;
     return true;
 }
+/* ==================== Compiled About content ==================== */
+/** @brief Serve editable company JSON from program memory; no board commands. */
+static void func__Simple_HttpAbout(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_ABOUT_JSON) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json; charset=utf-8", "");
+    SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_ABOUT_JSON, sizeof(SIMPLE_ABOUT_JSON) - 1u);
+}
+/* ==================== Company footer browser asset ==================== */
+/** @brief Stream the footer asset directly from flash without a large RAM allocation. */
+static void func__Simple_HttpAboutScript(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_ABOUT_FOOTER_JS) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/javascript; charset=utf-8", "");
+    for (size_t offset = 0u; offset < sizeof(SIMPLE_ABOUT_FOOTER_JS) - 1u; offset += 1024u)
+    {
+        size_t remaining = sizeof(SIMPLE_ABOUT_FOOTER_JS) - 1u - offset;
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_ABOUT_FOOTER_JS + offset, remaining < 1024u ? remaining : 1024u);
+        func__Simple_DrainSerial();
+        yield();
+    }
+}
+/* ==================== Calendar browser asset ==================== */
+/** @brief Stream the shared browser asset from flash without a large RAM copy. */
+static void func__Simple_HttpCalendar(void)
+{
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.setContentLength(sizeof(SIMPLE_CHARGE_CALENDAR_JS) - 1u);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/javascript; charset=utf-8", "");
+    for (size_t offset = 0u; offset < sizeof(SIMPLE_CHARGE_CALENDAR_JS) - 1u; offset += 1024u)
+    {
+        size_t remaining = sizeof(SIMPLE_CHARGE_CALENDAR_JS) - 1u - offset;
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent_P(SIMPLE_CHARGE_CALENDAR_JS + offset, remaining < 1024u ? remaining : 1024u);
+        func__Simple_DrainSerial();
+        yield();
+    }
+}
+#include "simple_pack_http.h"
 static void func__Simple_HttpRoot(void)
 {
     uint32_t uint32_t__startMs = (uint32_t)millis();
@@ -388,7 +432,11 @@ static void func__Simple_HttpDiag(void)
         ch = "{\"ts\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].timestamp);
         ch += ",\"ch\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].channel);
         ch += ",\"dur\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].durationSec);
-        ch += "}";
+        ch += ",\"start\":"; ch += String(SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].startSec);
+        uint8_t status = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__i].status;
+        ch += ",\"status\":\"";
+        ch += status == 1u ? "complete" : status == 2u ? "partial" : status == 3u ? "charging" : "unknown";
+        ch += "\"}";
         SIMPLE_WEB_SERVER_T__G__Server.sendContent(ch);
     }
     SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
@@ -581,38 +629,33 @@ static void func__Simple_HttpLatchReset(void)
         return;
     }
     String string__n;
-    bool bool__ok = false;
-    if (func__Simple_GetArg("n", string__n))
+    /* Accept only the three canonical commands, before touching the slot queue. */
+    if (!func__Simple_GetArg("n", string__n) ||
+        ((string__n != "5") && (string__n != "6") && (string__n != "8")))
     {
-        int32_t int32_t__n = (int32_t)string__n.toInt();
-        if (int32_t__n == 5)
-        {
-            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u);
-            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) == true) && bool__ok;
-            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u) == true) && bool__ok;
-        }
-        else if (int32_t__n == 6)
-        {
-            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u);
-        }
-        else if (int32_t__n == 8)
-        {
-            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_WEAK_RESET_ID, 0u);
-        }
-        else
-        {
-            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
-            return;
-        }
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json",
+            "{\"ok\":0,\"e\":\"reset\",\"allowed\":[5,6,8]}");
+        return;
+    }
+    uint8_t uint8_t__n = (uint8_t)(string__n[0] - '0');
+    bool bool__ok = false;
+    if (uint8_t__n == 5u)
+    {
+        bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u);
+        bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) == true) && bool__ok;
+        bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u) == true) && bool__ok;
+    }
+    else if (uint8_t__n == 6u)
+    {
+        bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u);
     }
     else
     {
-        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
-        return;
+        bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_WEAK_RESET_ID, 0u);
     }
     char char__A__Out[48];
-    (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%s}",
-                   bool__ok ? 1u : 0u, string__n.c_str());
+    (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%u}",
+                   bool__ok ? 1u : 0u, (unsigned)uint8_t__n);
     SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 409, "application/json", char__A__Out);
 }
 /**
@@ -740,6 +783,8 @@ static void func__Simple_HttpEventFormat(void)
         return;
     }
     SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    String packBackup = func__Simple_PackEncode(SIMPLE_PACK__G__Review);
+    if (BOOL__G__PackReviewInvalid) packBackup = "invalid";
     LittleFS.end();
     BOOL__G__FsOk = false;
     BOOL__G__FsMountFailed = true;
@@ -782,11 +827,13 @@ static void func__Simple_HttpEventFormat(void)
         file__probe.close();
     }
     (void)LittleFS.remove("/fs-check");
+    bool packSaved = func__Simple_StorageWrite(SIMPLE_PACK_REVIEW_FILE, packBackup);
+    if (!packSaved) BOOL__G__PackReviewInvalid = true;
     func__Simple_AuthSave();
     func__Simple_WifiSave();
     UINT32_T__G__LastSavedTimeSec = 0u;
     func__Simple_TimeSave();
-    if (!bool__writable || !func__Simple_FormatSettingsValid(SIMPLE_USERS_FILE) ||
+    if (!packSaved || !bool__writable || !func__Simple_FormatSettingsValid(SIMPLE_USERS_FILE) ||
         !func__Simple_FormatSettingsValid(SIMPLE_WIFI_FILE))
     {
         UINT8_T__G__LogWriteFault = 1u;
@@ -797,6 +844,70 @@ static void func__Simple_HttpEventFormat(void)
     /* [EN] Long flash operations must not consume the owner's idle deadline. */
     UINT32_T__G__SessionStartMs = (uint32_t)millis();
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "text/plain", "ok");
+}
+/* ==================== Panel-only factory reset ==================== */
+/** @brief Erase ESP data only after administrator authentication and explicit destructive confirmation. */
+static void func__Simple_HttpFactoryReset(void)
+{
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
+    String string__confirm;
+    if (!func__Simple_GetArg("confirm", string__confirm) || string__confirm != "ERASE_ESP")
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"confirm\"}");
+        return;
+    }
+    LittleFS.end();
+    BOOL__G__FsOk = false;
+    bool bool__erased = LittleFS.format();
+#if defined(ESP8266)
+    (void)LittleFS.setConfig(LittleFSConfig(false));
+    BOOL__G__FsOk = LittleFS.begin();
+#else
+    BOOL__G__FsOk = LittleFS.begin(false);
+#endif
+    BOOL__G__FsMountFailed = !BOOL__G__FsOk;
+    if (!bool__erased)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(500, "application/json", "{\"ok\":0,\"e\":\"format\"}");
+        return;
+    }
+    /* No old RAM value may be saved after the erase, even if verification fails. */
+    BOOL__G__FactoryResetPending = true;
+    UINT32_T__G__FactoryResetMs = (uint32_t)millis();
+    bool bool__verified = false;
+    if (BOOL__G__FsOk)
+    {
+        File file__probe = LittleFS.open("/fs-check", "w");
+        bool__verified = file__probe && (file__probe.print("fs-ok") == 5u);
+        file__probe.close();
+        if (bool__verified)
+        {
+            File file__read = LittleFS.open("/fs-check", "r");
+            bool__verified = file__read && (file__read.readString() == "fs-ok");
+            file__read.close();
+        }
+        bool__verified = LittleFS.remove("/fs-check") && bool__verified;
+    }
+    func__Simple_AuthLogout();
+    func__Simple_LoginClear();
+    BOOL__G__FsOk = false;
+    BOOL__G__WifiRebootPending = false;
+    SIMPLE_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    SIMPLE_WEB_SERVER_T__G__Server.send(bool__verified ? 200 : 500, "application/json",
+        bool__verified ? "{\"ok\":1,\"erased\":1,\"restart\":1}" : "{\"ok\":0,\"e\":\"verify\",\"erased\":1,\"restart\":1}");
+}
+/* ==================== Erased-panel reboot barrier ==================== */
+/** @brief Stop UART processing and all persistence until the wiped ESP restarts; never command STM32. */
+static bool func__Simple_FactoryResetTick(void)
+{
+    if (!BOOL__G__FactoryResetPending) return false;
+    if ((uint32_t)((uint32_t)millis() - UINT32_T__G__FactoryResetMs) >= 1500u) ESP.restart();
+    delay(1u);
+    return true;
 }
 static void func__Simple_HttpEventLog(void)
 {
@@ -1064,6 +1175,11 @@ static void func__Simple_HttpFileDelete(void)
             SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"path\"}");
             return;
         }
+    }
+    if (string__name == SIMPLE_PACK_REVIEW_FILE || string__name == String(SIMPLE_PACK_REVIEW_FILE) + ".tmp")
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(409, "application/json", "{\"ok\":0,\"e\":\"protected\"}");
+        return;
     }
     if (!BOOL__G__FsOk)
     {

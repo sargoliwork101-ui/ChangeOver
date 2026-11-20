@@ -3,7 +3,7 @@
  *
  * Ported from ESP_Calibration/plink_log_codec.h (v1.138) on the owner's order
  * 2026-11-04: "I wrote a better logging method there, bring it to your log".
- * Same on-disk format, same guarantees, 22 fields instead of 18.
+ * Same on-disk format, same guarantees, 18 fields, matching calibration.
  *
  * - Every record is appended immediately with its own length, sync word and
  *   CRC16; nothing is batched, so a power cut loses at most the row in flight.
@@ -19,10 +19,10 @@
 #define SIMPLE_LOG_CODEC_H
 struct SimpleLogCodec
 {
-    /* 22 CSV fields, 8 header bytes, at most 22*5 payload bytes, checkpoint 16 */
+    /* 18 CSV fields, 8 header bytes, at most 18*5 payload bytes, checkpoint 16 */
     enum
     {
-        Fields = 22,
+        Fields = 18,
         HeaderSize = 8,
         MaxFrame = 6 + Fields * 5,
         Checkpoint = 16
@@ -135,7 +135,7 @@ struct SimpleLogCodec
         }
         return false;
     }
-    /* [EN] CSV row -> 22 numbers; exactly the public text form, nothing else. */
+    /* [EN] CSV row -> 18 numbers; exactly the public text form, nothing else. */
     static bool parse(const char *text, uint32_t *values)
     {
         const char *cursor = text;

@@ -13,6 +13,9 @@ static uint16_t UINT16_T__G__TlmSeq = 0u;
 static uint32_t UINT32_T__G__TlmFrameCount = 0u;
 static uint32_t UINT32_T__G__LastTlmMs = 0u;
 static bool     BOOL__G__TlmSeen = false;
+static bool BOOL__G__PackCountersSeen = false;
+static uint32_t UINT32_T__G__PackCountersMs = 0u;
+static uint32_t UINT32_T__G__PackCounterReset = 0u;
 static uint32_t UINT32_T__G__RxCrcError = 0u;
 static uint32_t UINT32_T__G__RxVersionMismatch = 0u;
 static uint16_t UINT16_T__G__RxCrc = 0u;
@@ -91,6 +94,8 @@ typedef struct
     uint32_t timestamp;
     uint8_t channel;
     uint32_t durationSec;
+    uint32_t startSec;
+    uint8_t status; /* 0 unknown, 1 complete, 2 interrupted, 3 ongoing. */
 } simple_charge_event_t;
 static simple_diag_error_t SIMPLE_DIAG_ERROR_T__G__Errors[SIMPLE_DIAG_MAX_ERRORS];
 static uint8_t UINT8_T__G__DiagErrorCount = 0u;
@@ -490,6 +495,8 @@ static uint32_t UINT32_T__G__LocalPowerOffTime = 0u;
 static bool BOOL__G__LocalPowerOffActive = false;
 static char CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX + 1] = SIMPLE_WIFI_AP_SSID;
 static char CHAR__G__WifiPass[SIMPLE_WIFI_PASS_MAX + 1] = SIMPLE_WIFI_AP_PASS;
+static bool BOOL__G__FactoryResetPending = false;
+static uint32_t UINT32_T__G__FactoryResetMs = 0u;
 static bool BOOL__G__WifiRebootPending = false;
 static uint32_t UINT32_T__G__WifiRebootMs = 0u;
 /* ==================== prev ==================== */

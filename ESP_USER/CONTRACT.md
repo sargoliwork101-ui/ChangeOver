@@ -22,6 +22,7 @@
     "POST /clock",
     "POST /evt/clr",
     "POST /evt/format",
+    "POST /factory/reset",
     "POST /evt/file",
     "POST /evt/snap",
     "POST /latch/reset",
@@ -75,7 +76,7 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/setwifi` | POST | Admin session; `ssid`, `pass` | JSON action result |
 | `/clear` | POST | Admin session; optional `type`: `charge`, `charts`, `diag`, or all | JSON action result |
 | `/latch` | GET | Public read-only | JSON reset-slot state |
-| `/latch/reset` | POST | Admin session; `n`: 5, 6, or 8 | JSON queued/result status |
+| `/latch/reset` | POST | Admin session; exact `n`: `5` (error latch), `6` (dead battery), or `8` (weak battery) | Numeric JSON `n`; invalid values return HTTP 400, `e:"reset", allowed:[5,6,8]`, without queueing |
 | `/clock` | POST | Public automatic sync with valid `sec`, optional `tz` (−50400..50400); requests without `sec` require admin (session probe) | JSON result and current seconds |
 | `/evt` | GET | Optional `day` | Plain-text event-log tail |
 | `/evt/days` | GET | — | Plain-text available days |
@@ -83,6 +84,7 @@ UART frame: `AA 55`, version `2`, type, payload length `u16 LE`, payload, CRC-16
 | `/evt/clr` | POST | Admin session | JSON clear result |
 | `/evt/snap` | POST | Admin session | JSON log/filesystem snapshot |
 | `/evt/format` | POST | Admin session | 200 `ok` only after remount, write/read probe and saved credential verification; 500 `fail`, `mount`, or `write`; 403 `admin` |
+| `/factory/reset` | POST | Admin session + exact `confirm=ERASE_ESP` | Erases ESP LittleFS only, revokes session and restarts ESP; no UART commands. 200 JSON `ok:1,erased:1,restart:1` after write/read verification; 400 missing confirmation; 403 unsigned; 500 format failure or verification failure (latter includes `erased:1,restart:1`). Old RAM must not be persisted after erase. |
 | `/evt/fs` | GET | Optional `offset` (0–65535) | JSON status; public log filenames only, admin all root files; `count`, `more`, `next` (-1 at end) |
 | `/evt/file` | POST | Admin session; exact absolute root `name` | JSON `ok`; 400 invalid path, 403 unauthorized, 404 missing, 500 remove failed, 503 unmounted |
 
@@ -112,7 +114,9 @@ range, not Arduino's signed `String::toInt` range.
 
 LittleFS files: `/wifi.json`, `/charts.bin`, `/charts.jrn`, `/time.json`, `/params.json`, `/charge_hist.json`, `/diag.json`, `/evt-YYYYMMDD.csv`.
 
-The day files keep their `.csv` name so old files and the day list stay readable, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 22 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. Old text days are read and appended as text and are never rewritten. Format: `ESP_USER/simple_log_codec.h`.
+Daily logs retain today and the preceding 29 local calendar days only after clock verification, subject to the unchanged 28-KiB log budget and 4-KiB day limit. A partial initial header/marker is repaired before ordinary rows. Byte pressure removes the minimum oldest-event prefix whose re-encoded suffix plus the incoming row fits; count pressure from RAM drain likewise retains at most 200 newest ordinary rows. The single day-start marker is preserved outside that count. Replacement is staged, decoded/verified and renamed atomically; failure preserves the old committed day and queued incoming row. Ordinary day-full writes still stop at 200. Successful retries finish day recount/expiration as well. Near the byte limit, the actual encoded next-frame size controls append versus replacement. The existing `/clock_gap.json` marker stages the exact intended warning row and target day before append; reboot retries recognize that exact row rather than recording the same pending incident twice. An unreadable intent is retained, not guessed. No log schema or file-count change is introduced.
+
+The day files keep their `.csv` name for the existing day-list API, but a new day is stored as CRC-protected binary records (8-byte header `EVTD`, version 1, 18 fields, checkpoint 16; full records at least every 16th). Every text view - `/evt`, `/evt/dl` and the panel - is rebuilt from those records, so the CSV columns above are still the public form. The previous 22-column history is cleared by the owner before deployment. Format: `ESP_USER/simple_log_codec.h`.
 
 ## Run checks
 
@@ -150,16 +154,16 @@ coalesce while waiting and describe observed state on recovery, not every event
 in the missing interval. Hourly/500-mV triggers and shared summaries are unchanged.
 
 At 40,000 boot milliseconds without a trusted clock, retain one unresolved incident
-in `/clock_gap.json` (`note=7, reason=clock_unavailable`). The fixed small record is
+in `/clock_gap.json` (`note=8, reason=clock_unavailable`). The fixed small record is
 written to `.tmp`, read back and atomically renamed. Failed attempts retry at most
 once per five seconds; a committed marker is not continually rewritten. RAM holds
 it when storage is unavailable, with no claim of surviving power loss in that case.
 A committed marker survives ESP resets. The current `/evt` view and all-days CSV
-include a synthetic `epoch=0, note=7` warning while unresolved, not a dated sample;
+include a synthetic `epoch=0, note=8` warning while unresolved, not a dated sample;
 explicit unrelated historical-day views remain unchanged. The panel renders only
 the short Persian warning, not extra technical detail or a new card.
 
-After clock recovery, append and read back one dated `note=7` row on the correct
+After clock recovery, append and read back one dated `note=8` row on the correct
 day, then remove the pending marker. This row timestamps the recovery report,
 not an invented loss start/end time. It may bypass the normal day cap like a
 manual snapshot; normal capacity and retention constants are unchanged. A write
@@ -273,3 +277,18 @@ writes; they do not imply 90 retained days. Fixed per-day files remain separate.
 Read-only/corrupt storage or unreclaimable non-log occupancy can still prevent
 progress; failure is visible and committed snapshots are not destroyed.
 See STORAGE_64K.md for the measured workloads and test commands.
+
+## User event-log schema and retention (2026-11-04)
+
+New day files use the calibration codec's 18-field order: epoch, uptime_s,
+change_bits, note, mains, fl, chg1, chg2, fault_mask, flags2, vlow_mv,
+vhigh_mv, dead_mask, vin_mv, i1_ma, i2_ma, duty1_permille, duty2_permille.
+No battery percent is persisted. Pack voltage for restored comparisons is the
+sum of the two half-pack readings. Existing 22-field days must be cleared before
+using this schema; no migration is provided. Charts keep their existing schema
+and 90-day range. Logs retain at most 30 day files and 200 ordinary rows. The
+existing 4-KiB day compaction and 28-KiB aggregate budget remain in force.
+A note=7 day-start row is durable once per new current day, excluded from the
+ordinary-row cap and preserved during day compaction. It never resets the
+heartbeat/change baseline, including across reboot. Unresolved-clock warnings
+use note=8 in both the synthetic response and the recovered dated row.

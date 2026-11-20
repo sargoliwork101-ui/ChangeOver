@@ -35,6 +35,7 @@ make_simple_preview.py - ساخت فایل مستقل سیمولاتور پنل 
 
 اجرا:  python3 ESP_USER/make_simple_preview.py
 خروجی: ESP_USER/simple_preview.html
+تقویم از همان charge_calendar.h نسخهٔ ESP خوانده و برای اجرای آفلاین جاسازی می‌شود.
 """
 import json
 import re
@@ -73,6 +74,14 @@ def panel_html():
     if "</html>" not in html:
         die("simple_panel.h does not look like a complete page")
     return html
+def about_json():
+    """Read the same editable raw literal that the ESP compiles."""
+    text = (HERE / "about_content.h").read_text(encoding="utf-8")
+    raw = text.split('R"about(', 1)[1].split(')about"', 1)[0]
+    values = json.loads(raw)
+    if not isinstance(values, dict) or any(not isinstance(value, str) for value in values.values()):
+        die("about_content.h must contain a JSON object with string values")
+    return raw
 def panel_number_constants():
     """[FA] ثابت‌های عددی پنل که در خطوط `const NAME=12, NAME2=34` هستند.
 
@@ -262,6 +271,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var query = '';
     if (board.vmin !== PANEL.BAT_VMIN) { query += '&p74=' + board.vmin; }
     if (board.vmax !== PANEL.BAT_VMAX) { query += '&p75=' + board.vmax; }
+    if (board.cvmin !== PANEL.CHG_VMIN) { query += '&p119=' + board.cvmin; }
+    if (board.cvmax !== PANEL.CHG_VMAX) { query += '&p120=' + board.cvmax; }
     return query;
   }
 
@@ -345,58 +356,55 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     return { flags: flags, t: t };
   }
 
-  /* ---------- مدل کوچک «تاریخچهٔ وضعیت» (آینهٔ simple_log.h) ----------
-     همان قواعد فرم‌ور: ردیف فقط با تغییر واقعی، ادغام ۲ثانیه‌ای، گام ۲۰۰ میلی‌ولت
-     حداکثر یکی در دقیقه، قطع/وصل ارتباط پس از ۵ ثانیه، ضربان ۶ساعته. ردیف بوت
-     بی‌نیاز از برد نوشته می‌شود (v1.106). ردیف‌ها در حافظهٔ مرورگر می‌مانند تا
-     بعداً قابل استفاده باشند و از همان جا CSV می‌گیرند. */
+  /* Event-log model: voltage step is derived from the firmware configuration.
+     Existing coalescing, minute cooldown and discharge-rise exception are unchanged. */
   var EVT_CHG_BOOT=1, EVT_CHG_MAINS=2, EVT_CHG_CHG1=4, EVT_CHG_CHG2=8,
       EVT_CHG_FAULT=16, EVT_CHG_FLAGS=32, EVT_CHG_BAND=64, EVT_CHG_LINK=128,
       EVT_CHG_MODE=256, EVT_CHG_DEAD=512, EVT_CHG_VSTEP=1024;
   var EVT_NOTE_NONE=0, EVT_NOTE_LOW_STOP=1, EVT_NOTE_LINK_LOST=2,
-      EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5, EVT_NOTE_MANUAL=6;
-  var EVT_MIN_MS=2000, EVT_VSTEP_MV=200, EVT_VSTEP_MIN_MS=60000,
-      EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=3600000, EVT_MAX_ROWS=2000;
+      EVT_NOTE_LINK_BACK=3, EVT_NOTE_HEARTBEAT=5, EVT_NOTE_MANUAL=6, EVT_NOTE_DAY_START=7;
+  var EVT_MIN_MS=2000, EVT_VSTEP_MV=__LOG_VSTEP_MV__, EVT_VSTEP_MIN_MS=60000,
+      EVT_LINK_TIMEOUT_MS=5000, EVT_HEARTBEAT_MS=3600000, EVT_MAX_ROWS=__LOG_MAX_ROWS__, EVT_MAX_DAYS=__LOG_MAX_DAYS__;
   var evtRows=[], evtPendingMask=0, evtPendingNote=0, evtLastRowMs=0, evtLastRowOk=false,
       evtLastStepMs=0, evtLastStepOk=false, evtHasPrev=false, evtPrev=null,
       evtPrevV24=0, evtLinkDown=false, evtLastFrameMs=0, evtSeen=false,
       evtSessionMs=Date.now(), evtBooted=false;
   try {
-    var evtSaved = window.localStorage && localStorage.getItem('co_evt_rows_v1');
+    var evtSaved = window.localStorage && localStorage.getItem('co_evt_rows_v2_18');
     if (evtSaved) { evtRows = JSON.parse(evtSaved) || []; if (evtRows.length) evtLastRowOk = true; }
   } catch (e) { evtRows = []; }
   function evtPersist() {
-    try { if (window.localStorage) localStorage.setItem('co_evt_rows_v1', JSON.stringify(evtRows)); } catch (e) {}
+    try { if (window.localStorage) localStorage.setItem('co_evt_rows_v2_18', JSON.stringify(evtRows)); } catch (e) {}
   }
   function evtNowSec() { return Math.floor(Date.now() / 1000); }
   function evtDayCode(sec) {
     var d = new Date((sec || evtNowSec()) * 1000);
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   }
-  function evtPct(v) {
-    /* v1.109 mirror: discharge map 74/75, factory 21,000..29,000 mV */
-    var P0 = (typeof P !== 'undefined') ? P : {};
-    var vmin = (P0[74] != null) ? P0[74] : 21000, vmax = (P0[75] != null) ? P0[75] : 29000;
-    if (v <= vmin) return 0;
-    if (v >= vmax) return 100;
-    return Math.floor(((v - vmin) * 100) / (vmax - vmin));
-  }
   function evtWrite(mask, note, flags, fl2, t) {
-    if (evtRows.length >= EVT_MAX_ROWS) { return; }
+    var today=evtDayCode(evtNowSec());
+    var cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-EVT_MAX_DAYS+1);
+    evtRows=evtRows.filter(function(r){return r[0]>=cutoff.getTime()/1000;});
+    var dayRows=evtRows.filter(function(r){return evtDayCode(r[0])===today;});
+    if (!dayRows.length && note!==EVT_NOTE_DAY_START) evtWrite(0,EVT_NOTE_DAY_START,flags,fl2,t);
+    var count=dayRows.filter(function(r){return r[3]!==EVT_NOTE_DAY_START;}).length;
+    if (note!==EVT_NOTE_DAY_START && count>=EVT_MAX_ROWS) return;
+    if (note!==4 && count===EVT_MAX_ROWS-1) note=4;
     var row = [evtNowSec(), Math.floor((Date.now() - counters.t0) / 1000), mask, note,
-               (flags & 0x02) ? 1 : 0, flags,
+               (flags & 0x02) ? 1 : 0, flags & 0x3D,
                t[IDX.state1], t[IDX.state2], t[IDX.fault_mask], fl2,
-               t[IDX.v_bat24_mv], t[IDX.v_bat_low_mv], t[IDX.v_bat_high_mv],
-               t[IDX.imb_mv], t[IDX.dead_mask],
-               t[IDX.v_in_mv], t[IDX.v_bat12_mv],
+               t[IDX.v_bat_low_mv], t[IDX.v_bat_high_mv], t[IDX.dead_mask],
+               t[IDX.v_in_mv],
                t[IDX.i1_filtered_ma], t[IDX.i2_filtered_ma],
-               t[IDX.duty1_permille], t[IDX.duty2_permille], evtPct(t[IDX.v_bat24_mv])];
+               t[IDX.duty1_permille], t[IDX.duty2_permille]];
     evtRows.push(row);
+    if (note===EVT_NOTE_DAY_START) { evtPersist(); return; }
     evtLastRowMs = Date.now(); evtLastRowOk = true;
     if (mask & EVT_CHG_VSTEP) { evtLastStepMs = Date.now(); evtLastStepOk = true; }
     evtPrevV24 = t[IDX.v_bat24_mv];
     evtPendingMask = 0; evtPendingNote = EVT_NOTE_NONE;
     evtPersist();
+    if (count===EVT_MAX_ROWS-2 && note!==4) evtWrite(0,4,flags,fl2,t);
   }
   function evtFlush() {
     if (!evtPendingMask && evtPendingNote === EVT_NOTE_NONE) { return; }
@@ -412,6 +420,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
   var evtLastFlags = 0, evtLastFl2 = 0, evtLastT = null;
   function evtFrame(linkUp, flags, fl2, t) {
     evtLastFlags = flags; evtLastFl2 = fl2; evtLastT = t;
+    if (!evtRows.some(function(r){return evtDayCode(r[0])===evtDayCode(evtNowSec());}))
+      evtWrite(0,EVT_NOTE_DAY_START,flags,fl2,t);
     if (!evtBooted) {
       evtBooted = true;
       evtWrite(EVT_CHG_BOOT, EVT_NOTE_NONE, flags, fl2, t);
@@ -468,7 +478,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }, 60000);
   }
   function evtCsvText(rows) {
-    var head = '# epoch,uptime,chg,note,mains,flags,c1,c2,fault,flags2,v24,vlow,vhigh,imb,dm,vin,v12,i1,i2,d1,d2';
+    var head = '# epoch,uptime_s,change_bits,note,mains,fl,chg1,chg2,fault_mask,flags2,vlow_mv,vhigh_mv,dead_mask,vin_mv,i1_ma,i2_ma,duty1_permille,duty2_permille';
     var lines = rows.map(function (r) { return r.join(','); });
     return [head].concat(lines).join('\n');
   }
@@ -529,7 +539,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       ],
       power: mock.historyClearedAt?[]:[{ off: now - 3600, on: now - 3000, dur: 600 },
               { off: now - 172800, on: now - 171000, dur: 1800 }],
-      chargeHistory: mock.historyClearedAt?[]:[{ ts: now - 5400, ch: 1, dur: 3120 }, { ts: now - 12600, ch: 2, dur: 2880 }]
+      chargeHistory: mock.historyClearedAt?[]:[{ ts: now - 5400, start: now - 5400 - 3120, ch: 1, dur: 3120 }, { ts: now - 12600, start: now - 12600 - 2400, ch: 2, dur: 2400, status: 'partial' }, { ts: now, start: now - 1200, ch: 2, dur: 1200, status: 'charging' }]
     });
   }
 
@@ -563,10 +573,34 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     return found ? found[1] : '';
   }
 
+  var packReview={limit:0,upper:0,lower:0,at:0,revision:0};
   function mockFetch(url, options) {
     var path = routeName(url);
     var method = ((options && options.method) || 'GET').toUpperCase();
 
+    if (path === 'pack') {
+      var up=counters.chargeCountCh1-packReview.upper,down=counters.chargeCountCh2-packReview.lower;
+      var valid=sim.linkUp&&up>=0&&down>=0,count=valid?Math.max(up,down):0;
+      var progress=packReview.limit?Math.min(1000,Math.floor(count*1000/packReview.limit)):0;
+      return jsonResponse(JSON.stringify({valid:valid?1:0,state:!sim.linkUp?0:!valid?1:!packReview.limit?2:progress>=1000?5:progress>=800?4:3,count:count,progress:progress,replaced:packReview.at?1:0}));
+    }
+    if(path==='pack/settings'||path==='pack/replace'){
+      if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var edit=bodyJson(options);
+      if(method==='POST'){
+        if(String(edit.revision)!==String(packReview.revision))return jsonResponse('{"ok":0,"e":"revision"}',409);
+        if(path==='pack/replace'){
+          if(edit.confirm!=='REPLACE_PACK')return jsonResponse('{"ok":0,"e":"confirm"}',400);
+          if(!sim.linkUp)return jsonResponse('{"ok":0,"e":"data"}',409);
+          packReview.upper=counters.chargeCountCh1;packReview.lower=counters.chargeCountCh2;packReview.at=counters.boardTime;packReview.revision++;
+        }else{
+          if(!/^\d+$/.test(String(edit.limit))||Number(edit.limit)>100000)return jsonResponse('{"ok":0,"e":"limit"}',400);
+          if(packReview.limit!==Number(edit.limit)){packReview.limit=Number(edit.limit);packReview.revision++;}
+        }
+      }
+      return jsonResponse(JSON.stringify({ok:1,invalid:0,limit:packReview.limit,at:packReview.at,revision:packReview.revision}));
+    }
+    if (path === 'about') return jsonResponse(__ABOUT__);
     if (path === 't') { return jsonResponse(telemetryJson()); }
     if (path === 'charts') { return jsonResponse(chartJson(query(url, 'range') || '1d')); }
     if (path === 'diag') { return jsonResponse(diagJson()); }
@@ -603,6 +637,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     if (path === 'evt/file') {
       if(method!=='POST')return jsonResponse('{"ok":0}',405);
       if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      if(['/pack_review.txt','/pack_review.txt.tmp'].includes(bodyJson(options).name))return jsonResponse('{"ok":0,"e":"protected"}',409);
       var name=bodyJson(options).name||'',match=/^\/evt-(\d{8})\.csv$/.exec(name);
       if(!/^\/[^/\\\x00-\x1f]+$/.test(name)||name==='/.'||name==='/..')return jsonResponse('{"ok":0,"e":"path"}',400);
       var exists=match?evtDaysList().indexOf(match[1])>=0:(['/users.json','/wifi.json'].indexOf(name)>=0&&mock.deletedFiles.indexOf(name)<0);
@@ -614,6 +649,17 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     if (path === 'evt/clean') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       return jsonResponse('{"ok":1,"removed":0,"freed":0}', 200);
+    }
+    if (path === 'factory/reset') {
+      if(method!=='POST')return jsonResponse('{"ok":0}',405);
+      if(mock.role!==1)return jsonResponse('{"ok":0,"e":"admin"}',403);
+      if(bodyJson(options).confirm!=='ERASE_ESP')return jsonResponse('{"ok":0,"e":"confirm"}',400);
+      packReview={limit:0,upper:0,lower:0,at:0,revision:0};
+      mock.deletedFiles=[];mock.historyClearedAt=counters.boardTime+1;
+      evtRows=[];evtHasPrev=false;evtLastRowOk=false;evtBooted=false;evtPersist();
+      mock.user='';mock.role=0;mock.token='';mock.userPass='admin';mock.users=[{name:'admin',role:1}];
+      mock.ssid=WIFI_SSID;mock.pass=WIFI_PASS;mock.theme=0;
+      return jsonResponse('{"ok":1,"erased":1,"restart":1}',200);
     }
     if (path === 'evt/format') {
       if (mock.role !== 1) { return jsonResponse('admin', 403); }
@@ -709,6 +755,13 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       if (hasSec) counters.boardTime = sec;
       return jsonResponse(JSON.stringify({ok:hasSec?1:0,sec:counters.boardTime}));
     }
+    if (path === 'latch/reset') {
+      if (mock.role !== 1) return jsonResponse('{"ok":0,"e":"admin"}',403);
+      var resetN=bodyJson(options).n;
+      if (resetN!=='5' && resetN!=='6' && resetN!=='8')
+        return jsonResponse('{"ok":0,"e":"reset","allowed":[5,6,8]}',400);
+      return jsonResponse(JSON.stringify({ok:1,n:Number(resetN)}));
+    }
     if (path === 'time') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       counters.boardTime = parseInt(query(url, 'ts') || '0', 10) || counters.boardTime;
@@ -730,6 +783,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var linkFlag = num('link'); if (linkFlag !== null) { sim.linkUp = (linkFlag === 1); }
       var param = num('p74'); if (param !== null) { board.vmin = param; }
       param = num('p75'); if (param !== null) { board.vmax = param; }
+      param = num('p119'); if (param !== null) { board.cvmin = param; }
+      param = num('p120'); if (param !== null) { board.cvmax = param; }
       param = num('p66'); if (param !== null) { board.gPer = param; }
       param = num('p67'); if (param !== null) { board.gOff = param; }
       return jsonResponse('{"ok":1}');
@@ -743,6 +798,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
      دادهٔ واقعی سرور را نمی‌گیرد (برای سنجش دقیق مسیر واقعی) */
   var noMock = (window.__CO_NO_MOCK__ === true);
   window.fetch = function (url, options) {
+    if (routeName(String(url)) === 'about' && location.protocol === 'file:') return Promise.resolve(jsonResponse(__ABOUT__));
     if (mockActive && !noMock) {
       return Promise.resolve(mockFetch(String(url), options));
     }
@@ -755,14 +811,14 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
          مثلِ بی‌جواب‌ماندن، چند ثانیه شبیه‌ساز جواب می‌دهد تا صفحه زنده بماند. */
       var path = routeName(String(url));
       if (!noMock && response && response.status === 404 &&
-          (path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0)) {
+          (path === 'about' || path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0)) {
         mockUntil = Date.now() + 10000;
         return mockFetch(String(url), options);
       }
       return response;
     }).catch(function (error) {
       var path = routeName(String(url));
-      if (path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0) {
+      if (path === 'about' || path === 't' || path === 'charts' || path === 'diag' || path.indexOf('evt') === 0) {
         /* یک بار جواب نداد - فقط چند ثانیه حالت شبیه‌ساز تا داده جعلی
            جای داده واقعی را برای همیشه نگیرد؛ دفعه بعد دوباره سرور امتحان می‌شود */
         mockUntil = Date.now() + 10000;
@@ -851,8 +907,6 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     }
     input.addEventListener('input', function () {
       board[id] = Number(input.value);
-      if (id === 'vmin') { board.cvmin = board[id]; }
-      if (id === 'vmax') { board.cvmax = board[id]; }
       readout.textContent = board[id] + ' mV';
       applySim(); simRefresh();
     });
@@ -890,8 +944,10 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     var paramBox = el('div', { 'class': 'simbox' });
     paramBox.appendChild(el('div', { 'class': 'simhint' },
       'پارامترهای خود برد (درصد فول/خالی باتری - همان‌هایی که چراغ سبز با آن‌ها چشمک می‌زند)'));
-    paramSlider(paramBox, '۰٪ باتری (پارامتر ۷۴)', 'vmin', 15000, 25000);
-    paramSlider(paramBox, '۱۰۰٪ باتری (پارامتر ۷۵)', 'vmax', 25000, 32000);
+    paramSlider(paramBox, '۰٪ دشارژ (پارامتر ۷۴)', 'vmin', 15000, 25000);
+    paramSlider(paramBox, '۱۰۰٪ دشارژ (پارامتر ۷۵)', 'vmax', 25000, 32000);
+    paramSlider(paramBox, '۰٪ شارژ (پارامتر ۱۱۹)', 'cvmin', 15000, 25000);
+    paramSlider(paramBox, '۱۰۰٪ شارژ (پارامتر ۱۲۰)', 'cvmax', 25000, 32000);
     page.appendChild(paramBox);
 
     var stateBox = el('div', { 'class': 'simbox' });
@@ -1028,15 +1084,18 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
 })();
 </script>
 """
-PLACEHOLDERS = ("__FIELD_INDEX__", "__TLM_N__", "__FAULT_BITS__", "__STATES__", "__RANGES__",
+PLACEHOLDERS = ("__ABOUT__", "__FIELD_INDEX__", "__TLM_N__", "__FAULT_BITS__", "__STATES__", "__RANGES__",
                 "__SCALES__", "__WIFI_SSID__", "__WIFI_PASS__", "__PANEL__", "__BOOT__",
-                "__MA_PER_COUNT__", "__UV_PER_COUNT__")
+                "__MA_PER_COUNT__", "__UV_PER_COUNT__", "__LOG_VSTEP_MV__", "__LOG_MAX_ROWS__", "__LOG_MAX_DAYS__")
 def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
     """[FA] جای‌گذاری مقادیر مشتق‌شده در قالب JS سیمولاتور."""
     shim = SHIM
     for token, value in (
             ("__FIELD_INDEX__", json.dumps(field_map, ensure_ascii=False)),
             ("__TLM_N__", str(tlm_n)),
+            ("__LOG_VSTEP_MV__", str(config_define("SIMPLE_LOG_VSTEP_MV"))),
+            ("__LOG_MAX_ROWS__", str(config_define("SIMPLE_LOG_MAX_ROWS_PER_DAY"))),
+            ("__LOG_MAX_DAYS__", str(config_define("SIMPLE_LOG_MAX_DAYS"))),
             ("__FAULT_BITS__", json.dumps(bits, ensure_ascii=False)),
             ("__STATES__", json.dumps(states, ensure_ascii=False)),
             ("__RANGES__", json.dumps(ranges, ensure_ascii=False)),
@@ -1048,10 +1107,14 @@ def build_shim(field_map, tlm_n, bits, states, ranges, scales, panel, boot):
             ("__MA_PER_COUNT__", "%.6f" % MA_PER_COUNT),
             ("__UV_PER_COUNT__", "%.3f" % UV_PER_COUNT)):
         shim = shim.replace(token, value)
+    shim = shim.replace("__ABOUT__", json.dumps(about_json(), ensure_ascii=False))
     for token in PLACEHOLDERS:
         if token in shim:
             die("placeholder %s was not replaced" % token)
-    return shim
+    calendar = (HERE / "charge_calendar.h").read_text(encoding="utf-8").split('R"calendar(', 1)[1].split(')calendar"', 1)[0]
+    footer = (HERE / "about_footer.h").read_text(encoding="utf-8").split('R"footer(', 1)[1].split(')footer"', 1)[0]
+    pack = (HERE / "pack_review_panel.h").read_text(encoding="utf-8").split('R"packjs(', 1)[1].split(')packjs"', 1)[0]
+    return shim + '<script data-pack-review>\n' + pack + '\n</script>\n' + '<script data-charge-calendar>\n' + calendar + '\n</script>\n<script data-company-footer>\n' + footer + '\n</script>\n'
 def main():
     html = panel_html()
     panel = panel_number_constants()
@@ -1078,15 +1141,11 @@ def main():
             die("simple_panel.h does not define %s" % needed)
     shim = build_shim(field_map, tlm_n, bits, states, chart_ranges(), bsp_volt_scales(),
                       panel, BOOT_VOLTAGES)
-    generated = html.replace("</head>", shim + "</head>", 1)
+    generated = html.replace('<script src="/calendar.js" defer></script>', '').replace('<script src="/about.js" defer></script>', '').replace('<script src="/pack.js" defer></script>', '').replace("</head>", shim + "</head>", 1)
     if generated == html:
         die("could not inject the shim: </head> not found")
     OUT.write_text(generated, encoding="utf-8")
     print("wrote %s (%d bytes, %d TLM fields, %d fault bits)"
           % (OUT.name, len(generated), tlm_n, len(bits)))
-    synced = html[1:] if html.startswith("\n") else html
-    for extra in (HERE / "index.html", HERE / "simple_panel_clean.html"):
-        extra.write_text(synced, encoding="utf-8", newline="")
-        print("synced %s (%d bytes)" % (extra.name, len(synced.encode("utf-8"))))
 if __name__ == "__main__":
     main()

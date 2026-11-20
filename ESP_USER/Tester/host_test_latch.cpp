@@ -474,7 +474,7 @@ static void func__T_TestResetOrderAndHandshake(void)
         func__T_Check((string__panel.find("محور عمودی: ولتاژ ۱۸ تا ۳۰ ولت") == std::string::npos) &&
                       (string__panel.find("هر نقطه یک ساعت یا یک روز") == std::string::npos) &&
                       (string__panel.find("لیست ۲۰ شارژ آخر") == std::string::npos) &&
-                      (string__panel.find("id=\"voltAxisInfo\"") != std::string::npos) &&
+                      (string__panel.find("id=\"voltAxisInfo\"") == std::string::npos) &&
                       (string__panel.find("id=\"pctAxisInfo\"") == std::string::npos),
                       "متن زیر نمودارها هم از داده نوشته می‌شود، نه دستی");
         func__T_Check((string__panel.find("repeat(auto-fit,minmax(min(100%") != std::string::npos) &&
@@ -1064,6 +1064,7 @@ static void func__T_TestStateHistoryLog(void)
                   "آمدن برق شهر یک ردیف می‌نویسد");
 
     UINT32_T__G__TlmField[15] = 20608u;   /* زیر مرز قطع */
+    UINT32_T__G__TlmField[17] = 10300u;UINT32_T__G__TlmField[18] = 10308u;
     UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 3u,
@@ -1105,12 +1106,20 @@ static void func__T_TestStateHistoryLog(void)
     char char__ptr_out[1024];
     (void)func__SimpleLog_Tail(char__ptr_out, sizeof(char__ptr_out), 0u, 10u);
     std::string string__tail(char__ptr_out);
-    func__T_Check(string__tail.find("20608") != std::string::npos,
+    func__T_Check(string__tail.find("10308") != std::string::npos,
                   "خواندن تاریخچه ردیف‌های ذخیره‌شده را برمی‌گرداند");
 
     /* ---------- v1.96: گام ولتاژ، ضربان و بودجهٔ حجم ---------- */
+    func__T_Check(SIMPLE_LOG_VSTEP_MV == 500u, "event-log voltage step is 500 mV");
+    /* Keep the minute gate open so sub-threshold rows are rejected by voltage, not time. */
+    UINT32_T__G__LogLastStepMs = (uint32_t)millis() - SIMPLE_LOG_VSTEP_MIN_MS - 10u;
     UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
-    UINT32_T__G__TlmField[15] = 20608u + 199u;
+    UINT32_T__G__TlmField[15] = 20608u + 200u;
+    func__SimpleLog_OnFrame();
+    func__T_Check(UINT16_T__G__LogRowsToday == 4u,
+                  "a 200 mV voltage-only move no longer creates a log row");
+    UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
+    UINT32_T__G__TlmField[15] = 20608u + 499u;
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 4u,
                   "جهش کمتر از گام ولتاژ ردیف نمی‌سازد");
@@ -1118,10 +1127,10 @@ static void func__T_TestStateHistoryLog(void)
     /* پنجرهٔ «یک ردیف گام در دقیقه» را باز می‌کنیم تا گامِ تنها بنویسد */
     UINT32_T__G__LogLastStepMs = (uint32_t)millis() - SIMPLE_LOG_VSTEP_MIN_MS - 10u;
     UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
-    UINT32_T__G__TlmField[15] = 20608u + 200u;
+    UINT32_T__G__TlmField[15] = 20608u + 500u;
     func__SimpleLog_OnFrame();
     func__T_Check(UINT16_T__G__LogRowsToday == 5u,
-                  "پلهٔ ۲۰۰ میلی‌ولتی ولتاژ پک یک ردیف می‌سازد");
+                  "پلهٔ ۵۰۰ میلی‌ولتی ولتاژ پک یک ردیف می‌سازد");
     {
         char char__ptr_tail[1024];
         (void)func__SimpleLog_Tail(char__ptr_tail, sizeof(char__ptr_tail), 0u, 10u);
@@ -1174,19 +1183,8 @@ static void func__T_TestStateHistoryLog(void)
 
     /* ---- v1.109 (دستور کاربر: «توی دشارژ هر وقت اومد بالا باید یک رکورد
        ذخیره بشه»): در دشارژ هر بالا آمدنِ پک، حتی داخل یک دقیقه، ردیف خودش را
-       می‌نویسد؛ پایین‌رفتن هنوز داخل دقیقه بی‌صداست. درصد باتری هم ستون آخر
-       هر ردیف است و از نگاشت ۲۱٬۰۰۰..۲۹٬۰۰۰ حساب می‌شود. ---- */
+       می‌نویسد؛ پایین‌رفتن هنوز داخل دقیقه بی‌صداست. لاگ ۱۸ ستون دارد. ---- */
     {
-        /* نگاشت را صریح می‌کنیم: تستِ پارامترها قبلاً سقف نگاشت را جابه‌جا کرده */
-        UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMIN_MV] = 21000u;
-        BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMIN_MV] = true;
-        UINT32_T__G__BoardParam[SIMPLE_PARAM_PCT_VMAX_MV] = 29000u;
-        BOOL__G__BoardParamKnown[SIMPLE_PARAM_PCT_VMAX_MV] = true;
-        func__T_Check((func__SimpleLog_Pct(21000u) == 0u) &&
-                      (func__SimpleLog_Pct(25000u) == 50u) &&
-                      (func__SimpleLog_Pct(29000u) == 100u),
-                      "درصد باتری از نگاشت ۲۱٬۰۰۰..۲۹٬۰۰۰ حساب می‌شود");
-
         const uint16_t uint16_t__before = UINT16_T__G__LogRowsToday;
         UINT8_T__G__TlmFlags = 0x00u;   /* برق شهر قطع = دشارژ */
         UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
@@ -1194,42 +1192,29 @@ static void func__T_TestStateHistoryLog(void)
         func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__before + 1u),
                       "قطع برق شهر برای شروع دشارژ یک ردیف می‌نویسد");
 
-        /* بالا آمدنِ ۳۰۰ میلی‌ولتی، هنوز داخل همان دقیقهٔ گام قبلی */
+        /* A 500 mV discharge rise still bypasses the minute cooldown. */
         const uint16_t uint16_t__mid = UINT16_T__G__LogRowsToday;
-        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] + 300u;
+        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] + 500u;
         UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
         func__SimpleLog_OnFrame();
         func__T_Check(UINT16_T__G__LogRowsToday == (uint16_t)(uint16_t__mid + 1u),
                       "هر بالا آمدن در دشارژ، حتی داخل یک دقیقه، ردیف خودش را می‌نویسد");
 
-        const uint32_t uint32_t__riseV = UINT32_T__G__TlmField[15];
 
         /* پایین‌رفتنِ همان اندازه، هنوز داخل دقیقه، بی‌صدا می‌ماند */
         const uint16_t uint16_t__mid2 = UINT16_T__G__LogRowsToday;
-        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] - 300u;
+        UINT32_T__G__TlmField[15] = UINT32_T__G__TlmField[15] - 500u;
         UINT32_T__G__LogLastRowMs = (uint32_t)millis() - SIMPLE_LOG_MIN_INTERVAL_MS - 10u;
         func__SimpleLog_OnFrame();
         func__T_Check(UINT16_T__G__LogRowsToday == uint16_t__mid2,
                       "پایین‌رفتن در دشارژ هنوز داخل یک دقیقه ردیف نمی‌سازد");
 
-        /* ستون آخر هر ردیف، درصد باتریِ همان لحظه است */
-        std::string string__day = func__T_DayText(char__path);
-        std::string string__last;
-        {
-            size_t size_t__cut = string__day.rfind('\n', string__day.size() - 2u);
-            if (size_t__cut != std::string::npos) {
-                string__last = string__day.substr(size_t__cut + 1u);
-            }
-        }
-        while ((string__last.empty() == false) &&
-               ((string__last.back() == '\n') || (string__last.back() == '\r')))
-        {
-            string__last.pop_back();
-        }
-        std::string string__want = "," + std::to_string(func__SimpleLog_Pct(uint32_t__riseV));
-        func__T_Check((string__last.size() >= string__want.size()) &&
-                      (string__last.rfind(string__want) == (string__last.size() - string__want.size())),
-                      "ردیف با درصد باتریِ همان لحظه تمام می‌شود");
+        char row[256];uint32_t columns[SimpleLogCodec::Fields];
+        func__SimpleLog_BuildRow(row,sizeof(row),0u,0u);
+        func__T_Check(SimpleLogCodec::Fields==18u && SimpleLogCodec::parse(row,columns) &&
+            columns[10]==UINT32_T__G__TlmField[17] && columns[11]==UINT32_T__G__TlmField[18] &&
+            columns[12]==UINT32_T__G__TlmField[28] && columns[17]==UINT32_T__G__TlmField[12],
+            "log has exactly 18 calibration columns, ending in channel 2 duty, not battery percent");
 
         /* برق شهر را برمی‌گردانیم تا وضعیت برای ادامهٔ تست‌ها مثل قبل بماند */
         UINT8_T__G__TlmFlags = 0x02u;
@@ -1331,14 +1316,14 @@ static void func__T_TestStateHistoryLog(void)
         {
             char char__ptr_row[128];
             (void)snprintf(char__ptr_row, sizeof(char__ptr_row),
-                           "179275680%d,10,1,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0,0,0,0,0",
+                           "179275680%d,10,1,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0",
                            (int)uint8_t__i);
             (void)func__SimpleLog_AppendRow(uint32_t__day, char__ptr_row);
         }
         UINT8_T__G__LogRamHead = 0u;
         UINT8_T__G__LogRamCount = 0u;
-        (void)func__SimpleLog_RamPush("1792756809,14,64,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0,0,0,0,0");
-        (void)func__SimpleLog_RamPush("1792756810,15,512,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0,0,0,0,0");
+        (void)func__SimpleLog_RamPush("1792756809,14,64,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0");
+        (void)func__SimpleLog_RamPush("1792756810,15,512,0,1,2,24000,22000,26000,0,0,0,0,0,0,0,0,0");
         UINT8_T__G__LogWriteFault = 1u;
 
         (void)func__SimpleLog_Tail(char__ptr_text, sizeof(char__ptr_text), uint32_t__day, 30u);
@@ -1412,9 +1397,10 @@ static void func__T_TestStateHistoryLog(void)
             (void)LittleFS.remove(char__ptr_day);
         }
 
-    /* سه ماه تاریخچه: ۹۰ روز عادی داخل بودجه جا می‌شود و روز بعدی قدیمی‌ترین را می‌برد */
+    /* یک ماه تاریخچه: ۳۰ روز عادی داخل بودجه جا می‌شود و روز بعدی قدیمی‌ترین را می‌برد */
     {
-        const uint16_t uint16_t__days = 90u;
+        func__Simple_TimeSet(1788048000u,true); // 2026-08-30: fixtures cover the current 30 calendar days.
+        const uint16_t uint16_t__days = 30u;
         const uint32_t uint32_t__rowBytes = 300u;   /* اندازهٔ اندازه‌گیری‌شدهٔ یک روز عادی */
         char char__ptr_day[SIMPLE_LOG_PATH_MAX];
         std::string string__row(uint32_t__rowBytes - 1u, 'y');
@@ -1431,10 +1417,11 @@ static void func__T_TestStateHistoryLog(void)
         }
         func__SimpleLog_TrimDays();
         func__T_Check(UINT8_T__G__LogIndexCount == (uint8_t)uint16_t__days,
-                      "سه ماه تاریخچهٔ عادی داخل بودجهٔ ۱۲۰ کیلوبایتی جا می‌شود");
+                      "۳۰ روز تاریخچهٔ عادی داخل سهم فعلی لاگ جا می‌شود");
         func__T_Check(UINT32_T__G__LogIndexDay[0] == 20260801u,
                       "وقتی جا هست، قدیمی‌ترین روز هم می‌ماند");
         {
+            func__Simple_TimeSet(1788134400u,true); // Advance the calendar with the added day.
             uint32_t uint32_t__code = 20260801u + uint16_t__days;
             func__SimpleLog_PathOf(char__ptr_day, uint32_t__code);
             File file__extra = LittleFS.open(char__ptr_day, "w");
@@ -1445,7 +1432,7 @@ static void func__T_TestStateHistoryLog(void)
         func__SimpleLog_TrimDays();
         func__T_Check((UINT8_T__G__LogIndexCount == (uint8_t)uint16_t__days) &&
                       (UINT32_T__G__LogIndexDay[0] == 20260802u),
-                      "روز نودویکم فقط قدیمی‌ترین روز را حذف می‌کند");
+                      "روز سی‌ویکم فقط قدیمی‌ترین روز را حذف می‌کند");
         for (uint16_t uint16_t__k = 0u; uint16_t__k <= uint16_t__days; uint16_t__k++)
         {
             func__SimpleLog_PathOf(char__ptr_day, 20260801u + uint16_t__k);
@@ -1574,17 +1561,15 @@ static void func__T_TestStateHistoryLog(void)
                 file__busy.print(string__rows.c_str());
                 for (int int__k = 1; int__k <= 40; int__k++)
                 {
-                    char char__one[220];
-                    snprintf(char__one, sizeof(char__one),
-                             "%lu,%lu,%u,%u,%u,%u,%lu,%lu,%lu,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%d\n",
-                             4000000000UL + (unsigned long)int__k, 4000000000UL,
-                             (unsigned)1024, (unsigned)(100 + int__k), (unsigned)1,
-                             (unsigned)255, 4294967295UL, 4294967295UL, 4294967295UL,
-                             (unsigned)255, 4294967295UL, 4294967295UL, 4294967295UL,
-                             4294967295UL, 4294967295UL, 4294967295UL, 4294967295UL,
-                             4294967295UL, 4294967295UL, 4294967295UL, 4294967295UL,
-                             int__k);
-                    file__busy.print(char__one);
+                    uint32_t values[SimpleLogCodec::Fields];
+                    for(unsigned i=0;i<SimpleLogCodec::Fields;i++)values[i]=UINT32_MAX;
+                    values[0]=4000000000u+(uint32_t)int__k;values[1]=4000000000u;
+                    values[2]=1024u;values[3]=100u+(uint32_t)int__k;values[4]=1u;
+                    values[5]=255u;values[9]=255u;values[17]=(uint32_t)int__k;
+                    std::string line;
+                    for(unsigned i=0;i<SimpleLogCodec::Fields;i++)
+                        line+=std::to_string(values[i])+(i+1u==SimpleLogCodec::Fields ? "\n" : ",");
+                    file__busy.print(line.c_str());
                 }
                 file__busy.close();
             }
@@ -1723,7 +1708,7 @@ static void func__T_TestStateHistoryLog(void)
             if (file__cut)
             {
                 file__cut.print(SIMPLE_LOG_HEADER);
-                file__cut.print("1792756000,1,1024,0,1,0,0,0,0,0,23900,12000,11900,0,0,0,0,0,0,0,0,36");
+                file__cut.print("1792756000,1,1024,0,1,0,0,0,0,0,12000,11900,0,0,0,0,0,0");
                 file__cut.close();
             }
         }
@@ -1732,9 +1717,9 @@ static void func__T_TestStateHistoryLog(void)
             char char__cutTail[512];
             (void)func__SimpleLog_Tail(char__cutTail, sizeof(char__cutTail), SIMPLE_LOG_DAY_AUTO, 10u);
             std::string string__cut(char__cutTail);
-            func__T_Check(string__cut.find(",23900,") != std::string::npos,
+            func__T_Check(string__cut.find(",12000,11900,") != std::string::npos,
                           "ردیفِ نیمه‌نوشتهٔ پیش از قطع برق خوانا می‌ماند");
-            func__T_Check(string__cut.find(",36\n") != std::string::npos,
+            func__T_Check(string__cut.find(",0,0\n") != std::string::npos,
                           "و پایان‌بندش نوشته می‌شود تا ردیف بعدی به آن نچسبد");
         }
         (void)func__SimpleLog_Clear();
@@ -2264,9 +2249,9 @@ static void func__T_TestLogMidnightRollover(void)
     /* ۱) روز قبل پر، باتری، وای‌فای خاموش: خودِ چرخش روز باید فایل تازه را بسازد. */
     func__T_RolloverSetup(true);
     const uint16_t keptRows = func__SimpleLog_CountRows(char__oldPath);
-    func__T_Check(keptRows > 0u && keptRows < SIMPLE_LOG_MAX_ROWS_PER_DAY &&
+    func__T_Check(keptRows > 0u && keptRows <= SIMPLE_LOG_MAX_ROWS_PER_DAY &&
                   func__Simple_StorageFileBytes(char__oldPath) <= SIMPLE_LOG_DAY_MAX_BYTES,
-                  "روز پرترافیک با حذف قدیمی‌ترین ردیف‌ها داخل یک بلوک می‌ماند");
+                  "روز پرترافیک از سقف ۲۰۰ ردیف و یک بلوک بیشتر نمی‌شود");
     /* Also exercise a legacy full-day latch at rollover. */
     UINT16_T__G__LogRowsToday = SIMPLE_LOG_MAX_ROWS_PER_DAY; BOOL__G__LogDayFull = true;
     func__Simple_TimeSet(uint32_t__newEpoch, false);
@@ -2456,9 +2441,10 @@ static void func__T_TestChartStorage(void)
     {
         char char__ptr_day[SIMPLE_LOG_PATH_MAX];
         std::string string__day(284u, 'z');
+        func__Simple_TimeSet(1788048000u,true);
         (void)func__SimpleLog_Clear();
         UINT8_T__G__LogIndexCount = 0u;
-        for (uint16_t uint16_t__k = 0u; uint16_t__k < 90u; uint16_t__k++)
+        for (uint16_t uint16_t__k = 0u; uint16_t__k < 30u; uint16_t__k++)
         {
             uint32_t uint32_t__code = 20260801u + uint16_t__k;
             func__SimpleLog_PathOf(char__ptr_day, uint32_t__code);
@@ -2468,9 +2454,9 @@ static void func__T_TestChartStorage(void)
             UINT8_T__G__LogIndexCount++;
         }
         func__SimpleLog_TrimDays();
-        func__T_Check(UINT8_T__G__LogIndexCount == 90u,
-                      "حجم محتوای ۹۰ فایل آزمایشی داخل سقف است؛ این تست تخصیص واقعی فلش را مدل نمی‌کند");
-        for (uint16_t uint16_t__k = 0u; uint16_t__k < 90u; uint16_t__k++)
+        func__T_Check(UINT8_T__G__LogIndexCount == 30u,
+                      "حجم محتوای ۳۰ فایل آزمایشی داخل سقف است؛ این تست تخصیص واقعی فلش را مدل نمی‌کند");
+        for (uint16_t uint16_t__k = 0u; uint16_t__k < 30u; uint16_t__k++)
         {
             func__SimpleLog_PathOf(char__ptr_day, 20260801u + uint16_t__k);
             (void)LittleFS.remove(char__ptr_day);
@@ -3079,12 +3065,62 @@ static void func__T_TestFormatClearsAllHistory(void)
 #include "host_test_chart_journal.h"
 
 #include "host_test_storage64.h"
+#include "host_test_log_policy.h"
+#include "host_test_log_row_cap.h"
+#include "host_test_log_recovery_retention.h"
+#include "host_test_log_retry_delivery.h"
+#include "host_test_reset_validation.h"
+/* ==================== Independent board voltage maps ==================== */
+/** @brief Exercise real bulk-parameter parsing, HTTP publication and chart discharge percentages. */
+static void func__T_TestIndependentVoltageMaps(void)
+{
+    LittleFS.format(); BOOL__G__FsOk = true;
+    func__Simple_ChartsClear(false);
+    func__Simple_TimeSet(1793836800u, true);
+    const uint8_t ids[] = {74u, 75u, 119u, 120u};
+    const uint32_t values[] = {21000u, 29000u, 22000u, 27000u};
+    uint8_t payload[21] = {4u}, frame[40];
+    for (unsigned i = 0u; i < 4u; i++) {
+        payload[1u + i * 5u] = ids[i];
+        for (unsigned b = 0u; b < 4u; b++)
+            payload[2u + i * 5u + b] = (uint8_t)(values[i] >> (b * 8u));
+    }
+    uint16_t length = func__T_MakeFrame(frame, SIMPLE_MSG_PARAMS_BULK, payload, sizeof(payload));
+    for (unsigned i = 0u; i < length; i++) func__Simple_ParseByte(frame[i]);
+    for (unsigned i = 0u; i < 4u; i++)
+        func__T_Check(BOOL__G__BoardParamKnown[ids[i]] && func__Simple_BoardParam(ids[i]) == values[i],
+            "received board charge/discharge bounds remain separate by parameter ID");
+    func__Simple_HttpTelemetry();
+    const std::string reply = SIMPLE_WEB_SERVER_T__G__Server.simBody().c_str();
+    func__T_Check(reply.find(",21000,29000,") != std::string::npos &&
+        reply.find(",22000,27000,") != std::string::npos,
+        "telemetry publishes both independent board maps to the renderer");
+    BOOL__G__TlmSeen = true; UINT32_T__G__LastTlmMs = (uint32_t)millis();
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    UINT32_T__G__TlmField[14] = 0u; UINT32_T__G__TlmField[15] = 29000u;
+    UINT32_T__G__TlmField[17] = 14500u; UINT32_T__G__TlmField[18] = 14500u;
+    func__Simple_ChartTick();
+    unsigned slot = (UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - 1u) % SIMPLE_CHART_HISTORY_SIZE;
+    func__T_Check(UINT32_T__G__ChartPct[slot] == 100u && UINT16_T__G__Chart1D_Count == 1u &&
+        UINT32_T__G__Chart1D_Pct[0] == 100u,
+        "charge ceiling cannot clip the discharge percent in live or persisted charts");
+    func__Simple_TimeSet(1793840400u, true);
+    UINT32_T__G__LastTlmMs = (uint32_t)millis();
+    UINT32_T__G__LastChartMs = (uint32_t)millis() - 5001u;
+    UINT32_T__G__TlmField[15] = UINT32_MAX;
+    func__Simple_ChartTick();
+    slot = (UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - 1u) % SIMPLE_CHART_HISTORY_SIZE;
+    func__T_Check(UINT32_T__G__ChartPct[slot] == 100u,
+        "out-of-range telemetry saturates before percent multiplication can overflow");
+}
+#include "host_test_factory_reset.h"
 int main(void)
 {
     LittleFS.format();
     (void)printf("== تست هاست صف ریست قفل پنل ساده ==\n");
 
     func__T_TestResetOrderAndHandshake();
+    func__T_TestResetValidation();
     func__T_TestQueue();
     func__T_TestSender();
     func__T_TestEchoAndNak();
@@ -3124,6 +3160,12 @@ int main(void)
     func__T_TestChartBatteryAndBounds();
     func__T_TestChartNinetyDayBudget();
     func__T_TestStorage64();
+    func__T_TestIndependentVoltageMaps();
+    func__T_TestLogPolicy();
+    func__T_TestLogRowCap();
+    func__T_TestLogRecoveryRetention();
+    func__T_TestLogRetryDelivery();
+    func__T_TestFactoryReset();
 
     (void)printf("\n== بررسی‌ها: %u، شکست‌ها: %u ==\n", (unsigned)UINT32_T__G__Checks, (unsigned)UINT32_T__G__Failures);
     if (UINT32_T__G__Failures != 0u)

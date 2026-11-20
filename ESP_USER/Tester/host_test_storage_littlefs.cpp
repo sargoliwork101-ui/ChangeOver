@@ -22,11 +22,13 @@ static lfs_t flash;
 static uint8_t medium[65536];
 static bool mounted=false;
 static int failures=0,peak=0;
+// Test-only callback at physical program/erase boundaries.
+static void (*afterFlashOp)(void)=nullptr;
 static int rd(const lfs_config*c,lfs_block_t b,lfs_off_t o,void*p,lfs_size_t n){memcpy(p,medium+b*c->block_size+o,n);return 0;}
 static int wr(const lfs_config*c,lfs_block_t b,lfs_off_t o,const void*p,lfs_size_t n){
-    auto src=(const uint8_t*)p;for(unsigned i=0;i<n;i++){auto &d=medium[b*c->block_size+o+i];assert((d&src[i])==src[i]);d&=src[i];}return 0;
+    auto src=(const uint8_t*)p;for(unsigned i=0;i<n;i++){auto &d=medium[b*c->block_size+o+i];assert((d&src[i])==src[i]);d&=src[i];}if(afterFlashOp)afterFlashOp();return 0;
 }
-static int erase(const lfs_config*c,lfs_block_t b){memset(medium+b*c->block_size,255,c->block_size);return 0;}
+static int erase(const lfs_config*c,lfs_block_t b){memset(medium+b*c->block_size,255,c->block_size);if(afterFlashOp)afterFlashOp();return 0;}
 static int sync(const lfs_config*){return 0;}
 static lfs_config config;
 struct Cookie {lfs_file_t file;FILE* stream;int descriptor;};
@@ -74,6 +76,8 @@ int main(int argc,char**argv){
     check(func__Simple_AuthSave(),"initial account");check(func__Simple_WifiSave(),"initial wifi");
     func__Simple_ParamsSave();clockAt(1793836800u);func__Simple_TimeSave();
     const std::string users=[](){File f=LittleFS.open(SIMPLE_USERS_FILE,"r");return std::string(f.readString().c_str());}();
+    SimplePackReview maintenance={500u,270u,330u,1793836800u,1u};
+    check(func__Simple_PackSave(maintenance),"initial maintenance record");
     unsigned blocked=0,observations=0;
     unsigned long realStart;{timeval tv;gettimeofday(&tv,nullptr);realStart=(unsigned long)tv.tv_sec*1000+tv.tv_usec/1000;}
     for(unsigned minute=0;minute<90u*1440u;minute++){
@@ -92,9 +96,14 @@ int main(int argc,char**argv){
         func__SimpleLog_OnFrame();func__SimpleLog_Tick();func__Simple_ChartTick();observations++;
         if(BOOL__G__ChartPending)blocked++;
         if(BOOL__G__DiagDirty)func__Simple_DiagSave();
+        if(minute && minute%1440u==0u){
+            maintenance.limit=500u+(minute/1440u)%3u;maintenance.revision++;
+            check(func__Simple_PackSave(maintenance),"maintenance progresses beside logs and charts");
+            func__Simple_PackLoad();check(!BOOL__G__PackReviewInvalid&&SIMPLE_PACK__G__Review.revision==maintenance.revision,"maintenance reload on physical 64 KiB");
+        }
         if(profile>0&&cycle==480){
             for(unsigned i=SIMPLE_DIAG_MAX_POWER_EVENTS-1;i>0;i--)SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[i]=SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[i-1];
-            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[0]={func__Simple_NowSec(),1u,14400u};
+            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[0]={func__Simple_NowSec(),1u,14400u,func__Simple_NowSec()-14400u,1u};
             if(UINT8_T__G__ChargeHistoryCount<SIMPLE_DIAG_MAX_POWER_EVENTS)UINT8_T__G__ChargeHistoryCount++;
             BOOL__G__ChargeHistDirty=true;func__Simple_ChargeHistorySave();
         }
@@ -108,7 +117,9 @@ int main(int argc,char**argv){
     for (unsigned burst=0;burst<1000u;burst++) {
         clockAt(1793836800u+90u*86400u-60u);
         UINT32_T__G__TlmField[15]=22000u+(burst%30u)*200u;
-        check(func__SimpleLog_WriteRow(SIMPLE_LOG_CHG_VSTEP,0u),"within-day burst persists");
+        bool accepted=func__SimpleLog_WriteRow(SIMPLE_LOG_CHG_VSTEP,0u);
+        check(accepted || (BOOL__G__LogDayFull && UINT16_T__G__LogRowsToday==SIMPLE_LOG_MAX_ROWS_PER_DAY),
+              "within-day burst persists or reaches the explicit 200-row cap");
         FSInfo i;LittleFS.info(i);
     }
     char dayPath[SIMPLE_LOG_PATH_MAX];func__SimpleLog_PathOf(dayPath,UINT32_T__G__LogDayCode);
@@ -118,7 +129,9 @@ int main(int argc,char**argv){
     check(func__Simple_ChartsClear(),"durable chart clear");func__Simple_ChartsLoad();check(UINT16_T__G__Chart3M_Count==0,"cleared chart reboot");
     check(func__Simple_DiagClear(),"durable diagnostic clear");check(func__Simple_ChargeHistoryClear(),"durable charge clear");
     File f=LittleFS.open(SIMPLE_USERS_FILE,"r");check(std::string(f.readString().c_str())==users,"account bytes unchanged");f.close();
+    func__Simple_PackLoad();check(!BOOL__G__PackReviewInvalid&&SIMPLE_PACK__G__Review.upper==270u&&SIMPLE_PACK__G__Review.replacedAt==1793836800u,"history cleanup preserves maintenance baseline and date");
     check(failures==0,"no physical ENOSPC writes");func__SimpleLog_ScanDays(true);
     printf("REAL LITTLEFS 64KiB PASS: profile=%d minutes=%u retained_days=%u reclaimed=%u peak_allocated=%d blocked=%u write_errors=%d\n",profile,observations,UINT8_T__G__LogIndexCount,UINT16_T__G__LogReclaimed,peak,blocked,failures);
+    check(UINT8_T__G__LogIndexCount<=30u,"only logs are limited to 30 days");
     check(streams.empty(),"all files closed");lfs_unmount(&flash);return 0;
 }

@@ -152,7 +152,7 @@ struct EspBenchCodec {
         if(f.readBytes((char *)frame,FrameHead)!=FrameHead){s.ioError=true;return false;}
         const size_t payload=u16(frame+2);
         if(payload>MaxText||size-s.offset<payload+FrameOverhead){s.damaged=true;return false;}
-        if(f.readBytes((char *)frame+FrameHead,payload+4u)!=payload+4u){s.ioError=true;return false;}
+        if(f.readBytes(reinterpret_cast<char *>(&frame[FrameHead]),payload+4u)!=payload+4u){s.ioError=true;return false;}
         if(!decode(s,frame,payload+FrameOverhead,out)){s.damaged=true;return false;}
         s.offset+=(uint32_t)(payload+FrameOverhead);return true;
     }

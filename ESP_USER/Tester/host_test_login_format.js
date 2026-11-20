@@ -26,10 +26,23 @@ async function login(password){
     const format=d.getElementById('admFormat');
     check(format && format.closest('#adminCard').hidden,'format lives only in hidden admin card');
     check((await w.fetch('/evt/format',{method:'POST'})).status===403,'offline format requires authentication');
+    check((await w.fetch('/latch/reset',{method:'POST',body:'n=5'})).status===403,'offline reset requires administrator authentication');
     await login('wrong');
     check(!d.getElementById('admGate').hidden && d.getElementById('admMsg').textContent.includes('نادرست'),'wrong password still refused');
     await login('admin');
     check(d.getElementById('admGate').hidden && !d.getElementById('adminCard').hidden,'admin password accepted through actual click and form encoding');
+    check(d.getElementById('resetHelp').textContent.includes('ریست ضعف باتری'),'permitted reset choices are explained in the panel');
+    for(const n of ['','5junk','6junk','8junk','05','+5',' 5','5 ','5.0','7','۵']){
+        const r=await w.fetch('/latch/reset',{method:'POST',body:new w.URLSearchParams({n}).toString()});
+        const j=await r.json();
+        check(r.status===400 && j.e==='reset' && j.allowed.join(',')==='5,6,8','offline reset refuses noncanonical command '+JSON.stringify(n));
+    }
+    for(const n of ['5','6','8']){
+        const r=await w.fetch('/latch/reset',{method:'POST',body:'n='+n});
+        const j=await r.json();
+        check(r.status===200 && j.ok===1 && j.n===Number(n),'offline reset accepts canonical command '+n);
+    }
+    check(w.admWhy({status:400,body:{e:'reset'}}).includes('۵') && w.admWhy({status:400,body:{e:'reset'}}).includes('۸'),'reset error explains permitted values');
     const originalFetch=w.fetch;let formatCalls=0;
     w.fetch=(u,o)=>{if(u==='/evt/format')formatCalls++;return originalFetch(u,o);};
     w.confirm=()=>true;await w.evtFs(0);
@@ -64,6 +77,31 @@ async function login(password){
     check((await originalFetch('/setpass',{method:'POST',body:'old=admin&new=changed-password'})).status===404,'direct offline password mutation is unavailable even to admin');
     await w.admLogout();await login('admin');
     check(d.getElementById('admGate').hidden,'original password still works after rejected mutation and logout');
+    const factory=d.getElementById('admFactoryReset');
+    check(factory && factory.closest('#adminCard'),'factory reset has a separate admin-only control');
+    check((await originalFetch('/factory/reset',{method:'GET'})).status===405,'offline factory reset rejects GET');
+    check((await originalFetch('/factory/reset',{method:'POST'})).status===400,'offline factory reset requires erase confirmation');
+    let factoryCalls=0,warning='',notice='';
+    w.fetch=(url,options)=>{if(url==='/factory/reset'){factoryCalls++;check(options.body==='confirm=ERASE_ESP','confirmed UI sends explicit panel erase token');}return originalFetch(url,options);};
+    w.confirm=text=>{warning=text;return false;};factory.click();await flush();
+    check(factoryCalls===0 && warning.includes('کالیبراسیون') && warning.includes('رمز') && warning.includes('وای‌فای') && warning.includes('admin'),'cancel sends nothing and warning explains erased data, scope and reconnection');
+    w.confirm=()=>true;w.alert=text=>{notice=text;};
+    w.fetch=async()=>({ok:false,status:500,text:async()=>'{"ok":0,"e":"format"}'});
+    factory.click();await flush();
+    check(!notice && d.getElementById('admCardMsg').textContent.includes('تأیید نشد'),'factory failure never claims successful erasure');
+    w.fetch=async()=>{throw Error('connection lost');};factory.click();await flush();
+    check(!notice && d.getElementById('admCardMsg').textContent.includes('نامشخص'),'lost reset response reports unknown outcome');
+    w.fetch=(url,options)=>{if(url==='/factory/reset'){factoryCalls++;check(options.body==='confirm=ERASE_ESP','confirmed UI sends explicit panel erase token');}return originalFetch(url,options);};
+    await originalFetch('/wifi',{method:'POST',body:'ssid=custom-network&pass=custom-secret'});
+    const beforeFactory=await (await originalFetch('/diag')).json();
+    factory.click();factory.click();await flush();
+    check(factoryCalls===1 && !factory.disabled && d.getElementById('adminCard').hidden,'confirmed factory reset runs once and locks the panel session');
+    check(notice.includes('123456789') && notice.includes('admin') && notice.includes('کالیبراسیون'),'completion explains default Wi-Fi and admin reconnection');
+    check((await originalFetch('/factory/reset',{method:'POST',body:'confirm=ERASE_ESP'})).status===403,'factory reset revokes old offline session');
+    await login('admin');
+    const afterFactory=await (await originalFetch('/diag')).json(),wifi=await (await originalFetch('/wifi')).json();
+    check(wifi.ssid==='changeover_userpannel' && !afterFactory.chargeHistory.length,'factory reset restores default Wi-Fi and clears saved history');
+    check(afterFactory.chargeCountCh1===beforeFactory.chargeCountCh1 && afterFactory.chargeCountCh2===beforeFactory.chargeCountCh2,'factory reset does not reset live board counters');
     check(errors.length===0,'no script or stylesheet errors during native clicks');
     console.log(`ALL ${checks} LOGIN / FORMAT CHECKS PASSED`);
 })().then(()=>w.close()).catch(e=>{console.error(e);w.close();process.exitCode=1;});

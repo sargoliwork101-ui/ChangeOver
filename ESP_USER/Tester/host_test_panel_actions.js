@@ -20,6 +20,15 @@ function check(value, message) {assert.ok(value, message); checks++; console.log
 function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})').call(button);}
 (async()=>{
     await tick();
+    const stepLabel=w.evtTextFa({chg:1024,note:0});
+    check(stepLabel.txt==='ولتاژ پک یک پلهٔ ۵۰۰ میلی‌ولتی جابه‌جا شد','voltage-step label explicitly names 500 mV');
+    check(w.evtTextFa({chg:0,note:7}).txt==='شروع روز','day-start marker has its own Persian label');
+    const parsed=w.evtParse('1793836800,60,512,0,1,4,1,2,256,18,12000,12500,2,28000,100,200,300,400');
+    check(parsed.vlow===12000 && parsed.vhigh===12500 && parsed.v24===24500 && parsed.dm===2 && parsed.vin===28000 && parsed.i1===100 && parsed.i2===200 && parsed.d1===300 && parsed.d2===400 && !('pct' in parsed),'18-column row is decoded in calibration order without battery percent');
+    const config=fs.readFileSync(path.join(__dirname,'..','simple_config.h'),'utf8');
+    const step=Number(config.match(/#define\s+SIMPLE_LOG_VSTEP_MV\s+(\d+)u/)[1]);
+    const preview=fs.readFileSync(path.join(__dirname,'..','simple_preview.html'),'utf8');
+    check(step===500 && preview.includes('EVT_VSTEP_MV='+step+','),'generated preview log step matches the 500 mV firmware setting');
     check(Buffer.byteLength(html) <= 175000, 'panel stays within literal budget');
     check(!d.getElementById('labBar') && !html.includes('نوار شیمیولیتور'), 'user panel never includes the simulator bottom strip');
     check(d.styleSheets.length === 1 && d.styleSheets[0].cssRules.length > 100, 'complete stylesheet parses, including mobile media queries');
@@ -38,7 +47,7 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(['exportCsv','chargeCsvData','voltCsvData','csvRowsFromColumns','csvText','csvCell','csvFileStamp','jLatinDate'].every(name=>!html.includes('function '+name+'(')),'chart-only CSV builders and unused date helper are removed');
     check(typeof w.downloadCsvText==='function' && d.querySelector('#pg2 #evtCard [onclick*="evtDlAll"]'),'stored history downloads remain available in settings');
     const tech=d.getElementById('technicalInfo');
-    check(tech.closest('#settingsContent') && !tech.closest('#adminCard') && d.querySelectorAll('#linkState,#seqInfo').length===2,'technical status exists once, in public settings only');
+    check(tech.closest('#settingsContent') && tech.closest('#adminCard') && d.querySelectorAll('#linkState,#seqInfo').length===2,'technical status exists once, inside the admin panel only');
     check(d.getElementById('linkState').closest('[lang="en"][dir="ltr"]')===d.getElementById('seqInfo').closest('[lang="en"][dir="ltr"]'),'English technical values have an explicit left-to-right layout');
     check(!d.querySelector('.footer #linkState,.footer #seqInfo') && d.querySelector('.footer').children.length===1 && d.querySelector('.footer #fwTap[onclick="admTap()"]'),'footer retains only version and its hidden admin entry');
     for(const tab of [0,1,2,0]){
@@ -104,12 +113,15 @@ function click(button) {w.eval('(function(){'+button.getAttribute('onclick')+'})
     check(chartCalls.length===1 && chartCalls[0]==='/charts?range=1d','chart polling sends just one request for voltage');
     for(const range of ['1d','7d','1m','3m']){
         click(d.getElementById('volt'+range));
-        click(d.getElementById('charge'+range));
         await tick();
-        check(d.getElementById('volt'+range).classList.contains('a') && d.getElementById('charge'+range).classList.contains('a') && chartCalls.at(-1)==='/charts?range='+range,'both remaining chart ranges work: '+range);
+        check(d.getElementById('volt'+range).classList.contains('a') && chartCalls.at(-1)==='/charts?range='+range,'voltage ranges work beside the fixed thirty-day calendar: '+range);
     }
-    w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:2,power:[{off:1700000000,on:1700000100,dur:100}],chargeHistory:[{ts:Math.floor(Date.now()/1000),ch:2}]});
-    check(d.getElementById('stChargeCount').textContent==='2' && d.querySelector('#chargeHistoryList .row') && !d.getElementById('powerLog'),'diagnostics still render statistics and charge history with stored power events present');
+    w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:8,chargeCountCh1:3,chargeCountCh2:5,resetCount:9,power:[{off:1700000000,on:1700000100,dur:100}],chargeHistory:[{ts:Math.floor(Date.now()/1000),ch:2}]});
+    check(d.getElementById('batHighChargeCount').textContent==='3' && d.getElementById('batLowChargeCount').textContent==='5' && d.querySelector('#chargeHistoryList .row') && !d.getElementById('powerLog'),'per-battery completed-charge counts and charge history still render independently');
+    check(!d.querySelector('#stChargeCount,#stResets') && !/ریست|تعداد شارژ/.test(d.getElementById('boardInfo').textContent),'reset count and combined charge count are removed from statistics and board details');
+    check(['batHighChargeCount','batLowChargeCount'].every(id=>d.getElementById(id).closest('#pg0') && d.getElementById(id).nextElementSibling.textContent==='تعداد شارژ کامل'),'completed-charge counters exist only on the two main battery cards with explicit labels');
+    w.renderDiag({valid:true,totalChargeSec:12,uptimeSec:34,chargeCount:0,chargeCountCh1:0,chargeCountCh2:0,resetCount:0});
+    check(d.getElementById('batHighChargeCount').textContent==='0' && d.getElementById('batLowChargeCount').textContent==='0','zero completed charges remain a visible number rather than a dash');
     const clockDom=new JSDOM(html,{runScripts:'outside-only',url:'http://clock.test/'});
     const cw=clockDom.window, hooks={},docHooks={},intervals=[],timeouts=new Map();let timerId=0,clockRequests=[],clockFailure=false,clockHold=null;
     cw.addEventListener=(name,fn)=>{hooks[name]=fn;};

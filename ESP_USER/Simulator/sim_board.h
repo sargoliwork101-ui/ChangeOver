@@ -95,6 +95,7 @@ struct SimBoardState
     uint32_t vHighMv = 13000u;
     uint32_t state1 = 1u;
     uint32_t state2 = 0u;
+    bool chargeActive[2] = {true, false};
     uint32_t faultMask = 0u;
     uint32_t deadMask = 0u;
     uint32_t imbEvents = 2u;
@@ -138,7 +139,6 @@ static uint8_t UINT8_T__G__SimRxPayload[64];
 static uint16_t UINT16_T__G__SimRxCrc = 0u;
 static uint8_t UINT8_T__G__SimRxCrcLow = 0u;
 static uint32_t UINT32_T__G__SimLastUptimeMs = 0u;
-static uint32_t UINT32_T__G__SimLastCountMs = 0u;
 struct SimParamDefault
 {
     uint8_t id;
@@ -601,19 +601,14 @@ inline void func__Sim_Tick(uint32_t uint32_t__nowMs)
         {
             SIM_BOARD_STATE_T__G__Board.boardTimeSec++;
         }
-        if (func__Sim_InputPermitted(SIM_BOARD_STATE_T__G__Board.vInMv) &&
-            ((SIM_BOARD_STATE_T__G__Board.state1 == 1u) || (SIM_BOARD_STATE_T__G__Board.state2 == 1u)))
+        if (func__Sim_InputPermitted(SIM_BOARD_STATE_T__G__Board.vInMv))
         {
-            SIM_BOARD_STATE_T__G__Board.totalChargeSec++;
-            SIM_BOARD_STATE_T__G__Board.chargeSecCh1++;
+            bool first = SIM_BOARD_STATE_T__G__Board.state1 == 1u || SIM_BOARD_STATE_T__G__Board.state1 == 2u;
+            bool second = SIM_BOARD_STATE_T__G__Board.state2 == 1u || SIM_BOARD_STATE_T__G__Board.state2 == 2u;
+            if (first || second) SIM_BOARD_STATE_T__G__Board.totalChargeSec++;
+            if (first) SIM_BOARD_STATE_T__G__Board.chargeSecCh1++;
+            if (second) SIM_BOARD_STATE_T__G__Board.chargeSecCh2++;
         }
-    }
-    if ((uint32_t__nowMs - UINT32_T__G__SimLastCountMs) >= 60000u)
-    {
-        UINT32_T__G__SimLastCountMs = uint32_t__nowMs;
-        SIM_BOARD_STATE_T__G__Board.chargeCountCh1++;
-        SIM_BOARD_STATE_T__G__Board.chargeCount++;
-        SIM_BOARD_STATE_T__G__Board.chargeSecCh1 += 120u;
     }
     func__Sim_PollEspBytes();
     if (!SIM_BOARD_STATE_T__G__Board.linkUp) { return; }
@@ -636,6 +631,24 @@ inline bool func__Sim_ArgU32(const SimWebServerT &web_server__server,
     *uint32_t__ptr_out = (uint32_t)long__parsed;
     return true;
 }
+/* ==================== Simulated charge transitions ==================== */
+/** @brief Apply state 0..10 for a zero-based channel; count each observed completion once. */
+inline void func__Sim_SetChargeState(uint8_t channel, uint32_t state)
+{
+    bool &active = SIM_BOARD_STATE_T__G__Board.chargeActive[channel];
+    bool pumping = state == 1u || state == 2u;
+    bool pause = state == 4u || state == 5u || state == 10u;
+    if (state == 3u && active)
+    {
+        SIM_BOARD_STATE_T__G__Board.chargeCount++;
+        if (channel == 0u) SIM_BOARD_STATE_T__G__Board.chargeCountCh1++;
+        else SIM_BOARD_STATE_T__G__Board.chargeCountCh2++;
+    }
+    if (pumping) active = true;
+    else if (!pause) active = false;
+    if (channel == 0u) SIM_BOARD_STATE_T__G__Board.state1 = state;
+    else SIM_BOARD_STATE_T__G__Board.state2 = state;
+}
 inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
 {
     uint32_t uint32_t__value = 0u;
@@ -657,11 +670,11 @@ inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
     }
     if (func__Sim_ArgU32(web_server__server, "s1", &uint32_t__value))
     {
-        SIM_BOARD_STATE_T__G__Board.state1 = (uint32_t__value > 10u) ? 10u : uint32_t__value;
+        func__Sim_SetChargeState(0u, (uint32_t__value > 10u) ? 10u : uint32_t__value);
     }
     if (func__Sim_ArgU32(web_server__server, "s2", &uint32_t__value))
     {
-        SIM_BOARD_STATE_T__G__Board.state2 = (uint32_t__value > 10u) ? 10u : uint32_t__value;
+        func__Sim_SetChargeState(1u, (uint32_t__value > 10u) ? 10u : uint32_t__value);
     }
     if (func__Sim_ArgU32(web_server__server, "fault", &uint32_t__value))
     {
@@ -693,7 +706,8 @@ inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
     {
         static const struct { const char *name; uint8_t id; } SIM_PARAM_ARG_TABLE[] =
         {
-            { "p66", 66u }, { "p67", 67u }, { "p74", 74u }, { "p75", 75u }
+            { "p66", 66u }, { "p67", 67u }, { "p74", 74u }, { "p75", 75u },
+            { "p119", 119u }, { "p120", 120u }
         };
         for (uint32_t uint32_t__i = 0u; uint32_t__i < (sizeof(SIM_PARAM_ARG_TABLE) / sizeof(SIM_PARAM_ARG_TABLE[0])); uint32_t__i++)
         {

@@ -7,7 +7,7 @@
  * ردیف‌های جعلی - چیزی که روی برد و با قطع برق دیر معلوم می‌شود.
  *
  * چه چیزهایی ثابت می‌شود:
- * - سرصفحه دقیقاً همان است که خواننده انتظار دارد (EVTD، نسخهٔ ۱، ۲۲ فیلد، چک‌پوینت ۱۶).
+ * - سرصفحه دقیقاً همان است که خواننده انتظار دارد (EVTD، نسخهٔ ۱، ۱۸ فیلد، چک‌پوینت ۱۶).
  * - رفت‌وبرگشت متن↔عدد برای ردیف عادی و مقادیر مرزی (۰ و UINT32_MAX).
  * - هر رکورد کامل و CRC-دار است؛ دلتا فقط روی پایهٔ معتبر و حداکثر ۱۵ تا پشت سر هم.
  * - بریدن فایل در هر بایت: دقیقاً ردیف‌های کامل‌شده می‌مانند، هیچ ردیف نصفه‌ای نمی‌آید.
@@ -48,18 +48,14 @@ static void func__T_CodecRow(uint32_t uint32_t__index, uint32_t *uint32_t__ptr_v
     uint32_t__ptr_values[7] = (uint32_t__index + 1u) % 2u;
     uint32_t__ptr_values[8] = (uint32_t__index % 11u == 0u) ? 64u : 0u;
     uint32_t__ptr_values[9] = uint32_t__index % 3u;
-    uint32_t__ptr_values[10] = 24000u + ((uint32_t__index % 40u) * 10u);
-    uint32_t__ptr_values[11] = 22000u + (uint32_t__index % 30u);
-    uint32_t__ptr_values[12] = 26000u - (uint32_t__index % 30u);
-    uint32_t__ptr_values[13] = (uint32_t__index % 9u) * 5u;
-    uint32_t__ptr_values[14] = uint32_t__index % 6u;
-    uint32_t__ptr_values[15] = 23900u + (uint32_t__index % 25u);
-    uint32_t__ptr_values[16] = 12000u + (uint32_t__index % 25u);
-    uint32_t__ptr_values[17] = 100u + (uint32_t__index % 900u);
-    uint32_t__ptr_values[18] = 100u + ((uint32_t__index * 3u) % 900u);
-    uint32_t__ptr_values[19] = 500u + (uint32_t__index % 400u);
-    uint32_t__ptr_values[20] = 500u + ((uint32_t__index * 2u) % 400u);
-    uint32_t__ptr_values[21] = 55u + (uint32_t__index % 45u);
+    uint32_t__ptr_values[10] = 22000u + (uint32_t__index % 30u);
+    uint32_t__ptr_values[11] = 26000u - (uint32_t__index % 30u);
+    uint32_t__ptr_values[12] = uint32_t__index % 6u;
+    uint32_t__ptr_values[13] = 23900u + (uint32_t__index % 25u);
+    uint32_t__ptr_values[14] = 100u + (uint32_t__index % 900u);
+    uint32_t__ptr_values[15] = 100u + ((uint32_t__index * 3u) % 900u);
+    uint32_t__ptr_values[16] = 500u + (uint32_t__index % 400u);
+    uint32_t__ptr_values[17] = 500u + ((uint32_t__index * 2u) % 400u);
 }
 
 static std::string func__T_CodecText(const uint32_t *uint32_t__ptr_values)
@@ -138,16 +134,16 @@ static void func__T_TestLogCodec(void)
     func__T_CodecRemove(char__path);
 
     /* ---------- ۱) سرصفحه و ثابت‌ها ---------- */
-    func__T_Check((SimpleLogCodec::Fields == 22u) && (SimpleLogCodec::HeaderSize == 8u) &&
+    func__T_Check((SimpleLogCodec::Fields == 18u) && (SimpleLogCodec::HeaderSize == 8u) &&
                   (SimpleLogCodec::Checkpoint == 16u),
-                  "کدک روی ۲۲ فیلد، سرصفحهٔ ۸ بایتی و چک‌پوینت ۱۶ کار می‌کند");
+                  "کدک روی ۱۸ فیلد، سرصفحهٔ ۸ بایتی و چک‌پوینت ۱۶ کار می‌کند");
     {
         const uint8_t *uint8_t__ptr_head = SimpleLogCodec::header();
         func__T_Check((uint8_t__ptr_head[0] == 'E') && (uint8_t__ptr_head[1] == 'V') &&
                       (uint8_t__ptr_head[2] == 'T') && (uint8_t__ptr_head[3] == 'D') &&
-                      (uint8_t__ptr_head[4] == 1u) && (uint8_t__ptr_head[5] == 22u) &&
+                      (uint8_t__ptr_head[4] == 1u) && (uint8_t__ptr_head[5] == 18u) &&
                       (uint8_t__ptr_head[6] == 16u) && (uint8_t__ptr_head[7] == 0u),
-                      "سرصفحه دقیقاً EVTD/۱/۲۲/۱۶/۰ است");
+                      "سرصفحه دقیقاً EVTD/۱/۱۸/۱۶/۰ است");
     }
 
     /* ---------- ۲) رفت‌وبرگشت متن↔عدد ---------- */
@@ -364,7 +360,7 @@ static void func__T_TestLogCodec(void)
             File file__day = LittleFS.open(char__bad, "a");
             if (file__day) {
                 (void)file__day.write(SimpleLogCodec::header(), (size_t)SimpleLogCodec::HeaderSize);
-                /* ماسک دلتا با بیت بیرون از ۲۲ فیلد (0xFFFFFF) و CRC درست */
+                /* ماسک دلتا با بیت بیرون از ۱۸ فیلد (0xFFFFFF) و CRC درست */
                 uint8_t uint8_t__frame[9];
                 uint8_t__frame[0] = 0xa5u;
                 uint8_t__frame[1] = 0xc3u;
@@ -445,7 +441,7 @@ static void func__T_TestLogCodec(void)
             File file__day = LittleFS.open(char__legacy, "a");
             if (file__day) {
                 (void)file__day.print(SIMPLE_LOG_HEADER);
-                (void)file__day.print("1762300000,10,1,0,1,2,3,4,0,0,24000,23000,25000,0,0,24000,12000,100,200,500,500,80\n");
+                (void)file__day.print("1762300000,10,1,0,1,2,3,4,0,0,12000,12000,0,24000,100,200,500,500\n");
                 file__day.close();
             }
         }
