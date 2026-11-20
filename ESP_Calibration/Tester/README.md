@@ -55,6 +55,8 @@ counts below belong to prior runs and must not be added to these totals.
 | `host_test_cal_revision.js` | 47 sample/selection round-trip, filename and diagnostic checks |
 | `host_test_restore_audit.js` | 32 numeric import, staging/equality, cancellation, restore and transaction checks |
 | `host_test_backup_package.js` | 39 checks: ZIP structure/CRC with independent Python extraction, split restoration, full/partial/absent data, body timeout, snapshots and lock ownership |
+| `host_test_backup_safety.cpp` | 78 real-sketch backup endpoint/UART/file invariants with ASan/UBSan; generates actual handler responses for the browser suite |
+| `host_test_backup_browser.cjs` | 32 real Chromium download, lock, intentional manual-exit, fault and pre-apply checks using those responses; independent ZIP CRC verification and over-2MB stress archive |
 | `host_test_bench_icons.js` | 28 icons, visible action labels, keyboard and accessibility checks |
 | `host_test_transaction_audit.js` | 53 immutable-batch, newer-edit and ownership checks |
 | `host_test_send_feedback.js` | 58 named-result, filters, read-only recheck and selective-retry checks |
@@ -87,6 +89,21 @@ C++ host suite, not independent runners. The frozen input CSV is in
 - Chromium checks screen width, local scrollports, focus, actual row positions,
   contrast and visible result actions. jsdom is not used as a pixel/layout
   engine. Installed browser tooling is required for this part to run.
+
+## Post-package safety review
+
+The permanent C++/Chromium safety testers are registered in the full runner.
+The C++ phase compiles the actual sketch and writes ignored
+`build/backup_responses.json` only after its invariants pass. Run the full runner
+before invoking `host_test_backup_browser.cjs` individually: it needs that fixture.
+The browser phase replays those real handler responses, not a live physical ESP.
+Its downloaded ZIP/stress archives also remain in ignored `build/`.
+
+The complete runner passed at runtime baseline `88ea477`: exit 0, no failures
+and no SKIP, including all 78 new host and 32 new browser safety checks. No
+production file or generated preview was changed for this review. Detailed
+coverage, source evidence and untested physical-device limits are recorded in
+[BACKUP_SAFETY_VALIDATION.md](BACKUP_SAFETY_VALIDATION.md).
 
 ## ZIP-package validation
 

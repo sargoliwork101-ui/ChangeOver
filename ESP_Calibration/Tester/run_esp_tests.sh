@@ -42,6 +42,14 @@ g++ -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-parameter \
     "${SCRIPT_DIRECTORY}/host_test_bench_codec_string.cpp" \
     -o "${BUILD_DIRECTORY}/host_test_bench_codec_string"
 "${BUILD_DIRECTORY}/host_test_bench_codec_string"
+# [EN] Export real HTTP responses only after read-only/UART/storage safety checks pass.
+echo "[backup safety] compiling and running real-sketch endpoint checks"
+g++ -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-parameter \
+    -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+    -I "${SCRIPT_DIRECTORY}" -I "${SCRIPT_DIRECTORY}/stubinc" \
+    "${SCRIPT_DIRECTORY}/host_test_backup_safety.cpp" \
+    -o "${BUILD_DIRECTORY}/host_test_backup_safety"
+"${BUILD_DIRECTORY}/host_test_backup_safety" "${BUILD_DIRECTORY}/backup_responses.json"
 # [EN] Optional behavioural tests in a real DOM. They need node and jsdom, which
 #      are not dependencies of this project, so a missing tool SKIPS instead of
 #      failing. When the tools exist they are part of the gate: a panel that
@@ -58,6 +66,7 @@ if command -v node >/dev/null 2>&1; then
     node "${SCRIPT_DIRECTORY}/host_test_cal_revision.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_restore_audit.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_backup_package.js" || exit 1
+    node "${SCRIPT_DIRECTORY}/host_test_backup_browser.cjs" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_bench_icons.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_transaction_audit.js" || exit 1
     node "${SCRIPT_DIRECTORY}/host_test_send_feedback.js" || exit 1
